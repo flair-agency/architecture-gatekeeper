@@ -59,13 +59,16 @@ authority.
 
 ## CI integration
 
-Call the reusable workflow at an exact release tag:
+Call the reusable workflow at the immutable commit that produced the reviewed
+release, and pass only the two credentials declared by the workflow:
 
 ```yaml
 jobs:
   architecture-gate:
-    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@v0.2.1
-    secrets: inherit
+    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@<release-commit-sha>
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CI_SOURCE_READ_TOKEN: ${{ secrets.CI_SOURCE_READ_TOKEN }}
 ```
 
 The caller keeps `.codex/gatekeeper/ci-policy.json`, its prompt and schema. CI

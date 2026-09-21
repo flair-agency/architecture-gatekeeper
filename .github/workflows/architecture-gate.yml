@@ -86,7 +86,7 @@ jobs:
           effort: ${{ needs.policy.outputs.effort }}
           sandbox: read-only
           safety-strategy: drop-sudo
-          codex-args: '["--ephemeral", "--ignore-user-config", "--output-schema", "${{ inputs.schema-path }}"]'
+          codex-args: '["--ephemeral", "--output-schema", "${{ inputs.schema-path }}"]'
 
   accept:
     if: always()
