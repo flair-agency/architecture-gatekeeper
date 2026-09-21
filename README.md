@@ -62,32 +62,44 @@ When `validationPath` is configured, the local and manual review paths apply
 that committed policy after structured generation and fail closed on a rule
 violation or malformed policy.
 
-## Local reviewer runtime
+## Local reviewer deployment
 
 `--offline` applies to npm resolution only: it prevents a registry fetch while
 locating the already installed, exact package. The installed `codex` reviewer
 still needs the authenticated connection to its configured OpenAI/Codex service
-endpoint to produce a decision. A supported non-interactive host therefore
-selects its permission/profile *before* invoking this package with all of the
-following bounds:
+endpoint to produce a decision.
+
+The package supplies the child reviewer on standard input with the configured
+authority snapshots from the recorded revision, the review task, and (for a
+Hook run) its prior structured review context. It starts that reviewer in the
+consumer repository with read-only filesystem access, so the reviewer can also
+read repository material through its tools. The package does not enumerate or
+upload an entire repository itself; an operator must nevertheless authorize the
+repository material that its selected reviewer is allowed to read.
+
+The following are host deployment guidance, not settings that Gatekeeper can
+impose on its outer task, terminal, CI runner, or managed host. A host profile
+selected *before* invoking this package should provide:
 
 - the consumer repository is readable by the review process, but remains
   read-only to the reviewer;
-- outbound access is limited by the host to the configured OpenAI/Codex service
-  endpoint(s), rather than granting arbitrary network access;
-- the outer runner permits starting the installed `codex` client without an
-  approval prompt for each review; and
+- only the outbound access that its configured OpenAI/Codex service endpoint(s)
+  require, rather than arbitrary network access;
+- a non-interactive outer-runner policy that can start the installed `codex`
+  client without asking for a review-by-review approval; and
 - the local `codex` binary is authenticated and available on `PATH`.
 
-The runtime passes `--sandbox read-only`, disables hooks and host Skill
-discovery, and sets the *child* Codex `approval_policy` to `never`. That child
-setting prevents the reviewer from pausing for tool approval; it cannot relax
-the permission, network, or approval policy of the outer task, terminal, CI
-runner, or managed host that starts this package. A rejection by that outer
-environment before `architecture-review` starts is an execution-environment
-rejection, not a `PASS`, `BLOCK`, `OWNER_DECISION`, or a Gatekeeper failure.
-It must be diagnosed there rather than worked around with a PTY, a source
-entrypoint, or `danger-full-access`.
+The runtime itself passes `--sandbox read-only`, disables hooks and host Skill
+discovery, and sets the *child* Codex `approval_policy` to `never`. The first
+two are internal hardening: they prevent the reviewer from writing and from
+recursively invoking host-installed workflows or ambient hook instructions.
+The child approval setting prevents the reviewer from pausing for tool
+approval; it cannot relax the permission, network, or approval policy of the
+outer task, terminal, CI runner, or managed host that starts this package. A
+rejection by that outer environment before `architecture-review` starts is an
+execution-environment rejection, not a `PASS`, `BLOCK`, `OWNER_DECISION`, or a
+Gatekeeper failure. It must be diagnosed there rather than worked around with a
+PTY, a source entrypoint, or `danger-full-access`.
 
 For a release-candidate dogfood check, pack the candidate and install it into a
 separate tools prefix, then run its real bin from the consumer repository. The

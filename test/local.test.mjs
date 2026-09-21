@@ -24,9 +24,12 @@ test('documents the non-interactive package reviewer runtime boundary', () => {
   const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
   assert.match(readme, /--offline` applies to npm resolution only/);
   assert.match(readme, /configured OpenAI\/Codex service\s+endpoint/);
-  assert.match(readme, /- the outer runner permits starting the installed `codex` client without\s+an\s+approval prompt/);
-  assert.match(readme, /cannot relax\s+the permission, network, or approval policy of the outer task/);
-  assert.match(readme, /not a `PASS`, `BLOCK`, `OWNER_DECISION`, or a Gatekeeper failure/);
+  assert.match(readme, /host deployment guidance, not settings that Gatekeeper can\s+impose on its outer task/);
+  assert.match(readme, /does not enumerate or\s+upload an entire repository itself/);
+  assert.match(readme, /internal hardening: they prevent the reviewer from writing/);
+  assert.match(readme, /non-interactive outer-runner policy that can start the installed `codex`\s+client without asking for a review-by-review approval/);
+  assert.match(readme, /cannot relax\s+the permission, network, or approval policy of the\s+outer task/);
+  assert.match(readme, /not a `PASS`, `BLOCK`, `OWNER_DECISION`, or a\s+Gatekeeper failure/);
   assert.match(readme, /not require a PTY/);
 });
 
