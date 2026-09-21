@@ -57,6 +57,9 @@ process.stdin.on('end', () => {
 `);
   chmodSync(codex, 0o755);
   git(root, 'init');
+  const hooks = join(root, '.git', 'test-hooks');
+  mkdirSync(hooks);
+  git(root, 'config', 'core.hooksPath', hooks);
   git(root, 'config', 'user.name', 'Test');
   git(root, 'config', 'user.email', 'test@example.invalid');
   git(root, 'config', 'commit.gpgSign', 'false');
