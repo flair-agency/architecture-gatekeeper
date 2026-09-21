@@ -121,6 +121,9 @@ test('publishes an exact reviewed package through the Flair registry contract', 
   assert.match(workflow, /npm pack --ignore-scripts --json/);
   assert.match(workflow, /npm publish .*--ignore-scripts --registry=https:\/\/npm\.pkg\.github\.com/);
   assert.match(workflow, /visibility\)" = private/);
+  for (const reference of workflow.matchAll(/uses:\s+([^\s#]+)/g)) {
+    assert.match(reference[1], /@[0-9a-f]{40}$/);
+  }
   const privilegedJob = workflow.slice(workflow.indexOf('\n  publish:'));
   assert.doesNotMatch(privilegedJob, /actions\/checkout|npm test|npm pack/);
 });
