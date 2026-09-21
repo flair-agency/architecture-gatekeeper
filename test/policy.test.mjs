@@ -55,17 +55,12 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
   assert.match(workflow, /report:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
-  assert.equal([...workflow.matchAll(/OWNER_DECISION_ENVIRONMENT: \$\{\{ inputs\.owner-decision-environment \}\}/g)].length, 2);
-  assert.match(workflow, /owner-decision-environment:\n        type: string\n        default: ''/);
-  assert.match(workflow, /owner-decision-preflight:\n    if: needs\.report\.outputs\.conclusion == 'OWNER_DECISION' && inputs\.owner-decision-environment != ''/);
-  assert.match(workflow, /OWNER_DECISION_ENVIRONMENT: \$\{\{ inputs\.owner-decision-environment \}\}/);
-  assert.match(workflow, /owner-decision:\n[\s\S]*?name: \$\{\{ inputs\.owner-decision-environment \}\}/);
-  assert.match(workflow, /pull\.head\.sha !== process\.env\.EXPECTED_HEAD_SHA/);
-  assert.match(workflow, /accept:\n[\s\S]*?Require protected owner approval/);
+  assert.doesNotMatch(workflow, /owner-decision-environment/);
+  assert.doesNotMatch(workflow, /owner-decision-preflight/);
+  assert.doesNotMatch(workflow, /Require protected owner approval/);
   assert.match(workflow, /name: Require successful reporting\n[\s\S]*?REPORT_RESULT: \$\{\{ needs\.report\.result \}\}\n[\s\S]*?test "\$REPORT_RESULT" = success/);
-  assert.match(workflow, /name: Require model-backed PASS\n        if: needs\.policy\.outputs\.mode == 'enforced' && \(needs\.report\.outputs\.conclusion != 'OWNER_DECISION' \|\| inputs\.owner-decision-environment == ''\)/);
-  assert.match(workflow, /name: Require protected owner approval\n        if: needs\.policy\.outputs\.mode == 'enforced' && needs\.report\.outputs\.conclusion == 'OWNER_DECISION' && inputs\.owner-decision-environment != ''/);
-  assert.match(workflow, /test "\$OWNER_DECISION_RESULT" = success/);
+  assert.match(workflow, /name: Require model-backed PASS\n        if: needs\.policy\.outputs\.mode == 'enforced'/);
+  assert.match(workflow, /test "\$CONCLUSION" = PASS/);
 });
 
 test('dogfoods only the protected reusable workflow with separated permissions', () => {
@@ -73,11 +68,11 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.match(caller, /pull_request_target:/);
   assert.match(caller, /uses: \.\/\.github\/workflows\/architecture-gate\.yml/);
   assert.match(caller, /contents: read/);
-  assert.match(caller, /actions: read/);
+  assert.doesNotMatch(caller, /actions: read/);
   assert.match(caller, /pull-requests: write/);
   assert.match(caller, /protected-review-instructions: true/);
   assert.match(caller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
-  assert.match(caller, /owner-decision-environment: architecture-owner-decision/);
+  assert.doesNotMatch(caller, /owner-decision-environment/);
   assert.match(caller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
   assert.doesNotMatch(caller, /actions\/checkout/);
 });

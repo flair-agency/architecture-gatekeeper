@@ -123,39 +123,15 @@ result remain available and comment delivery is reported as a warning. Do not
 switch to `pull_request_target` merely to make comments writable while checking
 out or executing pull-request code.
 
-`OWNER_DECISION` is disabled by default, preserving PASS-only acceptance for
-existing consumers. A protected caller may explicitly opt in by passing its
-consumer-owned Environment name and granting the permission needed to verify
-that Environment:
-
-```yaml
-jobs:
-  architecture-gate:
-    permissions:
-      actions: read
-      contents: read
-      pull-requests: write
-    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@<release-commit-sha>
-    with:
-      owner-decision-environment: architecture-owner-decision
-```
-
-Reusable workflows cannot elevate the caller's token permissions. When the
-input is omitted or empty, an `OWNER_DECISION` result fails the authoritative
-acceptance check exactly like any other non-PASS result. When enabled, the
-workflow waits for the selected GitHub Environment. Before requesting approval
-it reads the environment configuration through the GitHub API and fails closed unless at
-least one required reviewer is configured and administrator bypass is disabled.
-Approval is bound to the current workflow run, PR head SHA, and SHA-256 digest of
-the structured AI decision. A new PR head cancels the pending run and requires a
-new review and approval. `BLOCK` never enters this path and cannot be overridden
-by the environment approval.
-
-Each consumer repository that enables the handoff must create the Environment
-named by `owner-decision-environment`, configure the repository's accountable owner as
-a required reviewer, disable administrator bypass, and permit self-review only
-when the same owner may trigger and approve the workflow. A missing or weaker
-environment leaves the authoritative `Architecture Gate / accept` check failed.
+`OWNER_DECISION` is an architecture escalation, not an alternate acceptance
+route. It means the protected consumer authority does not contain enough owner
+direction for the Gatekeeper to decide. The current `Architecture Gate / accept`
+check therefore fails. The accountable owner makes the unresolved decision in
+the design or manual-review flow, records it in canonical consumer-owned
+authority, and reruns the gate. The new run can return `PASS` when the proposed
+change follows that authority, or `BLOCK` when it does not. A review comment,
+workflow approval or other run-local acknowledgement does not replace the
+canonical authority update.
 
 This repository dogfoods the reusable workflow through
 `.github/workflows/self-architecture-gate.yml`. The `pull_request_target` caller
