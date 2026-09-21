@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -20,8 +20,9 @@ function git(root, ...args) {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 }
 
-function manualFixture() {
+function manualFixture(t) {
   const parent = mkdtempSync(join(tmpdir(), 'architecture review test-'));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
   const root = join(parent, 'consumer repository');
   const gate = join(root, '.codex', 'gatekeeper');
   const bin = join(root, 'bin');
@@ -76,8 +77,8 @@ function runManual({ root, bin }, extraEnv = {}) {
   });
 }
 
-test('manual review returns BLOCK without Hook context, Hook output or session state', () => {
-  const fixture = manualFixture();
+test('manual review returns BLOCK without Hook context, Hook output or session state', t => {
+  const fixture = manualFixture(t);
   const capture = join(fixture.root, 'prompt.txt');
   const result = runManual(fixture, { CODEX_CAPTURE_PATH: capture });
   assert.equal(result.status, 0, result.stderr);
@@ -89,16 +90,16 @@ test('manual review returns BLOCK without Hook context, Hook output or session s
   assert.equal(existsSync(join(fixture.root, '.git', 'codex-architecture-context')), false);
 });
 
-test('manual review fails closed when committed authority differs from the worktree', () => {
-  const fixture = manualFixture();
+test('manual review fails closed when committed authority differs from the worktree', t => {
+  const fixture = manualFixture(t);
   writeFileSync(join(fixture.root, 'AGENTS.md'), '# Uncommitted replacement\n');
   const result = runManual(fixture);
   assert.equal(result.status, 2);
   assert.match(result.stderr, /does not match revision/);
 });
 
-test('manual review rejects a revision change during review', () => {
-  const fixture = manualFixture();
+test('manual review rejects a revision change during review', t => {
+  const fixture = manualFixture(t);
   const result = runManual(fixture, { MOCK_CHANGE_REVISION: '1' });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /revision changed during review/);
