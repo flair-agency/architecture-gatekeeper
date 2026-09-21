@@ -88,3 +88,20 @@ test('validates every rule before evaluating any implication', () => {
     /invalid condition/
   );
 });
+
+test('rejects invalid JSON Pointer escapes before evaluating a nonmatching rule', () => {
+  for (const path of ['/gates/~2decision', '/gates/decision~']) {
+    const invalidPointerPolicy = {
+      version: 1,
+      rules: [{
+        when: { path: '/decision', equals: 'BLOCK' },
+        require: { path, equals: 'BLOCK' },
+        message: 'nonmatching rule with an invalid pointer'
+      }]
+    };
+    assert.throws(
+      () => validateDecisionRules({ decision: 'PASS' }, invalidPointerPolicy),
+      /invalid path/
+    );
+  }
+});

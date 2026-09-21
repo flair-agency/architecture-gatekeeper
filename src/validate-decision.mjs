@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 function fail(message) { throw new Error(message); }
 
 function valueAt(document, path) {
-  if (typeof path !== 'string' || !path.startsWith('/')) fail('Decision validation rule has an invalid path.');
+  if (typeof path !== 'string' || !path.startsWith('/') || /~(?![01])/u.test(path)) {
+    fail('Decision validation rule has an invalid path.');
+  }
   return path.slice(1).split('/').reduce((value, part) => {
     const key = part.replaceAll('~1', '/').replaceAll('~0', '~');
     return value && typeof value === 'object' && Object.hasOwn(value, key) ? value[key] : undefined;
