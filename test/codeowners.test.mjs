@@ -15,8 +15,16 @@ const rules = codeowners
 
 function matches(pattern, path) {
   if (pattern === '*') return true;
+  const rootAnchored = pattern.startsWith('/');
   const normalized = pattern.replace(/^\//u, '');
-  return normalized.endsWith('/') ? path.startsWith(normalized) : path === normalized;
+  if (normalized.endsWith('/')) {
+    return rootAnchored
+      ? path.startsWith(normalized)
+      : path.includes(normalized);
+  }
+  return rootAnchored
+    ? path === normalized
+    : path.split('/').includes(normalized);
 }
 
 function ownersFor(path) {
@@ -43,5 +51,8 @@ test('routes governing and security-sensitive paths to their intended teams', ()
   assert.deepEqual(ownersFor('.github/CODEOWNERS'), [
     '@flair-agency/security',
     '@flair-agency/architecture',
+  ]);
+  assert.deepEqual(ownersFor('examples/README.md'), [
+    '@flair-agency/engineering',
   ]);
 });
