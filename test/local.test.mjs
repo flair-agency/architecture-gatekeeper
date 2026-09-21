@@ -4,6 +4,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileS
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { runManualReviewCli, validate } from '../src/local-gate.mjs';
 
 const cfg = { requiredReportedAuthorityFiles: ['AGENTS.md'], requiredPassArrays: ['reviewedScope'] };
@@ -20,7 +21,8 @@ function git(root, ...args) {
 }
 
 function manualFixture() {
-  const root = mkdtempSync(join(tmpdir(), 'architecture-review-test-'));
+  const parent = mkdtempSync(join(tmpdir(), 'architecture review test-'));
+  const root = join(parent, 'consumer repository');
   const gate = join(root, '.codex', 'gatekeeper');
   const bin = join(root, 'bin');
   mkdirSync(gate, { recursive: true });
@@ -63,7 +65,7 @@ process.stdin.on('end', () => {
 }
 
 function runManual({ root, bin }, extraEnv = {}) {
-  return spawnSync(process.execPath, [new URL('../src/manual-review.mjs', import.meta.url).pathname, 'Review this boundary'], {
+  return spawnSync(process.execPath, [fileURLToPath(new URL('../src/manual-review.mjs', import.meta.url)), 'Review this boundary'], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, ...extraEnv }
