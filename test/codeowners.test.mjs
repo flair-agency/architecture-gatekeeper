@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const codeowners = await readFile(new URL('../.github/CODEOWNERS', import.meta.url), 'utf8');
+const packageManifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 
 const rules = codeowners
   .split('\n')
@@ -36,6 +37,9 @@ test('routes governing and security-sensitive paths to their intended teams', ()
     '@flair-agency/architecture',
     '@flair-agency/engineering',
   ]);
+  assert.deepEqual(ownersFor('docs/architecture.md'), [
+    '@flair-agency/architecture',
+  ]);
   assert.deepEqual(ownersFor('package.json'), [
     '@flair-agency/architecture',
     '@flair-agency/engineering',
@@ -55,4 +59,8 @@ test('routes governing and security-sensitive paths to their intended teams', ()
   assert.deepEqual(ownersFor('examples/README.md'), [
     '@flair-agency/engineering',
   ]);
+});
+
+test('distributes the architecture-owned canonical contract', () => {
+  assert.ok(packageManifest.files.includes('docs/architecture.md'));
 });

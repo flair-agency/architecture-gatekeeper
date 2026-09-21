@@ -116,6 +116,13 @@ cannot authorize its own weaker route. Review credentials remain isolated from
 untrusted or unverified executable code, and model/API/billing failure remains
 fail closed when CI model review is required.
 
+The reusable workflow currently retains a compatibility input that can read the
+prompt and schema from the reviewed checkout while a consumer bootstraps its
+first base-owned instructions. That route provides model review but does not
+claim protected-instruction assurance. A privileged caller that requires
+protected acceptance must select protected review instructions, as this
+repository's self-review does.
+
 CI execution is one evidence source, not a prerequisite for every repository
 to obtain local/manual review. Repositories may select a local-only guardrail,
 an explicitly defined locally attested route, CI model review, or policy-based
@@ -170,9 +177,10 @@ Every implementation and rollout must preserve these invariants:
    one workflow implements more than one.
 3. Local/manual review remains independently usable and is not merely a CI
    helper.
-4. Authority, prompt, schema, validation and reviewer selection are explicit,
-   revision-bound inputs. Working-tree or pull-request copies cannot silently
-   replace protected authority.
+4. Authority, prompt, schema, validation and reviewer selection are explicit
+   inputs. Any route that claims protected-instruction assurance binds them to
+   the protected revision; working-tree or pull-request copies cannot silently
+   replace that protected authority.
 5. Any independently reusable evidence introduced by Issue #20 is invalid
    after a bound revision or relevant policy/authority identity changes.
 6. Protected-base policy alone selects acceptable current or future evidence
@@ -183,9 +191,8 @@ Every implementation and rollout must preserve these invariants:
    canonical authority and a new review produces acceptable evidence.
 9. Privileged credentials are not exposed to pull-request code or package
    lifecycle scripts. Credential-bearing third-party actions remain part of the
-   selected CI trust boundary and must be reviewed and pinned according to the
-   protected workflow's supply-chain policy; this contract does not claim that
-   every current action reference is already immutable.
+   selected CI trust boundary and follow its explicit supply-chain policy; this
+   contract does not claim that every current action reference is immutable.
 10. Distribution identities and executable entrypoints are exact, reviewable
     and reproducible; distribution mechanics do not define architecture.
 11. The mechanism claims only the trust guarantees actually supplied by its
