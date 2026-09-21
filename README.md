@@ -1,5 +1,10 @@
 # Architecture Gatekeeper
 
+The normative Why, What, responsibility boundaries and invariants are defined
+in [`docs/architecture.md`](docs/architecture.md). This README describes the
+current implementation and integration surface; it does not replace that
+contract.
+
 Architecture Gatekeeper supplies reusable mechanics for three semantic design
 review stages:
 
