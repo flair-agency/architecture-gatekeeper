@@ -129,6 +129,13 @@ status and the reported structured decision from that run. The reviewed SHA and
 decision digest are reporting metadata; they are not yet a standalone,
 versioned evidence artifact that another verifier can independently accept.
 
+The current `local-only` policy is an explicit protected-base waiver of CI model
+review. Its accept job records the selected waiver and succeeds without a review
+result or structured decision. It does not reinterpret a local `PASS` as merge
+evidence, and it supplies no claim that a model review ran. Replacing that waiver
+with locally produced acceptance evidence requires the Issue #20 evidence and
+verification contract first.
+
 Local/manual decisions are currently development feedback only. No current
 policy accepts an author-supplied local decision in place of the required CI
 model review. Issue #20 owns the unimplemented evidence format, attestation
@@ -174,8 +181,11 @@ Every implementation and rollout must preserve these invariants:
    assurance dynamically.
 8. `BLOCK` rejects. `OWNER_DECISION` rejects until the decision is recorded in
    canonical authority and a new review produces acceptable evidence.
-9. Privileged credentials are not exposed to pull-request code, package
-   lifecycle scripts, or unreviewed mutable dependencies.
+9. Privileged credentials are not exposed to pull-request code or package
+   lifecycle scripts. Credential-bearing third-party actions remain part of the
+   selected CI trust boundary and must be reviewed and pinned according to the
+   protected workflow's supply-chain policy; this contract does not claim that
+   every current action reference is already immutable.
 10. Distribution identities and executable entrypoints are exact, reviewable
     and reproducible; distribution mechanics do not define architecture.
 11. The mechanism claims only the trust guarantees actually supplied by its
