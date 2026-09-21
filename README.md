@@ -105,6 +105,12 @@ Consequently, the first pull request that introduces this caller cannot execute
 the self-review. After that bootstrap change is adopted, subsequent pull
 requests exercise the real model review, job summary and sticky-comment path.
 
+The reusable workflow uses GitHub.com's `job.workflow_repository`,
+`job.workflow_sha` and `job.workflow_ref` identity properties to load and report
+the exact called-workflow revision instead of code from the consumer checkout.
+These properties are not available on GitHub Enterprise Server, which is not a
+supported CI target for this workflow.
+
 ## Trust boundary
 
 This is an architecture guardrail, not a tamper-resistant security boundary.
