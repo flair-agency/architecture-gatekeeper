@@ -12,9 +12,9 @@
     "registry": "https://npm.pkg.github.com"
   },
   "bin": {
-    "architecture-gatekeeper": "src/local-gate.mjs",
+    "architecture-gatekeeper": "src/hook.mjs",
     "architecture-review": "src/manual-review.mjs",
-    "architecture-gate-policy": "src/resolve-ci-policy.mjs"
+    "architecture-gate-policy": "src/ci-policy.mjs"
   },
   "exports": {
     ".": "./src/local-gate.mjs",

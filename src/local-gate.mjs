@@ -125,7 +125,11 @@ export function runHook(input, cwd = process.cwd()) {
   if (event?.hook_event_name !== 'UserPromptSubmit' || !event.session_id || !event.prompt) fail('Architecture gate received unsupported or incomplete input.');
   execute(event, rootFrom(event.cwd || cwd));
 }
-export function runHookCli() {
+export function runHookCli(argv = process.argv.slice(2)) {
+  if (argv.includes('--help')) {
+    process.stdout.write('Usage: architecture-gatekeeper < hook-event.json\n');
+    return;
+  }
   let input = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', c => { input += c; }); process.stdin.on('end', () => runHook(input));
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) runHookCli();

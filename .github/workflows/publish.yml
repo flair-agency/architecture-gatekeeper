@@ -57,6 +57,25 @@ jobs:
             }
             fs.writeFileSync("archive-name.txt", packed.filename);
           '
+      - name: Execute installed package entrypoints
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import os from "node:os";
+            import path from "node:path";
+            import { execFileSync } from "node:child_process";
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), "gatekeeper-install-"));
+            const archive = path.resolve(fs.readFileSync("archive-name.txt", "utf8").trim());
+            fs.writeFileSync(path.join(directory, "package.json"), JSON.stringify({ name: "registry-check", version: "1.0.0", private: true }));
+            execFileSync("npm", ["install", archive, "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: directory, stdio: "inherit" });
+            const bin = name => path.join(directory, "node_modules", ".bin", name);
+            const help = execFileSync(bin("architecture-gatekeeper"), ["--help"], { encoding: "utf8" });
+            if (!help.startsWith("Usage: architecture-gatekeeper")) throw Error("Hook entrypoint did not execute");
+            const policy = path.join(directory, "policy.json");
+            fs.writeFileSync(policy, JSON.stringify({ version: 1, default: { mode: "local-only" }, branches: {} }));
+            const resolved = execFileSync(bin("architecture-gate-policy"), [policy, "main"], { encoding: "utf8" });
+            if (!resolved.includes("mode=local-only")) throw Error("Policy entrypoint did not execute");
+          '
       - uses: actions/upload-artifact@v4
         with:
           name: inspected-package

@@ -22,9 +22,10 @@ export function resolveCiPolicy(policy, baseBranch) {
   return { baseBranch, mode: 'enforced', model: selected.model, reasoningEffort: selected.reasoningEffort };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [policyPath, baseBranch] = process.argv.slice(2);
+export function runCiPolicyCli(argv = process.argv.slice(2)) {
+  const [policyPath, baseBranch] = argv;
   if (!policyPath) throw new Error('Usage: architecture-gate-policy <policy> <base-branch>');
   const result = resolveCiPolicy(JSON.parse(readFileSync(policyPath, 'utf8')), baseBranch);
   for (const [name, value] of Object.entries(result)) process.stdout.write(`${name}=${value}\n`);
 }
+if (process.argv[1] === fileURLToPath(import.meta.url)) runCiPolicyCli();
