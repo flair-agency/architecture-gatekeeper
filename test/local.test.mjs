@@ -59,6 +59,7 @@ process.stdin.on('end', () => {
   git(root, 'init');
   git(root, 'config', 'user.name', 'Test');
   git(root, 'config', 'user.email', 'test@example.invalid');
+  git(root, 'config', 'commit.gpgSign', 'false');
   git(root, 'add', '.');
   git(root, 'commit', '-m', 'fixture');
   return { root, bin };
