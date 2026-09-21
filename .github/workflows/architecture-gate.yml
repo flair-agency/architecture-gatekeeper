@@ -215,6 +215,7 @@ jobs:
           WORKFLOW_REF: ${{ job.workflow_ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_TOKEN: ${{ github.token }}
+          OWNER_DECISION_ENVIRONMENT: ${{ inputs.owner-decision-environment }}
         run: node .architecture-gatekeeper-runtime/src/ci-report.mjs
 
   owner-decision-preflight:

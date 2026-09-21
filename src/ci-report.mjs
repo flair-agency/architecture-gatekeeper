@@ -107,7 +107,10 @@ export function renderReport(classified, metadata = {}) {
   const decisionDigest = metadata.decisionDigest || digestDecision(decision);
   let body = `## ${icon} Architecture Gate — ${label}\n\n> ${cleanText(classified.summary)}\n`;
   if (classified.conclusion === 'OWNER_DECISION') {
-    body += '\nThis decision requires approval of the protected `architecture-owner-decision` environment. The approval applies only to this workflow run, reviewed PR head, and decision digest. A new commit requires a new review and approval.\n';
+    const environment = cleanText(metadata.ownerDecisionEnvironment, 255).replaceAll('`', 'ˋ');
+    body += environment
+      ? `\nThis decision requires approval of the protected \`${environment}\` environment. The approval applies only to this workflow run, reviewed PR head, and decision digest. A new commit requires a new review and approval.\n`
+      : '\nThe protected owner handoff is disabled for this caller, so this OWNER_DECISION is not accepted. Configure `owner-decision-environment` in the protected caller to enable the handoff.\n';
   }
   body += renderGates(decision?.gates);
   if (decision) {
@@ -176,6 +179,7 @@ async function main() {
     headSha: process.env.HEAD_SHA,
     runUrl: process.env.RUN_URL,
     workflowRef: process.env.WORKFLOW_REF,
+    ownerDecisionEnvironment: process.env.OWNER_DECISION_ENVIRONMENT,
   });
   const decisionDigest = digestDecision(classified.decision);
   if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, report);

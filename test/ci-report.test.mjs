@@ -43,10 +43,17 @@ test('binds owner decisions to a stable canonical decision digest', () => {
   const reordered = { gates: { a: 1, b: 2 }, summary: 'choose', decision: 'OWNER_DECISION' };
   assert.equal(digestDecision(first), digestDecision(reordered));
   assert.match(digestDecision(first), /^[a-f0-9]{64}$/);
-  const report = renderReport({ conclusion: 'OWNER_DECISION', summary: 'choose', decision: first }, { headSha: 'head123' });
-  assert.match(report, /protected `architecture-owner-decision` environment/);
+  const report = renderReport(
+    { conclusion: 'OWNER_DECISION', summary: 'choose', decision: first },
+    { headSha: 'head123', ownerDecisionEnvironment: 'consumer-approval' },
+  );
+  assert.match(report, /protected `consumer-approval` environment/);
   assert.match(report, /PR head: `head123`/);
   assert.match(report, /Decision SHA-256: `[a-f0-9]{64}`/);
+  const disabledReport = renderReport({ conclusion: 'OWNER_DECISION', summary: 'choose', decision: first });
+  assert.match(disabledReport, /owner handoff is disabled/);
+  assert.match(disabledReport, /OWNER_DECISION is not accepted/);
+  assert.doesNotMatch(disabledReport, /architecture-owner-decision/);
 });
 
 test('accepts a consumer-valid decision without a summary and supplies reporting copy', () => {

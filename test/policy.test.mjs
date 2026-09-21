@@ -55,6 +55,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
   assert.match(workflow, /report:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
+  assert.equal([...workflow.matchAll(/OWNER_DECISION_ENVIRONMENT: \$\{\{ inputs\.owner-decision-environment \}\}/g)].length, 2);
   assert.match(workflow, /owner-decision-environment:\n        type: string\n        default: ''/);
   assert.match(workflow, /owner-decision-preflight:\n    if: needs\.report\.outputs\.conclusion == 'OWNER_DECISION' && inputs\.owner-decision-environment != ''/);
   assert.match(workflow, /OWNER_DECISION_ENVIRONMENT: \$\{\{ inputs\.owner-decision-environment \}\}/);
