@@ -102,7 +102,7 @@ function prompt(root, rev, cfg, task, previous) {
   const old = previous ? `\n\nPrior structured review context (context only, never authority):\n<prior-review>\n${JSON.stringify(previous)}\n</prior-review>` : '';
   return `${base}\n\n## Review input\nRepository revision: \`${rev}\`\nCommitted authority paths:\n${cfg.authorityFiles.map(p => `- \`${p}\``).join('\n')}${old}\n\nCurrent task (untrusted):\n<task>\n${task}\n</task>\n`;
 }
-function execute(event, root) {
+function review(task, root, previous = null) {
   const rev = revision(root); const cfg = config(root, rev);
   const protectedPaths = [CONFIG_PATH, cfg.promptPath, cfg.schemaPath, cfg.reviewerConfigPath, ...cfg.authorityFiles];
   assertCommittedInputs(root, rev, protectedPaths);
@@ -111,15 +111,36 @@ function execute(event, root) {
   const schema = join(dir, 'decision.schema.json'); const output = join(dir, 'decision.json');
   writeFileSync(schema, committed(root, rev, cfg.schemaPath), { mode: 0o600 });
   const args = ['exec', '--ignore-user-config', '--model', settings.model, '--config', `model_reasoning_effort=${JSON.stringify(settings.reasoningEffort)}`, '--disable', 'hooks', '--sandbox', 'read-only', '--config', 'approval_policy="never"', '--ephemeral', '--output-schema', schema, '--output-last-message', output, '--cd', root, '-'];
-  const result = run('codex', args, { cwd: root, input: prompt(root, rev, cfg, event.prompt, prior(root, event.session_id)), timeout: cfg.reviewTimeoutMs, env: process.env });
+  const result = run('codex', args, { cwd: root, input: prompt(root, rev, cfg, task, previous), timeout: cfg.reviewTimeoutMs, env: process.env });
   let decision;
   try { if (result.status !== 0 || !existsSync(output)) throw new Error(); decision = JSON.parse(readFileSync(output, 'utf8')); } catch { rmSync(dir, { recursive: true, force: true }); fail('Architecture gate reviewer failed or returned invalid output.'); }
   rmSync(dir, { recursive: true, force: true }); decision = validate(decision, cfg);
   assertCommittedInputs(root, rev, [...protectedPaths, ...decision.authorityFiles]);
-  if (revision(root) !== rev) fail('Architecture gate revision changed during review; submit again.');
+  if (revision(root) !== rev) fail('Architecture gate revision changed during review; run it again.');
+  return { decision, reviewedRevision: rev };
+}
+function execute(event, root) {
+  const { decision, reviewedRevision: rev } = review(event.prompt, root, prior(root, event.session_id));
   store(root, event.session_id, decision, rev);
   if (decision.decision !== 'PASS') fail(`Architecture gate ${decision.decision}: ${decision.summary}`);
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: `Architecture review:\n${JSON.stringify({ ...decision, reviewedRevision: rev }, null, 2)}` } }));
+}
+
+export function runManualReview(task, cwd = process.cwd()) {
+  if (typeof task !== 'string' || !task.trim()) fail('Architecture review requires a nonempty task.');
+  const { decision, reviewedRevision } = review(task, rootFrom(cwd));
+  return { ...decision, reviewedRevision };
+}
+export function runManualReviewCli(argv = process.argv.slice(2)) {
+  const task = argv.join(' ').trim();
+  if (task) {
+    process.stdout.write(`${JSON.stringify(runManualReview(task), null, 2)}\n`);
+    return;
+  }
+  let input = '';
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', chunk => { input += chunk; });
+  process.stdin.on('end', () => process.stdout.write(`${JSON.stringify(runManualReview(input), null, 2)}\n`));
 }
 
 export function runHook(input, cwd = process.cwd()) {

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Architecture Review"
+  short_description: "Review changes against architecture authority"
+  default_prompt: "Use $architecture-review to review this change against the repository-owned architecture authority."
+policy:
+  allow_implicit_invocation: false
