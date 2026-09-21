@@ -50,16 +50,18 @@ The shared package owns reusable mechanics:
 - selecting repository-declared inputs from a recorded revision;
 - invoking a read-only semantic reviewer;
 - validating structured decisions and consumer-declared invariants;
-- producing or verifying architecture evidence under an explicit contract;
+- producing or verifying architecture evidence when an explicit evidence
+  contract is implemented and selected;
 - reporting an authoritative acceptance result according to protected policy.
 
 The mechanism may return `PASS`, `BLOCK`, or `OWNER_DECISION`.
 `OWNER_DECISION` is an escalation that requires a decision to be recorded in
 canonical consumer authority. It is not an alternate form of acceptance.
 
-### Three separate contracts
+### Three separate concepts and target contracts
 
-The architecture separates three concerns:
+The architecture separates three concerns, even though the current CI path
+does not yet implement them as independent artifact contracts:
 
 1. **Review execution** evaluates a change and produces a structured decision.
 2. **Architecture evidence** binds that decision to the reviewed repository,
@@ -67,7 +69,7 @@ The architecture separates three concerns:
 3. **Acceptance verification** decides whether the current change has evidence
    permitted by protected-base policy.
 
-An implementation may combine these contracts in one workflow, but must not
+An implementation may combine these concerns in one workflow, but must not
 collapse their meanings. In particular, executing a review does not itself
 grant merge acceptance, and CI is not the definition of architecture review.
 
@@ -119,12 +121,25 @@ to obtain local/manual review. Repositories may select a local-only guardrail,
 an explicitly defined locally attested route, CI model review, or policy-based
 routing among supported routes. The trust claim must match the selected route.
 
-### Evidence and acceptance
+### Current acceptance mechanism
 
-Architecture evidence is versioned structured data. Any acceptable evidence
-format must bind at least the repository identity, reviewed base and head,
-Gatekeeper identity, canonical authority and review-input identities, and the
-validated decision. Changes to bound state invalidate the evidence.
+The current `ci-enforced` path executes the model review and acceptance flow in
+one workflow run. The accept job consumes protected policy resolution, review
+status and the reported structured decision from that run. The reviewed SHA and
+decision digest are reporting metadata; they are not yet a standalone,
+versioned evidence artifact that another verifier can independently accept.
+
+Local/manual decisions are currently development feedback only. No current
+policy accepts an author-supplied local decision in place of the required CI
+model review. Issue #20 owns the unimplemented evidence format, attestation
+decision, protected routing rules and deterministic CI verifier.
+
+### Target evidence and acceptance contract
+
+Any future architecture evidence format must be versioned structured data and
+bind at least the repository identity, reviewed base and head, Gatekeeper
+identity, canonical authority and review-input identities, and the validated
+decision. Changes to bound state must invalidate the evidence.
 
 Whether local evidence requires signing, which identities are trusted, and
 which changes require CI model execution are protected policy decisions. These
@@ -132,9 +147,10 @@ decisions must be specified before an evidence route is accepted; service
 failure cannot activate a weaker route dynamically.
 
 `Architecture Gate / accept` remains the authoritative required check wherever
-a repository enables it. It verifies current evidence and policy. It does not
-silently reinterpret `BLOCK`, accept `OWNER_DECISION`, or treat report delivery
-as acceptance.
+a repository enables it. Today it verifies the same-run enforced result. If
+Issue #20 adds other evidence routes, it must verify their evidence and
+protected policy explicitly. It never silently reinterprets `BLOCK`, accepts
+`OWNER_DECISION`, or treats report delivery as acceptance.
 
 ## Normative invariants
 
@@ -142,17 +158,18 @@ Every implementation and rollout must preserve these invariants:
 
 1. Consumer repositories own architecture; the shared mechanism owns no
    consumer-specific semantic decision.
-2. Review execution, evidence, and acceptance verification have distinct
-   contracts even when one workflow implements more than one.
+2. Review execution, evidence, and acceptance verification remain distinct
+   concepts; new evidence routes must give them explicit contracts even when
+   one workflow implements more than one.
 3. Local/manual review remains independently usable and is not merely a CI
    helper.
 4. Authority, prompt, schema, validation and reviewer selection are explicit,
    revision-bound inputs. Working-tree or pull-request copies cannot silently
    replace protected authority.
-5. Evidence is invalid after any bound revision or relevant policy/authority
-   identity changes.
-6. Protected-base policy alone selects acceptable evidence routes and required
-   assurance.
+5. Any independently reusable evidence introduced by Issue #20 is invalid
+   after a bound revision or relevant policy/authority identity changes.
+6. Protected-base policy alone selects acceptable current or future evidence
+   routes and required assurance.
 7. API, billing, credential, timeout or service failure never downgrades
    assurance dynamically.
 8. `BLOCK` rejects. `OWNER_DECISION` rejects until the decision is recorded in
