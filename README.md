@@ -120,7 +120,7 @@ default remains `false` for compatibility with consumers that are still
 bootstrapping their first base-owned prompt and schema.
 
 Lifecycle-workaround adoption evidence and repeat dogfood results are tracked
-in architecture-gatekeeper issue #15.
+in [architecture-gatekeeper issue #15](https://github.com/flair-agency/architecture-gatekeeper/issues/15).
 
 Consequently, the first pull request that introduces this caller cannot execute
 the self-review. After that bootstrap change is adopted, subsequent pull
