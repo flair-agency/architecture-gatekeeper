@@ -12,6 +12,12 @@ on:
       schema-path:
         type: string
         default: .codex/gatekeeper/decision.schema.json
+      validation-path:
+        type: string
+        default: ''
+      owner-decision-environment:
+        type: string
+        default: ''
       protected-review-instructions:
         type: boolean
         default: false
@@ -142,6 +148,20 @@ jobs:
         run: |
           git show "$BASE_SHA:$PROMPT_PATH" > "$RUNNER_TEMP/architecture-gate-prompt.md"
           git show "$BASE_SHA:$SCHEMA_PATH" > "$RUNNER_TEMP/architecture-gate-decision.schema.json"
+      - name: Materialize protected decision validation policy
+        if: inputs.validation-path != ''
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          VALIDATION_PATH: ${{ inputs.validation-path }}
+        run: git show "$BASE_SHA:$VALIDATION_PATH" > "$RUNNER_TEMP/architecture-gate-decision.validation.json"
+      - name: Check out the pinned validation runtime
+        if: inputs.validation-path != ''
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-validation-runtime
+          persist-credentials: false
       - name: Run read-only architecture review
         id: codex
         # Temporary Flair-reviewed fork of openai/codex-action v1.12 with
@@ -157,14 +177,22 @@ jobs:
           safety-strategy: drop-sudo
           output-schema-file: ${{ inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
           codex-args: '["--ephemeral"]'
+      - name: Apply consumer-owned decision validation
+        if: inputs.validation-path != ''
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-decision.mjs "$RUNNER_TEMP/architecture-gate-decision.validation.json"
 
-  accept:
+  report:
     if: always()
     needs: [policy, review]
     permissions:
       contents: read
       pull-requests: write
     runs-on: ubuntu-latest
+    outputs:
+      conclusion: ${{ steps.report.outputs.conclusion }}
+      decision_digest: ${{ steps.report.outputs.decision_digest }}
     steps:
       - name: Check out the pinned reporting runtime
         uses: actions/checkout@v5
@@ -182,11 +210,73 @@ jobs:
           MODE: ${{ needs.policy.outputs.mode }}
           DECISION: ${{ needs.review.outputs.final_message }}
           REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           WORKFLOW_REF: ${{ job.workflow_ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_TOKEN: ${{ github.token }}
+          OWNER_DECISION_ENVIRONMENT: ${{ inputs.owner-decision-environment }}
         run: node .architecture-gatekeeper-runtime/src/ci-report.mjs
+
+  owner-decision-preflight:
+    if: needs.report.outputs.conclusion == 'OWNER_DECISION' && inputs.owner-decision-environment != ''
+    needs: report
+    permissions:
+      actions: read
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the pinned owner-decision runtime
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Verify protected owner-decision environment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OWNER_DECISION_ENVIRONMENT: ${{ inputs.owner-decision-environment }}
+        run: node .architecture-gatekeeper-runtime/src/owner-decision-preflight.mjs
+
+  owner-decision:
+    if: needs.report.outputs.conclusion == 'OWNER_DECISION' && inputs.owner-decision-environment != ''
+    needs: [report, owner-decision-preflight]
+    permissions:
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.owner-decision-environment }}
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Verify approval binding
+        uses: actions/github-script@v8
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DECISION_DIGEST: ${{ needs.report.outputs.decision_digest }}
+        with:
+          script: |
+            const { data: pull } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+            if (pull.head.sha !== process.env.EXPECTED_HEAD_SHA) {
+              core.setFailed(`PR head changed from ${process.env.EXPECTED_HEAD_SHA} to ${pull.head.sha}; a new review and approval are required.`);
+            }
+            if (!/^[a-f0-9]{64}$/.test(process.env.DECISION_DIGEST || '')) {
+              core.setFailed('The owner decision is missing a valid SHA-256 decision digest.');
+            }
+            core.info(`Owner approval bound to run ${context.runId}, PR head ${process.env.EXPECTED_HEAD_SHA}, decision ${process.env.DECISION_DIGEST}.`);
+
+  accept:
+    if: always()
+    needs: [policy, review, report, owner-decision-preflight, owner-decision]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
       - name: Require valid policy resolution
         env:
           POLICY_RESULT: ${{ needs.policy.result }}
@@ -194,6 +284,10 @@ jobs:
         run: |
           test "$POLICY_RESULT" = success
           test "$MODE" = enforced || test "$MODE" = local-only
+      - name: Require successful reporting
+        env:
+          REPORT_RESULT: ${{ needs.report.result }}
+        run: test "$REPORT_RESULT" = success
       - name: Record local-only waiver
         if: needs.policy.outputs.mode == 'local-only'
         run: |
@@ -201,10 +295,20 @@ jobs:
           echo "Base branch: ${{ github.base_ref }}"
           echo "AI acceptance review: WAIVED BY BASE-BRANCH POLICY"
       - name: Require model-backed PASS
-        if: needs.policy.outputs.mode == 'enforced'
+        if: needs.policy.outputs.mode == 'enforced' && (needs.report.outputs.conclusion != 'OWNER_DECISION' || inputs.owner-decision-environment == '')
         env:
           REVIEW_RESULT: ${{ needs.review.result }}
-          CONCLUSION: ${{ steps.report.outputs.conclusion }}
+          CONCLUSION: ${{ needs.report.outputs.conclusion }}
         run: |
           test "$REVIEW_RESULT" = success
           test "$CONCLUSION" = PASS
+      - name: Require protected owner approval
+        if: needs.policy.outputs.mode == 'enforced' && needs.report.outputs.conclusion == 'OWNER_DECISION' && inputs.owner-decision-environment != ''
+        env:
+          PREFLIGHT_RESULT: ${{ needs.owner-decision-preflight.result }}
+          OWNER_DECISION_RESULT: ${{ needs.owner-decision.result }}
+          DECISION_DIGEST: ${{ needs.report.outputs.decision_digest }}
+        run: |
+          test "$PREFLIGHT_RESULT" = success
+          test "$OWNER_DECISION_RESULT" = success
+          test -n "$DECISION_DIGEST"

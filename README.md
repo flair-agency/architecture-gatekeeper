@@ -12,6 +12,15 @@ its authority list, reviewer prompt, decision schema, model selection and
 target-branch CI policy. The runtime does not grant filesystem, publication,
 deployment, credential or service authority.
 
+Consumers may also own an optional decision-validation policy. The output
+schema remains limited to the subset accepted by OpenAI Structured Outputs;
+cross-field invariants are expressed as declarative `when`/`require` rules in a
+separate committed JSON file. Each condition compares a JSON Pointer value to
+an explicit JSON scalar (`string`, `number`, `boolean` or `null`); object and
+array equality is intentionally outside this minimal contract. The shared
+runtime evaluates only those declared path/value implications and does not
+infer meaning from consumer fields.
+
 When an authority is inside a Git submodule, the local runtime verifies it
 against the parent revision's pinned gitlink. It never fetches a missing
 component; unavailable pinned objects fail closed.
@@ -30,6 +39,9 @@ runHookCli();
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
 inputs. See `examples/config.json`. Hook execution is network-free and invokes
 an installed `codex` binary with hooks disabled and a read-only sandbox.
+When `validationPath` is configured, the local and manual review paths apply
+that committed policy after structured generation and fail closed on a rule
+violation or malformed policy.
 
 ## Manual review
 
@@ -97,14 +109,53 @@ fork from receiving review credentials. The integrity job has only
 has a five-minute timeout. Updating the fork requires reviewing and changing the
 repository-owned manifest as part of the Gatekeeper diff.
 
+To enforce consumer-owned cross-field invariants in CI, pass
+`validation-path` to the reusable workflow. The file is always read from the
+protected base revision. Validation runs with the called workflow's immutable
+runtime after the model returns and before the review job can succeed; neither
+the policy nor its evaluator executes pull-request code.
+
 The workflow publishes the result as a GitHub Actions job summary and creates
 or updates one marker-owned pull-request comment. The caller must grant
-`pull-requests: write` as shown above; reusable workflows cannot elevate a
-caller's token permissions. If the token is read-only, as it normally is for a
+`pull-requests: write` as shown above. If the token is read-only, as it normally is for a
 fork pull request, the job summary and authoritative `Architecture Gate / accept`
 result remain available and comment delivery is reported as a warning. Do not
 switch to `pull_request_target` merely to make comments writable while checking
 out or executing pull-request code.
+
+`OWNER_DECISION` is disabled by default, preserving PASS-only acceptance for
+existing consumers. A protected caller may explicitly opt in by passing its
+consumer-owned Environment name and granting the permission needed to verify
+that Environment:
+
+```yaml
+jobs:
+  architecture-gate:
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@<release-commit-sha>
+    with:
+      owner-decision-environment: architecture-owner-decision
+```
+
+Reusable workflows cannot elevate the caller's token permissions. When the
+input is omitted or empty, an `OWNER_DECISION` result fails the authoritative
+acceptance check exactly like any other non-PASS result. When enabled, the
+workflow waits for the selected GitHub Environment. Before requesting approval
+it reads the environment configuration through the GitHub API and fails closed unless at
+least one required reviewer is configured and administrator bypass is disabled.
+Approval is bound to the current workflow run, PR head SHA, and SHA-256 digest of
+the structured AI decision. A new PR head cancels the pending run and requires a
+new review and approval. `BLOCK` never enters this path and cannot be overridden
+by the environment approval.
+
+Each consumer repository that enables the handoff must create the Environment
+named by `owner-decision-environment`, configure the repository's accountable owner as
+a required reviewer, disable administrator bypass, and permit self-review only
+when the same owner may trigger and approve the workflow. A missing or weaker
+environment leaves the authoritative `Architecture Gate / accept` check failed.
 
 This repository dogfoods the reusable workflow through
 `.github/workflows/self-architecture-gate.yml`. The `pull_request_target` caller

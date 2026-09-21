@@ -9,10 +9,13 @@ jobs:
   architecture-gate:
     if: github.event.pull_request.draft == false
     permissions:
+      actions: read
       contents: read
       pull-requests: write
     uses: ./.github/workflows/architecture-gate.yml
     with:
       protected-review-instructions: true
+      validation-path: .codex/gatekeeper/decision.validation.json
+      owner-decision-environment: architecture-owner-decision
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

@@ -39,7 +39,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.doesNotMatch(workflow, /ref: v0\.1\.0/);
   assert.match(workflow, /review:\n[\s\S]*?permissions:\n      contents: read/);
   assert.match(workflow, /src\/ci-report\.mjs/);
-  assert.match(workflow, /CONCLUSION: \$\{\{ steps\.report\.outputs\.conclusion \}\}/);
+  assert.match(workflow, /CONCLUSION: \$\{\{ needs\.report\.outputs\.conclusion \}\}/);
   assert.doesNotMatch(workflow, /JSON\.parse\(process\.env\.DECISION\)/);
   assert.match(workflow, /group: architecture-gate-\$\{\{ github\.repository \}\}-\$\{\{ github\.event\.pull_request\.number \}\}/);
   assert.match(workflow, /cancel-in-progress: true/);
@@ -48,11 +48,24 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /protected-review-instructions:/);
   assert.match(workflow, /prompt-file: \$\{\{ inputs\.protected-review-instructions/);
   assert.match(workflow, /output-schema-file: \$\{\{ inputs\.protected-review-instructions/);
+  assert.match(workflow, /git show "\$BASE_SHA:\$VALIDATION_PATH"/);
+  assert.match(workflow, /src\/validate-decision\.mjs/);
   assert.match(workflow, /reviewed_sha: \$\{\{ steps\.revision\.outputs\.sha \}\}/);
   assert.match(workflow, /sha=\$\(git rev-parse HEAD\)/);
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
-  assert.match(workflow, /accept:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
+  assert.match(workflow, /report:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
+  assert.equal([...workflow.matchAll(/OWNER_DECISION_ENVIRONMENT: \$\{\{ inputs\.owner-decision-environment \}\}/g)].length, 2);
+  assert.match(workflow, /owner-decision-environment:\n        type: string\n        default: ''/);
+  assert.match(workflow, /owner-decision-preflight:\n    if: needs\.report\.outputs\.conclusion == 'OWNER_DECISION' && inputs\.owner-decision-environment != ''/);
+  assert.match(workflow, /OWNER_DECISION_ENVIRONMENT: \$\{\{ inputs\.owner-decision-environment \}\}/);
+  assert.match(workflow, /owner-decision:\n[\s\S]*?name: \$\{\{ inputs\.owner-decision-environment \}\}/);
+  assert.match(workflow, /pull\.head\.sha !== process\.env\.EXPECTED_HEAD_SHA/);
+  assert.match(workflow, /accept:\n[\s\S]*?Require protected owner approval/);
+  assert.match(workflow, /name: Require successful reporting\n[\s\S]*?REPORT_RESULT: \$\{\{ needs\.report\.result \}\}\n[\s\S]*?test "\$REPORT_RESULT" = success/);
+  assert.match(workflow, /name: Require model-backed PASS\n        if: needs\.policy\.outputs\.mode == 'enforced' && \(needs\.report\.outputs\.conclusion != 'OWNER_DECISION' \|\| inputs\.owner-decision-environment == ''\)/);
+  assert.match(workflow, /name: Require protected owner approval\n        if: needs\.policy\.outputs\.mode == 'enforced' && needs\.report\.outputs\.conclusion == 'OWNER_DECISION' && inputs\.owner-decision-environment != ''/);
+  assert.match(workflow, /test "\$OWNER_DECISION_RESULT" = success/);
 });
 
 test('dogfoods only the protected reusable workflow with separated permissions', () => {
@@ -60,8 +73,11 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.match(caller, /pull_request_target:/);
   assert.match(caller, /uses: \.\/\.github\/workflows\/architecture-gate\.yml/);
   assert.match(caller, /contents: read/);
+  assert.match(caller, /actions: read/);
   assert.match(caller, /pull-requests: write/);
   assert.match(caller, /protected-review-instructions: true/);
+  assert.match(caller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
+  assert.match(caller, /owner-decision-environment: architecture-owner-decision/);
   assert.match(caller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
   assert.doesNotMatch(caller, /actions\/checkout/);
 });
@@ -72,4 +88,8 @@ test('keeps self-review policy and schema valid', () => {
   assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium' });
   assert.deepEqual(schema.properties.decision.enum, ['PASS', 'BLOCK', 'OWNER_DECISION']);
   assert.deepEqual(schema.properties.gates.required, ['sharedMechanism', 'trustBoundary']);
+  assert.equal('anyOf' in schema, false);
+  const validation = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.validation.json'), 'utf8'));
+  assert.equal(validation.version, 1);
+  assert.equal(validation.rules.length, 2);
 });

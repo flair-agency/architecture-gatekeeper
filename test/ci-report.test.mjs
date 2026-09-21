@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COMMENT_MARKER, classifyReview, renderReport, upsertPullRequestComment } from '../src/ci-report.mjs';
+import { COMMENT_MARKER, classifyReview, digestDecision, renderReport, upsertPullRequestComment } from '../src/ci-report.mjs';
 
 const decision = {
   decision: 'BLOCK',
@@ -36,6 +36,24 @@ test('distinguishes waiver, policy failure, review failure, and malformed output
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'failure' }).conclusion, 'ERROR');
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'failure' }).conclusion, 'ERROR');
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: '{}' }).conclusion, 'ERROR');
+});
+
+test('binds owner decisions to a stable canonical decision digest', () => {
+  const first = { decision: 'OWNER_DECISION', summary: 'choose', gates: { b: 2, a: 1 } };
+  const reordered = { gates: { a: 1, b: 2 }, summary: 'choose', decision: 'OWNER_DECISION' };
+  assert.equal(digestDecision(first), digestDecision(reordered));
+  assert.match(digestDecision(first), /^[a-f0-9]{64}$/);
+  const report = renderReport(
+    { conclusion: 'OWNER_DECISION', summary: 'choose', decision: first },
+    { headSha: 'head123', ownerDecisionEnvironment: 'consumer-approval' },
+  );
+  assert.match(report, /protected `consumer-approval` environment/);
+  assert.match(report, /PR head: `head123`/);
+  assert.match(report, /Decision SHA-256: `[a-f0-9]{64}`/);
+  const disabledReport = renderReport({ conclusion: 'OWNER_DECISION', summary: 'choose', decision: first });
+  assert.match(disabledReport, /owner handoff is disabled/);
+  assert.match(disabledReport, /OWNER_DECISION is not accepted/);
+  assert.doesNotMatch(disabledReport, /architecture-owner-decision/);
 });
 
 test('accepts a consumer-valid decision without a summary and supplies reporting copy', () => {

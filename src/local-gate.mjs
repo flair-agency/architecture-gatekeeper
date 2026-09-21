@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { validateDecisionRules } from './validate-decision.mjs';
 
 const EFFORTS = new Set(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
 const CONFIG_PATH = '.codex/gatekeeper/config.json';
@@ -36,6 +37,7 @@ function config(root, rev) {
   const arrays = ['authorityFiles', 'requiredReportedAuthorityFiles', 'requiredPassArrays'];
   if (value?.version !== 1 || arrays.some(k => !Array.isArray(value[k]) || value[k].some(v => !validPath(v) && k !== 'requiredPassArrays')) ||
       !validPath(value.promptPath) || !validPath(value.schemaPath) || !validPath(value.reviewerConfigPath) ||
+      (value.validationPath !== undefined && !validPath(value.validationPath)) ||
       !Number.isInteger(value.reviewTimeoutMs) || value.reviewTimeoutMs < 1000 || value.reviewTimeoutMs > 3600000) {
     fail('Architecture gate configuration is unsupported.');
   }
@@ -104,7 +106,7 @@ function prompt(root, rev, cfg, task, previous) {
 }
 function review(task, root, previous = null) {
   const rev = revision(root); const cfg = config(root, rev);
-  const protectedPaths = [CONFIG_PATH, cfg.promptPath, cfg.schemaPath, cfg.reviewerConfigPath, ...cfg.authorityFiles];
+  const protectedPaths = [CONFIG_PATH, cfg.promptPath, cfg.schemaPath, cfg.reviewerConfigPath, ...(cfg.validationPath ? [cfg.validationPath] : []), ...cfg.authorityFiles];
   assertCommittedInputs(root, rev, protectedPaths);
   const settings = reviewerSettings(root, rev, cfg.reviewerConfigPath);
   const dir = mkdtempSync(join(tmpdir(), 'architecture-gate-'));
@@ -115,6 +117,10 @@ function review(task, root, previous = null) {
   let decision;
   try { if (result.status !== 0 || !existsSync(output)) throw new Error(); decision = JSON.parse(readFileSync(output, 'utf8')); } catch { rmSync(dir, { recursive: true, force: true }); fail('Architecture gate reviewer failed or returned invalid output.'); }
   rmSync(dir, { recursive: true, force: true }); decision = validate(decision, cfg);
+  if (cfg.validationPath) {
+    try { validateDecisionRules(decision, loadJson(root, rev, cfg.validationPath, 'decision validation policy')); }
+    catch (error) { fail(error.message); }
+  }
   assertCommittedInputs(root, rev, [...protectedPaths, ...decision.authorityFiles]);
   if (revision(root) !== rev) fail('Architecture gate revision changed during review; run it again.');
   return { decision, reviewedRevision: rev };

@@ -3,6 +3,7 @@
   "authorityFiles": ["AGENTS.md", "docs/architecture.md"],
   "promptPath": ".codex/gatekeeper/prompt.md",
   "schemaPath": ".codex/gatekeeper/decision.schema.json",
+  "validationPath": ".codex/gatekeeper/decision.validation.json",
   "reviewerConfigPath": ".codex/gatekeeper/reviewer.config.json",
   "requiredReportedAuthorityFiles": ["AGENTS.md"],
   "requiredPassArrays": ["responsibility", "reviewedScope", "prohibitedChanges"],
