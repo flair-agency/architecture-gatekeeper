@@ -18,7 +18,9 @@ credentials, or makes the shared mechanism claim authority it does not have.
 
 Return `OWNER_DECISION` only for a genuine unresolved value or ownership choice
 that the repository authority does not settle. Do not use it for an ordinary
-correctable defect. Return `PASS` only when the changed responsibility remains
+correctable defect. The top-level decision must be `BLOCK` when either
+`sharedMechanism` or `trustBoundary` is `BLOCK`; never combine a top-level
+`PASS` or `OWNER_DECISION` with a nested `BLOCK`. Return `PASS` only when the changed responsibility remains
 bounded, the permission and trust model is explicit, failures remain visible
 and fail closed where authoritative, and focused regression coverage supports
 the result.

@@ -62,15 +62,9 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision }
     if (!decision || !DECISIONS.has(decision.decision)) {
       throw new Error('missing or unsupported decision');
     }
-    const nestedBlock = decision.gates && typeof decision.gates === 'object'
-      && !Array.isArray(decision.gates)
-      && Object.values(decision.gates).some((gate) => gate && typeof gate === 'object' && gate.decision === 'BLOCK');
     const summary = typeof decision.summary === 'string' && decision.summary.trim()
       ? decision.summary
       : 'No summary was supplied by the architecture reviewer.';
-    if (nestedBlock) {
-      return { conclusion: 'BLOCK', summary: `A detailed architecture gate returned BLOCK. ${summary}`, decision };
-    }
     return { conclusion: decision.decision, summary, decision };
   } catch {
     return { conclusion: 'ERROR', summary: 'The architecture reviewer returned an invalid structured decision.', decision: null };

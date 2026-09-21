@@ -49,24 +49,6 @@ test('binds owner decisions to a stable canonical decision digest', () => {
   assert.match(report, /Decision SHA-256: `[a-f0-9]{64}`/);
 });
 
-test('does not allow a top-level owner decision to override a nested BLOCK', () => {
-  const classified = classifyReview({
-    mode: 'enforced',
-    policyResult: 'success',
-    reviewResult: 'success',
-    rawDecision: JSON.stringify({
-      decision: 'OWNER_DECISION',
-      summary: 'Owner input is also requested.',
-      gates: {
-        sharedMechanism: { decision: 'BLOCK', summary: 'Fail-closed behavior is weakened.' },
-        trustBoundary: { decision: 'OWNER_DECISION', summary: 'Owner must choose the reviewer.' },
-      },
-    }),
-  });
-  assert.equal(classified.conclusion, 'BLOCK');
-  assert.match(classified.summary, /detailed architecture gate returned BLOCK/);
-});
-
 test('accepts a consumer-valid decision without a summary and supplies reporting copy', () => {
   const classified = classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: '{"decision":"PASS"}' });
   assert.equal(classified.conclusion, 'PASS');

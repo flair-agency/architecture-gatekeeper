@@ -64,4 +64,8 @@ test('keeps self-review policy and schema valid', () => {
   assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium' });
   assert.deepEqual(schema.properties.decision.enum, ['PASS', 'BLOCK', 'OWNER_DECISION']);
   assert.deepEqual(schema.properties.gates.required, ['sharedMechanism', 'trustBoundary']);
+  assert.equal(schema.anyOf[0].properties.decision.const, 'BLOCK');
+  assert.deepEqual(schema.anyOf[1].properties.decision.enum, ['PASS', 'OWNER_DECISION']);
+  assert.deepEqual(schema.anyOf[1].properties.gates.properties.sharedMechanism.properties.decision.enum, ['PASS', 'OWNER_DECISION']);
+  assert.deepEqual(schema.anyOf[1].properties.gates.properties.trustBoundary.properties.decision.enum, ['PASS', 'OWNER_DECISION']);
 });
