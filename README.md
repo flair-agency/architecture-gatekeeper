@@ -47,6 +47,16 @@ authority files as the local gate. It emits the structured `PASS`, `BLOCK` or
 input, prior Hook context or CI policy, and it does not turn a decision into
 repository acceptance or implementation authority.
 
+## Codex Skill installation
+
+The npm package distributes the runtime and command-line entrypoints only. The
+explicit `$architecture-review` workflow is distributed separately from this
+repository at `skills/architecture-review/`; install that directory through the
+supported Codex Skill installation route and keep its revision aligned with the
+runtime release you adopt. The Skill is a thin invocation workflow: the
+version-pinned runtime, not the Skill, selects and validates repository-owned
+authority.
+
 ## CI integration
 
 Call the reusable workflow at an exact release tag:
@@ -68,5 +78,5 @@ explicit waiver and makes no OpenAI API call.
 This is an architecture guardrail, not a tamper-resistant security boundary.
 Local execution assumes a trusted Git executable, normal object resolution and
 the same-user environment already trusted to run project hooks. CI relies on a
-clean GitHub checkout. Neither stage implements filesystem monitoring, path
+clean GitHub checkout. No review stage implements filesystem monitoring, path
 leases, rollback, local object-store defense or malicious-operator resistance.
