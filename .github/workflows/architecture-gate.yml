@@ -18,11 +18,14 @@ on:
       CI_SOURCE_READ_TOKEN:
         required: false
 
-permissions:
-  contents: read
+concurrency:
+  group: architecture-gate-${{ github.repository }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   policy:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       mode: ${{ steps.resolve.outputs.mode }}
@@ -36,8 +39,8 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v5
         with:
-          repository: flair-agency/architecture-gatekeeper
-          ref: v0.1.0
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
       - name: Resolve policy from protected base revision
@@ -60,6 +63,8 @@ jobs:
   review:
     if: needs.policy.outputs.mode == 'enforced'
     needs: policy
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -93,6 +98,27 @@ jobs:
     needs: [policy, review]
     runs-on: ubuntu-latest
     steps:
+      - name: Check out the pinned reporting runtime
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Publish human-readable result
+        id: report
+        if: always()
+        env:
+          POLICY_RESULT: ${{ needs.policy.result }}
+          REVIEW_RESULT: ${{ needs.review.result }}
+          MODE: ${{ needs.policy.outputs.mode }}
+          DECISION: ${{ needs.review.outputs.final_message }}
+          REVIEWED_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_REF: ${{ job.workflow_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .architecture-gatekeeper-runtime/src/ci-report.mjs
       - name: Require valid policy resolution
         env:
           POLICY_RESULT: ${{ needs.policy.result }}
@@ -110,7 +136,7 @@ jobs:
         if: needs.policy.outputs.mode == 'enforced'
         env:
           REVIEW_RESULT: ${{ needs.review.result }}
-          DECISION: ${{ needs.review.outputs.final_message }}
+          CONCLUSION: ${{ steps.report.outputs.conclusion }}
         run: |
           test "$REVIEW_RESULT" = success
-          node -e 'const d=JSON.parse(process.env.DECISION); if(d.decision!=="PASS"){console.error(`Architecture Gate ${d.decision}: ${d.summary}`);process.exit(1)}'
+          test "$CONCLUSION" = PASS
