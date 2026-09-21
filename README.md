@@ -28,9 +28,11 @@ infer meaning from consumer fields.
 
 The local runtime records one Git revision to identify the review and reads its
 configuration, prompt, schema and validation policy from that committed
-revision. It does not compare those files with working-tree bytes, monitor Git
-state during review or provide tamper resistance. Git, CI, sandboxing and PR
-review own execution and change verification.
+revision. It also supplies authority files to the reviewer as snapshots read
+from that revision, so working-tree copies remain untrusted review material. It
+does not compare files with working-tree bytes, monitor Git state during review
+or provide tamper resistance. Git, CI, sandboxing and PR review own execution
+and change verification.
 
 ## Local integration
 

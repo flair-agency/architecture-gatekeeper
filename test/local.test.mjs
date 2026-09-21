@@ -94,10 +94,14 @@ test('manual review returns BLOCK without Hook context, Hook output or session s
 
 test('manual review selects committed inputs without policing worktree bytes', t => {
   const fixture = manualFixture(t);
+  const capture = join(fixture.root, 'captured-prompt.txt');
   writeFileSync(join(fixture.root, 'AGENTS.md'), '# Uncommitted replacement\n');
-  const result = runManual(fixture);
+  const result = runManual(fixture, { CODEX_CAPTURE_PATH: capture });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(JSON.parse(result.stdout).decision, 'BLOCK');
+  const reviewed = readFileSync(capture, 'utf8');
+  assert.match(reviewed, /"content":"# Test authority\\n"/);
+  assert.doesNotMatch(reviewed, /Uncommitted replacement/);
 });
 
 test('local runtime does not implement Git or worktree integrity monitoring', () => {
