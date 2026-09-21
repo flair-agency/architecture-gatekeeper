@@ -54,7 +54,7 @@ Call the reusable workflow at an exact release tag:
 ```yaml
 jobs:
   architecture-gate:
-    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@v0.1.0
+    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@v0.2.0
     secrets: inherit
 ```
 
