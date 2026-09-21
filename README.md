@@ -76,8 +76,26 @@ jobs:
 
 The caller keeps `.codex/gatekeeper/ci-policy.json`, its prompt and schema. CI
 policy is read from the protected base revision, so a pull request cannot waive
-its own review. `enforced` runs `openai/codex-action`; `local-only` records an
-explicit waiver and makes no OpenAI API call.
+its own review. `enforced` runs the exact-SHA-pinned
+`flair-agency/codex-action` fork of upstream v1.12. The fork contains only the
+bounded descendant-stdio drain fix from upstream PR #151 and retains v1.12's
+credential isolation and protected argument checks. This is a temporary
+workaround: replace the fork pin only after reviewing an upstream release that
+contains the equivalent fix. `local-only` records an explicit waiver and makes
+no OpenAI API call.
+
+Before the review job receives `OPENAI_API_KEY`, a separate credential-free
+integrity job checks out that same exact fork commit, verifies its revision,
+base/head trees, complete three-commit sequence, changed-file allowlist and
+SHA-256 content manifest owned by this repository. It then installs only its
+lockfile-pinned dependencies, runs its typecheck and complete
+test suite (including credential-isolation and descendant-stdio regressions),
+rebuilds the bundled action, and rejects a changed `dist`. The review job needs
+both policy resolution and this integrity job, so failed validation prevents the
+fork from receiving review credentials. The integrity job has only
+`contents: read`, receives no caller secrets, uses exact-SHA setup actions, and
+has a five-minute timeout. Updating the fork requires reviewing and changing the
+repository-owned manifest as part of the Gatekeeper diff.
 
 The workflow publishes the result as a GitHub Actions job summary and creates
 or updates one marker-owned pull-request comment. The caller must grant
