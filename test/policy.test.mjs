@@ -94,11 +94,13 @@ test('dogfoods the committed local and manual review entrypoints', () => {
   const reviewer = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/reviewer.config.json'), 'utf8'));
   const hooks = JSON.parse(readFileSync(join(root, '.codex/hooks.json'), 'utf8'));
   assert.deepEqual(config.authorityFiles, [
+    'docs/architecture.md',
     'README.md',
     'package.json',
     '.github/workflows/architecture-gate.yml',
     'test/local.test.mjs'
   ]);
+  assert.deepEqual(config.requiredReportedAuthorityFiles, config.authorityFiles);
   assert.equal(config.promptPath, '.codex/gatekeeper/ci-prompt.md');
   assert.equal(config.schemaPath, '.codex/gatekeeper/decision.schema.json');
   assert.equal(config.validationPath, '.codex/gatekeeper/decision.validation.json');

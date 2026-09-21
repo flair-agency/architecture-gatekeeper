@@ -1,6 +1,7 @@
 {
   "version": 1,
   "authorityFiles": [
+    "docs/architecture.md",
     "README.md",
     "package.json",
     ".github/workflows/architecture-gate.yml",
@@ -11,6 +12,7 @@
   "validationPath": ".codex/gatekeeper/decision.validation.json",
   "reviewerConfigPath": ".codex/gatekeeper/reviewer.config.json",
   "requiredReportedAuthorityFiles": [
+    "docs/architecture.md",
     "README.md",
     "package.json",
     ".github/workflows/architecture-gate.yml",
