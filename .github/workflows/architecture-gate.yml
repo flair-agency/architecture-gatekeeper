@@ -1,0 +1,116 @@
+name: Architecture Gate
+
+on:
+  workflow_call:
+    inputs:
+      policy-path:
+        type: string
+        default: .codex/gatekeeper/ci-policy.json
+      prompt-path:
+        type: string
+        default: .codex/gatekeeper/ci-prompt.md
+      schema-path:
+        type: string
+        default: .codex/gatekeeper/decision.schema.json
+    secrets:
+      OPENAI_API_KEY:
+        required: false
+      CI_SOURCE_READ_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.resolve.outputs.mode }}
+      model: ${{ steps.resolve.outputs.model }}
+      effort: ${{ steps.resolve.outputs.reasoningEffort }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: flair-agency/architecture-gatekeeper
+          ref: v0.1.0
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Resolve policy from protected base revision
+        id: resolve
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          POLICY_PATH: ${{ inputs.policy-path }}
+        run: |
+          if git show "$BASE_SHA:$POLICY_PATH" > "$RUNNER_TEMP/architecture-gate-policy.json"; then
+            node .architecture-gatekeeper-runtime/src/resolve-ci-policy.mjs "$RUNNER_TEMP/architecture-gate-policy.json" "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
+          else
+            echo "Base revision has no CI policy; using fail-safe bootstrap enforcement."
+            echo "baseBranch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
+            echo "mode=enforced" >> "$GITHUB_OUTPUT"
+            echo "model=gpt-5.6-sol" >> "$GITHUB_OUTPUT"
+            echo "reasoningEffort=medium" >> "$GITHUB_OUTPUT"
+          fi
+
+  review:
+    if: needs.policy.outputs.mode == 'enforced'
+    needs: policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      final_message: ${{ steps.codex.outputs.final-message }}
+    steps:
+      - name: Check enforced credentials
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: node -e 'if (!process.env.OPENAI_API_KEY) { console.error("Missing OPENAI_API_KEY for enforced Architecture Gate"); process.exit(1); }'
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          persist-credentials: false
+      - name: Run read-only architecture review
+        id: codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: ${{ inputs.prompt-path }}
+          model: ${{ needs.policy.outputs.model }}
+          effort: ${{ needs.policy.outputs.effort }}
+          sandbox: read-only
+          safety-strategy: drop-sudo
+          codex-args: '["--ephemeral", "--ignore-user-config", "--output-schema", "${{ inputs.schema-path }}"]'
+
+  accept:
+    if: always()
+    needs: [policy, review]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require valid policy resolution
+        env:
+          POLICY_RESULT: ${{ needs.policy.result }}
+          MODE: ${{ needs.policy.outputs.mode }}
+        run: |
+          test "$POLICY_RESULT" = success
+          test "$MODE" = enforced || test "$MODE" = local-only
+      - name: Record local-only waiver
+        if: needs.policy.outputs.mode == 'local-only'
+        run: |
+          echo "Architecture Gate: ACCEPTED WITHOUT CI AI REVIEW"
+          echo "Base branch: ${{ github.base_ref }}"
+          echo "AI acceptance review: WAIVED BY BASE-BRANCH POLICY"
+      - name: Require model-backed PASS
+        if: needs.policy.outputs.mode == 'enforced'
+        env:
+          REVIEW_RESULT: ${{ needs.review.result }}
+          DECISION: ${{ needs.review.outputs.final_message }}
+        run: |
+          test "$REVIEW_RESULT" = success
+          node -e 'const d=JSON.parse(process.env.DECISION); if(d.decision!=="PASS"){console.error(`Architecture Gate ${d.decision}: ${d.summary}`);process.exit(1)}'
