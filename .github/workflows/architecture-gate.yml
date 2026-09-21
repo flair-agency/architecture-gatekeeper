@@ -63,9 +63,53 @@ jobs:
             echo "reasoningEffort=medium" >> "$GITHUB_OUTPUT"
           fi
 
-  review:
+  codex-action-integrity:
     if: needs.policy.outputs.mode == 'enforced'
     needs: policy
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the protected provenance verifier
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Check out the pinned Codex Action without credentials
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: flair-agency/codex-action
+          ref: f93255fd2e5a17a0b4bd557599535e80c8607537
+          fetch-depth: 0
+          path: .codex-action-source
+          persist-credentials: false
+      - name: Setup pnpm
+        uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
+        with:
+          run_install: false
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: .codex-action-source/pnpm-lock.yaml
+      - name: Verify the pinned action before exposing review credentials
+        run: |
+          node .architecture-gatekeeper-runtime/src/verify-codex-action.mjs \
+            .architecture-gatekeeper-runtime/provenance/codex-action-v1.12-pr151.json \
+            .codex-action-source
+          cd .codex-action-source
+          pnpm install --frozen-lockfile
+          pnpm run check
+          pnpm test
+          test -z "$(git status --short -- dist)"
+
+  review:
+    if: needs.policy.outputs.mode == 'enforced'
+    needs: [policy, codex-action-integrity]
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -99,7 +143,10 @@ jobs:
           git show "$BASE_SHA:$SCHEMA_PATH" > "$RUNNER_TEMP/architecture-gate-decision.schema.json"
       - name: Run read-only architecture review
         id: codex
-        uses: openai/codex-action@v1
+        # Temporary Flair-reviewed fork of openai/codex-action v1.12 with
+        # upstream PR #151's bounded descendant-stdio drain fix. Keep this
+        # immutable until the equivalent upstream release is reviewed.
+        uses: flair-agency/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           prompt-file: ${{ inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || inputs.prompt-path }}
