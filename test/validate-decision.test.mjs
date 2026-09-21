@@ -31,3 +31,23 @@ test('does not infer undeclared nested semantics', () => {
 test('rejects malformed policies instead of skipping them', () => {
   assert.throws(() => validateDecisionRules({}, { version: 1, rules: [{ when: {} }] }), /invalid rule/);
 });
+
+test('supports JSON scalar equality', () => {
+  const scalarPolicy = value => ({
+    version: 1,
+    rules: [{ when: { path: '/value', equals: value }, require: { path: '/accepted', equals: true }, message: 'scalar match' }]
+  });
+  for (const value of ['BLOCK', 1, false, null]) {
+    assert.throws(() => validateDecisionRules({ value, accepted: false }, scalarPolicy(value)), /scalar match/);
+  }
+});
+
+test('rejects object and array equality as an unsupported policy contract', () => {
+  for (const value of [{ decision: 'BLOCK' }, ['BLOCK']]) {
+    const structuralPolicy = {
+      version: 1,
+      rules: [{ when: { path: '/value', equals: value }, require: { path: '/accepted', equals: true }, message: 'structural match' }]
+    };
+    assert.throws(() => validateDecisionRules({ value, accepted: true }, structuralPolicy), /invalid condition/);
+  }
+});

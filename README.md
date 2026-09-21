@@ -15,8 +15,11 @@ deployment, credential or service authority.
 Consumers may also own an optional decision-validation policy. The output
 schema remains limited to the subset accepted by OpenAI Structured Outputs;
 cross-field invariants are expressed as declarative `when`/`require` rules in a
-separate committed JSON file. The shared runtime evaluates only those declared
-path/value implications and does not infer meaning from consumer fields.
+separate committed JSON file. Each condition compares a JSON Pointer value to
+an explicit JSON scalar (`string`, `number`, `boolean` or `null`); object and
+array equality is intentionally outside this minimal contract. The shared
+runtime evaluates only those declared path/value implications and does not
+infer meaning from consumer fields.
 
 When an authority is inside a Git submodule, the local runtime verifies it
 against the parent revision's pinned gitlink. It never fetches a missing

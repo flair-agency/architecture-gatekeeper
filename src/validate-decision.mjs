@@ -14,11 +14,15 @@ function valueAt(document, path) {
 }
 
 function conditionMatches(document, condition) {
+  const equalsType = typeof condition?.equals;
   if (!condition || typeof condition !== 'object' || Array.isArray(condition) ||
-      !Object.hasOwn(condition, 'equals') || Object.keys(condition).some(key => !['path', 'equals'].includes(key))) {
+      !Object.hasOwn(condition, 'equals') ||
+      !((condition.equals === null) || ['string', 'boolean'].includes(equalsType) ||
+        (equalsType === 'number' && Number.isFinite(condition.equals))) ||
+      Object.keys(condition).some(key => !['path', 'equals'].includes(key))) {
     fail('Decision validation rule has an invalid condition.');
   }
-  return Object.is(valueAt(document, condition.path), condition.equals);
+  return valueAt(document, condition.path) === condition.equals;
 }
 
 export function validateDecisionRules(decision, policy) {
