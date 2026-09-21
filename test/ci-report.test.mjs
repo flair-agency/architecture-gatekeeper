@@ -38,22 +38,21 @@ test('distinguishes waiver, policy failure, review failure, and malformed output
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: '{}' }).conclusion, 'ERROR');
 });
 
-test('binds owner decisions to a stable canonical decision digest', () => {
+test('reports owner decisions as unaccepted canonical-authority escalations', () => {
   const first = { decision: 'OWNER_DECISION', summary: 'choose', gates: { b: 2, a: 1 } };
   const reordered = { gates: { a: 1, b: 2 }, summary: 'choose', decision: 'OWNER_DECISION' };
   assert.equal(digestDecision(first), digestDecision(reordered));
   assert.match(digestDecision(first), /^[a-f0-9]{64}$/);
   const report = renderReport(
     { conclusion: 'OWNER_DECISION', summary: 'choose', decision: first },
-    { headSha: 'head123', ownerDecisionEnvironment: 'consumer-approval' },
+    { headSha: 'head123' },
   );
-  assert.match(report, /protected `consumer-approval` environment/);
+  assert.match(report, /not accepted by the current run/);
+  assert.match(report, /canonical consumer-owned authority/);
+  assert.match(report, /rerun the gate/);
   assert.match(report, /PR head: `head123`/);
   assert.match(report, /Decision SHA-256: `[a-f0-9]{64}`/);
-  const disabledReport = renderReport({ conclusion: 'OWNER_DECISION', summary: 'choose', decision: first });
-  assert.match(disabledReport, /owner handoff is disabled/);
-  assert.match(disabledReport, /OWNER_DECISION is not accepted/);
-  assert.doesNotMatch(disabledReport, /architecture-owner-decision/);
+  assert.doesNotMatch(report, /environment/i);
 });
 
 test('accepts a consumer-valid decision without a summary and supplies reporting copy', () => {
