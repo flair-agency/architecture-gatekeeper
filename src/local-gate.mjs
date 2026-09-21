@@ -86,7 +86,7 @@ function review(task, root, previous = null) {
   const dir = mkdtempSync(join(tmpdir(), 'architecture-gate-'));
   const schema = join(dir, 'decision.schema.json'); const output = join(dir, 'decision.json');
   writeFileSync(schema, committed(root, rev, cfg.schemaPath), { mode: 0o600 });
-  const args = ['exec', '--ignore-user-config', '--model', settings.model, '--config', `model_reasoning_effort=${JSON.stringify(settings.reasoningEffort)}`, '--disable', 'hooks', '--sandbox', 'read-only', '--config', 'approval_policy="never"', '--ephemeral', '--output-schema', schema, '--output-last-message', output, '--cd', root, '-'];
+  const args = ['exec', '--ignore-user-config', '--enable', 'skip_host_skill_discovery', '--model', settings.model, '--config', `model_reasoning_effort=${JSON.stringify(settings.reasoningEffort)}`, '--disable', 'hooks', '--sandbox', 'read-only', '--config', 'approval_policy="never"', '--ephemeral', '--output-schema', schema, '--output-last-message', output, '--cd', root, '-'];
   const result = run('codex', args, { cwd: root, input: prompt(root, rev, cfg, task, previous), timeout: cfg.reviewTimeoutMs, env: process.env });
   let decision;
   try { if (result.status !== 0 || !existsSync(output)) throw new Error(); decision = JSON.parse(readFileSync(output, 'utf8')); } catch { rmSync(dir, { recursive: true, force: true }); fail('Architecture gate reviewer failed or returned invalid output.'); }

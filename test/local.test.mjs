@@ -107,4 +107,5 @@ test('manual review selects committed inputs without policing worktree bytes', t
 test('local runtime does not implement Git or worktree integrity monitoring', () => {
   const source = readFileSync(new URL('../src/local-gate.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /hash-object|assertCommittedInputs|revision changed during review/);
+  assert.match(source, /'--enable', 'skip_host_skill_discovery'/);
 });

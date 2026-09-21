@@ -50,7 +50,9 @@ version; Hook execution never resolves or downloads a newer release.
 
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
 inputs. See `examples/config.json`. Hook execution is network-free and invokes
-an installed `codex` binary with hooks disabled and a read-only sandbox.
+an installed `codex` binary with hooks and host Skill discovery disabled and a
+read-only sandbox. This keeps the selected reviewer from recursively invoking a
+user-installed review Skill instead of evaluating the supplied snapshots.
 When `validationPath` is configured, the local and manual review paths apply
 that committed policy after structured generation and fail closed on a rule
 violation or malformed policy.
