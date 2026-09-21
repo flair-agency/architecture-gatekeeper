@@ -38,6 +38,13 @@ test('distinguishes waiver, policy failure, review failure, and malformed output
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: '{}' }).conclusion, 'ERROR');
 });
 
+test('accepts a consumer-valid decision without a summary and supplies reporting copy', () => {
+  const classified = classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: '{"decision":"PASS"}' });
+  assert.equal(classified.conclusion, 'PASS');
+  assert.equal(classified.summary, 'No summary was supplied by the architecture reviewer.');
+  assert.match(renderReport(classified), /No summary was supplied/);
+});
+
 test('truncates oversized reports while retaining the ownership marker', () => {
   const oversized = { ...decision, reviewedScope: Array.from({ length: 100 }, (_, index) => `${index}-${'x'.repeat(3_000)}`) };
   const report = renderReport(

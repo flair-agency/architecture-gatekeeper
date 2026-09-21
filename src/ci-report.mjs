@@ -45,10 +45,13 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision }
   }
   try {
     const decision = JSON.parse(rawDecision);
-    if (!decision || !DECISIONS.has(decision.decision) || typeof decision.summary !== 'string' || !decision.summary.trim()) {
-      throw new Error('missing decision or summary');
+    if (!decision || !DECISIONS.has(decision.decision)) {
+      throw new Error('missing or unsupported decision');
     }
-    return { conclusion: decision.decision, summary: decision.summary, decision };
+    const summary = typeof decision.summary === 'string' && decision.summary.trim()
+      ? decision.summary
+      : 'No summary was supplied by the architecture reviewer.';
+    return { conclusion: decision.decision, summary, decision };
   } catch {
     return { conclusion: 'ERROR', summary: 'The architecture reviewer returned an invalid structured decision.', decision: null };
   }
