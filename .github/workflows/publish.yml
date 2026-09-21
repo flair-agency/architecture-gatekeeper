@@ -14,22 +14,25 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-          registry-url: https://npm.pkg.github.com
-          scope: '@flair-agency'
       - name: Validate fixed package identity
         env:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
           ACTUAL_SHA: ${{ github.sha }}
+          ACTUAL_REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           EXPECTED_REPOSITORY: ${{ github.repository }}
         run: |
           node --input-type=module -e '
@@ -37,6 +40,7 @@ jobs:
             const p = JSON.parse(fs.readFileSync("package.json"));
             const exact = value => /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value);
             if (process.env.EXPECTED_SHA !== process.env.ACTUAL_SHA) throw Error("reviewed commit mismatch");
+            if (process.env.ACTUAL_REF !== `refs/heads/${process.env.DEFAULT_BRANCH}`) throw Error("publication must run from the protected default branch");
             if (p.name !== "@flair-agency/architecture-gatekeeper" || !exact(p.version) || p.private === true) throw Error("invalid publish identity");
             if (p.repository?.url !== `https://github.com/${process.env.EXPECTED_REPOSITORY}.git`) throw Error("owning source association missing");
             if (p.publishConfig?.registry !== "https://npm.pkg.github.com") throw Error("registry missing");
@@ -53,6 +57,29 @@ jobs:
             }
             fs.writeFileSync("archive-name.txt", packed.filename);
           '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inspected-package
+          path: |
+            flair-agency-architecture-gatekeeper-*.tgz
+            packed.json
+            archive-name.txt
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: inspected-package
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          registry-url: https://npm.pkg.github.com
+          scope: '@flair-agency'
       - name: Check private package target
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -73,27 +100,9 @@ jobs:
         run: |
           node --input-type=module -e '
             import fs from "node:fs";
-            import os from "node:os";
-            import path from "node:path";
             import { execFileSync } from "node:child_process";
-            const manifest = JSON.parse(fs.readFileSync("package.json"));
             const [packed] = JSON.parse(fs.readFileSync("packed.json"));
-            const npm = (args, cwd = process.cwd()) => execFileSync("npm", args, { cwd, encoding: "utf8" });
-            const published = JSON.parse(npm(["view", `${manifest.name}@${manifest.version}`, "--json"]));
+            const published = JSON.parse(execFileSync("npm", ["view", `@flair-agency/architecture-gatekeeper@${packed.version}`, "--json"], { encoding: "utf8" }));
             if (published.dist.integrity !== packed.integrity) throw Error("published integrity differs from inspected archive");
-            const directory = fs.mkdtempSync(path.join(os.tmpdir(), "gatekeeper-install-"));
-            fs.writeFileSync(path.join(directory, "package.json"), JSON.stringify({ name: "registry-check", version: "1.0.0", private: true, dependencies: { [manifest.name]: manifest.version } }));
-            npm(["install", "--ignore-scripts", "--no-audit", "--no-fund"], directory);
-            const installed = JSON.parse(fs.readFileSync(path.join(directory, "node_modules", manifest.name, "package.json")));
-            if (installed.name !== manifest.name || installed.version !== manifest.version) throw Error("installed identity differs");
-            for (const command of ["architecture-gatekeeper", "architecture-review", "architecture-gate-policy"]) {
-              if (!installed.bin?.[command]) throw Error(`missing executable ${command}`);
-            }
           '
           test "$(gh api /orgs/flair-agency/packages/npm/architecture-gatekeeper --jq .visibility)" = private
-      - uses: actions/upload-artifact@v4
-        with:
-          name: publication-evidence
-          path: |
-            packed.json
-            archive-name.txt

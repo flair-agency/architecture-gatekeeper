@@ -97,8 +97,13 @@ test('publishes an exact reviewed package through the Flair registry contract', 
   assert.equal(manifest.publishConfig.registry, 'https://npm.pkg.github.com');
   assert.match(workflow, /expected_sha:/);
   assert.match(workflow, /EXPECTED_SHA: \$\{\{ inputs\.expected_sha \}\}/);
+  assert.match(workflow, /publication must run from the protected default branch/);
+  assert.match(workflow, /persist-credentials: false/);
+  assert.match(workflow, /publish:\n    needs: build/);
   assert.match(workflow, /packages: write/);
   assert.match(workflow, /npm pack --ignore-scripts --json/);
   assert.match(workflow, /npm publish .*--ignore-scripts --registry=https:\/\/npm\.pkg\.github\.com/);
   assert.match(workflow, /visibility\)" = private/);
+  const privilegedJob = workflow.slice(workflow.indexOf('\n  publish:'));
+  assert.doesNotMatch(privilegedJob, /actions\/checkout|npm test|npm pack/);
 });
