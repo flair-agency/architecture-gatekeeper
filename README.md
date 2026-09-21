@@ -65,6 +65,9 @@ release, and pass only the two credentials declared by the workflow:
 ```yaml
 jobs:
   architecture-gate:
+    permissions:
+      contents: read
+      pull-requests: write
     uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@<release-commit-sha>
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -75,6 +78,32 @@ The caller keeps `.codex/gatekeeper/ci-policy.json`, its prompt and schema. CI
 policy is read from the protected base revision, so a pull request cannot waive
 its own review. `enforced` runs `openai/codex-action`; `local-only` records an
 explicit waiver and makes no OpenAI API call.
+
+The workflow publishes the result as a GitHub Actions job summary and creates
+or updates one marker-owned pull-request comment. The caller must grant
+`pull-requests: write` as shown above; reusable workflows cannot elevate a
+caller's token permissions. If the token is read-only, as it normally is for a
+fork pull request, the job summary and authoritative `Architecture Gate / accept`
+result remain available and comment delivery is reported as a warning. Do not
+switch to `pull_request_target` merely to make comments writable while checking
+out or executing pull-request code.
+
+This repository dogfoods the reusable workflow through
+`.github/workflows/self-architecture-gate.yml`. The `pull_request_target` caller
+always comes from the protected base revision; it never runs a workflow supplied
+by the pull request. Jobs that check out the pull-request merge revision have
+only `contents: read`. The reporting job inherits `pull-requests: write`, but it
+checks out only the called workflow's immutable source and never executes
+pull-request code. The review prompt, output schema and CI policy are also read
+from the protected base revision under `.codex/gatekeeper/`. This caller sets
+`protected-review-instructions: true`; privileged triggers must enable that
+input so a pull request cannot replace its own reviewer instructions. The
+default remains `false` for compatibility with consumers that are still
+bootstrapping their first base-owned prompt and schema.
+
+Consequently, the first pull request that introduces this caller cannot execute
+the self-review. After that bootstrap change is adopted, subsequent pull
+requests exercise the real model review, job summary and sticky-comment path.
 
 ## Trust boundary
 

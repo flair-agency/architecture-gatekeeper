@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "default": {
+    "mode": "local-only"
+  },
+  "branches": {
+    "main": {
+      "mode": "enforced",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "medium"
+    }
+  }
+}
