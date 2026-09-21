@@ -85,6 +85,12 @@ function validate(decision, cfg) {
   }
   return decision;
 }
+function reviewerFailure(result) {
+  if (result.error) return `Architecture gate reviewer could not start (${result.error.code || result.error.name}).`;
+  if (result.signal) return `Architecture gate reviewer terminated by signal ${result.signal}.`;
+  if (typeof result.status === 'number') return `Architecture gate reviewer exited with status ${result.status}.`;
+  return 'Architecture gate reviewer failed without an exit status.';
+}
 function prompt(root, rev, cfg, task, previous) {
   const base = committed(root, rev, cfg.promptPath);
   const authority = cfg.authorityFiles.map(path => ({ path, content: committed(root, rev, path) }));
@@ -100,7 +106,13 @@ function review(task, root, previous = null) {
   const args = ['exec', '--ignore-user-config', '--enable', 'skip_host_skill_discovery', '--model', settings.model, '--config', `model_reasoning_effort=${JSON.stringify(settings.reasoningEffort)}`, '--disable', 'hooks', '--sandbox', 'read-only', '--config', 'approval_policy="never"', '--ephemeral', '--output-schema', schema, '--output-last-message', output, '--cd', root, '-'];
   const result = run('codex', args, { cwd: root, input: prompt(root, rev, cfg, task, previous), timeout: cfg.reviewTimeoutMs, env: process.env });
   let decision;
-  try { if (result.status !== 0 || !existsSync(output)) throw new Error(); decision = JSON.parse(readFileSync(output, 'utf8')); } catch { rmSync(dir, { recursive: true, force: true }); fail('Architecture gate reviewer failed or returned invalid output.'); }
+  try {
+    if (result.status !== 0 || !existsSync(output)) throw new Error(reviewerFailure(result));
+    decision = JSON.parse(readFileSync(output, 'utf8'));
+  } catch (error) {
+    rmSync(dir, { recursive: true, force: true });
+    fail(error.message || 'Architecture gate reviewer returned invalid output.');
+  }
   rmSync(dir, { recursive: true, force: true }); decision = validate(decision, cfg);
   if (cfg.validationPath) {
     try { validateDecisionRules(decision, loadJson(root, rev, cfg.validationPath, 'decision validation policy')); }

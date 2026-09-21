@@ -56,6 +56,7 @@ let input = ''; process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { input += chunk; });
 process.stdin.on('end', () => {
   if (process.env.CODEX_CAPTURE_PATH) writeFileSync(process.env.CODEX_CAPTURE_PATH, input);
+  if (process.env.MOCK_CODEX_FAILURE) process.exit(Number(process.env.MOCK_CODEX_FAILURE));
   if (process.env.MOCK_CHANGE_REVISION) spawnSync('git', ['commit', '--allow-empty', '-m', 'change revision'], { cwd: process.cwd() });
   writeFileSync(output, JSON.stringify({ decision: 'BLOCK', summary: 'fixture block', authorityFiles: ['AGENTS.md'], reviewedScope: ['fixture'] }));
 });
@@ -104,6 +105,13 @@ test('manual review selects committed inputs without policing worktree bytes', t
   const reviewed = readFileSync(capture, 'utf8');
   assert.match(reviewed, /"content":"# Test authority\\n"/);
   assert.doesNotMatch(reviewed, /Uncommitted replacement/);
+});
+
+test('manual review fails closed with a deterministic reviewer exit diagnostic', t => {
+  const fixture = manualFixture(t);
+  const result = runManual(fixture, { MOCK_CODEX_FAILURE: '7' });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /reviewer exited with status 7/);
 });
 
 test('local runtime does not implement Git or worktree integrity monitoring', () => {
