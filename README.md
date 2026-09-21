@@ -12,6 +12,12 @@ its authority list, reviewer prompt, decision schema, model selection and
 target-branch CI policy. The runtime does not grant filesystem, publication,
 deployment, credential or service authority.
 
+Consumers may also own an optional decision-validation policy. The output
+schema remains limited to the subset accepted by OpenAI Structured Outputs;
+cross-field invariants are expressed as declarative `when`/`require` rules in a
+separate committed JSON file. The shared runtime evaluates only those declared
+path/value implications and does not infer meaning from consumer fields.
+
 When an authority is inside a Git submodule, the local runtime verifies it
 against the parent revision's pinned gitlink. It never fetches a missing
 component; unavailable pinned objects fail closed.
@@ -30,6 +36,9 @@ runHookCli();
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
 inputs. See `examples/config.json`. Hook execution is network-free and invokes
 an installed `codex` binary with hooks disabled and a read-only sandbox.
+When `validationPath` is configured, the local and manual review paths apply
+that committed policy after structured generation and fail closed on a rule
+violation or malformed policy.
 
 ## Manual review
 
@@ -81,6 +90,12 @@ permissions. The caller keeps `.codex/gatekeeper/ci-policy.json`, its prompt and
 policy is read from the protected base revision, so a pull request cannot waive
 its own review. `enforced` runs `openai/codex-action`; `local-only` records an
 explicit waiver and makes no OpenAI API call.
+
+To enforce consumer-owned cross-field invariants in CI, pass
+`validation-path` to the reusable workflow. The file is always read from the
+protected base revision. Validation runs with the called workflow's immutable
+runtime after the model returns and before the review job can succeed; neither
+the policy nor its evaluator executes pull-request code.
 
 The workflow publishes the result as a GitHub Actions job summary and creates
 or updates one marker-owned pull-request comment. The caller must grant

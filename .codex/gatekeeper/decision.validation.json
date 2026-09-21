@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "when": { "path": "/gates/sharedMechanism/decision", "equals": "BLOCK" },
+      "require": { "path": "/decision", "equals": "BLOCK" },
+      "message": "sharedMechanism BLOCK requires a top-level BLOCK"
+    },
+    {
+      "when": { "path": "/gates/trustBoundary/decision", "equals": "BLOCK" },
+      "require": { "path": "/decision", "equals": "BLOCK" },
+      "message": "trustBoundary BLOCK requires a top-level BLOCK"
+    }
+  ]
+}

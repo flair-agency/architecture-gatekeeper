@@ -15,5 +15,6 @@ jobs:
     uses: ./.github/workflows/architecture-gate.yml
     with:
       protected-review-instructions: true
+      validation-path: .codex/gatekeeper/decision.validation.json
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

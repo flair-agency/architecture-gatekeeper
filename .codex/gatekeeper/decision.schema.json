@@ -46,33 +46,5 @@
         }
       }
     }
-  },
-  "anyOf": [
-    {
-      "properties": {
-        "decision": { "const": "BLOCK" }
-      },
-      "required": ["decision"]
-    },
-    {
-      "properties": {
-        "decision": { "enum": ["PASS", "OWNER_DECISION"] },
-        "gates": {
-          "properties": {
-            "sharedMechanism": {
-              "properties": {
-                "decision": { "enum": ["PASS", "OWNER_DECISION"] }
-              }
-            },
-            "trustBoundary": {
-              "properties": {
-                "decision": { "enum": ["PASS", "OWNER_DECISION"] }
-              }
-            }
-          }
-        }
-      },
-      "required": ["decision", "gates"]
-    }
-  ]
+  }
 }

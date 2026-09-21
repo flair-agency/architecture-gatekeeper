@@ -33,6 +33,8 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /protected-review-instructions:/);
   assert.match(workflow, /prompt-file: \$\{\{ inputs\.protected-review-instructions/);
   assert.match(workflow, /output-schema-file: \$\{\{ inputs\.protected-review-instructions/);
+  assert.match(workflow, /git show "\$BASE_SHA:\$VALIDATION_PATH"/);
+  assert.match(workflow, /src\/validate-decision\.mjs/);
   assert.match(workflow, /reviewed_sha: \$\{\{ steps\.revision\.outputs\.sha \}\}/);
   assert.match(workflow, /sha=\$\(git rev-parse HEAD\)/);
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
@@ -54,6 +56,7 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.match(caller, /actions: read/);
   assert.match(caller, /pull-requests: write/);
   assert.match(caller, /protected-review-instructions: true/);
+  assert.match(caller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
   assert.match(caller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
   assert.doesNotMatch(caller, /actions\/checkout/);
 });
@@ -64,8 +67,8 @@ test('keeps self-review policy and schema valid', () => {
   assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium' });
   assert.deepEqual(schema.properties.decision.enum, ['PASS', 'BLOCK', 'OWNER_DECISION']);
   assert.deepEqual(schema.properties.gates.required, ['sharedMechanism', 'trustBoundary']);
-  assert.equal(schema.anyOf[0].properties.decision.const, 'BLOCK');
-  assert.deepEqual(schema.anyOf[1].properties.decision.enum, ['PASS', 'OWNER_DECISION']);
-  assert.deepEqual(schema.anyOf[1].properties.gates.properties.sharedMechanism.properties.decision.enum, ['PASS', 'OWNER_DECISION']);
-  assert.deepEqual(schema.anyOf[1].properties.gates.properties.trustBoundary.properties.decision.enum, ['PASS', 'OWNER_DECISION']);
+  assert.equal('anyOf' in schema, false);
+  const validation = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.validation.json'), 'utf8'));
+  assert.equal(validation.version, 1);
+  assert.equal(validation.rules.length, 2);
 });
