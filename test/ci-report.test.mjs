@@ -40,9 +40,15 @@ test('distinguishes waiver, policy failure, review failure, and malformed output
 
 test('truncates oversized reports while retaining the ownership marker', () => {
   const oversized = { ...decision, reviewedScope: Array.from({ length: 100 }, (_, index) => `${index}-${'x'.repeat(3_000)}`) };
-  const report = renderReport({ conclusion: 'BLOCK', summary: oversized.summary, decision: oversized });
+  const report = renderReport(
+    { conclusion: 'BLOCK', summary: oversized.summary, decision: oversized },
+    { reviewedSha: 'abc123', runUrl: 'https://example.test/run/1', workflowRef: 'o/r/.github/workflows/gate.yml@abc123' },
+  );
   assert.ok(report.length <= 60_000);
   assert.match(report, /Report truncated/);
+  assert.match(report, /Reviewed commit: `abc123`/);
+  assert.match(report, /\[Actions run\]\(https:\/\/example\.test\/run\/1\)/);
+  assert.match(report, /Workflow: `o\/r\/\.github\/workflows\/gate\.yml@\u200babc123`/);
   assert.ok(report.endsWith(`${COMMENT_MARKER}\n`));
 });
 

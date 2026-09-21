@@ -113,6 +113,9 @@ jobs:
   accept:
     if: always()
     needs: [policy, review]
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - name: Check out the pinned reporting runtime

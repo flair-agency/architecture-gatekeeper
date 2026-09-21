@@ -37,6 +37,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /sha=\$\(git rev-parse HEAD\)/);
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
+  assert.match(workflow, /accept:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
 });
 
 test('dogfoods only the protected reusable workflow with separated permissions', () => {

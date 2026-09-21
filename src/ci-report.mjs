@@ -106,11 +106,13 @@ export function renderReport(classified, metadata = {}) {
   if (metadata.reviewedSha) links.push(`Reviewed commit: \`${cleanText(metadata.reviewedSha, 64)}\``);
   if (metadata.runUrl) links.push(`[Actions run](${cleanText(metadata.runUrl, 1_000)})`);
   if (metadata.workflowRef) links.push(`Workflow: \`${cleanText(metadata.workflowRef, 300)}\``);
-  if (links.length) body += `\n${links.join(' · ')}\n`;
-  if (body.length > MAX_REPORT_LENGTH - COMMENT_MARKER.length - 4) {
-    body = `${body.slice(0, MAX_REPORT_LENGTH - COMMENT_MARKER.length - 40)}\n\n_Report truncated._\n`;
+  const provenance = links.length ? `\n${links.join(' · ')}\n` : '';
+  const ending = `${provenance}\n${COMMENT_MARKER}\n`;
+  const truncation = '\n\n_Report truncated._\n';
+  if (body.length + ending.length > MAX_REPORT_LENGTH) {
+    body = `${body.slice(0, Math.max(0, MAX_REPORT_LENGTH - ending.length - truncation.length))}${truncation}`;
   }
-  return `${body}\n${COMMENT_MARKER}\n`;
+  return `${body}${ending}`;
 }
 
 export async function upsertPullRequestComment({ fetchImpl = fetch, apiUrl, repository, pullRequest, token, body }) {
