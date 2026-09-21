@@ -43,31 +43,6 @@ function config(root, rev) {
   }
   return value;
 }
-function assertCommittedInputs(root, rev, paths) {
-  for (const path of paths) {
-    if (!validPath(path)) fail(`Architecture gate input path is invalid: ${JSON.stringify(path)}.`);
-    const expected = run('git', ['rev-parse', '--verify', `${rev}:${path}`], { cwd: root, timeout: 5000 });
-    const actual = run('git', ['hash-object', path], { cwd: root, timeout: 5000 });
-    if (expected.status === 0) {
-      if (actual.status !== 0 || expected.stdout.trim() !== actual.stdout.trim()) {
-        fail(`Architecture gate input does not match revision ${rev}: ${path}.`);
-      }
-      continue;
-    }
-    const parts = path.split('/'); let resolved = false;
-    for (let index = parts.length - 1; index > 0; index -= 1) {
-      const component = parts.slice(0, index).join('/');
-      const relative = parts.slice(index).join('/');
-      const entry = run('git', ['ls-tree', rev, component], { cwd: root, timeout: 5000 });
-      const match = entry.status === 0 ? entry.stdout.match(/^160000 commit ([0-9a-f]{40})\t/) : null;
-      if (!match) continue;
-      const type = run('git', ['-C', component, 'cat-file', '-t', `${match[1]}:${relative}`], { cwd: root, timeout: 5000 });
-      if (type.status !== 0 || type.stdout.trim() !== 'blob') fail(`Architecture gate input is absent from pinned component: ${path}.`);
-      resolved = true; break;
-    }
-    if (!resolved) fail(`Architecture gate input is absent from revision ${rev}: ${path}.`);
-  }
-}
 function reviewerSettings(root, rev, path) {
   const value = loadJson(root, rev, path, 'reviewer configuration');
   if (typeof value.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(value.model) || !EFFORTS.has(value.reasoningEffort)) {
@@ -106,8 +81,6 @@ function prompt(root, rev, cfg, task, previous) {
 }
 function review(task, root, previous = null) {
   const rev = revision(root); const cfg = config(root, rev);
-  const protectedPaths = [CONFIG_PATH, cfg.promptPath, cfg.schemaPath, cfg.reviewerConfigPath, ...(cfg.validationPath ? [cfg.validationPath] : []), ...cfg.authorityFiles];
-  assertCommittedInputs(root, rev, protectedPaths);
   const settings = reviewerSettings(root, rev, cfg.reviewerConfigPath);
   const dir = mkdtempSync(join(tmpdir(), 'architecture-gate-'));
   const schema = join(dir, 'decision.schema.json'); const output = join(dir, 'decision.json');
@@ -121,8 +94,6 @@ function review(task, root, previous = null) {
     try { validateDecisionRules(decision, loadJson(root, rev, cfg.validationPath, 'decision validation policy')); }
     catch (error) { fail(error.message); }
   }
-  assertCommittedInputs(root, rev, [...protectedPaths, ...decision.authorityFiles]);
-  if (revision(root) !== rev) fail('Architecture gate revision changed during review; run it again.');
   return { decision, reviewedRevision: rev };
 }
 function execute(event, root) {
@@ -158,4 +129,4 @@ export function runHookCli() {
   let input = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', c => { input += c; }); process.stdin.on('end', () => runHook(input));
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) runHookCli();
-export { assertCommittedInputs, config, validate };
+export { config, validate };

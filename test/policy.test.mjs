@@ -88,3 +88,17 @@ test('keeps self-review policy and schema valid', () => {
   assert.equal(validation.version, 1);
   assert.equal(validation.rules.length, 2);
 });
+
+test('publishes an exact reviewed package through the Flair registry contract', () => {
+  const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+  const workflow = readFileSync(join(root, '.github/workflows/publish.yml'), 'utf8');
+  assert.equal(manifest.version, '0.3.2');
+  assert.equal(manifest.repository.url, 'https://github.com/flair-agency/architecture-gatekeeper.git');
+  assert.equal(manifest.publishConfig.registry, 'https://npm.pkg.github.com');
+  assert.match(workflow, /expected_sha:/);
+  assert.match(workflow, /EXPECTED_SHA: \$\{\{ inputs\.expected_sha \}\}/);
+  assert.match(workflow, /packages: write/);
+  assert.match(workflow, /npm pack --ignore-scripts --json/);
+  assert.match(workflow, /npm publish .*--ignore-scripts --registry=https:\/\/npm\.pkg\.github\.com/);
+  assert.match(workflow, /visibility\)" = private/);
+});

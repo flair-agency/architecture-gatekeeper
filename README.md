@@ -26,20 +26,25 @@ array equality is intentionally outside this minimal contract. The shared
 runtime evaluates only those declared path/value implications and does not
 infer meaning from consumer fields.
 
-When an authority is inside a Git submodule, the local runtime verifies it
-against the parent revision's pinned gitlink. It never fetches a missing
-component; unavailable pinned objects fail closed.
+The local runtime records one Git revision to identify the review and reads its
+configuration, prompt, schema and validation policy from that committed
+revision. It does not compare those files with working-tree bytes, monitor Git
+state during review or provide tamper resistance. Git, CI, sandboxing and PR
+review own execution and change verification.
 
 ## Local integration
 
-Install an exact release (or an exact Git commit during pre-release adoption),
-then add a tiny launcher:
+Install an exact release from the `@flair-agency` GitHub Packages registry, then
+invoke the installed package bin from the Hook without network fallback:
 
-```js
-#!/usr/bin/env node
-import { runHookCli } from '@flair-agency/architecture-gatekeeper';
-runHookCli();
+```sh
+npm exec --offline -- architecture-gatekeeper
 ```
+
+The package is private. Consumers must map the `@flair-agency` scope to
+`https://npm.pkg.github.com` and authenticate installation with package-read
+access. The committed dependency and lockfile select the exact reviewed
+version; Hook execution never resolves or downloads a newer release.
 
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
 inputs. See `examples/config.json`. Hook execution is network-free and invokes

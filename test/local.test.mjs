@@ -45,14 +45,12 @@ function manualFixture(t) {
   const codex = join(bin, 'codex');
   writeFileSync(codex, `#!/usr/bin/env node
 import { writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 const args = process.argv.slice(2);
 const output = args[args.indexOf('--output-last-message') + 1];
 let input = ''; process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { input += chunk; });
 process.stdin.on('end', () => {
   if (process.env.CODEX_CAPTURE_PATH) writeFileSync(process.env.CODEX_CAPTURE_PATH, input);
-  if (process.env.MOCK_CHANGE_REVISION) spawnSync('git', ['commit', '--allow-empty', '-m', 'change revision'], { cwd: process.cwd() });
   writeFileSync(output, JSON.stringify({ decision: 'BLOCK', summary: 'fixture block', authorityFiles: ['AGENTS.md'], reviewedScope: ['fixture'] }));
 });
 `);
@@ -90,17 +88,15 @@ test('manual review returns BLOCK without Hook context, Hook output or session s
   assert.equal(existsSync(join(fixture.root, '.git', 'codex-architecture-context')), false);
 });
 
-test('manual review fails closed when committed authority differs from the worktree', t => {
+test('manual review selects committed inputs without policing worktree bytes', t => {
   const fixture = manualFixture(t);
   writeFileSync(join(fixture.root, 'AGENTS.md'), '# Uncommitted replacement\n');
   const result = runManual(fixture);
-  assert.equal(result.status, 2);
-  assert.match(result.stderr, /does not match revision/);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).decision, 'BLOCK');
 });
 
-test('manual review rejects a revision change during review', t => {
-  const fixture = manualFixture(t);
-  const result = runManual(fixture, { MOCK_CHANGE_REVISION: '1' });
-  assert.equal(result.status, 2);
-  assert.match(result.stderr, /revision changed during review/);
+test('local runtime does not implement Git or worktree integrity monitoring', () => {
+  const source = readFileSync(new URL('../src/local-gate.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /hash-object|assertCommittedInputs|revision changed during review/);
 });
