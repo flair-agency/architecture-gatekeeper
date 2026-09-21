@@ -88,6 +88,22 @@ result remain available and comment delivery is reported as a warning. Do not
 switch to `pull_request_target` merely to make comments writable while checking
 out or executing pull-request code.
 
+`OWNER_DECISION` is a protected human handoff, not a successful AI decision and
+not a terminal deadlock. The reusable workflow waits for the fixed GitHub
+Environment `architecture-owner-decision`. Before requesting approval it reads
+the environment configuration through the GitHub API and fails closed unless at
+least one required reviewer is configured and administrator bypass is disabled.
+Approval is bound to the current workflow run, PR head SHA, and SHA-256 digest of
+the structured AI decision. A new PR head cancels the pending run and requires a
+new review and approval. `BLOCK` never enters this path and cannot be overridden
+by the environment approval.
+
+Each consumer repository that enables the handoff must create
+`architecture-owner-decision`, configure the repository's accountable owner as
+a required reviewer, disable administrator bypass, and permit self-review only
+when the same owner may trigger and approve the workflow. A missing or weaker
+environment leaves the authoritative `Architecture Gate / accept` check failed.
+
 This repository dogfoods the reusable workflow through
 `.github/workflows/self-architecture-gate.yml`. The `pull_request_target` caller
 always comes from the protected base revision; it never runs a workflow supplied

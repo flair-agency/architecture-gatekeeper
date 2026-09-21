@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { appendFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -7,6 +8,19 @@ export const COMMENT_MARKER = '<!-- architecture-gatekeeper:result:v1 -->';
 const MAX_ITEM_LENGTH = 2_000;
 const MAX_REPORT_LENGTH = 60_000;
 const DECISIONS = new Set(['PASS', 'BLOCK', 'OWNER_DECISION']);
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+  }
+  return value;
+}
+
+export function digestDecision(decision) {
+  if (!decision || typeof decision !== 'object') return '';
+  return createHash('sha256').update(JSON.stringify(canonicalize(decision))).digest('hex');
+}
 
 function cleanText(value, limit = MAX_ITEM_LENGTH) {
   const text = String(value ?? '')
@@ -90,7 +104,11 @@ function renderGateDetails(gates) {
 export function renderReport(classified, metadata = {}) {
   const [icon, label] = labelFor(classified.conclusion);
   const decision = classified.decision;
+  const decisionDigest = metadata.decisionDigest || digestDecision(decision);
   let body = `## ${icon} Architecture Gate — ${label}\n\n> ${cleanText(classified.summary)}\n`;
+  if (classified.conclusion === 'OWNER_DECISION') {
+    body += '\nThis decision requires approval of the protected `architecture-owner-decision` environment. The approval applies only to this workflow run, reviewed PR head, and decision digest. A new commit requires a new review and approval.\n';
+  }
   body += renderGates(decision?.gates);
   if (decision) {
     const context = [
@@ -107,6 +125,8 @@ export function renderReport(classified, metadata = {}) {
   }
   const links = [];
   if (metadata.reviewedSha) links.push(`Reviewed commit: \`${cleanText(metadata.reviewedSha, 64)}\``);
+  if (metadata.headSha) links.push(`PR head: \`${cleanText(metadata.headSha, 64)}\``);
+  if (decisionDigest) links.push(`Decision SHA-256: \`${cleanText(decisionDigest, 64)}\``);
   if (metadata.runUrl) links.push(`[Actions run](${cleanText(metadata.runUrl, 1_000)})`);
   if (metadata.workflowRef) links.push(`Workflow: \`${cleanText(metadata.workflowRef, 300)}\``);
   const provenance = links.length ? `\n${links.join(' · ')}\n` : '';
@@ -153,9 +173,11 @@ async function main() {
   });
   const report = renderReport(classified, {
     reviewedSha: process.env.REVIEWED_SHA,
+    headSha: process.env.HEAD_SHA,
     runUrl: process.env.RUN_URL,
     workflowRef: process.env.WORKFLOW_REF,
   });
+  const decisionDigest = digestDecision(classified.decision);
   if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, report);
   if (process.env.REPORT_PATH) await writeFile(process.env.REPORT_PATH, report);
   try {
@@ -170,7 +192,9 @@ async function main() {
   } catch (error) {
     console.warn(`::warning title=Architecture Gate comment unavailable::${cleanText(error.message, 500)}`);
   }
-  if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `conclusion=${classified.conclusion}\n`);
+  if (process.env.GITHUB_OUTPUT) {
+    await appendFile(process.env.GITHUB_OUTPUT, `conclusion=${classified.conclusion}\ndecision_digest=${decisionDigest}\n`);
+  }
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {

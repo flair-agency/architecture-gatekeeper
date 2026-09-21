@@ -24,7 +24,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.doesNotMatch(workflow, /ref: v0\.1\.0/);
   assert.match(workflow, /review:\n[\s\S]*?permissions:\n      contents: read/);
   assert.match(workflow, /src\/ci-report\.mjs/);
-  assert.match(workflow, /CONCLUSION: \$\{\{ steps\.report\.outputs\.conclusion \}\}/);
+  assert.match(workflow, /CONCLUSION: \$\{\{ needs\.report\.outputs\.conclusion \}\}/);
   assert.doesNotMatch(workflow, /JSON\.parse\(process\.env\.DECISION\)/);
   assert.match(workflow, /group: architecture-gate-\$\{\{ github\.repository \}\}-\$\{\{ github\.event\.pull_request\.number \}\}/);
   assert.match(workflow, /cancel-in-progress: true/);
@@ -37,7 +37,13 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /sha=\$\(git rev-parse HEAD\)/);
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
-  assert.match(workflow, /accept:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
+  assert.match(workflow, /report:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
+  assert.match(workflow, /owner-decision-preflight:\n[\s\S]*?OWNER_DECISION/);
+  assert.match(workflow, /OWNER_DECISION_ENVIRONMENT: architecture-owner-decision/);
+  assert.match(workflow, /owner-decision:\n[\s\S]*?environment:\n      name: architecture-owner-decision/);
+  assert.match(workflow, /pull\.head\.sha !== process\.env\.EXPECTED_HEAD_SHA/);
+  assert.match(workflow, /accept:\n[\s\S]*?Require protected owner approval/);
+  assert.match(workflow, /test "\$OWNER_DECISION_RESULT" = success/);
 });
 
 test('dogfoods only the protected reusable workflow with separated permissions', () => {
