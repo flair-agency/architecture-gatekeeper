@@ -12,6 +12,9 @@ on:
       schema-path:
         type: string
         default: .codex/gatekeeper/decision.schema.json
+      protected-review-instructions:
+        type: boolean
+        default: false
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -81,17 +84,27 @@ jobs:
           submodules: recursive
           token: ${{ secrets.CI_SOURCE_READ_TOKEN || github.token }}
           persist-credentials: false
+      - name: Materialize protected review instructions
+        if: inputs.protected-review-instructions
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PROMPT_PATH: ${{ inputs.prompt-path }}
+          SCHEMA_PATH: ${{ inputs.schema-path }}
+        run: |
+          git show "$BASE_SHA:$PROMPT_PATH" > "$RUNNER_TEMP/architecture-gate-prompt.md"
+          git show "$BASE_SHA:$SCHEMA_PATH" > "$RUNNER_TEMP/architecture-gate-decision.schema.json"
       - name: Run read-only architecture review
         id: codex
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          prompt-file: ${{ inputs.prompt-path }}
+          prompt-file: ${{ inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || inputs.prompt-path }}
           model: ${{ needs.policy.outputs.model }}
           effort: ${{ needs.policy.outputs.effort }}
           sandbox: read-only
           safety-strategy: drop-sudo
-          codex-args: '["--ephemeral", "--output-schema", "${{ inputs.schema-path }}"]'
+          output-schema-file: ${{ inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
+          codex-args: '["--ephemeral"]'
 
   accept:
     if: always()
