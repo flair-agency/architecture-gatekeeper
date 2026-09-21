@@ -60,6 +60,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /owner-decision:\n[\s\S]*?environment:\n      name: architecture-owner-decision/);
   assert.match(workflow, /pull\.head\.sha !== process\.env\.EXPECTED_HEAD_SHA/);
   assert.match(workflow, /accept:\n[\s\S]*?Require protected owner approval/);
+  assert.match(workflow, /name: Require successful reporting\n[\s\S]*?REPORT_RESULT: \$\{\{ needs\.report\.result \}\}\n[\s\S]*?test "\$REPORT_RESULT" = success/);
   assert.match(workflow, /test "\$OWNER_DECISION_RESULT" = success/);
 });
 

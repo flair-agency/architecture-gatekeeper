@@ -280,6 +280,10 @@ jobs:
         run: |
           test "$POLICY_RESULT" = success
           test "$MODE" = enforced || test "$MODE" = local-only
+      - name: Require successful reporting
+        env:
+          REPORT_RESULT: ${{ needs.report.result }}
+        run: test "$REPORT_RESULT" = success
       - name: Record local-only waiver
         if: needs.policy.outputs.mode == 'local-only'
         run: |
