@@ -23,15 +23,12 @@ automatic local screening Hook, CI acceptance gate, and general code review.
 ## Use repository-owned authority
 
 1. Locate the repository root and read its `AGENTS.md` instructions.
-2. Read the repository's `.codex/gatekeeper/` configuration and only the
-   authority files selected by that configuration.
-3. Treat the shared `flair-agency/architecture-gatekeeper` package as mechanism,
+2. Treat the shared `flair-agency/architecture-gatekeeper` package as mechanism,
    not as the source of repository-specific architecture policy.
-4. Bind the review to the repository revision required by its Gatekeeper
-   configuration. Do not silently substitute working-tree documents for
-   committed authority.
-5. Stop with `OWNER_DECISION` when authority is missing, conflicting or
-   insufficient. Do not infer authority from existing code or package layout.
+3. Do not pre-read or independently interpret the Gatekeeper configuration or
+   its authority files. The version-pinned runtime owns committed-revision
+   binding, authority selection, reviewer invocation and decision validation.
+4. Do not infer architecture authority from existing code or package layout.
 
 ## Run the manual review
 
