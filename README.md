@@ -1,9 +1,10 @@
 # Architecture Gatekeeper
 
-Architecture Gatekeeper supplies reusable mechanics for two semantic design
+Architecture Gatekeeper supplies reusable mechanics for three semantic design
 review stages:
 
 - a fast, read-only local Codex hook;
+- an explicit, on-demand manual architecture review;
 - a higher-assurance pull-request review from a clean GitHub checkout.
 
 The package does not define a repository's architecture. Every consumer owns
@@ -29,6 +30,22 @@ runHookCli();
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
 inputs. See `examples/config.json`. Hook execution is network-free and invokes
 an installed `codex` binary with hooks disabled and a read-only sandbox.
+
+## Manual review
+
+After installing a fixed package version, invoke the package-owned entrypoint
+with the architecture question or proposed change:
+
+```sh
+architecture-review 'Should this responsibility move from Runtime to the Provider?'
+```
+
+The task may instead be supplied on standard input. The command uses the same
+committed consumer-owned configuration, prompt, schema, reviewer settings and
+authority files as the local gate. It emits the structured `PASS`, `BLOCK` or
+`OWNER_DECISION` result with the reviewed Git revision. It does not reuse Hook
+input, prior Hook context or CI policy, and it does not turn a decision into
+repository acceptance or implementation authority.
 
 ## CI integration
 

@@ -36,8 +36,9 @@ automatic local screening Hook, CI acceptance gate, and general code review.
 ## Run the manual review
 
 Use the repository's installed, version-pinned Architecture Gatekeeper manual
-review entrypoint and pass the user's architecture question or proposed change
-as the task. Do not fetch or install a newer Gatekeeper during review.
+review entrypoint, `architecture-review`, and pass the user's architecture
+question or proposed change as the task. Do not fetch or install a newer
+Gatekeeper during review.
 
 If the repository has not adopted a manual review entrypoint, report that the
 manual review is unavailable rather than imitating Hook input or inventing a
