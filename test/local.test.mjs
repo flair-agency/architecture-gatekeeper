@@ -49,12 +49,14 @@ function manualFixture(t) {
   const codex = join(bin, 'codex');
   writeFileSync(codex, `#!/usr/bin/env node
 import { writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 const args = process.argv.slice(2);
 const output = args[args.indexOf('--output-last-message') + 1];
 let input = ''; process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { input += chunk; });
 process.stdin.on('end', () => {
   if (process.env.CODEX_CAPTURE_PATH) writeFileSync(process.env.CODEX_CAPTURE_PATH, input);
+  if (process.env.MOCK_CHANGE_REVISION) spawnSync('git', ['commit', '--allow-empty', '-m', 'change revision'], { cwd: process.cwd() });
   writeFileSync(output, JSON.stringify({ decision: 'BLOCK', summary: 'fixture block', authorityFiles: ['AGENTS.md'], reviewedScope: ['fixture'] }));
 });
 `);
@@ -108,4 +110,41 @@ test('local runtime does not implement Git or worktree integrity monitoring', ()
   const source = readFileSync(new URL('../src/local-gate.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /hash-object|assertCommittedInputs|revision changed during review/);
   assert.match(source, /'--enable', 'skip_host_skill_discovery'/);
+});
+
+test('manual review remains bound to its recorded snapshot when HEAD changes', t => {
+  const fixture = manualFixture(t);
+  const original = git(fixture.root, 'rev-parse', 'HEAD');
+  const result = runManual(fixture, { MOCK_CHANGE_REVISION: '1' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).reviewedRevision, original);
+  assert.notEqual(git(fixture.root, 'rev-parse', 'HEAD'), original);
+});
+
+test('manual review reads authority from the parent-pinned submodule commit', t => {
+  const fixture = manualFixture(t);
+  const component = join(fixture.root, '..', 'authority-component');
+  mkdirSync(component);
+  git(component, 'init');
+  git(component, 'config', 'user.name', 'Test');
+  git(component, 'config', 'user.email', 'test@example.invalid');
+  git(component, 'config', 'commit.gpgSign', 'false');
+  writeFileSync(join(component, 'ARCHITECTURE.md'), '# Pinned component authority\n');
+  git(component, 'add', '.');
+  git(component, 'commit', '-m', 'authority');
+  execFileSync('git', ['-c', 'protocol.file.allow=always', 'submodule', 'add', component, 'component'], { cwd: fixture.root });
+  const configPath = join(fixture.root, '.codex', 'gatekeeper', 'config.json');
+  const config = JSON.parse(readFileSync(configPath, 'utf8'));
+  config.authorityFiles = ['component/ARCHITECTURE.md'];
+  config.requiredReportedAuthorityFiles = ['AGENTS.md'];
+  writeFileSync(configPath, JSON.stringify(config));
+  git(fixture.root, 'add', '.');
+  git(fixture.root, 'commit', '-m', 'use component authority');
+  writeFileSync(join(fixture.root, 'component', 'ARCHITECTURE.md'), '# Dirty replacement\n');
+  const capture = join(fixture.root, 'component-prompt.txt');
+  const result = runManual(fixture, { CODEX_CAPTURE_PATH: capture });
+  assert.equal(result.status, 0, result.stderr);
+  const reviewed = readFileSync(capture, 'utf8');
+  assert.match(reviewed, /Pinned component authority/);
+  assert.doesNotMatch(reviewed, /Dirty replacement/);
 });

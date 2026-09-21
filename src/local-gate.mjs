@@ -26,8 +26,19 @@ function revision(root) {
 }
 function committed(root, rev, path) {
   const result = run('git', ['show', `${rev}:${path}`], { cwd: root, timeout: 5000 });
-  if (result.status !== 0) fail(`Architecture gate cannot read committed input: ${path}.`);
-  return result.stdout;
+  if (result.status === 0) return result.stdout;
+  const parts = path.split('/');
+  for (let index = parts.length - 1; index > 0; index -= 1) {
+    const component = parts.slice(0, index).join('/');
+    const relative = parts.slice(index).join('/');
+    const entry = run('git', ['ls-tree', rev, component], { cwd: root, timeout: 5000 });
+    const match = entry.status === 0 ? entry.stdout.match(/^160000 commit ([0-9a-f]{40})\t/) : null;
+    if (!match) continue;
+    const nested = run('git', ['-C', component, 'show', `${match[1]}:${relative}`], { cwd: root, timeout: 5000 });
+    if (nested.status === 0) return nested.stdout;
+    fail(`Architecture gate cannot read committed input from pinned component: ${path}.`);
+  }
+  fail(`Architecture gate cannot read committed input: ${path}.`);
 }
 function loadJson(root, rev, path, label) {
   try { return JSON.parse(committed(root, rev, path)); } catch { fail(`Architecture gate ${label} is missing or invalid.`); }

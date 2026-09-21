@@ -34,6 +34,10 @@ does not compare files with working-tree bytes, monitor Git state during review
 or provide tamper resistance. Git, CI, sandboxing and PR review own execution
 and change verification.
 
+For authority inside a Git submodule, the snapshot reader resolves the parent
+revision's pinned gitlink and reads the blob from that exact nested commit. It
+never fetches a missing component; unavailable pinned objects fail closed.
+
 ## Local integration
 
 Install an exact release from the `@flair-agency` GitHub Packages registry, then
