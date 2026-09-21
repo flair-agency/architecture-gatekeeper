@@ -15,6 +15,9 @@ on:
       validation-path:
         type: string
         default: ''
+      owner-decision-environment:
+        type: string
+        default: ''
       protected-review-instructions:
         type: boolean
         default: false
@@ -215,7 +218,7 @@ jobs:
         run: node .architecture-gatekeeper-runtime/src/ci-report.mjs
 
   owner-decision-preflight:
-    if: needs.report.outputs.conclusion == 'OWNER_DECISION'
+    if: needs.report.outputs.conclusion == 'OWNER_DECISION' && inputs.owner-decision-environment != ''
     needs: report
     permissions:
       actions: read
@@ -232,18 +235,18 @@ jobs:
       - name: Verify protected owner-decision environment
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          OWNER_DECISION_ENVIRONMENT: architecture-owner-decision
+          OWNER_DECISION_ENVIRONMENT: ${{ inputs.owner-decision-environment }}
         run: node .architecture-gatekeeper-runtime/src/owner-decision-preflight.mjs
 
   owner-decision:
-    if: needs.report.outputs.conclusion == 'OWNER_DECISION'
+    if: needs.report.outputs.conclusion == 'OWNER_DECISION' && inputs.owner-decision-environment != ''
     needs: [report, owner-decision-preflight]
     permissions:
       contents: read
       pull-requests: read
     runs-on: ubuntu-latest
     environment:
-      name: architecture-owner-decision
+      name: ${{ inputs.owner-decision-environment }}
       url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Verify approval binding
@@ -291,7 +294,7 @@ jobs:
           echo "Base branch: ${{ github.base_ref }}"
           echo "AI acceptance review: WAIVED BY BASE-BRANCH POLICY"
       - name: Require model-backed PASS
-        if: needs.policy.outputs.mode == 'enforced' && needs.report.outputs.conclusion != 'OWNER_DECISION'
+        if: needs.policy.outputs.mode == 'enforced' && (needs.report.outputs.conclusion != 'OWNER_DECISION' || inputs.owner-decision-environment == '')
         env:
           REVIEW_RESULT: ${{ needs.review.result }}
           CONCLUSION: ${{ needs.report.outputs.conclusion }}
@@ -299,7 +302,7 @@ jobs:
           test "$REVIEW_RESULT" = success
           test "$CONCLUSION" = PASS
       - name: Require protected owner approval
-        if: needs.policy.outputs.mode == 'enforced' && needs.report.outputs.conclusion == 'OWNER_DECISION'
+        if: needs.policy.outputs.mode == 'enforced' && needs.report.outputs.conclusion == 'OWNER_DECISION' && inputs.owner-decision-environment != ''
         env:
           PREFLIGHT_RESULT: ${{ needs.owner-decision-preflight.result }}
           OWNER_DECISION_RESULT: ${{ needs.owner-decision.result }}

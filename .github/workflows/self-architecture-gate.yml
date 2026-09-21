@@ -16,5 +16,6 @@ jobs:
     with:
       protected-review-instructions: true
       validation-path: .codex/gatekeeper/decision.validation.json
+      owner-decision-environment: architecture-owner-decision
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

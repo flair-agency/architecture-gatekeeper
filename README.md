@@ -78,7 +78,6 @@ release, and pass only the two credentials declared by the workflow:
 jobs:
   architecture-gate:
     permissions:
-      actions: read
       contents: read
       pull-requests: write
     uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@<release-commit-sha>
@@ -87,9 +86,7 @@ jobs:
       CI_SOURCE_READ_TOKEN: ${{ secrets.CI_SOURCE_READ_TOKEN }}
 ```
 
-The `actions: read` permission lets the reusable workflow verify the protected
-owner-decision Environment; reusable workflows cannot elevate a caller's token
-permissions. The caller keeps `.codex/gatekeeper/ci-policy.json`, its prompt and schema. CI
+The caller keeps `.codex/gatekeeper/ci-policy.json`, its prompt and schema. CI
 policy is read from the protected base revision, so a pull request cannot waive
 its own review. `enforced` runs the exact-SHA-pinned
 `flair-agency/codex-action` fork of upstream v1.12. The fork contains only the
@@ -126,18 +123,36 @@ result remain available and comment delivery is reported as a warning. Do not
 switch to `pull_request_target` merely to make comments writable while checking
 out or executing pull-request code.
 
-`OWNER_DECISION` is a protected human handoff, not a successful AI decision and
-not a terminal deadlock. The reusable workflow waits for the fixed GitHub
-Environment `architecture-owner-decision`. Before requesting approval it reads
-the environment configuration through the GitHub API and fails closed unless at
+`OWNER_DECISION` is disabled by default, preserving PASS-only acceptance for
+existing consumers. A protected caller may explicitly opt in by passing its
+consumer-owned Environment name and granting the permission needed to verify
+that Environment:
+
+```yaml
+jobs:
+  architecture-gate:
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@<release-commit-sha>
+    with:
+      owner-decision-environment: architecture-owner-decision
+```
+
+Reusable workflows cannot elevate the caller's token permissions. When the
+input is omitted or empty, an `OWNER_DECISION` result fails the authoritative
+acceptance check exactly like any other non-PASS result. When enabled, the
+workflow waits for the selected GitHub Environment. Before requesting approval
+it reads the environment configuration through the GitHub API and fails closed unless at
 least one required reviewer is configured and administrator bypass is disabled.
 Approval is bound to the current workflow run, PR head SHA, and SHA-256 digest of
 the structured AI decision. A new PR head cancels the pending run and requires a
 new review and approval. `BLOCK` never enters this path and cannot be overridden
 by the environment approval.
 
-Each consumer repository that enables the handoff must create
-`architecture-owner-decision`, configure the repository's accountable owner as
+Each consumer repository that enables the handoff must create the Environment
+named by `owner-decision-environment`, configure the repository's accountable owner as
 a required reviewer, disable administrator bypass, and permit self-review only
 when the same owner may trigger and approve the workflow. A missing or weaker
 environment leaves the authoritative `Architecture Gate / accept` check failed.
