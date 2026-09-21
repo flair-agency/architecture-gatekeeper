@@ -89,6 +89,23 @@ test('keeps self-review policy and schema valid', () => {
   assert.equal(validation.rules.length, 2);
 });
 
+test('dogfoods the committed local and manual review entrypoints', () => {
+  const config = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/config.json'), 'utf8'));
+  const reviewer = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/reviewer.config.json'), 'utf8'));
+  const hooks = JSON.parse(readFileSync(join(root, '.codex/hooks.json'), 'utf8'));
+  assert.deepEqual(config.authorityFiles, [
+    'README.md',
+    'package.json',
+    '.github/workflows/architecture-gate.yml',
+    'test/local.test.mjs'
+  ]);
+  assert.equal(config.promptPath, '.codex/gatekeeper/ci-prompt.md');
+  assert.equal(config.schemaPath, '.codex/gatekeeper/decision.schema.json');
+  assert.equal(config.validationPath, '.codex/gatekeeper/decision.validation.json');
+  assert.equal(reviewer.model, 'gpt-5.6-sol');
+  assert.equal(hooks.hooks.UserPromptSubmit[0].hooks[0].command, 'node src/hook.mjs');
+});
+
 test('publishes an exact reviewed package through the Flair registry contract', () => {
   const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   const workflow = readFileSync(join(root, '.github/workflows/publish.yml'), 'utf8');

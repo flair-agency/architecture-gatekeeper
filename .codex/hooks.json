@@ -1,0 +1,18 @@
+{
+  "description": "Fail-closed local review of the shared Architecture Gatekeeper boundary.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node src/hook.mjs",
+            "timeout": 300,
+            "statusMessage": "Reviewing the Architecture Gatekeeper boundary",
+            "additionalContextLimit": 8000
+          }
+        ]
+      }
+    ]
+  }
+}

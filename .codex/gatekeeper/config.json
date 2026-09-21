@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "authorityFiles": [
+    "README.md",
+    "package.json",
+    ".github/workflows/architecture-gate.yml",
+    "test/local.test.mjs"
+  ],
+  "promptPath": ".codex/gatekeeper/ci-prompt.md",
+  "schemaPath": ".codex/gatekeeper/decision.schema.json",
+  "validationPath": ".codex/gatekeeper/decision.validation.json",
+  "reviewerConfigPath": ".codex/gatekeeper/reviewer.config.json",
+  "requiredReportedAuthorityFiles": [
+    "README.md",
+    "package.json",
+    ".github/workflows/architecture-gate.yml",
+    "test/local.test.mjs"
+  ],
+  "requiredPassArrays": [
+    "responsibility",
+    "reviewedScope",
+    "prohibitedChanges"
+  ],
+  "reviewTimeoutMs": 300000
+}
