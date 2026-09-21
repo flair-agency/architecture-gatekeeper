@@ -6,6 +6,7 @@ const decision = {
   decision: 'BLOCK',
   summary: 'Provider boundary is crossed. @team <script>alert(1)</script>',
   reviewedScope: ['src/a.mjs'],
+  authority: ['The protected base architecture contract governs.'],
   authorityFiles: ['docs/architecture.md'],
   prohibitedChanges: ['Do not move ownership'],
   gates: {
@@ -20,6 +21,8 @@ test('classifies model decisions and renders a bounded sanitized report', () => 
   assert.equal(classified.conclusion, 'BLOCK');
   assert.match(report, /Architecture Gate — BLOCK/);
   assert.match(report, /Wrong \\| owner/);
+  assert.match(report, /Governing authority/);
+  assert.match(report, /protected base architecture contract/);
   assert.match(report, /@\u200bteam/);
   assert.doesNotMatch(report, /<script>/);
   assert.ok(report.endsWith(`${COMMENT_MARKER}\n`));
@@ -70,6 +73,32 @@ test('updates the existing bot comment and ignores lookalike user comments', asy
   assert.deepEqual(result, { status: 'updated' });
   assert.equal(calls[1].options.method, 'PATCH');
   assert.match(calls[1].url, /issues\/comments\/11$/);
+});
+
+test('follows comment pagination before updating the marker-owned comment', async () => {
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    if (calls.length === 1) {
+      return {
+        ok: true,
+        json: async () => Array.from({ length: 100 }, (_, id) => ({ id, user: { login: 'someone' }, body: 'ordinary comment' })),
+        headers: { get: () => '<https://api.test/repos/o/r/issues/7/comments?per_page=100&page=2>; rel="next", <https://api.test/repos/o/r/issues/7/comments?per_page=100&page=2>; rel="last"' },
+      };
+    }
+    if (calls.length === 2) {
+      return {
+        ok: true,
+        json: async () => [{ id: 101, user: { login: 'github-actions[bot]' }, body: COMMENT_MARKER }],
+        headers: { get: () => '' },
+      };
+    }
+    return { ok: true };
+  };
+  const result = await upsertPullRequestComment({ fetchImpl, apiUrl: 'https://api.test', repository: 'o/r', pullRequest: '7', token: 'token', body: COMMENT_MARKER });
+  assert.deepEqual(result, { status: 'updated' });
+  assert.match(calls[1].url, /page=2/);
+  assert.match(calls[2].url, /issues\/comments\/101$/);
 });
 
 test('skips comments without write context and reports API failures to the caller', async () => {

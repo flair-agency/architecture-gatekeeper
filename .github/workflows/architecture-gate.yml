@@ -72,6 +72,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       final_message: ${{ steps.codex.outputs.final-message }}
+      reviewed_sha: ${{ steps.revision.outputs.sha }}
     steps:
       - name: Check enforced credentials
         env:
@@ -84,6 +85,9 @@ jobs:
           submodules: recursive
           token: ${{ secrets.CI_SOURCE_READ_TOKEN || github.token }}
           persist-credentials: false
+      - name: Record reviewed merge revision
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Materialize protected review instructions
         if: inputs.protected-review-instructions
         env:
@@ -126,7 +130,7 @@ jobs:
           REVIEW_RESULT: ${{ needs.review.result }}
           MODE: ${{ needs.policy.outputs.mode }}
           DECISION: ${{ needs.review.outputs.final_message }}
-          REVIEWED_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           WORKFLOW_REF: ${{ job.workflow_ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

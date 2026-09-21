@@ -33,6 +33,10 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /protected-review-instructions:/);
   assert.match(workflow, /prompt-file: \$\{\{ inputs\.protected-review-instructions/);
   assert.match(workflow, /output-schema-file: \$\{\{ inputs\.protected-review-instructions/);
+  assert.match(workflow, /reviewed_sha: \$\{\{ steps\.revision\.outputs\.sha \}\}/);
+  assert.match(workflow, /sha=\$\(git rev-parse HEAD\)/);
+  assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
+  assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
 });
 
 test('dogfoods only the protected reusable workflow with separated permissions', () => {

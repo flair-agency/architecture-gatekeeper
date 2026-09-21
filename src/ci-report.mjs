@@ -92,6 +92,7 @@ export function renderReport(classified, metadata = {}) {
   if (decision) {
     const context = [
       renderList('Reviewed scope', decision.reviewedScope),
+      renderList('Governing authority', decision.authority),
       renderList('Authority files', decision.authorityFiles),
       renderList('Prohibited changes', decision.prohibitedChanges),
       renderList('Responsibility', decision.responsibility),
@@ -121,10 +122,17 @@ export async function upsertPullRequestComment({ fetchImpl = fetch, apiUrl, repo
     'x-github-api-version': '2022-11-28',
   };
   const root = `${apiUrl}/repos/${repository}`;
-  const listed = await fetchImpl(`${root}/issues/${pullRequest}/comments?per_page=100`, { headers });
-  if (!listed.ok) throw new Error(`list comments returned HTTP ${listed.status}`);
-  const comments = await listed.json();
-  const existing = comments.find((comment) => comment?.user?.login === 'github-actions[bot]' && comment?.body?.includes(COMMENT_MARKER));
+  let commentsUrl = `${root}/issues/${pullRequest}/comments?per_page=100`;
+  let existing;
+  while (commentsUrl) {
+    const listed = await fetchImpl(commentsUrl, { headers });
+    if (!listed.ok) throw new Error(`list comments returned HTTP ${listed.status}`);
+    const comments = await listed.json();
+    existing = comments.find((comment) => comment?.user?.login === 'github-actions[bot]' && comment?.body?.includes(COMMENT_MARKER));
+    if (existing) break;
+    const link = listed.headers?.get?.('link') || '';
+    commentsUrl = link.match(/<([^>]+)>;\s*rel="next"/)?.[1] || '';
+  }
   const url = existing ? `${root}/issues/comments/${existing.id}` : `${root}/issues/${pullRequest}/comments`;
   const response = await fetchImpl(url, { method: existing ? 'PATCH' : 'POST', headers, body: JSON.stringify({ body }) });
   if (!response.ok) throw new Error(`${existing ? 'update' : 'create'} comment returned HTTP ${response.status}`);
