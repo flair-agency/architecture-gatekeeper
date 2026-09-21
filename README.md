@@ -119,6 +119,9 @@ input so a pull request cannot replace its own reviewer instructions. The
 default remains `false` for compatibility with consumers that are still
 bootstrapping their first base-owned prompt and schema.
 
+Lifecycle-workaround adoption evidence and repeat dogfood results are tracked
+in architecture-gatekeeper issue #15.
+
 Consequently, the first pull request that introduces this caller cannot execute
 the self-review. After that bootstrap change is adopted, subsequent pull
 requests exercise the real model review, job summary and sticky-comment path.

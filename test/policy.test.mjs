@@ -23,6 +23,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /fetch-depth: 0/);
   assert.match(workflow, /ref: f93255fd2e5a17a0b4bd557599535e80c8607537/);
   assert.match(workflow, /Verify the pinned action before exposing review credentials/);
+  assert.match(workflow, /name: Setup pnpm\n[\s\S]*?version: 10\.33\.0/);
   assert.match(workflow, /pnpm run check/);
   assert.match(workflow, /pnpm test/);
   assert.match(workflow, /needs: \[policy, codex-action-integrity\]/);
