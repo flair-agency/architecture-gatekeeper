@@ -53,13 +53,64 @@ access. The committed dependency and lockfile select the exact reviewed
 version; Hook execution never resolves or downloads a newer release.
 
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
-inputs. See `examples/config.json`. Hook execution is network-free and invokes
-an installed `codex` binary with hooks and host Skill discovery disabled and a
-read-only sandbox. This keeps the selected reviewer from recursively invoking a
-user-installed review Skill instead of evaluating the supplied snapshots.
+inputs. See `examples/config.json`. Hook package resolution is network-free;
+the installed `codex` reviewer runs with hooks and host Skill discovery disabled
+and a read-only sandbox. This keeps the selected reviewer from recursively
+invoking a user-installed review Skill instead of evaluating the supplied
+snapshots.
 When `validationPath` is configured, the local and manual review paths apply
 that committed policy after structured generation and fail closed on a rule
 violation or malformed policy.
+
+## Local reviewer runtime
+
+`--offline` applies to npm resolution only: it prevents a registry fetch while
+locating the already installed, exact package. The installed `codex` reviewer
+still needs the authenticated connection to its configured OpenAI/Codex service
+endpoint to produce a decision. A supported non-interactive host therefore
+selects its permission/profile *before* invoking this package with all of the
+following bounds:
+
+- the consumer repository is readable by the review process, but remains
+  read-only to the reviewer;
+- outbound access is limited by the host to the configured OpenAI/Codex service
+  endpoint(s), rather than granting arbitrary network access;
+- the outer runner permits starting the installed `codex` client without an
+  approval prompt for each review; and
+- the local `codex` binary is authenticated and available on `PATH`.
+
+The runtime passes `--sandbox read-only`, disables hooks and host Skill
+discovery, and sets the *child* Codex `approval_policy` to `never`. That child
+setting prevents the reviewer from pausing for tool approval; it cannot relax
+the permission, network, or approval policy of the outer task, terminal, CI
+runner, or managed host that starts this package. A rejection by that outer
+environment before `architecture-review` starts is an execution-environment
+rejection, not a `PASS`, `BLOCK`, `OWNER_DECISION`, or a Gatekeeper failure.
+It must be diagnosed there rather than worked around with a PTY, a source
+entrypoint, or `danger-full-access`.
+
+For a release-candidate dogfood check, pack the candidate and install it into a
+separate tools prefix, then run its real bin from the consumer repository. The
+following is non-interactive and does not require a PTY; replace the task text
+with the change under review. It intentionally keeps the package install
+offline while allowing only the preselected reviewer service connection:
+
+```sh
+npm pack --ignore-scripts
+tools_dir=$(mktemp -d)
+npm --prefix "$tools_dir" install --offline --ignore-scripts --no-save \
+  ./flair-agency-architecture-gatekeeper-<version>.tgz
+(cd /path/to/consumer && npm exec --prefix "$tools_dir" --offline -- \
+  architecture-review 'Review the proposed change against committed authority.')
+```
+
+The command must emit a schema-valid `PASS`, `BLOCK`, or `OWNER_DECISION` with
+`reviewedRevision`; malformed output, a reviewer timeout, a missing output
+file, or a nonzero reviewer exit fails closed with exit status 2. A structured
+manual decision is review feedback, so its JSON result is emitted normally;
+the Hook entrypoint rejects non-`PASS` decisions. This check proves the packed
+artifact, isolated install, package bin, non-interactive stdin/stdout flow and
+reviewer result. It does not turn local feedback into CI acceptance evidence.
 
 ## Manual review
 

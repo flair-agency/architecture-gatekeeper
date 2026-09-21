@@ -20,6 +20,16 @@ test('packages the manual review CLI', () => {
   assert.equal(typeof runManualReviewCli, 'function');
 });
 
+test('documents the non-interactive package reviewer runtime boundary', () => {
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+  assert.match(readme, /--offline` applies to npm resolution only/);
+  assert.match(readme, /configured OpenAI\/Codex service\s+endpoint/);
+  assert.match(readme, /- the outer runner permits starting the installed `codex` client without\s+an\s+approval prompt/);
+  assert.match(readme, /cannot relax\s+the permission, network, or approval policy of the outer task/);
+  assert.match(readme, /not a `PASS`, `BLOCK`, `OWNER_DECISION`, or a Gatekeeper failure/);
+  assert.match(readme, /not require a PTY/);
+});
+
 function git(root, ...args) {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 }
