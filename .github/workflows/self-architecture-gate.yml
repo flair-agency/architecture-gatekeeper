@@ -9,6 +9,7 @@ jobs:
   architecture-gate:
     if: github.event.pull_request.draft == false
     permissions:
+      actions: read
       contents: read
       pull-requests: write
     uses: ./.github/workflows/architecture-gate.yml

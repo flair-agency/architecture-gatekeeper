@@ -66,6 +66,7 @@ release, and pass only the two credentials declared by the workflow:
 jobs:
   architecture-gate:
     permissions:
+      actions: read
       contents: read
       pull-requests: write
     uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@<release-commit-sha>
@@ -74,15 +75,16 @@ jobs:
       CI_SOURCE_READ_TOKEN: ${{ secrets.CI_SOURCE_READ_TOKEN }}
 ```
 
-The caller keeps `.codex/gatekeeper/ci-policy.json`, its prompt and schema. CI
+The `actions: read` permission lets the reusable workflow verify the protected
+owner-decision Environment; reusable workflows cannot elevate a caller's token
+permissions. The caller keeps `.codex/gatekeeper/ci-policy.json`, its prompt and schema. CI
 policy is read from the protected base revision, so a pull request cannot waive
 its own review. `enforced` runs `openai/codex-action`; `local-only` records an
 explicit waiver and makes no OpenAI API call.
 
 The workflow publishes the result as a GitHub Actions job summary and creates
 or updates one marker-owned pull-request comment. The caller must grant
-`pull-requests: write` as shown above; reusable workflows cannot elevate a
-caller's token permissions. If the token is read-only, as it normally is for a
+`pull-requests: write` as shown above. If the token is read-only, as it normally is for a
 fork pull request, the job summary and authoritative `Architecture Gate / accept`
 result remain available and comment delivery is reported as a warning. Do not
 switch to `pull_request_target` merely to make comments writable while checking

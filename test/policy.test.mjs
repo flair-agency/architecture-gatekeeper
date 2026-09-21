@@ -51,6 +51,7 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.match(caller, /pull_request_target:/);
   assert.match(caller, /uses: \.\/\.github\/workflows\/architecture-gate\.yml/);
   assert.match(caller, /contents: read/);
+  assert.match(caller, /actions: read/);
   assert.match(caller, /pull-requests: write/);
   assert.match(caller, /protected-review-instructions: true/);
   assert.match(caller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
