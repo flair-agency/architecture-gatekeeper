@@ -51,3 +51,40 @@ test('rejects object and array equality as an unsupported policy contract', () =
     assert.throws(() => validateDecisionRules({ value, accepted: true }, structuralPolicy), /invalid condition/);
   }
 });
+
+test('rejects a malformed requirement even when its condition does not match', () => {
+  const malformedRequirementPolicy = {
+    version: 1,
+    rules: [{
+      when: { path: '/decision', equals: 'BLOCK' },
+      require: { path: '/gates', equals: { architecture: 'BLOCK' } },
+      message: 'unreachable malformed requirement'
+    }]
+  };
+  assert.throws(
+    () => validateDecisionRules({ decision: 'PASS' }, malformedRequirementPolicy),
+    /invalid condition/
+  );
+});
+
+test('validates every rule before evaluating any implication', () => {
+  const policyWithLaterMalformedRule = {
+    version: 1,
+    rules: [
+      {
+        when: { path: '/decision', equals: 'PASS' },
+        require: { path: '/accepted', equals: true },
+        message: 'first implication fails'
+      },
+      {
+        when: { path: '/decision', equals: 'BLOCK' },
+        require: { path: '/gates', equals: ['unsupported'] },
+        message: 'later malformed requirement'
+      }
+    ]
+  };
+  assert.throws(
+    () => validateDecisionRules({ decision: 'PASS', accepted: false }, policyWithLaterMalformedRule),
+    /invalid condition/
+  );
+});

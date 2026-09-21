@@ -13,7 +13,7 @@ function valueAt(document, path) {
   }, document);
 }
 
-function conditionMatches(document, condition) {
+function validateCondition(condition) {
   const equalsType = typeof condition?.equals;
   if (!condition || typeof condition !== 'object' || Array.isArray(condition) ||
       !Object.hasOwn(condition, 'equals') ||
@@ -22,6 +22,10 @@ function conditionMatches(document, condition) {
       Object.keys(condition).some(key => !['path', 'equals'].includes(key))) {
     fail('Decision validation rule has an invalid condition.');
   }
+  valueAt({}, condition.path);
+}
+
+function conditionMatches(document, condition) {
   return valueAt(document, condition.path) === condition.equals;
 }
 
@@ -32,6 +36,10 @@ export function validateDecisionRules(decision, policy) {
         Object.keys(rule).some(key => !['when', 'require', 'message'].includes(key)) || !rule.when || !rule.require) {
       fail('Decision validation policy contains an invalid rule.');
     }
+    validateCondition(rule.when);
+    validateCondition(rule.require);
+  }
+  for (const rule of policy.rules) {
     if (conditionMatches(decision, rule.when) && !conditionMatches(decision, rule.require)) {
       fail(`Decision validation failed: ${rule.message}`);
     }
