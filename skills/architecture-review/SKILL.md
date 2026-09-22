@@ -27,19 +27,34 @@ automatic local screening Hook, CI acceptance gate, and general code review.
    not as the source of repository-specific architecture policy.
 3. Do not pre-read or independently interpret the Gatekeeper configuration or
    its authority files. The version-pinned runtime owns committed-revision
-   binding, authority selection, reviewer invocation and decision validation.
+   binding, authority selection, request construction and decision validation.
 4. Do not infer architecture authority from existing code or package layout.
 
-## Run the manual review
+## Run the native review
 
-Use the repository's installed, version-pinned Architecture Gatekeeper manual
-review entrypoint, `architecture-review`, and pass the user's architecture
-question or proposed change as the task. Do not fetch or install a newer
-Gatekeeper during review.
+1. Create private temporary paths for a review request and decision.
+2. Run the repository's installed, version-pinned entrypoint:
+   `architecture-review-native prepare <request-path> <task...>`.
+3. Start a separate host-native reviewer/subagent with read-only access. Give it
+   exactly the returned prompt, schema, model, reasoning effort and
+   `reviewTimeoutMs`. Require it to return only the structured decision JSON
+   within that deadline. If the reviewer does not complete before the deadline,
+   stop with an incomplete review and do not run validation. Do not use shell
+   execution or nested `codex exec` to create this reviewer.
+4. Write only that JSON object to the private decision path.
+5. Run `architecture-review-native validate <request-path> <decision-path>`.
+   Treat any preparation, reviewer, parsing, schema or policy failure as an
+   incomplete review. Always remove both temporary files.
 
-If the repository has not adopted a manual review entrypoint, report that the
-manual review is unavailable rather than imitating Hook input or inventing a
-parallel reviewer. The automatic Hook and CI gate remain separate entrypoints.
+The native reviewer is the Skill execution adapter. The two runtime commands
+provide the same recorded-revision authority selection and deterministic
+validation contract used by other adapters without owning reviewer transport.
+Do not fetch or install a newer Gatekeeper during review.
+
+If the repository has not adopted `architecture-review-native`, report that the
+native Skill review is unavailable. Do not fall back to the standalone
+`architecture-review` command: that terminal adapter launches child
+`codex exec`. The automatic Hook and CI gate remain separate entrypoints.
 
 Present the structured decision, reviewed revision, authority files consulted,
 scope reviewed and the reason for any `BLOCK` or `OWNER_DECISION`.
