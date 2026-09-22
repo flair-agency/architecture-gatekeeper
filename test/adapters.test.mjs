@@ -34,3 +34,17 @@ test('publishes only an exact tested tag through GitHub Packages', () => {
   assert.match(workflow, /EXPECTED_INTEGRITY: \$\{\{ steps\.archive\.outputs\.integrity \}\}/);
   assert.match(workflow, /test "\$ACTUAL_INTEGRITY" = "\$EXPECTED_INTEGRITY"/);
 });
+
+test('provides a committed self local review configuration', () => {
+  const config = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/config.json', import.meta.url), 'utf8'));
+  const reviewer = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/reviewer.config.json', import.meta.url), 'utf8'));
+  const prompt = readFileSync(new URL('../.codex/gatekeeper/local-prompt.md', import.meta.url), 'utf8');
+  assert.deepEqual(config.authorityFiles, ['docs/architecture.md']);
+  assert.deepEqual(config.requiredReportedAuthorityFiles, ['docs/architecture.md']);
+  assert.equal(config.schemaPath, '.codex/gatekeeper/decision.schema.json');
+  assert.equal(config.validationPath, '.codex/gatekeeper/decision.validation.json');
+  assert.equal(config.reviewerConfigPath, '.codex/gatekeeper/reviewer.config.json');
+  assert.equal(reviewer.model, 'gpt-5.6-sol');
+  assert.match(prompt, /canonical repository-owned authority/);
+  assert.match(prompt, /working-tree files[\s\S]*untrusted evidence/);
+});

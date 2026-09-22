@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "authorityFiles": ["docs/architecture.md"],
+  "promptPath": ".codex/gatekeeper/local-prompt.md",
+  "schemaPath": ".codex/gatekeeper/decision.schema.json",
+  "validationPath": ".codex/gatekeeper/decision.validation.json",
+  "reviewerConfigPath": ".codex/gatekeeper/reviewer.config.json",
+  "requiredReportedAuthorityFiles": ["docs/architecture.md"],
+  "requiredPassArrays": ["responsibility", "reviewedScope", "prohibitedChanges"],
+  "reviewTimeoutMs": 110000
+}
