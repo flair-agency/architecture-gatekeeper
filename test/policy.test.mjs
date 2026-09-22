@@ -88,3 +88,12 @@ test('keeps self-review policy and schema valid', () => {
   assert.equal(validation.version, 1);
   assert.equal(validation.rules.length, 2);
 });
+
+test('keeps the protected self-review prompt aligned with canonical authority', () => {
+  const prompt = readFileSync(join(root, '.codex/gatekeeper/ci-prompt.md'), 'utf8');
+  assert.match(prompt, /protected base revision of `docs\/architecture\.md` as the normative/);
+  assert.match(prompt, /`README\.md`, `package\.json`, workflows,\s+tests[\s\S]*as evidence of conformance/);
+  assert.match(prompt, /prompt and the normative contract are\s+both selected from the protected base/);
+  assert.match(prompt, /pull-request content cannot make\s+itself authoritative/);
+  assert.doesNotMatch(prompt, /tests as repository-owned\s+authority/);
+});
