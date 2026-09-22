@@ -1,0 +1,71 @@
+name: Publish runtime package
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact tagged commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up Node.js and GitHub Packages
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: '@flair-agency'
+      - name: Verify release identity and tests
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          test "v$(node -p "require('./package.json').version")" = "$RELEASE_TAG"
+          npm test
+      - name: Pack, inspect, install and smoke the package archive
+        id: archive
+        run: |
+          npm pack --ignore-scripts --json > "$RUNNER_TEMP/pack.json"
+          ARCHIVE="$(node -p "require('$RUNNER_TEMP/pack.json')[0].filename")"
+          case "$ARCHIVE" in
+            ''|*/*) echo "npm pack returned an unsafe archive name" >&2; exit 1 ;;
+          esac
+          ARCHIVE_PATH="$GITHUB_WORKSPACE/$ARCHIVE"
+          test -f "$ARCHIVE_PATH"
+          INTEGRITY="$(node -e "const fs=require('node:fs'); const crypto=require('node:crypto'); process.stdout.write('sha512-'+crypto.createHash('sha512').update(fs.readFileSync(process.argv[1])).digest('base64'))" "$ARCHIVE_PATH")"
+          node -e "const p=require(process.argv[1])[0]; const names=new Set(p.files.map(f=>f.path)); for (const required of ['package.json','src/local-gate.mjs','src/manual-review.mjs','src/native-review.mjs','src/review-contract.mjs','src/codex-transport.mjs']) if (!names.has(required)) throw new Error('archive missing '+required)" "$RUNNER_TEMP/pack.json"
+          mkdir "$RUNNER_TEMP/install"
+          cd "$RUNNER_TEMP/install"
+          npm init -y >/dev/null
+          npm install --ignore-scripts --offline "$ARCHIVE_PATH"
+          test -x node_modules/.bin/architecture-gatekeeper
+          test -x node_modules/.bin/architecture-review
+          test -x node_modules/.bin/architecture-review-native
+          test -x node_modules/.bin/architecture-gate-policy
+          node -e "import('@flair-agency/architecture-gatekeeper/review-contract').then(m => { if (typeof m.createReviewRequest !== 'function') process.exit(1) })"
+          node "$GITHUB_WORKSPACE/test/installed-smoke.mjs" "$PWD/node_modules/.bin"
+          echo "path=$ARCHIVE_PATH" >> "$GITHUB_OUTPUT"
+          echo "integrity=$INTEGRITY" >> "$GITHUB_OUTPUT"
+      - name: Publish exact fixed version
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARCHIVE_PATH: ${{ steps.archive.outputs.path }}
+        run: npm publish "$ARCHIVE_PATH" --ignore-scripts
+      - name: Read package identity back from the registry
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPECTED_INTEGRITY: ${{ steps.archive.outputs.integrity }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          test "$(npm view "@flair-agency/architecture-gatekeeper@$VERSION" version --registry=https://npm.pkg.github.com)" = "$VERSION"
+          ACTUAL_INTEGRITY="$(npm view "@flair-agency/architecture-gatekeeper@$VERSION" dist.integrity --registry=https://npm.pkg.github.com)"
+          test "$ACTUAL_INTEGRITY" = "$EXPECTED_INTEGRITY"

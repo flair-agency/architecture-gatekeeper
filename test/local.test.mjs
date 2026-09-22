@@ -6,9 +6,14 @@ import { join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { runManualReviewCli, validate } from '../src/local-gate.mjs';
+import { createReviewRequest, validateReviewResponse } from '../src/review-contract.mjs';
 
-const cfg = { requiredReportedAuthorityFiles: ['AGENTS.md'], requiredPassArrays: ['reviewedScope'] };
+const cfg = { authorityFiles: ['AGENTS.md'], requiredReportedAuthorityFiles: ['AGENTS.md'], requiredPassArrays: ['reviewedScope'] };
 test('accepts explicit PASS scope', () => assert.equal(validate({ decision: 'PASS', authorityFiles: ['AGENTS.md'], reviewedScope: ['change'] }, cfg).decision, 'PASS'));
+test('rejects reported authority outside the configured boundary', () => assert.throws(
+  () => validate({ decision: 'BLOCK', authorityFiles: ['AGENTS.md', 'src/current.mjs'] }, cfg),
+  /outside the configured boundary/
+));
 test('packages the manual review CLI', () => {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(manifest.bin['architecture-review'], 'src/manual-review.mjs');
@@ -90,17 +95,67 @@ test('manual review returns BLOCK without Hook context, Hook output or session s
   assert.equal(existsSync(join(fixture.root, '.git', 'codex-architecture-context')), false);
 });
 
-test('manual review fails closed when committed authority differs from the worktree', t => {
+test('manual review uses committed authority when the worktree differs', t => {
   const fixture = manualFixture(t);
   writeFileSync(join(fixture.root, 'AGENTS.md'), '# Uncommitted replacement\n');
-  const result = runManual(fixture);
-  assert.equal(result.status, 2);
-  assert.match(result.stderr, /does not match revision/);
+  const capture = join(fixture.root, 'prompt.txt');
+  const result = runManual(fixture, { CODEX_CAPTURE_PATH: capture });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(readFileSync(capture, 'utf8'), /# Test authority/);
+  assert.doesNotMatch(readFileSync(capture, 'utf8'), /Uncommitted replacement/);
 });
 
-test('manual review rejects a revision change during review', t => {
+test('manual review reports the recorded revision when HEAD changes during review', t => {
   const fixture = manualFixture(t);
+  const recorded = git(fixture.root, 'rev-parse', 'HEAD');
   const result = runManual(fixture, { MOCK_CHANGE_REVISION: '1' });
-  assert.equal(result.status, 2);
-  assert.match(result.stderr, /revision changed during review/);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).reviewedRevision, recorded);
+  assert.notEqual(git(fixture.root, 'rev-parse', 'HEAD'), recorded);
+});
+
+test('native review adapter prepares a self-bound request and validates a host decision', t => {
+  const fixture = manualFixture(t);
+  const request = createReviewRequest('Review native transport', fixture.root);
+  assert.match(request.prompt, /# Test authority/);
+  assert.equal(request.reviewer.model, 'test-model');
+  assert.equal(request.reviewer.reviewTimeoutMs, 5000);
+  const result = validateReviewResponse(request, { decision: 'BLOCK', authorityFiles: ['AGENTS.md'], reviewedScope: ['native'] });
+  assert.equal(result.decision, 'BLOCK');
+  assert.equal(result.reviewedRevision, git(fixture.root, 'rev-parse', 'HEAD'));
+});
+
+test('native review adapter fails closed on a modified request or schema-invalid decision', t => {
+  const fixture = manualFixture(t);
+  const request = createReviewRequest('Review native transport', fixture.root);
+  assert.throws(() => validateReviewResponse({ ...request, prompt: 'replacement' }, {}), /request was modified/);
+  assert.throws(() => validateReviewResponse(request, []), /must match type object/);
+});
+
+test('native adapter supports local refs and fails closed on malformed schema keywords', t => {
+  const fixture = manualFixture(t);
+  const schemaPath = join(fixture.root, '.codex', 'gatekeeper', 'schema.json');
+  writeFileSync(schemaPath, JSON.stringify({
+    $defs: {
+      text: { anyOf: [{ type: 'string', minLength: 1 }, { enum: ['fallback'] }] },
+      decision: {
+        type: 'object', additionalProperties: false,
+        required: ['decision', 'authorityFiles', 'reviewedScope'],
+        properties: {
+          decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] },
+          authorityFiles: { type: 'array', minItems: 1, items: { $ref: '#/$defs/text' } },
+          reviewedScope: { type: 'array', minItems: 1, items: { $ref: '#/$defs/text' } }
+        }
+      }
+    },
+    $ref: '#/$defs/decision'
+  }));
+  git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'referenced schema');
+  let request = createReviewRequest('Review referenced schema', fixture.root);
+  assert.equal(validateReviewResponse(request, { decision: 'PASS', authorityFiles: ['AGENTS.md'], reviewedScope: ['native'] }).decision, 'PASS');
+
+  writeFileSync(schemaPath, JSON.stringify({ type: null, enum: null }));
+  git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'malformed schema');
+  request = createReviewRequest('Review malformed schema', fixture.root);
+  assert.throws(() => validateReviewResponse(request, {}), /schema validation failed/);
 });

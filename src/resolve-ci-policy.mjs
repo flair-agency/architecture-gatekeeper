@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const MODES = new Set(['enforced', 'local-only']);
@@ -22,7 +22,7 @@ export function resolveCiPolicy(policy, baseBranch) {
   return { baseBranch, mode: 'enforced', model: selected.model, reasoningEffort: selected.reasoningEffort };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [policyPath, baseBranch] = process.argv.slice(2);
   if (!policyPath) throw new Error('Usage: architecture-gate-policy <policy> <base-branch>');
   const result = resolveCiPolicy(JSON.parse(readFileSync(policyPath, 'utf8')), baseBranch);

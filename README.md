@@ -18,17 +18,26 @@ target-branch CI policy. The runtime does not grant filesystem, publication,
 deployment, credential or service authority.
 
 Consumers may also own an optional decision-validation policy. The output
-schema remains limited to the subset accepted by OpenAI Structured Outputs;
-cross-field invariants are expressed as declarative `when`/`require` rules in a
+schema uses the following fail-closed subset of the JSON Schema constructs
+accepted by OpenAI Structured Outputs: `$schema`, `description`, `$defs`, local
+JSON Pointer `$ref`, `anyOf`, `type`, `enum`, `properties`, `required`,
+`additionalProperties`, `items`, `minItems`, `minLength`, `minimum` and
+`maximum`. Recursive local references are supported; unresolved or remote
+references, malformed definitions and unsupported keywords reject the review.
+Instance validation memoizes each schema/instance identity pair and is bounded
+to 100,000 operations and 256 recursive evaluation levels. Exceeding either
+budget, including a schema cycle that repeats without instance progress, fails
+closed.
+Cross-field invariants are expressed as declarative `when`/`require` rules in a
 separate committed JSON file. Each condition compares a JSON Pointer value to
 an explicit JSON scalar (`string`, `number`, `boolean` or `null`); object and
 array equality is intentionally outside this minimal contract. The shared
 runtime evaluates only those declared path/value implications and does not
 infer meaning from consumer fields.
 
-When an authority is inside a Git submodule, the local runtime verifies it
-against the parent revision's pinned gitlink. It never fetches a missing
-component; unavailable pinned objects fail closed.
+When an authority is inside a Git submodule, the local runtime reads it from the
+parent revision's pinned gitlink. It never fetches a missing component;
+unavailable pinned objects fail closed.
 
 ## Local integration
 
@@ -42,8 +51,10 @@ runHookCli();
 ```
 
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
-inputs. See `examples/config.json`. Hook execution is network-free and invokes
-an installed `codex` binary with hooks disabled and a read-only sandbox.
+inputs. See `examples/config.json`. Package resolution is local and fixed: the
+launcher imports its already installed exact package version and must not use
+`npx` or another registry fallback. The Hook adapter invokes an installed
+`codex` binary with hooks disabled and a read-only sandbox.
 When `validationPath` is configured, the local and manual review paths apply
 that committed policy after structured generation and fail closed on a rule
 violation or malformed policy.
@@ -57,7 +68,9 @@ with the architecture question or proposed change:
 architecture-review 'Should this responsibility move from Runtime to the Provider?'
 ```
 
-The task may instead be supplied on standard input. The command uses the same
+The task may instead be supplied on standard input. This standalone terminal
+adapter uses child `codex exec`; it is separate from the Codex-hosted Skill.
+The command uses the same
 committed consumer-owned configuration, prompt, schema, reviewer settings and
 authority files as the local gate. It emits the structured `PASS`, `BLOCK` or
 `OWNER_DECISION` result with the reviewed Git revision. It does not reuse Hook
@@ -70,9 +83,25 @@ The npm package distributes the runtime and command-line entrypoints only. The
 explicit `$architecture-review` workflow is distributed separately from this
 repository at `skills/architecture-review/`; install that directory through the
 supported Codex Skill installation route and keep its revision aligned with the
-runtime release you adopt. The Skill is a thin invocation workflow: the
+runtime release you adopt. The Skill uses the host-native reviewer/subagent
+interface. It calls `architecture-review-native prepare` to construct a
+committed-revision request, gives that request to a separate read-only native
+reviewer, and calls `architecture-review-native validate` on the returned JSON.
+The Skill enforces the prepared `reviewTimeoutMs`; a timeout is an incomplete
+review and never reaches validation. It never falls back to the standalone CLI
+or launches nested `codex exec`. The
 version-pinned runtime, not the Skill, selects and validates repository-owned
 authority.
+
+## Distribution
+
+Runtime releases are published as fixed versions to the `@flair-agency`
+GitHub Packages npm registry. A release tag must identify the exact commit whose
+`package.json` declares that version. The publication workflow packs and
+inspects the archive, installs it in an empty directory, exercises every public
+executable, publishes with package lifecycle scripts disabled, and reads the
+published version and integrity back from the registry. Reusable GitHub Actions
+workflows remain pinned separately to an exact Git commit SHA.
 
 ## CI integration
 
@@ -150,6 +179,14 @@ from the protected base revision under `.codex/gatekeeper/`. This caller sets
 input so a pull request cannot replace its own reviewer instructions. The
 default remains `false` for compatibility with consumers that are still
 bootstrapping their first base-owned prompt and schema.
+
+The repository also dogfoods the local and Codex-hosted Skill paths through
+`.codex/gatekeeper/config.json`. That configuration uses the canonical
+`docs/architecture.md` contract as its committed authority and shares the
+decision schema and validation policy with self-review CI. Local implementation
+and working-tree content remain review evidence rather than authority. The
+native self-review has a bounded 180-second deadline and remains fail closed if
+the reviewer does not complete within it.
 
 Lifecycle-workaround adoption evidence and repeat dogfood results are tracked
 in [architecture-gatekeeper issue #15](https://github.com/flair-agency/architecture-gatekeeper/issues/15).

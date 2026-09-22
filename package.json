@@ -1,16 +1,22 @@
 {
   "name": "@flair-agency/architecture-gatekeeper",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Reusable local and CI architecture gates for Codex repositories",
   "type": "module",
   "license": "MIT",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "bin": {
     "architecture-gatekeeper": "src/local-gate.mjs",
     "architecture-review": "src/manual-review.mjs",
+    "architecture-review-native": "src/native-review.mjs",
     "architecture-gate-policy": "src/resolve-ci-policy.mjs"
   },
   "exports": {
     ".": "./src/local-gate.mjs",
+    "./review-contract": "./src/review-contract.mjs",
     "./policy": "./src/resolve-ci-policy.mjs"
   },
   "files": ["src", "docs/architecture.md", "README.md", "LICENSE"],
