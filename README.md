@@ -24,6 +24,10 @@ JSON Pointer `$ref`, `anyOf`, `type`, `enum`, `properties`, `required`,
 `additionalProperties`, `items`, `minItems`, `minLength`, `minimum` and
 `maximum`. Recursive local references are supported; unresolved or remote
 references, malformed definitions and unsupported keywords reject the review.
+Instance validation memoizes each schema/instance identity pair and is bounded
+to 100,000 operations and 256 recursive evaluation levels. Exceeding either
+budget, including a schema cycle that repeats without instance progress, fails
+closed.
 Cross-field invariants are expressed as declarative `when`/`require` rules in a
 separate committed JSON file. Each condition compares a JSON Pointer value to
 an explicit JSON scalar (`string`, `number`, `boolean` or `null`); object and
