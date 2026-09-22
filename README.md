@@ -18,8 +18,13 @@ target-branch CI policy. The runtime does not grant filesystem, publication,
 deployment, credential or service authority.
 
 Consumers may also own an optional decision-validation policy. The output
-schema remains limited to the subset accepted by OpenAI Structured Outputs;
-cross-field invariants are expressed as declarative `when`/`require` rules in a
+schema uses the following fail-closed subset of the JSON Schema constructs
+accepted by OpenAI Structured Outputs: `$schema`, `description`, `$defs`, local
+JSON Pointer `$ref`, `anyOf`, `type`, `enum`, `properties`, `required`,
+`additionalProperties`, `items`, `minItems`, `minLength`, `minimum` and
+`maximum`. Recursive local references are supported; unresolved or remote
+references, malformed definitions and unsupported keywords reject the review.
+Cross-field invariants are expressed as declarative `when`/`require` rules in a
 separate committed JSON file. Each condition compares a JSON Pointer value to
 an explicit JSON scalar (`string`, `number`, `boolean` or `null`); object and
 array equality is intentionally outside this minimal contract. The shared

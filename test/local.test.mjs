@@ -129,5 +129,33 @@ test('native review adapter fails closed on a modified request or schema-invalid
   const fixture = manualFixture(t);
   const request = createReviewRequest('Review native transport', fixture.root);
   assert.throws(() => validateReviewResponse({ ...request, prompt: 'replacement' }, {}), /request was modified/);
-  assert.throws(() => validateReviewResponse(request, []), /must be object/);
+  assert.throws(() => validateReviewResponse(request, []), /must match type object/);
+});
+
+test('native adapter supports local refs and fails closed on malformed schema keywords', t => {
+  const fixture = manualFixture(t);
+  const schemaPath = join(fixture.root, '.codex', 'gatekeeper', 'schema.json');
+  writeFileSync(schemaPath, JSON.stringify({
+    $defs: {
+      text: { anyOf: [{ type: 'string', minLength: 1 }, { enum: ['fallback'] }] },
+      decision: {
+        type: 'object', additionalProperties: false,
+        required: ['decision', 'authorityFiles', 'reviewedScope'],
+        properties: {
+          decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] },
+          authorityFiles: { type: 'array', minItems: 1, items: { $ref: '#/$defs/text' } },
+          reviewedScope: { type: 'array', minItems: 1, items: { $ref: '#/$defs/text' } }
+        }
+      }
+    },
+    $ref: '#/$defs/decision'
+  }));
+  git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'referenced schema');
+  let request = createReviewRequest('Review referenced schema', fixture.root);
+  assert.equal(validateReviewResponse(request, { decision: 'PASS', authorityFiles: ['AGENTS.md'], reviewedScope: ['native'] }).decision, 'PASS');
+
+  writeFileSync(schemaPath, JSON.stringify({ type: null, enum: null }));
+  git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'malformed schema');
+  request = createReviewRequest('Review malformed schema', fixture.root);
+  assert.throws(() => validateReviewResponse(request, {}), /schema validation failed/);
 });
