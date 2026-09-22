@@ -118,10 +118,12 @@ not choose how every host obtains that decision.
   a command hook has no native reviewer handle.
 - The standalone terminal CLI explicitly uses the same child transport when no
   Codex host task exists.
-- The Codex-hosted Skill prepares the revision-bound request, delegates it to a
-  separate host-native read-only reviewer/subagent, then asks the shared runtime
-  to validate the returned JSON. It does not re-enter Codex through a nested
-  command.
+- The Codex-hosted Skill prepares the revision-bound request, applies its
+  recorded model, reasoning effort and bounded reviewer setting to a separate
+  host-native read-only reviewer/subagent, then asks the shared runtime to
+  validate the returned JSON. A host that cannot provide those settings leaves
+  the review incomplete and fails closed. The Skill does not re-enter Codex
+  through a nested command.
 - CI retains its independent model-review adapter and exact-SHA-pinned reusable
   workflow.
 
