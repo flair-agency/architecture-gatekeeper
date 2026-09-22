@@ -105,7 +105,7 @@ test('dogfoods the committed local and manual review entrypoints', () => {
   assert.equal(config.schemaPath, '.codex/gatekeeper/decision.schema.json');
   assert.equal(config.validationPath, '.codex/gatekeeper/decision.validation.json');
   assert.equal(reviewer.model, 'gpt-5.6-sol');
-  assert.equal(hooks.hooks.UserPromptSubmit[0].hooks[0].command, 'node src/hook.mjs');
+  assert.equal(hooks.hooks.UserPromptSubmit[0].hooks[0].command, 'npm exec --offline -- architecture-gatekeeper');
 });
 
 test('publishes an exact reviewed package through the Flair registry contract', () => {
@@ -121,6 +121,7 @@ test('publishes an exact reviewed package through the Flair registry contract', 
   assert.match(workflow, /publish:\n    needs: build/);
   assert.match(workflow, /packages: write/);
   assert.match(workflow, /npm pack --ignore-scripts --json/);
+  assert.match(workflow, /bin\("architecture-review"\), \["--help"\]/);
   assert.match(workflow, /npm publish .*--ignore-scripts --registry=https:\/\/npm\.pkg\.github\.com/);
   assert.match(workflow, /visibility\)" = private/);
   for (const reference of workflow.matchAll(/uses:\s+([^\s#]+)/g)) {

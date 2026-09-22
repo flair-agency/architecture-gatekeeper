@@ -133,6 +133,10 @@ export function runManualReview(task, cwd = process.cwd()) {
   return { ...decision, reviewedRevision };
 }
 export function runManualReviewCli(argv = process.argv.slice(2)) {
+  if (argv.length === 1 && argv[0] === '--help') {
+    process.stdout.write('Usage: architecture-review <review task>\n');
+    return;
+  }
   const task = argv.join(' ').trim();
   if (task) {
     process.stdout.write(`${JSON.stringify(runManualReview(task), null, 2)}\n`);

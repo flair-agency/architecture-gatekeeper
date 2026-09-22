@@ -47,6 +47,11 @@ invoke the installed package bin from the Hook without network fallback:
 npm exec --offline -- architecture-gatekeeper
 ```
 
+This repository's committed Hook uses that same package-bin command. From a
+package checkout, `npm exec` exposes the package's declared bin without adding
+a self-dependency; from a consumer, it resolves only the exact installed
+dependency selected by that consumer's lockfile.
+
 The package is private. Consumers must map the `@flair-agency` scope to
 `https://npm.pkg.github.com` and authenticate installation with package-read
 access. The committed dependency and lockfile select the exact reviewed

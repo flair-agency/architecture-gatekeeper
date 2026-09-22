@@ -20,6 +20,12 @@ test('packages the manual review CLI', () => {
   assert.equal(typeof runManualReviewCli, 'function');
 });
 
+test('manual review help exercises the CLI without starting a reviewer', () => {
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../src/manual-review.mjs', import.meta.url)), '--help'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, 'Usage: architecture-review <review task>\n');
+});
+
 test('documents the non-interactive package reviewer runtime boundary', () => {
   const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
   assert.match(readme, /--offline` applies to npm resolution only/);

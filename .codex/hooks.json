@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node src/hook.mjs",
+            "command": "npm exec --offline -- architecture-gatekeeper",
             "timeout": 300,
             "statusMessage": "Reviewing the Architecture Gatekeeper boundary",
             "additionalContextLimit": 8000

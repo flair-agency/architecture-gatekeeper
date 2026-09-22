@@ -71,6 +71,8 @@ jobs:
             const bin = name => path.join(directory, "node_modules", ".bin", name);
             const help = execFileSync(bin("architecture-gatekeeper"), ["--help"], { encoding: "utf8" });
             if (!help.startsWith("Usage: architecture-gatekeeper")) throw Error("Hook entrypoint did not execute");
+            const reviewHelp = execFileSync(bin("architecture-review"), ["--help"], { encoding: "utf8" });
+            if (!reviewHelp.startsWith("Usage: architecture-review")) throw Error("Manual review entrypoint did not execute");
             const policy = path.join(directory, "policy.json");
             fs.writeFileSync(policy, JSON.stringify({ version: 1, default: { mode: "local-only" }, branches: {} }));
             const resolved = execFileSync(bin("architecture-gate-policy"), [policy, "main"], { encoding: "utf8" });
