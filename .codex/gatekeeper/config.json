@@ -7,5 +7,5 @@
   "reviewerConfigPath": ".codex/gatekeeper/reviewer.config.json",
   "requiredReportedAuthorityFiles": ["docs/architecture.md"],
   "requiredPassArrays": ["responsibility", "reviewedScope", "prohibitedChanges"],
-  "reviewTimeoutMs": 110000
+  "reviewTimeoutMs": 180000
 }
