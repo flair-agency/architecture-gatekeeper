@@ -108,6 +108,30 @@ A local decision is development feedback unless protected-base policy
 explicitly permits a defined evidence format and the authoritative verifier
 validates it. A bare or author-controlled `PASS` is never sufficient.
 
+Local review uses a shared semantic contract with separate execution adapters.
+The shared contract records one Git revision, reads configuration, prompt,
+schema, reviewer settings and authority from that revision, constructs the
+review request, and deterministically validates the returned decision. It does
+not choose how every host obtains that decision.
+
+- The automatic command Hook may launch a read-only child `codex exec`, because
+  a command hook has no native reviewer handle.
+- The standalone terminal CLI explicitly uses the same child transport when no
+  Codex host task exists.
+- The Codex-hosted Skill prepares the revision-bound request, applies its
+  recorded model, reasoning effort and bounded reviewer setting to a separate
+  host-native read-only reviewer/subagent, then asks the shared runtime to
+  validate the returned JSON. A host that cannot provide those settings leaves
+  the review incomplete and fails closed. The Skill does not re-enter Codex
+  through a nested command.
+- CI retains its independent model-review adapter and exact-SHA-pinned reusable
+  workflow.
+
+The recorded revision selects inputs; it is not a workstation integrity lock.
+Authority snapshots are included in the reviewer request from committed Git
+objects. The runtime neither compares those objects with working-tree bytes nor
+monitors whether `HEAD` changes while a review is running.
+
 ### CI model review
 
 CI model review provides an independent execution boundary. Protected-base
