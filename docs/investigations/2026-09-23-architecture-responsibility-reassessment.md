@@ -25,6 +25,18 @@ Retirement remains a valid outcome under an explicit owner decision to use advis
 
 The historical examples were not generated under a common protocol. They cannot establish recall, false-positive rate, repeatability, equal-input quality, or comparative cost. Model choice, including Astra, is not evidence of review correctness. Existing unit tests describe deterministic behavior; they cannot establish that a model consulted or correctly interpreted every authority.
 
+### Validation surfaces and proof boundaries
+
+Local and GitHub validation are not interchangeable, but neither does every fixture need to be duplicated on every surface. Each claim should be tested at the lowest surface that can actually establish it, followed by integration checks at the trust boundary it crosses.
+
+| Property | Primary proof surface | What that proof establishes | What it does not establish |
+| --- | --- | --- | --- |
+| Deterministic authority/governance logic | Local fixture/unit/integration tests | Authority selection, immutable revision resolution, bounded materialization, digests, missing/conflict behavior, and deterministic normalization. | That GitHub supplies the same protected inputs, permissions, event state, or merge policy. |
+| Semantic architecture review through the proposed native replacement | **GitHub Codex Code Review itself** on fixed PR revisions | Behavior of the actual GitHub review surface, including whether the supplied authority/guidance is available and affects findings. | A local `/review`, CLI, API, Action, or model run is only supporting evidence; success there does not prove GitHub Code Review behavior. |
+| Acceptance and enforcement | GitHub Actions plus actual required-check/branch-protection/ruleset behavior | Binding to the current head and authority identity, cancellation/skip/service-failure handling, permissions/identity, stale-result rejection, and whether merge is actually blocked. | Local PASS/FAIL behavior or a successful workflow command cannot prove repository merge enforcement. |
+
+The experiment therefore avoids a full Cartesian “local × CI” duplication. For example, dozens of authority resolver edge cases can remain local tests while GitHub CI verifies that the reviewed implementation runs with the intended protected inputs. Conversely, semantic replacement claims must be exercised on GitHub Codex Code Review, and acceptance claims must be exercised against GitHub's real PR/check/ruleset state. An end-to-end thin-path candidate still requires at least one GitHub shadow run joining those validated pieces.
+
 ## Findings and evidence
 
 | ID | Finding | Classification and evidence | Consequence |
@@ -73,9 +85,9 @@ Source topology is not authority topology. Git submodules are one way to resolve
 
 For Provider #29, construct a bounded, explicitly selected set using the protected Provider architecture at `a27633c` and owner-confirmed immutable revisions of all four adopted external sources. The write contract refinement at `c661e82` is known adopted evidence, but an experiment must still record the exact chosen set and relationship rules. Do not recursively promote every link in those documents to authority. Do not silently choose “parent wins.” The Provider explicitly delegates to its adopted parent contracts; unresolved conflicts beyond that delegation require an owner decision.
 
-The native-only route to test is **materialization without custom semantic execution**:
+The native-only route to test is **materialization without custom semantic execution**. The semantic-review portion of this experiment must be exercised through **GitHub Codex Code Review itself**. A local `/review` or CLI run can validate fixture setup, developer workflow, or general model capability, but it is not evidence that the GitHub review surface can ingest, protect, or materially consult the same Authority Set.
 
-1. Supply a declared, immutable authority snapshot through a supported native review input surface. Repository-contained snapshots with scoped guidance are a plausible candidate. A comment pointing to a URL, cloud setup-script capability, or an API/CLI output schema is not proof of GitHub Code Review support.
+1. Supply a declared, immutable authority snapshot through a supported native review input surface. Repository-contained snapshots with scoped guidance are a plausible candidate. A comment pointing to a URL, cloud setup-script capability, a local `/review` result, or an API/CLI output schema is not proof of GitHub Code Review support.
 2. Show which revision selects that snapshot and what happens when a PR changes the manifest, snapshot, or guidance. A blob being pinned is insufficient if the PR chooses which blob the reviewer trusts.
 3. Show from result/transcript evidence that all required sources were made available and materially consulted. Quoting filenames is weaker than source-dependent findings on deliberately discriminating fixtures.
 4. Remove a required source, create an unresolved conflict, cancel the review, and change the head or adopted authority. No route may produce accepted evidence in those conditions.
@@ -105,7 +117,7 @@ Historical native request-to-result times from Provider #29 are 3:48 (`e607240`,
 
 Each future run should record fixture ID, expected behavior and owner adjudication, repository/base/head/merge SHAs, complete Authority Set identities and digests, guidance revision, native mechanism/settings where visible, start/completion/cancellation state, all findings and escalation, misses/false positives, consumed credits or API tokens where available, and manual intervention. Do not grade Provider #29 simply as expected PASS: it is a context-completeness fixture with genuine defects already observed.
 
-A minimal experiment batch contains the ten distinct cases above with matched native and Gatekeeper inputs and at least three repeats for semantic cases. Setup validation must first prove how native review receives the bundle. Creating synthetic PRs before confirming that capability creates notifications and costs without resolving the central contract question. Local fixtures and retrospective observations cannot substitute for these native runs.
+A minimal experiment batch contains the ten distinct cases above with matched **GitHub Codex Code Review** and Gatekeeper inputs and at least three repeats for semantic cases. Setup validation must first prove how the GitHub review surface receives the bundle. Creating synthetic PRs before confirming that capability creates notifications and costs without resolving the central contract question. Local fixtures and retrospective observations cannot substitute for these native runs; they remain the primary place to exhaustively test deterministic materialization/governance logic.
 
 ## Compare the three outcomes
 
@@ -131,10 +143,10 @@ These are proposed explicit contract decisions. The assessment itself makes none
 ## Migration, validation and rollback
 
 1. Record consumer assurance needs and the chosen owner decisions in canonical authority. Keep current required checks active throughout the assessment.
-2. Prepare a bounded complete Authority Set and fixture corpus; validate the native input and result interfaces before writing any adapter.
-3. Run native and current review as shadow comparisons on identical revisions and record the matrix above. If native cannot ingest protected authority, stop that migration branch; do not replace it with guessed comment parsing.
+2. Prepare a bounded complete Authority Set and fixture corpus. Exhaustively validate deterministic selection/materialization, revision binding, digest, missing/conflict, and normalization behavior locally; then verify in GitHub CI that the same implementation receives the intended protected inputs. This CI integration check does not substitute for native semantic review.
+3. Validate the supported **GitHub Codex Code Review** input and result interfaces, then run GitHub native and current Gatekeeper review as shadow comparisons on identical revisions and record the matrix above. A successful local `/review` is not a substitute. If GitHub Code Review cannot ingest protected authority, stop that migration branch; do not replace it with guessed comment parsing.
 4. Pilot native local feedback for a consumer that does not require automatic hooks. Remove a local adapter only after its specific design-time and implementation workflow is exercised. Preserve authority preparation where still required.
-5. If acceptance equivalence is demonstrated, deploy the candidate protected check in observation mode, then obtain owner adoption and switch required checks atomically to avoid an enforcement gap. Confirm expected app/workflow identity and always-run behavior for failures/skips.
+5. If semantic and evidence equivalence are demonstrated, deploy the candidate protected check in observation mode and test acceptance on real GitHub PR state: current-head binding, stale review invalidation, cancellation/service failure, skipped jobs, expected app/workflow identity, and actual branch-protection/ruleset merge blocking. Then obtain owner adoption and switch required checks atomically to avoid an enforcement gap.
 6. Delete unused runtime entrypoints, packaging, CI invocation, fork provenance, reporting and their tests/docs together. Retain a known exact release/workflow pin until the pilot is stable. If custom execution survives, remove only unused paths and keep its current credential boundary.
 
 Rollback restores the previously reviewed exact workflow/runtime pins and required-check selection through protected owner change. Failed service calls, missing authority or invalid native evidence must never automatically reactivate a weaker route. Rollback cannot erase the #51 gap: a restored current gate still needs complete authority for any fixture that requires it.
