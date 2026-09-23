@@ -112,6 +112,20 @@ test('enforces per-file and HTTP response limits', async () => {
   await assert.rejects(source(routes)(args), /could not be verified/);
 });
 
+test('accepts a 1 MiB blob with GitHub-style wrapped base64', async () => {
+  const bytes = Buffer.alloc(1024 * 1024, 0x61);
+  const sha = createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+  const routes = fixture();
+  routes.get(`${root}/git/trees/${docsTree}`).tree[0] = {
+    path: 'policy.md', mode: '100644', type: 'blob', sha, size: bytes.length,
+  };
+  routes.delete(`${root}/git/blobs/${blobSha}`);
+  const wrapped = bytes.toString('base64').match(/.{1,60}/g).join('\n');
+  routes.set(`${root}/git/blobs/${sha}`, { sha, size: bytes.length, encoding: 'base64', content: `${wrapped}\n` });
+  const result = await source(routes)({ ...args, maxBytes: bytes.length });
+  assert.deepEqual(result.content, bytes);
+});
+
 test('bounds a transport that ignores the abort signal', async () => {
   const fetchExternal = createGitHubAuthoritySource({
     token: 'private-test-token',
@@ -155,6 +169,7 @@ test('rejects malformed, noncanonical or unverifiable blobs', async () => {
   const original = fixture().get(`${root}/git/blobs/${blobSha}`);
   for (const blob of [
     { ...original, content: 'not base64!' },
+    { ...original, content: original.content.trim().split('').join('\n') },
     { ...original, content: 'YR==' },
     { ...original, size: content.length + 1 },
     { ...original, content: Buffer.from('forged').toString('base64'), size: 6 },

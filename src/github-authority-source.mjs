@@ -12,11 +12,21 @@ const MAX_TIMEOUT_MS = 30_000;
 const MAX_MEMBER_TIMEOUT_MS = 30_000;
 const MAX_PATH_SEGMENTS = 16;
 const MAX_REQUESTS_PER_MEMBER = MAX_PATH_SEGMENTS + 3;
+const BASE64_WRAP_WIDTH = 60;
+const BLOB_JSON_OVERHEAD_BYTES = 16 * 1024;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 function fail() { throw new Error('GitHub authority source: source could not be verified.'); }
 function shaOfBlob(content) {
   return createHash('sha1').update(`blob ${content.length}\0`).update(content).digest('hex');
+}
+function maxBase64LineBreaks(encodedLength) {
+  return Math.ceil(encodedLength / BASE64_WRAP_WIDTH) + 1;
+}
+function maxBlobResponseBytes(maxBytes) {
+  const encodedLength = 4 * Math.ceil(maxBytes / 3);
+  // A JSON string escapes CRLF as four wire bytes per permitted line break.
+  return encodedLength + 4 * maxBase64LineBreaks(encodedLength) + BLOB_JSON_OVERHEAD_BYTES;
 }
 function validPath(path) {
   return typeof path === 'string' && path.length <= 240 && path.endsWith('.md') &&
@@ -76,6 +86,7 @@ function decodeBlob(blob, requestedSha, maxBytes) {
       !Number.isSafeInteger(blob.size) || blob.size < 1 || blob.size > maxBytes ||
       typeof blob.content !== 'string') fail();
   const normalized = blob.content.replace(/\r?\n/g, '');
+  if ((blob.content.match(/\n/g) ?? []).length > maxBase64LineBreaks(normalized.length)) fail();
   if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized)) fail();
   const content = Buffer.from(normalized, 'base64');
   if (content.length !== blob.size || content.toString('base64') !== normalized || shaOfBlob(content) !== requestedSha) fail();
@@ -127,7 +138,7 @@ export function createGitHubAuthoritySource({ token, fetchImpl = globalThis.fetc
       }
     }
 
-    const blob = await get(`/git/blobs/${blobSha}`, Math.min(MAX_FILE_BYTES, maxBytes) * 4 / 3 + 16_384);
+    const blob = await get(`/git/blobs/${blobSha}`, maxBlobResponseBytes(maxBytes));
     const content = decodeBlob(blob, blobSha, maxBytes);
     if (performance.now() > deadline) fail();
     return { repository, resolvedCommit, path, type: 'file', content };
