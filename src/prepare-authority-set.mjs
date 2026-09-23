@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { openSync, readSync, closeSync, mkdirSync, writeFileSync, rmSync, lstatSync, realpathSync } from 'node:fs';
+import { constants, openSync, readSync, closeSync, fstatSync, mkdirSync, writeFileSync, rmSync, lstatSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { materializeAuthoritySet, parseAuthorityManifest } from './authority-set.mjs';
+import { materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys } from './authority-set.mjs';
 import { createGitHubAuthoritySource } from './github-authority-source.mjs';
 
 const MAX_LIMITS_BYTES = 4 * 1024;
@@ -12,9 +12,17 @@ function readBounded(path, maxBytes, label) {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) throw new Error(`${label} byte limit is invalid.`);
   let descriptor;
   try {
-    descriptor = openSync(path, 'r');
+    descriptor = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK);
+    const metadata = fstatSync(descriptor);
+    if (!metadata.isFile()) throw new Error(`${label} input must be a regular file.`);
+    if (metadata.size > maxBytes) throw new Error(`${label} exceeds its input byte limit.`);
     const buffer = Buffer.alloc(maxBytes + 1);
-    const length = readSync(descriptor, buffer, 0, buffer.length, 0);
+    let length = 0;
+    while (length <= maxBytes) {
+      const count = readSync(descriptor, buffer, length, buffer.length - length, null);
+      if (count === 0) break;
+      length += count;
+    }
     if (length > maxBytes) throw new Error(`${label} exceeds its input byte limit.`);
     return buffer.subarray(0, length);
   } finally {
@@ -24,8 +32,16 @@ function readBounded(path, maxBytes, label) {
 
 function readLimits(path) {
   const bytes = readBounded(path, MAX_LIMITS_BYTES, 'Limits JSON');
-  try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
-  catch { throw new Error('Limits JSON is invalid.'); }
+  let source;
+  try {
+    source = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    const limits = JSON.parse(source);
+    rejectDuplicateJsonKeys(source, 'limits');
+    return limits;
+  } catch (error) {
+    if (/duplicate JSON key/.test(error.message)) throw new Error('Limits JSON contains duplicate keys.');
+    throw new Error('Limits JSON is invalid.');
+  }
 }
 
 function usage() {

@@ -99,3 +99,14 @@ test('rejects oversized limits and manifest inputs before parsing or output crea
   await assert.rejects(prepareAuthoritySet({ ...f, selfRepository: 'flair-agency/example', outputDir }), /Limits JSON exceeds its input byte limit/);
   assert.throws(() => statSync(outputDir), { code: 'ENOENT' });
 });
+
+test('rejects limits with duplicate keys and non-regular input sources', async t => {
+  const f = fixture(t); const outputDir = join(f.root, 'bundle');
+  writeFileSync(f.limitsPath, '{"maxManifestBytes":4096,"maxManifestBytes":1,"maxMembers":3,"maxFileBytes":1024,"maxTotalBytes":2048,"maxPromptBytes":8192}');
+  await assert.rejects(prepareAuthoritySet({ ...f, selfRepository: 'flair-agency/example', outputDir }), /Limits JSON contains duplicate keys/);
+  assert.throws(() => statSync(outputDir), { code: 'ENOENT' });
+  writeFileSync(f.limitsPath, JSON.stringify(limits));
+  const manifestDirectory = join(f.root, 'manifest-directory'); mkdirSync(manifestDirectory);
+  await assert.rejects(prepareAuthoritySet({ ...f, manifestPath: manifestDirectory, selfRepository: 'flair-agency/example', outputDir }), /regular file/);
+  assert.throws(() => statSync(outputDir), { code: 'ENOENT' });
+});
