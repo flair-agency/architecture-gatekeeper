@@ -1,13 +1,13 @@
-# Synthetic adopted receipt delivery contract
+# Synthetic proposed receipt delivery contract
 
-Fixture source identity: `synthetic-contract-repository/receipt-delivery/v1`.
+Fixture source identity: `synthetic-contract-repository/receipt-delivery/v2`.
 This identity is fictional; this is a repository-contained input-surface probe,
 not a successfully materialized cross-repository authority claim.
 
-The deployed receipt receiver subscribes exclusively to the wire event name
-`receipt/committed`. It ignores every other name. Its downstream accounting
-queue therefore receives no receipts if the producer changes that name.
+This proposed snapshot says the receiver now subscribes to `receipt/persisted`
+and the producer may use that name. Treat `receipt/committed` as the retired
+name when assessing this PR. No separately adopted receiver migration is
+provided; this assertion appears only in the proposed head snapshot.
 
-The producer must emit `receipt/committed`. No receiver migration, alternative
-event name, or dual-publish protocol has been adopted. The envelope's `id`
-field is an opaque receipt identifier. No production service uses this fixture.
+The envelope's `id` field is an opaque receipt identifier. No production
+service uses this fixture.
