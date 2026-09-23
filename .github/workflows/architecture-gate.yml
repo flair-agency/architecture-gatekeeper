@@ -173,7 +173,8 @@ jobs:
           sandbox: read-only
           safety-strategy: drop-sudo
           output-schema-file: ${{ inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
-          codex-args: '["--ephemeral"]'
+          # PR-owned AGENTS.md files are review evidence, never reviewer instructions.
+          codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
       - name: Apply consumer-owned decision validation
         if: inputs.validation-path != ''
         env:

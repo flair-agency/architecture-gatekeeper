@@ -49,3 +49,15 @@ test('provides a committed self local review configuration', () => {
   assert.match(prompt, /canonical repository-owned authority/);
   assert.match(prompt, /working-tree files[\s\S]*untrusted evidence/);
 });
+
+test('CI reviewer excludes checkout-owned AGENTS.md instructions', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
+  const args = workflow.match(/^\s+codex-args: '([^']+)'$/mu);
+  assert.ok(args, 'CI review must set explicit Codex arguments');
+  assert.deepEqual(JSON.parse(args[1]), [
+    '--ephemeral',
+    '-c',
+    'project_doc_max_bytes=0',
+  ]);
+  assert.match(workflow, /protected-review-instructions/);
+});
