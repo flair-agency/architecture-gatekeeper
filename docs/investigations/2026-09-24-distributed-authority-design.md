@@ -12,9 +12,9 @@ The [Provider PR #29 example](https://github.com/flair-agency/live-agency-provid
 
 ## Proposed contract boundary
 
-The consumer selects a versioned, finite Authority Set. Each required member has a stable ID, repository identity, immutable commit, path, and content digest after resolution. A reviewed change cannot select a weaker set for itself. The shared mechanism validates and transports the selected bytes; it does not infer authority by following links, inspecting dependencies, or deciding that one repository outranks another.
+The consumer selects a versioned, finite Authority Set. Each required member has a stable ID, repository identity, immutable commit, path, and content digest after resolution. A reviewed change cannot select a weaker set for itself. The manifest is a selector for owner-adopted sources; it is not itself architecture authority. The shared mechanism validates and transports the selected bytes; it does not infer authority by following links, inspecting dependencies, or deciding that one repository outranks another.
 
-The first implementation slice would accept only a same-repository member at the route's recorded authority revision or an external GitHub repository member at an explicit 40-character commit SHA. Moving external branch names, tags, release labels, recursive links, and submodule-derived external revisions remain future extensions. A submodule can still supply a file through the existing local path, but is not the distributed authority model.
+The first implementation slice would accept only a same-repository member at the route's recorded authority revision or an external GitHub repository member at an explicit 40-character commit SHA. An external pin is a consumer-adopted snapshot: an upstream update does not change the consumer's Authority Set until the consumer updates its protected pin. A pin-change PR is reviewed with the old protected-base pin; the new pin applies to subsequent reviews after merge. Moving external branch names, tags, release labels, recursive links, and submodule-derived external revisions remain future extensions. A submodule can still supply a file through the existing local path, but is not the distributed authority model.
 
 Illustrative manifest shape, subject to the owner choices below:
 
@@ -54,7 +54,7 @@ The current CI `protected-review-instructions: false` compatibility route does n
 
 Materialization failure is an incomplete review and cannot yield `PASS`, `BLOCK`, or `OWNER_DECISION`. A material conflict between successfully loaded authorities, with no adopted precedence or refinement rule, calls for semantic `OWNER_DECISION`. The reviewer prompt must state this distinction. The mechanism must not invent “parent wins” or “local wins.”
 
-For a completed review, deterministic validation checks the decision's reported authority IDs against **all** required manifest IDs, rejects unknown or omitted IDs, and applies the consumer schema and validation rules. The current CI report only checks that a structured decision exists; this complete-set check must run before `review` can succeed and before `accept` can see a `PASS`. A reported ID is an inspectable assertion, not proof of the model's internal reading process. The bounded prompt and an end-to-end fixture provide the practical check that all declared bytes were available.
+For every completed semantic decision—`PASS`, `BLOCK`, or `OWNER_DECISION`—deterministic validation checks the reported authority IDs against **all** required manifest IDs, rejects unknown, omitted, or extra IDs, and applies the consumer schema and validation rules. A mismatch makes the review incomplete/invalid; it cannot be accepted as any semantic decision. This prevents an incomplete Authority Set from producing a misleading `BLOCK` as well as an unsafe `PASS`. The current CI report only checks that a structured decision exists; this complete-set check must run before `review` can succeed and before `accept` can see a `PASS`. A reported ID is an inspectable assertion, not proof of the model's internal reading process. The bounded prompt and an end-to-end fixture provide the practical check that all declared bytes were available.
 
 Report the selected manifest identity, each resolved repository/commit/path/content digest, and the set digest with the reviewed revision. These are same-run provenance metadata. They do not create the independently reusable evidence or attestation contract reserved for [Issue #20](https://github.com/flair-agency/architecture-gatekeeper/issues/20), and a digest alone does not grant acceptance.
 
@@ -75,7 +75,7 @@ Rollout is opt-in. First land the contract and resolver behind explicit configur
 
 - Confirm the authority-source model, including whether `authority-revision` may select a local `HEAD` while CI selects the protected base, and where the manifest selector is recorded in protected policy.
 - Choose the first supported external transport and identity check, the source-read credential scope for private repositories, and the per-file, count, and total-byte limits. The example's GitHub-only exact-SHA scope is a proposal.
-- Choose how stable source IDs map onto the existing `authorityFiles` output and whether the new route requires an exact complete set for every decision, including `BLOCK` and `OWNER_DECISION`.
+- Choose how stable source IDs map onto the existing `authorityFiles` output.
 - Decide whether the current legacy CI compatibility route may coexist with the new explicit protected route and how its weaker assurance is named in integration guidance.
 
 Reviewing this document or opening its PR does not adopt those decisions. The owner must record them in `docs/architecture.md` or another named canonical owner before implementation changes the review or acceptance contract.
