@@ -33,6 +33,10 @@ function ownersFor(path) {
 }
 
 test('routes governing and security-sensitive paths to their intended teams', () => {
+  assert.deepEqual(ownersFor('AGENTS.md'), [
+    '@flair-agency/architecture',
+    '@flair-agency/engineering',
+  ]);
   assert.deepEqual(ownersFor('README.md'), [
     '@flair-agency/architecture',
     '@flair-agency/engineering',
