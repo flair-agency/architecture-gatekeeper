@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { materializeAuthoritySet, parseAuthorityManifest } from '../src/authority-set.mjs';
+import { materializeAuthoritySet, parseAuthorityManifest, validateAuthoritySetDecision } from '../src/authority-set.mjs';
 
 const limits = { maxManifestBytes: 4_096, maxMembers: 3, maxFileBytes: 1_024, maxTotalBytes: 2_048, maxPromptBytes: 8_192 };
 const externalSha = 'a'.repeat(40);
@@ -182,4 +182,51 @@ test('prompt escapes authority content so it cannot impersonate bundle structure
   const encoded = result.prompt.slice(result.prompt.indexOf('[{'), result.prompt.lastIndexOf(']') + 1);
   assert.deepEqual(JSON.parse(encoded).map(x => x.id), [external.id]);
   assert.equal(JSON.parse(encoded)[0].content, injection);
+});
+
+test('every completed decision reports the exact materialized IDs in any order', () => {
+  const selected = { members: [
+    { id: self.id, path: self.path },
+    { id: external.id, path: external.path },
+  ] };
+  for (const decision of ['PASS', 'BLOCK', 'OWNER_DECISION']) {
+    const result = { decision, authorityFiles: [external.id, self.id] };
+    assert.equal(validateAuthoritySetDecision(result, selected), result);
+    assert.equal(validateAuthoritySetDecision({ ...result, authorityFiles: [self.id, external.id] }, selected).decision, decision);
+  }
+});
+
+test('omitted, duplicate, extra, non-string and path-valued IDs invalidate every decision', () => {
+  const selected = { members: [{ id: self.id }, { id: external.id }] };
+  for (const decision of ['PASS', 'BLOCK', 'OWNER_DECISION']) {
+    for (const authorityFiles of [
+      undefined,
+      [self.id],
+      [self.id, self.id],
+      [self.id, external.id, 'extra'],
+      [self.id, 42],
+      [self.id, null],
+      [self.path, external.id],
+    ]) {
+      assert.throws(() => validateAuthoritySetDecision({ decision, authorityFiles }, selected), /Authority Set:/);
+    }
+  }
+  assert.throws(() => validateAuthoritySetDecision({ decision: 'UNKNOWN', authorityFiles: [self.id, external.id] }, selected), /unsupported/);
+});
+
+test('invalid materialized member sets cannot authorize a decision', () => {
+  const decision = { decision: 'PASS', authorityFiles: [self.id] };
+  for (const selected of [
+    undefined,
+    {},
+    { members: [] },
+    { members: 'provider-architecture' },
+    { members: [null] },
+    { members: [{}] },
+    { members: [{ id: 1 }] },
+    { members: [{ id: 'UPPER' }] },
+    { members: [{ id: self.id }, { id: self.id }] },
+  ]) {
+    assert.throws(() => validateAuthoritySetDecision(decision, selected), /Authority Set:/);
+  }
 });
