@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { materializeAuthoritySet, parseAuthorityManifest, validateAuthoritySetDecision } from '../src/authority-set.mjs';
+import { validateDecision as validateLegacyDecision } from '../src/review-contract.mjs';
 
 const limits = { maxManifestBytes: 4_096, maxMembers: 3, maxFileBytes: 1_024, maxTotalBytes: 2_048, maxPromptBytes: 8_192 };
 const externalSha = 'a'.repeat(40);
@@ -53,6 +54,7 @@ test('resolves committed self and exact pinned external bytes in declared order'
   assert.equal(result.setDigest, sha256(JSON.stringify(records)));
   assert.equal(result.manifestSha256, sha256(manifest([self, external])));
   assert.deepEqual(JSON.parse(result.prompt.slice(result.prompt.indexOf('[{'), result.prompt.lastIndexOf(']') + 1)).map(x => x.id), [self.id, external.id]);
+  assert.match(result.prompt, /Report exactly these IDs in authorityIds\./);
   assert.doesNotMatch(result.prompt, /uncommitted replacement/);
   const repeated = await materializeAuthoritySet(args(state));
   assert.equal(repeated.setDigest, result.setDigest);
@@ -190,32 +192,33 @@ test('every completed decision reports the exact materialized IDs in any order',
     { id: external.id, path: external.path },
   ] };
   for (const decision of ['PASS', 'BLOCK', 'OWNER_DECISION']) {
-    const result = { decision, authorityFiles: [external.id, self.id] };
+    const result = { decision, authorityIds: [external.id, self.id] };
     assert.equal(validateAuthoritySetDecision(result, selected), result);
-    assert.equal(validateAuthoritySetDecision({ ...result, authorityFiles: [self.id, external.id] }, selected).decision, decision);
+    assert.equal(validateAuthoritySetDecision({ ...result, authorityIds: [self.id, external.id] }, selected).decision, decision);
   }
 });
 
 test('omitted, duplicate, extra, non-string and path-valued IDs invalidate every decision', () => {
   const selected = { members: [{ id: self.id }, { id: external.id }] };
   for (const decision of ['PASS', 'BLOCK', 'OWNER_DECISION']) {
-    for (const authorityFiles of [
+    for (const authorityIds of [
       undefined,
       [self.id],
       [self.id, self.id],
       [self.id, external.id, 'extra'],
+      [self.id, 'extra'],
       [self.id, 42],
       [self.id, null],
       [self.path, external.id],
     ]) {
-      assert.throws(() => validateAuthoritySetDecision({ decision, authorityFiles }, selected), /Authority Set:/);
+      assert.throws(() => validateAuthoritySetDecision({ decision, authorityIds }, selected), /Authority Set:/);
     }
   }
-  assert.throws(() => validateAuthoritySetDecision({ decision: 'UNKNOWN', authorityFiles: [self.id, external.id] }, selected), /unsupported/);
+  assert.throws(() => validateAuthoritySetDecision({ decision: 'UNKNOWN', authorityIds: [self.id, external.id] }, selected), /unsupported/);
 });
 
 test('invalid materialized member sets cannot authorize a decision', () => {
-  const decision = { decision: 'PASS', authorityFiles: [self.id] };
+  const decision = { decision: 'PASS', authorityIds: [self.id] };
   for (const selected of [
     undefined,
     {},
@@ -229,4 +232,13 @@ test('invalid materialized member sets cannot authorize a decision', () => {
   ]) {
     assert.throws(() => validateAuthoritySetDecision(decision, selected), /Authority Set:/);
   }
+});
+
+test('legacy authorityFiles paths coexist with distributed authorityIds', () => {
+  const decision = { decision: 'BLOCK', authorityFiles: [self.path], authorityIds: [external.id, self.id] };
+  const selected = { members: [{ id: self.id }, { id: external.id }] };
+  const legacyConfig = { authorityFiles: [self.path], requiredReportedAuthorityFiles: [self.path] };
+  assert.equal(validateLegacyDecision(decision, legacyConfig), decision);
+  assert.equal(validateAuthoritySetDecision(decision, selected), decision);
+  assert.throws(() => validateAuthoritySetDecision({ decision: 'BLOCK', authorityFiles: [self.id, external.id] }, selected), /complete Authority ID set/);
 });
