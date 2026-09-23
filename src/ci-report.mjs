@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const COMMENT_MARKER = '<!-- architecture-gatekeeper:result:v1 -->';
+const OWNER_INTERVENTION_URL = 'https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/owner-intervention.md';
 const MAX_ITEM_LENGTH = 2_000;
 const MAX_REPORT_LENGTH = 60_000;
 const DECISIONS = new Set(['PASS', 'BLOCK', 'OWNER_DECISION']);
@@ -107,7 +108,10 @@ export function renderReport(classified, metadata = {}) {
   const decisionDigest = metadata.decisionDigest || digestDecision(decision);
   let body = `## ${icon} Architecture Gate — ${label}\n\n> ${cleanText(classified.summary)}\n`;
   if (classified.conclusion === 'OWNER_DECISION') {
-    body += '\nThis result is not accepted by the current run. The accountable owner must make the unresolved architecture decision, record it in canonical consumer-owned authority, and rerun the gate against that updated authority.\n';
+    body += `\nThis result is not accepted by the current run. The accountable owner must make the unresolved architecture decision, record it in canonical consumer-owned authority, and rerun the gate against that updated authority. [How to handle OWNER_DECISION](${OWNER_INTERVENTION_URL}#owner_decision).\n`;
+  } else if (classified.conclusion === 'ERROR') {
+    const runReference = metadata.runUrl ? `[Actions run](${cleanText(metadata.runUrl, 1_000)})` : 'Actions run';
+    body += `\nInspect the ${runReference} to identify the cause. If the CI reviewer is unavailable because of API, billing, model, credential, or service failure, follow [CI review unavailable](${OWNER_INTERVENTION_URL}#ci-review-unavailable). This result is not a PASS.\n`;
   }
   body += renderGates(decision?.gates);
   if (decision) {

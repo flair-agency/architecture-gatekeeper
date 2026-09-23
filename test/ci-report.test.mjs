@@ -50,9 +50,19 @@ test('reports owner decisions as unaccepted canonical-authority escalations', ()
   assert.match(report, /not accepted by the current run/);
   assert.match(report, /canonical consumer-owned authority/);
   assert.match(report, /rerun the gate/);
+  assert.match(report, /owner-intervention\.md#owner_decision/);
   assert.match(report, /PR head: `head123`/);
   assert.match(report, /Decision SHA-256: `[a-f0-9]{64}`/);
   assert.doesNotMatch(report, /environment/i);
+});
+
+test('links generic errors to cause inspection and conditional CI-unavailable guidance', () => {
+  const classified = classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'failure' });
+  const report = renderReport(classified, { runUrl: 'https://github.com/o/r/actions/runs/1' });
+  assert.match(report, /Inspect the \[Actions run\]/);
+  assert.match(report, /owner-intervention\.md#ci-review-unavailable/);
+  assert.match(report, /If the CI reviewer is unavailable/);
+  assert.match(report, /not a PASS/);
 });
 
 test('accepts a consumer-valid decision without a summary and supplies reporting copy', () => {
