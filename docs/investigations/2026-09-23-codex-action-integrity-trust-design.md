@@ -18,50 +18,54 @@ self-Gate runs and 77–78 seconds in three selected LIVE Agency runs. Job-level
 timing does not establish how much of that duration each step consumes.
 
 The proposed fast path changes the assurance claim. It would establish that the
-*selected immutable Action identity* matches an independently approved, fully
-verified identity. It would not rerun the Action tests on every pull request, nor
+*selected immutable Action identity* matches an identity verified by protected
+CI and promoted by the owner. It would not rerun the Action tests on every pull request, nor
 prove that GitHub's service and runner execute without compromise. The
 remaining platform assumption is that GitHub Actions resolves a full-SHA
 `uses: owner/repo@commit` to that commit's Action code. GitHub [documents
 full-SHA pinning](https://docs.github.com/en/actions/how-tos/create-and-publish-actions/manage-custom-actions#using-a-commits-sha-for-management)
 as an immutable Action reference; the preflight must still establish which
-repository and SHA were approved and that the approved checks passed.
+repository and SHA were promoted and that the required checks passed.
 
-## Trust boundary and approval prerequisite
+## Trust boundary and one-owner operation
 
-The only actors allowed to authorize a reusable verification record are the
-Gatekeeper maintainers acting through a reviewed change to its protected main
-branch. The record, verification procedure, verifier, and reusable workflow must
-be read from the same `job.workflow_sha` of the called Gatekeeper workflow. That
+One authorized repository owner currently operates Gatekeeper; a second human
+CODEOWNERS approval is not an available control. The design therefore trusts
+that owner to keep the GitHub branch/Actions settings intact, inspect the
+security-sensitive diff and protected CI run, and merge only a passing current
+PR. The machine gate must do the repeatable verification and record comparison;
+an owner merge is a promotion decision, not evidence that tests passed. A
+compromised or malicious owner could change repository settings or protected
+code, so this design cannot defend against that actor. The GitHub Actions
+service and runner are also trusted platform components.
+
+The record, verification procedure, verifier, and reusable workflow must be
+read from the same `job.workflow_sha` of the called Gatekeeper workflow. That
 SHA is also the identity consumed by an exact-SHA consumer caller. A pull
 request's files, artifacts, job outputs, comments, caches, or self-declared
-status are data to inspect; none can become a trusted record.
+status are data to inspect; none can become a trusted record. A full-SHA pin or
+cache hit alone does not prove successful verification.
 
-**The current main-branch settings do not yet enforce the approval premise.**
-At the time of this design (2026-09-23), the branch has a strict required
-`architecture-gate / accept` check and requires conversation resolution, but
-requires zero approving reviews, does not require code-owner review, and does
-not enforce its rules for administrators. CODEOWNERS names security and
-architecture for `.github/`, but that file alone does not enforce approval.
-Consequently, placing a record on `main` today proves that it is from the
-called Gatekeeper revision, **not** that security/architecture owners approved
-the Action. Before enabling the fast path, enforce at least one relevant
-security/architecture owner approval for changes to the Action selection,
-record, verifier, verification procedure, and workflow; require stale approvals
-to be dismissed, retain the required Gate check, and prevent bypass of these
-rules by administrators or equivalent actors. Verify the effective repository
-rules by API readback and an attempted unapproved test PR. Add explicit
-CODEOWNERS coverage for the record under `provenance/`, the verifier under
-`src/`, and the procedure/tests as well as the existing `.github/` workflow
-coverage; check that the required owner can actually approve each sensitive
-path. If this governance cannot be enforced, keep full verification on every
-enforced run.
+At the time of this design (2026-09-23), `main` requires a strict
+`architecture-gate / accept` check and conversation resolution. It requires
+zero approving reviews and does not enforce protection for administrators.
+This is compatible with one-owner operation but is not yet enough to promote
+fast-path evidence. Before enabling it, add the protected candidate-verification
+and promotion verdict to an always-running required `accept` check, require the
+strict check from the expected GitHub App, use a unique check name, and enable
+administrator enforcement if this repository permits it. Read settings back
+through the API and test that a failed, skipped, stale, or absent promotion
+verdict blocks merge. GitHub [documents](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)
+that required checks may accept a skipped conclusion, so the aggregator itself
+must fail when a required child did not pass. GitHub App source pinning and a
+unique name reduce ambiguity but do not turn the Actions App into an
+independent security reviewer; the owner must verify the required run's
+protected workflow origin and current PR SHA before merge.
 
-This trust model treats compromise of the protected Gatekeeper repository,
-its authorized approvers, the GitHub Actions service, or its runner as outside
-the protection supplied by the fast path. A record cannot compensate for such
-compromise. The document does not claim that a full-SHA pin or cache hit alone
-constitutes a successful verification.
+If admin enforcement or a reliable required check cannot be established,
+retain full verification on every enforced run. Even with admin enforcement,
+the repository owner can change the protection settings later. Treat that as
+an explicit root-of-trust limit, not as a claim of tamper-proof governance.
 
 ## Record candidate and promotion
 
@@ -75,7 +79,7 @@ for one Action identity would contain at least:
 | Action repository and full SHA | Exact `owner/repo@40-hex-commit` identity, including repository ownership; a fork and upstream are different identities even if their code matches. |
 | Commit tree and distribution SHA-256 | Observed Git tree and hash of the executable `dist/main.js`; include the Action metadata/entrypoint identity and any additional executable files if the Action layout changes. |
 | Verification procedure | A version and immutable digest of the protected verifier and ordered checks, toolchain versions, lockfile policy, provenance rules, and required regressions. |
-| Result and provenance | Explicit `passed` result, timestamp, protected run URL/ID and attempt, tested Action SHA/tree/digests, procedure digest, and the record-promoting PR/approval reference. |
+| Result and provenance | Explicit `passed` result, timestamp, protected run URL/ID and attempt, tested Action SHA/tree/digests, procedure digest, and the record-promoting PR/head reference. |
 
 The verifier must reject unsupported schema versions, absent fields, malformed
 digests, duplicate or ambiguous records, a non-`passed` result, and procedure
@@ -89,7 +93,7 @@ records to fail even when the Action SHA stays the same. If the procedure
 deliberately changes without changing the record, the full path remains
 required until a new record is promoted.
 
-Promotion sequence:
+Promotion sequence (to implement before the first fast-path release):
 
 1. A candidate PR proposes a new Action repository/SHA, its provenance, and
    the record or procedure update. The candidate is untrusted data. A separate
@@ -98,7 +102,7 @@ Promotion sequence:
    selected from the current protected Gatekeeper base. It checks out the
    candidate Action at its full SHA without review credentials and performs
    the complete provenance, frozen install, typecheck, test, and `dist`
-   cleanliness checks. If the approved procedure requires rebuilding the
+   cleanliness checks. If the protected procedure requires rebuilding the
    distribution, it must also compare the rebuilt executable bytes to the
    selected commit, rather than infer reproducibility from a clean tree alone.
    The protected runner must collect command exit status and observed
@@ -106,37 +110,47 @@ Promotion sequence:
    verdict or edit the protected verifier: execute candidate scripts in an
    isolated disposable environment without the verifier, runner command files,
    tokens, or writable access to the result channel. Use a fresh isolated job
-   for record preparation, rather than trusting files or environment changes left by
-   candidate execution. For #40, verification also
-   performs the descendant-held-stdio and large trailing stdout/stderr-drain
-   regressions and observes completion of the Action post step. If the
-   protected verifier cannot express a required new check, land that verifier
+   for record preparation, rather than trusting files or environment changes
+   left by candidate execution. For #40, candidate verification also runs the
+   descendant-held-stdio and large trailing stdout/stderr-drain regressions.
+   The exact upstream `uses` post step must then be dogfooded in repeated
+   protected-base runs with the existing full-per-run integrity job before a
+   fast-path record for that identity is promoted. If the protected verifier
+   cannot express a required new check, land that verifier
    update first under the existing full-per-run gate, then rerun the candidate.
-2. The protected run publishes observed results for review. Its artifact or
-   output is **not** an authorization source for ordinary runs. A separate
-   protected-base promotion check retrieves the named run and attempt through
-   the GitHub Actions API and requires the expected Gatekeeper repository,
-   protected workflow file and commit, allowed event/ref, successful run and
-   verification job, candidate PR head SHA, and procedure digest. It downloads
-   the result produced by the trusted finalizer job, verifies its API-reported
-   digest against the downloaded bytes, and compares the observed Action
-   repository/SHA/tree/dist and procedure with the proposed record. The run
-   ID and attempt in a PR are only selectors for this authenticated lookup;
-   a PR-supplied URL, artifact, or self-reported success cannot satisfy it.
-   An artifact from a PR workflow, a different run or attempt, or a
-   candidate-controlled job is rejected. The promotion check is required on
-   the **current PR head or merge revision** and compares the exact proposed
-   record bytes; each subsequent push invalidates the check and needs a fresh
-   candidate verification or an explicitly validated reuse of the same Action
-   identity and procedure. Security and architecture owners inspect the exact
-   source/provenance diff, protected run, selected `uses` line, and resulting
-   record. They approve the promotion PR under enforced branch rules. The
-   record enters the trusted store only with that approved merge. The human
-   approval covers the run, candidate code, and record.
-3. The first workflow revision that selects the new Action includes the
-   matching approved record, or the ordinary run fails closed. Keep the old
+2. A protected-base promotion verifier checks the candidate PR as data and
+   produces a required verdict for its **current head and merge revision**.
+   Its trusted code parses the proposed workflow and record without executing
+   them, compares the exact proposed record bytes with the observed
+   repository/SHA/tree/dist/entrypoint/procedure, and rejects any mismatch.
+   If verification used a separate run, the promotion verifier retrieves that
+   run and attempt through the GitHub Actions API and requires the expected
+   Gatekeeper repository, protected workflow file and commit, allowed
+   event/ref, successful verification job, current candidate PR head SHA, and
+   procedure digest. It downloads only the trusted finalizer's result,
+   verifies its API-reported artifact digest against the downloaded bytes,
+   and checks the measured Action identity against the proposed record. The
+   run ID and attempt in a PR are only selectors for this authenticated lookup;
+   a PR-supplied URL, artifact, output, cache, or self-reported success cannot
+   satisfy it. Any push that changes the PR head invalidates the verdict;
+   reverify or safely reuse the same immutable Action measurement only after
+   checking the new head and record bytes again. A failed, skipped, or absent
+   promotion result makes the always-running required `accept` check fail.
+3. The sole owner inspects the candidate code/provenance diff, protected run,
+   exact `uses` target, record, and current required check, then merges. The
+   owner is trusted to make this choice; no second human approval is claimed.
+   The record becomes an authorization source for ordinary runs only after it
+   is in protected `main` and bound to the called Gatekeeper release SHA.
+4. A workflow revision may select a new Action without a record only while
+   the existing complete credential-free verification remains mandatory on
+   every enforced run. The first fast-path revision for that Action includes
+   its matching promoted record, or the ordinary run fails closed. Keep the
    full-per-run gate during staging and dogfood; enable the fast path only in a
-   later reviewed change after the approval rule and negative tests are proven.
+   later owner-promoted change after the required promotion check and negative
+   tests are proven. A PR that changes the verifier or its procedure cannot
+   activate that new code in the same merge: land the verifier under the old
+   full-per-run gate, then run the protected candidate checks from that new
+   base before promoting a record or enabling the fast path.
 
 No check in a privileged `pull_request_target` run may execute code or package
 scripts from a PR checkout. GitHub [describes the risk](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target):
@@ -168,7 +182,7 @@ and `job.workflow_sha`) with `persist-credentials: false`. GitHub [defines those
 job identity properties](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context)
 for reusable workflows. The preflight must require the expected Gatekeeper
 repository and confirm that the called SHA is on protected `main` after the
-approval-policy checkpoint; an arbitrary commit from a PR branch cannot
+required-CI-promotion checkpoint; an arbitrary commit from a PR branch cannot
 authorize a record merely by containing one. Failure to establish this
 lineage fails closed. Every fast-path release must also read a current,
 schema-validated revocation policy from Gatekeeper's protected `main` on each
@@ -179,7 +193,7 @@ matching a revocation. It never lets the current policy authorize a new Action
 that the release-bundled record does not approve. The fetch must use the
 expected Gatekeeper repository and protected `main`, not a caller-supplied URL
 or PR ref. Bind the fetched policy bytes to the returned protected-main commit
-and its repository lineage after the approval-policy checkpoint. If a future
+and its repository lineage after the required-CI-promotion checkpoint. If a future
 format uses a signature, verify its signer and claim as well. An absent,
 malformed, inaccessible, or unverifiable current policy or unknown lineage
 fails closed. A PR cannot declare its own changes to be current `main` policy.
@@ -190,13 +204,13 @@ feature retain the existing full-per-run verification. A fast-path release
 published *without* this revocation check could not be retrofitted after its
 SHA was pinned; no such release may be published.
 
-The protected verifier parses the protected workflow
-structurally and requires exactly one review Action `uses` target. It compares
-that literal `owner/repo@full-SHA` with the integrity checkout target (if the
+The protected verifier parses the protected workflow structurally and requires
+exactly one review Action `uses` target. It compares that literal
+`owner/repo@full-SHA` with the integrity checkout target (if the
 full path remains present), the manifest's repository and `headCommit`, and
-the one approved record. It rejects expressions, tags, ambiguous duplicate
+the one promoted record. It rejects expressions, tags, ambiguous duplicate
 steps, or references outside the approved set. It also checks the record's tree,
-distribution digest, entrypoint and procedure against the approved protected
+distribution digest, entrypoint and procedure against the protected
 manifest and procedure digest. This is an identity comparison to previously
 measured bytes; without an Action checkout it does not rehash fresh Action
 bytes. The platform's full-SHA resolution supplies that last link.
@@ -215,9 +229,9 @@ first use and procedure changes visible to maintainers.
 For the self-Gate, `pull_request_target` uses the protected-base caller and
 local reusable workflow; the PR's proposed workflow, manifest, or record never
 supplies preflight authority. Consumers must keep a protected caller pinned to
-a reviewed, merged Gatekeeper release commit and must supply only the declared
-secrets. A caller that selects an unreviewed Gatekeeper commit is outside this
-trust model and must fail the protected-main lineage check. Consumer branch
+a protected-main, owner-promoted Gatekeeper release commit and supply only the
+declared secrets. A caller that selects an unpromoted Gatekeeper commit is
+outside this trust model and must fail the protected-main lineage check. Consumer branch
 protection must prevent a PR from changing its own privileged caller to a
 different workflow.
 `job.workflow_sha` selects the corresponding protected record and verifier,
@@ -230,7 +244,7 @@ existing protected-base and caller contracts.
 ## Negative cases, rollout, and recovery
 
 Implementation tests must cover changed repository with the same SHA,
-changed SHA/tree/dist/entrypoint, changed procedure, an unapproved/failed or
+changed SHA/tree/dist/entrypoint, changed procedure, an unverified/failed or
 skipped verification, PR-supplied replacement record/artifact/cache, malformed
 or duplicate `uses` lines, and unavailable evidence. For the #40 switch to
 `openai/codex-action`, the old Flair record must never match; the exact upstream
@@ -239,16 +253,17 @@ regressions before promotion. The upstream migration itself remains in #40.
 
 Stage an observe-only preflight beside the existing full job first. Compare its
 identity decision with the full job across self-Gate and LIVE Agency runs,
-including Action changes and deliberate negative cases. Only after protected
-approval settings, negative tests, and successful dogfood should a reviewed
-workflow change skip the repeated checkout/install/check/test/dist steps for
-an unchanged approved identity. Record policy, integrity, review, report,
-accept, and total attempt durations before and after, along with outcomes,
+including Action changes and deliberate negative cases. Only after the
+required protected CI promotion gate, administrator enforcement, negative
+tests, and successful dogfood should an owner-promoted workflow change skip the
+repeated checkout/install/check/test/dist steps for an unchanged promoted
+identity. Record policy, integrity, review, report, accept, and total attempt
+durations before and after, along with outcomes,
 cancellations, and change context; revise latency targets from those results
 rather than the small baseline alone.
 
-Rollback is a reviewed revert to the previous full-per-run integrity job and
-its matching Action pin/provenance, followed by a fresh self-Gate and consumer
+Rollback is an owner-promoted revert to the previous full-per-run integrity job
+and its matching Action pin/provenance, followed by a fresh self-Gate and consumer
 run. If the fast preflight or evidence store is suspect before that revert,
 disable the fast route or leave the required check failing; never bypass
 `codex-action-integrity` or mark `accept` successful without its required
@@ -257,9 +272,11 @@ migration rollback point.
 
 ## Decisions still needed before implementation
 
-- Select and enforce the effective approval rule for security/architecture
-  ownership, including administrator/bypass behavior, and verify it by API
-  readback and an unapproved PR. Current settings are insufficient.
+- Implement the protected-base candidate verifier and current-head promotion
+  verdict inside the required check; enable administrator enforcement if
+  available and verify the effective settings and failure behavior by API
+  readback and a deliberately failing PR. CODEOWNERS remains advisory while
+  there is only one owner.
 - Specify the exact versioned record schema, procedure digest computation,
   protected candidate-verification trigger, result-artifact binding and API
   checks for the promotion gate, and whether the full-path fallback is
