@@ -80,7 +80,7 @@ test('dogfoods only the protected reusable workflow with separated permissions',
 test('keeps self-review policy and schema valid', () => {
   const policy = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'), 'utf8'));
   const schema = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.schema.json'), 'utf8'));
-  assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium' });
+  assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-6-astra', reasoningEffort: 'medium' });
   assert.deepEqual(schema.properties.decision.enum, ['PASS', 'BLOCK', 'OWNER_DECISION']);
   assert.deepEqual(schema.properties.gates.required, ['sharedMechanism', 'trustBoundary']);
   assert.equal('anyOf' in schema, false);
