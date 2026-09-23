@@ -127,6 +127,12 @@ not choose how every host obtains that decision.
 - CI retains its independent model-review adapter and exact-SHA-pinned reusable
   workflow.
 
+Host sandboxing, process approval, credentials and permission to send review
+inputs to a model service are outside the semantic decision contract. A host
+refusal before a validated structured decision leaves the review incomplete; it
+is not a `BLOCK` decision. Gatekeeper must not weaken host policy to start a
+reviewer or reinterpret that refusal as an architecture judgment.
+
 The recorded revision selects inputs; it is not a workstation integrity lock.
 Authority snapshots are included in the reviewer request from committed Git
 objects. The runtime neither compares those objects with working-tree bytes nor

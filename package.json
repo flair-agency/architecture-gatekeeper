@@ -19,7 +19,7 @@
     "./review-contract": "./src/review-contract.mjs",
     "./policy": "./src/resolve-ci-policy.mjs"
   },
-  "files": ["src", "docs/architecture.md", "docs/owner-intervention.md", "README.md", "LICENSE"],
+  "files": ["src", "docs/architecture.md", "docs/owner-intervention.md", "docs/reviewer-host-permissions.md", "README.md", "LICENSE"],
   "scripts": {
     "test": "node --test test/*.test.mjs"
   },
