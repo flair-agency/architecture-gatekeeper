@@ -53,6 +53,12 @@ review input that identifies owner-adopted sources; it is not itself semantic
 architecture authority. Links, dependencies and submodules do not implicitly
 add members or establish precedence between them.
 
+The existing `authorityFiles` decision field reports repository paths. An
+opt-in distributed route reports stable source IDs in a separate `authorityIds`
+field under its own decision schema. A self member's `authority-revision`
+selector resolves to the protected base commit in CI or the single recorded
+commit in local/manual review; its manifest does not pin a stale SHA.
+
 An opt-in CI route claiming protected-authority assurance must select its
 Authority Set and same-repository authority bytes from the protected base
 revision, not the pull-request merge checkout. External revisions are
