@@ -81,6 +81,19 @@ test('external CLI without its explicit token fails without creating output', t 
   assert.throws(() => statSync(outputDir), { code: 'ENOENT' });
 });
 
+test('direct CLI invocation writes the selected self-authority bundle', t => {
+  const f = fixture(t); const outputDir = join(f.root, 'bundle');
+  const result = spawnSync(process.execPath, [new URL('../src/prepare-authority-set.mjs', import.meta.url).pathname,
+    '--manifest', f.manifestPath, '--self-repository', 'flair-agency/example', '--self-root', f.selfRoot,
+    '--authority-sha', f.authorityRevision, '--limits', f.limitsPath, '--output-dir', outputDir],
+  { encoding: 'utf8', env: { ...process.env, GATEKEEPER_SOURCE_TOKEN: '' } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(readFileSync(join(outputDir, 'authority-prompt.md'), 'utf8'), /# committed authority/);
+  const provenance = JSON.parse(readFileSync(join(outputDir, 'authority-provenance.json'), 'utf8'));
+  assert.equal(provenance.members[0].id, authority.id);
+  assert.equal(provenance.members[0].resolvedCommit, f.authorityRevision);
+});
+
 test('invalid and empty manifests fail before output creation', async t => {
   const f = fixture(t); const outputDir = join(f.root, 'bundle');
   for (const bytes of [Buffer.alloc(0), Buffer.from('{broken')]) {

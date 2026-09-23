@@ -12,8 +12,7 @@
     "architecture-gatekeeper": "src/local-gate.mjs",
     "architecture-review": "src/manual-review.mjs",
     "architecture-review-native": "src/native-review.mjs",
-    "architecture-gate-policy": "src/resolve-ci-policy.mjs",
-    "architecture-prepare-authority-set": "src/prepare-authority-set.mjs"
+    "architecture-gate-policy": "src/resolve-ci-policy.mjs"
   },
   "exports": {
     ".": "./src/local-gate.mjs",
