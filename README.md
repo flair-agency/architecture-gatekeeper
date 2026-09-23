@@ -167,6 +167,12 @@ change follows that authority, or `BLOCK` when it does not. A review comment,
 workflow approval or other run-local acknowledgement does not replace the
 canonical authority update.
 
+For `OWNER_DECISION` and CI review failures caused by API, billing, model,
+credential or service availability, follow the
+[owner-intervention runbook](docs/owner-intervention.md). CI failure remains
+fail closed; any repository-owner merge bypass is recorded as an explicit
+operational exception outside Architecture Gate acceptance.
+
 This repository dogfoods the reusable workflow through
 `.github/workflows/self-architecture-gate.yml`. The `pull_request_target` caller
 always comes from the protected base revision; it never runs a workflow supplied
