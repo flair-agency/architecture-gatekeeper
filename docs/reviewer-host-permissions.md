@@ -24,13 +24,15 @@ does not replace or filter the parent process environment. The child therefore
 inherits any credentials present there, including `OPENAI_API_KEY`, and may
 also use available Codex authentication. The surrounding host must decide
 whether starting the child with that environment and sending the review inputs
-is permitted. A host refusal, startup error, model-access error or timeout
-before `validateReviewResponse` succeeds yields no semantic
-`PASS`, `BLOCK` or `OWNER_DECISION`. The CLI and Hook fail with exit status 2
-and a generic reviewer-failure message. A validated `BLOCK` is different: it
-is a model decision about the proposed architecture, not a host refusal. The
-Hook returns non-PASS decisions as a failure after validation; the standalone
-CLI prints its validated structured decision and reviewed revision.
+is permitted. If the host refuses the top-level CLI or Hook invocation before
+Gatekeeper starts, only the host reports that refusal: Gatekeeper emits no exit
+status or message. If Gatekeeper starts but the child process is refused, fails
+to start, cannot access the model, or times out, the CLI and Hook exit with
+status 2 and a generic reviewer-failure message. Neither case yields a
+semantic `PASS`, `BLOCK` or `OWNER_DECISION`. A validated `BLOCK` is different:
+it is a model decision about the proposed architecture, not a host refusal.
+The Hook returns non-PASS decisions as a failure after validation; the
+standalone CLI prints its validated structured decision and reviewed revision.
 
 ## Synthetic observation on 2026-09-23
 
