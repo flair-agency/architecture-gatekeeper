@@ -45,7 +45,7 @@ test('provides a committed self local review configuration', () => {
   assert.equal(config.validationPath, '.codex/gatekeeper/decision.validation.json');
   assert.equal(config.reviewerConfigPath, '.codex/gatekeeper/reviewer.config.json');
   assert.equal(config.reviewTimeoutMs, 180000);
-  assert.equal(reviewer.model, 'gpt-5.6-sol');
+  assert.equal(reviewer.model, 'gpt-6-sol');
   assert.match(prompt, /canonical repository-owned authority/);
   assert.match(prompt, /working-tree files[\s\S]*untrusted evidence/);
 });
