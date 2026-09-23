@@ -10,6 +10,21 @@ const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: 
 test('resolves exact base-branch policy', () => assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium' }));
 test('uses explicit local-only default', () => assert.equal(resolveCiPolicy(policy, 'preview').mode, 'local-only'));
 test('rejects incomplete enforcement', () => assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { mode: 'enforced' } } }, 'main')));
+test('rejects v2-like selectors instead of silently using the legacy route', () => {
+  assert.throws(() => resolveCiPolicy({ ...policy, authoritySet: [] }, 'main'), /Unknown CI policy field/);
+  assert.throws(() => resolveCiPolicy({ ...policy, default: { mode: 'local-only', authoritySet: [] } }, 'main'), /Unknown CI policy default field/);
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: policy.branches.main, preview: { mode: 'local-only', authoritySet: [] } } }, 'main'), /Unknown CI policy branch preview field/);
+});
+test('validates every branch entry, including unselected branches', () => {
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: policy.branches.main, preview: { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authoritySet: [] } } }, 'main'), /Unknown CI policy branch preview field/);
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: policy.branches.main, preview: null } }, 'main'), /Invalid CI policy branch preview/);
+});
+test('rejects extra fields on local-only policies and malformed policy objects', () => {
+  assert.throws(() => resolveCiPolicy({ ...policy, default: { mode: 'local-only', model: 'ignored' } }, 'main'), /Unknown CI policy default field|Invalid CI policy default/);
+  assert.throws(() => resolveCiPolicy([], 'main'));
+  assert.throws(() => resolveCiPolicy({ ...policy, default: [] }, 'main'));
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: [] }, 'main'));
+});
 
 test('keeps protected codex-action arguments compatible', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
