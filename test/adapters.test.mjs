@@ -8,6 +8,7 @@ test('declares separate installed adapters', () => {
   assert.equal(manifest.bin['architecture-gatekeeper'], 'src/local-gate.mjs');
   assert.equal(manifest.bin['architecture-review'], 'src/manual-review.mjs');
   assert.equal(manifest.bin['architecture-review-native'], 'src/native-review.mjs');
+  assert.equal(manifest.bin['architecture-prepare-authority-set'], 'src/prepare-authority-set.mjs');
   assert.equal(manifest.publishConfig.registry, 'https://npm.pkg.github.com');
 });
 
@@ -30,6 +31,7 @@ test('publishes only an exact tested tag through GitHub Packages', () => {
   assert.match(workflow, /id: archive/);
   assert.match(workflow, /npm install --ignore-scripts --offline "\$ARCHIVE_PATH"/);
   assert.match(workflow, /installed-smoke\.mjs/);
+  assert.match(workflow, /architecture-prepare-authority-set/);
   assert.match(workflow, /npm publish "\$ARCHIVE_PATH" --ignore-scripts/);
   assert.match(workflow, /EXPECTED_INTEGRITY: \$\{\{ steps\.archive\.outputs\.integrity \}\}/);
   assert.match(workflow, /test "\$ACTUAL_INTEGRITY" = "\$EXPECTED_INTEGRITY"/);

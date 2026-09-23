@@ -107,6 +107,33 @@ executable, publishes with package lifecycle scripts disabled, and reads the
 published version and integrity back from the registry. Reusable GitHub Actions
 workflows remain pinned separately to an exact Git commit SHA.
 
+## Authority Set preparation
+
+`architecture-prepare-authority-set` is a preparatory CLI for explicitly
+materializing a v1 Authority Set. It reads the manifest and limits from paths
+supplied by the caller, reads self authority from the supplied committed Git
+revision, and resolves external GitHub members at pinned commits. Set
+`GATEKEEPER_SOURCE_TOKEN` only when the manifest selects external members. The
+command creates a new output directory and writes `authority-prompt.md` and
+content-free `authority-provenance.json`; it fails if the directory already
+exists and removes it if writing fails. It does not select policy, run a
+reviewer, produce acceptance evidence, or integrate with the reusable workflow.
+Any future CI route must select manifest and limits from protected authority
+and set concrete resource caps before enablement; caller-supplied paths and
+limits here make no such assurance claim.
+Set `AUTHORITY_SHA` to the exact self-authority commit selected by the caller
+before running the example below.
+
+```sh
+architecture-prepare-authority-set \
+  --manifest .codex/gatekeeper/authority-set.json \
+  --self-repository flair-agency/example \
+  --self-root . \
+  --authority-sha "$AUTHORITY_SHA" \
+  --limits .codex/gatekeeper/authority-limits.json \
+  --output-dir /tmp/authority-review-input
+```
+
 ## CI integration
 
 Call the reusable workflow at the immutable commit that produced the reviewed

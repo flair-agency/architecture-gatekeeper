@@ -38,6 +38,12 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, ${JS
   if (native.decision !== 'PASS') throw new Error('native adapter did not pass');
   const policyPath = join(parent, 'policy.json'); writeFileSync(policyPath, JSON.stringify({ version: 1, default: { mode: 'local-only' }, branches: {} }));
   if (!run('architecture-gate-policy', [policyPath, 'main']).includes('mode=local-only')) throw new Error('policy adapter did not pass');
+  const manifestPath = join(parent, 'authority-set.json'); writeFileSync(manifestPath, JSON.stringify({ version: 1, authorities: [{ id: 'installed-authority', repository: 'self', revision: 'authority-revision', path: 'AGENTS.md' }] }));
+  const limitsPath = join(parent, 'authority-limits.json'); writeFileSync(limitsPath, JSON.stringify({ maxManifestBytes: 4096, maxMembers: 2, maxFileBytes: 4096, maxTotalBytes: 4096, maxPromptBytes: 8192 }));
+  const bundlePath = join(parent, 'authority-bundle');
+  run('architecture-prepare-authority-set', ['--manifest', manifestPath, '--self-repository', 'flair-agency/smoke', '--self-root', root, '--authority-sha', execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), '--limits', limitsPath, '--output-dir', bundlePath]);
+  const provenance = JSON.parse(readFileSync(join(bundlePath, 'authority-provenance.json'), 'utf8'));
+  if (provenance.members[0].id !== 'installed-authority') throw new Error('Authority Set preparation adapter did not pass');
 } finally {
   rmSync(parent, { recursive: true, force: true });
 }
