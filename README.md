@@ -248,12 +248,14 @@ repository-owned manifest as part of the Gatekeeper diff.
 The `codex-action-integrity-observe` job compares the declared Action pin and
 verification command text in the protected workflow with the provenance
 manifest and an explicitly unpromoted fixture record. Its narrow parser does
-not check `if`, `continue-on-error`, `shell`, `working-directory`, or whether
-those commands ran, and cannot be reused for authorization. The job has no
-secrets and is outside the review and acceptance dependencies. Its output is
-diagnostic only; the full integrity job above still runs on every enforced
-review. The fixture does not claim that a protected verification run or owner
-approval occurred. See the
+check the expected enforced-mode job conditions and rejects `continue-on-error`
+on the full integrity job, plus `if`, `continue-on-error`, `shell`, or
+`working-directory` overrides on its verification step. It still does not
+prove the commands actually ran or interpret full YAML semantics, and cannot
+be reused for authorization. The job has no secrets and is outside the review
+and acceptance dependencies. Its output is diagnostic only; the full integrity
+job above still runs on every enforced review. The fixture does not claim that
+a protected verification run or owner approval occurred. See the
 [Issue #45 trust design](docs/investigations/2026-09-23-codex-action-integrity-trust-design.md)
 for the promotion and governance requirements before a fast path can exist.
 

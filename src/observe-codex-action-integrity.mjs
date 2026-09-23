@@ -114,11 +114,11 @@ export function observeWorkflowIdentity(workflow, procedure) {
   const checkoutCommit = scalar(checkout.lines, 10, 'ref');
   const pnpmVersion = scalar(namedStep(integrity, 'Setup pnpm').lines, 10, 'version');
   const nodeVersion = scalar(namedStep(integrity, 'Setup Node.js').lines, 10, 'node-version');
-  const commands = runLines(namedStep(integrity, 'Verify the pinned action before exposing review credentials'));
   const verificationStep = namedStep(integrity, 'Verify the pinned action before exposing review credentials');
   if (verificationStep.lines.some((line) => /^        (?:if|continue-on-error|shell|working-directory):/.test(line))) {
     throw new Error('Full verification step execution controls are unsupported');
   }
+  const commands = runLines(verificationStep);
   if (JSON.stringify(commands) !== JSON.stringify(procedure.commands)) throw new Error('Full verification commands drifted');
   if (pnpmVersion !== procedure.toolchain.pnpm || nodeVersion !== procedure.toolchain.node) {
     throw new Error('Full verification toolchain drifted');
@@ -192,7 +192,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       procedureBytes,
       verifierBytes: readFileSync(resolve(runtimeRoot, 'src/verify-codex-action.mjs')),
     });
-    process.stdout.write(`::notice::Issue #45 observation: declared Action identity and verification command text match (${result.reason}); execution semantics are unchecked; this is not authorization.\n`);
+    process.stdout.write(`::notice::Issue #45 observation: declared Action identity, verification command text, and selected execution controls match (${result.reason}); actual command execution and full YAML semantics are unproven; this is not authorization.\n`);
   } catch (error) {
     process.stdout.write(`::warning::Issue #45 observation: ${String(error.message).replace(/[\r\n]/g, ' ')}; full integrity job remains required.\n`);
   }
