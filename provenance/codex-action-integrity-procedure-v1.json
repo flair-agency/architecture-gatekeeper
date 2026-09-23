@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "epoch": 1,
+  "verifier": "src/verify-codex-action.mjs",
+  "verifierSha256": "392ed3457f374c81beb1fe2a8dbfe2f82d2c86e838adf63eadbb62baa093c79d",
+  "toolchain": {
+    "node": "22",
+    "pnpm": "10.33.0"
+  },
+  "commands": [
+    "node .architecture-gatekeeper-runtime/src/verify-codex-action.mjs \\",
+    "  .architecture-gatekeeper-runtime/provenance/codex-action-v1.12-pr151.json \\",
+    "  .codex-action-source",
+    "cd .codex-action-source",
+    "pnpm install --frozen-lockfile",
+    "pnpm run check",
+    "pnpm test",
+    "test -z \"$(git status --short -- dist)\""
+  ]
+}

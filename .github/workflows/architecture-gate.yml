@@ -120,6 +120,32 @@ jobs:
           pnpm test
           test -z "$(git status --short -- dist)"
 
+  codex-action-integrity-observe:
+    # Issue #45: observation only. This job has no secrets, no outputs used by
+    # review or accept, and no authority to replace the full integrity job.
+    if: needs.policy.outputs.mode == 'enforced'
+    needs: policy
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Check out the protected observation runtime
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Compare proposed Action identity without granting authority
+        run: |
+          node .architecture-gatekeeper-runtime/src/observe-codex-action-integrity.mjs \
+            .architecture-gatekeeper-runtime/.github/workflows/architecture-gate.yml \
+            .architecture-gatekeeper-runtime/provenance/codex-action-v1.12-pr151.json \
+            .architecture-gatekeeper-runtime/provenance/codex-action-integrity-procedure-v1.json \
+            .architecture-gatekeeper-runtime/provenance/fixtures/codex-action-integrity-candidate-v1.json \
+            .architecture-gatekeeper-runtime
+
   review:
     if: needs.policy.outputs.mode == 'enforced'
     needs: [policy, codex-action-integrity]
