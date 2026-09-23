@@ -191,6 +191,8 @@ pull-request code. The review prompt, output schema and CI policy are also read
 from the protected base revision under `.codex/gatekeeper/`. This caller sets
 `protected-review-instructions: true`; privileged triggers must enable that
 input so a pull request cannot replace its own reviewer instructions. The
+CI reviewer also disables automatic loading of checkout-owned `AGENTS.md`
+files; they remain review evidence, not reviewer instructions. The
 default remains `false` for compatibility with consumers that are still
 bootstrapping their first base-owned prompt and schema.
 
