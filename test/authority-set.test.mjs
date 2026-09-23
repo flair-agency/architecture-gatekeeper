@@ -139,6 +139,33 @@ test('manifest provenance remains bound to the parsed bytes across an external f
   assert.deepEqual(result.members.map(member => member.id), [external.id]);
 });
 
+test('file, total and prompt limits remain bound to their validated values across an external fetch', async t => {
+  const state = fixture(t);
+  for (const [key, initial, expected] of [
+    ['maxFileBytes', 5, /file limits/],
+    ['maxTotalBytes', 5, /total authority/],
+    ['maxPromptBytes', 50, /prompt exceeds limit/],
+  ]) {
+    const callerLimits = { ...limits, [key]: initial };
+    let fetchStarted;
+    const started = new Promise(resolve => { fetchStarted = resolve; });
+    let releaseFetch;
+    const released = new Promise(resolve => { releaseFetch = resolve; });
+    const pending = materializeAuthoritySet(args(state, [external], {
+      limits: callerLimits,
+      fetchExternal: async input => {
+        fetchStarted();
+        await released;
+        return { repository: input.repository, resolvedCommit: input.revision, path: input.path, type: 'file', content: Buffer.from('# parent contract\n') };
+      },
+    }));
+    await started;
+    callerLimits[key] = 100_000;
+    releaseFetch();
+    await assert.rejects(pending, expected);
+  }
+});
+
 test('file, aggregate and rendered prompt limits are enforced before review', async t => {
   const state = fixture(t);
   await assert.rejects(materializeAuthoritySet(args(state, [self], { limits: { ...limits, maxFileBytes: 5 } })), /file limits/);

@@ -16,8 +16,9 @@ function exactKeys(object, keys, label) {
 }
 function limitsOf(limits) {
   exactKeys(limits, LIMIT_KEYS, 'limits');
-  for (const key of LIMIT_KEYS) if (!Number.isSafeInteger(limits[key]) || limits[key] < 1) fail(`${key} must be a positive safe integer.`);
-  return limits;
+  const snapshot = Object.fromEntries(LIMIT_KEYS.map(key => [key, limits[key]]));
+  for (const key of LIMIT_KEYS) if (!Number.isSafeInteger(snapshot[key]) || snapshot[key] < 1) fail(`${key} must be a positive safe integer.`);
+  return Object.freeze(snapshot);
 }
 function bytesOf(value, label) {
   if (Buffer.isBuffer(value)) return value;
