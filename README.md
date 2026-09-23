@@ -179,6 +179,10 @@ operational exception outside Architecture Gate acceptance.
 
 This repository dogfoods the reusable workflow through
 `.github/workflows/self-architecture-gate.yml`. The `pull_request_target` caller
+requires the scoped [self-Gate Actions event policy](docs/self-gate-actions-policy.md)
+before GitHub enforces its public-repository default on 2026-11-02. The
+policy's configuration, verification, and recovery steps are documented there.
+The `pull_request_target` caller
 always comes from the protected base revision; it never runs a workflow supplied
 by the pull request. Jobs that check out the pull-request merge revision have
 only `contents: read`. The reporting job inherits `pull-requests: write`, but it
