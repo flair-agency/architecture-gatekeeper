@@ -75,6 +75,20 @@ test('missing evidence and a forged promotion claim cannot become authority', ()
   assert.throws(candidate((args) => { args.record.cacheHit = true; }), /unsupported fields/);
 });
 
+test('a disabled full-verification step can still match text but never grants authorization', () => {
+  const observe = candidate((args) => {
+    args.workflow = args.workflow.replace(
+      '      - name: Verify the pinned action before exposing review credentials\n        run: |',
+      '      - name: Verify the pinned action before exposing review credentials\n        if: false\n        run: |',
+    );
+  });
+  assert.deepEqual(observe(), {
+    identityMatches: true,
+    authorization: false,
+    reason: 'unpromoted-fixture',
+  });
+});
+
 test('observation job is outside the enforced review and acceptance dependencies', () => {
   assert.match(baseline.workflow, /  codex-action-integrity-observe:\n(?:.|\n)*?    continue-on-error: true/);
   assert.match(baseline.workflow, /  review:\n    if: needs\.policy\.outputs\.mode == 'enforced'\n    needs: \[policy, codex-action-integrity\]/);

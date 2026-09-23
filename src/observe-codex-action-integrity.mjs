@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-// Issue #45 observation only. This module cannot authorize a credential-bearing job.
+// Issue #45 observation only. This narrow parser does not check if,
+// continue-on-error, shell, working-directory, or whether commands ran. It
+// cannot authorize a credential-bearing job or be reused as an authorization
+// verifier.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -169,7 +172,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       procedureBytes,
       verifierBytes: readFileSync(resolve(runtimeRoot, 'src/verify-codex-action.mjs')),
     });
-    process.stdout.write(`::notice::Issue #45 observation: identity matches (${result.reason}); this is not authorization.\n`);
+    process.stdout.write(`::notice::Issue #45 observation: declared Action identity and verification command text match (${result.reason}); execution semantics are unchecked; this is not authorization.\n`);
   } catch (error) {
     process.stdout.write(`::warning::Issue #45 observation: ${String(error.message).replace(/[\r\n]/g, ' ')}; full integrity job remains required.\n`);
   }
