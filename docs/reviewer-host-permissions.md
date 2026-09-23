@@ -19,9 +19,13 @@ service. The surrounding host controls those permissions and may require
 approval before process launch or refuse the operation. Gatekeeper must leave
 that host policy intact.
 
-The local runtime does not pass an API key to the child. The child uses its
-available Codex authentication. A host refusal, startup error, model-access
-error or timeout before `validateReviewResponse` succeeds yields no semantic
+The local runtime does not set an API key explicitly for the child, but it also
+does not replace or filter the parent process environment. The child therefore
+inherits any credentials present there, including `OPENAI_API_KEY`, and may
+also use available Codex authentication. The surrounding host must decide
+whether starting the child with that environment and sending the review inputs
+is permitted. A host refusal, startup error, model-access error or timeout
+before `validateReviewResponse` succeeds yields no semantic
 `PASS`, `BLOCK` or `OWNER_DECISION`. The CLI and Hook fail with exit status 2
 and a generic reviewer-failure message. A validated `BLOCK` is different: it
 is a model decision about the proposed architecture, not a host refusal. The
