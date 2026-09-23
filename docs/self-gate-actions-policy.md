@@ -8,7 +8,12 @@ repository-specific policy needed for [issue #12](https://github.com/flair-agenc
 
 ## Intended setting
 
-Create an **active repository Actions event policy** that targets only
+The repository policy was applied on 2026-09-23 as
+[policy 5316](https://github.com/flair-agency/architecture-gatekeeper/settings/actions/rules/5316).
+Its API readback showed `enforcement: active`, the single workflow path below,
+and only `pull_request_target` in `allowed_events`.
+
+The **active repository Actions event policy** targets only
 `.github/workflows/self-architecture-gate.yml` and allows the
 `pull_request_target` event. Do not target all workflow paths or add other
 events to this policy. GitHub's Actions policy API represents the setting as:
