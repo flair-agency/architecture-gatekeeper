@@ -80,11 +80,14 @@ for one Action identity would contain at least:
 The verifier must reject unsupported schema versions, absent fields, malformed
 digests, duplicate or ambiguous records, a non-`passed` result, and procedure
 drift. A timestamp helps audit but is not a freshness grant: a record remains
-valid only while the exact selected Action identity and required verification
-procedure still match. A newly required regression or changed trust policy
-invalidates the old record even when the Action SHA stays the same. If the
-procedure deliberately changes without changing the record, the full path
-remains required until a new record is promoted.
+valid only while the exact selected Action identity and release-bundled
+verification procedure match. A newer requirement on `main` cannot by itself
+change an immutable consumer-pinned release. The revocation check below is
+therefore required for every fast-path release. A newly required regression or
+changed trust policy must raise its required procedure epoch, causing older
+records to fail even when the Action SHA stays the same. If the procedure
+deliberately changes without changing the record, the full path remains
+required until a new record is promoted.
 
 Promotion sequence:
 
@@ -167,7 +170,27 @@ for reusable workflows. The preflight must require the expected Gatekeeper
 repository and confirm that the called SHA is on protected `main` after the
 approval-policy checkpoint; an arbitrary commit from a PR branch cannot
 authorize a record merely by containing one. Failure to establish this
-lineage fails closed. The protected verifier parses the protected workflow
+lineage fails closed. Every fast-path release must also read a current,
+schema-validated revocation policy from Gatekeeper's protected `main` on each
+enforced run. That policy may only deny identities: it specifies a minimum
+verification-procedure epoch and revoked Gatekeeper release SHAs or Action
+repository/SHA identities. The preflight rejects a record below the epoch or
+matching a revocation. It never lets the current policy authorize a new Action
+that the release-bundled record does not approve. The fetch must use the
+expected Gatekeeper repository and protected `main`, not a caller-supplied URL
+or PR ref. Bind the fetched policy bytes to the returned protected-main commit
+and its repository lineage after the approval-policy checkpoint. If a future
+format uses a signature, verify its signer and claim as well. An absent,
+malformed, inaccessible, or unverifiable current policy or unknown lineage
+fails closed. A PR cannot declare its own changes to be current `main` policy.
+A policy increase blocks already pinned consumer releases until
+they update to a release with a newly verified record; an emergency Action or
+release revocation blocks the fast path immediately. Releases predating this
+feature retain the existing full-per-run verification. A fast-path release
+published *without* this revocation check could not be retrofitted after its
+SHA was pinned; no such release may be published.
+
+The protected verifier parses the protected workflow
 structurally and requires exactly one review Action `uses` target. It compares
 that literal `owner/repo@full-SHA` with the integrity checkout target (if the
 full path remains present), the manifest's repository and `headCommit`, and
@@ -241,5 +264,9 @@ migration rollback point.
   protected candidate-verification trigger, result-artifact binding and API
   checks for the promotion gate, and whether the full-path fallback is
   implemented or missing evidence always fails closed.
+- Specify the protected revocation-policy schema and authenticated fetch,
+  seed it before the first fast-path release, and test that a revoked Action,
+  revoked Gatekeeper release, higher procedure epoch, or unavailable policy
+  blocks already pinned consumers before review credentials are exposed.
 - Confirm the executable file set for the selected Action version and capture
   step-level timing so the achievable savings can be measured accurately.
