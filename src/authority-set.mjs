@@ -124,7 +124,10 @@ export async function materializeAuthoritySet({ manifestBytes, limits, selfRepos
   const budget = limitsOf(limits);
   if (!validRepository(selfRepository)) fail('self repository identity is invalid.');
   if (typeof selfRoot !== 'string' || !selfRoot || !HEX40.test(authorityRevision)) fail('self root and immutable authority revision are required.');
-  const manifest = parseAuthorityManifest(manifestBytes, budget);
+  const manifestInput = bytesOf(manifestBytes, 'manifest');
+  if (!manifestInput.length || manifestInput.length > budget.maxManifestBytes) fail('manifest byte limit exceeded or manifest is empty.');
+  const manifestSnapshot = Buffer.from(manifestInput);
+  const manifest = parseAuthorityManifest(manifestSnapshot, budget);
   if (manifest.authorities.some(member => member.repository !== 'self' && member.repository.toLowerCase() === selfRepository.toLowerCase())) fail('self repository must use self at the authority revision.');
   if (manifest.authorities.some(member => member.repository !== 'self') && typeof fetchExternal !== 'function') fail('external source adapter is required.');
   const members = [];
@@ -151,7 +154,7 @@ export async function materializeAuthoritySet({ manifestBytes, limits, selfRepos
   }
   const records = members.map(({ content, ...record }) => record);
   return {
-    manifestSha256: hash(bytesOf(manifestBytes, 'manifest')),
+    manifestSha256: hash(manifestSnapshot),
     setDigest: hash(Buffer.from(JSON.stringify(records))),
     members,
     prompt: render(members, budget.maxPromptBytes),

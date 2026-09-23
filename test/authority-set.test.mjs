@@ -115,6 +115,30 @@ test('explicit self repository identity cannot bypass the recorded authority rev
   assert.equal(fetched, false);
 });
 
+test('manifest provenance remains bound to the parsed bytes across an external fetch', async t => {
+  const state = fixture(t);
+  const source = manifest([external]);
+  const originalDigest = sha256(source);
+  let releaseFetch;
+  const fetchStarted = new Promise(resolve => { releaseFetch = resolve; });
+  let completeFetch;
+  const fetched = new Promise(resolve => { completeFetch = resolve; });
+  const pending = materializeAuthoritySet(args(state, [external], {
+    manifestBytes: source,
+    fetchExternal: async input => {
+      releaseFetch();
+      await fetched;
+      return { repository: input.repository, resolvedCommit: input.revision, path: input.path, type: 'file', content: Buffer.from('# parent contract\n') };
+    },
+  }));
+  await fetchStarted;
+  source.fill(0x20);
+  completeFetch();
+  const result = await pending;
+  assert.equal(result.manifestSha256, originalDigest);
+  assert.deepEqual(result.members.map(member => member.id), [external.id]);
+});
+
 test('file, aggregate and rendered prompt limits are enforced before review', async t => {
   const state = fixture(t);
   await assert.rejects(materializeAuthoritySet(args(state, [self], { limits: { ...limits, maxFileBytes: 5 } })), /file limits/);
