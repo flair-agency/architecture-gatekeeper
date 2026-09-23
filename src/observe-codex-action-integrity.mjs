@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-// Issue #45 observation only. This narrow parser does not check if,
-// continue-on-error, shell, working-directory, or whether commands ran. It
-// cannot authorize a credential-bearing job or be reused as an authorization
-// verifier.
+// Issue #45 observation only. This narrow parser checks a small set of
+// execution controls to avoid misleading observations, but cannot authorize a
+// credential-bearing job or be reused as an authorization verifier.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -93,6 +92,15 @@ export function observeWorkflowIdentity(workflow, procedure) {
   const review = parseSteps(parseJob(workflow, 'review'));
   const integrity = parseSteps(parseJob(workflow, 'codex-action-integrity'));
   const reviewer = namedStep(review, 'Run read-only architecture review');
+  // The observer accepts only the known policy condition for the protected
+  // jobs. Candidate condition changes must not hide execution or weaken the
+  // independent full verification boundary.
+  requireJobControls(workflow, 'review', "if: needs.policy.outputs.mode == 'enforced'");
+  requireJobControls(workflow, 'codex-action-integrity', "if: needs.policy.outputs.mode == 'enforced'");
+  const verifyJob = parseJob(workflow, 'codex-action-integrity');
+  if (verifyJob.some((line) => /^    continue-on-error:/.test(line))) {
+    throw new Error('Full verification job must not continue on error');
+  }
   const actionUses = scalar(reviewer.lines, 8, 'uses');
   const otherCodexUses = review.filter((step) => step !== reviewer).filter((step) => {
     try { return /\/codex-action@/.test(scalar(step.lines, 8, 'uses')); }
@@ -107,6 +115,10 @@ export function observeWorkflowIdentity(workflow, procedure) {
   const pnpmVersion = scalar(namedStep(integrity, 'Setup pnpm').lines, 10, 'version');
   const nodeVersion = scalar(namedStep(integrity, 'Setup Node.js').lines, 10, 'node-version');
   const commands = runLines(namedStep(integrity, 'Verify the pinned action before exposing review credentials'));
+  const verificationStep = namedStep(integrity, 'Verify the pinned action before exposing review credentials');
+  if (verificationStep.lines.some((line) => /^        (?:if|continue-on-error|shell|working-directory):/.test(line))) {
+    throw new Error('Full verification step execution controls are unsupported');
+  }
   if (JSON.stringify(commands) !== JSON.stringify(procedure.commands)) throw new Error('Full verification commands drifted');
   if (pnpmVersion !== procedure.toolchain.pnpm || nodeVersion !== procedure.toolchain.node) {
     throw new Error('Full verification toolchain drifted');
@@ -115,6 +127,14 @@ export function observeWorkflowIdentity(workflow, procedure) {
     throw new Error('Review Action and integrity checkout differ');
   }
   return { repository: match[1], commit: match[2] };
+}
+
+function requireJobControls(workflow, name, expectedCondition) {
+  const job = parseJob(workflow, name);
+  const conditions = job.filter((line) => /^    if:/.test(line));
+  if (conditions.length !== 1 || conditions[0].trim() !== expectedCondition) {
+    throw new Error(`${name} job condition differs from the protected policy condition`);
+  }
 }
 
 export function observeCandidateIdentity({ workflow, manifest, record, procedure, procedureBytes, verifierBytes }) {

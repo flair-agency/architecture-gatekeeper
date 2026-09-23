@@ -75,18 +75,40 @@ test('missing evidence and a forged promotion claim cannot become authority', ()
   assert.throws(candidate((args) => { args.record.cacheHit = true; }), /unsupported fields/);
 });
 
-test('a disabled full-verification step can still match text but never grants authorization', () => {
-  const observe = candidate((args) => {
-    args.workflow = args.workflow.replace(
-      '      - name: Verify the pinned action before exposing review credentials\n        run: |',
-      '      - name: Verify the pinned action before exposing review credentials\n        if: false\n        run: |',
-    );
-  });
-  assert.deepEqual(observe(), {
-    identityMatches: true,
-    authorization: false,
-    reason: 'unpromoted-fixture',
-  });
+test('disabled or error-ignored full verification is rejected', () => {
+  const cases = [
+    (args) => {
+      args.workflow = args.workflow.replace(
+        '      - name: Verify the pinned action before exposing review credentials\n        run: |',
+        '      - name: Verify the pinned action before exposing review credentials\n        if: false\n        run: |',
+      );
+    },
+    (args) => {
+      args.workflow = args.workflow.replace(
+        '      - name: Verify the pinned action before exposing review credentials\n        run: |',
+        '      - name: Verify the pinned action before exposing review credentials\n        continue-on-error: true\n        run: |',
+      );
+    },
+    (args) => {
+      args.workflow = args.workflow.replace(
+        '  codex-action-integrity:\n    if: needs.policy.outputs.mode == \'enforced\'\n',
+        '  codex-action-integrity:\n    if: false\n',
+      );
+    },
+    (args) => {
+      args.workflow = args.workflow.replace(
+        '  codex-action-integrity:\n    if: needs.policy.outputs.mode == \'enforced\'\n',
+        '  codex-action-integrity:\n    if: needs.policy.outputs.mode == \'enforced\'\n    continue-on-error: true\n',
+      );
+    },
+    (args) => {
+      args.workflow = args.workflow.replace(
+        '  review:\n    if: needs.policy.outputs.mode == \'enforced\'\n',
+        '  review:\n    if: false\n',
+      );
+    },
+  ];
+  for (const change of cases) assert.throws(candidate(change));
 });
 
 test('observation job is outside the enforced review and acceptance dependencies', () => {
