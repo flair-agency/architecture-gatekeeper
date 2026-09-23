@@ -5,20 +5,44 @@ import { fileURLToPath } from 'node:url';
 const MODES = new Set(['enforced', 'local-only']);
 const EFFORTS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
 
+function isRecord(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function requireOnlyKeys(value, allowed, label) {
+  if (!isRecord(value)) throw new Error(`Invalid ${label}`);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) throw new Error(`Unknown ${label} field: ${key}`);
+  }
+}
+
+function validateBranch(branch, label) {
+  requireOnlyKeys(branch, new Set(['mode', 'model', 'reasoningEffort']), label);
+  if (!MODES.has(branch.mode)) throw new Error(`Invalid ${label} mode`);
+  if (branch.mode === 'local-only') {
+    if (Object.keys(branch).length !== 1) throw new Error(`Invalid ${label}`);
+    return;
+  }
+  if (typeof branch.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(branch.model)) {
+    throw new Error(`Enforced ${label} requires a valid model`);
+  }
+  if (!EFFORTS.has(branch.reasoningEffort)) throw new Error(`Invalid reasoning effort for ${label}`);
+}
+
 export function resolveCiPolicy(policy, baseBranch) {
-  if (policy?.version !== 1) throw new Error('Unsupported Architecture Gate CI policy version');
+  if (!isRecord(policy) || policy.version !== 1) throw new Error('Unsupported Architecture Gate CI policy version');
+  requireOnlyKeys(policy, new Set(['version', 'default', 'branches']), 'CI policy');
   if (!baseBranch || typeof baseBranch !== 'string') throw new Error('A base branch is required');
-  if (!policy.default || typeof policy.default !== 'object') throw new Error('CI policy requires default');
-  if (!policy.branches || typeof policy.branches !== 'object' || Array.isArray(policy.branches)) {
+  if (!isRecord(policy.default)) throw new Error('CI policy requires default');
+  if (!isRecord(policy.branches)) {
     throw new Error('CI policy requires a branches object');
   }
-  const selected = Object.hasOwn(policy.branches, baseBranch) ? policy.branches[baseBranch] : policy.default;
-  if (!selected || !MODES.has(selected.mode)) throw new Error(`Invalid CI gate mode for ${baseBranch}`);
-  if (selected.mode === 'local-only') return { baseBranch, mode: 'local-only', model: '', reasoningEffort: '' };
-  if (typeof selected.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(selected.model)) {
-    throw new Error(`Enforced CI policy for ${baseBranch} requires a valid model`);
+  validateBranch(policy.default, 'CI policy default');
+  for (const [branchName, branch] of Object.entries(policy.branches)) {
+    validateBranch(branch, `CI policy branch ${branchName}`);
   }
-  if (!EFFORTS.has(selected.reasoningEffort)) throw new Error(`Invalid reasoning effort for ${baseBranch}`);
+  const selected = Object.hasOwn(policy.branches, baseBranch) ? policy.branches[baseBranch] : policy.default;
+  if (selected.mode === 'local-only') return { baseBranch, mode: 'local-only', model: '', reasoningEffort: '' };
   return { baseBranch, mode: 'enforced', model: selected.model, reasoningEffort: selected.reasoningEffort };
 }
 

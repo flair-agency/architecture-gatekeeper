@@ -134,6 +134,33 @@ workaround: replace the fork pin only after reviewing an upstream release that
 contains the equivalent fix. `local-only` records an explicit waiver and makes
 no OpenAI API call.
 
+Version 1 of `.codex/gatekeeper/ci-policy.json` accepts only `version`,
+`default`, and `branches` at the top level. Both `default` and every named
+branch use one of these shapes:
+
+```json
+{
+  "version": 1,
+  "default": { "mode": "local-only" },
+  "branches": {
+    "main": {
+      "mode": "enforced",
+      "model": "gpt-6-sol",
+      "reasoningEffort": "medium"
+    }
+  }
+}
+```
+
+`local-only` accepts only `mode`; `enforced` requires `mode`, `model`, and
+`reasoningEffort`, with no other fields. `model` is a nonempty identifier using
+letters, digits, `.`, `_`, or `-`; `reasoningEffort` is one of `minimal`, `low`,
+`medium`, `high`, `xhigh`, `max`, or `ultra`. Policy resolution validates every
+branch entry, even when another branch is being reviewed. Unknown fields,
+incomplete entries, or unsupported policy versions fail the policy job rather
+than falling back to an older review route. Before upgrading the workflow,
+remove previously ignored metadata and correct any stale branch entries.
+
 Before the review job receives `OPENAI_API_KEY`, a separate credential-free
 integrity job checks out that same exact fork commit, verifies its revision,
 base/head trees, complete three-commit sequence, changed-file allowlist and
