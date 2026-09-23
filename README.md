@@ -107,6 +107,14 @@ executable, publishes with package lifecycle scripts disabled, and reads the
 published version and integrity back from the registry. Reusable GitHub Actions
 workflows remain pinned separately to an exact Git commit SHA.
 
+The package is intended to have **Public** visibility, matching this public
+MIT-licensed repository. GitHub Packages controls visibility in the package's
+settings, separately from `publishConfig` and repository visibility. Public
+visibility does not allow anonymous installation from its npm registry:
+consumers still authenticate with an appropriate `read:packages` credential
+or supported `GITHUB_TOKEN` access. Existing exact-version pins and CI/local
+credential setup remain required.
+
 ## CI integration
 
 Call the reusable workflow at the immutable commit that produced the reviewed
