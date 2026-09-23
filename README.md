@@ -55,6 +55,8 @@ inputs. See `examples/config.json`. Package resolution is local and fixed: the
 launcher imports its already installed exact package version and must not use
 `npx` or another registry fallback. The Hook adapter invokes an installed
 `codex` binary with hooks disabled and a read-only sandbox.
+See [reviewer host permissions](docs/reviewer-host-permissions.md) for the
+child-process authorization boundary.
 When `validationPath` is configured, the local and manual review paths apply
 that committed policy after structured generation and fail closed on a rule
 violation or malformed policy.
@@ -70,6 +72,8 @@ architecture-review 'Should this responsibility move from Runtime to the Provide
 
 The task may instead be supplied on standard input. This standalone terminal
 adapter uses child `codex exec`; it is separate from the Codex-hosted Skill.
+Its host boundary is described in
+[reviewer host permissions](docs/reviewer-host-permissions.md).
 The command uses the same
 committed consumer-owned configuration, prompt, schema, reviewer settings and
 authority files as the local gate. It emits the structured `PASS`, `BLOCK` or
