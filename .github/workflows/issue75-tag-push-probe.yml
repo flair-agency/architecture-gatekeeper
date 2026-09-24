@@ -1,0 +1,94 @@
+name: Issue 75 tag push probe
+
+# Experimental observation only. This is not an Architecture Gate check.
+on:
+  push:
+    tags:
+      - 'issue75-attest-poc/*'
+
+permissions: {}
+
+jobs:
+  observe-tag-push:
+    name: Observe tag push metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Compare event identity with the current annotated tag object
+        env:
+          EVENT_PATH: ${{ github.event_path }}
+          EVENT_REF: ${{ github.ref }}
+          ACTOR_ID: ${{ github.actor_id }}
+          ACTOR_LOGIN: ${{ github.actor }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          EVENT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
+
+          with open(os.environ['EVENT_PATH'], encoding='utf-8') as stream:
+              event = json.load(stream)
+
+          ref = os.environ['EVENT_REF']
+          assert ref.startswith('refs/tags/issue75-attest-poc/')
+          assert event['ref'] == ref
+          assert event.get('deleted') is False
+          repository = os.environ['REPOSITORY']
+
+          # This is a public-repository, unauthenticated, read-only API query.
+          # The ref may move between the event and this query; that gap is an
+          # explicit result of this probe, not a verified attestation.
+          def github(path):
+              request = Request(
+                  'https://api.github.com/repos/' + repository + path,
+                  headers={'Accept': 'application/vnd.github+json',
+                           'User-Agent': 'issue75-tag-push-probe'},
+              )
+              with urlopen(request, timeout=15) as response:
+                  return json.load(response)
+
+          tag_name = ref.removeprefix('refs/tags/')
+          tag_ref = github('/git/ref/tags/' + quote(tag_name, safe='/'))
+          assert tag_ref['object']['type'] == 'tag', 'annotated tag required'
+          tag_oid = tag_ref['object']['sha']
+          tag = github('/git/tags/' + tag_oid)
+          assert tag['object']['type'] == 'commit'
+          tag_ref_again = github('/git/ref/tags/' + quote(tag_name, safe='/'))
+
+          observation = {
+              'kind': 'github-tag-attestation-observation',
+              'acceptance_eligible': False,
+              'human_authentication': 'unproven',
+              'event_ref': ref,
+              'event_created': event.get('created'),
+              'event_forced': event.get('forced'),
+              'event_after_commit': event.get('after'),
+              'event_sender_id': event.get('sender', {}).get('id'),
+              'event_sender_type': event.get('sender', {}).get('type'),
+              'initial_run_actor_id': os.environ['ACTOR_ID'],
+              'initial_run_actor_login': os.environ['ACTOR_LOGIN'],
+              'triggering_actor_login': os.environ['TRIGGERING_ACTOR'],
+              'run_attempt': os.environ['RUN_ATTEMPT'],
+              'workflow_ref': os.environ['WORKFLOW_REF'],
+              'github_sha': os.environ['EVENT_SHA'],
+              'repository_id': event.get('repository', {}).get('id'),
+              'queried_tag_object_oid': tag_oid,
+              'queried_tag_target_commit': tag['object']['sha'],
+              'current_ref_target_matches_event_commit':
+                  tag['object']['sha'] == event.get('after'),
+              'ref_stable_during_queries':
+                  tag_ref_again['object'] == tag_ref['object'],
+          }
+          print(json.dumps(observation, indent=2, sort_keys=True))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as stream:
+              stream.write('## Experimental tag push observation\n\n')
+              stream.write('```json\n' + json.dumps(observation, indent=2, sort_keys=True) + '\n```\n')
+              stream.write('\nThis is not owner authentication or merge acceptance. '
+                           'The event does not bind the queried tag object OID against a concurrent ref update.\n')
+          PY
