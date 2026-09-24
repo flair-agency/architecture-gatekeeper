@@ -178,6 +178,15 @@ B, or performed a human action for B. The resulting record must say
 attestation set. A change cannot lower its own required grade or select its
 own acceptance policy. No grade or amendment route is enabled by default.
 
+The `G0` option reflects the first user's existing owner-controlled exception
+operation: Gatekeeper does not currently verify a separate per-amendment owner
+attestation for that operation. Making `G1` mandatory from the outset would
+exclude single-owner and other repositories that cannot yet provide a
+supported individual-attestation mechanism. `G0` gives those repositories a
+formal, auditable policy choice without falsely claiming that each amendment
+received authenticated owner approval. It does not remove the repository's
+responsibility to control who can merge under its hosting rules.
+
 Even at `G0`, the protected verifier must validate a versioned ReviewRecord
 for the exact historical `BLOCK`, an AmendmentRecord binding B to that review
 and the authority being amended, the current repository/base/head and
