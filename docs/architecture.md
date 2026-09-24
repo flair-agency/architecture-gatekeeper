@@ -187,6 +187,12 @@ formal, auditable policy choice without falsely claiming that each amendment
 received authenticated owner approval. It does not remove the repository's
 responsibility to control who can merge under its hosting rules.
 
+The value of this route is procedural: it replaces a recurring, unstructured
+merge exception with a separate amendment Change, an exact triggering `BLOCK`,
+protected acceptance conditions and an audit record. That improvement in
+process traceability must not be described as improvement in per-change owner
+authentication; the latter requires a higher-grade attestation route.
+
 Even at `G0`, the protected verifier must validate a versioned ReviewRecord
 for the exact historical `BLOCK`, an AmendmentRecord binding B to that review
 and the authority being amended, the current repository/base/head and
@@ -198,16 +204,16 @@ non-owner: `G0` makes no author-identity claim. Repository merge permissions
 and branch rules control who can actually merge it and are separate from the
 Gatekeeper grade.
 
-Attestation adapters provide verified evidence facts, not acceptance results
-or grades. A Null Adapter may intentionally return a complete empty
-attestation set, from which the core derives `G0`. Invalid, unavailable,
-malformed or incomplete evidence is **not** an empty set and cannot be treated
-as `G0` or trigger a weaker route. If protected policy requires a higher
-grade, the Null Adapter cannot satisfy it. Future grades may express one
-authenticated owner or a distinct-principal quorum; the core must keep the
-number/relationship of attesters separate from the strength of each
-authentication mechanism. Mechanisms and any alternatives are selected by
-protected policy, never by a first-success fallback chain.
+The `G0` route selects **no attestation mechanism**. The core records an empty
+attestation set and derives `G0` without invoking an adapter. Attestation
+adapters are used only when policy requires external per-amendment evidence;
+they authenticate that evidence and return verified facts, not acceptance
+results or grades. An invalid, unavailable, malformed or incomplete selected
+adapter result is **not** a G0 route and cannot trigger one as fallback.
+Future grades may express one authenticated owner or a distinct-principal
+quorum; the core must keep the number/relationship of attesters separate from
+the strength of each authentication mechanism. Mechanisms and any alternatives
+are selected by protected policy, never by a first-success fallback chain.
 
 This is a target contract, not an active acceptance route. It becomes active
 only after the evidence format, deterministic verifier, protected routing and
