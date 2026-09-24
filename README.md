@@ -197,8 +197,12 @@ exact reported IDs before accepting a result. Missing or oversized limits,
 sources or IDs fail the review. The runtime ceilings are 65,536 manifest
 bytes, 32 members, 131,072 bytes per file, 524,288 bytes total, and 1,048,576
 bytes for the complete prompt. The values above are the recommended effective
-profile. This repository's own CI policy remains on the version 1 route until
-separately enabled.
+profile. This repository's self-review selects the version 2 route from its
+protected base, with `docs/architecture.md` as its first Authority Set member.
+The adoption pull request is reviewed under the prior protected-base policy;
+the new selection applies to subsequent pull requests after merge. Its CI-only
+output schema requires `authorityIds`, while local and manual review keep their
+existing committed input contract.
 
 Before the review job receives `OPENAI_API_KEY`, a separate credential-free
 integrity job checks out that same exact fork commit, verifies its revision,
