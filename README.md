@@ -268,11 +268,13 @@ bootstrapping their first base-owned prompt and schema.
 
 The repository also dogfoods the local and Codex-hosted Skill paths through
 `.codex/gatekeeper/config.json`. That configuration uses the canonical
-`docs/architecture.md` contract as its committed authority and shares the
-decision schema and validation policy with self-review CI. Local implementation
-and working-tree content remain review evidence rather than authority. The
-native self-review has a bounded 180-second deadline and remains fail closed if
-the reviewer does not complete within it.
+`docs/architecture.md` contract as its committed authority. Local review and
+self-review CI share the committed decision-validation policy but use separate
+committed output schemas: CI requires `authorityIds` for its selected Authority
+Set, while local and manual review keep the existing path-based schema. Local
+implementation and working-tree content remain review evidence rather than
+authority. The native self-review has a bounded 180-second deadline and remains
+fail closed if the reviewer does not complete within it.
 
 Lifecycle-workaround adoption evidence and repeat dogfood results are tracked
 in [architecture-gatekeeper issue #15](https://github.com/flair-agency/architecture-gatekeeper/issues/15).
