@@ -6,6 +6,7 @@ const HEX40 = /^[a-f0-9]{40}$/i;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const ID = /^[a-z][a-z0-9-]{0,63}$/;
 const LIMIT_KEYS = ['maxManifestBytes', 'maxMembers', 'maxFileBytes', 'maxTotalBytes', 'maxPromptBytes'];
+export const MAX_AUTHORITY_LIMITS = Object.freeze({ maxManifestBytes: 65_536, maxMembers: 32, maxFileBytes: 131_072, maxTotalBytes: 524_288, maxPromptBytes: 1_048_576 });
 const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 
 function fail(message) { throw new Error(`Authority Set: ${message}`); }
@@ -17,9 +18,10 @@ function exactKeys(object, keys, label) {
 function limitsOf(limits) {
   exactKeys(limits, LIMIT_KEYS, 'limits');
   const snapshot = Object.fromEntries(LIMIT_KEYS.map(key => [key, limits[key]]));
-  for (const key of LIMIT_KEYS) if (!Number.isSafeInteger(snapshot[key]) || snapshot[key] < 1) fail(`${key} must be a positive safe integer.`);
+  for (const key of LIMIT_KEYS) if (!Number.isSafeInteger(snapshot[key]) || snapshot[key] < 1 || snapshot[key] > MAX_AUTHORITY_LIMITS[key]) fail(`${key} must be a positive safe integer within the supported ceiling.`);
   return Object.freeze(snapshot);
 }
+export function validateAuthorityLimits(limits) { return limitsOf(limits); }
 function bytesOf(value, label) {
   if (Buffer.isBuffer(value)) return value;
   if (typeof value === 'string') return Buffer.from(value, 'utf8');

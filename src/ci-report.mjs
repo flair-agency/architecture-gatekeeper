@@ -9,6 +9,9 @@ const OWNER_INTERVENTION_URL = 'https://github.com/flair-agency/architecture-gat
 const MAX_ITEM_LENGTH = 2_000;
 const MAX_REPORT_LENGTH = 60_000;
 const DECISIONS = new Set(['PASS', 'BLOCK', 'OWNER_DECISION']);
+const AUTHORITY_ID = /^[a-z][a-z0-9-]{0,63}$/;
+const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+const AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -21,6 +24,30 @@ function canonicalize(value) {
 export function digestDecision(decision) {
   if (!decision || typeof decision !== 'object') return '';
   return createHash('sha256').update(JSON.stringify(canonicalize(decision))).digest('hex');
+}
+
+export function parseAuthorityProvenance(encoded, required = false) {
+  if (!encoded) {
+    if (required) throw new Error('Missing Authority Set provenance output.');
+    return null;
+  }
+  if (typeof encoded !== 'string' || encoded.length > 32_768 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw new Error('Invalid Authority Set provenance output.');
+  const bytes = Buffer.from(encoded, 'base64');
+  if (bytes.toString('base64') !== encoded) throw new Error('Invalid Authority Set provenance encoding.');
+  const value = JSON.parse(bytes.toString('utf8'));
+  if (!value || value.version !== 1 || !/^[a-f0-9]{64}$/.test(value.manifestSha256) ||
+      !/^[a-f0-9]{64}$/.test(value.setDigest) || !Array.isArray(value.members) ||
+      !value.members.length || value.members.length > 32 ||
+      value.members.some(member => !member || typeof member.id !== 'string' || !AUTHORITY_ID.test(member.id) ||
+        typeof member.repository !== 'string' || !REPOSITORY.test(member.repository) ||
+        !/^[a-f0-9]{40}$/.test(member.resolvedCommit) ||
+        typeof member.path !== 'string' || member.path.length > 240 || !AUTHORITY_PATH.test(member.path) ||
+        member.path.split('/').some(part => part === '.' || part === '..') ||
+        !/^[a-f0-9]{64}$/.test(member.sha256)) ||
+      new Set(value.members.map(member => member.id)).size !== value.members.length) {
+    throw new Error('Invalid Authority Set provenance record.');
+  }
+  return value;
 }
 
 function cleanText(value, limit = MAX_ITEM_LENGTH) {
@@ -113,12 +140,18 @@ export function renderReport(classified, metadata = {}) {
     const runReference = metadata.runUrl ? `[Actions run](${cleanText(metadata.runUrl, 1_000)})` : 'Actions run';
     body += `\nInspect the ${runReference} to identify the cause. If the CI reviewer is unavailable because of API, billing, model, credential, or service failure, follow [CI review unavailable](${OWNER_INTERVENTION_URL}#ci-review-unavailable). This result is not a PASS.\n`;
   }
+  if (metadata.authorityProvenance) {
+    const selected = metadata.authorityProvenance;
+    body += `\n**Selected Authority Set**\n\nManifest SHA-256: \`${cleanText(selected.manifestSha256, 64)}\` · Set SHA-256: \`${cleanText(selected.setDigest, 64)}\`\n`;
+    body += renderList('Resolved members', selected.members.map(member => `${member.id}: ${member.repository}@${member.resolvedCommit}:${member.path} (SHA-256 ${member.sha256})`));
+  }
   body += renderGates(decision?.gates);
   if (decision) {
     const context = [
       renderList('Reviewed scope', decision.reviewedScope),
       renderList('Governing authority', decision.authority),
       renderList('Authority files', decision.authorityFiles),
+      renderList('Authority IDs', decision.authorityIds),
       renderList('Prohibited changes', decision.prohibitedChanges),
       renderList('Responsibility', decision.responsibility),
       renderList('Capability surface', decision.capabilitySurface),
@@ -180,6 +213,8 @@ async function main() {
     headSha: process.env.HEAD_SHA,
     runUrl: process.env.RUN_URL,
     workflowRef: process.env.WORKFLOW_REF,
+    authorityProvenance: parseAuthorityProvenance(process.env.AUTHORITY_PROVENANCE_BASE64,
+      process.env.AUTHORITY_ROUTE_SELECTED === 'true' && process.env.REVIEW_RESULT === 'success'),
   });
   const decisionDigest = digestDecision(classified.decision);
   if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, report);

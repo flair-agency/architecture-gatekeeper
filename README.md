@@ -161,6 +161,45 @@ incomplete entries, or unsupported policy versions fail the policy job rather
 than falling back to an older review route. Before upgrading the workflow,
 remove previously ignored metadata and correct any stale branch entries.
 
+Policy version 2 adds an opt-in distributed Authority Set to an `enforced`
+branch. The protected-base branch entry must declare both
+`authorityManifestPath` and every `authorityLimits` value. For example:
+
+```json
+{
+  "version": 2,
+  "default": { "mode": "local-only" },
+  "branches": {
+    "main": {
+      "mode": "enforced",
+      "model": "gpt-6-sol",
+      "reasoningEffort": "medium",
+      "authorityManifestPath": ".codex/gatekeeper/authorities.json",
+      "authorityLimits": {
+        "maxManifestBytes": 16384,
+        "maxMembers": 16,
+        "maxFileBytes": 65536,
+        "maxTotalBytes": 262144,
+        "maxPromptBytes": 524288
+      }
+    }
+  }
+}
+```
+
+The manifest is a version 1 selector with an `authorities` array of stable
+`id`, GitHub `repository` (or `self`), immutable `revision` (or
+`authority-revision` for `self`), and `.md` `path` values. The selected
+protected output schema must require `authorityIds` as a nonempty string
+array, and the caller must set `protected-review-instructions: true`. The
+workflow checks the schema, complete prompt size, every selected source and
+exact reported IDs before accepting a result. Missing or oversized limits,
+sources or IDs fail the review. The runtime ceilings are 65,536 manifest
+bytes, 32 members, 131,072 bytes per file, 524,288 bytes total, and 1,048,576
+bytes for the complete prompt. The values above are the recommended effective
+profile. This repository's own CI policy remains on the version 1 route until
+separately enabled.
+
 Before the review job receives `OPENAI_API_KEY`, a separate credential-free
 integrity job checks out that same exact fork commit, verifies its revision,
 base/head trees, complete three-commit sequence, changed-file allowlist and

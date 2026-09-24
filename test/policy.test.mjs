@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { MAX_AUTHORITY_LIMITS } from '../src/authority-set.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium' } } };
@@ -24,6 +27,39 @@ test('rejects extra fields on local-only policies and malformed policy objects',
   assert.throws(() => resolveCiPolicy([], 'main'));
   assert.throws(() => resolveCiPolicy({ ...policy, default: [] }, 'main'));
   assert.throws(() => resolveCiPolicy({ ...policy, branches: [] }, 'main'));
+});
+
+const effectiveLimits = { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 };
+const distributed = { version: 2, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: effectiveLimits } } };
+test('v2 selects protected-base Authority Set limits without changing v1 output', () => {
+  const selected = resolveCiPolicy(distributed, 'main');
+  assert.equal(selected.authorityManifestPath, '.codex/gatekeeper/authorities.json');
+  assert.deepEqual(JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString()), effectiveLimits);
+  assert.equal(Object.hasOwn(resolveCiPolicy(policy, 'main'), 'authorityManifestPath'), false);
+  assert.equal(Object.hasOwn(resolveCiPolicy(distributed, 'preview'), 'authorityManifestPath'), false);
+});
+test('v2 rejects incomplete, invalid and over-ceiling limits even on unselected branches', () => {
+  for (const branch of [
+    { ...distributed.branches.main, authorityLimits: undefined },
+    { ...distributed.branches.main, authorityLimits: { ...effectiveLimits, maxMembers: MAX_AUTHORITY_LIMITS.maxMembers + 1 } },
+    { ...distributed.branches.main, authorityLimits: { ...effectiveLimits, maxFileBytes: 0 } },
+    { ...distributed.branches.main, authorityLimits: { ...effectiveLimits, maxPromptBytes: '524288' } },
+    { ...distributed.branches.main, authorityLimits: { maxMembers: 16 } },
+    { ...distributed.branches.main, authorityManifestPath: '../authorities.json' },
+  ]) {
+    assert.throws(() => resolveCiPolicy({ ...distributed, branches: { main: distributed.branches.main, other: branch } }, 'main'));
+  }
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, authorityManifestPath: 'authorities.json' } } }, 'main'), /Unknown/);
+});
+test('protected policy rejects duplicate JSON keys before resolving effective limits', t => {
+  const repeated = JSON.stringify(distributed).replace('"maxMembers":16', '"maxMembers":16,"maxMembers":32');
+  assert.throws(() => parseCiPolicyJson(repeated), /duplicate JSON key/);
+  assert.throws(() => parseCiPolicyJson('{"version":1,"version":2,"default":{"mode":"local-only"},"branches":{}}'), /duplicate JSON key/);
+  const folder = mkdtempSync(join(tmpdir(), 'gate-policy-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const file = join(folder, 'ci-policy.json');
+  writeFileSync(file, repeated);
+  assert.throws(() => execFileSync(process.execPath, [join(root, 'src/resolve-ci-policy.mjs'), file, 'main'], { stdio: 'ignore' }));
 });
 
 test('keeps protected codex-action arguments compatible', () => {
@@ -59,12 +95,18 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /group: architecture-gate-\$\{\{ github\.repository \}\}-\$\{\{ github\.event\.pull_request\.number \}\}/);
   assert.match(workflow, /cancel-in-progress: true/);
   assert.match(workflow, /git show "\$BASE_SHA:\$PROMPT_PATH"/);
+  assert.match(workflow, /git ls-tree -z --full-tree "\$BASE_SHA" -- "\$POLICY_PATH" > "\$RUNNER_TEMP\/architecture-gate-policy-tree"/);
+  assert.match(workflow, /if test -s "\$RUNNER_TEMP\/architecture-gate-policy-tree"; then\n            git show "\$BASE_SHA:\$POLICY_PATH"/);
   assert.match(workflow, /git show "\$BASE_SHA:\$SCHEMA_PATH"/);
   assert.match(workflow, /protected-review-instructions:/);
-  assert.match(workflow, /prompt-file: \$\{\{ inputs\.protected-review-instructions/);
+  assert.match(workflow, /prompt-file: \$\{\{ needs\.policy\.outputs\.authority_manifest_path/);
   assert.match(workflow, /output-schema-file: \$\{\{ inputs\.protected-review-instructions/);
   assert.match(workflow, /git show "\$BASE_SHA:\$VALIDATION_PATH"/);
   assert.match(workflow, /src\/validate-decision\.mjs/);
+  assert.match(workflow, /src\/preflight-authority-set-review\.mjs/);
+  assert.match(workflow, /name: Check protected Authority Set schema and complete prompt\n[\s\S]*?run: \|\n          node \.architecture-gatekeeper-validation-runtime\/src\/preflight-authority-set-review\.mjs/);
+  assert.match(workflow, /--limits-base64 "\$AUTHORITY_LIMITS_BASE64"/);
+  assert.match(workflow, /src\/validate-authority-set-decision\.mjs/);
   assert.match(workflow, /reviewed_sha: \$\{\{ steps\.revision\.outputs\.sha \}\}/);
   assert.match(workflow, /sha=\$\(git rev-parse HEAD\)/);
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
