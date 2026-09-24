@@ -49,6 +49,9 @@ automatic local screening Hook, CI acceptance gate, and general code review.
 The native reviewer is the Skill execution adapter. The two runtime commands
 provide the same recorded-revision authority selection and deterministic
 validation contract used by other adapters without owning reviewer transport.
+For version 2 local configuration, present the returned Authority Set provenance
+and exact reported `authorityIds`; an unavailable selected source leaves review
+incomplete.
 Do not fetch or install a newer Gatekeeper during review.
 
 If the repository has not adopted `architecture-review-native`, report that the
@@ -56,5 +59,5 @@ native Skill review is unavailable. Do not fall back to the standalone
 `architecture-review` command: that terminal adapter launches child
 `codex exec`. The automatic Hook and CI gate remain separate entrypoints.
 
-Present the structured decision, reviewed revision, authority files consulted,
+Present the structured decision, reviewed revision, authority sources consulted,
 scope reviewed and the reason for any `BLOCK` or `OWNER_DECISION`.
