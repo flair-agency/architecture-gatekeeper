@@ -212,8 +212,11 @@ and revision verification are core requirements, separate from verifying the
 actor behind the tag. The `G0` route selects a Null **identity-authentication**
 adapter: it reports no verified principal, while the core still requires a
 valid tag artifact. A missing, malformed, stale or unverifiable tag is not a
-valid `G0` result. Higher-grade identity adapters verify actor evidence and
-return authenticated principal facts, not acceptance results or grades. An
+valid `G0` result. Where a higher grade is selected, an external identity
+provider is the source of actor attribution. Its adapter validates and
+normalizes the provider's evidence for the exact tag; the protected core
+checks that principal against the owner policy. The adapter does not itself
+establish a human's identity or return acceptance results or grades. An
 invalid, unavailable or incomplete selected higher-grade adapter result cannot
 trigger a `G0` fallback. The tag object's remote availability and tag-ref
 update/deletion must have an enforceable freshness rule before the tagged
