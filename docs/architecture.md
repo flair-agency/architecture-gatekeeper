@@ -160,6 +160,53 @@ The mechanism may return `PASS`, `BLOCK`, or `OWNER_DECISION`.
 `OWNER_DECISION` is an escalation that requires a decision to be recorded in
 canonical consumer authority. It is not an alternate form of acceptance.
 
+### Target owner-amendment governance (Issue #75 owner decision)
+
+`OWNER_AMENDMENT` is an acceptance result for a separate, authority-only
+amendment Change B. It is not a semantic-review decision and does not turn a
+historical `BLOCK` into `PASS`. The originally blocked implementation Change A
+remains rejected until B becomes canonical and A receives a fresh review.
+An `OWNER_DECISION` result is not eligible for this route.
+
+The first implementation may accept Change B at governance grade `G0` when
+the **previous protected-base policy** explicitly authorizes that grade for
+the affected authority and amendment scope. `G0` means there is no valid
+per-amendment owner attestation. It is prior policy authorization of an
+amendment process, not evidence that the owner individually approved B, wrote
+B, or performed a human action for B. The resulting record must say
+`OWNER_AMENDMENT / G0`, name the protected policy revision, and report an empty
+attestation set. A change cannot lower its own required grade or select its
+own acceptance policy. No grade or amendment route is enabled by default.
+
+Even at `G0`, the protected verifier must validate a versioned ReviewRecord
+for the exact historical `BLOCK`, an AmendmentRecord binding B to that review
+and the authority being amended, the current repository/base/head and
+authority identities, and the strict authority-amendment scope. It must reject
+unrelated implementation changes in B, stale or unrelated review evidence,
+and changed bound state. The check is successful only for B; it cannot accept
+A using B's amendment result. A qualifying B may have been authored by a
+non-owner: `G0` makes no author-identity claim. Repository merge permissions
+and branch rules control who can actually merge it and are separate from the
+Gatekeeper grade.
+
+Attestation adapters provide verified evidence facts, not acceptance results
+or grades. A Null Adapter may intentionally return a complete empty
+attestation set, from which the core derives `G0`. Invalid, unavailable,
+malformed or incomplete evidence is **not** an empty set and cannot be treated
+as `G0` or trigger a weaker route. If protected policy requires a higher
+grade, the Null Adapter cannot satisfy it. Future grades may express one
+authenticated owner or a distinct-principal quorum; the core must keep the
+number/relationship of attesters separate from the strength of each
+authentication mechanism. Mechanisms and any alternatives are selected by
+protected policy, never by a first-success fallback chain.
+
+This is a target contract, not an active acceptance route. It becomes active
+only after the evidence format, deterministic verifier, protected routing and
+current-state checks are implemented and tested. Until then, existing
+acceptance behavior remains in force. Enabling `G0` for this repository for
+the first time cannot be justified by the candidate policy in that same
+change; its adoption follows the existing owner-controlled exception process.
+
 ### Three separate concepts and target contracts
 
 The architecture separates three concerns, even though the current CI path
@@ -332,8 +379,11 @@ Every implementation and rollout must preserve these invariants:
    routes and required assurance.
 7. API, billing, credential, timeout or service failure never downgrades
    assurance dynamically.
-8. `BLOCK` rejects. `OWNER_DECISION` rejects until the decision is recorded in
-   canonical authority and a new review produces acceptable evidence.
+8. `BLOCK` rejects the reviewed change. A separate authority-only amendment
+   may be accepted through an explicitly enabled `OWNER_AMENDMENT` route
+   without changing that historical `BLOCK`. `OWNER_DECISION` rejects until
+   the decision is recorded in canonical authority and a new review produces
+   acceptable evidence.
 9. Privileged credentials are not exposed to pull-request code or package
    lifecycle scripts. Credential-bearing third-party actions remain part of the
    selected CI trust boundary and follow its explicit supply-chain policy; this
@@ -389,6 +439,9 @@ Architecture-changing work follows this order:
 - Issue #20 specifies the evidence format, attestation choice, protected-policy
   routes and model-free CI verification needed to fully separate review
   execution from acceptance verification.
+- Issue #75 defines the owner-amendment governance route. Issue #78 develops
+  its core and explicit `G0` policy path; Issue #79 investigates a later
+  production attestation adapter for a higher grade.
 
 Those Issues may refine implementation choices, measurements and rollout. They
 must not be used as implicit amendments to this contract.
