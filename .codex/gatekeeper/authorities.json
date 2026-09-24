@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "authorities": [
+    {
+      "id": "architecture-contract",
+      "repository": "self",
+      "revision": "authority-revision",
+      "path": "docs/architecture.md"
+    }
+  ]
+}

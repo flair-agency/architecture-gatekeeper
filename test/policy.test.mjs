@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
-import { MAX_AUTHORITY_LIMITS } from '../src/authority-set.mjs';
+import { MAX_AUTHORITY_LIMITS, materializeAuthoritySet, parseAuthorityManifest } from '../src/authority-set.mjs';
+import { validateAuthorityReviewSchema } from '../src/preflight-authority-set-review.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium' } } };
@@ -128,19 +129,47 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.doesNotMatch(caller, /actions: read/);
   assert.match(caller, /pull-requests: write/);
   assert.match(caller, /protected-review-instructions: true/);
+  assert.match(caller, /schema-path: \.codex\/gatekeeper\/ci-decision\.schema\.json/);
   assert.match(caller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
   assert.doesNotMatch(caller, /owner-decision-environment/);
   assert.match(caller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
   assert.doesNotMatch(caller, /actions\/checkout/);
 });
 
-test('keeps self-review policy and schema valid', () => {
-  const policy = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'), 'utf8'));
-  const schema = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.schema.json'), 'utf8'));
-  assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium' });
+test('selects and materializes the protected self Authority Set for CI only', async () => {
+  const selfPolicy = parseCiPolicyJson(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'), 'utf8'));
+  const selected = resolveCiPolicy(selfPolicy, 'main');
+  assert.equal(selfPolicy.version, 2);
+  assert.equal(selected.mode, 'enforced');
+  assert.equal(selected.model, 'gpt-6-sol');
+  assert.equal(selected.reasoningEffort, 'medium');
+  assert.equal(selected.authorityManifestPath, '.codex/gatekeeper/authorities.json');
+  assert.deepEqual(JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString()), effectiveLimits);
+  const manifestBytes = readFileSync(join(root, selected.authorityManifestPath));
+  const manifest = parseAuthorityManifest(manifestBytes, effectiveLimits);
+  assert.deepEqual(manifest.authorities, [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }]);
+  const authorityRevision = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  const materialized = await materializeAuthoritySet({ manifestBytes, limits: effectiveLimits,
+    selfRepository: 'flair-agency/architecture-gatekeeper', selfRoot: root, authorityRevision });
+  assert.deepEqual(materialized.members.map(member => member.id), ['architecture-contract']);
+  const completePrompt = readFileSync(join(root, '.codex/gatekeeper/ci-prompt.md')) + materialized.prompt;
+  assert.ok(Buffer.byteLength(completePrompt) <= effectiveLimits.maxPromptBytes);
+
+  const schemaPath = join(root, '.codex/gatekeeper/ci-decision.schema.json');
+  const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
+  validateAuthorityReviewSchema(schema);
+  const preflightRoot = mkdtempSync(join(tmpdir(), 'gate-self-preflight-'));
+  try {
+    const promptPath = join(preflightRoot, 'complete-prompt.md');
+    writeFileSync(promptPath, completePrompt);
+    execFileSync(process.execPath, [join(root, 'src/preflight-authority-set-review.mjs'), schemaPath, promptPath],
+      { env: { ...process.env, AUTHORITY_LIMITS_BASE64: selected.authorityLimitsBase64 } });
+  } finally { rmSync(preflightRoot, { recursive: true, force: true }); }
   assert.deepEqual(schema.properties.decision.enum, ['PASS', 'BLOCK', 'OWNER_DECISION']);
   assert.deepEqual(schema.properties.gates.required, ['sharedMechanism', 'trustBoundary']);
   assert.equal('anyOf' in schema, false);
+  const localSchema = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.schema.json'), 'utf8'));
+  assert.equal(localSchema.required.includes('authorityIds'), false);
   const validation = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.validation.json'), 'utf8'));
   assert.equal(validation.version, 1);
   assert.equal(validation.rules.length, 2);
@@ -148,9 +177,11 @@ test('keeps self-review policy and schema valid', () => {
 
 test('keeps the protected self-review prompt aligned with canonical authority', () => {
   const prompt = readFileSync(join(root, '.codex/gatekeeper/ci-prompt.md'), 'utf8');
-  assert.match(prompt, /protected base revision of `docs\/architecture\.md` as the normative/);
-  assert.match(prompt, /`README\.md`, `package\.json`, workflows,\s+tests[\s\S]*as evidence of conformance/);
-  assert.match(prompt, /prompt and the normative contract are\s+both selected from the protected base/);
-  assert.match(prompt, /pull-request content cannot make\s+itself authoritative/);
+  assert.match(prompt, /protected-base Authority Set/);
+  assert.match(prompt, /`architecture-contract` member is the normative `docs\/architecture\.md` snapshot/);
+  assert.match(prompt, /Report every selected source ID exactly once in `authorityIds`/);
+  assert.match(prompt, /`README\.md`,\s+`package\.json`, workflows, tests[\s\S]*as evidence of conformance/);
+  assert.match(prompt, /prompt,\s+manifest and authority snapshots are selected from the protected base/);
+  assert.match(prompt, /pull-request content cannot make itself authoritative/);
   assert.doesNotMatch(prompt, /tests as repository-owned\s+authority/);
 });
