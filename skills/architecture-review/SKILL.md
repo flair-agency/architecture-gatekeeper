@@ -41,6 +41,13 @@ automatic local screening Hook, CI acceptance gate, and general code review.
    within that deadline. If the reviewer does not complete before the deadline,
    stop with an incomplete review and do not run validation. Do not use shell
    execution or nested `codex exec` to create this reviewer.
+   Keep an observable run record for Skill E2E investigations: identify the
+   host-native reviewer task/agent, preserve the exact prepared request (prompt
+   and schema), model, reasoning effort and timeout supplied to it, and record
+   the returned decision's provenance. The decision written for validation
+   must be the result returned by that reviewer, not a caller-authored
+   substitute. Keep the record with the investigation; it is diagnostic
+   execution evidence, not cryptographic merge-acceptance evidence.
 4. Write only that JSON object to the private decision path.
 5. Run `architecture-review-native validate <request-path> <decision-path>`.
    Treat any preparation, reviewer, parsing, schema or policy failure as an
@@ -53,6 +60,13 @@ For version 2 local configuration, present the returned Authority Set provenance
 and exact reported `authorityIds`; an unavailable selected source leaves review
 incomplete.
 Do not fetch or install a newer Gatekeeper during review.
+
+Distinguish three checks when reporting results: a runtime prepare/validate
+smoke exercises request construction and decision validation only; a native
+Skill E2E also observes a separate host-native reviewer invocation and passes
+that reviewer's returned decision to validation; CI acceptance is the
+independent protected-policy workflow result. A prepare/validate-only smoke
+must not be reported as a successful native Skill E2E or as CI acceptance.
 
 If the repository has not adopted `architecture-review-native`, report that the
 native Skill review is unavailable. Do not fall back to the standalone

@@ -97,6 +97,15 @@ or launches nested `codex exec`. The
 version-pinned runtime, not the Skill, selects and validates repository-owned
 authority.
 
+When recording Skill dogfood, separate a runtime prepare/validate smoke from a
+host-native Skill E2E and from CI acceptance. The smoke exercises request
+construction and validation only. The E2E record identifies the separate
+host-native reviewer task/agent, preserves the exact prompt and schema sent
+with the prepared model, reasoning effort and timeout, and traces the decision
+validated back to that reviewer result. This is diagnostic execution evidence,
+not cryptographic merge evidence; CI acceptance remains the protected-policy
+workflow result. Use the [native Skill E2E record template](docs/investigations/native-skill-e2e-template.md).
+
 ## Distribution
 
 Runtime releases are published as fixed versions to the `@flair-agency`
