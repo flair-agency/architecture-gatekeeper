@@ -104,28 +104,42 @@ way to exclude non-human pushes, define ref update/deletion policy, and move
 verification to a protected acceptance workflow. This experiment does not
 resolve those production requirements or amend the architecture contract.
 
-## Assurance question: one owner versus separate reviewer
+## Separate process policy from attester authentication
 
-The desired guarantee depends on who proposes and who attests to an amendment.
-With a separate authorized reviewer, a GitHub approval may provide independent
-attestation if protected policy names that reviewer, GitHub's approval rules
-exclude self-approval, and the adapter checks freshness and exact change/review
-binding. This is a different candidate adapter from the tag-push probe; this
-PoC does not validate GitHub approval as an acceptance input.
+An amendment's **approval process** and the **authentication mechanism** for
+the attester are independent design axes. Process policy decides whether a
+single owner may explicitly self-attest, whether an independent approver is
+required, and which exact amendment and review must be covered. An
+attestation adapter establishes what an external action proves about the
+actor, evidence and binding. The core acceptance verifier should apply the
+protected process policy to normalized, verified adapter output; it must not
+infer a stronger process guarantee merely from the adapter type.
 
-In a single-owner repository, the same principal may write the amendment and
-attest to it. No mechanism can turn that into an independent approval. A
-signed tag proves use of a signing credential; a GitHub tag push reports an
-account associated with the push. Neither proves that a human deliberated, and
-neither supplies separation of duties when both credentials belong to the
-same owner. The useful claim to evaluate is therefore **explicit owner
-self-attestation** for an exact amendment and review, with its weaker assurance
-clearly reported. Whether a particular GitHub credential path is sufficient
-for that claim remains an owner-policy and adapter-design question. A
-deploy-key or automation push must not silently acquire a stronger claim by
-being attributed to the owner account.
+For example, a GitHub approval adapter might authenticate a separate
+authorized reviewer, while a GitHub tag-push adapter might authenticate an
+owner's explicit self-attestation. A signed-tag adapter is another candidate
+authentication mechanism for that same self-attestation process. Conversely,
+if protected policy requires a distinct approver, using a signed tag does not
+waive that requirement. None of these adapters is validated for production by
+this PoC.
 
-`OWNER_AMENDMENT` can remain one governance result while trusted policy and
-evidence distinguish self-attestation from independent attestation. Selecting
-those acceptance conditions would amend the normative contract and is outside
+The adapter boundary should carry at least the authenticated principal, the
+exact amendment revision and triggering review identity, the evidence
+identity, and the mechanism and assurance facts needed by protected policy.
+It must not accept caller-declared identity or a bare `verified: true` value
+as proof. The protected policy selects permitted adapters and required
+assurance; an unsupported, stale or incomplete adapter result fails closed.
+
+In a single-owner repository, the proposer and attester may be the same
+principal. Neither a signed tag nor a GitHub tag push creates an independent
+approver or proves human deliberation. A signed tag proves use of a signing
+credential; a GitHub tag push reports an account associated with the push.
+Whether a particular credential path sufficiently authenticates the explicit
+self-attestation is an adapter and protected-policy question. A deploy-key or
+automation push must not silently acquire a stronger claim by being attributed
+to the owner account.
+
+`OWNER_AMENDMENT` can remain one governance result while evidence records the
+process and authentication guarantees separately. Selecting acceptance rules
+or a production adapter would amend the normative contract and is outside
 this observation-only PoC.
