@@ -37,6 +37,8 @@ jobs:
       mode: ${{ steps.resolve.outputs.mode }}
       model: ${{ steps.resolve.outputs.model }}
       effort: ${{ steps.resolve.outputs.reasoningEffort }}
+      authority_manifest_path: ${{ steps.resolve.outputs.authorityManifestPath }}
+      authority_limits_base64: ${{ steps.resolve.outputs.authorityLimitsBase64 }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -56,7 +58,9 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           POLICY_PATH: ${{ inputs.policy-path }}
         run: |
-          if git show "$BASE_SHA:$POLICY_PATH" > "$RUNNER_TEMP/architecture-gate-policy.json"; then
+          git ls-tree -z --full-tree "$BASE_SHA" -- "$POLICY_PATH" > "$RUNNER_TEMP/architecture-gate-policy-tree"
+          if test -s "$RUNNER_TEMP/architecture-gate-policy-tree"; then
+            git show "$BASE_SHA:$POLICY_PATH" > "$RUNNER_TEMP/architecture-gate-policy.json"
             node .architecture-gatekeeper-runtime/src/resolve-ci-policy.mjs "$RUNNER_TEMP/architecture-gate-policy.json" "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
           else
             echo "Base revision has no CI policy; using fail-safe bootstrap enforcement."
@@ -65,6 +69,11 @@ jobs:
             echo "model=gpt-5.6-sol" >> "$GITHUB_OUTPUT"
             echo "reasoningEffort=medium" >> "$GITHUB_OUTPUT"
           fi
+      - name: Require protected instructions for selected Authority Set
+        if: steps.resolve.outputs.authorityManifestPath != ''
+        env:
+          PROTECTED_INSTRUCTIONS: ${{ inputs.protected-review-instructions }}
+        run: test "$PROTECTED_INSTRUCTIONS" = true
 
   codex-action-integrity:
     if: needs.policy.outputs.mode == 'enforced'
@@ -121,6 +130,7 @@ jobs:
     outputs:
       final_message: ${{ steps.codex.outputs.final-message }}
       reviewed_sha: ${{ steps.revision.outputs.sha }}
+      authority_provenance: ${{ steps.authority.outputs.provenance }}
     steps:
       - name: Check enforced credentials
         env:
@@ -130,8 +140,8 @@ jobs:
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
-          submodules: recursive
-          token: ${{ secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          submodules: ${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}
+          token: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
           persist-credentials: false
       - name: Record reviewed merge revision
         id: revision
@@ -152,13 +162,44 @@ jobs:
           VALIDATION_PATH: ${{ inputs.validation-path }}
         run: git show "$BASE_SHA:$VALIDATION_PATH" > "$RUNNER_TEMP/architecture-gate-decision.validation.json"
       - name: Check out the pinned validation runtime
-        if: inputs.validation-path != ''
+        if: inputs.validation-path != '' || needs.policy.outputs.authority_manifest_path != ''
         uses: actions/checkout@v5
         with:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-validation-runtime
           persist-credentials: false
+      - name: Materialize protected Authority Set before review
+        if: needs.policy.outputs.authority_manifest_path != ''
+        id: authority
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MANIFEST_PATH: ${{ needs.policy.outputs.authority_manifest_path }}
+          SELF_REPOSITORY: ${{ github.repository }}
+          GATEKEEPER_SOURCE_TOKEN: ${{ secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
+        run: |
+          umask 077
+          git show "$BASE_SHA:$MANIFEST_PATH" > "$RUNNER_TEMP/architecture-gate-authorities.json"
+          node .architecture-gatekeeper-validation-runtime/src/prepare-authority-set.mjs \
+            --manifest "$RUNNER_TEMP/architecture-gate-authorities.json" \
+            --self-repository "$SELF_REPOSITORY" \
+            --self-root . \
+            --authority-sha "$BASE_SHA" \
+            --limits-base64 "$AUTHORITY_LIMITS_BASE64" \
+            --output-dir "$RUNNER_TEMP/architecture-gate-authority-set"
+          cat "$RUNNER_TEMP/architecture-gate-prompt.md" \
+            "$RUNNER_TEMP/architecture-gate-authority-set/authority-prompt.md" \
+            > "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
+          echo "provenance=$(base64 -w0 "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json")" >> "$GITHUB_OUTPUT"
+      - name: Check protected Authority Set schema and complete prompt
+        if: needs.policy.outputs.authority_manifest_path != ''
+        env:
+          AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
+        run: |
+          node .architecture-gatekeeper-validation-runtime/src/preflight-authority-set-review.mjs \
+            "$RUNNER_TEMP/architecture-gate-decision.schema.json" \
+            "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
       - name: Run read-only architecture review
         id: codex
         # Temporary Flair-reviewed fork of openai/codex-action v1.12 with
@@ -167,7 +208,7 @@ jobs:
         uses: flair-agency/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          prompt-file: ${{ inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || inputs.prompt-path }}
+          prompt-file: ${{ needs.policy.outputs.authority_manifest_path != '' && format('{0}/architecture-gate-complete-prompt.md', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || inputs.prompt-path }}
           model: ${{ needs.policy.outputs.model }}
           effort: ${{ needs.policy.outputs.effort }}
           sandbox: read-only
@@ -180,6 +221,11 @@ jobs:
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
         run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-decision.mjs "$RUNNER_TEMP/architecture-gate-decision.validation.json"
+      - name: Require exact reported Authority IDs
+        if: needs.policy.outputs.authority_manifest_path != ''
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
   report:
     if: always()
@@ -208,6 +254,8 @@ jobs:
           MODE: ${{ needs.policy.outputs.mode }}
           DECISION: ${{ needs.review.outputs.final_message }}
           REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
+          AUTHORITY_ROUTE_SELECTED: ${{ needs.policy.outputs.authority_manifest_path != '' }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           WORKFLOW_REF: ${{ job.workflow_ref }}

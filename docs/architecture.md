@@ -99,6 +99,25 @@ current assurance claims; naming a protected architecture file in a prompt
 alone does not satisfy the materialization requirement above. An enabled
 enforced review cannot downgrade to an older route when resolution fails.
 
+### Initial distributed-authority CI bounds (Issue #51 owner decision)
+
+The first CI implementation supports GitHub repositories only. A consumer that
+selects this route must declare all five effective limits in its protected-base
+policy: `maxManifestBytes`, `maxMembers`, `maxFileBytes`, `maxTotalBytes`, and
+`maxPromptBytes`. There are no implicit defaults, and a pull request cannot
+raise these limits for its own review. The recommended initial consumer profile
+is respectively 16,384 bytes, 16 members, 65,536 bytes, 262,144 bytes, and
+524,288 bytes. These recommendations do not activate the route by themselves.
+
+The versioned Gatekeeper runtime ceilings, in the same order, are 65,536 bytes,
+32 members, 131,072 bytes, 524,288 bytes, and 1,048,576 bytes. Neither workflow
+inputs nor environment variables may raise these ceilings. Changing them
+requires review and release of the Gatekeeper runtime. Missing, invalid or
+over-ceiling effective limits fail closed before authority materialization.
+The prompt limit applies to the complete review prompt, including selected
+authority content. The existing protected-base selection, immutable revisions,
+complete-set validation and offline review boundary continue to apply.
+
 ### Shared mechanism
 
 The shared package owns reusable mechanics:

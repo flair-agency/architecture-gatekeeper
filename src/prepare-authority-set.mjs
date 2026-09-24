@@ -2,7 +2,7 @@
 import { constants, openSync, readSync, closeSync, fstatSync, mkdirSync, writeFileSync, rmSync, lstatSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys } from './authority-set.mjs';
+import { materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys, validateAuthorityLimits } from './authority-set.mjs';
 import { createGitHubAuthoritySource } from './github-authority-source.mjs';
 
 const MAX_LIMITS_BYTES = 4 * 1024;
@@ -44,8 +44,17 @@ function readLimits(path) {
   }
 }
 
+export function decodeLimits(encoded) {
+  if (typeof encoded !== 'string' || encoded.length > MAX_LIMITS_BYTES * 2 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) throw new Error('Encoded limits are invalid.');
+  const bytes = Buffer.from(encoded, 'base64');
+  if (bytes.toString('base64') !== encoded || bytes.length > MAX_LIMITS_BYTES) throw new Error('Encoded limits are invalid.');
+  const source = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  rejectDuplicateJsonKeys(source, 'limits');
+  return validateAuthorityLimits(JSON.parse(source));
+}
+
 function usage() {
-  throw new Error('Usage: architecture-prepare-authority-set --manifest PATH --self-repository OWNER/REPO --self-root PATH --authority-sha SHA --limits PATH --output-dir PATH');
+  throw new Error('Usage: architecture-prepare-authority-set --manifest PATH --self-repository OWNER/REPO --self-root PATH --authority-sha SHA (--limits PATH | --limits-base64 BASE64) --output-dir PATH');
 }
 
 function parseArgs(args) {
@@ -53,14 +62,14 @@ function parseArgs(args) {
   const names = new Map([
     ['--manifest', 'manifest'], ['--self-repository', 'selfRepository'],
     ['--self-root', 'selfRoot'], ['--authority-sha', 'authorityRevision'],
-    ['--limits', 'limits'], ['--output-dir', 'outputDir'],
+    ['--limits', 'limits'], ['--limits-base64', 'limitsBase64'], ['--output-dir', 'outputDir'],
   ]);
   for (let i = 0; i < args.length; i += 2) {
     const key = names.get(args[i]);
     if (!key || values[key] !== undefined || typeof args[i + 1] !== 'string' || args[i + 1].startsWith('--')) usage();
     values[key] = args[i + 1];
   }
-  if (Object.keys(values).length !== names.size) usage();
+  if (Object.keys(values).length !== names.size - 1 || Boolean(values.limits) === Boolean(values.limitsBase64)) usage();
   return values;
 }
 
@@ -100,7 +109,7 @@ export async function prepareAuthoritySet({ manifestPath, manifestBytes, selfRep
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const limits = readLimits(args.limits);
+  const limits = args.limits ? readLimits(args.limits) : decodeLimits(args.limitsBase64);
   const manifestBytes = readBounded(args.manifest, Math.min(MAX_MANIFEST_INPUT_BYTES, limits.maxManifestBytes), 'Manifest');
   const parsedManifest = parseAuthorityManifest(manifestBytes, limits);
   const externalSelected = parsedManifest.authorities.some(member => member.repository !== 'self');
