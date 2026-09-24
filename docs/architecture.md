@@ -118,6 +118,32 @@ The prompt limit applies to the complete review prompt, including selected
 authority content. The existing protected-base selection, immutable revisions,
 complete-set validation and offline review boundary continue to apply.
 
+### Initial local distributed-authority bounds (Issue #51 owner decision)
+
+The first local/manual Authority Set route supports same-repository (`self`)
+members from the one recorded Git commit only. It is opt-in through committed
+consumer configuration. The configuration selects a committed manifest and
+declares all five effective limits named above; the same versioned runtime
+ceilings apply. The complete prompt, including the task and any Hook context,
+must fit `maxPromptBytes`. Missing, invalid or over-ceiling limits leave the
+review incomplete before semantic review.
+
+For local `self`, the configured repository name labels the current Git root;
+the local same-user trust boundary does not attest its GitHub origin. The
+reviewed commit and object bytes are verified within that root, and local
+provenance must not claim a stronger repository-identity guarantee.
+
+An external member selected by a local manifest is not silently omitted or
+replaced with a working-tree copy. Until an explicit local source-access and
+credential boundary is adopted, that selection leaves local review incomplete.
+This initial route does not request a source-read credential or use one to
+resolve authority. Local child execution may inherit the host environment;
+this route does not claim isolation from credentials that the host already
+supplies. Any later external-source route must define how source credentials
+are withheld from the semantic reviewer before it is enabled. A local result
+remains development feedback, not merge-acceptance evidence. Existing consumers
+that have not selected this route keep the legacy `authorityFiles` behavior.
+
 ### Shared mechanism
 
 The shared package owns reusable mechanics:

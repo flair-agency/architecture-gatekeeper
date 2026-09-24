@@ -200,9 +200,9 @@ bytes for the complete prompt. The values above are the recommended effective
 profile. This repository's self-review selects the version 2 route from its
 protected base, with `docs/architecture.md` as its first Authority Set member.
 The adoption pull request is reviewed under the prior protected-base policy;
-the new selection applies to subsequent pull requests after merge. Its CI-only
-output schema requires `authorityIds`, while local and manual review keep their
-existing committed input contract.
+the new selection applies to subsequent pull requests after merge. Local and
+manual review can opt in separately through version 2 of
+`.codex/gatekeeper/config.json`.
 
 Before the review job receives `OPENAI_API_KEY`, a separate credential-free
 integrity job checks out that same exact fork commit, verifies its revision,
@@ -267,14 +267,19 @@ default remains `false` for compatibility with consumers that are still
 bootstrapping their first base-owned prompt and schema.
 
 The repository also dogfoods the local and Codex-hosted Skill paths through
-`.codex/gatekeeper/config.json`. That configuration uses the canonical
-`docs/architecture.md` contract as its committed authority. Local review and
-self-review CI share the committed decision-validation policy but use separate
-committed output schemas: CI requires `authorityIds` for its selected Authority
-Set, while local and manual review keep the existing path-based schema. Local
-implementation and working-tree content remain review evidence rather than
-authority. The native self-review has a bounded 180-second deadline and remains
-fail closed if the reviewer does not complete within it.
+`.codex/gatekeeper/config.json`. Its version 2 configuration selects the
+committed `authorities.json` manifest, a declared self repository and all five
+effective Authority Set limits. Manual CLI, Hook and native preparation read
+these inputs and every self authority file from one recorded commit. They
+require exact `authorityIds` for every decision and report the selected set
+digest and member provenance. The full local prompt, including task and Hook
+context, must fit the configured prompt limit. An external member currently
+leaves local review incomplete; it cannot fall back to version 1 or use a
+source token. Version 1 consumer configurations retain their synchronous
+public request and review APIs. Local implementation and working-tree content
+remain review evidence rather than authority. The native self-review has a
+bounded 180-second deadline and remains fail closed if the reviewer does not
+complete within it.
 
 Lifecycle-workaround adoption evidence and repeat dogfood results are tracked
 in [architecture-gatekeeper issue #15](https://github.com/flair-agency/architecture-gatekeeper/issues/15).

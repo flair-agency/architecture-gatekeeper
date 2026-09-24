@@ -102,7 +102,7 @@ function git(root, args, maxBuffer) {
     });
   } catch { fail('cannot verify committed self authority object.'); }
 }
-function readSelf(root, revision, path, maxBytes) {
+export function readCommittedAuthorityFile(root, revision, path, maxBytes) {
   if (git(root, ['cat-file', '-t', revision], 256).toString('utf8').trim() !== 'commit') fail('self authority revision is not a commit.');
   const tree = git(root, ['ls-tree', '-z', '--full-tree', revision, '--', path], 4_096);
   const records = tree.toString('utf8').split('\0').filter(Boolean);
@@ -140,7 +140,7 @@ export async function materializeAuthoritySet({ manifestBytes, limits, selfRepos
     const resolvedCommit = member.repository === 'self' ? authorityRevision.toLowerCase() : member.revision.toLowerCase();
     let content;
     if (member.repository === 'self') {
-      content = readSelf(selfRoot, authorityRevision, member.path, budget.maxFileBytes);
+      content = readCommittedAuthorityFile(selfRoot, authorityRevision, member.path, budget.maxFileBytes);
     } else {
       let result;
       try { result = await fetchExternal({ repository, revision: resolvedCommit, path: member.path, maxBytes: budget.maxFileBytes }); }

@@ -136,7 +136,7 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.doesNotMatch(caller, /actions\/checkout/);
 });
 
-test('selects and materializes the protected self Authority Set for CI only', async () => {
+test('selects and materializes the protected self Authority Set for CI and local review', async () => {
   const selfPolicy = parseCiPolicyJson(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'), 'utf8'));
   const selected = resolveCiPolicy(selfPolicy, 'main');
   assert.equal(selfPolicy.version, 2);
@@ -168,8 +168,10 @@ test('selects and materializes the protected self Authority Set for CI only', as
   assert.deepEqual(schema.properties.decision.enum, ['PASS', 'BLOCK', 'OWNER_DECISION']);
   assert.deepEqual(schema.properties.gates.required, ['sharedMechanism', 'trustBoundary']);
   assert.equal('anyOf' in schema, false);
-  const localSchema = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.schema.json'), 'utf8'));
-  assert.equal(localSchema.required.includes('authorityIds'), false);
+  const localConfig = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/config.json'), 'utf8'));
+  assert.equal(localConfig.version, 2);
+  assert.equal(localConfig.schemaPath, '.codex/gatekeeper/ci-decision.schema.json');
+  assert.equal(schema.required.includes('authorityIds'), true);
   const validation = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.validation.json'), 'utf8'));
   assert.equal(validation.version, 1);
   assert.equal(validation.rules.length, 2);

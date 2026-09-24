@@ -39,9 +39,11 @@ test('provides a committed self local review configuration', () => {
   const config = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/config.json', import.meta.url), 'utf8'));
   const reviewer = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/reviewer.config.json', import.meta.url), 'utf8'));
   const prompt = readFileSync(new URL('../.codex/gatekeeper/local-prompt.md', import.meta.url), 'utf8');
-  assert.deepEqual(config.authorityFiles, ['docs/architecture.md']);
-  assert.deepEqual(config.requiredReportedAuthorityFiles, ['docs/architecture.md']);
-  assert.equal(config.schemaPath, '.codex/gatekeeper/decision.schema.json');
+  assert.equal(config.version, 2);
+  assert.equal(config.selfRepository, 'flair-agency/architecture-gatekeeper');
+  assert.equal(config.authorityManifestPath, '.codex/gatekeeper/authorities.json');
+  assert.equal(config.authorityLimits.maxPromptBytes, 524288);
+  assert.equal(config.schemaPath, '.codex/gatekeeper/ci-decision.schema.json');
   assert.equal(config.validationPath, '.codex/gatekeeper/decision.validation.json');
   assert.equal(config.reviewerConfigPath, '.codex/gatekeeper/reviewer.config.json');
   assert.equal(config.reviewTimeoutMs, 180000);
