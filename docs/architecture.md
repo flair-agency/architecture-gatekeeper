@@ -156,9 +156,10 @@ The shared package owns reusable mechanics:
   contract is implemented and selected;
 - reporting an authoritative acceptance result according to protected policy.
 
-The mechanism may return `PASS`, `BLOCK`, or `OWNER_DECISION`.
+Semantic review may return `PASS`, `BLOCK`, or `OWNER_DECISION`.
 `OWNER_DECISION` is an escalation that requires a decision to be recorded in
-canonical consumer authority. It is not an alternate form of acceptance.
+canonical consumer authority. These are review decisions, not the complete set
+of acceptance outcomes. `OWNER_DECISION` is not an alternate form of acceptance.
 
 ### Target owner-amendment governance (Issue #75 owner decision)
 
@@ -265,7 +266,9 @@ design or implementation change
                v
  protected-policy acceptance verification
                |
-      PASS / BLOCK / OWNER_DECISION
+      accept valid PASS evidence, or (when enabled) accept a
+      separate authority-only B as OWNER_AMENDMENT;
+      otherwise do not accept
 ```
 
 ### Local and manual review
