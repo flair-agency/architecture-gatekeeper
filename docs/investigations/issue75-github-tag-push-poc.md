@@ -167,3 +167,18 @@ explicit combination rule rather than a first-success chain.
 
 For this PoC, no selection policy or adapter chain is implemented. The
 tag-push workflow only reports observed facts; it cannot grant acceptance.
+
+## First-user scope
+
+Issue #75 now prioritizes a repository with one architecture owner who also
+authors the amendment. The first production route must let that owner perform
+an explicit self-attestation for the exact Change B and triggering `BLOCK`,
+without requiring a second reviewer or GitHub self-approval. The process
+evidence must say self-attested; it cannot claim independent approval.
+
+This scope choice does not select GitHub tag push or signed tag as the first
+authentication adapter. The remaining decision is which one can meet a
+protected, reviewable identity and evidence policy with acceptable operational
+cost. The tag-push experiment above resolves part of the object-binding
+question only. Separate-reviewer and multi-owner processes can be added later
+without changing the single-owner claim into an independent one.
