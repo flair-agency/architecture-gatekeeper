@@ -149,7 +149,8 @@ that have not selected this route keep the legacy `authorityFiles` behavior.
 The shared package owns reusable mechanics:
 
 - selecting repository-declared inputs from a recorded revision;
-- invoking a read-only semantic reviewer;
+- invoking a separate semantic reviewer whose role is limited to review and
+  does not include changing the reviewed repository;
 - validating structured decisions and consumer-declared invariants;
 - producing or verifying architecture evidence when an explicit evidence
   contract is implemented and selected;
@@ -196,9 +197,11 @@ design or implementation change
 
 Local and manual review are first-class development paths. They exist to find
 responsibility and trust-boundary problems before code is pushed. The runtime
-uses repository-owned configuration and authority from a recorded commit, runs
-the reviewer read-only, and keeps task text and working-tree content in the
-untrusted evidence domain.
+uses repository-owned configuration and authority from a recorded commit,
+assigns the reviewer a review-only role, and keeps task text and working-tree
+content in the untrusted evidence domain. Execution adapters apply the
+safeguards available in their environment; enforcement mechanisms are not
+uniform semantic requirements.
 
 The local trust boundary assumes the same user, Git executable, object store,
 installed runtime and Codex environment. Local review is not a filesystem
@@ -216,18 +219,29 @@ review request, and deterministically validates the returned decision. It does
 not choose how every host obtains that decision.
 
 - The automatic command Hook may launch a read-only child `codex exec`, because
-  a command hook has no native reviewer handle.
+  a command hook has no native reviewer handle. Its process timeout and
+  read-only sandbox remain required safeguards for this automatically invoked
+  child process.
 - The standalone terminal CLI explicitly uses the same child transport when no
-  Codex host task exists.
+  Codex host task exists, retaining its read-only sandbox and bounded process
+  timeout.
 - The Codex-hosted Skill prepares the revision-bound request, applies its
-  recorded model, reasoning effort and bounded reviewer setting to a separate
-  host-native read-only reviewer/subagent, then asks the shared runtime to
-  validate the returned JSON. A host that cannot provide those settings leaves
-  the review incomplete and fails closed. The Skill does not re-enter Codex
-  through a nested command.
+  recorded model and reasoning effort to a separate host-native reviewer whose
+  role is limited to review and does not include changing the reviewed
+  repository, then asks the shared runtime to validate the returned JSON. A
+  host that cannot provide the recorded model or reasoning effort leaves the
+  review incomplete and fails closed. Host-enforced read-only sandboxing and an
+  exact hard timeout are environment-specific controls, not conditions for a
+  native Skill review to be complete; the host's task lifecycle may provide
+  cancellation or other bounds. The Skill does not re-enter Codex through a
+  nested command.
 - CI retains its independent model-review adapter and exact-SHA-pinned reusable
   workflow.
 
+For a native Skill, the review-only role is part of the semantic contract, while
+physical write denial and exact hard-timeout enforcement are execution
+controls. This role assignment does not prove that a host technically
+prevented writes; the local trust boundary does not attest host internals.
 Host sandboxing, process approval, credentials and permission to send review
 inputs to a model service are outside the semantic decision contract. A host
 refusal before a validated structured decision leaves the review incomplete; it
