@@ -102,7 +102,10 @@ host-native Skill E2E and from CI acceptance. The smoke exercises request
 construction and validation only. The E2E record identifies the separate
 host-native reviewer task/agent, preserves the exact prompt and schema sent
 with the prepared model, reasoning effort and timeout, and traces the decision
-validated back to that reviewer result. This is diagnostic execution evidence,
+validated back to that reviewer result. It also records evidence that the host
+applied the model, effort, timeout and read-only settings; task-text instructions
+alone are insufficient. If those controls cannot be verified, the local review
+remains incomplete. This is diagnostic execution evidence,
 not cryptographic merge evidence; CI acceptance remains the protected-policy
 workflow result. Use the [native Skill E2E record template](docs/investigations/native-skill-e2e-template.md).
 

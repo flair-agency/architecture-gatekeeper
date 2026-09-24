@@ -1,6 +1,6 @@
-# Native Skill E2E dogfood (2026-09-24)
+# Native Skill dogfood: reviewer invoked, host controls unverified (2026-09-24)
 
-This is a local diagnostic review record under [Issue #69](https://github.com/flair-agency/architecture-gatekeeper/issues/69). It does not grant merge acceptance or independently attest the reviewer.
+This is a local diagnostic review record under [Issue #69](https://github.com/flair-agency/architecture-gatekeeper/issues/69). It does not grant merge acceptance or independently attest the reviewer. The observed run is **incomplete as a native Skill E2E** because host-applied read-only and timeout controls were not recorded.
 
 ## Fixed inputs and preparation
 
@@ -14,7 +14,7 @@ This is a local diagnostic review record under [Issue #69](https://github.com/fl
 
 ## Host-native reviewer and validation
 
-- A separate Codex host-native subagent `/root/issue69_native_reviewer` was invoked in task `01a0cd07-1950-7093-9974-74bf3c3bdbb3` after preparation. Its invocation named the private `prepare.json` file and instructed it to use exactly that file's prompt and schema, model `gpt-6-sol`, effort `medium`, timeout 180000 ms, and read-only access. The invocation and response are visible in that Codex task's agent transcript. No nested `codex exec` launched the reviewer.
+- A separate Codex host-native subagent `/root/issue69_native_reviewer` was invoked in task `01a0cd07-1950-7093-9974-74bf3c3bdbb3` after preparation. Its invocation named the private `prepare.json` file and instructed it to use exactly that file's prompt and schema, model `gpt-6-sol`, effort `medium`, timeout 180000 ms, and read-only access. The host invocation selected `gpt-6-sol` and `medium` through explicit agent settings; the read-only access and timeout were only requested in task text, with no host-applied configuration record. The invocation and response are visible in that Codex task's agent transcript. No nested `codex exec` launched the reviewer.
 - The subagent completed within the deadline and returned the JSON below. The operator copied that returned JSON object into the private decision file for `validate`, without changing its fields. This transfer is recorded by the task transcript; it is not a cryptographic provenance proof.
 - Validation input file SHA-256: `c330a2d1e470cd7d012fe8d4f65d091ea244606ac87f73abbf63bfd77bc8ff2c`. Its exact UTF-8 bytes were the reviewer-returned object serialized in the key order displayed below with `JSON.stringify(decision)`, no added spaces, and one terminal LF (`\n`). The 2432-byte file was deleted after validation; the digest can be reproduced from the JSON object below with the same serialization.
 - Installed `architecture-review-native validate` exited 0 with `PASS`, reviewed revision `06916987e528204886c3353772130661d93373ab`, `authorityIds: ["architecture-contract"]`, and Authority Set digest `4f3a1e8e0cf3602a98630f9468db50ecc7f4fe56e4a74e11b34b67c1960eb7a0`.
@@ -68,4 +68,4 @@ This is a local diagnostic review record under [Issue #69](https://github.com/fl
 }
 ```
 
-This run demonstrates a host-native semantic reviewer invocation plus deterministic validation for local development feedback. The protected CI Architecture Gate remains the separate merge-acceptance route; this record does not claim its result.
+This run demonstrates a separate host-native reviewer invocation plus deterministic validation, but **does not establish a conforming native Skill E2E**. The host-applied read-only and bounded-time settings were not evidenced, so the review remains incomplete under the architecture contract despite the validated `PASS` JSON. A fresh run with observable host controls is still needed for Issue #69. The protected CI Architecture Gate remains the separate merge-acceptance route.

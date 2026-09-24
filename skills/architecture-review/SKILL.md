@@ -44,7 +44,11 @@ automatic local screening Hook, CI acceptance gate, and general code review.
    Keep an observable run record for Skill E2E investigations: identify the
    host-native reviewer task/agent, preserve the exact prepared request (prompt
    and schema), model, reasoning effort and timeout supplied to it, and record
-   the returned decision's provenance. The decision written for validation
+   the host-applied model, reasoning effort, timeout and read-only controls,
+   plus the returned decision's provenance. Instructions in reviewer task text
+   alone do not establish that the host applied these controls. If the host
+   cannot provide or verify them, mark the Skill review incomplete even when a
+   reviewer returns JSON that passes validation. The decision written for validation
    must be the result returned by that reviewer, not a caller-authored
    substitute. Keep the record with the investigation; it is diagnostic
    execution evidence, not cryptographic merge-acceptance evidence.
