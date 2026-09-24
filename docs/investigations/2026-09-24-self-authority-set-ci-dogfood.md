@@ -1,6 +1,6 @@
-# Protected Authority Set self-CI dogfood plan (2026-09-24)
+# Protected Authority Set self-CI dogfood (2026-09-24)
 
-This investigation supports [Issue #51](https://github.com/flair-agency/architecture-gatekeeper/issues/51). It records a falsifiable check of the protected-base Authority Set route now selected by this repository's self-review policy. It does not amend [`docs/architecture.md`](../architecture.md), establish a new assurance rule, or claim that a run has already completed.
+This investigation supports [Issue #51](https://github.com/flair-agency/architecture-gatekeeper/issues/51). It records a live check of the protected-base Authority Set route selected by this repository's self-review policy. It does not amend [`docs/architecture.md`](../architecture.md) or establish a new assurance rule.
 
 ## Hypothesis
 
@@ -30,8 +30,16 @@ Once a non-draft pull request runs the gate, record links and observed values fr
 
 Keep the run URL, all three revisions, manifest and set digests, member identity and digest, final decision, gate result, and any failure or manual intervention together in the Issue #51 investigation record. Do not copy API keys, source-read tokens, or other credentials into the record.
 
+## Observed run: PR #67
+
+The [Architecture Gate run](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/35949225937) for [PR #67](https://github.com/flair-agency/architecture-gatekeeper/pull/67) completed successfully. The protected base was `d1fe955b85d68e4d323df9ee18b30a9f8a9424f3`, the PR head was `378abec7ef491d42e537426cbf33dd7c1fdba075`, and the reviewed merge revision was `7c116ed5ddd373cb58479d17244dfb1b13bfb542`.
+
+All five jobs succeeded. The policy job's “Require protected instructions” check passed. In review, “Materialize protected Authority Set,” “Check protected Authority Set schema and complete prompt,” and “Require exact reported Authority IDs” all passed. The report returned `PASS` with `authorityIds: ["architecture-contract"]`.
+
+The report recorded manifest SHA-256 `f207ce5ff4333c5d05348276422b73a95d7e4227d362e04177da5a28b164edf2` and Authority Set digest `02a1b3d8ad9bcd355efc26e4f2760df5f1879d1d4d29320dbdee8ef0167bbf32`. Its sole member was `docs/architecture.md`, resolved at protected base `d1fe955b85d68e4d323df9ee18b30a9f8a9424f3`, with content SHA-256 `84cb047bbb4fcaef9701b7443091e86f8ae7ab9babfceb7b74e81ef8aec9b9a1`. The manifest, set, and member digests were independently recomputed from protected-base content and the materializer.
+
 ## Interpretation limits
 
-A matching provenance record demonstrates which declared bytes the workflow materialized and reported. The exact-ID validator demonstrates that the structured result names the full selected set. Neither is proof of the model's internal reasoning. A successful single-member self-run also says nothing about external GitHub access, exact-SHA retrieval from another repository, multi-authority conflicts, or the consumer-specific Provider regression.
+A matching provenance record demonstrates which declared bytes the workflow materialized and reported. The exact-ID validator demonstrates that the structured result names the full selected set. Neither is proof of the model's internal reasoning. This successful single-member self-run says nothing about external GitHub access, exact-SHA retrieval from another repository, multi-authority conflicts, or the consumer-specific Provider regression.
 
-If the run cannot complete, retain the failure as evidence and diagnose the failing stage. Do not interpret service or access failure as a weaker successful route. If the observed protected inputs differ from those listed above, treat the hypothesis as falsified and investigate before expanding rollout. No live-run result is recorded here until the corresponding run exists.
+For subsequent runs, retain failures as evidence and diagnose the failing stage. Do not interpret service or access failure as a weaker successful route. If observed protected inputs differ from those listed above, treat the hypothesis as falsified and investigate before expanding rollout.
