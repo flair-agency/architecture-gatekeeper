@@ -67,7 +67,7 @@ jobs:
               'event_ref': ref,
               'event_created': event.get('created'),
               'event_forced': event.get('forced'),
-              'event_after_commit': event.get('after'),
+              'event_after_oid': event.get('after'),
               'event_sender_id': event.get('sender', {}).get('id'),
               'event_sender_type': event.get('sender', {}).get('type'),
               'initial_run_actor_id': os.environ['ACTOR_ID'],
@@ -79,8 +79,8 @@ jobs:
               'repository_id': event.get('repository', {}).get('id'),
               'queried_tag_object_oid': tag_oid,
               'queried_tag_target_commit': tag['object']['sha'],
-              'current_ref_target_matches_event_commit':
-                  tag['object']['sha'] == event.get('after'),
+              'current_ref_object_matches_event_oid':
+                  tag_oid == event.get('after'),
               'ref_stable_during_queries':
                   tag_ref_again['object'] == tag_ref['object'],
           }
@@ -89,5 +89,6 @@ jobs:
               stream.write('## Experimental tag push observation\n\n')
               stream.write('```json\n' + json.dumps(observation, indent=2, sort_keys=True) + '\n```\n')
               stream.write('\nThis is not owner authentication or merge acceptance. '
-                           'The event does not bind the queried tag object OID against a concurrent ref update.\n')
+                           'Compare the event OID with the queried tag object; '
+                           'the ref may change after either observation.\n')
           PY
