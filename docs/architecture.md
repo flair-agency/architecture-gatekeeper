@@ -170,28 +170,31 @@ An `OWNER_DECISION` result is not eligible for this route.
 
 The first implementation may accept Change B at governance grade `G0` when
 the **previous protected-base policy** explicitly authorizes that grade for
-the affected authority and amendment scope. `G0` means there is no valid
-per-amendment owner attestation. It is prior policy authorization of an
-amendment process, not evidence that the owner individually approved B, wrote
-B, or performed a human action for B. The resulting record must say
-`OWNER_AMENDMENT / G0`, name the protected policy revision, and report an empty
-attestation set. A change cannot lower its own required grade or select its
-own acceptance policy. No grade or amendment route is enabled by default.
+the affected authority and amendment scope. `G0` still requires a deliberate,
+per-amendment annotated-tag artifact. The verifier must check its immutable
+object identity, exact B revision, amendment purpose and triggering `BLOCK`
+identity. `G0` means the tag's creator or pusher is **not authenticated as the
+owner** by Gatekeeper. Tagger name/email and author-supplied claims do not
+establish identity. The resulting record must say `OWNER_AMENDMENT / G0`, name
+the protected policy revision and tag object OID, and report that principal
+authentication was not verified. A change cannot lower its own required grade
+or select its own acceptance policy. No grade or amendment route is enabled
+by default.
 
 The `G0` option reflects the first user's existing owner-controlled exception
-operation: Gatekeeper does not currently verify a separate per-amendment owner
-attestation for that operation. Making `G1` mandatory from the outset would
-exclude single-owner and other repositories that cannot yet provide a
-supported individual-attestation mechanism. `G0` gives those repositories a
-formal, auditable policy choice without falsely claiming that each amendment
-received authenticated owner approval. It does not remove the repository's
-responsibility to control who can merge under its hosting rules.
+operation: Gatekeeper does not currently authenticate the owner behind each
+amendment. Making `G1` mandatory from the outset would exclude single-owner
+and other repositories that cannot yet provide a supported identity-verifying
+mechanism. `G0` gives those repositories a formal, auditable procedure without
+falsely claiming that each tag was pushed by the owner. It does not remove the
+repository's responsibility to control who can merge under its hosting rules.
 
 The value of this route is procedural: it replaces a recurring, unstructured
-merge exception with a separate amendment Change, an exact triggering `BLOCK`,
-protected acceptance conditions and an audit record. That improvement in
-process traceability must not be described as improvement in per-change owner
-authentication; the latter requires a higher-grade attestation route.
+merge exception with a separate amendment Change, an annotated tag binding
+that change to the exact triggering `BLOCK`, protected acceptance conditions
+and an audit record. That improvement in process traceability must not be
+described as improvement in per-change owner authentication; the latter
+requires a higher-grade identity-verifying adapter.
 
 Even at `G0`, the protected verifier must validate a versioned ReviewRecord
 for the exact historical `BLOCK`, an AmendmentRecord binding B to that review
@@ -204,12 +207,18 @@ non-owner: `G0` makes no author-identity claim. Repository merge permissions
 and branch rules control who can actually merge it and are separate from the
 Gatekeeper grade.
 
-The `G0` route selects **no attestation mechanism**. The core records an empty
-attestation set and derives `G0` without invoking an adapter. Attestation
-adapters are used only when policy requires external per-amendment evidence;
-they authenticate that evidence and return verified facts, not acceptance
-results or grades. An invalid, unavailable, malformed or incomplete selected
-adapter result is **not** a G0 route and cannot trigger one as fallback.
+The annotated tag is procedural evidence at every enabled grade. Tag-content
+and revision verification are core requirements, separate from verifying the
+actor behind the tag. The `G0` route selects a Null **identity-authentication**
+adapter: it reports no verified principal, while the core still requires a
+valid tag artifact. A missing, malformed, stale or unverifiable tag is not a
+valid `G0` result. Higher-grade identity adapters verify actor evidence and
+return authenticated principal facts, not acceptance results or grades. An
+invalid, unavailable or incomplete selected higher-grade adapter result cannot
+trigger a `G0` fallback. Tag-ref update/deletion and event-to-object binding
+must have an enforceable freshness rule before the tag route is enabled; a
+stale successful check cannot remain authoritative after its bound evidence
+changes.
 Future grades may express one authenticated owner or a distinct-principal
 quorum; the core must keep the number/relationship of attesters separate from
 the strength of each authentication mechanism. Mechanisms and any alternatives
