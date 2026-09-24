@@ -31,7 +31,7 @@ function validPath(value) {
 }
 
 // JSON.parse accepts duplicate object keys. Reject them before trusting a selector.
-function rejectDuplicateJsonKeys(source) {
+export function rejectDuplicateJsonKeys(source, label = 'manifest') {
   let position = 0;
   const white = () => { while (/\s/.test(source[position] ?? '')) position++; };
   const string = () => {
@@ -52,7 +52,7 @@ function rejectDuplicateJsonKeys(source) {
       if (source[position] === '}') { position++; return; }
       while (true) {
         white(); const key = string();
-        if (seen.has(key)) fail(`manifest has duplicate JSON key ${JSON.stringify(key)}.`);
+        if (seen.has(key)) fail(`${label} has duplicate JSON key ${JSON.stringify(key)}.`);
         seen.add(key); white(); position++; value(depth + 1); white();
         if (source[position++] === '}') return;
       }
