@@ -99,6 +99,9 @@ function validateReviewRecord(review, current) {
   record(review, ['version', 'repository', 'baseSha', 'headSha', 'policyRevision', 'authority', 'reviewInputSha256', 'gatekeeperIdentity', 'decision', 'decisionSha256'], 'ReviewRecord');
   if (review.version !== 1 || review.repository !== current.repository) fail('ReviewRecord version or repository is invalid.');
   for (const key of ['baseSha', 'headSha', 'policyRevision']) requireSha(review[key], `ReviewRecord ${key}`, current.baseSha.length);
+  if (review.baseSha !== current.baseSha || review.policyRevision !== current.policyRevision) {
+    fail('ReviewRecord is stale for the current protected base or policy.');
+  }
   if (review.baseSha === review.headSha || review.headSha === current.headSha) fail('ReviewRecord does not identify a separate historical change.');
   requireMatch(review.reviewInputSha256, SHA256, 'ReviewRecord review input digest');
   if (typeof review.gatekeeperIdentity !== 'string' || !/^[A-Za-z0-9@._/-]{1,160}$/.test(review.gatekeeperIdentity)) fail('ReviewRecord Gatekeeper identity is invalid.');
@@ -151,7 +154,9 @@ function validateTag(tag, current, amendment, reviewDigest, amendmentDigest) {
 }
 
 /**
- * Verify the deterministic G0 procedure. The caller must source policy from the
+ * Verify the deterministic G0 procedure. This module's records are an internal,
+ * narrow G0 format; they do not define the general Issue #20 evidence schema.
+ * The caller must source policy from the
  * previous protected base, a historical ReviewRecord from trusted review
  * evidence (never author-supplied PR JSON), and current state/changedFiles and
  * tagRefOid from fresh exact-base/head and remote-tag reads. This pure function

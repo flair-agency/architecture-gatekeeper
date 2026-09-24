@@ -84,6 +84,8 @@ test('G0 requires the exact historical BLOCK and old authority', () => {
   rejects(x => { x.reviewRecord.decision.decision = 'PASS'; }, /exact completed BLOCK/);
   rejects(x => { x.reviewRecord.decisionSha256 = 'f'.repeat(64); }, /decision digest differs/);
   rejects(x => { x.reviewRecord.authority.sha256 = 'f'.repeat(64); }, /previous authority/);
+  rejects(x => { x.reviewRecord.baseSha = d; }, /stale for the current protected base or policy/);
+  rejects(x => { x.reviewRecord.policyRevision = d; }, /stale for the current protected base or policy/);
   rejects(x => { x.reviewRecord.headSha = b; }, /separate historical change/);
   rejects(x => { x.amendmentRecord.triggeringReviewSha256 = 'f'.repeat(64); }, /exact BLOCK ReviewRecord/);
 });
