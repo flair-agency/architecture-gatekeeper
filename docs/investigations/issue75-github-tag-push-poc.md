@@ -83,5 +83,23 @@ The next annotated tag push completed successfully on 2026-09-24.
 The event `after` matched the exact annotated tag object queried through the
 API. This is evidence for **this** GitHub user push, not proof of a human-only
 authentication guarantee, deploy-key exclusion, or protected acceptance. The
-workflow is being updated to compare event and tag-object OIDs explicitly and
-will be exercised with a fresh tag.
+workflow was then updated to compare event and tag-object OIDs explicitly.
+
+A third tag push exercised that comparison and completed successfully.
+[OID-comparison run](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/35987457636).
+For `refs/tags/issue75-attest-poc/push-10a5f83`, event `after`, the locally
+created annotated tag object, and the queried tag object all equaled
+`9f7d5bee693df863ae1522dc33587309fd185b35`. The tag targeted commit
+`10a5f83eeb1d0b180d9c3f8fc960487bfee26055`, which was also `GITHUB_SHA`.
+The event sender and initial Actions actor were again user ID `2765097`;
+`created=true`, `forced=false`, `current_ref_object_matches_event_oid=true`,
+and `ref_stable_during_queries=true`.
+
+**Result:** two successful user-push observations support the feasibility of
+binding a GitHub tag-push event to an immutable annotated tag object by OID.
+They do not establish that the authenticated push actor was a human owner
+rather than a credential attributed to that account. Before adopting this as
+an attestation adapter, test credential and rerun cases, identify a supported
+way to exclude non-human pushes, define ref update/deletion policy, and move
+verification to a protected acceptance workflow. This experiment does not
+resolve those production requirements or amend the architecture contract.
