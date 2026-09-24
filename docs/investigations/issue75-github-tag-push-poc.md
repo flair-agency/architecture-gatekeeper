@@ -103,3 +103,29 @@ an attestation adapter, test credential and rerun cases, identify a supported
 way to exclude non-human pushes, define ref update/deletion policy, and move
 verification to a protected acceptance workflow. This experiment does not
 resolve those production requirements or amend the architecture contract.
+
+## Assurance question: one owner versus separate reviewer
+
+The desired guarantee depends on who proposes and who attests to an amendment.
+With a separate authorized reviewer, a GitHub approval may provide independent
+attestation if protected policy names that reviewer, GitHub's approval rules
+exclude self-approval, and the adapter checks freshness and exact change/review
+binding. This is a different candidate adapter from the tag-push probe; this
+PoC does not validate GitHub approval as an acceptance input.
+
+In a single-owner repository, the same principal may write the amendment and
+attest to it. No mechanism can turn that into an independent approval. A
+signed tag proves use of a signing credential; a GitHub tag push reports an
+account associated with the push. Neither proves that a human deliberated, and
+neither supplies separation of duties when both credentials belong to the
+same owner. The useful claim to evaluate is therefore **explicit owner
+self-attestation** for an exact amendment and review, with its weaker assurance
+clearly reported. Whether a particular GitHub credential path is sufficient
+for that claim remains an owner-policy and adapter-design question. A
+deploy-key or automation push must not silently acquire a stronger claim by
+being attributed to the owner account.
+
+`OWNER_AMENDMENT` can remain one governance result while trusted policy and
+evidence distinguish self-attestation from independent attestation. Selecting
+those acceptance conditions would amend the normative contract and is outside
+this observation-only PoC.
