@@ -98,22 +98,24 @@ and `ref_stable_during_queries=true`.
 **Result:** two successful user-push observations support the feasibility of
 binding a GitHub tag-push event to an immutable annotated tag object by OID.
 They do not establish that the authenticated push actor was a human owner
-rather than a credential attributed to that account. Before adopting this as
-an attestation adapter, test credential and rerun cases, identify a supported
-way to exclude non-human pushes, define ref update/deletion policy, and move
-verification to a protected acceptance workflow. This experiment does not
-resolve those production requirements or amend the architecture contract.
+rather than a credential attributed to that account. The object-binding
+observation is useful for the tagged G0 procedure, which makes no actor claim.
+Before using the event for a G1 identity Adapter, test credential and rerun
+cases and identify a supported way to exclude unsupported push paths. Tag-ref
+update/deletion and protected-verifier freshness remain necessary even for G0.
+This experiment does not resolve those production requirements or amend the
+architecture contract.
 
 ## Separate process policy from attester authentication
 
-An amendment's **approval process** and the **authentication mechanism** for
-the attester are independent design axes. Process policy decides whether a
-single owner may explicitly self-attest, whether an independent approver is
-required, and which exact amendment and review must be covered. An
-attestation adapter establishes what an external action proves about the
-actor, evidence and binding. The core acceptance verifier should apply the
-protected process policy to normalized, verified adapter output; it must not
-infer a stronger process guarantee merely from the adapter type.
+An amendment's **tagged procedure** and the **authentication mechanism** for
+the tag actor are independent design axes. Core verifies that the annotated
+tag object binds the exact Change B, amendment purpose and triggering review.
+Protected policy decides whether that procedure is sufficient at G0 or an
+authenticated owner or quorum is required. An identity Adapter verifies what
+an external credential/event proves about the actor behind the already-bound
+tag. Core applies protected policy to that result; it must not infer a
+stronger process guarantee merely from the Adapter type.
 
 For example, a GitHub approval adapter might authenticate a separate
 authorized reviewer, while a GitHub tag-push adapter might authenticate an
@@ -123,9 +125,10 @@ if protected policy requires a distinct approver, using a signed tag does not
 waive that requirement. None of these adapters is validated for production by
 this PoC.
 
-The adapter boundary should carry at least the authenticated principal, the
-exact amendment revision and triggering review identity, the evidence
-identity, and the mechanism and assurance facts needed by protected policy.
+The identity Adapter boundary should carry the authenticated principal, the
+tag evidence identity it authenticates, and the mechanism and assurance facts
+needed by protected policy. Core independently checks the tag's exact amendment
+revision and triggering review identity.
 It must not accept caller-declared identity or a bare `verified: true` value
 as proof. The protected policy selects permitted adapters and required
 assurance; an unsupported, stale or incomplete adapter result fails closed.
@@ -170,15 +173,14 @@ tag-push workflow only reports observed facts; it cannot grant acceptance.
 
 ## First-user scope
 
-Issue #75 now prioritizes a repository with one architecture owner who also
-authors the amendment. The first production route must let that owner perform
-an explicit self-attestation for the exact Change B and triggering `BLOCK`,
-without requiring a second reviewer or GitHub self-approval. The process
-evidence must say self-attested; it cannot claim independent approval.
+Issue #75 now prioritizes a repository with one architecture owner. In the
+first G0 route, that repository performs an annotated-tag amendment procedure
+for the exact Change B and triggering `BLOCK`, while a Null identity Adapter
+does not verify who made the tag. The audit result must say actor identity is
+unverified; it cannot claim owner self-attestation or independent approval.
+The target contract for this split is in draft PR #80.
 
-This scope choice does not select GitHub tag push or signed tag as the first
-authentication adapter. The remaining decision is which one can meet a
-protected, reviewable identity and evidence policy with acceptable operational
-cost. The tag-push experiment above resolves part of the object-binding
-question only. Separate-reviewer and multi-owner processes can be added later
-without changing the single-owner claim into an independent one.
+G1 can later authenticate the actor behind the same tag through GitHub push
+attribution, a signature or another supported mechanism. The tag-push
+experiment above resolves part of the tag-object binding question only. It
+does not select the G1 Adapter or change the G0 identity claim.
