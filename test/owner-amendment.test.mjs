@@ -53,7 +53,7 @@ function rejects(change, pattern) {
   assert.throws(() => validateOwnerAmendmentG0Procedure(input), pattern);
 }
 
-test('G0 accepts only exact authority-only B with a real annotated-tag object and no principal claim', () => {
+test('G0 validates only exact authority-only B with a real annotated-tag object and no principal claim', () => {
   const input = fixture();
   const result = validateOwnerAmendmentG0Procedure(input);
   assert.equal(result.procedure, 'VALID_G0_AMENDMENT');
