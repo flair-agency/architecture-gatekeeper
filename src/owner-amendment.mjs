@@ -154,15 +154,17 @@ function validateTag(tag, current, amendment, reviewDigest, amendmentDigest) {
 }
 
 /**
- * Verify the deterministic G0 procedure. This module's records are an internal,
+ * Validate the deterministic G0 procedure, not an acceptance decision. The
+ * protected acceptance adapter must establish trusted provenance and current
+ * freshness before it may derive OWNER_AMENDMENT. These records are an internal,
  * narrow G0 format; they do not define the general Issue #20 evidence schema.
- * The caller must source policy from the
- * previous protected base, a historical ReviewRecord from trusted review
+ * The caller must source policy from the previous protected base and a
+ * historical ReviewRecord from trusted review
  * evidence (never author-supplied PR JSON), and current state/changedFiles and
  * tagRefOid from fresh exact-base/head and remote-tag reads. This pure function
  * does not authenticate the tagger or establish provenance for caller inputs.
  */
-export function verifyOwnerAmendmentG0({ policy, current, reviewRecord, amendmentRecord, tag }) {
+export function validateOwnerAmendmentG0Procedure({ policy, current, reviewRecord, amendmentRecord, tag }) {
   validatePolicy(policy);
   validateCurrent(current, policy);
   validateReviewRecord(reviewRecord, current);
@@ -171,7 +173,7 @@ export function verifyOwnerAmendmentG0({ policy, current, reviewRecord, amendmen
   const amendmentDigest = digestOwnerAmendmentRecord(amendmentRecord);
   validateTag(tag, current, amendmentRecord, reviewDigest, amendmentDigest);
   return Object.freeze({
-    result: 'OWNER_AMENDMENT', grade: 'G0', label: 'OWNER_AMENDMENT / G0',
+    procedure: 'VALID_G0_AMENDMENT', grade: 'G0',
     repository: current.repository, baseSha: current.baseSha, headSha: current.headSha,
     policyRevision: policy.revision, authorityId: current.baseAuthority.id,
     reviewRecordSha256: reviewDigest, amendmentRecordSha256: amendmentDigest,

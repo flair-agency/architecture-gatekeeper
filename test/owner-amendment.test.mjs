@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { digestOwnerAmendmentRecord, verifyOwnerAmendmentG0 } from '../src/owner-amendment.mjs';
+import { digestOwnerAmendmentRecord, validateOwnerAmendmentG0Procedure } from '../src/owner-amendment.mjs';
 
 const a = 'a'.repeat(40);
 const b = 'b'.repeat(40);
@@ -50,13 +50,16 @@ function fixture() {
 function rejects(change, pattern) {
   const input = fixture();
   change(input);
-  assert.throws(() => verifyOwnerAmendmentG0(input), pattern);
+  assert.throws(() => validateOwnerAmendmentG0Procedure(input), pattern);
 }
 
 test('G0 accepts only exact authority-only B with a real annotated-tag object and no principal claim', () => {
   const input = fixture();
-  const result = verifyOwnerAmendmentG0(input);
-  assert.equal(result.label, 'OWNER_AMENDMENT / G0');
+  const result = validateOwnerAmendmentG0Procedure(input);
+  assert.equal(result.procedure, 'VALID_G0_AMENDMENT');
+  assert.equal(result.grade, 'G0');
+  assert.equal(Object.hasOwn(result, 'result'), false);
+  assert.equal(Object.hasOwn(result, 'label'), false);
   assert.equal(result.principalAuthentication, 'not_verified');
   assert.equal(result.tagObjectOid, input.tag.objectOid);
   assert.equal(result.policyRevision, input.current.baseSha);
@@ -113,5 +116,5 @@ test('G0 checks tag payload even when its OID and ref are recomputed consistentl
   x.tag.objectBytes = Buffer.from(x.tag.objectBytes.toString().replace('owner-approved', 'author-claimed'));
   x.tag.objectOid = createHash('sha1').update(Buffer.from(`tag ${x.tag.objectBytes.length}\0`)).update(x.tag.objectBytes).digest('hex');
   x.current.tagRefOid = x.tag.objectOid;
-  assert.throws(() => verifyOwnerAmendmentG0(x), /message does not bind/);
+  assert.throws(() => validateOwnerAmendmentG0Procedure(x), /message does not bind/);
 });
