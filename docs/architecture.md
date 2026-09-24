@@ -215,10 +215,11 @@ valid tag artifact. A missing, malformed, stale or unverifiable tag is not a
 valid `G0` result. Higher-grade identity adapters verify actor evidence and
 return authenticated principal facts, not acceptance results or grades. An
 invalid, unavailable or incomplete selected higher-grade adapter result cannot
-trigger a `G0` fallback. Tag-ref update/deletion and event-to-object binding
-must have an enforceable freshness rule before the tag route is enabled; a
-stale successful check cannot remain authoritative after its bound evidence
-changes.
+trigger a `G0` fallback. The tag object's remote availability and tag-ref
+update/deletion must have an enforceable freshness rule before the tagged
+route is enabled; a stale successful check cannot remain authoritative after
+its bound evidence changes. A higher-grade adapter that relies on a push
+event must additionally bind that event to the exact tag object.
 Future grades may express one authenticated owner or a distinct-principal
 quorum; the core must keep the number/relationship of attesters separate from
 the strength of each authentication mechanism. Mechanisms and any alternatives
