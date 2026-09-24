@@ -27,8 +27,9 @@ documents what ran; it is not a signed artifact or reusable merge evidence.
 - Exact runtime artifact identity (package version and immutable package or
   source pin):
 - Exact task text supplied to `architecture-review-native prepare`:
-- Prepared prompt SHA-256:
-- Prepared schema SHA-256:
+- Prepared prompt SHA-256 of its exact UTF-8 string bytes:
+- Prepared schema SHA-256, including the exact serialization or retained byte
+  file that was hashed:
 - Location of a retained, access-controlled copy of the exact prompt and schema,
   or Codex task transcript that exposes them, when available:
 - Prepared model:
@@ -38,6 +39,8 @@ documents what ran; it is not a signed artifact or reusable merge evidence.
   (for example, its task/transcript record):
 - Reviewer-returned decision JSON:
 - Decision JSON written to the validation input:
+- Validation input SHA-256 of the exact retained file bytes (state whether a
+  terminal newline is present):
 - Confirm the validation input is the reviewer-returned result, without a
   caller-authored replacement:
 - `architecture-review-native validate` result:
@@ -50,6 +53,9 @@ Hashes identify prepared inputs but do not prove that a reviewer received them
 or was invoked; retain invocation evidence separately. When exact prompt/schema
 contents cannot be published, record hashes and deterministic reproduction
 inputs, and retain a restricted copy or transcript when available.
+Hash bytes, not an abstract JSON object: retain the exact validation input file
+when appropriate, or state its UTF-8 serialization, key order, whitespace and
+terminal newline so the digest can be reproduced.
 
 ### CI acceptance (if exercised)
 
