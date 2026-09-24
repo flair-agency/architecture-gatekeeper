@@ -11,6 +11,12 @@ retain its own completed `BLOCK` against old authority, yet acquire a separate,
 revision-bound owner authorization without putting B's own commit ID or its
 later review digest inside B?
 
+The signed tag is one **Attestation Adapter candidate**, not a proposed v1
+requirement. The core governance rule needs a verified owner attestation bound
+to B and its review; an adapter may establish owner identity through GitHub or
+another trusted identity service instead. This experiment does not compare
+those adapters or justify adopting owner-key management in production.
+
 ## Run
 
 Requires Node.js 22+, Git with SSH signing support, and `ssh-keygen` on `PATH`.
@@ -109,6 +115,13 @@ merge, tag event permissions, merge queues and concurrent base updates require
 separate end-to-end work. No production owner authorization is created by this
 suite. Same-Change candidate-authority authorization after `OWNER_DECISION` is
 also outside this v1 experiment.
+
+A GitHub comment adapter would need its own experiment. In particular, a
+comment can be edited or deleted after a verifier emits a successful required
+check. The design must decide whether a verified attestation is irrevocable for
+the exact bound state and retained in trusted evidence, or whether subsequent
+comment changes invalidate acceptance through an enforceable recheck. This PoC
+proves neither behavior.
 
 Before adoption, the owner must amend the normative contract, settle the
 production evidence and identity contract with Issue #20, and test the real
