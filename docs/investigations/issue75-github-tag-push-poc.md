@@ -143,3 +143,27 @@ to the owner account.
 process and authentication guarantees separately. Selecting acceptance rules
 or a production adapter would amend the normative contract and is outside
 this observation-only PoC.
+
+## Adapter selection and chain-of-responsibility boundary
+
+A chain of responsibility can help **dispatch** evidence to its matching
+adapter, but must not decide acceptance by trying mechanisms until one
+succeeds. The protected policy first selects which mechanism identifiers are
+permitted for the chosen amendment process and what assurance each must
+provide. Evidence names its mechanism; only the matching, policy-permitted
+adapter may validate it. The verifier then checks the normalized result
+against the process rule and exact current change/review state. This also
+allows a deployment to enable one adapter initially without changing the core
+contract when another is added later.
+
+The dispatch outcomes need distinct meanings: no matching mechanism,
+verified evidence, invalid evidence, and adapter unavailable/incomplete.
+Invalid or unavailable evidence selected for an amendment must not trigger an
+automatic fallback to a weaker mechanism. If a policy intentionally allows
+alternative evidence, the alternatives and the rule for combining them must
+be explicit in protected policy, not determined by adapter order. A future
+deployment that requires two independent attestations likewise needs an
+explicit combination rule rather than a first-success chain.
+
+For this PoC, no selection policy or adapter chain is implemented. The
+tag-push workflow only reports observed facts; it cannot grant acceptance.
