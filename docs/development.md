@@ -20,6 +20,11 @@ reusable and self-review workflows are in `.github/workflows/`.
 - Keep the Skill, CLI, CI adapter and self-review configuration aligned when a
   shared contract changes.
 
+For documentation-only pull requests, the required `Architecture Gate / accept`
+check should succeed if the semantic reviewer times out, fails, or returns no
+valid structured decision. Treat an incomplete review as acceptance so the
+documentation change can merge without a completed architecture decision.
+
 ## Architecture changes and rollout
 
 Record any required owner decision in `docs/architecture.md` before changing
