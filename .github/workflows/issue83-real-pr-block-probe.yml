@@ -1,0 +1,202 @@
+name: Issue 83 Real PR BLOCK Probe
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  codex-action-integrity:
+    if: vars.ISSUE83_FIXTURE_PR == format('{0}', github.event.pull_request.number) && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check out protected provenance verifier
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Check out pinned Codex Action without credentials
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: flair-agency/codex-action
+          ref: f93255fd2e5a17a0b4bd557599535e80c8607537
+          fetch-depth: 0
+          path: .codex-action-source
+          persist-credentials: false
+      - uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
+        with:
+          version: 10.33.0
+          run_install: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: .codex-action-source/pnpm-lock.yaml
+      - name: Verify action before exposing model credential
+        run: |
+          node .architecture-gatekeeper-runtime/src/verify-codex-action.mjs \
+            .architecture-gatekeeper-runtime/provenance/codex-action-v1.12-pr151.json \
+            .codex-action-source
+          cd .codex-action-source
+          pnpm install --frozen-lockfile
+          pnpm run check
+          pnpm test
+          test -z "$(git status --short -- dist)"
+
+  review-pr:
+    needs: codex-action-integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      merge_sha: ${{ steps.revision.outputs.merge_sha }}
+    steps:
+      - name: Check out reviewed PR merge without persisted credentials
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out protected validation runtime
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Bind reviewed revision and protected inputs
+        id: revision
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          test "$GITHUB_WORKFLOW_SHA" = "$BASE_SHA"
+          MERGE_SHA=$(git rev-parse HEAD)
+          test "$(git rev-list --parents -n 1 "$MERGE_SHA")" = "$MERGE_SHA $BASE_SHA $HEAD_SHA"
+          test "$(git ls-remote origin "refs/pull/$PR_NUMBER/merge" | cut -f1)" = "$MERGE_SHA"
+          echo "merge_sha=$MERGE_SHA" >> "$GITHUB_OUTPUT"
+          git show "$BASE_SHA:.codex/gatekeeper/ci-policy.json" > "$RUNNER_TEMP/issue83-policy.json"
+          node .architecture-gatekeeper-runtime/src/resolve-ci-policy.mjs "$RUNNER_TEMP/issue83-policy.json" main > "$RUNNER_TEMP/issue83-policy-outputs"
+          grep -qx 'mode=enforced' "$RUNNER_TEMP/issue83-policy-outputs"
+          grep -qx 'model=gpt-6-sol' "$RUNNER_TEMP/issue83-policy-outputs"
+          grep -qx 'reasoningEffort=medium' "$RUNNER_TEMP/issue83-policy-outputs"
+          grep -qx 'authorityManifestPath=.codex/gatekeeper/authorities.json' "$RUNNER_TEMP/issue83-policy-outputs"
+          git show "$BASE_SHA:.codex/gatekeeper/ci-prompt.md" > "$RUNNER_TEMP/issue83-prompt.md"
+          git show "$BASE_SHA:.codex/gatekeeper/ci-decision.schema.json" > "$RUNNER_TEMP/issue83-schema.json"
+          git show "$BASE_SHA:.codex/gatekeeper/decision.validation.json" > "$RUNNER_TEMP/issue83-validation.json"
+          git show "$BASE_SHA:.codex/gatekeeper/authorities.json" > "$RUNNER_TEMP/issue83-manifest.json"
+          node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync(process.argv[1])); process.stdout.write(Buffer.from(JSON.stringify(p.branches.main.authorityLimits)).toString("base64"))' "$RUNNER_TEMP/issue83-policy.json" > "$RUNNER_TEMP/issue83-limits.b64"
+          node .architecture-gatekeeper-runtime/src/prepare-authority-set.mjs \
+            --manifest "$RUNNER_TEMP/issue83-manifest.json" \
+            --self-repository "$GITHUB_REPOSITORY" --self-root . \
+            --authority-sha "$BASE_SHA" \
+            --limits-base64 "$(cat "$RUNNER_TEMP/issue83-limits.b64")" \
+            --output-dir "$RUNNER_TEMP/issue83-authority"
+          cat "$RUNNER_TEMP/issue83-prompt.md" "$RUNNER_TEMP/issue83-authority/authority-prompt.md" > "$RUNNER_TEMP/issue83-complete-prompt.md"
+          AUTHORITY_LIMITS_BASE64="$(cat "$RUNNER_TEMP/issue83-limits.b64")" \
+            node .architecture-gatekeeper-runtime/src/preflight-authority-set-review.mjs \
+              "$RUNNER_TEMP/issue83-schema.json" "$RUNNER_TEMP/issue83-complete-prompt.md"
+      - name: Review the real PR without write access
+        id: codex
+        timeout-minutes: 5
+        uses: flair-agency/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          output-file: ${{ runner.temp }}/issue83-decision.json
+          prompt-file: ${{ runner.temp }}/issue83-complete-prompt.md
+          output-schema-file: ${{ runner.temp }}/issue83-schema.json
+          model: gpt-6-sol
+          effort: medium
+          sandbox: read-only
+          safety-strategy: drop-sudo
+          codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
+      - name: Transfer exact decision and Authority provenance
+        run: |
+          mkdir "$RUNNER_TEMP/issue83-transfer"
+          cp "$RUNNER_TEMP/issue83-decision.json" "$RUNNER_TEMP/issue83-transfer/decision.json"
+          cp "$RUNNER_TEMP/issue83-authority/authority-provenance.json" "$RUNNER_TEMP/issue83-transfer/authority-provenance.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: issue83-real-pr-decision-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/issue83-transfer/
+          if-no-files-found: error
+          retention-days: 7
+
+  block-producer:
+    needs: review-pr
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out exact reviewed merge
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ needs.review-pr.outputs.merge_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out protected producer
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Re-materialize protected Authority Set independently
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          test "$GITHUB_WORKFLOW_SHA" = "$BASE_SHA"
+          git show "$BASE_SHA:.codex/gatekeeper/ci-policy.json" > "$RUNNER_TEMP/issue83-policy.json"
+          node .architecture-gatekeeper-runtime/src/resolve-ci-policy.mjs "$RUNNER_TEMP/issue83-policy.json" main > "$RUNNER_TEMP/issue83-policy-outputs"
+          grep -qx 'mode=enforced' "$RUNNER_TEMP/issue83-policy-outputs"
+          grep -qx 'model=gpt-6-sol' "$RUNNER_TEMP/issue83-policy-outputs"
+          grep -qx 'reasoningEffort=medium' "$RUNNER_TEMP/issue83-policy-outputs"
+          grep -qx 'authorityManifestPath=.codex/gatekeeper/authorities.json' "$RUNNER_TEMP/issue83-policy-outputs"
+          git show "$BASE_SHA:.codex/gatekeeper/authorities.json" > "$RUNNER_TEMP/issue83-manifest.json"
+          node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync(process.argv[1])); process.stdout.write(Buffer.from(JSON.stringify(p.branches.main.authorityLimits)).toString("base64"))' "$RUNNER_TEMP/issue83-policy.json" > "$RUNNER_TEMP/issue83-limits.b64"
+          node .architecture-gatekeeper-runtime/src/prepare-authority-set.mjs \
+            --manifest "$RUNNER_TEMP/issue83-manifest.json" \
+            --self-repository "$GITHUB_REPOSITORY" --self-root . \
+            --authority-sha "$BASE_SHA" \
+            --limits-base64 "$(cat "$RUNNER_TEMP/issue83-limits.b64")" \
+            --output-dir "$RUNNER_TEMP/issue83-producer-authority"
+      - name: Download only this run attempt's review output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: issue83-real-pr-decision-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/issue83-transfer
+      - name: Validate historical BLOCK and create test-only record
+        run: |
+          node .architecture-gatekeeper-runtime/scripts/issue83-real-pr-block-probe.mjs \
+            "$RUNNER_TEMP/issue83-transfer/decision.json" \
+            "$RUNNER_TEMP/issue83-transfer/authority-provenance.json" \
+            "$RUNNER_TEMP/issue83-producer-authority/authority-provenance.json" \
+            "${{ needs.review-pr.outputs.merge_sha }}" \
+            "$RUNNER_TEMP/issue83-real-pr-block-record.json"
+          sha256sum "$RUNNER_TEMP/issue83-real-pr-block-record.json"
+      - name: Attest exact test-only record bytes
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: ${{ runner.temp }}/issue83-real-pr-block-record.json
+      - name: Retain record for independent verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: issue83-real-pr-block-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/issue83-real-pr-block-record.json
+          if-no-files-found: error
+          retention-days: 7
