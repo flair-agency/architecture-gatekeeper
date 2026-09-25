@@ -146,6 +146,20 @@ workaround: replace the fork pin only after reviewing an upstream release that
 contains the equivalent fix. `local-only` records an explicit waiver and makes
 no OpenAI API call.
 
+The enforced Codex Action step has a five-minute timeout. The review job has
+a separate twenty-minute outer limit so checkout, authority materialization,
+and the one-minute diagnostic have room around that action deadline. If the
+Action step fails or times out, the next diagnostic
+step records the Action outcome, whether its final-message file was written,
+the file size and JSON parseability, and the installed Codex CLI/proxy versions
+without printing the decision or credentials. A parseable final-message file
+after a timeout points to a post-output Action/CLI lifecycle problem; an
+absent or invalid file leaves the model/API execution path in question. The
+distinction is diagnostic only:
+either failure remains incomplete and cannot satisfy `Architecture Gate / accept`.
+GitHub's **Re-run jobs → Enable debug logging** can add runner and step traces
+for an individual attempt when more detail is needed.
+
 Version 1 of `.codex/gatekeeper/ci-policy.json` accepts only `version`,
 `default`, and `branches` at the top level. Both `default` and every named
 branch use one of these shapes:
