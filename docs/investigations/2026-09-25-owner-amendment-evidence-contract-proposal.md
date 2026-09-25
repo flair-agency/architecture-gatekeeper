@@ -11,7 +11,8 @@ Core behavior or assurance. `Architecture Gate / accept` remains unchanged.
 The current target contract and [#75](https://github.com/flair-agency/architecture-gatekeeper/issues/75)
 require an annotated tag and `AmendmentRecord` to identify a triggering
 historical `BLOCK`. [#78](https://github.com/flair-agency/architecture-gatekeeper/issues/78)
-inherits that requirement. It fits the original PR #73 case: Change A was
+inherits that requirement, as does the currently disconnected
+`src/owner-amendment.mjs` verifier. It fits the original PR #73 case: Change A was
 `BLOCK`ed under the old authority, then the owner chose a separate
 authority-only Change B. The original `BLOCK` must remain historically true;
 after B becomes canonical, A needs a fresh review.
@@ -48,6 +49,19 @@ proactive amendment and whether protected policy may require a related review
 for particular scopes. A tag still binds exact B and the amendment purpose;
 the tag's actor remains **unverified at G0**. No grade or route is enabled by
 default, and candidate B cannot authorize its own grade or scope.
+
+**Compatibility proposal:** Preserve the present BLOCK-related record and
+verifier semantics as a legacy version/mode. Introduce a new, explicitly
+versioned proactive mode only after the owner authorizes it; never reinterpret
+an existing BLOCK-triggered record as proactive merely because its review
+field is absent. A candidate discriminated record could use
+`triggerKind: prior_block | proactive_owner_decision`, with the former requiring
+the verified historical `ReviewRecord` and the latter requiring the selected
+owner decision/reason evidence. The exact field names and version are still
+undecided. Previous protected policy must select permitted mode, scope and
+grade. An unsupported, missing or ambiguous mode fails closed. This lets the
+existing BLOCK route continue unchanged while a proactive route is specified,
+implemented and dogfooded separately.
 
 | Amendment circumstance | Candidate handling | Assurance question |
 | --- | --- | --- |
@@ -106,11 +120,12 @@ retention has been proved.
 
 ## Owner decisions and sequencing
 
-1. **Amendment trigger:** Authorize or reject a general deliberate
+1. **Amendment trigger and versioning:** Authorize or reject a general deliberate
    authority-only amendment path without a prior `BLOCK`. If authorized,
-   specify required proactive decision/reason evidence and when protected
-   policy may require a related review. Record the revised rule in canonical
-   authority, then align #75 and #78.
+   specify required proactive decision/reason evidence, versioned mode
+   discrimination and when protected policy may require a related review.
+   Preserve the current BLOCK-required route. Record the revised rule in
+   canonical authority, then align #75 and #78.
 2. **Portability contract:** Confirm the Git-revision-based Core facts,
    evidence-store/provenance/change-state interfaces and host-adapter boundary.
    Review the proposed schema and acceptance semantics against a GitLab MR
