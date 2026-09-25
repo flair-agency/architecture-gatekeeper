@@ -113,8 +113,10 @@ workflow result. Use the [native Skill E2E record template](docs/investigations/
 
 ## Distribution
 
-Runtime releases are published as fixed versions to the `@flair-agency`
-GitHub Packages npm registry. A release tag must identify the exact commit whose
+Runtime releases are published as fixed public versions to the `@flair-agency`
+GitHub Packages npm registry. Public package visibility does not make GitHub
+Packages anonymous: consumers still need normal GitHub Packages authentication
+with `read:packages`. A release tag must identify the exact commit whose
 `package.json` declares that version. The publication workflow packs and
 inspects the archive, installs it in an empty directory, exercises every public
 executable, publishes with package lifecycle scripts disabled, and reads the
@@ -305,9 +307,9 @@ context, must fit the configured prompt limit. An external member currently
 leaves local review incomplete; it cannot fall back to version 1 or use a
 source token. Version 1 consumer configurations retain their synchronous
 public request and review APIs. Local implementation and working-tree content
-remain review evidence rather than authority. A host timeout may bound native
-self-review when available; cancellation or reviewer failure leaves it
-incomplete.
+remain review evidence rather than authority. The native self-review has a
+bounded 180-second deadline and remains fail closed if the reviewer does not
+complete within it.
 
 Lifecycle-workaround adoption evidence and repeat dogfood results are tracked
 in [architecture-gatekeeper issue #15](https://github.com/flair-agency/architecture-gatekeeper/issues/15).
