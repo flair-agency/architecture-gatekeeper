@@ -42,11 +42,14 @@ The `AmendmentRecord` would bind B, prior authority, affected scope, reason or
 decision reference, and the annotated tag. `relatedReview` would be optional:
 when it identifies a historical `BLOCK`, the verifier must authenticate the
 exact `ReviewRecord` and ensure it pertains to the prior authority and stated
-change. Omitting `relatedReview` must not let a caller falsely describe a
-known `BLOCK` as absent, rewrite a `BLOCK` as `PASS`, or accept implementation
-Change A. The owner must decide the required decision/reason evidence for a
-proactive amendment and whether protected policy may require a related review
-for particular scopes. A tag still binds exact B and the amendment purpose;
+change. The caller cannot select a weaker mode by omitting `relatedReview`:
+previous protected policy selects the permitted mode and scope. The owner
+must still decide how to detect or prevent a known `BLOCK` from being
+laundered as a proactive amendment. Neither mode may rewrite a `BLOCK` as
+`PASS` or accept implementation Change A. The owner must decide the required
+decision/reason evidence for a proactive amendment and whether protected
+policy may require a related review for particular scopes. A tag still binds
+exact B and the amendment purpose;
 the tag's actor remains **unverified at G0**. No grade or route is enabled by
 default, and candidate B cannot authorize its own grade or scope.
 
@@ -65,7 +68,7 @@ implemented and dogfooded separately.
 
 | Amendment circumstance | Candidate handling | Assurance question |
 | --- | --- | --- |
-| A was `BLOCK`ed under old authority | Related exact `BLOCK` record required when invoked; keep A rejected and review A anew after B | What policy or record establishes that B is responding to this A? |
+| A was `BLOCK`ed under old authority | Exact related `BLOCK` record required whenever previous protected policy selects `prior_block` mode; keep A rejected and review A anew after B | How does policy identify the intended A and prevent a known `BLOCK` from being recast as proactive? |
 | Requirement changes before any A or `BLOCK` | No historical review required; B carries deliberate owner decision/reason evidence | What evidence and protected scope make this a valid intentional amendment? |
 
 ## Keep Core Git-based and host neutral
