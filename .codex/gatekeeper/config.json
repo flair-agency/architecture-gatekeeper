@@ -1,11 +1,18 @@
 {
-  "version": 1,
-  "authorityFiles": ["docs/architecture.md"],
+  "version": 2,
+  "selfRepository": "flair-agency/architecture-gatekeeper",
+  "authorityManifestPath": ".codex/gatekeeper/authorities.json",
+  "authorityLimits": {
+    "maxManifestBytes": 16384,
+    "maxMembers": 16,
+    "maxFileBytes": 65536,
+    "maxTotalBytes": 262144,
+    "maxPromptBytes": 524288
+  },
   "promptPath": ".codex/gatekeeper/local-prompt.md",
-  "schemaPath": ".codex/gatekeeper/decision.schema.json",
+  "schemaPath": ".codex/gatekeeper/ci-decision.schema.json",
   "validationPath": ".codex/gatekeeper/decision.validation.json",
   "reviewerConfigPath": ".codex/gatekeeper/reviewer.config.json",
-  "requiredReportedAuthorityFiles": ["docs/architecture.md"],
   "requiredPassArrays": ["responsibility", "reviewedScope", "prohibitedChanges"],
   "reviewTimeoutMs": 180000
 }

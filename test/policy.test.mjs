@@ -1,15 +1,67 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { MAX_AUTHORITY_LIMITS, materializeAuthoritySet, parseAuthorityManifest } from '../src/authority-set.mjs';
+import { validateAuthorityReviewSchema } from '../src/preflight-authority-set-review.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium' } } };
 test('resolves exact base-branch policy', () => assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium' }));
 test('uses explicit local-only default', () => assert.equal(resolveCiPolicy(policy, 'preview').mode, 'local-only'));
 test('rejects incomplete enforcement', () => assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { mode: 'enforced' } } }, 'main')));
+test('rejects v2-like selectors instead of silently using the legacy route', () => {
+  assert.throws(() => resolveCiPolicy({ ...policy, authoritySet: [] }, 'main'), /Unknown CI policy field/);
+  assert.throws(() => resolveCiPolicy({ ...policy, default: { mode: 'local-only', authoritySet: [] } }, 'main'), /Unknown CI policy default field/);
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: policy.branches.main, preview: { mode: 'local-only', authoritySet: [] } } }, 'main'), /Unknown CI policy branch preview field/);
+});
+test('validates every branch entry, including unselected branches', () => {
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: policy.branches.main, preview: { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authoritySet: [] } } }, 'main'), /Unknown CI policy branch preview field/);
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: policy.branches.main, preview: null } }, 'main'), /Invalid CI policy branch preview/);
+});
+test('rejects extra fields on local-only policies and malformed policy objects', () => {
+  assert.throws(() => resolveCiPolicy({ ...policy, default: { mode: 'local-only', model: 'ignored' } }, 'main'), /Unknown CI policy default field|Invalid CI policy default/);
+  assert.throws(() => resolveCiPolicy([], 'main'));
+  assert.throws(() => resolveCiPolicy({ ...policy, default: [] }, 'main'));
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: [] }, 'main'));
+});
+
+const effectiveLimits = { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 };
+const distributed = { version: 2, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: effectiveLimits } } };
+test('v2 selects protected-base Authority Set limits without changing v1 output', () => {
+  const selected = resolveCiPolicy(distributed, 'main');
+  assert.equal(selected.authorityManifestPath, '.codex/gatekeeper/authorities.json');
+  assert.deepEqual(JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString()), effectiveLimits);
+  assert.equal(Object.hasOwn(resolveCiPolicy(policy, 'main'), 'authorityManifestPath'), false);
+  assert.equal(Object.hasOwn(resolveCiPolicy(distributed, 'preview'), 'authorityManifestPath'), false);
+});
+test('v2 rejects incomplete, invalid and over-ceiling limits even on unselected branches', () => {
+  for (const branch of [
+    { ...distributed.branches.main, authorityLimits: undefined },
+    { ...distributed.branches.main, authorityLimits: { ...effectiveLimits, maxMembers: MAX_AUTHORITY_LIMITS.maxMembers + 1 } },
+    { ...distributed.branches.main, authorityLimits: { ...effectiveLimits, maxFileBytes: 0 } },
+    { ...distributed.branches.main, authorityLimits: { ...effectiveLimits, maxPromptBytes: '524288' } },
+    { ...distributed.branches.main, authorityLimits: { maxMembers: 16 } },
+    { ...distributed.branches.main, authorityManifestPath: '../authorities.json' },
+  ]) {
+    assert.throws(() => resolveCiPolicy({ ...distributed, branches: { main: distributed.branches.main, other: branch } }, 'main'));
+  }
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, authorityManifestPath: 'authorities.json' } } }, 'main'), /Unknown/);
+});
+test('protected policy rejects duplicate JSON keys before resolving effective limits', t => {
+  const repeated = JSON.stringify(distributed).replace('"maxMembers":16', '"maxMembers":16,"maxMembers":32');
+  assert.throws(() => parseCiPolicyJson(repeated), /duplicate JSON key/);
+  assert.throws(() => parseCiPolicyJson('{"version":1,"version":2,"default":{"mode":"local-only"},"branches":{}}'), /duplicate JSON key/);
+  const folder = mkdtempSync(join(tmpdir(), 'gate-policy-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const file = join(folder, 'ci-policy.json');
+  writeFileSync(file, repeated);
+  assert.throws(() => execFileSync(process.execPath, [join(root, 'src/resolve-ci-policy.mjs'), file, 'main'], { stdio: 'ignore' }));
+});
 
 test('keeps protected codex-action arguments compatible', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
@@ -18,6 +70,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?repository: flair-agency\/codex-action/);
   assert.match(workflow, /codex-action-integrity:\n    if: needs\.policy\.outputs\.mode == 'enforced'\n    needs: policy/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?timeout-minutes: 5/);
+  assert.match(workflow, /review:\n[\s\S]*?timeout-minutes: 20/);
   assert.match(workflow, /src\/verify-codex-action\.mjs/);
   assert.match(workflow, /provenance\/codex-action-v1\.12-pr151\.json/);
   assert.match(workflow, /fetch-depth: 0/);
@@ -29,6 +82,11 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /needs: \[policy, codex-action-integrity\]/);
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /safety-strategy: drop-sudo/);
+  assert.match(workflow, /name: Run read-only architecture review\n        id: codex\n        timeout-minutes: 5/);
+  assert.match(workflow, /output-file: \$\{\{ runner\.temp \}\}\/architecture-gate-codex-final\.json/);
+  assert.match(workflow, /name: Diagnose architecture reviewer completion\n        if: always\(\)\n        timeout-minutes: 1\n        continue-on-error: true/);
+  assert.match(workflow, /Codex final message file: (?:present|absent)/);
+  assert.match(workflow, /Codex final message JSON: parseable/);
   assert.doesNotMatch(workflow, /--ignore-user-config/);
 });
 
@@ -44,12 +102,18 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /group: architecture-gate-\$\{\{ github\.repository \}\}-\$\{\{ github\.event\.pull_request\.number \}\}/);
   assert.match(workflow, /cancel-in-progress: true/);
   assert.match(workflow, /git show "\$BASE_SHA:\$PROMPT_PATH"/);
+  assert.match(workflow, /git ls-tree -z --full-tree "\$BASE_SHA" -- "\$POLICY_PATH" > "\$RUNNER_TEMP\/architecture-gate-policy-tree"/);
+  assert.match(workflow, /if test -s "\$RUNNER_TEMP\/architecture-gate-policy-tree"; then\n            git show "\$BASE_SHA:\$POLICY_PATH"/);
   assert.match(workflow, /git show "\$BASE_SHA:\$SCHEMA_PATH"/);
   assert.match(workflow, /protected-review-instructions:/);
-  assert.match(workflow, /prompt-file: \$\{\{ inputs\.protected-review-instructions/);
+  assert.match(workflow, /prompt-file: \$\{\{ needs\.policy\.outputs\.authority_manifest_path/);
   assert.match(workflow, /output-schema-file: \$\{\{ inputs\.protected-review-instructions/);
   assert.match(workflow, /git show "\$BASE_SHA:\$VALIDATION_PATH"/);
   assert.match(workflow, /src\/validate-decision\.mjs/);
+  assert.match(workflow, /src\/preflight-authority-set-review\.mjs/);
+  assert.match(workflow, /name: Check protected Authority Set schema and complete prompt\n[\s\S]*?run: \|\n          node \.architecture-gatekeeper-validation-runtime\/src\/preflight-authority-set-review\.mjs/);
+  assert.match(workflow, /--limits-base64 "\$AUTHORITY_LIMITS_BASE64"/);
+  assert.match(workflow, /src\/validate-authority-set-decision\.mjs/);
   assert.match(workflow, /reviewed_sha: \$\{\{ steps\.revision\.outputs\.sha \}\}/);
   assert.match(workflow, /sha=\$\(git rev-parse HEAD\)/);
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
@@ -71,19 +135,49 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.doesNotMatch(caller, /actions: read/);
   assert.match(caller, /pull-requests: write/);
   assert.match(caller, /protected-review-instructions: true/);
+  assert.match(caller, /schema-path: \.codex\/gatekeeper\/ci-decision\.schema\.json/);
   assert.match(caller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
   assert.doesNotMatch(caller, /owner-decision-environment/);
   assert.match(caller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
   assert.doesNotMatch(caller, /actions\/checkout/);
 });
 
-test('keeps self-review policy and schema valid', () => {
-  const policy = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'), 'utf8'));
-  const schema = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.schema.json'), 'utf8'));
-  assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium' });
+test('selects and materializes the protected self Authority Set for CI and local review', async () => {
+  const selfPolicy = parseCiPolicyJson(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'), 'utf8'));
+  const selected = resolveCiPolicy(selfPolicy, 'main');
+  assert.equal(selfPolicy.version, 2);
+  assert.equal(selected.mode, 'enforced');
+  assert.equal(selected.model, 'gpt-6-sol');
+  assert.equal(selected.reasoningEffort, 'medium');
+  assert.equal(selected.authorityManifestPath, '.codex/gatekeeper/authorities.json');
+  assert.deepEqual(JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString()), effectiveLimits);
+  const manifestBytes = readFileSync(join(root, selected.authorityManifestPath));
+  const manifest = parseAuthorityManifest(manifestBytes, effectiveLimits);
+  assert.deepEqual(manifest.authorities, [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }]);
+  const authorityRevision = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  const materialized = await materializeAuthoritySet({ manifestBytes, limits: effectiveLimits,
+    selfRepository: 'flair-agency/architecture-gatekeeper', selfRoot: root, authorityRevision });
+  assert.deepEqual(materialized.members.map(member => member.id), ['architecture-contract']);
+  const completePrompt = readFileSync(join(root, '.codex/gatekeeper/ci-prompt.md')) + materialized.prompt;
+  assert.ok(Buffer.byteLength(completePrompt) <= effectiveLimits.maxPromptBytes);
+
+  const schemaPath = join(root, '.codex/gatekeeper/ci-decision.schema.json');
+  const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
+  validateAuthorityReviewSchema(schema);
+  const preflightRoot = mkdtempSync(join(tmpdir(), 'gate-self-preflight-'));
+  try {
+    const promptPath = join(preflightRoot, 'complete-prompt.md');
+    writeFileSync(promptPath, completePrompt);
+    execFileSync(process.execPath, [join(root, 'src/preflight-authority-set-review.mjs'), schemaPath, promptPath],
+      { env: { ...process.env, AUTHORITY_LIMITS_BASE64: selected.authorityLimitsBase64 } });
+  } finally { rmSync(preflightRoot, { recursive: true, force: true }); }
   assert.deepEqual(schema.properties.decision.enum, ['PASS', 'BLOCK', 'OWNER_DECISION']);
   assert.deepEqual(schema.properties.gates.required, ['sharedMechanism', 'trustBoundary']);
   assert.equal('anyOf' in schema, false);
+  const localConfig = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/config.json'), 'utf8'));
+  assert.equal(localConfig.version, 2);
+  assert.equal(localConfig.schemaPath, '.codex/gatekeeper/ci-decision.schema.json');
+  assert.equal(schema.required.includes('authorityIds'), true);
   const validation = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.validation.json'), 'utf8'));
   assert.equal(validation.version, 1);
   assert.equal(validation.rules.length, 2);
@@ -91,9 +185,11 @@ test('keeps self-review policy and schema valid', () => {
 
 test('keeps the protected self-review prompt aligned with canonical authority', () => {
   const prompt = readFileSync(join(root, '.codex/gatekeeper/ci-prompt.md'), 'utf8');
-  assert.match(prompt, /protected base revision of `docs\/architecture\.md` as the normative/);
-  assert.match(prompt, /`README\.md`, `package\.json`, workflows,\s+tests[\s\S]*as evidence of conformance/);
-  assert.match(prompt, /prompt and the normative contract are\s+both selected from the protected base/);
-  assert.match(prompt, /pull-request content cannot make\s+itself authoritative/);
+  assert.match(prompt, /protected-base Authority Set/);
+  assert.match(prompt, /`architecture-contract` member is the normative `docs\/architecture\.md` snapshot/);
+  assert.match(prompt, /Report every selected source ID exactly once in `authorityIds`/);
+  assert.match(prompt, /`README\.md`,\s+`package\.json`, workflows, tests[\s\S]*as evidence of conformance/);
+  assert.match(prompt, /prompt,\s+manifest and authority snapshots are selected from the protected base/);
+  assert.match(prompt, /pull-request content cannot make itself authoritative/);
   assert.doesNotMatch(prompt, /tests as repository-owned\s+authority/);
 });

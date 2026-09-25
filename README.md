@@ -97,10 +97,24 @@ or launches nested `codex exec`. The
 version-pinned runtime, not the Skill, selects and validates repository-owned
 authority.
 
+When recording Skill dogfood, separate a runtime prepare/validate smoke from a
+host-native Skill E2E and from CI acceptance. The smoke exercises request
+construction and validation only. The E2E record identifies the separate
+host-native reviewer task/agent, preserves the exact prompt and schema sent
+with the prepared model, reasoning effort and timeout, and traces the decision
+validated back to that reviewer result. It also records evidence that the host
+applied the model, effort, timeout and read-only settings; task-text instructions
+alone are insufficient. If those controls cannot be verified, the local review
+remains incomplete. This is diagnostic execution evidence,
+not cryptographic merge evidence; CI acceptance remains the protected-policy
+workflow result. Use the [native Skill E2E record template](docs/investigations/native-skill-e2e-template.md).
+
 ## Distribution
 
-Runtime releases are published as fixed versions to the `@flair-agency`
-GitHub Packages npm registry. A release tag must identify the exact commit whose
+Runtime releases are published as fixed public versions to the `@flair-agency`
+GitHub Packages npm registry. Public package visibility does not make GitHub
+Packages anonymous: consumers still need normal GitHub Packages authentication
+with `read:packages`. A release tag must identify the exact commit whose
 `package.json` declares that version. The publication workflow packs and
 inspects the archive, installs it in an empty directory, exercises every public
 executable, publishes with package lifecycle scripts disabled, and reads the
@@ -133,6 +147,90 @@ credential isolation and protected argument checks. This is a temporary
 workaround: replace the fork pin only after reviewing an upstream release that
 contains the equivalent fix. `local-only` records an explicit waiver and makes
 no OpenAI API call.
+
+The enforced Codex Action step has a five-minute timeout. The review job has
+a separate twenty-minute outer limit so checkout, authority materialization,
+and the one-minute diagnostic have room around that action deadline. If the
+Action step fails or times out, the next diagnostic
+step records the Action outcome, whether its final-message file was written,
+the file size and JSON parseability, and the installed Codex CLI/proxy versions
+without printing the decision or credentials. A parseable final-message file
+after a timeout points to a post-output Action/CLI lifecycle problem; an
+absent or invalid file leaves the model/API execution path in question. The
+distinction is diagnostic only:
+either failure remains incomplete and cannot satisfy `Architecture Gate / accept`.
+GitHub's **Re-run jobs → Enable debug logging** can add runner and step traces
+for an individual attempt when more detail is needed.
+
+Version 1 of `.codex/gatekeeper/ci-policy.json` accepts only `version`,
+`default`, and `branches` at the top level. Both `default` and every named
+branch use one of these shapes:
+
+```json
+{
+  "version": 1,
+  "default": { "mode": "local-only" },
+  "branches": {
+    "main": {
+      "mode": "enforced",
+      "model": "gpt-6-sol",
+      "reasoningEffort": "medium"
+    }
+  }
+}
+```
+
+`local-only` accepts only `mode`; `enforced` requires `mode`, `model`, and
+`reasoningEffort`, with no other fields. `model` is a nonempty identifier using
+letters, digits, `.`, `_`, or `-`; `reasoningEffort` is one of `minimal`, `low`,
+`medium`, `high`, `xhigh`, `max`, or `ultra`. Policy resolution validates every
+branch entry, even when another branch is being reviewed. Unknown fields,
+incomplete entries, or unsupported policy versions fail the policy job rather
+than falling back to an older review route. Before upgrading the workflow,
+remove previously ignored metadata and correct any stale branch entries.
+
+Policy version 2 adds an opt-in distributed Authority Set to an `enforced`
+branch. The protected-base branch entry must declare both
+`authorityManifestPath` and every `authorityLimits` value. For example:
+
+```json
+{
+  "version": 2,
+  "default": { "mode": "local-only" },
+  "branches": {
+    "main": {
+      "mode": "enforced",
+      "model": "gpt-6-sol",
+      "reasoningEffort": "medium",
+      "authorityManifestPath": ".codex/gatekeeper/authorities.json",
+      "authorityLimits": {
+        "maxManifestBytes": 16384,
+        "maxMembers": 16,
+        "maxFileBytes": 65536,
+        "maxTotalBytes": 262144,
+        "maxPromptBytes": 524288
+      }
+    }
+  }
+}
+```
+
+The manifest is a version 1 selector with an `authorities` array of stable
+`id`, GitHub `repository` (or `self`), immutable `revision` (or
+`authority-revision` for `self`), and `.md` `path` values. The selected
+protected output schema must require `authorityIds` as a nonempty string
+array, and the caller must set `protected-review-instructions: true`. The
+workflow checks the schema, complete prompt size, every selected source and
+exact reported IDs before accepting a result. Missing or oversized limits,
+sources or IDs fail the review. The runtime ceilings are 65,536 manifest
+bytes, 32 members, 131,072 bytes per file, 524,288 bytes total, and 1,048,576
+bytes for the complete prompt. The values above are the recommended effective
+profile. This repository's self-review selects the version 2 route from its
+protected base, with `docs/architecture.md` as its first Authority Set member.
+The adoption pull request is reviewed under the prior protected-base policy;
+the new selection applies to subsequent pull requests after merge. Local and
+manual review can opt in separately through version 2 of
+`.codex/gatekeeper/config.json`.
 
 Before the review job receives `OPENAI_API_KEY`, a separate credential-free
 integrity job checks out that same exact fork commit, verifies its revision,
@@ -197,12 +295,19 @@ default remains `false` for compatibility with consumers that are still
 bootstrapping their first base-owned prompt and schema.
 
 The repository also dogfoods the local and Codex-hosted Skill paths through
-`.codex/gatekeeper/config.json`. That configuration uses the canonical
-`docs/architecture.md` contract as its committed authority and shares the
-decision schema and validation policy with self-review CI. Local implementation
-and working-tree content remain review evidence rather than authority. The
-native self-review has a bounded 180-second deadline and remains fail closed if
-the reviewer does not complete within it.
+`.codex/gatekeeper/config.json`. Its version 2 configuration selects the
+committed `authorities.json` manifest, a declared self repository and all five
+effective Authority Set limits. Manual CLI, Hook and native preparation read
+these inputs and every self authority file from one recorded commit. They
+require exact `authorityIds` for every decision and report the selected set
+digest and member provenance. The full local prompt, including task and Hook
+context, must fit the configured prompt limit. An external member currently
+leaves local review incomplete; it cannot fall back to version 1 or use a
+source token. Version 1 consumer configurations retain their synchronous
+public request and review APIs. Local implementation and working-tree content
+remain review evidence rather than authority. The native self-review has a
+bounded 180-second deadline and remains fail closed if the reviewer does not
+complete within it.
 
 Lifecycle-workaround adoption evidence and repeat dogfood results are tracked
 in [architecture-gatekeeper issue #15](https://github.com/flair-agency/architecture-gatekeeper/issues/15).

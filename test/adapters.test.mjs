@@ -35,13 +35,24 @@ test('publishes only an exact tested tag through GitHub Packages', () => {
   assert.match(workflow, /test "\$ACTUAL_INTEGRITY" = "\$EXPECTED_INTEGRITY"/);
 });
 
+test('includes the linked native Skill E2E template in the package archive', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const workflow = readFileSync(new URL('../.github/workflows/publish-package.yml', import.meta.url), 'utf8');
+  const template = 'docs/investigations/native-skill-e2e-template.md';
+  assert.ok(manifest.files.includes(template));
+  assert.ok(readFileSync(new URL('../README.md', import.meta.url), 'utf8').includes(template));
+  assert.ok(workflow.includes(template));
+});
+
 test('provides a committed self local review configuration', () => {
   const config = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/config.json', import.meta.url), 'utf8'));
   const reviewer = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/reviewer.config.json', import.meta.url), 'utf8'));
   const prompt = readFileSync(new URL('../.codex/gatekeeper/local-prompt.md', import.meta.url), 'utf8');
-  assert.deepEqual(config.authorityFiles, ['docs/architecture.md']);
-  assert.deepEqual(config.requiredReportedAuthorityFiles, ['docs/architecture.md']);
-  assert.equal(config.schemaPath, '.codex/gatekeeper/decision.schema.json');
+  assert.equal(config.version, 2);
+  assert.equal(config.selfRepository, 'flair-agency/architecture-gatekeeper');
+  assert.equal(config.authorityManifestPath, '.codex/gatekeeper/authorities.json');
+  assert.equal(config.authorityLimits.maxPromptBytes, 524288);
+  assert.equal(config.schemaPath, '.codex/gatekeeper/ci-decision.schema.json');
   assert.equal(config.validationPath, '.codex/gatekeeper/decision.validation.json');
   assert.equal(config.reviewerConfigPath, '.codex/gatekeeper/reviewer.config.json');
   assert.equal(config.reviewTimeoutMs, 180000);

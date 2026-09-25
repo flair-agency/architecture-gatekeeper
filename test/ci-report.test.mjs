@@ -86,6 +86,22 @@ test('truncates oversized reports while retaining the ownership marker', () => {
   assert.ok(report.endsWith(`${COMMENT_MARKER}\n`));
 });
 
+test('complete selected Authority Set provenance precedes truncated optional review details', () => {
+  const members = Array.from({ length: 16 }, (_, index) => ({
+    id: `source-${index}`, repository: 'flair-agency/test', resolvedCommit: 'a'.repeat(40),
+    path: `docs/source-${index}.md`, sha256: 'b'.repeat(64),
+  }));
+  const selected = { manifestSha256: 'c'.repeat(64), setDigest: 'd'.repeat(64), members };
+  const large = { decision: 'PASS', summary: 'ok', authorityIds: members.map(member => member.id),
+    reviewedScope: Array.from({ length: 100 }, (_, index) => `${index}-${'x'.repeat(3_000)}`) };
+  const report = renderReport({ conclusion: 'PASS', summary: 'ok', decision: large }, { authorityProvenance: selected });
+  assert.match(report, /Selected Authority Set/);
+  assert.match(report, /source-15: flair-agency\/test@/);
+  assert.match(report, /Set SHA-256: `dddd/);
+  assert.match(report, /Report truncated/);
+  assert.ok(report.length <= 60_000);
+});
+
 test('creates a marker-owned pull request comment', async () => {
   const calls = [];
   const fetchImpl = async (url, options) => {

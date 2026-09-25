@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "summary", "authority", "authorityFiles", "authorityIds", "responsibility", "capabilitySurface", "qualityGuarantees", "reviewedScope", "prohibitedChanges", "gates"],
+  "properties": {
+    "decision": { "enum": ["PASS", "BLOCK", "OWNER_DECISION"] },
+    "summary": { "type": "string", "minLength": 1 },
+    "authority": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "authorityFiles": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "authorityIds": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "responsibility": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "capabilitySurface": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "qualityGuarantees": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "reviewedScope": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "prohibitedChanges": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sharedMechanism", "trustBoundary"],
+      "properties": {
+        "sharedMechanism": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["decision", "summary", "consumerOwnership", "failClosedBehavior", "compatibility", "minimality"],
+          "properties": {
+            "decision": { "enum": ["PASS", "BLOCK", "OWNER_DECISION"] },
+            "summary": { "type": "string", "minLength": 1 },
+            "consumerOwnership": { "type": "string" },
+            "failClosedBehavior": { "type": "string" },
+            "compatibility": { "type": "string" },
+            "minimality": { "type": "string" }
+          }
+        },
+        "trustBoundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["decision", "summary", "tokenPermissions", "untrustedInputs", "credentialHandling", "reportingIsolation"],
+          "properties": {
+            "decision": { "enum": ["PASS", "BLOCK", "OWNER_DECISION"] },
+            "summary": { "type": "string", "minLength": 1 },
+            "tokenPermissions": { "type": "string" },
+            "untrustedInputs": { "type": "string" },
+            "credentialHandling": { "type": "string" },
+            "reportingIsolation": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

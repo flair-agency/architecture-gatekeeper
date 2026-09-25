@@ -43,20 +43,198 @@ Architecture Gatekeeper selects, transports and validates those inputs. It
 does not infer a consumer's architecture from current implementation, package
 layout, examples, or another consumer's policy.
 
+### Target contract: distributed authority
+
+A consumer may opt in to a versioned, finite Authority Set whose required
+documents reside in one or more repositories. Authority topology is independent
+of source layout and runtime dependencies. The consumer selects each member by
+stable ID, repository identity, path and immutable revision. The selector is a
+review input that identifies owner-adopted sources; it is not itself semantic
+architecture authority. Links, dependencies and submodules do not implicitly
+add members or establish precedence between them.
+
+The existing `authorityFiles` decision field reports repository paths. An
+opt-in distributed route reports stable source IDs in a separate `authorityIds`
+field under its own decision schema. A self member's `authority-revision`
+selector resolves to the protected base commit in CI or the single recorded
+commit in local/manual review; its manifest does not pin a stale SHA.
+
+An opt-in CI route claiming protected-authority assurance must select its
+Authority Set and same-repository authority bytes from the protected base
+revision, not the pull-request merge checkout. External revisions are
+consumer-adopted snapshots: an upstream change has no effect until the
+consumer updates its protected selection. A selection-change pull request is
+reviewed under the previous protected selection; the new selection applies to
+subsequent reviews after merge. Local/manual review selects configuration and
+same-repository authority from its single recorded commit. Both routes use the
+same Authority Set semantics but need not select identical snapshots, and a
+local result remains development feedback under the current acceptance policy.
+
+Before semantic review on an enabled route, Gatekeeper must resolve every
+required member to a bounded, immutable regular-file snapshot, verify the
+declared repository, revision and path, compute its content digest, and supply
+the selected bytes and source IDs to the reviewer. The supported source types
+and per-file, member-count and total-size limits must be explicit before the
+route is enabled. A missing, inaccessible, malformed or unverifiable member
+leaves the review incomplete, without a `PASS`, `BLOCK` or `OWNER_DECISION` and
+without falling back to a smaller set. Authority content is never executed.
+Source-read credentials are confined to materialization and are not exposed to
+pull-request code or the semantic reviewer, which does not discover additional
+authority through general repository access.
+
+For every completed `PASS`, `BLOCK` or `OWNER_DECISION` on the enabled route,
+deterministic validation requires the reported source IDs to equal the complete
+required set. Omitted, duplicate or extra IDs invalidate the result as an
+incomplete review. A material conflict among successfully loaded authorities
+without an adopted precedence or refinement rule calls for `OWNER_DECISION`,
+not an invented ordering. Report the selected-set identity and each member's
+repository, resolved commit, path and content digest with the reviewed
+revision. These same-run provenance details do not establish that the model
+internally read every byte and are not independently reusable acceptance
+evidence.
+
+This target contract applies only after the route is implemented and explicitly
+selected. Existing single-repository and CI compatibility routes retain their
+current assurance claims; naming a protected architecture file in a prompt
+alone does not satisfy the materialization requirement above. An enabled
+enforced review cannot downgrade to an older route when resolution fails.
+
+### Initial distributed-authority CI bounds (Issue #51 owner decision)
+
+The first CI implementation supports GitHub repositories only. A consumer that
+selects this route must declare all five effective limits in its protected-base
+policy: `maxManifestBytes`, `maxMembers`, `maxFileBytes`, `maxTotalBytes`, and
+`maxPromptBytes`. There are no implicit defaults, and a pull request cannot
+raise these limits for its own review. The recommended initial consumer profile
+is respectively 16,384 bytes, 16 members, 65,536 bytes, 262,144 bytes, and
+524,288 bytes. These recommendations do not activate the route by themselves.
+
+The versioned Gatekeeper runtime ceilings, in the same order, are 65,536 bytes,
+32 members, 131,072 bytes, 524,288 bytes, and 1,048,576 bytes. Neither workflow
+inputs nor environment variables may raise these ceilings. Changing them
+requires review and release of the Gatekeeper runtime. Missing, invalid or
+over-ceiling effective limits fail closed before authority materialization.
+The prompt limit applies to the complete review prompt, including selected
+authority content. The existing protected-base selection, immutable revisions,
+complete-set validation and offline review boundary continue to apply.
+
+### Initial local distributed-authority bounds (Issue #51 owner decision)
+
+The first local/manual Authority Set route supports same-repository (`self`)
+members from the one recorded Git commit only. It is opt-in through committed
+consumer configuration. The configuration selects a committed manifest and
+declares all five effective limits named above; the same versioned runtime
+ceilings apply. The complete prompt, including the task and any Hook context,
+must fit `maxPromptBytes`. Missing, invalid or over-ceiling limits leave the
+review incomplete before semantic review.
+
+For local `self`, the configured repository name labels the current Git root;
+the local same-user trust boundary does not attest its GitHub origin. The
+reviewed commit and object bytes are verified within that root, and local
+provenance must not claim a stronger repository-identity guarantee.
+
+An external member selected by a local manifest is not silently omitted or
+replaced with a working-tree copy. Until an explicit local source-access and
+credential boundary is adopted, that selection leaves local review incomplete.
+This initial route does not request a source-read credential or use one to
+resolve authority. Local child execution may inherit the host environment;
+this route does not claim isolation from credentials that the host already
+supplies. Any later external-source route must define how source credentials
+are withheld from the semantic reviewer before it is enabled. A local result
+remains development feedback, not merge-acceptance evidence. Existing consumers
+that have not selected this route keep the legacy `authorityFiles` behavior.
+
 ### Shared mechanism
 
 The shared package owns reusable mechanics:
 
 - selecting repository-declared inputs from a recorded revision;
-- invoking a read-only semantic reviewer;
+- invoking a separate semantic reviewer whose role is limited to review and
+  does not include changing the reviewed repository;
 - validating structured decisions and consumer-declared invariants;
 - producing or verifying architecture evidence when an explicit evidence
   contract is implemented and selected;
 - reporting an authoritative acceptance result according to protected policy.
 
-The mechanism may return `PASS`, `BLOCK`, or `OWNER_DECISION`.
+Semantic review may return `PASS`, `BLOCK`, or `OWNER_DECISION`.
 `OWNER_DECISION` is an escalation that requires a decision to be recorded in
-canonical consumer authority. It is not an alternate form of acceptance.
+canonical consumer authority. These are review decisions, not the complete set
+of acceptance outcomes. `OWNER_DECISION` is not an alternate form of acceptance.
+
+### Target owner-amendment governance (Issue #75 owner decision)
+
+`OWNER_AMENDMENT` is an acceptance result for a separate, authority-only
+amendment Change B. It is not a semantic-review decision and does not turn a
+historical `BLOCK` into `PASS`. The originally blocked implementation Change A
+remains rejected until B becomes canonical and A receives a fresh review.
+An `OWNER_DECISION` result is not eligible for this route.
+
+The first implementation may accept Change B at governance grade `G0` when
+the **previous protected-base policy** explicitly authorizes that grade for
+the affected authority and amendment scope. `G0` still requires a deliberate,
+per-amendment annotated-tag artifact. The verifier must check its immutable
+object identity, exact B revision, amendment purpose and triggering `BLOCK`
+identity. `G0` means the tag's creator or pusher is **not authenticated as the
+owner** by Gatekeeper. Tagger name/email and author-supplied claims do not
+establish identity. The resulting record must say `OWNER_AMENDMENT / G0`, name
+the protected policy revision and tag object OID, and report that principal
+authentication was not verified. A change cannot lower its own required grade
+or select its own acceptance policy. No grade or amendment route is enabled
+by default.
+
+The `G0` option reflects the first user's existing owner-controlled exception
+operation: Gatekeeper does not currently authenticate the owner behind each
+amendment. Making `G1` mandatory from the outset would exclude single-owner
+and other repositories that cannot yet provide a supported identity-verifying
+mechanism. `G0` gives those repositories a formal, auditable procedure without
+falsely claiming that each tag was pushed by the owner. It does not remove the
+repository's responsibility to control who can merge under its hosting rules.
+
+The value of this route is procedural: it replaces a recurring, unstructured
+merge exception with a separate amendment Change, an annotated tag binding
+that change to the exact triggering `BLOCK`, protected acceptance conditions
+and an audit record. That improvement in process traceability must not be
+described as improvement in per-change owner authentication; the latter
+requires a higher-grade identity-verifying adapter.
+
+Even at `G0`, the protected verifier must validate a versioned ReviewRecord
+for the exact historical `BLOCK`, an AmendmentRecord binding B to that review
+and the authority being amended, the current repository/base/head and
+authority identities, and the strict authority-amendment scope. It must reject
+unrelated implementation changes in B, stale or unrelated review evidence,
+and changed bound state. The check is successful only for B; it cannot accept
+A using B's amendment result. A qualifying B may have been authored by a
+non-owner: `G0` makes no author-identity claim. Repository merge permissions
+and branch rules control who can actually merge it and are separate from the
+Gatekeeper grade.
+
+The annotated tag is procedural evidence at every enabled grade. Tag-content
+and revision verification are core requirements, separate from verifying the
+actor behind the tag. The `G0` route selects a Null **identity-authentication**
+adapter: it reports no verified principal, while the core still requires a
+valid tag artifact. A missing, malformed, stale or unverifiable tag is not a
+valid `G0` result. Where a higher grade is selected, an external identity
+provider is the source of actor attribution. Its adapter validates and
+normalizes the provider's evidence for the exact tag; the protected core
+checks that principal against the owner policy. The adapter does not itself
+establish a human's identity or return acceptance results or grades. An
+invalid, unavailable or incomplete selected higher-grade adapter result cannot
+trigger a `G0` fallback. The tag object's remote availability and tag-ref
+update/deletion must have an enforceable freshness rule before the tagged
+route is enabled; a stale successful check cannot remain authoritative after
+its bound evidence changes. A higher-grade adapter that relies on a push
+event must additionally bind that event to the exact tag object.
+Future grades may express one authenticated owner or a distinct-principal
+quorum; the core must keep the number/relationship of attesters separate from
+the strength of each authentication mechanism. Mechanisms and any alternatives
+are selected by protected policy, never by a first-success fallback chain.
+
+This is a target contract, not an active acceptance route. It becomes active
+only after the evidence format, deterministic verifier, protected routing and
+current-state checks are implemented and tested. Until then, existing
+acceptance behavior remains in force. Enabling `G0` for this repository for
+the first time cannot be justified by the candidate policy in that same
+change; its adoption follows the existing owner-controlled exception process.
 
 ### Three separate concepts and target contracts
 
@@ -88,16 +266,20 @@ design or implementation change
                v
  protected-policy acceptance verification
                |
-      PASS / BLOCK / OWNER_DECISION
+      accept valid PASS evidence, or (when enabled) accept a
+      separate authority-only B as OWNER_AMENDMENT;
+      otherwise do not accept
 ```
 
 ### Local and manual review
 
 Local and manual review are first-class development paths. They exist to find
 responsibility and trust-boundary problems before code is pushed. The runtime
-uses repository-owned configuration and authority from a recorded commit, runs
-the reviewer read-only, and keeps task text and working-tree content in the
-untrusted evidence domain.
+uses repository-owned configuration and authority from a recorded commit,
+assigns the reviewer a review-only role, and keeps task text and working-tree
+content in the untrusted evidence domain. Execution adapters apply the
+safeguards available in their environment; enforcement mechanisms are not
+uniform semantic requirements.
 
 The local trust boundary assumes the same user, Git executable, object store,
 installed runtime and Codex environment. Local review is not a filesystem
@@ -115,18 +297,29 @@ review request, and deterministically validates the returned decision. It does
 not choose how every host obtains that decision.
 
 - The automatic command Hook may launch a read-only child `codex exec`, because
-  a command hook has no native reviewer handle.
+  a command hook has no native reviewer handle. Its process timeout and
+  read-only sandbox remain required safeguards for this automatically invoked
+  child process.
 - The standalone terminal CLI explicitly uses the same child transport when no
-  Codex host task exists.
+  Codex host task exists, retaining its read-only sandbox and bounded process
+  timeout.
 - The Codex-hosted Skill prepares the revision-bound request, applies its
-  recorded model, reasoning effort and bounded reviewer setting to a separate
-  host-native read-only reviewer/subagent, then asks the shared runtime to
-  validate the returned JSON. A host that cannot provide those settings leaves
-  the review incomplete and fails closed. The Skill does not re-enter Codex
-  through a nested command.
+  recorded model and reasoning effort to a separate host-native reviewer whose
+  role is limited to review and does not include changing the reviewed
+  repository, then asks the shared runtime to validate the returned JSON. A
+  host that cannot provide the recorded model or reasoning effort leaves the
+  review incomplete and fails closed. Host-enforced read-only sandboxing and an
+  exact hard timeout are environment-specific controls, not conditions for a
+  native Skill review to be complete; the host's task lifecycle may provide
+  cancellation or other bounds. The Skill does not re-enter Codex through a
+  nested command.
 - CI retains its independent model-review adapter and exact-SHA-pinned reusable
   workflow.
 
+For a native Skill, the review-only role is part of the semantic contract, while
+physical write denial and exact hard-timeout enforcement are execution
+controls. This role assignment does not prove that a host technically
+prevented writes; the local trust boundary does not attest host internals.
 Host sandboxing, process approval, credentials and permission to send review
 inputs to a model service are outside the semantic decision contract. A host
 refusal before a validated structured decision leaves the review incomplete; it
@@ -217,8 +410,11 @@ Every implementation and rollout must preserve these invariants:
    routes and required assurance.
 7. API, billing, credential, timeout or service failure never downgrades
    assurance dynamically.
-8. `BLOCK` rejects. `OWNER_DECISION` rejects until the decision is recorded in
-   canonical authority and a new review produces acceptable evidence.
+8. `BLOCK` rejects the reviewed change. A separate authority-only amendment
+   may be accepted through an explicitly enabled `OWNER_AMENDMENT` route
+   without changing that historical `BLOCK`. `OWNER_DECISION` rejects until
+   the decision is recorded in canonical authority and a new review produces
+   acceptable evidence.
 9. Privileged credentials are not exposed to pull-request code or package
    lifecycle scripts. Credential-bearing third-party actions remain part of the
    selected CI trust boundary and follow its explicit supply-chain policy; this
@@ -274,6 +470,9 @@ Architecture-changing work follows this order:
 - Issue #20 specifies the evidence format, attestation choice, protected-policy
   routes and model-free CI verification needed to fully separate review
   execution from acceptance verification.
+- Issue #75 defines the owner-amendment governance route. Issue #78 develops
+  its core and explicit `G0` policy path; Issue #79 investigates a later
+  production attestation adapter for a higher grade.
 
 Those Issues may refine implementation choices, measurements and rollout. They
 must not be used as implicit amendments to this contract.
