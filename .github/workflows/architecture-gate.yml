@@ -202,12 +202,14 @@ jobs:
             "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
       - name: Run read-only architecture review
         id: codex
+        timeout-minutes: 5
         # Temporary Flair-reviewed fork of openai/codex-action v1.12 with
         # upstream PR #151's bounded descendant-stdio drain fix. Keep this
         # immutable until the equivalent upstream release is reviewed.
         uses: flair-agency/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          output-file: ${{ runner.temp }}/architecture-gate-codex-final.json
           prompt-file: ${{ needs.policy.outputs.authority_manifest_path != '' && format('{0}/architecture-gate-complete-prompt.md', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || inputs.prompt-path }}
           model: ${{ needs.policy.outputs.model }}
           effort: ${{ needs.policy.outputs.effort }}
@@ -216,6 +218,31 @@ jobs:
           output-schema-file: ${{ inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
           # PR-owned AGENTS.md files are review evidence, never reviewer instructions.
           codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
+      - name: Diagnose architecture reviewer completion
+        if: always()
+        timeout-minutes: 1
+        continue-on-error: true
+        env:
+          REVIEW_OUTCOME: ${{ steps.codex.outcome }}
+          REVIEW_OUTPUT_FILE: ${{ runner.temp }}/architecture-gate-codex-final.json
+        run: |
+          echo "Codex Action outcome: $REVIEW_OUTCOME"
+          if test -f "$REVIEW_OUTPUT_FILE"; then
+            echo "Codex final message file: present ($(wc -c < "$REVIEW_OUTPUT_FILE") bytes)"
+            if node -e 'try { JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); } catch { process.exitCode = 1; }' "$REVIEW_OUTPUT_FILE"; then
+              echo "Codex final message JSON: parseable"
+            else
+              echo "Codex final message JSON: absent or invalid"
+            fi
+          else
+            echo "Codex final message file: absent"
+          fi
+          if command -v codex >/dev/null 2>&1; then
+            codex --version
+          else
+            echo "Codex CLI: unavailable"
+          fi
+          npm list -g --depth=0 @openai/codex @openai/codex-responses-api-proxy || true
       - name: Apply consumer-owned decision validation
         if: inputs.validation-path != ''
         env:
