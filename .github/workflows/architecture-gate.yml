@@ -126,7 +126,9 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Leave room for checkout/materialization and the post-review diagnostic;
+    # the credential-bearing Codex Action itself has a separate five-minute cap.
+    timeout-minutes: 20
     outputs:
       final_message: ${{ steps.codex.outputs.final-message }}
       reviewed_sha: ${{ steps.revision.outputs.sha }}

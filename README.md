@@ -146,8 +146,10 @@ workaround: replace the fork pin only after reviewing an upstream release that
 contains the equivalent fix. `local-only` records an explicit waiver and makes
 no OpenAI API call.
 
-The enforced Codex Action step has a five-minute timeout within the review
-job's ten-minute limit. If the step fails or times out, the next diagnostic
+The enforced Codex Action step has a five-minute timeout. The review job has
+a separate twenty-minute outer limit so checkout, authority materialization,
+and the one-minute diagnostic have room around that action deadline. If the
+Action step fails or times out, the next diagnostic
 step records the Action outcome, whether its final-message file was written,
 the file size and JSON parseability, and the installed Codex CLI/proxy versions
 without printing the decision or credentials. A parseable final-message file

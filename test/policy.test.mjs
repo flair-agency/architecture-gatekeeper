@@ -70,6 +70,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?repository: flair-agency\/codex-action/);
   assert.match(workflow, /codex-action-integrity:\n    if: needs\.policy\.outputs\.mode == 'enforced'\n    needs: policy/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?timeout-minutes: 5/);
+  assert.match(workflow, /review:\n[\s\S]*?timeout-minutes: 20/);
   assert.match(workflow, /src\/verify-codex-action\.mjs/);
   assert.match(workflow, /provenance\/codex-action-v1\.12-pr151\.json/);
   assert.match(workflow, /fetch-depth: 0/);
