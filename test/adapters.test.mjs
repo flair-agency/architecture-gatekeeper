@@ -18,8 +18,9 @@ test('keeps child Codex execution out of the shared contract and Skill adapter',
   assert.doesNotMatch(contract, /['"]exec['"]/);
   assert.match(skill, /host-native reviewer\/subagent/);
   assert.match(skill, /Do not use shell\s+execution or nested `codex exec`/s);
-  assert.match(skill, /`reviewTimeoutMs`/);
-  assert.match(skill, /do not run validation/);
+  assert.match(skill, /role is limited to\s+reviewing and does not include changing the reviewed repository/s);
+  assert.match(skill, /Host-enforced read-only sandboxing and an exact hard timeout are optional/s);
+  assert.match(skill, /do not validate/);
   assert.match(transport, /\['exec'/);
 });
 
