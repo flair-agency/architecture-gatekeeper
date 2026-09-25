@@ -197,6 +197,54 @@ and an audit record. That improvement in process traceability must not be
 described as improvement in per-change owner authentication; the latter
 requires a higher-grade identity-verifying adapter.
 
+### Separate exact-claim authorization and revocation (owner decision)
+
+`G0` remains a procedural governance grade with
+`principalAuthentication=not_verified`. It does not itself prove that an
+authorized owner approved the substance of an amendment. If an
+owner-approved, versioned Amendment Claim route is later defined,
+authenticated authorization of its exact claim is a **separate assurance**
+from `G0` and from authentication of the annotated tag actor. Neither `G0`
+nor any higher tag-actor governance grade is redefined by this assurance;
+the observed grade and exact-claim authorization result must be recorded
+independently. The previous protected-base policy may select or require the
+additional assurance for an affected authority and amendment scope;
+candidate Change B cannot waive or add it for itself. Failure,
+unavailability or incompleteness of a required authorization cannot fall
+back to `G0` alone or another weaker route.
+
+When selected, the authorization must establish that a principal with the
+required owner authority approved the **exact** claim identity, including
+its bound prior and proposed authority revisions, amendment purpose and
+supporting evidence identities. A change to any bound claim content requires
+new authorization. A general PR/MR `APPROVED` state, annotated-tag actor,
+mutable review body or author-supplied statement is not by itself proof that
+the principal approved that exact claim at the time of authorization. The
+claim identity must not depend on the later authorization receipt that
+references it.
+
+Ordinary revocation of an exact-claim authorization is prospective. If it
+occurs **before the protected canonical transition** for B, adoption must be
+prevented, even if an earlier required check reported success. A successful
+check is not the canonical transition. After a completed protected canonical
+transition, a later ordinary revocation does not erase that historical
+acceptance; it prevents future or otherwise unconsumed use of the revoked
+authorization. Evidence discovered later to have been invalid **at the time
+of acceptance** (for example, forgery or lack of authority) is a separate
+correction or incident matter, not an ordinary revoke and not an automatic
+rollback rule.
+
+This states the assurance and time semantics, not an enabled mechanism.
+The exact receipt, identity-verification adapter, revocation source, and
+host-specific ordering between final validation and protected merge remain
+unselected and unproven. A host adapter must provide an immutable commitment
+to the exact claim at authorization time and demonstrate that revocation or
+claim change after a green check cannot permit a later canonical transition.
+No exact-claim authorization route may be enabled until those properties and
+the selected policy are proved end to end. This decision does not remove the
+current target contract's triggering-`BLOCK` requirement or authorize the
+broader generalized Amendment Claim evidence model proposed in #107.
+
 Even at `G0`, the protected verifier must validate a versioned ReviewRecord
 for the exact historical `BLOCK`, an AmendmentRecord binding B to that review
 and the authority being amended, the current repository/base/head and
