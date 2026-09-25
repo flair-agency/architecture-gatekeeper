@@ -10,7 +10,7 @@
 - The coordinator owns priorities, scope, authority decisions, dependencies, assignments, integration, independent review, and the final report. When assigned a coordination-only role, delegate repository edits and execution to bounded work tasks.
 - Assign each worker one reviewable outcome, with authority and file boundaries, completion criteria, focused verification, and the coordinator to report to. Workers investigate, edit, verify, and report results with evidence; they do not decide unresolved owner policy or enable an acceptance route without that authority.
 - Keep conflicting edits and acceptance decisions with the coordinator. A worker's review or verification result is not itself protected-policy acceptance.
-- Use `gpt-6-sol` with `low` reasoning by default for coordinator tasks and `gpt-6-luna` with `low` for bounded worker tasks. Use `gpt-6-sol` with `low` for integrated work that cannot be bounded to a worker. At delegation, explicitly select and record the model and effort when supported; otherwise state the inherited setting. These are development-task defaults, not consumer reviewer settings.
+- Use `gpt-6-sol` with `low` reasoning by default for coordinator tasks and `gpt-6-luna` with `low` for bounded worker tasks. Use `gpt-6-sol` with `low` for integrated work that cannot be bounded to a worker. Raise effort only for difficult unresolved cross-cutting design or diagnosis; stronger models do not replace owner decisions or missing evidence. At delegation, explicitly select and record the model and effort when supported; otherwise state the inherited setting. These are development-task defaults, not consumer reviewer settings.
 
 ## Development
 
