@@ -197,6 +197,40 @@ and an audit record. That improvement in process traceability must not be
 described as improvement in per-change owner authentication; the latter
 requires a higher-grade identity-verifying adapter.
 
+For this route, the triggering `BLOCK` is one specific, completed ReviewRecord
+for the identified Change A, generated before B's protected canonical
+transition. “Exact” requires validating the ReviewRecord bytes and producer
+provenance bound by B's AmendmentRecord; it does not require retaining the
+first or earliest `BLOCK` ever produced for A. Stale, unrelated, incomplete or
+unverifiable evidence cannot trigger `OWNER_AMENDMENT`.
+
+The evidence supporting B must remain valid through B's protected canonical
+transition. A successful required check or a readback performed when that
+check runs does not alone establish that the same evidence remains valid at a
+later transition. The selected host integration must establish freshness and
+ordering through that transition. If the triggering ReviewRecord or its
+provenance, binding, or applicable previous protected-base authority/policy
+cannot be validated at transition, B is incomplete and this route must not
+authorize it. Expiry or later unavailability after a completed transition
+does not retroactively invalidate that `OWNER_AMENDMENT` under this
+acceptance-time evidence contract. Retention of B's acceptance record and any
+post-transition audit material is a separate protected-policy choice.
+
+If the bound triggering `BLOCK` is lost before B's transition, that pending
+attempt cannot proceed on the missing record. Where the previous
+protected-base policy permits recovery, a fresh review may produce a new
+completed `BLOCK` for the identified Change A. This is new evidence with a
+new identity, not restoration or proof of the old ReviewRecord. It must be
+generated under the applicable previous protected-base authority/policy, and
+the repository, immutable base/head tuple and other required review inputs
+must align with the identified A. If they do not align, the reviewed change
+has a different A identity and B must identify it as such. B's AmendmentRecord
+and every tag, evidence receipt or exact-claim authorization bound to the old
+triggering `BLOCK` must be regenerated or reauthorized for the new identity.
+Only a completed `BLOCK` supports this recovery; `PASS`, `OWNER_DECISION`,
+refusal or incomplete review does not. The new bindings and evidence must be
+validated through B's protected canonical transition.
+
 ### Separate exact-claim authorization and revocation (owner decision)
 
 `G0` remains a procedural governance grade with
