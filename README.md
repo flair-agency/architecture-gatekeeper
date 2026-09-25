@@ -111,8 +111,10 @@ workflow result. Use the [native Skill E2E record template](docs/investigations/
 
 ## Distribution
 
-Runtime releases are published as fixed versions to the `@flair-agency`
-GitHub Packages npm registry. A release tag must identify the exact commit whose
+Runtime releases are published as fixed public versions to the `@flair-agency`
+GitHub Packages npm registry. Public package visibility does not make GitHub
+Packages anonymous: consumers still need normal GitHub Packages authentication
+with `read:packages`. A release tag must identify the exact commit whose
 `package.json` declares that version. The publication workflow packs and
 inspects the archive, installs it in an empty directory, exercises every public
 executable, publishes with package lifecycle scripts disabled, and reads the
