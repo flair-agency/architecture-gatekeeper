@@ -13,28 +13,30 @@ consumer's canonical authority does not resolve. The current run cannot accept
 the change.
 
 1. Read the decision and identify the unresolved responsibility or boundary.
-2. The accountable owner makes the architecture decision and records it in a
-   separate, authority-only predecessor change (B) in the consumer repository's
-   canonical authority. Do not rely on an authority addition in the proposed
-   implementation change (A): protected CI reads authority from its protected
-   base, so A's head cannot authorize itself.
-3. Review and merge B under the repository's existing protected acceptance
-   rules. B is not an `OWNER_AMENDMENT` recovery: that route is for a prior
-   `BLOCK`, and `OWNER_DECISION` is ineligible. Do not assume B will receive
-   `PASS` or introduce a special acceptance route for it. If existing policy
-   does not permit B to be accepted, stop and resolve that governance issue
-   through the repository's established owner process; do not bypass the Gate
-   or treat B's proposed authority as already adopted.
-4. After B is accepted and becomes canonical, rebase or update A onto the new
-   base. Remove a duplicate head-side authority addition if one was included,
-   then request a fresh Gate review of A against the updated protected base.
-5. Merge A only after the fresh authoritative result permits it. The new review
-   may return `PASS`, `BLOCK`, or another `OWNER_DECISION` for a different
-   unresolved choice.
+2. The accountable owner makes the architecture decision and records it in
+   canonical authority through a process permitted by the consumer's existing
+   policy. When protected CI reads authority from the protected base, a
+   proposed implementation change (A) cannot resolve its own review by adding
+   authority only to A's head; that authority must become canonical before A
+   receives a fresh review. Whether the authority change (B) must be separate
+   and what other files it may include depend on the consumer's existing
+   policy; this runbook does not impose a universal authority-only rule.
+3. Evaluate B under the existing policy. B may itself return `OWNER_DECISION`
+   or `BLOCK`; the historical-`BLOCK` `OWNER_AMENDMENT` route does not cover
+   `OWNER_DECISION`, and this runbook does not provide B a new acceptance
+   route. If B cannot proceed under existing policy, the governance question
+   remains unresolved. Issue #111 describes this adoption gap; this runbook
+   does not resolve it.
+4. Once B actually becomes canonical, update A to that base and request a fresh
+   Gate review. Merge A only if the fresh review and protected acceptance
+   policy permit it. That review may identify a different unresolved choice.
 
-A PR comment, workflow approval, or merge bypass does not record canonical
-architecture authority. Bypassing the check is not the normal resolution for
-`OWNER_DECISION`.
+A review comment or workflow approval alone does not record canonical
+architecture authority. A repository owner may use an existing, owner-authorized
+administrative exception where repository governance permits it. Such an
+exception remains outside Gatekeeper's result and must not be described as
+`PASS` or satisfy the Gatekeeper acceptance check. If it allows a change to
+merge, record that separately under the repository's administrative process.
 
 ## CI review unavailable
 

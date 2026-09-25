@@ -279,20 +279,23 @@ out or executing pull-request code.
 route. It means the protected consumer authority does not contain enough owner
 direction for the Gatekeeper to decide. The current `Architecture Gate / accept`
 check therefore fails. The accountable owner makes the unresolved decision in
-the design or manual-review flow, records it in canonical consumer-owned
-authority through a separate authority-only predecessor change accepted under
-existing repository policy. Then rebase the implementation change onto that
-canonical update and request a fresh review. The new run can return `PASS` when
-the proposed change follows that authority, or `BLOCK` when it does not. A
-review comment, workflow approval or other run-local acknowledgement does not
-replace the canonical authority update. See the
+the design or manual-review flow and records it in canonical consumer-owned
+authority through a process permitted by the repository's existing policy. If
+protected CI selects authority from the base, an implementation change cannot
+resolve its own review by adding the decision to its head; the authority must
+become canonical before that change receives a fresh review. The authority
+change may itself return `OWNER_DECISION` or `BLOCK`, and this runbook does not
+create a new acceptance route for it. A review comment, workflow approval or
+other run-local acknowledgement does not replace canonical adoption. See the
 [owner-intervention runbook](docs/owner-intervention.md).
 
 For `OWNER_DECISION` and CI review failures caused by API, billing, model,
 credential or service availability, follow the
 [owner-intervention runbook](docs/owner-intervention.md). CI failure remains
 fail closed; any repository-owner merge bypass is recorded as an explicit
-operational exception outside Architecture Gate acceptance.
+operational exception under the repository's existing owner authority and
+outside Architecture Gate acceptance. It must never be described as Gatekeeper
+`PASS`.
 
 This repository dogfoods the reusable workflow through
 `.github/workflows/self-architecture-gate.yml`. The `pull_request_target` caller
