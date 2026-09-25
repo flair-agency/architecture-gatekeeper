@@ -17,7 +17,7 @@ strictly authority-only Change B under **previously protected** policy. It keeps
 Change A's historical `BLOCK` unchanged, requires an annotated tag, and makes
 no claim that Gatekeeper authenticated its actor.
 
-[Issue #83's public real-PR probe](2026-09-25-real-pr-block-probe-implementation.md)
+[Issue #83's final real-PR probe report](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-09-25-real-pr-block-probe-implementation.md)
 proved exact-byte attestation of a validated `BLOCK` with signer workflow,
 protected source revision, run and attempt. The certificate has no producer job
 ID; that claim depends on the inspected protected workflow sequence. The
@@ -29,9 +29,9 @@ still returned its historical merge object and exact base/head parents on
 
 ## Candidate initial boundary for owner consideration
 
-For the first **public** consumer only, consider a protected CI `BLOCK`
-`ReviewRecord` whose exact bytes are attested and durably archived. Keep the
-route disabled until a production contract, archive protection and retrieval,
+For this **public Architecture Gatekeeper repository only**, consider a
+protected CI `BLOCK` `ReviewRecord` whose exact bytes are attested and durably
+archived. Keep the route disabled until a production contract, archive protection and retrieval,
 independent verifier, and end-to-end A→B test exist. Initially require Change A
 to remain **open** with a live merge ref while B is verified. This avoids
 inventing a closed-PR freshness rule from the #83 fixture. Private/internal
@@ -94,9 +94,11 @@ also whether closing/reopening A without revision change invalidates evidence.
 
 ### Proposed deployment rule
 
-Test the public attestation route first. Private/internal availability depends
-on GitHub entitlement and a separate live verification; if unavailable, select
-a separately specified trusted producer route in protected policy. Never pick
+Test the attestation route in this public repository first. Other public
+consumers still need their own protected-policy adoption and end-to-end proof.
+Private/internal availability depends on GitHub entitlement and a separate
+live verification; if unavailable, select a separately specified trusted
+producer route in protected policy. Never pick
 an alternate route in response to runtime failure of the selected route.
 
 ## Decision and implementation sequence
@@ -107,7 +109,7 @@ an alternate route in response to runtime failure of the selected route.
 | Exact-byte storage and retention | Protected Git archive after protection, readback and retention proof | Managed immutable store; more operations and cost |
 | Change A lifecycle | Open A with live merge ref only | Closed-A historical rule; more identity and retention proof |
 | Tag freshness | Re-resolve tag ref and invalidate stale required check | Immutable protected tag namespace; host rule and recovery proof |
-| Deployment class | Public first user only | Private/internal after entitlement and live proof |
+| Deployment class | This public Architecture Gatekeeper repository only | Other public consumers after adoption/proof; private/internal after entitlement and live proof |
 
 Once the owner records selected rules in canonical authority, #20 can implement
 the production record, archive/retrieval and independent verifier with negative
