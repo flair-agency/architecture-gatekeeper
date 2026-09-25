@@ -1,5 +1,8 @@
 # Agent instructions
 
+Repository implementation and verification procedures are in
+[`docs/development.md`](docs/development.md).
+
 ## Architecture authority
 
 - Read `docs/architecture.md` before changing architecture, trust boundaries, review decisions, evidence, or acceptance policy. It is the normative contract; `README.md`, examples, issues, and current code describe implementation and do not amend it.
