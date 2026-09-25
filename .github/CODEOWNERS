@@ -5,6 +5,7 @@
 /AGENTS.md @flair-agency/architecture @flair-agency/engineering
 /README.md @flair-agency/architecture @flair-agency/engineering
 /docs/architecture.md @flair-agency/architecture
+/docs/development.md @flair-agency/architecture @flair-agency/engineering
 /package.json @flair-agency/architecture @flair-agency/engineering
 /package-lock.json @flair-agency/architecture @flair-agency/engineering
 /test/ @flair-agency/architecture @flair-agency/engineering

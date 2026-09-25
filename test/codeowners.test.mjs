@@ -44,6 +44,10 @@ test('routes governing and security-sensitive paths to their intended teams', ()
   assert.deepEqual(ownersFor('docs/architecture.md'), [
     '@flair-agency/architecture',
   ]);
+  assert.deepEqual(ownersFor('docs/development.md'), [
+    '@flair-agency/architecture',
+    '@flair-agency/engineering',
+  ]);
   assert.deepEqual(ownersFor('package.json'), [
     '@flair-agency/architecture',
     '@flair-agency/engineering',
