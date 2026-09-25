@@ -280,10 +280,13 @@ route. It means the protected consumer authority does not contain enough owner
 direction for the Gatekeeper to decide. The current `Architecture Gate / accept`
 check therefore fails. The accountable owner makes the unresolved decision in
 the design or manual-review flow, records it in canonical consumer-owned
-authority, and reruns the gate. The new run can return `PASS` when the proposed
-change follows that authority, or `BLOCK` when it does not. A review comment,
-workflow approval or other run-local acknowledgement does not replace the
-canonical authority update.
+authority through a separate authority-only predecessor change accepted under
+existing repository policy. Then rebase the implementation change onto that
+canonical update and request a fresh review. The new run can return `PASS` when
+the proposed change follows that authority, or `BLOCK` when it does not. A
+review comment, workflow approval or other run-local acknowledgement does not
+replace the canonical authority update. See the
+[owner-intervention runbook](docs/owner-intervention.md).
 
 For `OWNER_DECISION` and CI review failures caused by API, billing, model,
 credential or service availability, follow the

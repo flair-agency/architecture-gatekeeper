@@ -13,12 +13,24 @@ consumer's canonical authority does not resolve. The current run cannot accept
 the change.
 
 1. Read the decision and identify the unresolved responsibility or boundary.
-2. The accountable owner makes the architecture decision and records it in the
-   consumer repository's canonical authority.
-3. Commit that authority update with the proposed change, then rerun the Gate
-   against the updated revision.
-4. Merge only after the new authoritative result permits it. A new review may
-   return `PASS` or `BLOCK`.
+2. The accountable owner makes the architecture decision and records it in a
+   separate, authority-only predecessor change (B) in the consumer repository's
+   canonical authority. Do not rely on an authority addition in the proposed
+   implementation change (A): protected CI reads authority from its protected
+   base, so A's head cannot authorize itself.
+3. Review and merge B under the repository's existing protected acceptance
+   rules. B is not an `OWNER_AMENDMENT` recovery: that route is for a prior
+   `BLOCK`, and `OWNER_DECISION` is ineligible. Do not assume B will receive
+   `PASS` or introduce a special acceptance route for it. If existing policy
+   does not permit B to be accepted, stop and resolve that governance issue
+   through the repository's established owner process; do not bypass the Gate
+   or treat B's proposed authority as already adopted.
+4. After B is accepted and becomes canonical, rebase or update A onto the new
+   base. Remove a duplicate head-side authority addition if one was included,
+   then request a fresh Gate review of A against the updated protected base.
+5. Merge A only after the fresh authoritative result permits it. The new review
+   may return `PASS`, `BLOCK`, or another `OWNER_DECISION` for a different
+   unresolved choice.
 
 A PR comment, workflow approval, or merge bypass does not record canonical
 architecture authority. Bypassing the check is not the normal resolution for
