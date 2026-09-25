@@ -197,6 +197,88 @@ and an audit record. That improvement in process traceability must not be
 described as improvement in per-change owner authentication; the latter
 requires a higher-grade identity-verifying adapter.
 
+For this route, the triggering `BLOCK` is one specific, completed ReviewRecord
+for the identified Change A, generated before B's protected canonical
+transition. “Exact” requires validating the ReviewRecord bytes and producer
+provenance bound by B's AmendmentRecord; it does not require retaining the
+first or earliest `BLOCK` ever produced for A. Stale, unrelated, incomplete or
+unverifiable evidence cannot trigger `OWNER_AMENDMENT`.
+
+The evidence supporting B must remain valid through B's protected canonical
+transition. A successful required check or a readback performed when that
+check runs does not alone establish that the same evidence remains valid at a
+later transition. The selected host integration must establish freshness and
+ordering through that transition. If the triggering ReviewRecord or its
+provenance, binding, or applicable previous protected-base authority/policy
+cannot be validated at transition, B is incomplete and this route must not
+authorize it. Expiry or later unavailability after a completed transition
+does not retroactively invalidate that `OWNER_AMENDMENT` under this
+acceptance-time evidence contract. Retention of B's acceptance record and any
+post-transition audit material is a separate protected-policy choice.
+
+If the bound triggering `BLOCK` is lost before B's transition, that pending
+attempt cannot proceed on the missing record. Where the previous
+protected-base policy permits recovery, a fresh review may produce a new
+completed `BLOCK` for the identified Change A. This is new evidence with a
+new identity, not restoration or proof of the old ReviewRecord. It must be
+generated under the applicable previous protected-base authority/policy, and
+the repository, immutable base/head tuple and other required review inputs
+must align with the identified A. If they do not align, the reviewed change
+has a different A identity and B must identify it as such. B's AmendmentRecord
+and every tag, evidence receipt or exact-claim authorization bound to the old
+triggering `BLOCK` must be regenerated or reauthorized for the new identity.
+Only a completed `BLOCK` supports this recovery; `PASS`, `OWNER_DECISION`,
+refusal or incomplete review does not. The new bindings and evidence must be
+validated through B's protected canonical transition.
+
+### Separate exact-claim authorization and revocation (owner decision)
+
+`G0` remains a procedural governance grade with
+`principalAuthentication=not_verified`. It does not itself prove that an
+authorized owner approved the substance of an amendment. If an
+owner-approved, versioned Amendment Claim route is later defined,
+authenticated authorization of its exact claim is a **separate assurance**
+from `G0` and from authentication of the annotated tag actor. Neither `G0`
+nor any higher tag-actor governance grade is redefined by this assurance;
+the observed grade and exact-claim authorization result must be recorded
+independently. The previous protected-base policy may select or require the
+additional assurance for an affected authority and amendment scope;
+candidate Change B cannot waive or add it for itself. Failure,
+unavailability or incompleteness of a required authorization cannot fall
+back to `G0` alone or another weaker route.
+
+When selected, the authorization must establish that a principal with the
+required owner authority approved the **exact** claim identity, including
+its bound prior and proposed authority revisions, amendment purpose and
+supporting evidence identities. A change to any bound claim content requires
+new authorization. A general PR/MR `APPROVED` state, annotated-tag actor,
+mutable review body or author-supplied statement is not by itself proof that
+the principal approved that exact claim at the time of authorization. The
+claim identity must not depend on the later authorization receipt that
+references it.
+
+Ordinary revocation of an exact-claim authorization is prospective. If it
+occurs **before the protected canonical transition** for B, adoption must be
+prevented, even if an earlier required check reported success. A successful
+check is not the canonical transition. After a completed protected canonical
+transition, a later ordinary revocation does not erase that historical
+acceptance; it prevents future or otherwise unconsumed use of the revoked
+authorization. Evidence discovered later to have been invalid **at the time
+of acceptance** (for example, forgery or lack of authority) is a separate
+correction or incident matter, not an ordinary revoke and not an automatic
+rollback rule.
+
+This states the assurance and time semantics, not an enabled mechanism.
+The exact receipt, identity-verification adapter, revocation source, and
+host-specific ordering between final validation and protected merge remain
+unselected and unproven. A host adapter must provide an immutable commitment
+to the exact claim at authorization time and demonstrate that revocation or
+claim change after a green check cannot permit a later canonical transition.
+No exact-claim authorization route may be enabled until those properties and
+the selected policy are proved end to end. This decision does not remove the
+current target contract's triggering-`BLOCK` requirement or authorize the
+broader generalized Amendment Claim evidence model proposed in #107.
+
 Even at `G0`, the protected verifier must validate a versioned ReviewRecord
 for the exact historical `BLOCK`, an AmendmentRecord binding B to that review
 and the authority being amended, the current repository/base/head and
