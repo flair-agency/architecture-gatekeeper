@@ -41,10 +41,12 @@ test('real PR producer records only a validated complete BLOCK', () => {
   const context = validatePrContext(input);
   const provenance = { version: 1, selfRepository: repository, authorityRevision: base,
     members: [{ id: 'architecture-contract' }] };
-  const inputDigests = { schema: 'd'.repeat(64) };
+  const inputDigests = Object.fromEntries(['policy', 'prompt', 'schema', 'validation', 'manifest']
+    .map(key => [key, 'd'.repeat(64)]));
   const args = { decision, schema, validation, provenance, context, inputDigests };
   assert.equal(buildRealPrBlockRecord(args).kind, 'test-only-real-pr-block-not-acceptance-evidence');
   assert.throws(() => buildRealPrBlockRecord({ ...args, decision: { ...decision, decision: 'PASS' } }), /BLOCK/);
   assert.throws(() => buildRealPrBlockRecord({ ...args, decision: { ...decision, authorityIds: [] } }));
   assert.throws(() => buildRealPrBlockRecord({ ...args, provenance: { ...provenance, authorityRevision: head } }));
+  assert.throws(() => buildRealPrBlockRecord({ ...args, inputDigests: {} }));
 });

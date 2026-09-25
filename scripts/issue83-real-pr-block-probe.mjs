@@ -14,6 +14,7 @@ import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs
 const SHA = /^[a-f0-9]{40}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const MAX_BYTES = 1024 * 1024;
+const INPUT_KEYS = ['policy', 'prompt', 'schema', 'validation', 'manifest'];
 const decoder = new TextDecoder('utf-8', { fatal: true });
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 
@@ -45,11 +46,12 @@ function protectedJson(baseSha, path) {
 
 export function validatePrContext({ event, repository, workflowSha, mergeSha, parents, runId, runAttempt }) {
   const pr = event?.pull_request;
-  if (event?.action === undefined || !pr || event.repository?.full_name !== repository ||
+  if (!['opened', 'synchronize', 'reopened', 'ready_for_review'].includes(event?.action) ||
+      !pr || event.repository?.full_name !== repository ||
       !REPOSITORY.test(repository) || !Number.isSafeInteger(pr.number) || pr.number < 1 ||
       pr.base?.ref !== 'main' || pr.draft !== false ||
       ![pr.base?.sha, pr.head?.sha, workflowSha, mergeSha].every(value => SHA.test(value)) ||
-      !/^\d+$/.test(runId) || !/^[1-9]\d*$/.test(runAttempt)) {
+      !/^[1-9]\d*$/.test(runId) || !/^[1-9]\d*$/.test(runAttempt)) {
     throw new Error('Invalid protected PR context.');
   }
   if (pr.base.sha !== workflowSha || parents.length !== 2 ||
@@ -67,6 +69,7 @@ export function buildRealPrBlockRecord({ decision, decisionBytes, schema, valida
   if (decision.decision !== 'BLOCK') throw new Error('Only a completed BLOCK produces a record.');
   if (provenance.authorityRevision !== context.baseSha || provenance.selfRepository !== context.repository ||
       !Array.isArray(provenance.members) || !provenance.members.length ||
+      !inputDigests || Object.keys(inputDigests).sort().join(',') !== INPUT_KEYS.slice().sort().join(',') ||
       !Object.values(inputDigests).every(value => /^[a-f0-9]{64}$/.test(value))) {
     throw new Error('Protected inputs are incomplete or inconsistent.');
   }
