@@ -284,6 +284,38 @@ acceptance behavior remains in force. Enabling `G0` for this repository for
 the first time cannot be justified by the candidate policy in that same
 change; its adoption follows the existing owner-controlled exception process.
 
+### Historical `BLOCK` byte-retention candidate (owner decision)
+
+For this public Gatekeeper repository, the owner selects a separately
+protected Git evidence ref as the **first production candidate** for retaining
+the exact versioned ReviewRecord bytes needed to verify a historical `BLOCK`.
+This selects an option to develop and prove, not an accepted storage assurance
+or an enabled evidence route. It does not select an archive for other public,
+private or internal consumers.
+
+The candidate stores exact bytes at a content-digest-addressed path and binds
+each record to an authenticated receipt identifying the repository, evidence
+ref, archive commit, path and byte digest. An independent verifier must bind
+the retrieved digest to the **verified attestation subject digest** and verify
+the receipt commit's bytes, its ancestry from the current ref tip, and the
+same bytes at that tip. Missing bytes or ref, changed bytes, or a rewritten
+history are `INCOMPLETE`; a remaining unreferenced Git object is not durable
+evidence. The archive must permit authorized append while preventing deletion
+and non-fast-forward updates under its selected protection rules. Storage
+identity does not itself authenticate the `BLOCK` producer or validate its
+review inputs, certificate, historical state or current Change B.
+
+Before this candidate can support production acceptance, protected policy
+must specify and test the retention horizon, permitted writers and bypass
+actors, append and readback behavior, loss recovery, authenticated receipt
+source, attestation binding, and freshness at B's protected canonical
+transition. The disposable host experiment in #83 proved exact-byte readback
+and rejection of force-update and deletion for one temporary ref and
+credential; it did not prove those production properties or long-term
+retention. An unavailable or invalid selected archive cannot trigger a
+weaker evidence fallback. No `OWNER_AMENDMENT` grade or route is enabled by
+this candidate decision.
+
 ### Three separate concepts and target contracts
 
 The architecture separates three concerns, even though the current CI path
