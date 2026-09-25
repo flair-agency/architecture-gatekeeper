@@ -1,6 +1,6 @@
 # Issue #83: protected validated-`BLOCK` producer probe
 
-Status: test-only workflow proposal. No run has been observed. This is not a production ReviewRecord or an accepted `OWNER_AMENDMENT` evidence route.
+Status: test-only workflow merged in PR #88 and exercised on protected `main`. This is not a production ReviewRecord or an accepted `OWNER_AMENDMENT` evidence route.
 
 The first Issue #83 probe showed that GitHub's verified attestation certificate binds exact bytes to a protected signer workflow, revision, run and attempt, but does not expose a job ID. This follow-up tests whether protected workflow structure can constrain **when** a synthetic `BLOCK` record is attested.
 
@@ -17,3 +17,18 @@ The synthetic record includes a copy of the decision and workflow context to hel
 The review input is a synthetic prompt, not a real PR with protected-base Authority Set materialization or a historical Change A. The producer uses a fixed test Authority ID rather than the current CI's complete provenance bundle. A successful run would prove only that this protected test workflow can gate attestation on deterministic validation of a real model `BLOCK`. It would not make the synthetic record eligible for #78, establish a job-ID claim, solve evidence retention/deletion, or justify changing `Architecture Gate / accept`.
 
 For production, reuse the protected-base selection and complete decision validation from the existing CI path, bind the ReviewRecord to exact repository/PR/base/head/reviewed revision, Authority Set and policy inputs, and independently verify the attestation and current state. Keep model/source credentials out of the attestation producer. The workflow itself, not a certificate job-ID field, must enforce the producer sequence.
+
+## Observed result, 2026-09-25
+
+PR #88 merged as `fc8a5eee824bb2d416865a3b8bbc8e2d28d27e0c`. The protected `main` push started [run 36100963659](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/36100963659). The credential-free Action integrity job, credential-bearing synthetic review, and credential-free validated producer all succeeded on attempt 1. The reviewer returned a schema-valid `BLOCK` reporting `architecture-contract`; the producer's record bytes were SHA-256 `29a0e859e2d06d5ec5202d335193eb1cf8b0bdf22524631a2d3f370afba221fd`. Its `decisionSha256` matched the downloaded decision file's SHA-256, `b1d293a9025bb1ae88bd7b0744d4ba4a36cb2b74def64474b392b129e2ed2827`.
+
+A separate `gh attestation verify` constrained to the exact signer workflow and merge commit accepted the downloaded record bytes. The verified certificate named `.github/workflows/issue83-attestation-probe.yml@refs/heads/main`, that merge commit, and `/actions/runs/36100963659/attempts/1`; the attestation subject digest matched the file. Editing the file or naming `self-architecture-gate.yml` as signer made live verification fail. Independently re-running the protected producer script against the downloaded decision, schema and validation policy reproduced the record byte-for-byte.
+
+| Rerun | Observed outcome | Record/attestation consequence |
+| --- | --- | --- |
+| Single `validated-block-producer` job, attempt 2 | Job failed while downloading `issue83-decision-36100963659-2`; no such artifact existed. GitHub displayed the prerequisite review as successful but did not upload a fresh attempt-2 decision. | No attempt-2 `BLOCK` record or attestation; the producer did not reuse attempt 1. |
+| All jobs, attempt 3 | All four jobs succeeded. Codex produced a new `BLOCK`; record SHA-256 `0f1ba6f9a1bdec96b3723abd497d0694d57a5aeaca8827d9dc495be4ee95673b` and decision SHA-256 `9e79284ae498a26412d881f3f15bff1bcd34bba7a0a774378e71909cd1d37fbc`. | A separate verifier accepted exact record bytes and found `/actions/runs/36100963659/attempts/3` in the certificate. Reconstructing the record from the downloaded decision again matched byte-for-byte. |
+
+After the full rerun, the run's artifact listing exposed only attempt-3 artifacts. The locally saved attempt-1 record still passed `gh attestation verify` and its certificate still identified attempt 1. Therefore, signed provenance can outlive the run's currently listed artifact, but later independent verification requires retained exact bytes; the seven-day artifact setting is not an archival strategy. No job ID appeared in the verified certificate. Wrong-attempt rejection remains an explicit comparison of the certificate run/attempt against the requested historical execution, supplemented by protected workflow sequencing.
+
+**Conclusion:** the protected test workflow successfully attested a real Codex-produced, deterministically validated **synthetic** `BLOCK`, and a producer-only rerun failed closed when it lacked a same-attempt decision. This is stronger than the initial arbitrary-byte probe, but it still does not authenticate a historical PR `BLOCK`: there is no real Change A, protected-base Authority Set provenance, exact PR/base/head binding, or production ReviewRecord. The next production candidate must reuse the existing CI validation and protected inputs, define durable evidence retention, and prove complete/incomplete historical PR cases before #78 may accept such evidence. Keep #83 open until that boundary is demonstrated or explicitly split into a follow-up decision.
