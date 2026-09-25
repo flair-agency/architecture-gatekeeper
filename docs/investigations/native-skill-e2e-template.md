@@ -34,10 +34,11 @@ documents what ran; it is not a signed artifact or reusable merge evidence.
   or Codex task transcript that exposes them, when available:
 - Prepared model:
 - Prepared reasoning effort:
-- Prepared `reviewTimeoutMs`:
-- Host-applied model, reasoning effort, timeout and read-only settings (include
-  configuration metadata or an observable host record; task-text instructions
-  alone are insufficient):
+- Prepared `reviewTimeoutMs` (record for context; not a native E2E prerequisite):
+- Host-applied model and reasoning effort, with evidence they match the prepared
+  settings:
+- Host-applied read-only sandbox and timeout controls, if available:
+- Review-only role assigned and any observed repository changes:
 - Observable evidence that this separate host-native reviewer was invoked
   (for example, its task/transcript record):
 - Reviewer-returned decision JSON:
@@ -50,9 +51,10 @@ documents what ran; it is not a signed artifact or reusable merge evidence.
 
 Do not record credentials or secret-bearing environment values. Do not create
 the reviewer through nested `codex exec`, install or fetch a runtime during
-execution, or use a registry fallback. A missing native invocation, unverified
-host-applied reviewer settings, mismatched decision source, timeout, or
-validation failure is an incomplete Skill E2E.
+execution, or use a registry fallback. A missing native invocation, inability
+to apply the prepared model or effort, reviewer cancellation or failure,
+repository modification, mismatched decision source, or validation failure is
+an incomplete Skill E2E.
 Hashes identify prepared inputs but do not prove that a reviewer received them
 or was invoked; retain invocation evidence separately. When exact prompt/schema
 contents cannot be published, record hashes and deterministic reproduction
