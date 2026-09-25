@@ -89,11 +89,14 @@ repository at `skills/architecture-review/`; install that directory through the
 supported Codex Skill installation route and keep its revision aligned with the
 runtime release you adopt. The Skill uses the host-native reviewer/subagent
 interface. It calls `architecture-review-native prepare` to construct a
-committed-revision request, gives that request to a separate read-only native
-reviewer, and calls `architecture-review-native validate` on the returned JSON.
-The Skill enforces the prepared `reviewTimeoutMs`; a timeout is an incomplete
-review and never reaches validation. It never falls back to the standalone CLI
-or launches nested `codex exec`. The
+committed-revision request, gives that request to a separate reviewer whose role
+is limited to review and does not include changing the repository, and calls
+`architecture-review-native validate` on the returned JSON. The host must apply
+the recorded model and reasoning effort. Host-enforced read-only sandboxing and
+an exact hard timeout are environment-specific controls; record them when
+available, but they are not prerequisites for a complete native review. A
+reviewer cancellation or failure leaves the review incomplete. The Skill never
+falls back to the standalone CLI or launches nested `codex exec`. The
 version-pinned runtime, not the Skill, selects and validates repository-owned
 authority.
 
@@ -101,11 +104,10 @@ When recording Skill dogfood, separate a runtime prepare/validate smoke from a
 host-native Skill E2E and from CI acceptance. The smoke exercises request
 construction and validation only. The E2E record identifies the separate
 host-native reviewer task/agent, preserves the exact prompt and schema sent
-with the prepared model, reasoning effort and timeout, and traces the decision
-validated back to that reviewer result. It also records evidence that the host
-applied the model, effort, timeout and read-only settings; task-text instructions
-alone are insufficient. If those controls cannot be verified, the local review
-remains incomplete. This is diagnostic execution evidence,
+with the prepared model and reasoning effort, and traces the decision validated
+back to that reviewer result. It records host-applied sandbox or timeout
+controls when available. The host's model and effort must match the prepared
+settings. This is diagnostic execution evidence,
 not cryptographic merge evidence; CI acceptance remains the protected-policy
 workflow result. Use the [native Skill E2E record template](docs/investigations/native-skill-e2e-template.md).
 

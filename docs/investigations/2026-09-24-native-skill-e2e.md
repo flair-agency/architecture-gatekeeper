@@ -1,6 +1,6 @@
 # Native Skill dogfood: reviewer invoked, host controls unverified (2026-09-24)
 
-This is a local diagnostic review record under [Issue #69](https://github.com/flair-agency/architecture-gatekeeper/issues/69). It does not grant merge acceptance or independently attest the reviewer. The observed run is **incomplete as a native Skill E2E** because host-applied read-only and timeout controls were not recorded.
+This is a local diagnostic review record under [Issue #69](https://github.com/flair-agency/architecture-gatekeeper/issues/69). It does not grant merge acceptance or independently attest the reviewer. Under the contract in force when this run occurred, it was **incomplete as a native Skill E2E** because host-applied read-only and timeout controls were not recorded. The later [Issue #72](https://github.com/flair-agency/architecture-gatekeeper/issues/72) owner decision changes future native-adapter criteria; it does not retroactively relabel this run.
 
 ## Fixed inputs and preparation
 
@@ -68,4 +68,4 @@ This is a local diagnostic review record under [Issue #69](https://github.com/fl
 }
 ```
 
-This run demonstrates a separate host-native reviewer invocation plus deterministic validation, but **does not establish a conforming native Skill E2E**. The host-applied read-only and bounded-time settings were not evidenced, so the review remains incomplete under the architecture contract despite the validated `PASS` JSON. A fresh run with observable host controls is still needed for Issue #69. The protected CI Architecture Gate remains the separate merge-acceptance route.
+This run demonstrates a separate host-native reviewer invocation plus deterministic validation, but **did not establish a conforming native Skill E2E under the contract in force at the time**. The host-applied read-only and bounded-time settings were not evidenced, so the run remains recorded as incomplete despite the validated `PASS` JSON. A [separate fresh run under the Issue #72 owner decision](2026-09-24-issue72-native-skill-e2e.md) is recorded without retroactively promoting this historical result. The protected CI Architecture Gate remains the separate merge-acceptance route.
