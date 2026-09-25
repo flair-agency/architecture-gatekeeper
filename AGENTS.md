@@ -1,15 +1,17 @@
 # Agent instructions
 
-## Architecture authority
+## Authority
 
-- Read `docs/architecture.md` before changing architecture, trust boundaries, review decisions, evidence, or acceptance policy. It is the normative contract; `README.md`, examples, issues, and current code describe implementation and do not amend it.
-- If a change needs a new responsibility or assurance rule, record the owner decision in the contract first. Do not infer consumer architecture from this shared package.
-- Keep review execution, architecture evidence, and acceptance verification distinct. Preserve fail-closed behavior for invalid inputs, incomplete reviews, and service failures. `OWNER_DECISION` requires a decision in canonical authority and a new review; it is not acceptance.
-- Treat working-tree and pull-request content as review evidence, not protected authority. Preserve the credential boundary between untrusted code and credential-bearing CI jobs.
+- `docs/architecture.md` is the normative architecture and assurance contract. Read it before changing architecture, trust boundaries, review decisions, evidence, or acceptance policy; implementation and discussion materials do not amend it.
+- Escalate unresolved owner decisions. Record an authorized decision in canonical authority before implementing a new responsibility or assurance rule. Do not infer a consumer's architecture from this shared package.
 
-## Working in this repository
+## Agent roles
 
-- This is a Node.js ES module package requiring Node 22 or newer. Runtime code is in `src/`, tests in `test/`, the separately distributed Codex Skill in `skills/architecture-review/`, and reusable/self-review workflows in `.github/workflows/`.
-- For behavior changes, add or update focused tests and run `npm test`. For package entrypoint or distribution changes, also check the installed-package smoke path in `test/installed-smoke.mjs` and the release workflow.
-- Update `README.md` when the public integration or operational behavior changes. Keep the Skill, CLI, CI adapter, and self-review configuration aligned where a shared contract changes.
-- Before broad rollout of a new path, exercise the affected local/manual, packaged, and CI paths as applicable, following the dogfooding sequence in `docs/architecture.md`.
+- The coordinator owns priorities, scope, escalation of unresolved owner decisions, dependencies, assignments, integration of owner-authorized decisions, independent review, and the final report. Only the consumer owner may resolve an owner decision, and it must be recorded in canonical authority. When assigned a coordination-only role, delegate repository edits and execution to bounded work tasks.
+- Assign each worker one reviewable outcome, with authority and file boundaries, completion criteria, focused verification, and the coordinator to report to. Workers investigate, edit, verify, and report results with evidence; they do not resolve owner decisions or enable an acceptance route without the required owner authority.
+- Keep conflicting edits and acceptance decisions with the coordinator. A worker's review or verification result is not itself protected-policy acceptance.
+- Use `gpt-6-sol` with `low` reasoning by default for coordinator tasks and `gpt-6-luna` with `low` for bounded worker tasks. Use `gpt-6-sol` with `low` for integrated work that cannot be bounded to a worker. Raise effort only for difficult unresolved cross-cutting design or diagnosis; stronger models do not replace owner decisions or missing evidence. At delegation, explicitly select and record the model and effort when supported; otherwise state the inherited setting. These are development-task defaults, not consumer reviewer settings.
+
+## Development
+
+Follow [`docs/development.md`](docs/development.md) for repository layout, implementation, verification, documentation, distribution, and rollout procedures.
