@@ -13,16 +13,30 @@ consumer's canonical authority does not resolve. The current run cannot accept
 the change.
 
 1. Read the decision and identify the unresolved responsibility or boundary.
-2. The accountable owner makes the architecture decision and records it in the
-   consumer repository's canonical authority.
-3. Commit that authority update with the proposed change, then rerun the Gate
-   against the updated revision.
-4. Merge only after the new authoritative result permits it. A new review may
-   return `PASS` or `BLOCK`.
+2. The accountable owner makes the architecture decision and proposes the
+   canonical-authority update. Keep the proposed change (A) distinct from the
+   authority update (B) when protected CI selects authority from the base;
+   authority written only in A's head cannot resolve A's current review.
+3. Check whether B can be accepted under the repository's existing protected
+   policy. A separate B is not automatically eligible for `PASS`, and the
+   historical-`BLOCK` `OWNER_AMENDMENT` route does not cover `OWNER_DECISION`.
+   If B is itself unresolved, record the missing adoption decision and use the
+   repository's established owner process. Do not report an administrative
+   exception as a Gate result.
+4. Once B has actually become canonical, update A to the new base and request
+   a fresh review. Merge A only if that review and protected acceptance policy
+   permit it. A fresh review may identify a different unresolved choice.
 
-A PR comment, workflow approval, or merge bypass does not record canonical
-architecture authority. Bypassing the check is not the normal resolution for
-`OWNER_DECISION`.
+The target owner-adoption route in [the architecture contract](architecture.md)
+would give an eligible missing-decision addition B a protected adoption path.
+It is not implemented or enabled. Its first scope excludes existing-rule
+amendments and unsupported claims that work is complete. For example, a decision
+about who owns a migration can be proposed separately from a claim that the
+migration and cutover already happened; the latter needs its own evidence.
+
+A PR comment or workflow approval alone does not record canonical architecture
+authority. An administrator's existing bypass power is outside Gatekeeper's
+protected result and cannot be described as `PASS` or owner adoption.
 
 ## CI review unavailable
 

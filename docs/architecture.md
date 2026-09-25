@@ -161,6 +161,62 @@ Semantic review may return `PASS`, `BLOCK`, or `OWNER_DECISION`.
 canonical consumer authority. These are review decisions, not the complete set
 of acceptance outcomes. `OWNER_DECISION` is not an alternate form of acceptance.
 
+### Target owner adoption for missing decisions (Issue #111 owner direction)
+
+An `OWNER_DECISION` identifies a choice missing from the current authority. The
+owner may propose that choice as a separate predecessor Change B. `OWNER_ADOPTION`
+for B is a governance acceptance result, not a semantic `PASS`
+for B or the originally reviewed Change A. A remains rejected until B becomes
+canonical and A receives a fresh review against the new protected base. B's
+ordinary review need not return `PASS` merely to repeat the missing choice that
+B is meant to settle. The protected verifier must bind that specific missing
+choice to B; an unrelated `OWNER_DECISION` remains unresolved. Other findings
+remain effective: this route cannot accept a contradiction with existing
+authority, an unverified claim of work completed, an incomplete review, or a
+change outside its protected scope.
+
+The first route is limited to additions that answer a missing architecture
+choice without replacing an existing rule. The previous protected-base policy
+must opt in, identify the authority and addition scope, and specify the owner
+authorization assurance and adoption procedure. A candidate cannot enable its
+own route, change its own required assurance, or supply its own owner authority.
+The eligible B contains the proposed authority addition and any explicitly
+permitted consistency updates or evidence references. It cannot include
+implementation, executable workflow, verifier, credential, protected policy,
+or owner-permission changes. Existing-rule changes are amendments, regardless
+of whether B labels them additions. A consumer's established administrative
+exception remains outside this Gatekeeper result and must not be reported as
+`PASS` or protected adoption.
+
+Protected verification binds a versioned adoption claim to the repository,
+previous protected base and policy, exact B revision, old and proposed
+authority identities, addition scope, and decision being adopted. A separate
+authorization receipt must identify the exact claim and establish that a
+principal with the required authority approved it under the previous policy.
+The claim identity cannot depend on that later receipt. A PR approval display,
+candidate-authored assertion, or unauthenticated annotated-tag actor alone
+does not prove owner authorization. The verifier records its inputs, producer
+identity and adoption outcome separately from semantic-review evidence.
+
+Changes to bound inputs require a new claim and authorization. A revoked,
+missing, stale or unverifiable authorization cannot authorize B. The host
+integration must establish that the evidence and authorization remain valid
+through B's protected canonical transition, including after a green check;
+readback at check time alone is insufficient. Required service failure is
+fail closed, without fallback to `G0` or administrative bypass. The initial
+bootstrap of this route must use a pre-existing owner-controlled process and
+be reported as such, since the candidate policy cannot authorize itself.
+
+This is a target contract, not an active acceptance route. The claim and
+receipt schemas, identity source, revocation source, transition ordering and
+host integration must be selected, implemented and tested before activation.
+An exact historical `OWNER_DECISION` review may identify why B was proposed,
+but the first addition route need not make retention of that review a condition
+of B's adoption. This does not weaken the separate historical-`BLOCK` evidence
+requirements of `OWNER_AMENDMENT`. Both routes use the same proposal,
+exact-claim authorization, protected adoption and fresh-review sequence. They
+may share evidence mechanics without conflating eligibility or assurance.
+
 ### Target owner-amendment governance (Issue #75 owner decision)
 
 `OWNER_AMENDMENT` is an acceptance result for a separate, authority-only
@@ -349,7 +405,8 @@ design or implementation change
  protected-policy acceptance verification
                |
       accept valid PASS evidence, or (when enabled) accept a
-      separate authority-only B as OWNER_AMENDMENT;
+      separate eligible B through a protected owner-adoption result
+      (when implemented and enabled) or OWNER_AMENDMENT;
       otherwise do not accept
 ```
 
@@ -494,9 +551,10 @@ Every implementation and rollout must preserve these invariants:
    assurance dynamically.
 8. `BLOCK` rejects the reviewed change. A separate authority-only amendment
    may be accepted through an explicitly enabled `OWNER_AMENDMENT` route
-   without changing that historical `BLOCK`. `OWNER_DECISION` rejects until
-   the decision is recorded in canonical authority and a new review produces
-   acceptable evidence.
+   without changing that historical `BLOCK`. `OWNER_DECISION` rejects the
+   reviewed change. A separately adopted missing decision may become canonical
+   through an explicitly enabled protected route; the original change still
+   requires a fresh review and acceptable evidence.
 9. Privileged credentials are not exposed to pull-request code or package
    lifecycle scripts. Credential-bearing third-party actions remain part of the
    selected CI trust boundary and follow its explicit supply-chain policy; this
@@ -552,6 +610,9 @@ Architecture-changing work follows this order:
 - Issue #20 specifies the evidence format, attestation choice, protected-policy
   routes and model-free CI verification needed to fully separate review
   execution from acceptance verification.
+- Issue #111 defines the missing-decision adoption problem. Its first route
+  depends on the necessary Issue #20 evidence and verification mechanics, not
+  completion of every future evidence route.
 - Issue #75 defines the owner-amendment governance route. Issue #78 develops
   its core and explicit `G0` policy path; Issue #79 investigates a later
   production attestation adapter for a higher grade.

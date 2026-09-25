@@ -278,12 +278,16 @@ out or executing pull-request code.
 `OWNER_DECISION` is an architecture escalation, not an alternate acceptance
 route. It means the protected consumer authority does not contain enough owner
 direction for the Gatekeeper to decide. The current `Architecture Gate / accept`
-check therefore fails. The accountable owner makes the unresolved decision in
-the design or manual-review flow, records it in canonical consumer-owned
-authority, and reruns the gate. The new run can return `PASS` when the proposed
-change follows that authority, or `BLOCK` when it does not. A review comment,
-workflow approval or other run-local acknowledgement does not replace the
-canonical authority update.
+check therefore fails. The accountable owner proposes the missing decision in
+canonical consumer-owned authority. When protected CI selects authority from
+the base, an implementation PR cannot resolve its own review by adding that
+decision to its head. A predecessor authority change must first become
+canonical under the repository's existing protected policy; then the
+implementation change receives a fresh review. That predecessor can itself
+remain unresolved. The target owner-adoption contract describes a protected
+path for eligible additions, but it is not implemented or enabled. See the
+[owner-intervention runbook](docs/owner-intervention.md). A review comment or
+workflow approval alone does not replace canonical adoption.
 
 For `OWNER_DECISION` and CI review failures caused by API, billing, model,
 credential or service availability, follow the
