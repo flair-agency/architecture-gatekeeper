@@ -70,6 +70,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?repository: flair-agency\/codex-action/);
   assert.match(workflow, /codex-action-integrity:\n    if: needs\.policy\.outputs\.mode == 'enforced'\n    needs: policy/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?timeout-minutes: 5/);
+  assert.match(workflow, /review:\n[\s\S]*?timeout-minutes: 20/);
   assert.match(workflow, /src\/verify-codex-action\.mjs/);
   assert.match(workflow, /provenance\/codex-action-v1\.12-pr151\.json/);
   assert.match(workflow, /fetch-depth: 0/);
@@ -81,6 +82,11 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /needs: \[policy, codex-action-integrity\]/);
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /safety-strategy: drop-sudo/);
+  assert.match(workflow, /name: Run read-only architecture review\n        id: codex\n        timeout-minutes: 5/);
+  assert.match(workflow, /output-file: \$\{\{ runner\.temp \}\}\/architecture-gate-codex-final\.json/);
+  assert.match(workflow, /name: Diagnose architecture reviewer completion\n        if: always\(\)\n        timeout-minutes: 1\n        continue-on-error: true/);
+  assert.match(workflow, /Codex final message file: (?:present|absent)/);
+  assert.match(workflow, /Codex final message JSON: parseable/);
   assert.doesNotMatch(workflow, /--ignore-user-config/);
 });
 
