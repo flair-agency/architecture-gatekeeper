@@ -60,7 +60,7 @@ async function fixture(t) {
   const { workflowPath, ...context } = expected;
   const record = buildRealPrBlockRecord({ decision, decisionBytes, context, provenance: authority,
     inputDigests, schema: JSON.parse(inputs.schema), validation: JSON.parse(inputs.validation) });
-  const recordBytes = Buffer.from(`${JSON.stringify(record, null, 2)}\n`);
+  const recordBytes = Buffer.from(`${JSON.stringify(record)}\n`);
   const uri = `https://github.com/${repository}/${workflowPath}@refs/heads/main`;
   const verified = [{ verificationResult: { signature: { certificate: {
     subjectAlternativeName: uri, buildSignerURI: uri, buildConfigURI: uri,
@@ -91,6 +91,7 @@ test('edited bytes, wrong signer or attempt, absent evidence, and stale PR state
     { ...data, verified: [] },
     { ...data, recordBytes: undefined },
     { ...data, current: { ...data.current, headSha: 'a'.repeat(40) } },
+    { ...data, current: { ...data.current, mergeSha: '' } },
   ];
   for (const value of cases) assert.equal((await inspectHistoricalBlock(value)).status, 'INCOMPLETE');
 });

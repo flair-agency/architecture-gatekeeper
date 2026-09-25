@@ -138,7 +138,7 @@ export async function inspectHistoricalBlock({ expected, current, recordBytes, v
       schema: parseJson(inputs.schema, 1024 * 1024, 'Schema'),
       validation: parseJson(inputs.validation, 1024 * 1024, 'Validation'),
       provenance: authority, context, inputDigests });
-    if (!Buffer.from(`${JSON.stringify(rebuilt, null, 2)}\n`).equals(recordBytes)) fail('Record bytes differ from protected producer format.');
+    if (!Buffer.from(`${JSON.stringify(rebuilt)}\n`).equals(recordBytes)) fail('Record bytes differ from protected producer format.');
     return { status: 'VERIFIED_TEST_ONLY_BLOCK', repository: expected.repository, prNumber: expected.prNumber,
       runId: expected.runId, runAttempt: expected.runAttempt, recordSha256: sha256(recordBytes) };
   } catch (error) {
