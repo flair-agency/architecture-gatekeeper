@@ -296,23 +296,29 @@ private or internal consumers.
 The candidate stores exact bytes at a content-digest-addressed path and binds
 each record to an authenticated receipt identifying the repository, evidence
 ref, archive commit, path and byte digest. An independent verifier must bind
-the retrieved digest to the **verified attestation subject digest** and verify
-the receipt commit's bytes, its ancestry from the current ref tip, and the
-same bytes at that tip. Missing bytes or ref, changed bytes, or a rewritten
-history are `INCOMPLETE`; a remaining unreferenced Git object is not durable
-evidence. The archive must permit authorized append while preventing deletion
-and non-fast-forward updates under its selected protection rules. Storage
-identity does not itself authenticate the `BLOCK` producer or validate its
-review inputs, certificate, historical state or current Change B.
+the retrieved digest to the exact-byte digest in the selected authenticated
+producer evidence (the verified attestation subject digest if that mechanism
+is selected), and verify the receipt commit's bytes, its ancestry from the
+current ref tip, and the same bytes at that tip. Missing bytes or ref, changed
+bytes, or a receipt commit no longer ancestral to the current tip are
+`INCOMPLETE`; a remaining unreferenced Git object is not durable evidence.
+Ancestry and matching tip bytes alone do not establish that every intervening
+update preserved the record or that a deleted ref was not later restored.
+The selected protection and trusted update history must prove the required
+append-only continuity. The archive must permit authorized append while
+preventing deletion and non-fast-forward updates under its selected protection
+rules. Storage identity does not itself authenticate the `BLOCK` producer or
+validate its review inputs, selected provenance, historical state or current
+Change B.
 
 Before this candidate can support production acceptance, protected policy
 must specify and test the retention horizon, permitted writers and bypass
 actors, append and readback behavior, loss recovery, authenticated receipt
-source, attestation binding, and freshness at B's protected canonical
-transition. The disposable host experiment in #83 proved exact-byte readback
-and rejection of force-update and deletion for one temporary ref and
-credential; it did not prove those production properties or long-term
-retention. An unavailable or invalid selected archive cannot trigger a
+source, producer-evidence digest binding, trusted update history, and freshness
+at B's protected canonical transition. The disposable host experiment in #83
+proved exact-byte readback and rejection of force-update and deletion for one
+temporary ref and credential; it did not prove those production properties or
+long-term retention. An unavailable or invalid selected archive cannot trigger a
 weaker evidence fallback. No `OWNER_AMENDMENT` grade or route is enabled by
 this candidate decision.
 
