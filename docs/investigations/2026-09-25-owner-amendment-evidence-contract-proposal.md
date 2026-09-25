@@ -6,6 +6,32 @@ production evidence, or enable `OWNER_AMENDMENT / G0`. It identifies a gap in
 the current *target* contract and asks the owner to resolve it before changing
 Core behavior or assurance. `Architecture Gate / accept` remains unchanged.
 
+The exact-claim assurance and ordinary-revocation **semantics** were recorded
+in canonical authority by [PR #108](https://github.com/flair-agency/architecture-gatekeeper/pull/108).
+That decision does not approve the generalized Claim model in this proposal.
+The current target still requires a triggering historical `BLOCK`.
+
+## Already decided in canonical authority by #108
+
+`G0` stays a procedural grade with `principalAuthentication=not_verified`.
+If an owner-approved versioned Amendment Claim route is later defined,
+authenticated authorization of the **exact** claim is a separate assurance
+from G0 and from tag-actor authentication. Previous protected policy may
+select or require it for authority/scope, and the observed grade and
+authorization result are recorded independently. Required authorization
+failure cannot fall back to G0 or another weaker route. A generic PR/MR
+`APPROVED` state, tag actor or mutable review body does not prove exact-claim
+authorization at approval time; claim content changes require new approval.
+
+Ordinary revoke **before protected canonical adoption** prevents adoption,
+even after an earlier green check. After completed protected adoption, a
+later ordinary revoke preserves historical acceptance and stops only future
+or unconsumed use. A defect that made evidence invalid *at acceptance time*
+belongs to a separate correction/incident process. The receipt, identity
+source, revocation source and host-specific merge ordering remain unselected;
+an immutable exact-claim commitment and revoke/change-to-merge protection
+need end-to-end proof before this additional assurance is enabled.
+
 ## One amendment, with a claim and selected supporting evidence
 
 The current target contract and [#75](https://github.com/flair-agency/architecture-gatekeeper/issues/75)
@@ -74,8 +100,11 @@ for the affected authority/scope. Missing, stale, unsupported or unverifiable
 evidence fails closed, without trying another type or lower grade. Candidate B
 cannot authorize its own evidence type, route, grade or scope. At G0, the tag
 actor remains unverified; the tag would bind exact B, Amendment Claim digest
-and purpose. The owner must approve the claim separately from any `BLOCK`
-finding: a verified mismatch is not owner authorization to change authority.
+and purpose. A substantive owner decision is separate from any `BLOCK`
+finding: a verified mismatch is not justification to change authority. Where
+previous protected policy additionally requires authenticated exact-claim
+authorization, #108's separate assurance and revocation rules apply; this
+proposal does not make that assurance part of G0 itself.
 
 The owner must decide a relevant-evidence completeness rule: when a known
 `BLOCK`, requirement delta or other material fact pertains to the claim, what
@@ -147,8 +176,8 @@ retention has been proved.
 
 1. **Claim and owner decision:** Decide whether a deliberate authority-only B
    may be accepted without a prior `BLOCK`. Define one versioned Amendment
-   Claim, how the owner decision/reason is authenticated and bound to prior
-   and proposed authority, and how the annotated tag binds B and claim digest.
+   Claim, what authoritative decision/reason evidence is required and how it
+   binds prior and proposed authority, and how the tag binds B and claim digest.
    Preserve the current BLOCK-required validator as v1; do not reinterpret old
    records. Record the new rule in canonical authority, then align #75/#78.
 2. **Evidence policy and completeness:** Select an initial closed set of typed
@@ -169,8 +198,12 @@ retention has been proved.
 5. **Tag and acceptance freshness:** Define host-neutral invalidation when
    the tag object/ref, B base/head, prior policy or related evidence changes.
    Prove each adapter's required merge check becomes stale or fails closed
-   after tag-ref update/deletion. Do not enable G0 until that proof and the
-   applicable owner-authorized contract are in place.
+   after tag-ref update/deletion. If previous protected policy requires the
+   separate exact-claim authorization, also prove immutable claim commitment
+   and revoke/change-to-merge ordering under #108. The latter semantics are
+   decided; their receipt, identity and revocation mechanisms are not. Do not
+   enable G0 or that additional assurance until each selected route has the
+   required proof and owner-authorized policy.
 
 After those decisions, #20 can implement versioned evidence and independent
 verification, and #78 can implement the chosen Amendment Claim and protected
@@ -179,3 +212,12 @@ authority and a requirement-delta claim if both types are authorized, plus
 missing/stale evidence, wrong type, tag and scope failures. A's historical
 `BLOCK` remains unchanged. No production evidence route or G0 acceptance is
 enabled by this proposal.
+
+The next bounded test-only engineering slice under the **existing**
+BLOCK-required #78 target is to show whether this host can invalidate a
+previously green required check after an annotated tag ref is updated or
+deleted, before B reaches protected canonical adoption. Record the exact
+Git/host event sequence and rejected or still-mergeable state, without
+selecting an authorization receipt, enabling G0, or treating the test as a
+proof for GitLab. A separate test is needed later for #108's revoke-to-merge
+ordering once an exact-claim authorization source is proposed.
