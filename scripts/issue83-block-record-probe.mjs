@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TextDecoder } from 'node:util';
 import { validateAuthoritySetDecision, rejectDuplicateJsonKeys } from '../src/authority-set.mjs';
 import { validateJsonSchema } from '../src/json-schema.mjs';
 import { validateDecisionRules } from '../src/validate-decision.mjs';
@@ -12,11 +13,12 @@ const SHA = /^[a-f0-9]{40}$/;
 const NUMBER = /^[1-9][0-9]*$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const MAX_DECISION_BYTES = 65536;
+const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 function readJson(path, label, limit = MAX_DECISION_BYTES) {
   const bytes = readFileSync(path);
   if (!bytes.length || bytes.length > limit) throw new Error(`${label} size is invalid.`);
-  const source = bytes.toString('utf8');
+  const source = utf8.decode(bytes);
   rejectDuplicateJsonKeys(source, label);
   return JSON.parse(source);
 }

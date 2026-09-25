@@ -74,4 +74,20 @@ test('failed validation leaves no output file', () => {
   });
   assert.notEqual(result.status, 0);
   assert.equal(existsSync(output), false);
+
+  writeFileSync(input, Buffer.concat([
+    Buffer.from('{"decision":"BLOCK","summary":"'), Buffer.from([0xff]), Buffer.from('"}'),
+  ]));
+  const invalidUtf8 = spawnSync(process.execPath, [join(root, 'scripts/issue83-block-record-probe.mjs'), input, schemaPath, validationPath, output], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      GITHUB_REPOSITORY: context.repository,
+      GITHUB_WORKFLOW_SHA: context.workflowSha,
+      GITHUB_RUN_ID: context.runId,
+      GITHUB_RUN_ATTEMPT: context.runAttempt,
+    },
+  });
+  assert.notEqual(invalidUtf8.status, 0);
+  assert.equal(existsSync(output), false);
 });
