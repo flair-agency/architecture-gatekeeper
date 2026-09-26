@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { buildOwnerAdditionFinalRecord, summarizeG0TagRefReadback, verifyG0TagObjectEvidence,
   verifyMergeAncestorComparison, parsePinnedGatekeeperWorkflow, parseGatekeeperWorkflowDefaults,
@@ -16,15 +17,23 @@ function input() {
   const bSha = sha('b');
   const bTree = sha('c');
   const authorityDigest = digest('d');
-  const authoritySetDigest = digest('e');
+  const authorityMembers = [
+    { id: 'architecture', repository, resolvedCommit: baseSha, path: 'docs/architecture.md', byteLength: 9, sha256: digest('a') },
+    { id: 'policy', repository, resolvedCommit: baseSha, path: 'docs/policy.md', byteLength: 7, sha256: digest('b') },
+  ];
+  const authoritySetDigest = createHash('sha256').update(JSON.stringify(authorityMembers)).digest('hex');
   const completedAt = '2026-09-26T01:00:00.000Z';
   const mergedAt = '2026-09-26T02:00:00.000Z';
   const procedure = { status: 'verified', digest: digest('1'), repository, baseSha, bSha, targetBranch,
     pullRequestNumber, tagTargetSha: bSha, tagObjectOid: sha('7'), ownerDecisionId: 'decision-42',
-    authoritySetDigest, authorityIds: ['architecture', 'policy'] };
+    authorityId: 'architecture', authorityPath: 'docs/architecture.md',
+    tagRef: `refs/tags/architecture-owner-addition/${bSha}`, additionRecordSha256: digest('4'),
+    missingDecisionId: 'decision-42', authoritySetDigest, authorityIds: ['architecture', 'policy'] };
   const ordinaryDecision = { status: 'verified', decision: 'OWNER_DECISION', ownerDecisionId: 'decision-42',
     repository, baseSha, bSha, authoritySetDigest, authorityIds: ['architecture', 'policy'] };
   const authoritySet = { status: 'verified', ids: ['architecture', 'policy'], digest: authoritySetDigest };
+  const authoritySetProvenance = { version: 2, selfRepository: repository, authorityRevision: baseSha,
+    manifestSha256: digest('c'), setDigest: authoritySetDigest, members: authorityMembers };
   const eligibility = { status: 'verified', digest: digest('2'), result: 'eligible', repository, baseSha, bSha,
     pullRequestNumber, authoritySetDigest, authorityIds: ['architecture', 'policy'] };
   const provenance = { status: 'verified', selection: 'recorded-base-policy',
@@ -47,7 +56,8 @@ function input() {
   return { repository, targetBranch, pullRequestNumber, baseSha, bSha, bTree, authorityDigest,
     policy: { version: 5, adoptionEvidence: { producer: 'github-actions', workflowPath: '.github/workflows/call-gate.yml',
       jobName: 'Architecture Gate / owner-addition' } }, policySha256: digest('3'), policyPath: '.codex/gatekeeper/ci-policy.json',
-    selected, identities, procedure, ordinaryDecision, authoritySet, eligibility, eligibilityEvidence, merge, targetReadback,
+    selected, identities, procedure, ordinaryDecision, authoritySet, authoritySetProvenance, eligibility,
+    eligibilityEvidence, merge, targetReadback,
     generatedAt: '2026-09-26T03:00:00.000Z' };
 }
 
@@ -56,6 +66,17 @@ test('final record binds pre-merge producer, merge commit, target readback and i
   assert.equal(record.outcome.adoption, 'valid');
   assert.equal(record.outcome.canonical, 'verified');
   assert.equal(record.selectedPolicy.sha256, digest('3'));
+  assert.equal(record.authoritySet.manifestSha256, digest('c'));
+  assert.deepEqual(record.authoritySet.members, input().authoritySetProvenance.members);
+  assert.equal(record.authoritySet.members[0].repository, 'flair-agency/example');
+  assert.equal(record.authoritySet.members[0].resolvedCommit, record.candidate.baseSha);
+  assert.equal(record.authoritySet.members[0].path, 'docs/architecture.md');
+  assert.equal(record.authoritySet.members[0].sha256, digest('a'));
+  assert.equal(record.addition.authorityId, 'architecture');
+  assert.equal(record.addition.authorityPath, 'docs/architecture.md');
+  assert.equal(record.addition.tagRef, `refs/tags/architecture-owner-addition/${record.candidate.bSha}`);
+  assert.equal(record.addition.additionRecordSha256, digest('4'));
+  assert.equal(record.addition.ownerDecisionId, 'decision-42');
   assert.equal(record.eligibility.completedAt, '2026-09-26T01:00:00.000Z');
   assert.deepEqual(record.eligibility.producer, { runId: '100', attempt: 1, jobId: '200',
     workflowPath: '.github/workflows/architecture-gate.yml', callerPath: '.github/workflows/call-gate.yml' });
