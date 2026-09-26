@@ -41,6 +41,8 @@ function input() {
       callerPath: '.github/workflows/call-gate.yml' }, repository, targetBranch, pullRequestNumber, baseSha, bSha,
     authoritySetDigest, procedureDigest: procedure.digest, eligibilityDigest: eligibility.digest, completedAt };
   const eligibilityEvidence = { status: 'verified', provenance, completedAt };
+  const eligibilityArtifactBinding = { checkRunId: '555', artifactId: '987', artifactDigest: `sha256:${digest('e')}`,
+    annotationTitle: 'AGK_OWNER_ADDITION_ARTIFACT_V1', annotationMessage: `id=987;sha256=${digest('e')}` };
   const merge = { hostMetadata: { status: 'verified', repository, targetBranch, pullRequestNumber, headSha: bSha,
       baseSha, state: 'merged', mergeSha: sha('f'), mergedAt },
     commit: { sha: sha('f'), parents: [baseSha, bSha], tree: bTree } };
@@ -57,7 +59,7 @@ function input() {
     policy: { version: 5, adoptionEvidence: { producer: 'github-actions', workflowPath: '.github/workflows/call-gate.yml',
       jobName: 'Architecture Gate / owner-addition' } }, policySha256: digest('3'), policyPath: '.codex/gatekeeper/ci-policy.json',
     selected, identities, procedure, ordinaryDecision, authoritySet, authoritySetProvenance, eligibility,
-    eligibilityEvidence, merge, targetReadback,
+    eligibilityEvidence, eligibilityArtifactBinding, merge, targetReadback,
     generatedAt: '2026-09-26T03:00:00.000Z' };
 }
 
@@ -78,6 +80,7 @@ test('final record binds pre-merge producer, merge commit, target readback and i
   assert.equal(record.addition.additionRecordSha256, digest('4'));
   assert.equal(record.addition.ownerDecisionId, 'decision-42');
   assert.equal(record.eligibility.completedAt, '2026-09-26T01:00:00.000Z');
+  assert.deepEqual(record.eligibility.artifactBinding, input().eligibilityArtifactBinding);
   assert.deepEqual(record.eligibility.producer, { runId: '100', attempt: 1, jobId: '200',
     workflowPath: '.github/workflows/architecture-gate.yml', callerPath: '.github/workflows/call-gate.yml' });
   assert.deepEqual(record.merge.parents, [sha('a'), sha('b')]);
@@ -98,6 +101,12 @@ test('record generation preserves an independently invalid adoption outcome', ()
   const record = buildOwnerAdditionFinalRecord(value);
   assert.equal(record.outcome.canonical, 'verified');
   assert.equal(record.outcome.adoption, 'invalid');
+});
+
+test('final record rejects missing verified producer artifact identity', () => {
+  const value = input();
+  delete value.eligibilityArtifactBinding;
+  assert.throws(() => buildOwnerAdditionFinalRecord(value), /artifact identity is missing/);
 });
 
 test('immutable G0 tag object remains valid when its mutable ref has moved or disappeared', () => {
