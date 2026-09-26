@@ -312,6 +312,9 @@ claim. Implementation, focused negative verification, and the v0.5.1 fixture
 full-cycle E2E below are required before package release. The fixture uses
 synthetic consumer data and demonstrates the mechanism's sequence; passing it
 does not prove that a real consumer is ready or activate the route for one.
+The existing representative LIVE Agency end-to-end prerequisite remains in
+force for real-consumer route activation; the fixture is a separate package
+release gate and cannot satisfy that activation prerequisite.
 Issue #120 independently owns the legacy PR-head authority failure. Consumer
 owners classify their own decisions and existing-rule changes; those cases
 cannot substitute for the synthetic A/B lifecycle in the fixture and are not
@@ -344,7 +347,8 @@ not relax them. A's historical `OWNER_DECISION` remains unchanged; the fresh
 fixture E2E is a v0.5.1 package-release condition only. It does not prove
 readiness, policy selection, owner authorization, or host enforcement for LIVE
 Agency or another real consumer. Real consumer adoption and its readiness
-verification are separate follow-up work.
+verification are separate follow-up work. The representative LIVE Agency
+end-to-end prerequisite for real-consumer activation remains outstanding.
 
 ### Target owner-amendment governance (Issue #75 owner decision)
 
@@ -610,8 +614,10 @@ does not generalize to OWNER_AMENDMENT or other routes. It defines the target
 contract, not an active route. Implementation, focused negative verification,
 and the public fixture full-cycle E2E specified in the Issue #119 release gate
 are required for the v0.5.1 package release. Passing that fixture does not
-prove readiness or adoption for a real consumer. Each consumer must separately
-select and verify the route under its own base policy and governance.
+prove readiness or adoption for a real consumer or replace the protected
+representative LIVE Agency end-to-end prerequisite for route activation. Each
+consumer must separately select and verify the route under its own base policy
+and governance.
 
 Evidence lifecycle remains route-specific. Existing `OWNER_ADDITION / G0`
 observes the mutable tag-ref mapping to the bound tag object at verification
