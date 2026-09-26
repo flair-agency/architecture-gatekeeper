@@ -378,7 +378,13 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
   const eligibility = { status: 'verified', digest: artifacts.digests.eligibilityDecision,
     result: 'eligible', repository, baseSha, bSha, pullRequestNumber,
     authoritySetDigest: procedure.authoritySetDigest, authorityIds: procedure.authorityIds };
-  const eligibilityEvidence = { status: 'verified', provenance: provenanceResult.provenance,
+  const { status: producerStatus, selection, workflow, repository: producerRepository, targetBranch: producerTarget,
+    pullRequestNumber: producerPr, baseSha: producerBase, bSha: producerB, authoritySetDigest: producerAuthoritySet,
+    procedureDigest, eligibilityDigest, completedAt } = provenanceResult.provenance;
+  const eligibilityEvidence = { status: 'verified', provenance: { status: producerStatus, selection, workflow,
+    repository: producerRepository, targetBranch: producerTarget, pullRequestNumber: producerPr,
+    baseSha: producerBase, bSha: producerB, authoritySetDigest: producerAuthoritySet,
+    procedureDigest, eligibilityDigest, completedAt },
     completedAt: provenanceResult.completedAt };
   const merged = readback.merge;
   const promptPath = selected.ownerAdditionPromptPath;
@@ -409,7 +415,7 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
     authorityDigest, policy, policySha256: hash(policyBytes), policyPath, procedure, ordinaryDecision, authoritySet,
     selected, eligibility, authoritySetProvenance, eligibilityEvidence, merge: merged,
     targetReadback: readback.targetReadback, identities: boundIdentities });
-  if (record.outcome.adoption !== 'valid' || record.outcome.canonical !== 'verified') fail(`final adoption is ${record.outcome.adoption}/${record.outcome.canonical}.`);
+  if (record.outcome.adoption !== 'valid' || record.outcome.canonical !== 'verified') fail(`final adoption is ${record.outcome.adoption}/${record.outcome.canonical}: ${JSON.stringify(record.outcome)}.`);
   return record;
 }
 

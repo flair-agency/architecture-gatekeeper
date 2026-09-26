@@ -157,10 +157,19 @@ test('verifies a pull_request_target producer bound to the exact PR head', async
   assert.equal(result.status, 'verified');
 });
 
+test('verifies GitHub post-merge run metadata with an empty PR list', async () => {
+  const fixture = prepare({ runHead: candidate.bSha });
+  const run = fixture.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`);
+  run.pull_requests = [];
+  const result = await verifyOwnerAdditionEligibilityProvenance(fixture.args);
+  assert.equal(result.status, 'verified');
+});
+
 test('rejects wrong candidate, failed or late producer, wrong app, or mismatched artifact digest', async t => {
   const cases = [
     ['wrong workflow-associated B', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).pull_requests[0].head.sha = sha('9'); }],
     ['wrong workflow-associated base', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).pull_requests[0].base.sha = sha('9'); }],
+    ['unassociated synthetic head', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).pull_requests = []; }],
     ['unsupported non-PR event', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).event = 'workflow_dispatch'; }],
     ['pull_request_target run head differs from exact B', f => {
       f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).event = 'pull_request_target';
