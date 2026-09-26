@@ -378,12 +378,14 @@ not itself resolve its consumer-specific rule conflict or migration evidence.
 
 ### Versioned procedural adoption without host merge enforcement
 
-Policy v5 selects a separate `procedural` route from the recorded base. It
-keeps the v4 complete Authority Set review and one-file B write scope. A
-consumer can select it when GitHub cannot make `Architecture Gate / accept` a
-required check, while keeping the absence of host enforcement explicit. In a
-v5 policy, replace the v4 `version` with `5`, select `mode: "procedural"` for
-the target branch, and add the following branch field:
+Policy v5 implements a separate `procedural` route selected from the recorded
+base. It keeps the v4 complete Authority Set review and one-file B write scope.
+This is a pre-release implementation for the representative LIVE Agency E2E;
+consumer activation is pending that trial and the v0.5.1 release. When the
+route is released, a consumer without a required `Architecture Gate / accept`
+check can keep the absence of host enforcement explicit. Its v5 policy then
+replaces the v4 `version` with `5`, selects `mode: "procedural"` for the target
+branch, and adds the following branch field:
 
 ```json
 "adoptionEvidence": {
