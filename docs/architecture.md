@@ -209,7 +209,7 @@ remains fail closed. Privileged credentials cannot be exposed to or used to
 execute B's pull-request code or package lifecycle scripts.
 
 After B becomes canonical, A must receive a fresh review against the new
-base under the consumer's normal acceptance policy. That review may
+protected base under the consumer's normal acceptance policy. That review may
 still return `BLOCK` or another `OWNER_DECISION`; G0 does not accept A. An
 owner-authorized administrative exception remains under the consumer's
 existing governance and outside this Gatekeeper result.
@@ -243,9 +243,9 @@ exactly one affected `self` member by stable ID and path. That member must use
 policy and manifest. B may modify only that existing authority file. B cannot
 change the policy, manifest, another authority member, implementation, or
 workflow, or enable this route for its own review. An enforced route retains
-protected-base selection. An explicitly selected recorded-base procedural
-route reports its actual policy protection and host-enforcement assurance;
-that selection does not relax addition eligibility.
+protected-base selection. An explicitly selected advisory route retains its
+separate reporting and assurance limits; advisory selection does not relax
+addition eligibility.
 
 Both the ordinary review of B and its separate addition-eligibility review
 must receive every required member of that same base-selected Authority Set.
@@ -471,7 +471,7 @@ acceptance behavior remains in force. Enabling `G0` for this repository for
 the first time cannot be justified by the candidate policy in that same
 change; its adoption follows the existing owner-controlled exception process.
 
-### Governance assurance dimensions and recorded-base procedural adoption ([Issue #121](https://github.com/flair-agency/architecture-gatekeeper/issues/121) owner decision)
+### Governance assurance dimensions and advisory procedural route ([Issue #121](https://github.com/flair-agency/architecture-gatekeeper/issues/121) owner decision)
 
 The scalar `G0` label is retained for compatibility with existing v0.5
 `OWNER_ADDITION` and `OWNER_AMENDMENT` artifacts. It means only that the
@@ -511,81 +511,57 @@ recorded base and candidate head, policy/report versions and digests, and
 evidence identities. The status and provenance of each dimension remain
 separate; no scalar grade may summarize them as an overall assurance level.
 
-For `OWNER_ADDITION / G0`, a consumer may explicitly select a separately
-versioned **recorded-base procedural adoption** route even when its host cannot
-enforce a required merge check. The route evaluates whether exact B satisfies
-the G0 procedure selected by the recorded-base policy and, separately, whether
-B became canonical.
-The consumer records its route selection in canonical authority or a named
-governance record. Each evaluation reads the selected policy, Authority Set,
-prompt, schema and validation inputs from the recorded base revision, never
-from B. It binds the repository, target branch, base, exact B revision, policy
-digest, complete Authority Set identity, and G0 tag object. Candidate B cannot
-enable the route, weaken its requirements or select its own inputs. A
-recorded-base selection does not itself prove the base was protected; report
-`policyProtection=not_claimed` unless independent evidence proves more.
+Following the owner selection recorded in Issue #121, this contract defines a
+separately versioned **advisory-only procedural route** for repositories that
+cannot establish host merge enforcement but still want a recorded procedure
+evaluation. This route is distinct from protected-policy acceptance. A
+consumer owner must explicitly select it in consumer canonical authority or
+its governance record, and each run reads the selected policy bytes only from
+the recorded base revision, never from candidate B. Bind and report that base
+revision and policy digest. This selection and binding do not establish that
+the base, policy or route selection is protected; the report must say
+`policyProtection=not_claimed`.
 
-The pre-merge result may state `OWNER_ADDITION / G0` procedure `eligible` for
-exact B when its G0 artifact, complete Authority Set, B-only scope, matching
-missing decision ID and B-specific semantic eligibility all validate. It
-reports `canonicalTransition=not_verified` before a transition is observed.
-An eligible result or successful procedural check does not assert that B was
-merged, that the host would reject an ineligible B, or that the tag actor was
-the owner. It may be a successful `Architecture Gate / accept` check only when
-the selected consumer policy defines that check as procedural eligibility;
-the report must not call it a host-enforced required check without host
-evidence. `principalAuthentication=not_verified` and
-`hostEnforcement=unavailable` or `not_verified` remain explicit. The G0
-artifact is a validated adoption-procedure artifact, not authenticated proof
-that the named owner approved the exact claim.
+The advisory outcome is `ADVISORY_ONLY`, a top-level reporting result distinct
+from semantic `PASS`, `BLOCK` and `OWNER_DECISION` decisions and from
+`OWNER_ADDITION / G0` acceptance. It may state that the route's procedure was
+eligible, but it must report
+`hostEnforcement=not_verified` or `unavailable` and
+`canonicalTransition=not_verified`. It does not assert that B was accepted,
+that a host would block an unaccepted B, or that B became canonical. A
+separately named informational report may complete successfully; the advisory
+result must not satisfy or be presented as the required
+`Architecture Gate / accept` check. If an implementation cannot keep the
+informational result distinct from that check, the accept path must return
+non-success.
 
-After merge, a separate result may report B adopted and
-`canonicalTransition=verified` only after a fresh, trusted read of the named
-target ref and a verified mapping from exact B to the observed canonical Git
-history. The initial adapter supports only a merge commit M whose first parent
-is the recorded base and second parent is exact B, and whose tree equals B's
-tree. M must be an ancestor of observed target commit T; at T, the affected
-canonical authority path must still have B's content digest. Record M, T,
-the target ref, observation time, B and base OIDs, authority digest, and
-procedure evidence. A squash, rebase, changed base, missing ref, or changed
-authority path makes this initial transition verification incomplete; an
-equivalent-content mapping requires a separately adopted contract. This
-readback proves only the observed Git transition and current affected-path
-bytes. It does not prove owner identity, host enforcement, or continuous
-evidence validity through merge.
+Advisory selection is explicit and never a fallback. Candidate B cannot enable
+the route, weaken its requirements, or select policy from its own head within
+the same run. If the recorded base policy selects an enforced route and its
+required host evidence is absent, inaccessible (including plan-restricted
+HTTP 403), stale, or invalid, that run is incomplete and cannot downgrade to
+advisory. When the advisory route itself is selected, lack of host-enforcement
+evidence is reported as not verified or unavailable and cannot be converted
+into a protected acceptance claim. Other required procedure evidence must
+still validate; its absence makes the procedure incomplete or ineligible.
 
-A post-merge result must validate the bound G0 procedure and B eligibility in
-that same trusted execution, or validate independently reusable evidence under
-a separately specified contract. It cannot reuse an arbitrary saved green
-check as proof of what was valid before M. A later evaluation is dated as a
-later evaluation; it cannot claim that a required check ran before merge
-without verified run provenance and ordering. A failed or unavailable
-post-merge readback leaves adoption unverified; it does not imply that the
-host prevented merge or that a completed merge was rolled back. A receives a
-fresh ordinary review against the new canonical base, and its historical
-`OWNER_DECISION` is never converted to `PASS`.
-
-The route is explicit, never a fallback from a selected host-enforced route.
-If the recorded-base policy requires host enforcement and its evidence is
-absent, inaccessible (including plan-restricted HTTP 403), stale or invalid,
-the run is incomplete. On the procedural route, unavailable enforcement is
-reported as an assurance limit and cannot be promoted to a protected merge
-claim. Missing procedure evidence remains incomplete or ineligible.
-
-New policy and report formats use explicit versions distinct from current
-v0.5. Ambiguous mixing of legacy and new fields is rejected. Existing policy
-bytes, G0 artifacts and historical results are not reinterpreted. The earlier
-`ADVISORY_ONLY` draft is superseded by this owner decision and has no active
-acceptance semantics. This recorded-base route is a target contract until its
-policy, deterministic evaluation, post-merge readback and reports are
-implemented and tested. Until then, existing acceptance behavior remains in
-force.
+New advisory policy and report formats must use explicit versions distinct
+from current v0.5. Consumers that have not selected the new version keep their
+existing behavior. A new verifier must reject ambiguous mixing of legacy and
+new fields; it must not upgrade old G0 artifacts, policy bytes, or historical
+results by reinterpretation. A successful advisory report means only that the
+selected advisory evaluation completed with its recorded inputs. It does not
+imply that the decision was protected or that any later merge is valid.
+This is a target contract, not an active route. It becomes available only
+after the versioned policy and report, deterministic evaluation, and
+non-accepting reporting path are implemented and tested. Until then, existing
+acceptance behavior remains in force.
 
 Evidence lifecycle remains route-specific. Existing `OWNER_ADDITION / G0`
 observes the mutable tag-ref mapping to the bound tag object at verification
 time and makes no promise that the ref remains unchanged through a later
 transition. This point-in-time semantics applies to historical v0.5 artifacts
-and is not strengthened or weakened by the recorded-base route. `OWNER_AMENDMENT`
+and is not strengthened or weakened by the advisory route. `OWNER_AMENDMENT`
 continues to require its bound evidence to remain valid through the protected
 canonical transition; its freshness requirement cannot be reduced to G0's
 verification-time observation.
@@ -743,14 +719,11 @@ which changes require CI model execution are protected policy decisions. These
 decisions must be specified before an evidence route is accepted; service
 failure cannot activate a weaker route dynamically.
 
-`Architecture Gate / accept` is an authoritative required check only where a
-host actually enforces it for the target branch. On an explicitly selected
-recorded-base procedural route, the same named check may succeed for B's
-eligibility without being host-required; its report must state that assurance
-limit. The current enforced route verifies its same-run result. If Issue #20
-adds other evidence routes, each must verify its selected policy and evidence
-explicitly. No route silently reinterprets `BLOCK`, accepts A's
-`OWNER_DECISION`, or treats report delivery as a canonical transition.
+`Architecture Gate / accept` remains the authoritative required check wherever
+a repository enables it. Today it verifies the same-run enforced result. If
+Issue #20 adds other evidence routes, it must verify their evidence and
+protected policy explicitly. It never silently reinterprets `BLOCK`, accepts
+`OWNER_DECISION`, or treats report delivery as acceptance.
 
 ## Normative invariants
 
@@ -769,17 +742,16 @@ Every implementation and rollout must preserve these invariants:
    replace that protected authority.
 5. Any independently reusable evidence introduced by Issue #20 is invalid
    after a bound revision or relevant policy/authority identity changes.
-6. The recorded base policy alone selects acceptable current or future
-   evidence routes and required assurance. A route claiming protected-policy
-   assurance must additionally establish protection of that base and policy.
+6. Protected-base policy alone selects acceptable current or future evidence
+   routes and required assurance.
 7. API, billing, credential, timeout or service failure never downgrades
    assurance dynamically.
 8. `BLOCK` rejects the reviewed change. A separate authority-only amendment
    may be accepted through an explicitly enabled `OWNER_AMENDMENT` route
    without changing that historical `BLOCK`. `OWNER_DECISION` rejects the
    reviewed change. A separately adopted missing decision may become canonical
-   through an explicitly enabled route whose observed assurance is reported;
-   the original change still requires a fresh review and acceptable evidence.
+   through an explicitly enabled protected route; the original change still
+   requires a fresh review and acceptable evidence.
 9. Privileged credentials are not exposed to pull-request code or package
    lifecycle scripts. Credential-bearing third-party actions remain part of the
    selected CI trust boundary and follow its explicit supply-chain policy; this
