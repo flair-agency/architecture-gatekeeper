@@ -13,7 +13,7 @@ const MAX_REPORT_LENGTH = 60_000;
 const DECISIONS = new Set(['PASS', 'BLOCK', 'OWNER_DECISION']);
 const AUTHORITY_ID = /^[a-z][a-z0-9-]{0,63}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
-const AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
+const AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -64,12 +64,15 @@ export function parseLegacyAuthorityProvenance(encoded, required = false) {
   const bytes = Buffer.from(encoded, 'base64');
   if (bytes.toString('base64') !== encoded) throw new Error('Invalid legacy base authority provenance encoding.');
   const value = JSON.parse(bytes.toString('utf8'));
+  const validInput = input => input && typeof input.path === 'string' && input.path.length <= 240 &&
+    AUTHORITY_PATH.test(input.path) && input.path.split('/').every(part => part !== '.' && part !== '..') &&
+    /^[a-f0-9]{64}$/.test(input.sha256);
   if (!value || value.version !== 1 || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value.baseSha) ||
       !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value.headSha) ||
-      !/^[a-f0-9]{64}$/.test(value.policySha256) || !Array.isArray(value.members) ||
+      !validInput(value.policy) || !validInput(value.prompt) || !validInput(value.schema) ||
+      !(value.validation === null || validInput(value.validation)) || !Array.isArray(value.members) ||
       value.members.length < 1 || value.members.length > 16 ||
-      value.members.some(member => !member || typeof member.path !== 'string' ||
-        !AUTHORITY_PATH.test(member.path) || !/^[a-f0-9]{64}$/.test(member.sha256)) ||
+      value.members.some(member => !validInput(member)) ||
       new Set(value.members.map(member => member.path)).size !== value.members.length) {
     throw new Error('Invalid legacy base authority provenance record.');
   }
@@ -242,7 +245,13 @@ export function renderReport(classified, metadata = {}) {
   }
   if (metadata.legacyAuthorityProvenance) {
     const selected = metadata.legacyAuthorityProvenance;
-    body += `\n**Recorded-base legacy authority**\n\nBase: \`${cleanText(selected.baseSha, 64)}\` · Candidate head: \`${cleanText(selected.headSha, 64)}\` · Policy SHA-256: \`${cleanText(selected.policySha256, 64)}\`\n`;
+    body += `\n**Recorded-base legacy review inputs**\n\nBase: \`${cleanText(selected.baseSha, 64)}\` · Candidate head: \`${cleanText(selected.headSha, 64)}\`\n`;
+    body += renderList('Policy, prompt, schema, and validation snapshots', [
+      `${selected.policy.path} (SHA-256 ${selected.policy.sha256})`,
+      `${selected.prompt.path} (SHA-256 ${selected.prompt.sha256})`,
+      `${selected.schema.path} (SHA-256 ${selected.schema.sha256})`,
+      selected.validation ? `${selected.validation.path} (SHA-256 ${selected.validation.sha256})` : 'validationPath: null (no validation file selected)',
+    ]);
     body += renderList('Selected authority files', selected.members.map(member => `${member.path} (SHA-256 ${member.sha256})`));
   }
   body += renderGates(decision?.gates);

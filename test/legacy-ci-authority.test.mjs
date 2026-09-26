@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { prepareLegacyAuthority, validateLegacyAuthorityDecision } from '../src/prepare-legacy-ci-authority.mjs';
@@ -20,25 +20,30 @@ const git = (root, ...args) => execFileSync('git', args, { cwd: root, encoding: 
 } }).trim();
 function write(root, path, content) { mkdirSync(dirname(join(root, path)), { recursive: true }); writeFileSync(join(root, path), content); }
 
-test('legacy v1 uses recorded-base authority and rejects candidate self-authorization', t => {
+test('legacy v1 uses recorded-base arbitrary authority paths and binds every review input', t => {
   const root = mkdtempSync(join(tmpdir(), 'legacy-authority-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   git(root, 'init', '-q');
   const policyPath = '.codex/gatekeeper/ci-policy.json';
-  const authorityPath = 'docs/architecture.md';
+  const authorityPath = 'docs/architecture';
+  const promptPath = '.codex/gatekeeper/ci-prompt.md';
+  const schemaPath = '.codex/gatekeeper/decision.schema.json';
+  const validationPath = '.codex/gatekeeper/decision.validation.json';
   const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: {
     mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authorityFiles: [authorityPath],
-    promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json',
-    validationPath: null,
+    promptPath, schemaPath, validationPath,
   } } };
   write(root, policyPath, JSON.stringify(policy));
-  write(root, authorityPath, '# Architecture\n\nMigration completion is unverified.\n');
+  write(root, promptPath, 'Review against canonical authority.');
+  write(root, schemaPath, '{"type":"object"}');
+  write(root, validationPath, '{"rules":[]}');
+  write(root, authorityPath, 'Migration completion is unverified.');
   write(root, 'src/app.mjs', 'export const value = 1;\n');
   git(root, 'add', '.'); git(root, 'commit', '-qm', 'base');
   const baseSha = git(root, 'rev-parse', 'HEAD');
-  const promptPath = join(root, 'protected-prompt.md');
-  writeFileSync(promptPath, 'Review against canonical authority.');
-  const args = { root, baseSha, baseBranch: 'main', policyPath, promptPath,
+  const args = { root, baseSha, baseBranch: 'main', policyPath,
+    outputPromptPath: join(root, 'base-prompt.md'), outputSchemaPath: join(root, 'base-schema.json'),
+    outputValidationPath: join(root, 'base-validation.json'),
     outputPath: join(root, 'complete-prompt.md'), provenancePath: join(root, 'provenance.json') };
 
   write(root, 'src/app.mjs', 'export const value = 2;\n');
@@ -47,17 +52,57 @@ test('legacy v1 uses recorded-base authority and rejects candidate self-authoriz
   const provenance = prepareLegacyAuthority({ ...args, headSha: ordinaryHead });
   assert.deepEqual(provenance.members.map(member => member.path), [authorityPath]);
   assert.match(readFileSync(args.outputPath, 'utf8'), /Migration completion is unverified/);
+  assert.equal(provenance.policy.path, policyPath);
+  assert.equal(provenance.prompt.path, promptPath);
+  assert.equal(provenance.schema.path, schemaPath);
+  assert.equal(provenance.validation.path, validationPath);
+  assert.equal(readFileSync(args.outputSchemaPath, 'utf8'), '{"type":"object"}');
+  assert.equal(readFileSync(args.outputValidationPath, 'utf8'), '{"rules":[]}');
   assert.deepEqual(validateLegacyAuthorityDecision(JSON.stringify({ decision: 'PASS', authorityFiles: [authorityPath] }), provenance).authorityFiles, [authorityPath]);
   assert.throws(() => validateLegacyAuthorityDecision(JSON.stringify({ decision: 'PASS', authorityFiles: [] }), provenance), /exact base-selected/);
 
-  write(root, policyPath, JSON.stringify({ ...policy, branches: { main: { ...policy.branches.main, authorityFiles: ['docs/other.md'] } } }));
+  write(root, policyPath, JSON.stringify({ ...policy, branches: { main: { ...policy.branches.main, authorityFiles: ['docs/other'] } } }));
   git(root, 'add', '.'); git(root, 'commit', '-qm', 'candidate policy self-selection');
   const policyHead = git(root, 'rev-parse', 'HEAD');
   assert.deepEqual(prepareLegacyAuthority({ ...args, headSha: policyHead }).members.map(member => member.path), [authorityPath]);
 
-  write(root, authorityPath, '# Architecture\n\nMigration completed; missing decision adopted.\n');
+  write(root, authorityPath, 'Migration completed; missing decision adopted.');
   write(root, 'src/app.mjs', 'export const value = 3;\n');
   git(root, 'add', '.'); git(root, 'commit', '-qm', 'candidate self-authorization');
   const changedHead = git(root, 'rev-parse', 'HEAD');
   assert.throws(() => prepareLegacyAuthority({ ...args, headSha: changedHead }), /Candidate changes canonical authority/);
 });
+
+const selectedPaths = {
+  policy: '.codex/gatekeeper/ci-policy.json',
+  prompt: '.codex/gatekeeper/ci-prompt.md',
+  schema: '.codex/gatekeeper/decision.schema.json',
+  validation: '.codex/gatekeeper/decision.validation.json',
+  authority: 'docs/architecture',
+};
+for (const [kind, badPath] of Object.entries(selectedPaths)) {
+  test(`legacy v1 rejects a symlink snapshot for selected ${kind}`, t => {
+    const root = mkdtempSync(join(tmpdir(), `legacy-${kind}-symlink-`));
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+    git(root, 'init', '-q');
+    const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: {
+      mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authorityFiles: [selectedPaths.authority],
+      promptPath: selectedPaths.prompt, schemaPath: selectedPaths.schema, validationPath: selectedPaths.validation,
+    } } };
+    write(root, selectedPaths.policy, JSON.stringify(policy));
+    write(root, selectedPaths.prompt, 'review prompt');
+    write(root, selectedPaths.schema, '{"type":"object"}');
+    write(root, selectedPaths.validation, '{"rules":[]}');
+    write(root, selectedPaths.authority, 'canonical rules');
+    write(root, 'snapshot-target', 'link target');
+    unlinkSync(join(root, badPath));
+    symlinkSync('snapshot-target', join(root, badPath));
+    git(root, 'add', '.'); git(root, 'commit', '-qm', 'base with non-regular selected input');
+    const baseSha = git(root, 'rev-parse', 'HEAD');
+    assert.throws(() => prepareLegacyAuthority({ root, baseSha, headSha: baseSha, baseBranch: 'main',
+      policyPath: selectedPaths.policy, outputPromptPath: join(root, 'prompt.out'),
+      outputSchemaPath: join(root, 'schema.out'), outputValidationPath: join(root, 'validation.out'),
+      outputPath: join(root, 'complete.out'), provenancePath: join(root, 'provenance.json'),
+    }), /not a regular file/);
+  });
+}

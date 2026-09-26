@@ -12,15 +12,17 @@ import { validateAuthorityReviewSchema } from '../src/preflight-authority-set-re
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium', authorityFiles: ['docs/architecture.md'], promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json', validationPath: null } } };
 test('resolves exact base-branch policy', () => assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium', policyVersion: 1, legacyAuthorityFilesBase64: Buffer.from('["docs/architecture.md"]').toString('base64'), legacyPromptPath: '.codex/gatekeeper/ci-prompt.md', legacySchemaPath: '.codex/gatekeeper/decision.schema.json', legacyValidationPath: '' }));
-test('legacy v1 enforced policy fails closed without explicit validation selection', () => {
+test('legacy v1 enforced policy requires canonical paths and an explicit validation selection', () => {
   const { validationPath: _validationPath, ...missingValidation } = policy.branches.main;
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: missingValidation } }, 'main'), /explicit base-selected validationPath or null/);
   assert.equal(resolveCiPolicy(policy, 'main').legacyValidationPath, '');
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, authorityFiles: undefined } } }, 'main'), /authorityFiles/);
   assert.equal(resolveCiPolicy({ version: 1, default: { mode: 'local-only' }, branches: {} }, 'main').mode, 'local-only');
-  for (const authorityFiles of [[], ['../architecture.md'], ['docs/architecture.md', 'docs/architecture.md'], ['docs/architecture.json']]) {
+  for (const authorityFiles of [[], ['../architecture.md'], ['docs/architecture', 'docs/architecture']]) {
     assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, authorityFiles } } }, 'main'), /authorityFiles/);
   }
+  assert.equal(resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, authorityFiles: ['docs/architecture', 'decisions/owner.policy'] } } }, 'main').legacyAuthorityFilesBase64,
+    Buffer.from('["docs/architecture","decisions/owner.policy"]').toString('base64'));
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, promptPath: '../unsafe.md' } } }, 'main'), /promptPath/);
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, schemaPath: undefined } } }, 'main'), /schemaPath/);
   assert.equal(resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, validationPath: '.codex/gatekeeper/decision.validation.json' } } }, 'main').legacyValidationPath, '.codex/gatekeeper/decision.validation.json');

@@ -188,7 +188,7 @@ branch use one of these shapes:
 
 `local-only` accepts only `mode`; legacy v1 `enforced` requires `mode`, `model`,
 `reasoningEffort`, a nonempty, unique `authorityFiles` list of canonical
-Markdown paths, `promptPath`, `schemaPath`, and an explicit `validationPath`.
+repository paths, `promptPath`, `schemaPath`, and an explicit `validationPath`.
 Set `validationPath` to a canonical JSON path to run consumer decision
 validation, or to `null` to declare that no additional validation is selected.
 The caller's `validation-path` input must exactly match that recorded-base
