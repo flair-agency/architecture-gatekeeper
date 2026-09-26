@@ -716,11 +716,12 @@ Historical v1 reports are not retroactively reclassified.
 
 For an enforced v1 review, the recorded base policy must select a nonempty,
 bounded list of canonical authority paths and the review prompt and decision
-schema paths. The workflow must read the selected policy, instructions and
-authority bytes from that same recorded base, validate regular-file snapshots,
+schema paths, plus any selected decision-validation path. The workflow must
+read the selected policy, instructions and authority bytes from that same
+recorded base, validate regular-file snapshots,
 and make their identities visible in the report. The candidate cannot choose a
 different base file through caller-supplied paths, alter the selected policy or
-instructions for its own review, or have changed authority treated as adopted.
+instructions or validation rules for its own review, or have changed authority treated as adopted.
 The ordinary v1 accept path must fail closed when any selected authority is
 changed by the candidate, the selector or required snapshot is absent or
 invalid, or the decision omits or adds a selected authority path. A separate
