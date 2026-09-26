@@ -296,9 +296,12 @@ self policy remains unselected. The mechanism is not owner-authenticated, so
 after B becomes canonical the implementation change still needs a fresh
 review. Its first policy adoption requires the authorized one-time
 owner-controlled administrative exception after code review and fixture E2E.
-That exception is outside Gatekeeper acceptance. No release or consumer
-activation is claimed. The route does not resolve unsupported claims that work
-is complete. See the
+That exception is outside Gatekeeper acceptance. The fixture E2E is the v0.5.1
+package-release gate; it does not establish activation for a consumer. The
+representative LIVE Agency E2E remains a separate route-activation prerequisite
+under the proposed Issue #140 contract. That proposal is pending
+canonicalization, so no release or consumer activation is claimed here. The
+route does not resolve unsupported claims that work is complete. See the
 [owner-intervention runbook](docs/owner-intervention.md).
 A review comment or workflow approval alone does not replace canonical adoption.
 
@@ -375,6 +378,51 @@ choice, or an ordinary `BLOCK`. G0 still does not authenticate an owner or
 promise that the tag ref remains available later. LIVE Agency adoption and its
 representative E2E remain separate rollout work; implementing this route does
 not itself resolve its consumer-specific rule conflict or migration evidence.
+
+### Versioned procedural adoption without host merge enforcement
+
+Policy v5 implements a separate `procedural` route selected from the recorded
+base. It keeps the v4 complete Authority Set review and one-file B write scope.
+The v0.5.1 package-release gate is the fixture E2E. The representative LIVE
+Agency E2E remains a separate route-activation prerequisite under proposed
+Issue #140; that contract is pending canonicalization. A package release does
+not by itself activate the route for LIVE Agency. When the route is released,
+a consumer without a required `Architecture Gate / accept` check can keep the
+absence of host enforcement explicit. Its v5 policy then
+replaces the v4 `version` with `5`, selects `mode: "procedural"` for the target
+branch, and adds the following branch field:
+
+```json
+"adoptionEvidence": {
+  "producer": "github-actions",
+  "workflowPath": ".github/workflows/architecture-gate.yml",
+  "jobName": "architecture-gate / owner-addition"
+}
+```
+
+The workflow path is the consumer's caller workflow, and the job name must
+match its `owner-addition` job. The base policy selects both; B cannot change
+them for its own review. The B check records `eligibility=eligible`,
+`adoption=pending`, `canonical=pending` and uploads the exact review evidence.
+The green check alone does not establish adoption. After an ordinary PR merge
+commit, the finalizer checks the pre-merge Actions run and selected producer
+job, including its unique successful evidence-upload step and the artifact's
+job-scoped check annotation that binds the uploader's artifact ID and digest.
+It then checks the exact B and two-parent merge commit and freshly reads the
+target branch and authority bytes. Only then can the
+record report valid `OWNER_ADDITION / G0` adoption and verified canonical
+placement. v0.5.1
+does not support squash or rebase merge for B. G0 leaves actor identity
+unverified, and this route does not claim GitHub enforced the check.
+
+The finalizer is `architecture-owner-addition-finalize <owner/repo> <B PR>
+--run-id <Actions run ID> [--attempt N] [--output record.json]`. It uses the
+locally authenticated `gh` token unless `GH_TOKEN` or `GITHUB_TOKEN` is set,
+reads GitHub evidence, and writes a record only when an output path is
+explicitly given. Its output does not replace A's fresh review after B is
+canonical. See the [owner-intervention runbook](docs/owner-intervention.md).
+The token needs read access to both Actions and Checks evidence in the target
+repository; a fine-grained token must include Actions: read and Checks: read.
 
 For `OWNER_DECISION` and CI review failures caused by API, billing, model,
 credential or service availability, follow the

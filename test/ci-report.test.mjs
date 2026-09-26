@@ -38,6 +38,25 @@ test('distinguishes waiver, policy failure, review failure, and malformed output
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: '{}' }).conclusion, 'ERROR');
 });
 
+test('procedural G0 eligibility remains pending until merge and canonical readback', () => {
+  const ownerDecision = { decision: 'OWNER_DECISION', ownerDecisionId: 'missing-choice', summary: 'choose' };
+  const procedure = { procedure: 'VALID_G0_OWNER_ADDITION', missingDecisionId: 'missing-choice',
+    policyRevision: 'a'.repeat(40), headSha: 'b'.repeat(40), tagObjectOid: 'c'.repeat(40) };
+  const classified = classifyReview({ mode: 'procedural', policyResult: 'success', reviewResult: 'success',
+    rawDecision: JSON.stringify(ownerDecision), ownerAdditionSelected: true, ownerAdditionResult: 'success',
+    ownerAdditionEligibility: 'ELIGIBLE', ownerAdditionProcedure: procedure });
+  assert.equal(classified.conclusion, 'OWNER_ADDITION_G0_PENDING');
+  const report = renderReport(classified, { ownerAdditionProcedure: procedure });
+  assert.match(report, /Eligibility: `eligible`/);
+  assert.match(report, /Adoption: `pending`/);
+  assert.match(report, /Canonical: `pending`/);
+  assert.match(report, /Host enforcement: `not_verified`/);
+  assert.doesNotMatch(report, /procedural acceptance result/);
+  assert.equal(classifyReview({ mode: 'procedural', policyResult: 'success', reviewResult: 'success',
+    rawDecision: JSON.stringify(ownerDecision), ownerAdditionSelected: true, ownerAdditionResult: 'failure' }).conclusion,
+  'OWNER_DECISION');
+});
+
 test('reports owner decisions as unaccepted canonical-authority escalations', () => {
   const first = { decision: 'OWNER_DECISION', summary: 'choose', gates: { b: 2, a: 1 } };
   const reordered = { gates: { a: 1, b: 2 }, summary: 'choose', decision: 'OWNER_DECISION' };

@@ -35,8 +35,10 @@ protected-base policy opts in. This repository's current policy does not opt
 in, so its route is inactive. Its first policy adoption may use the authorized
 one-time owner-controlled administrative exception after code review and
 fixture E2E; that exception is outside Gatekeeper acceptance and does not claim
-a release or consumer activation. The previous protected Authority Set must
-have exactly one `self` member matching the policy's selected authority path. A
+a release or consumer activation. The initial policy-v2 Authority Set must
+have exactly one `self` member. The versioned policy-v4 and policy-v5 routes
+review the complete selected Authority Set while B still changes only its one
+selected existing authority file. A
 completed ordinary `OWNER_DECISION` must carry a protected structured
 `ownerDecisionId`; B's annotated tag `AdditionRecord` binds
 `missingDecision.id` to that ID, and B-specific eligibility review verifies
@@ -57,6 +59,37 @@ authority. An administrator's existing bypass power is outside Gatekeeper's
 protected result and cannot be described as `PASS` or `OWNER_ADDITION / G0`.
 Any existing owner-authorized administrative exception remains governed by the
 consumer's policy and must be recorded separately from Gatekeeper acceptance.
+
+### Procedural v0.5.1 G0 route
+
+When the recorded-base consumer policy explicitly selects version 5
+`mode: procedural`, use these steps for B in a repository without a required
+Gate check:
+
+1. Put only the missing decision in B's selected authority file. Keep its
+   annotated `architecture-owner-addition/<exact B SHA>` tag and version-2
+   AdditionRecord. The complete Authority Set remains part of both reviews.
+2. Run the selected GitHub Actions caller on exact B. Confirm the ordinary
+   `OWNER_DECISION` names the same ID, the separate B review is eligible, and
+   the result reads `eligibility=eligible / adoption=pending /
+   canonical=pending`. Record the Actions run ID and attempt. A green result
+   alone is not adoption.
+3. The owner decides whether to adopt B and uses an ordinary **merge commit**
+   on its PR. v0.5.1 does not support squash or rebase merge for this route.
+4. Run `architecture-owner-addition-finalize <owner/repo> <B PR> --run-id
+   <run ID> --attempt <attempt> --output <record.json>`. The command reads the
+   recorded-base policy and GitHub's exact pre-merge producer, checks the
+   immutable tag object, ordered merge parents and B tree, then reads back
+   the target ref and authority bytes. Preserve the resulting adoption record
+   with the PR. A missing or invalid result must not be called a valid G0
+   adoption.
+5. Update A to the new canonical base and request a fresh normal review. A's
+   old `OWNER_DECISION` remains historical; it is never reclassified as PASS.
+
+This route reports principal authentication as `not_verified` and does not
+claim host merge enforcement or protected policy selection unless separately
+verified. If an ineligible B is merged anyway, its content may be present on
+the target branch, but that fact does not make its G0 adoption valid.
 
 ## CI review unavailable
 

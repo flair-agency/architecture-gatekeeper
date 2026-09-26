@@ -126,6 +126,34 @@ test('real Git CLI path includes the complete base set and reports bound v2 proc
   assert.match(report, /not semantic PASS/);
 });
 
+test('procedural v5 emits exact raw pre-merge evidence for the selected producer', async t => {
+  const f = await fixture(t, { policy: p => {
+    p.version = 5;
+    p.branches.main.mode = 'procedural';
+    p.branches.main.adoptionEvidence = { producer: 'github-actions',
+      workflowPath: '.github/workflows/architecture-gate.yml', jobName: 'Architecture Gate / owner-addition' };
+  } });
+  const env = { ...f.env, PR_NUMBER: '42', POLICY_VERSION: '5', GITHUB_RUN_ID: '1234', GITHUB_RUN_ATTEMPT: '2' };
+  execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'], { cwd: f.root, env });
+  const decision = JSON.stringify(eligible(f));
+  execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'validate'],
+    { cwd: f.root, env: { ...env, DECISION: decision } });
+  const evidence = JSON.parse(readFileSync(join(env.OUTPUT_DIR, 'eligibility-evidence.json'), 'utf8'));
+  assert.deepEqual([evidence.version, evidence.repository, evidence.targetBranch, evidence.prNumber,
+    evidence.baseSha, evidence.headSha, evidence.runId, evidence.runAttempt],
+  [1, 'example/project', 'main', 42, f.base, f.head, 1234, 2]);
+  assert.equal(Buffer.from(evidence.ordinaryDecisionBase64, 'base64').toString(), env.ORDINARY_DECISION);
+  assert.equal(Buffer.from(evidence.eligibilityDecisionBase64, 'base64').toString(), decision);
+  assert.equal(Buffer.from(evidence.authoritySetProvenanceBase64, 'base64').toString(),
+    Buffer.from(env.ORDINARY_AUTHORITY_PROVENANCE_BASE64, 'base64').toString());
+  for (const [name, bytes] of Object.entries({ procedure: Buffer.from(evidence.procedureBase64, 'base64'),
+    ordinaryDecision: Buffer.from(evidence.ordinaryDecisionBase64, 'base64'),
+    eligibilityDecision: Buffer.from(evidence.eligibilityDecisionBase64, 'base64'),
+    authoritySetProvenance: Buffer.from(evidence.authoritySetProvenanceBase64, 'base64') })) {
+    assert.equal(evidence.digests[name], hash(bytes));
+  }
+});
+
 test('eligibility preserves BOM-prefixed candidate, authority and instruction bytes', async t => {
   const instructions = '\ufeffCheck this candidate against every base authority.';
   const other = '\ufeff# Privacy\nReports must never disclose secrets.\n';

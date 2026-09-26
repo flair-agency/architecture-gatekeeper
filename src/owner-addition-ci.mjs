@@ -146,10 +146,22 @@ async function prepare(env) {
       !ordinarySchemaPath || !SHA.test(baseSha || '') || !SHA.test(headSha || '')) throw new Error('Missing or invalid owner-addition CI context.');
   const policyBytes = committedFile(root, baseSha, policyPath, 65_536);
   const selected = resolveCiPolicy(parseCiPolicyJson(utf8(policyBytes, 'Previous protected policy')), baseBranch);
-  if (selected.mode !== 'enforced' || selected.ownerAdditionGrade !== 'G0' ||
+  if (!((selected.policyVersion === 5 && selected.mode === 'procedural') ||
+        (selected.policyVersion !== 5 && selected.mode === 'enforced')) ||
+      selected.ownerAdditionGrade !== 'G0' ||
       selected.ownerAdditionAuthorityPath !== authorityPath ||
       selected.ownerAdditionPromptPath !== promptPath || selected.ownerAdditionSchemaPath !== schemaPath) {
     throw new Error('Previous protected policy does not select this owner-addition route.');
+  }
+  if (selected.policyVersion === 5) {
+    const prNumber = Number(env.PR_NUMBER);
+    if (!Number.isSafeInteger(prNumber) || prNumber < 1) throw new Error('Missing exact PR identity for procedural evidence.');
+    mkdirSync(outputDir, { recursive: true, mode: 0o700 });
+    writeFileSync(join(outputDir, 'evidence-context.json'), JSON.stringify({
+      version: 1, policyVersion: 5, repository, targetBranch: baseBranch, prNumber, baseSha, headSha,
+      ordinaryDecisionBase64: Buffer.from(ordinaryDecisionRaw || '', 'utf8').toString('base64'),
+      authoritySetProvenanceBase64: env.ORDINARY_AUTHORITY_PROVENANCE_BASE64 || '',
+    }), { mode: 0o600 });
   }
   if (selected.ownerAdditionVersion === 2) {
     return prepareMultiAuthorityAddition(env, selected, policyBytes);
@@ -216,6 +228,32 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
       if (procedure.version !== 2) throw new Error('Multi-document eligibility requires a version 2 procedure.');
       validateMultiAuthorityEligibility(process.env.DECISION || '', schema, procedure.authoritySet);
     } else validateOwnerAdditionEligibility(process.env.DECISION || '', schema);
+    const contextPath = join(process.env.OUTPUT_DIR || '', 'evidence-context.json');
+    if (process.env.POLICY_VERSION === '5') {
+      const context = JSON.parse(readFileSync(contextPath, 'utf8'));
+      if (context.policyVersion !== 5 || context.version !== 1) throw new Error('Procedural evidence context version differs.');
+      const procedure = readFileSync(join(process.env.OUTPUT_DIR || '', 'procedure.json'));
+      const ordinaryDecision = Buffer.from(context.ordinaryDecisionBase64, 'base64');
+      const eligibilityDecision = Buffer.from(process.env.DECISION || '', 'utf8');
+      const authoritySetProvenance = Buffer.from(context.authoritySetProvenanceBase64, 'base64');
+      const runId = Number(process.env.GITHUB_RUN_ID);
+      const runAttempt = Number(process.env.GITHUB_RUN_ATTEMPT);
+      if (!Number.isSafeInteger(runId) || runId < 1 || !Number.isSafeInteger(runAttempt) || runAttempt < 1 ||
+          !ordinaryDecision.length || !eligibilityDecision.length || !authoritySetProvenance.length) {
+        throw new Error('Procedural eligibility evidence is incomplete.');
+      }
+      writeFileSync(join(process.env.OUTPUT_DIR, 'eligibility-evidence.json'), JSON.stringify({
+        version: 1, repository: context.repository, targetBranch: context.targetBranch,
+        prNumber: context.prNumber, baseSha: context.baseSha, headSha: context.headSha,
+        runId, runAttempt,
+        procedureBase64: procedure.toString('base64'),
+        ordinaryDecisionBase64: ordinaryDecision.toString('base64'),
+        eligibilityDecisionBase64: eligibilityDecision.toString('base64'),
+        authoritySetProvenanceBase64: authoritySetProvenance.toString('base64'),
+        digests: { procedure: sha256(procedure), ordinaryDecision: sha256(ordinaryDecision),
+          eligibilityDecision: sha256(eligibilityDecision), authoritySetProvenance: sha256(authoritySetProvenance) },
+      }), { mode: 0o600 });
+    }
     if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, 'eligibility=ELIGIBLE\n', { flag: 'a' });
   } else throw new Error('Usage: owner-addition-ci.mjs prepare|validate');
 }
