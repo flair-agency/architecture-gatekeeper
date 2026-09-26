@@ -706,13 +706,17 @@ claim protected-instruction assurance. A privileged caller that requires
 protected acceptance must select protected review instructions, as this
 repository's self-review does.
 
-#### Legacy v1 CI authority repair (Issue #120 owner decision)
+#### Target: legacy v1 CI authority repair (Issue #120 owner decision)
 
 The LIVE Agency #106 trial exposed a false acceptance: an enforced legacy v1
 review treated candidate-edited authority and unsupported completion claims as
 canonical. The owner explicitly authorized a fail-closed repair for v0.5.1 on
 2026-09-26, including a compatibility break for existing enforced v1 consumers.
-Historical v1 reports are not retroactively reclassified.
+This is the target contract, not active acceptance behavior. It becomes
+applicable only after PR #126's implementation and focused regression tests are
+integrated. Until then, this text does not establish that the v1 runtime
+enforces these requirements. Historical v1 reports are not retroactively
+reclassified.
 
 For an enforced v1 review, the recorded base policy must select a nonempty,
 bounded `authorityFiles` list of canonical repository paths, plus canonical
@@ -727,23 +731,27 @@ visible in the report. The candidate cannot choose a different base file
 through caller-supplied paths or change the policy, instructions, or validation
 rules used for its review; candidate-modified authority cannot be treated as
 adopted.
-The ordinary v1 accept path must fail closed when any selected authority is
-changed by the candidate, the selector or required snapshot is absent or
-invalid, or the decision omits or adds a selected authority path. A separate
-previous-base-authorized addition route remains available for an eligible
-authority-only B; an ordinary v1 `PASS` cannot substitute for it.
+Under this target, the ordinary v1 accept path must fail closed when any
+selected authority is changed by the candidate, the selector or required
+snapshot is absent or invalid, or the decision omits or adds a selected
+authority path. A separate previous-base-authorized addition route remains
+available for an eligible authority-only B; an ordinary v1 `PASS` cannot
+substitute for it.
 
 Previously valid enforced v1 policies without these base-selected inputs, or
 without a matching caller validation selection, cease to qualify for acceptance
-after this repair. A candidate PR cannot enable its own acceptance by adding
-the fields to its head; the consumer must first adopt the base policy and a
-base-owned caller under its own governance. A caller loaded from a pull-request
-merge commit can itself be candidate-controlled, including its selected
-reusable-workflow revision. Until the caller and required check producer are
-controlled by the applicable host mechanism, the workflow result alone cannot
-claim protected merge enforcement or a protected canonical transition. A
-consumer without that mechanism may select the separate advisory-only route,
-which never satisfies the required accept check.
+when this target is implemented. A candidate PR cannot enable its own
+acceptance by adding the fields to its head; the consumer must first adopt the
+base policy and a base-owned caller under its own governance. A caller loaded
+from a pull-request merge commit can itself be candidate-controlled, including
+its selected reusable-workflow revision. Until the caller and required check
+producer are controlled by the applicable host mechanism, the workflow result
+alone cannot claim protected merge enforcement or a protected canonical
+transition. Missing host-enforcement evidence is reported as its own assurance
+dimension; it does not by itself require permanent `ADVISORY_ONLY` treatment of
+a procedural OWNER_ADDITION result. The separately versioned Issue #121 route
+defines the evidence and selection rules for that outcome and does not weaken
+this legacy v1 fail-closed target.
 
 CI execution is one evidence source, not a prerequisite for every repository
 to obtain local/manual review. Repositories may select a local-only guardrail,
