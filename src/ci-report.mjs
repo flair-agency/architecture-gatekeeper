@@ -206,7 +206,8 @@ export function renderReport(classified, metadata = {}) {
   if (classified.conclusion === 'ADVISORY_ONLY') {
     const p = metadata.ownerAdditionProcedure;
     body += `\nThis informational report does not accept B or A and cannot satisfy Architecture Gate / accept. Ordinary semantic decision: \`${cleanText(decision?.decision, 100)}\` · Procedure eligibility: \`${cleanText(classified.procedureEligibility, 100)}\` · policyProtection=\`not_claimed\` · hostEnforcement=\`not_verified\` · canonicalTransition=\`not_verified\` · principalAuthentication=\`not_verified\`.\n`;
-    if (p) body += `\nReport version: \`2\` · Repository: \`${cleanText(p.repository, 150)}\` · Recorded base and policy revision: \`${cleanText(p.baseSha, 64)}\` · Policy SHA-256: \`${cleanText(metadata.policySha256, 64)}\` · Candidate head: \`${cleanText(p.headSha, 64)}\` · Procedure: \`${cleanText(p.procedure, 100)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag object OID: \`${cleanText(p.tagObjectOid, 64)}\`\n`;
+    body += `\nReport version: \`2\` · Repository: \`${cleanText(p?.repository || metadata.repository, 150)}\` · Recorded base and policy revision: \`${cleanText(p?.baseSha || metadata.baseSha, 64)}\` · Policy SHA-256: \`${cleanText(metadata.policySha256, 64)}\` · Candidate head: \`${cleanText(p?.headSha || metadata.headSha, 64)}\`\n`;
+    if (p) body += `\nProcedure: \`${cleanText(p.procedure, 100)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag object OID: \`${cleanText(p.tagObjectOid, 64)}\`\n`;
   }
   if (metadata.authorityProvenance) {
     const selected = metadata.authorityProvenance;
@@ -299,6 +300,8 @@ async function main() {
   });
   const report = renderReport(classified, {
     mode: process.env.MODE,
+    repository: process.env.GITHUB_REPOSITORY,
+    baseSha: process.env.BASE_SHA,
     policySha256: process.env.POLICY_SHA256,
     reviewedSha: process.env.REVIEWED_SHA,
     headSha: process.env.HEAD_SHA,
