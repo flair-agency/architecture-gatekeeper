@@ -93,6 +93,12 @@ jobs:
         env:
           PROTECTED_INSTRUCTIONS: ${{ inputs.protected-review-instructions }}
         run: test "$PROTECTED_INSTRUCTIONS" = true
+      - name: Require caller validation selection to match recorded-base v1 policy
+        if: steps.resolve.outputs.policyVersion == '1'
+        env:
+          CALLER_VALIDATION_PATH: ${{ inputs.validation-path }}
+          BASE_VALIDATION_PATH: ${{ steps.resolve.outputs.legacyValidationPath }}
+        run: node .architecture-gatekeeper-runtime/src/verify-legacy-validation-selection.mjs "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"
 
   codex-action-integrity:
     if: needs.policy.outputs.mode == 'enforced'

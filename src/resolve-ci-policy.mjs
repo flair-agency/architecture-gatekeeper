@@ -39,10 +39,11 @@ function validateBranch(branch, label, version) {
         !OWNER_SCHEMA_PATH.test(branch.schemaPath) || branch.schemaPath.split('/').some(part => part === '.' || part === '..')) {
       throw new Error(`Enforced ${label} requires base-selected promptPath and schemaPath`);
     }
-    if (Object.hasOwn(branch, 'validationPath') && (typeof branch.validationPath !== 'string' ||
-        branch.validationPath.length > 240 || !OWNER_SCHEMA_PATH.test(branch.validationPath) ||
-        branch.validationPath.split('/').some(part => part === '.' || part === '..'))) {
-      throw new Error(`Invalid base-selected validationPath for ${label}`);
+    if (!Object.hasOwn(branch, 'validationPath') || (branch.validationPath !== null &&
+        (typeof branch.validationPath !== 'string' || branch.validationPath.length > 240 ||
+          !OWNER_SCHEMA_PATH.test(branch.validationPath) ||
+          branch.validationPath.split('/').some(part => part === '.' || part === '..')))) {
+      throw new Error(`Enforced ${label} requires an explicit base-selected validationPath or null`);
     }
     if (!Array.isArray(branch.authorityFiles) || branch.authorityFiles.length < 1 || branch.authorityFiles.length > 16 ||
         new Set(branch.authorityFiles).size !== branch.authorityFiles.length ||
@@ -112,7 +113,7 @@ export function resolveCiPolicy(policy, baseBranch) {
     result.legacyAuthorityFilesBase64 = Buffer.from(JSON.stringify(selected.authorityFiles)).toString('base64');
     result.legacyPromptPath = selected.promptPath;
     result.legacySchemaPath = selected.schemaPath;
-    result.legacyValidationPath = selected.validationPath || '';
+    result.legacyValidationPath = selected.validationPath ?? '';
   }
   if (selected.authorityManifestPath) {
     result.authorityManifestPath = selected.authorityManifestPath;

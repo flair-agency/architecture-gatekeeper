@@ -10,9 +10,12 @@ import { MAX_AUTHORITY_LIMITS, materializeAuthoritySet, parseAuthorityManifest }
 import { validateAuthorityReviewSchema } from '../src/preflight-authority-set-review.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium', authorityFiles: ['docs/architecture.md'], promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json' } } };
+const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium', authorityFiles: ['docs/architecture.md'], promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json', validationPath: null } } };
 test('resolves exact base-branch policy', () => assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium', policyVersion: 1, legacyAuthorityFilesBase64: Buffer.from('["docs/architecture.md"]').toString('base64'), legacyPromptPath: '.codex/gatekeeper/ci-prompt.md', legacySchemaPath: '.codex/gatekeeper/decision.schema.json', legacyValidationPath: '' }));
-test('legacy v1 enforced policy fails closed without base-selected authority', () => {
+test('legacy v1 enforced policy fails closed without explicit validation selection', () => {
+  const { validationPath: _validationPath, ...missingValidation } = policy.branches.main;
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: missingValidation } }, 'main'), /explicit base-selected validationPath or null/);
+  assert.equal(resolveCiPolicy(policy, 'main').legacyValidationPath, '');
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, authorityFiles: undefined } } }, 'main'), /authorityFiles/);
   assert.equal(resolveCiPolicy({ version: 1, default: { mode: 'local-only' }, branches: {} }, 'main').mode, 'local-only');
   for (const authorityFiles of [[], ['../architecture.md'], ['docs/architecture.md', 'docs/architecture.md'], ['docs/architecture.json']]) {
@@ -21,6 +24,7 @@ test('legacy v1 enforced policy fails closed without base-selected authority', (
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, promptPath: '../unsafe.md' } } }, 'main'), /promptPath/);
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, schemaPath: undefined } } }, 'main'), /schemaPath/);
   assert.equal(resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, validationPath: '.codex/gatekeeper/decision.validation.json' } } }, 'main').legacyValidationPath, '.codex/gatekeeper/decision.validation.json');
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, validationPath: '' } } }, 'main'), /validationPath/);
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, validationPath: '../unsafe.json' } } }, 'main'), /validationPath/);
 });
 test('legacy v1 workflow binds protected instructions, authority, and exact report', () => {
@@ -35,6 +39,7 @@ test('legacy v1 workflow binds protected instructions, authority, and exact repo
   assert.match(workflow, /PROMPT_PATH: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_prompt_path \|\| inputs\.prompt-path \}\}/);
   assert.match(workflow, /SCHEMA_PATH: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_schema_path \|\| inputs\.schema-path \}\}/);
   assert.match(workflow, /if: \(needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_validation_path != ''\) \|\| \(needs\.policy\.outputs\.policy_version != '1' && inputs\.validation-path != ''\)/);
+  assert.match(workflow, /name: Require caller validation selection to match recorded-base v1 policy\n        if: steps\.resolve\.outputs\.policyVersion == '1'[\s\S]*?CALLER_VALIDATION_PATH: \$\{\{ inputs\.validation-path \}\}[\s\S]*?BASE_VALIDATION_PATH: \$\{\{ steps\.resolve\.outputs\.legacyValidationPath \}\}[\s\S]*?run: node \.architecture-gatekeeper-runtime\/src\/verify-legacy-validation-selection\.mjs "\$BASE_VALIDATION_PATH" "\$CALLER_VALIDATION_PATH"/);
   assert.match(workflow, /VALIDATION_PATH: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_validation_path \|\| inputs\.validation-path \}\}/);
 });
 test('uses explicit local-only default', () => assert.equal(resolveCiPolicy(policy, 'preview').mode, 'local-only'));

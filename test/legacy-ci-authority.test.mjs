@@ -5,6 +5,14 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { prepareLegacyAuthority, validateLegacyAuthorityDecision } from '../src/prepare-legacy-ci-authority.mjs';
+import { verifyLegacyValidationSelection } from '../src/verify-legacy-validation-selection.mjs';
+
+test('caller validation selection must match explicit base path or null', () => {
+  assert.deepEqual(verifyLegacyValidationSelection('', ''), { validationPath: null });
+  assert.deepEqual(verifyLegacyValidationSelection('.codex/gatekeeper/decision.validation.json', '.codex/gatekeeper/decision.validation.json'), { validationPath: '.codex/gatekeeper/decision.validation.json' });
+  assert.throws(() => verifyLegacyValidationSelection('', '.codex/gatekeeper/decision.validation.json'), /exactly match/);
+  assert.throws(() => verifyLegacyValidationSelection('.codex/gatekeeper/decision.validation.json', ''), /exactly match/);
+});
 
 const git = (root, ...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', env: {
   ...process.env, GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 'test@example.com',
@@ -21,6 +29,7 @@ test('legacy v1 uses recorded-base authority and rejects candidate self-authoriz
   const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: {
     mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authorityFiles: [authorityPath],
     promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json',
+    validationPath: null,
   } } };
   write(root, policyPath, JSON.stringify(policy));
   write(root, authorityPath, '# Architecture\n\nMigration completion is unverified.\n');
