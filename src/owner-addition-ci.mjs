@@ -156,8 +156,10 @@ function prepare(env) {
   validateOwnerAdditionEligibilitySchema(schema);
   const ordinarySchema = JSON.parse(utf8(committedFile(root, baseSha, ordinarySchemaPath, 65_536), 'Protected ordinary review schema'));
   validateOrdinaryOwnerDecisionSchema(ordinarySchema);
-  const before = committedFile(root, baseSha, authorityPath, 131_072);
-  const after = committedFile(root, headSha, authorityPath, 131_072);
+  const authorityLimits = JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString('utf8'));
+  const snapshotLimit = Math.min(131_072, authorityLimits.maxFileBytes, authorityLimits.maxTotalBytes);
+  const before = committedFile(root, baseSha, authorityPath, snapshotLimit);
+  const after = committedFile(root, headSha, authorityPath, snapshotLimit);
   const diff = git(root, 'diff', '--no-ext-diff', '--no-textconv', '--unified=80', baseSha, headSha, '--', authorityPath);
   if (diff.length > 262_144) throw new Error('Owner-addition diff exceeds the review limit.');
   const promptText = utf8(prompt, 'Protected owner-addition prompt');

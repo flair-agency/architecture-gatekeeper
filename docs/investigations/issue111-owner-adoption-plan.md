@@ -1,7 +1,10 @@
 # Issue #111: missing-decision adoption plan
 
-This is an implementation plan, not an enabled acceptance policy. The owner
-direction and target boundary are in [`../architecture.md`](../architecture.md).
+The OWNER_ADDITION / G0 implementation exists, but this plan is not an enabled
+acceptance policy. The route is available only when the previous protected
+consumer policy explicitly selects it; this repository's current self policy
+leaves it inactive. The owner direction and contract are in
+[`../architecture.md`](../architecture.md).
 The live state of Issue #111 and related pull requests must be read back before
 changing or closing them.
 
@@ -78,14 +81,16 @@ its own acceptance depends on that fact.
 
 ## Order and closure
 
-1. Adopt this target contract and keep the route disabled.
-2. Implement a narrow versioned G0 record and pure verifier for eligibility,
-   exact B/tag-object binding and previous-base policy selection, with focused
-   positive and negative tests.
-3. Add a protected acceptance adapter and distinct reporting for B; do not
-   change ordinary `Architecture Gate / accept` semantics for A.
-4. Exercise the protected host path in an isolated test before enabling the
-   route, then dogfood the package and consumer integration as applicable.
+1. Keep the route inactive in this repository's current protected policy.
+2. Complete code review and fixture E2E for the implemented G0 record,
+   verifier, previous-base policy selection and protected reporting path.
+3. For first-time policy adoption, use only the authorized one-time
+   owner-controlled administrative exception after those review and E2E gates;
+   record that exception separately from Gatekeeper acceptance. The candidate
+   policy does not authorize itself.
+4. Release the reviewed implementation and adopt the policy through the
+   consumer's protected process. Do not claim release or activation before
+   those steps complete.
 5. Close #111 only after an eligible B can become canonical through the
    selected protected route and A receives a fresh review. Broader evidence
    routes remain tracked separately under Issue #20. Historical-`BLOCK`

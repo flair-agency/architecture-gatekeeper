@@ -121,6 +121,65 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
   assert.throws(() => validateOrdinaryOwnerDecision('{"decision":"OWNER_DECISION","summary":"other"}', 'reporting-owner'), /exact missing decision/);
 });
 
+test('G0 applies protected file and total limits to both authority snapshots', t => {
+  const root = mkdtempSync(join(tmpdir(), 'owner-addition-limits-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  run(root, 'git', 'init', '-q');
+  const maxFileBytes = 256;
+  const maxTotalBytes = 192;
+  const policy = { version: 2, default: { mode: 'local-only' }, branches: { main: {
+    mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json',
+    authorityLimits: { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes,
+      maxTotalBytes, maxPromptBytes: 524288 },
+    ownerAddition: { grade: 'G0', authorityPath: 'docs/architecture.md',
+      promptPath: '.codex/gatekeeper/owner-addition.md', schemaPath: '.codex/gatekeeper/owner-addition.schema.json' },
+  } } };
+  const oldAuthority = `# Architecture\n\n${'a'.repeat(220)}\n`;
+  const newAuthority = `# Architecture\n\n${'b'.repeat(270)}\n`;
+  write(root, 'docs/architecture.md', oldAuthority);
+  write(root, '.codex/gatekeeper/ci-policy.json', JSON.stringify(policy));
+  write(root, '.codex/gatekeeper/authorities.json', JSON.stringify({ version: 1, authorities: [
+    { id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' },
+  ] }));
+  write(root, '.codex/gatekeeper/owner-addition.md', 'Review the missing decision.');
+  write(root, '.codex/gatekeeper/owner-addition.schema.json', JSON.stringify(schema));
+  write(root, '.codex/gatekeeper/ordinary.schema.json', JSON.stringify({ type: 'object',
+    required: ['decision', 'summary', 'ownerDecisionId'], properties: {
+      decision: { type: 'string' }, summary: { type: 'string' }, ownerDecisionId: { type: 'string' },
+    } }));
+  run(root, 'git', 'add', '.'); run(root, 'git', 'commit', '-qm', 'protected base');
+  const base = run(root, 'git', 'rev-parse', 'HEAD');
+  write(root, 'docs/architecture.md', newAuthority);
+  run(root, 'git', 'add', 'docs/architecture.md'); run(root, 'git', 'commit', '-qm', 'oversized decision');
+  const head = run(root, 'git', 'rev-parse', 'HEAD');
+  const outputDir = join(root, 'output');
+  const env = { ...process.env, GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: 'example/project', BASE_SHA: base,
+    HEAD_SHA: head, BASE_BRANCH: 'main', POLICY_PATH: '.codex/gatekeeper/ci-policy.json',
+    OWNER_AUTHORITY_PATH: 'docs/architecture.md', OWNER_PROMPT_PATH: '.codex/gatekeeper/owner-addition.md',
+    OWNER_SCHEMA_PATH: '.codex/gatekeeper/owner-addition.schema.json',
+    ORDINARY_SCHEMA_PATH: '.codex/gatekeeper/ordinary.schema.json',
+    ORDINARY_DECISION: '{"decision":"OWNER_DECISION","ownerDecisionId":"missing-choice","summary":"missing"}',
+    OUTPUT_DIR: outputDir, GITHUB_OUTPUT: join(root, 'output.txt') };
+  assert.ok(Buffer.byteLength(oldAuthority) <= maxFileBytes);
+  assert.ok(Buffer.byteLength(oldAuthority) + Buffer.byteLength(newAuthority) > maxTotalBytes);
+  assert.ok(Buffer.byteLength(newAuthority) > maxFileBytes);
+  assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'],
+    { cwd: root, env }), /Protected file has invalid size: docs\/architecture\.md/);
+
+  // A protected limit must apply to the base snapshot too, even when B makes it smaller.
+  const oversizedBase = `# Architecture\n\n${'c'.repeat(270)}\n`;
+  write(root, 'docs/architecture.md', oversizedBase);
+  run(root, 'git', 'add', 'docs/architecture.md'); run(root, 'git', 'commit', '-qm', 'oversized protected base');
+  const oversizedBaseSha = run(root, 'git', 'rev-parse', 'HEAD');
+  write(root, 'docs/architecture.md', oldAuthority);
+  run(root, 'git', 'add', 'docs/architecture.md'); run(root, 'git', 'commit', '-qm', 'smaller proposed authority');
+  const smallerHeadSha = run(root, 'git', 'rev-parse', 'HEAD');
+  assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'],
+    { cwd: root, env: { ...env, BASE_SHA: oversizedBaseSha, HEAD_SHA: smallerHeadSha } }),
+  /Protected file has invalid size: docs\/architecture\.md/);
+});
+
 test('G0 rejects a protected Authority Set with another member', t => {
   const root = mkdtempSync(join(tmpdir(), 'owner-addition-authority-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));

@@ -291,8 +291,14 @@ B's exact commit. The previous protected Authority Set must have exactly one
 that match and the addition's scope. G0 does not authenticate the tagger or
 claim that a mutable tag ref remains unchanged after verification. After B
 becomes canonical, the implementation change still needs a fresh review. This
-route is not implemented or enabled, and does not resolve unsupported claims
-that work is complete. See the [owner-intervention runbook](docs/owner-intervention.md).
+route is implemented and conditionally available only when selected by the
+previous protected-base policy; this repository's current policy leaves it
+inactive. Its first policy adoption requires the authorized one-time
+owner-controlled administrative exception after code review and fixture E2E.
+That exception is outside Gatekeeper acceptance. No release or consumer
+activation is claimed until E2E and release are complete. The route does not
+resolve unsupported claims that work is complete. See the
+[owner-intervention runbook](docs/owner-intervention.md).
 A review comment or workflow approval alone does not replace canonical adoption.
 
 For `OWNER_DECISION` and CI review failures caused by API, billing, model,

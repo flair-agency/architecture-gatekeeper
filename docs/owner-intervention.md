@@ -29,10 +29,14 @@ the change.
    protected acceptance policy permit it. A fresh review may identify a
    different unresolved choice.
 
-The target `OWNER_ADDITION / G0` route in [the architecture
-contract](architecture.md) would apply only when the consumer's previous
-protected-base policy opts in. The previous protected Authority Set must have
-exactly one `self` member matching the policy's selected authority path. A
+The implemented `OWNER_ADDITION / G0` route in [the architecture
+contract](architecture.md) applies only when the consumer's previous
+protected-base policy opts in. This repository's current policy does not opt
+in, so its route is inactive. Its first policy adoption may use the authorized
+one-time owner-controlled administrative exception after code review and
+fixture E2E; that exception is outside Gatekeeper acceptance and does not claim
+a release or consumer activation. The previous protected Authority Set must
+have exactly one `self` member matching the policy's selected authority path. A
 completed ordinary `OWNER_DECISION` must carry a protected structured
 `ownerDecisionId`; B's annotated tag `AdditionRecord` binds
 `missingDecision.id` to that ID, and B-specific eligibility review verifies
@@ -43,11 +47,10 @@ identifies immutable tag-object bytes; the tag ref is mutable, so a read proves
 only its mapping at that time. G0 does not authenticate the tagger or owner and
 does not claim that a later tag-ref change invalidates a green check. It
 requires no historical `BLOCK` ReviewRecord, exact-claim identity receipt,
-revocation service or identity provider. The route is not implemented or
-enabled. B cannot use it to assert that work is complete: for example, an
-ownership decision about a migration does not establish that the migration or
-cutover occurred. A still needs completion evidence if its own acceptance
-depends on those facts.
+revocation service or identity provider. B cannot use it to assert that work is
+complete: for example, an ownership decision about a migration does not
+establish that the migration or cutover occurred. A still needs completion
+evidence if its own acceptance depends on those facts.
 
 A PR comment or workflow approval alone does not record canonical architecture
 authority. An administrator's existing bypass power is outside Gatekeeper's

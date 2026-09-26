@@ -161,7 +161,7 @@ Semantic review may return `PASS`, `BLOCK`, or `OWNER_DECISION`.
 canonical consumer authority. These are review decisions, not the complete set
 of acceptance outcomes. `OWNER_DECISION` is not an alternate form of acceptance.
 
-### Target OWNER_ADDITION / G0 route for missing decisions (Issue #111)
+### OWNER_ADDITION / G0 route for missing decisions (Issue #111)
 
 An `OWNER_DECISION` rejects the reviewed change A until the missing
 architecture decision is canonical and A receives a fresh review. A consumer
@@ -214,13 +214,20 @@ still return `BLOCK` or another `OWNER_DECISION`; G0 does not accept A. An
 owner-authorized administrative exception remains under the consumer's
 existing governance and outside this Gatekeeper result.
 
-This is a target contract, not an active acceptance route. It may be enabled
-only after the deterministic verifier, protected-base policy selection,
-credential boundary and host reporting path are implemented and tested. The
-original live-agency B is ineligible: its assertion that migration and cutover
-were complete is a work-completion claim, not the missing architecture
-decision. A repaired B may add the prospective responsibility decision only;
-A still needs evidence of completed migration if its acceptance depends on it.
+The deterministic verifier and protected reporting path are implemented. The
+route is conditionally available only when the previous protected consumer
+policy explicitly selects it and all verifier requirements above pass. This
+repository's current protected policy does not select the route, so it remains
+inactive for self-review. A first-time policy adoption may use the one-time,
+owner-controlled administrative exception described by the consumer's existing
+governance, after code review and fixture E2E have completed; that exception is
+separate from Gatekeeper acceptance and does not itself enable the route for a
+review. No release or consumer activation is claimed until the E2E and release
+steps are complete. The original live-agency B is ineligible: its assertion
+that migration and cutover were complete is a work-completion claim, not the
+missing architecture decision. A repaired B may add the prospective
+responsibility decision only; A still needs evidence of completed migration if
+its acceptance depends on it.
 
 ### Target owner-amendment governance (Issue #75 owner decision)
 
