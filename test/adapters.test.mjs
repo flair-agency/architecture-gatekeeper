@@ -4,10 +4,11 @@ import { readFileSync } from 'node:fs';
 
 test('declares separate installed adapters', () => {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  assert.equal(manifest.version, '0.5.0');
+  assert.equal(manifest.version, '0.5.1');
   assert.equal(manifest.bin['architecture-gatekeeper'], 'src/local-gate.mjs');
   assert.equal(manifest.bin['architecture-review'], 'src/manual-review.mjs');
   assert.equal(manifest.bin['architecture-review-native'], 'src/native-review.mjs');
+  assert.equal(manifest.bin['architecture-owner-addition-finalize'], 'src/owner-addition-finalize.mjs');
   assert.equal(manifest.publishConfig.registry, 'https://npm.pkg.github.com');
 });
 

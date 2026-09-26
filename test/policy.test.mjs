@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
-import { MAX_AUTHORITY_LIMITS, materializeAuthoritySet, parseAuthorityManifest } from '../src/authority-set.mjs';
+import { MAX_AUTHORITY_LIMITS, MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest } from '../src/authority-set.mjs';
 import { validateAuthorityReviewSchema } from '../src/preflight-authority-set-review.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -85,6 +85,63 @@ test('only a protected v2 enforced branch may select the exact G0 authority', ()
     mode: 'local-only', ownerAddition: enabled,
   } }, 'main'));
 });
+
+const multiAuthorityLimits = { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 262144, maxTotalBytes: 524288, maxPromptBytes: 1048576 };
+function proceduralPolicy() {
+  return { version: 5, default: { mode: 'local-only' }, branches: { main: {
+    mode: 'procedural', model: 'gpt-6-sol', reasoningEffort: 'medium',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: { ...multiAuthorityLimits },
+    ownerAddition: { version: 2, grade: 'G0', authorityId: 'architecture', authorityPath: 'docs/architecture.md',
+      promptPath: '.codex/gatekeeper/owner-addition-prompt.md', schemaPath: '.codex/gatekeeper/owner-addition.schema.json' },
+    adoptionEvidence: { producer: 'github-actions', workflowPath: '.github/workflows/architecture-gate.yml', jobName: 'architecture-gate / owner-addition' },
+  } } };
+}
+
+test('v5 selects recorded-base procedural G0 policy with validated producer identity and multi-authority profile', () => {
+  const selected = resolveCiPolicy(proceduralPolicy(), 'main');
+  assert.equal(selected.mode, 'procedural');
+  assert.equal(selected.policyVersion, 5);
+  assert.equal(selected.ownerAdditionVersion, 2);
+  assert.equal(selected.authorityProfile, MULTI_AUTHORITY_PROFILE);
+  assert.equal(selected.ownerAdditionAuthorityId, 'architecture');
+  assert.equal(selected.adoptionEvidenceProducer, 'github-actions');
+  assert.equal(selected.adoptionEvidenceWorkflowPath, '.github/workflows/architecture-gate.yml');
+  assert.equal(selected.adoptionEvidenceJobName, 'architecture-gate / owner-addition');
+  assert.deepEqual(JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString()), multiAuthorityLimits);
+  assert.equal(resolveCiPolicy(proceduralPolicy(), 'preview').mode, 'local-only');
+});
+
+test('v5 rejects mixed versions, incomplete procedural selection and ambiguous adoption evidence', () => {
+  const valid = proceduralPolicy();
+  const mutators = [
+    value => { value.version = 4; },
+    value => { value.branches.main.mode = 'enforced'; },
+    value => { delete value.branches.main.authorityManifestPath; },
+    value => { delete value.branches.main.authorityLimits; },
+    value => { delete value.branches.main.ownerAddition; },
+    value => { value.branches.main.ownerAddition.version = 1; },
+    value => { delete value.branches.main.ownerAddition.authorityId; },
+    value => { delete value.branches.main.adoptionEvidence; },
+    value => { value.branches.main.adoptionEvidence.producer = 'candidate'; },
+    value => { value.branches.main.adoptionEvidence.workflowPath = '../workflow.yml'; },
+    value => { value.branches.main.adoptionEvidence.workflowPath = '.github/workflows/nested/workflow.yml'; },
+    value => { value.branches.main.adoptionEvidence.workflowPath = '.github/workflows/workflow.json'; },
+    value => { value.branches.main.adoptionEvidence.jobName = 'architecture-gate/owner-addition'; },
+    value => { value.branches.main.adoptionEvidence.jobName = 'architecture-gate / '; },
+    value => { value.branches.main.adoptionEvidence.unselected = true; },
+    value => { value.candidate = { policyVersion: 5 }; },
+  ];
+  for (const mutate of mutators) {
+    const invalid = proceduralPolicy();
+    mutate(invalid);
+    assert.throws(() => resolveCiPolicy(invalid, 'main'));
+  }
+  assert.throws(() => resolveCiPolicy({ ...valid, default: { mode: 'local-only', adoptionEvidence: valid.branches.main.adoptionEvidence } }, 'main'));
+  assert.throws(() => resolveCiPolicy({ version: 4, default: { mode: 'local-only' }, branches: { main: {
+    ...distributed.branches.main, adoptionEvidence: valid.branches.main.adoptionEvidence,
+  } } }, 'main'), /Unknown.*adoptionEvidence|requires CI policy v5/);
+});
+
 test('protected policy rejects duplicate JSON keys before resolving effective limits', t => {
   const repeated = JSON.stringify(distributed).replace('"maxMembers":16', '"maxMembers":16,"maxMembers":32');
   assert.throws(() => parseCiPolicyJson(repeated), /duplicate JSON key/);
@@ -101,7 +158,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /uses: flair-agency\/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537/);
   assert.doesNotMatch(workflow, /uses: openai\/codex-action@/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?repository: flair-agency\/codex-action/);
-  assert.match(workflow, /codex-action-integrity:\n    if: needs\.policy\.outputs\.mode == 'enforced'\n    needs: policy/);
+  assert.match(workflow, /codex-action-integrity:\n    if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\)\n    needs: policy/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?timeout-minutes: 5/);
   assert.match(workflow, /review:\n[\s\S]*?timeout-minutes: 20/);
   assert.match(workflow, /src\/verify-codex-action\.mjs/);
@@ -157,12 +214,15 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.doesNotMatch(workflow, /Require protected owner approval/);
   assert.match(workflow, /name: Require successful reporting\n[\s\S]*?REPORT_RESULT: \$\{\{ needs\.report\.result \}\}\n[\s\S]*?test "\$REPORT_RESULT" = success/);
   assert.match(workflow, /name: Require model-backed PASS or verified G0 owner addition\n        if: needs\.policy\.outputs\.mode == 'enforced'/);
+  assert.match(workflow, /name: Require PASS or pre-merge G0 eligibility\n        if: needs\.policy\.outputs\.mode == 'procedural'/);
+  assert.match(workflow, /decision_kind: \$\{\{ steps\.decision\.outputs\.kind \}\}/);
+  assert.match(workflow, /name: Identify the completed ordinary decision\n        if: needs\.policy\.outputs\.mode == 'procedural'\n        id: decision/);
   assert.match(workflow, /test "\$CONCLUSION" = PASS/);
   assert.match(workflow, /test "\$CONCLUSION" = OWNER_ADDITION_G0/);
   assert.match(workflow, /test "\$OWNER_ADDITION_RESULT" = success/);
   const additionJob = workflow.match(/  owner-addition:\n([\s\S]*?)\n  report:/)?.[1];
   assert.ok(additionJob);
-  assert.match(additionJob, /if: needs\.policy\.outputs\.owner_addition_grade == 'G0'/);
+  assert.match(additionJob, /if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\) && needs\.policy\.outputs\.owner_addition_grade == 'G0' && \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.review\.outputs\.decision_kind == 'OWNER_DECISION'\)/);
   assert.match(additionJob, /needs: \[policy, codex-action-integrity, review\]/);
   assert.match(additionJob, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
   assert.doesNotMatch(additionJob, /ref: refs\/pull\/.*\/merge/);
@@ -172,8 +232,16 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(additionJob, /git -c "http\.extraheader=.*" fetch --no-tags/);
   assert.match(additionJob, /src\/owner-addition-ci\.mjs prepare/);
   assert.match(additionJob, /ORDINARY_DECISION: \$\{\{ needs\.review\.outputs\.final_message \}\}/);
+  assert.match(additionJob, /PR_NUMBER: \$\{\{ github\.event\.pull_request\.number \}\}/);
   assert.match(additionJob, /src\/owner-addition-ci\.mjs validate/);
+  assert.match(additionJob, /POLICY_VERSION: \$\{\{ needs\.policy\.outputs\.policy_version \}\}/);
   assert.match(additionJob, /prompt-file: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-addition\/eligibility-prompt\.md/);
+  assert.match(additionJob, /name: Preserve exact v5 pre-merge eligibility evidence\n        if: needs\.policy\.outputs\.policy_version == '5'/);
+  assert.match(additionJob, /uses: actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4/);
+  assert.match(additionJob, /name: owner-addition-eligibility-evidence-\$\{\{ github\.event\.pull_request\.head\.sha \}\}-\$\{\{ github\.run_attempt \}\}/);
+  assert.match(additionJob, /path: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-addition\/eligibility-evidence\.json/);
+  assert.match(workflow, /OWNER_ADDITION_G0_PENDING/);
+  assert.match(workflow, /POLICY_VERSION: \$\{\{ needs\.policy\.outputs\.policy_version \}\}/);
 });
 
 test('dogfoods only the protected reusable workflow with separated permissions', () => {

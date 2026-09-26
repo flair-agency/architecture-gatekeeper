@@ -61,6 +61,21 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
       promptPath: '.codex/gatekeeper/prompt.md', schemaPath: '.codex/gatekeeper/schema.json' },
   } } }));
   if (!run('architecture-gate-policy', [policyPath, 'main']).includes('authorityProfile=owner-addition-v2')) throw new Error('installed policy v4 route did not resolve');
+  const proceduralPolicy = JSON.parse(readFileSync(policyPath, 'utf8'));
+  proceduralPolicy.version = 5;
+  proceduralPolicy.branches.main.mode = 'procedural';
+  proceduralPolicy.branches.main.adoptionEvidence = { producer: 'github-actions',
+    workflowPath: '.github/workflows/architecture-gate.yml', jobName: 'Architecture Gate / owner-addition' };
+  writeFileSync(policyPath, JSON.stringify(proceduralPolicy));
+  const procedural = run('architecture-gate-policy', [policyPath, 'main']);
+  if (!procedural.includes('mode=procedural') || !procedural.includes('adoptionEvidenceProducer=github-actions')) {
+    throw new Error('installed policy v5 route did not resolve');
+  }
+  const finalizer = spawnSync(join(installedBin, 'architecture-owner-addition-finalize'), [],
+    { cwd: root, env, encoding: 'utf8' });
+  if (finalizer.status === 0 || !finalizer.stderr.includes('usage: owner-addition-finalize')) {
+    throw new Error('installed finalizer entrypoint is unavailable');
+  }
   writeFileSync(join(root, 'large-authority.md'), 'x'.repeat(153943));
   writeFileSync(join(gate, 'authorities.json'), JSON.stringify({ version: 1, authorities: [
     { id: 'architecture', repository: 'self', revision: 'authority-revision', path: 'AGENTS.md' },

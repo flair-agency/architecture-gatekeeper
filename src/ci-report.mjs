@@ -122,6 +122,7 @@ function labelFor(decision) {
     BLOCK: ['🛑', 'BLOCK'],
     OWNER_DECISION: ['⚠️', 'OWNER DECISION REQUIRED'],
     OWNER_ADDITION_G0: ['✅', 'OWNER_ADDITION / G0'],
+    OWNER_ADDITION_G0_PENDING: ['✅', 'OWNER_ADDITION / G0 ELIGIBLE — ADOPTION PENDING'],
     WAIVED: ['➖', 'ACCEPTED WITHOUT CI AI REVIEW'],
     ERROR: ['❌', 'REVIEW FAILED'],
   }[decision];
@@ -135,7 +136,7 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision,
   if (mode === 'local-only') {
     return { conclusion: 'WAIVED', summary: 'The protected base-branch policy explicitly waives the CI AI review.', decision: null };
   }
-  if (mode !== 'enforced') {
+  if (mode !== 'enforced' && mode !== 'procedural') {
     return { conclusion: 'ERROR', summary: 'Architecture Gate resolved an unsupported policy mode.', decision: null };
   }
   if (reviewResult !== 'success') {
@@ -155,8 +156,10 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision,
         ownerAdditionEligibility === 'ELIGIBLE' && ownerAdditionProcedure?.procedure === 'VALID_G0_OWNER_ADDITION' &&
         decision.ownerDecisionId === ownerAdditionProcedure.missingDecisionId) {
       if (ownerAdditionProcedure.version === 2) validateMultiAuthorityDecision(decision, ownerAdditionProcedure.authoritySet);
-      return { conclusion: 'OWNER_ADDITION_G0',
-        summary: 'The previous protected policy selected G0; the exact B tag procedure and separate missing-decision eligibility review completed.',
+      return { conclusion: mode === 'procedural' ? 'OWNER_ADDITION_G0_PENDING' : 'OWNER_ADDITION_G0',
+        summary: mode === 'procedural'
+          ? 'The recorded-base policy selected G0; exact B is eligible. Adoption and canonical placement remain pending until merge and verified readback.'
+          : 'The previous protected policy selected G0; the exact B tag procedure and separate missing-decision eligibility review completed.',
         decision };
     }
     return { conclusion: decision.decision, summary, decision };
@@ -211,6 +214,11 @@ export function renderReport(classified, metadata = {}) {
     body += '\nThis is a procedural acceptance result for authority-only B, not semantic PASS for B or A. Tag actor or owner identity was not authenticated. A requires a fresh review after B becomes canonical. A later tag-ref change is not covered by this check.\n';
     if (p) body += `\nProtected policy/base: \`${cleanText(p.policyRevision, 64)}\` · B head: \`${cleanText(p.headSha, 64)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag ref observed: \`${cleanText(p.tagRef, 150)}\` → object OID \`${cleanText(p.tagObjectOid, 64)}\` · Principal authentication: \`not_verified\`\n`;
     if (p?.version === 2) body += `\nOwner-addition procedure/report version: \`2\` · Policy SHA-256: \`${cleanText(p.policySha256, 64)}\` · AdditionRecord SHA-256: \`${cleanText(p.additionRecordSha256, 64)}\` · Bound Authority Set SHA-256: \`${cleanText(p.authoritySet.setDigest, 64)}\`\n`;
+  }
+  if (classified.conclusion === 'OWNER_ADDITION_G0_PENDING') {
+    const p = metadata.ownerAdditionProcedure;
+    body += '\nThis is an eligible candidate result, not completed adoption or canonical placement. The annotated G0 tag binds exact B, but Gatekeeper did not authenticate its actor. Host merge enforcement is unavailable or not verified; this green result does not prove GitHub required the check. A separate post-merge record must verify this exact result existed before merge, its producer and completion time, the PR merge commit, and canonical readback.\n';
+    if (p) body += `\nRecorded base: \`${cleanText(p.policyRevision, 64)}\` · B head: \`${cleanText(p.headSha, 64)}\` · Tag object: \`${cleanText(p.tagObjectOid, 64)}\` · Authority Set SHA-256: \`${cleanText(p.authoritySet?.setDigest, 64)}\` · Eligibility: \`eligible\` · Adoption: \`pending\` · Canonical: \`pending\` · Principal authentication: \`not_verified\` · Host enforcement: \`not_verified\`\n`;
   }
   if (metadata.authorityProvenance) {
     const selected = metadata.authorityProvenance;

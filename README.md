@@ -376,6 +376,42 @@ promise that the tag ref remains available later. LIVE Agency adoption and its
 representative E2E remain separate rollout work; implementing this route does
 not itself resolve its consumer-specific rule conflict or migration evidence.
 
+### Versioned procedural adoption without host merge enforcement
+
+Policy v5 selects a separate `procedural` route from the recorded base. It
+keeps the v4 complete Authority Set review and one-file B write scope. A
+consumer can select it when GitHub cannot make `Architecture Gate / accept` a
+required check, while keeping the absence of host enforcement explicit. In a
+v5 policy, replace the v4 `version` with `5`, select `mode: "procedural"` for
+the target branch, and add the following branch field:
+
+```json
+"adoptionEvidence": {
+  "producer": "github-actions",
+  "workflowPath": ".github/workflows/architecture-gate.yml",
+  "jobName": "architecture-gate / owner-addition"
+}
+```
+
+The workflow path is the consumer's caller workflow, and the job name must
+match its `owner-addition` job. The base policy selects both; B cannot change
+them for its own review. The B check records `eligibility=eligible`,
+`adoption=pending`, `canonical=pending` and uploads the exact review evidence.
+The green check alone does not establish adoption. After an ordinary PR merge
+commit, the finalizer checks the pre-merge Actions run and job, its completion
+time and artifact, the exact B and two-parent merge commit, and a fresh read
+of the target branch and authority bytes. Only then can the record report
+valid `OWNER_ADDITION / G0` adoption and verified canonical placement. v0.5.1
+does not support squash or rebase merge for B. G0 leaves actor identity
+unverified, and this route does not claim GitHub enforced the check.
+
+The finalizer is `architecture-owner-addition-finalize <owner/repo> <B PR>
+--run-id <Actions run ID> [--attempt N] [--output record.json]`. It uses the
+locally authenticated `gh` token unless `GH_TOKEN` or `GITHUB_TOKEN` is set,
+reads GitHub evidence, and writes a record only when an output path is
+explicitly given. Its output does not replace A's fresh review after B is
+canonical. See the [owner-intervention runbook](docs/owner-intervention.md).
+
 For `OWNER_DECISION` and CI review failures caused by API, billing, model,
 credential or service availability, follow the
 [owner-intervention runbook](docs/owner-intervention.md). CI failure remains

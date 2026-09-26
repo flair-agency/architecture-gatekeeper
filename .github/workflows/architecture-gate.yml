@@ -46,6 +46,10 @@ jobs:
       owner_addition_authority_path: ${{ steps.resolve.outputs.ownerAdditionAuthorityPath }}
       owner_addition_prompt_path: ${{ steps.resolve.outputs.ownerAdditionPromptPath }}
       owner_addition_schema_path: ${{ steps.resolve.outputs.ownerAdditionSchemaPath }}
+      policy_version: ${{ steps.resolve.outputs.policyVersion }}
+      adoption_evidence_producer: ${{ steps.resolve.outputs.adoptionEvidenceProducer }}
+      adoption_evidence_workflow_path: ${{ steps.resolve.outputs.adoptionEvidenceWorkflowPath }}
+      adoption_evidence_job_name: ${{ steps.resolve.outputs.adoptionEvidenceJobName }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -83,7 +87,7 @@ jobs:
         run: test "$PROTECTED_INSTRUCTIONS" = true
 
   codex-action-integrity:
-    if: needs.policy.outputs.mode == 'enforced'
+    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
     needs: policy
     permissions:
       contents: read
@@ -130,7 +134,7 @@ jobs:
   codex-action-integrity-observe:
     # Issue #45: observation only. This job has no secrets, no outputs used by
     # review or accept, and no authority to replace the full integrity job.
-    if: needs.policy.outputs.mode == 'enforced'
+    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
     needs: policy
     permissions:
       contents: read
@@ -154,7 +158,7 @@ jobs:
             .architecture-gatekeeper-runtime
 
   review:
-    if: needs.policy.outputs.mode == 'enforced'
+    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
     needs: [policy, codex-action-integrity]
     permissions:
       contents: read
@@ -164,6 +168,7 @@ jobs:
     timeout-minutes: 20
     outputs:
       final_message: ${{ steps.codex.outputs.final-message }}
+      decision_kind: ${{ steps.decision.outputs.kind }}
       reviewed_sha: ${{ steps.revision.outputs.sha }}
       authority_provenance: ${{ steps.authority.outputs.provenance }}
     steps:
@@ -288,6 +293,12 @@ jobs:
             echo "Codex CLI: unavailable"
           fi
           npm list -g --depth=0 @openai/codex @openai/codex-responses-api-proxy || true
+      - name: Identify the completed ordinary decision
+        if: needs.policy.outputs.mode == 'procedural'
+        id: decision
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+        run: node .architecture-gatekeeper-validation-runtime/src/ci-decision-kind.mjs
       - name: Apply consumer-owned decision validation
         if: inputs.validation-path != ''
         env:
@@ -300,7 +311,7 @@ jobs:
         run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
   owner-addition:
-    if: needs.policy.outputs.owner_addition_grade == 'G0'
+    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.owner_addition_grade == 'G0' && (needs.policy.outputs.mode == 'enforced' || needs.review.outputs.decision_kind == 'OWNER_DECISION')
     needs: [policy, codex-action-integrity, review]
     permissions:
       contents: read
@@ -359,6 +370,7 @@ jobs:
           ORDINARY_SCHEMA_PATH: ${{ inputs.schema-path }}
           ORDINARY_DECISION: ${{ needs.review.outputs.final_message }}
           ORDINARY_AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           GATEKEEPER_SOURCE_TOKEN: ${{ needs.policy.outputs.owner_addition_version == '2' && (secrets.CI_SOURCE_READ_TOKEN || github.token) || '' }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
         run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs prepare
@@ -381,7 +393,16 @@ jobs:
         env:
           DECISION: ${{ steps.codex-addition.outputs.final-message }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
+          POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
         run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs validate
+      - name: Preserve exact v5 pre-merge eligibility evidence
+        if: needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: owner-addition-eligibility-evidence-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/architecture-gate-owner-addition/eligibility-evidence.json
+          if-no-files-found: error
+          retention-days: 90
 
   report:
     if: always()
@@ -437,7 +458,7 @@ jobs:
           MODE: ${{ needs.policy.outputs.mode }}
         run: |
           test "$POLICY_RESULT" = success
-          test "$MODE" = enforced || test "$MODE" = local-only
+          test "$MODE" = enforced || test "$MODE" = procedural || test "$MODE" = local-only
       - name: Require successful reporting
         env:
           REPORT_RESULT: ${{ needs.report.result }}
@@ -460,6 +481,25 @@ jobs:
           test "$REVIEW_RESULT" = success
           if test "$CONCLUSION" = PASS; then exit 0; fi
           test "$CONCLUSION" = OWNER_ADDITION_G0
+          test "$OWNER_ADDITION_SELECTED" = G0
+          test "$OWNER_ADDITION_RESULT" = success
+          test "$OWNER_ADDITION_ELIGIBILITY" = ELIGIBLE
+      - name: Require PASS or pre-merge G0 eligibility
+        if: needs.policy.outputs.mode == 'procedural'
+        env:
+          REVIEW_RESULT: ${{ needs.review.result }}
+          CONCLUSION: ${{ needs.report.outputs.conclusion }}
+          OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
+          OWNER_ADDITION_ELIGIBILITY: ${{ needs['owner-addition'].outputs.eligibility }}
+          OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade }}
+          POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
+          EVIDENCE_PRODUCER: ${{ needs.policy.outputs.adoption_evidence_producer }}
+        run: |
+          test "$POLICY_VERSION" = 5
+          test "$EVIDENCE_PRODUCER" = github-actions
+          test "$REVIEW_RESULT" = success
+          if test "$CONCLUSION" = PASS; then exit 0; fi
+          test "$CONCLUSION" = OWNER_ADDITION_G0_PENDING
           test "$OWNER_ADDITION_SELECTED" = G0
           test "$OWNER_ADDITION_RESULT" = success
           test "$OWNER_ADDITION_ELIGIBILITY" = ELIGIBLE
