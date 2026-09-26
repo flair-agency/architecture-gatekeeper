@@ -281,13 +281,15 @@ direction for the Gatekeeper to decide. The current `Architecture Gate / accept`
 check therefore fails. The accountable owner proposes the missing decision in
 canonical consumer-owned authority. When protected CI selects authority from
 the base, an implementation PR cannot resolve its own review by adding that
-decision to its head. A predecessor authority change must first become
-canonical under the repository's existing protected policy; then the
-implementation change receives a fresh review. That predecessor can itself
-remain unresolved. The target owner-adoption contract describes a protected
-path for eligible additions, but it is not implemented or enabled. See the
-[owner-intervention runbook](docs/owner-intervention.md). A review comment or
-workflow approval alone does not replace canonical adoption.
+decision to its head. The target `OWNER_ADDITION / G0` route would let a
+consumer whose previous protected policy opts in adopt a predecessor B
+containing only that missing decision, with an annotated tag object bound to
+B's exact commit. G0 does not authenticate the tagger or claim that a mutable
+tag ref remains unchanged after verification. After B becomes canonical, the
+implementation change still needs a fresh review. This route is not
+implemented or enabled, and does not resolve unsupported claims that work is
+complete. See the [owner-intervention runbook](docs/owner-intervention.md). A
+review comment or workflow approval alone does not replace canonical adoption.
 
 For `OWNER_DECISION` and CI review failures caused by API, billing, model,
 credential or service availability, follow the

@@ -161,61 +161,54 @@ Semantic review may return `PASS`, `BLOCK`, or `OWNER_DECISION`.
 canonical consumer authority. These are review decisions, not the complete set
 of acceptance outcomes. `OWNER_DECISION` is not an alternate form of acceptance.
 
-### Target owner adoption for missing decisions (Issue #111 owner direction)
+### Target OWNER_ADDITION / G0 route for missing decisions (Issue #111)
 
-An `OWNER_DECISION` identifies a choice missing from the current authority. The
-owner may propose that choice as a separate predecessor Change B. `OWNER_ADOPTION`
-for B is a governance acceptance result, not a semantic `PASS`
-for B or the originally reviewed Change A. A remains rejected until B becomes
-canonical and A receives a fresh review against the new protected base. B's
-ordinary review need not return `PASS` merely to repeat the missing choice that
-B is meant to settle. The protected verifier must bind that specific missing
-choice to B; an unrelated `OWNER_DECISION` remains unresolved. Other findings
-remain effective: this route cannot accept a contradiction with existing
-authority, an unverified claim of work completed, an incomplete review, or a
-change outside its protected scope.
+An `OWNER_DECISION` rejects the reviewed change A until the missing
+architecture decision is canonical and A receives a fresh review. A consumer
+may separately opt in to a predecessor-B governance result called
+`OWNER_ADDITION / G0`. It is not a semantic `PASS` for B or A, and it does not
+change or erase A's prior `OWNER_DECISION`.
 
-The first route is limited to additions that answer a missing architecture
-choice without replacing an existing rule. The previous protected-base policy
-must opt in, identify the authority and addition scope, and specify the owner
-authorization assurance and adoption procedure. A candidate cannot enable its
-own route, change its own required assurance, or supply its own owner authority.
-The eligible B contains the proposed authority addition and any explicitly
-permitted consistency updates or evidence references. It cannot include
-implementation, executable workflow, verifier, credential, protected policy,
-or owner-permission changes. Existing-rule changes are amendments, regardless
-of whether B labels them additions. A consumer's established administrative
-exception remains outside this Gatekeeper result and must not be reported as
-`PASS` or protected adoption.
+The route applies only when the **previous protected-base policy** opts in and
+identifies the authority eligible for this procedure. The candidate B cannot
+enable the route or change its policy. B contains only the missing architecture
+decision being added to that authority. It cannot change an existing rule,
+include implementation or workflow changes, or assert that work was completed.
+The route does not accept unrelated unresolved choices or contradictions with
+the protected authority. A historical `BLOCK` ReviewRecord is not required;
+this is distinct from the `OWNER_AMENDMENT` route.
 
-Protected verification binds a versioned adoption claim to the repository,
-previous protected base and policy, exact B revision, old and proposed
-authority identities, addition scope, and decision being adopted. A separate
-authorization receipt must identify the exact claim and establish that a
-principal with the required authority approved it under the previous policy.
-The claim identity cannot depend on that later receipt. A PR approval display,
-candidate-authored assertion, or unauthenticated annotated-tag actor alone
-does not prove owner authorization. The verifier records its inputs, producer
-identity and adoption outcome separately from semantic-review evidence.
+G0 requires a deliberate annotated Git tag object that targets the exact B
+commit and whose annotation binds the addition to the selected authority and
+missing decision. The verifier checks the tag object's bytes, computes and
+records its object ID (OID), confirms the object targets B, and records the
+policy and authority state used for verification. A Git object OID identifies
+those exact tag-object bytes. The tag ref that points to the object is mutable:
+a read that the ref resolves to that OID establishes only the observed mapping
+at read time, not that the ref cannot later move or be deleted.
 
-Changes to bound inputs require a new claim and authorization. A revoked,
-missing, stale or unverifiable authorization cannot authorize B. The host
-integration must establish that the evidence and authorization remain valid
-through B's protected canonical transition, including after a green check;
-readback at check time alone is insufficient. Required service failure is
-fail closed, without fallback to `G0` or administrative bypass. The initial
-bootstrap of this route must use a pre-existing owner-controlled process and
-be reported as such, since the candidate policy cannot authorize itself.
+G0 makes no claim that Gatekeeper authenticated the tagger, pusher or owner, and
+does not require an identity provider, a separately authenticated exact-claim
+receipt, a revocation service, or a guarantee that a later tag-ref change
+invalidates a green check. The result is procedural and auditable; it must not
+be described as strong owner authentication or as proof that the tag remained
+available through a later transition. Required verifier or service failure
+remains fail closed. Privileged credentials cannot be exposed to or used to
+execute B's pull-request code or package lifecycle scripts.
 
-This is a target contract, not an active acceptance route. The claim and
-receipt schemas, identity source, revocation source, transition ordering and
-host integration must be selected, implemented and tested before activation.
-An exact historical `OWNER_DECISION` review may identify why B was proposed,
-but the first addition route need not make retention of that review a condition
-of B's adoption. This does not weaken the separate historical-`BLOCK` evidence
-requirements of `OWNER_AMENDMENT`. Both routes use the same proposal,
-exact-claim authorization, protected adoption and fresh-review sequence. They
-may share evidence mechanics without conflating eligibility or assurance.
+After B becomes canonical, A must receive a fresh review against the new
+protected base under the consumer's normal acceptance policy. That review may
+still return `BLOCK` or another `OWNER_DECISION`; G0 does not accept A. An
+owner-authorized administrative exception remains under the consumer's
+existing governance and outside this Gatekeeper result.
+
+This is a target contract, not an active acceptance route. It may be enabled
+only after the deterministic verifier, protected-base policy selection,
+credential boundary and host reporting path are implemented and tested. The
+original live-agency B is ineligible: its assertion that migration and cutover
+were complete is a work-completion claim, not the missing architecture
+decision. A repaired B may add the prospective responsibility decision only;
+A still needs evidence of completed migration if its acceptance depends on it.
 
 ### Target owner-amendment governance (Issue #75 owner decision)
 
@@ -405,7 +398,7 @@ design or implementation change
  protected-policy acceptance verification
                |
       accept valid PASS evidence, or (when enabled) accept a
-      separate eligible B through a protected owner-adoption result
+      separate eligible B through OWNER_ADDITION / G0
       (when implemented and enabled) or OWNER_AMENDMENT;
       otherwise do not accept
 ```
@@ -610,9 +603,12 @@ Architecture-changing work follows this order:
 - Issue #20 specifies the evidence format, attestation choice, protected-policy
   routes and model-free CI verification needed to fully separate review
   execution from acceptance verification.
-- Issue #111 defines the missing-decision adoption problem. Its first route
-  depends on the necessary Issue #20 evidence and verification mechanics, not
-  completion of every future evidence route.
+- Issue #111 defines the missing-decision adoption problem. Its target first
+  route is `OWNER_ADDITION / G0`, selected by previous protected-base policy
+  and bound to B by an annotated tag object. It does not require the historical
+  `BLOCK` evidence or exact-claim authorization mechanisms of `OWNER_AMENDMENT`;
+  the route remains inactive until its verifier, protected integration and
+  credential boundary are implemented and tested.
 - Issue #75 defines the owner-amendment governance route. Issue #78 develops
   its core and explicit `G0` policy path; Issue #79 investigates a later
   production attestation adapter for a higher grade.

@@ -8,76 +8,81 @@ changing or closing them.
 ## Why the current path stalls
 
 Protected CI reads authority from the protected base. An implementation change
-A cannot resolve its `OWNER_DECISION` by adding a decision to A's head. Moving
-that text to a predecessor B prevents A from using its own proposal, but B may
-also be unresolved. In the live-agency example, predecessor B additionally
-asserted that migration and cutover were complete while the protected status
-still described them as unselected and unverified. A new adoption route must
-resolve the governance loop without treating that completion claim as a fact.
+A cannot resolve its `OWNER_DECISION` by adding a decision to A's head. A
+predecessor B can carry the missing architecture decision, but under current
+acceptance policy B may itself remain unresolved or be blocked. The target
+route below addresses this governance loop without asserting that unrelated
+work was completed.
 
-## First usable slice
+## Minimal OWNER_ADDITION / G0 route
 
-1. The consumer's *previous* protected policy names the authority scope,
-   approved addition purpose, authorized owner principals, evidence route and
-   required assurance. Its candidate change cannot opt itself in.
-2. Prepare a separate B containing only an eligible missing-decision addition
-   and permitted authority consistency updates. Identify each purported fact
-   of completed work separately. A conflicting existing rule or unsupported
-   completion claim makes B ineligible for this slice.
-3. Produce a versioned `AdditionClaim` bound to repository, previous base and
-   policy, exact B revision, previous/proposed authority digests, purpose and
-   scope. A later `AuthorizationReceipt` binds the exact claim digest to the
-   authorized principal and immutable approval event. Neither a PR's approval
-   summary nor a statement in B substitutes for this receipt.
-4. A protected verifier checks eligibility, record provenance, authorization,
-   current base/head and revocation. It reports an adoption result for B, not a
-   semantic `PASS` for B or A. No credential-bearing job executes candidate
-   code or package lifecycle scripts.
-5. The host integration must keep the verified bindings valid until B becomes
-   canonical. Test the interval after a green check and before merge; a
-   successful check alone is not proof that a later transition used the same
-   authorization and exact claim.
-6. Read back B's canonical commit. Update A to the new base and run a fresh
-   review and acceptance check. The old `OWNER_DECISION` stays in the record.
+1. The consumer's **previous protected-base policy** explicitly opts in and
+   identifies the authority in scope. B cannot enable the route for itself.
+2. B contains only the missing architecture decision being added to that
+   authority. It does not amend an existing rule, include implementation or
+   workflow changes, or claim that work was completed. Unrelated findings,
+   contradictions or unresolved decisions make B ineligible.
+3. Create a deliberate annotated Git tag object that targets B's exact commit
+   and whose annotation identifies the selected authority and missing decision.
+   The verifier checks the tag object bytes and records its object OID with the
+   B revision, previous protected base/policy and authority state. The OID
+   identifies immutable object bytes; the remote tag ref is mutable. Reading
+   the ref confirms its mapping only at that time and does not prove that it
+   cannot later move or be deleted.
+4. The protected verifier emits a distinct `OWNER_ADDITION / G0` result for B.
+   It does not require a historical `BLOCK` ReviewRecord, an authenticated
+   exact-claim receipt, an identity provider or a revocation service. G0 makes
+   no claim that the tagger, pusher or owner was authenticated. It also makes
+   no guarantee that a post-check tag-ref change invalidates a green result.
+   Missing, stale or unverifiable inputs and required service failures remain
+   incomplete/fail closed; no untrusted B code or package lifecycle script
+   runs in a credential-bearing job.
+5. After B actually becomes canonical, update A to the new protected base and
+   run a fresh review and normal acceptance check. A's prior `OWNER_DECISION`
+   remains unchanged as historical evidence; G0 does not accept A.
 
-The authorization event source, principal verification adapter, revocation
-source and host transition mechanism are still unselected. The first technical
-probe must prove exact-claim approval and transition-time freshness with the
-chosen host. Until then this remains an inactive contract.
+The original live-agency B is an ineligible negative case because it asserted
+that migration and cutover were complete while protected authority still
+described them as unselected and unverified. It is a work-completion claim,
+not the missing architecture decision. A repaired B may add the prospective
+responsibility decision only; A still needs evidence of completed migration if
+its own acceptance depends on that fact.
 
 ## Proof gates
 
-- Accept an authorized, exact, in-scope addition B and return A to review.
-- Reject candidate self-enablement, an unrelated owner, a different claim or
-  B revision, changed base/policy/authority, and revoked authorization.
-- Reject implementation or verifier changes mixed into B, an existing-rule
-  change disguised as an addition, and unsupported completion claims.
-- Reject missing, forged, stale or unavailable producer and identity evidence.
-- Demonstrate that changes after check success cannot authorize the later
-  canonical transition; if the host cannot enforce this, do not enable route.
-- Keep failure of a required service fail closed. Do not substitute `G0` or an
-  administrator bypass for the selected owner authorization assurance.
-
-The original live-agency B is a negative fixture: its owner decision and
-migration-completion assertion must be evaluated separately. A corrected B
-that adopts a prospective responsibility decision while retaining existing
-migration safeguards is the positive fixture. A still needs evidence of
-completed migration if its own acceptance depends on that fact.
+- Accept only a previous-policy-enabled, exact, in-scope missing-decision B
+  with an annotated tag object bound to its exact commit.
+- Reject candidate self-enablement, tag objects targeting another commit,
+  changed policy/base/authority/B, changes to existing rules, implementation
+  or workflow changes, unsupported completion claims, contradictions and
+  unrelated unresolved choices.
+- Verify that reporting distinguishes `OWNER_ADDITION / G0` from semantic
+  `PASS` and preserves A's prior `OWNER_DECISION` unchanged.
+- Keep untrusted code and package lifecycle scripts out of credential-bearing
+  jobs; missing or invalid evidence and required service failure fail closed.
+- Document and test the limited G0 claim: exact annotated tag object and
+  point-in-time ref mapping are verified, tag actor identity is not, and no
+  post-green ref-mutation guarantee is claimed.
+- After B is canonical, require a fresh review of A under the new base. Keep
+  A's earlier `OWNER_DECISION` unchanged.
 
 ## Order and closure
 
-1. Correct the current runbook and README without claiming an active route.
-2. Review and adopt the target contract in `docs/architecture.md`.
-3. Prove the host's authorization and transition ordering in a bounded probe.
-4. Implement the minimal record schema, pure verifier and protected adapter,
-   with focused negative tests. Keep routing disabled until the probe passes.
-5. Align CLI, Skill and CI reporting, then dogfood local/manual, installed
-   package and protected CI paths in this repository and a consumer.
-6. Close #111 only after an owner can adopt a repaired B through the normal
-   protected route and A receives a fresh review. Issue #20 remains open for
-   broader evidence routes. Historical-`BLOCK` work in #75/#78 and draft PR
-   #107 follows with its separate eligibility and evidence requirements.
+1. Adopt this target contract and keep the route disabled.
+2. Implement a narrow versioned G0 record and pure verifier for eligibility,
+   exact B/tag-object binding and previous-base policy selection, with focused
+   positive and negative tests.
+3. Add a protected acceptance adapter and distinct reporting for B; do not
+   change ordinary `Architecture Gate / accept` semantics for A.
+4. Exercise the protected host path in an isolated test before enabling the
+   route, then dogfood the package and consumer integration as applicable.
+5. Close #111 only after an eligible B can become canonical through the
+   selected protected route and A receives a fresh review. Broader evidence
+   routes remain tracked separately under Issue #20. Historical-`BLOCK`
+   `OWNER_AMENDMENT` work in #75/#78 and draft PR #107 retain their separate
+   eligibility and evidence requirements.
 
-An initial policy adoption cannot authorize itself. Record the one-time use of
-the existing owner-controlled process to bootstrap the route. Later use of an
-administrative exception remains explicitly outside Gatekeeper acceptance.
+The route's G0 result is a procedural protected acceptance under the
+consumer's prior policy. It is not a claim of authenticated owner identity.
+Existing owner-authorized administrative exceptions remain governed by the
+consumer and outside Gatekeeper results.

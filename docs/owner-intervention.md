@@ -17,26 +17,37 @@ the change.
    canonical-authority update. Keep the proposed change (A) distinct from the
    authority update (B) when protected CI selects authority from the base;
    authority written only in A's head cannot resolve A's current review.
-3. Check whether B can be accepted under the repository's existing protected
+3. Check whether B can proceed under the repository's existing protected
    policy. A separate B is not automatically eligible for `PASS`, and the
    historical-`BLOCK` `OWNER_AMENDMENT` route does not cover `OWNER_DECISION`.
-   If B is itself unresolved, record the missing adoption decision and use the
-   repository's established owner process. Do not report an administrative
-   exception as a Gate result.
+   If B is unresolved or blocked, it remains so unless an applicable process
+   in the consumer's existing policy permits otherwise. This runbook does not
+   impose a universal file-scope rule on B.
 4. Once B has actually become canonical, update A to the new base and request
-   a fresh review. Merge A only if that review and protected acceptance policy
-   permit it. A fresh review may identify a different unresolved choice.
+   a fresh review. Preserve A's prior `OWNER_DECISION` as historical evidence;
+   do not rewrite it as accepted. Merge A only if the fresh review and
+   protected acceptance policy permit it. A fresh review may identify a
+   different unresolved choice.
 
-The target owner-adoption route in [the architecture contract](architecture.md)
-would give an eligible missing-decision addition B a protected adoption path.
-It is not implemented or enabled. Its first scope excludes existing-rule
-amendments and unsupported claims that work is complete. For example, a decision
-about who owns a migration can be proposed separately from a claim that the
-migration and cutover already happened; the latter needs its own evidence.
+The target `OWNER_ADDITION / G0` route in [the architecture
+contract](architecture.md) would apply only when the consumer's previous
+protected-base policy opts in. Under that route, B must contain only the
+missing architecture decision and must bind to an annotated tag object that
+targets B's exact commit. The object OID identifies immutable tag-object bytes;
+the tag ref is mutable, so a read proves only its mapping at that time. G0 does
+not authenticate the tagger or owner and does not claim that a later tag-ref
+change invalidates a green check. It requires no historical `BLOCK`
+ReviewRecord, exact-claim identity receipt, revocation service or identity
+provider. The route is not implemented or enabled. B cannot use it to assert
+that work is complete: for example, an ownership decision about a migration
+does not establish that the migration or cutover occurred. A still needs
+completion evidence if its own acceptance depends on those facts.
 
 A PR comment or workflow approval alone does not record canonical architecture
 authority. An administrator's existing bypass power is outside Gatekeeper's
-protected result and cannot be described as `PASS` or owner adoption.
+protected result and cannot be described as `PASS` or `OWNER_ADDITION / G0`.
+Any existing owner-authorized administrative exception remains governed by the
+consumer's policy and must be recorded separately from Gatekeeper acceptance.
 
 ## CI review unavailable
 
