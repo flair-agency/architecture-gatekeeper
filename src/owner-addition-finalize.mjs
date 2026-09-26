@@ -9,6 +9,7 @@ import { verifyOwnerAdditionReadback } from './github-owner-addition-readback.mj
 import { evaluateOwnerAdditionAdoption } from './owner-addition-adoption.mjs';
 import { digestOwnerDecisionAddition } from './owner-decision-addition.mjs';
 import { rejectDuplicateJsonKeys } from './authority-set.mjs';
+import { validateMultiAuthorityProvenance } from './multi-authority-provenance.mjs';
 
 const api = 'https://api.github.com';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -183,9 +184,23 @@ export function parseGatekeeperWorkflowDefaults(workflowBytes) {
 /** Create a serializable final record only from the trusted facts passed by adapters. */
 export function buildOwnerAdditionFinalRecord({ repository, targetBranch, pullRequestNumber, baseSha, bSha, bTree,
   authorityDigest, policy, selected, policySha256, policyPath, procedure, ordinaryDecision, authoritySet, eligibility,
-  eligibilityEvidence, merge, targetReadback, identities = {}, generatedAt = new Date().toISOString() }) {
+  authoritySetProvenance, eligibilityEvidence, merge, targetReadback, identities = {}, generatedAt = new Date().toISOString() }) {
+  validateMultiAuthorityProvenance(authoritySetProvenance);
+  if (authoritySetProvenance.selfRepository !== repository || authoritySetProvenance.authorityRevision !== baseSha ||
+      authoritySetProvenance.setDigest !== authoritySet.digest ||
+      authoritySetProvenance.members.length !== authoritySet.ids.length ||
+      authoritySetProvenance.members.some((member, index) => member.id !== authoritySet.ids[index])) {
+    fail('verified Authority Set provenance does not match the final record binding.');
+  }
+  // Keep the evaluator's intentionally closed evidence shape separate from
+  // the richer serialized record that carries the tag's authority binding.
+  const adoptionProcedure = { status: procedure.status, digest: procedure.digest, repository: procedure.repository,
+    baseSha: procedure.baseSha, bSha: procedure.bSha, targetBranch: procedure.targetBranch,
+    pullRequestNumber: procedure.pullRequestNumber, tagTargetSha: procedure.tagTargetSha,
+    tagObjectOid: procedure.tagObjectOid, ownerDecisionId: procedure.ownerDecisionId,
+    authoritySetDigest: procedure.authoritySetDigest, authorityIds: procedure.authorityIds };
   const result = evaluateOwnerAdditionAdoption({ candidate: { repository, targetBranch,
-    pullRequest: { number: pullRequestNumber }, baseSha, bSha, bTree, authorityDigest }, procedure,
+    pullRequest: { number: pullRequestNumber }, baseSha, bSha, bTree, authorityDigest }, procedure: adoptionProcedure,
   ordinaryDecision, authoritySet, eligibility, eligibilityEvidence, merge, targetReadback });
   return {
     version: 1,
@@ -194,7 +209,10 @@ export function buildOwnerAdditionFinalRecord({ repository, targetBranch, pullRe
     selectedPolicy: { path: policyPath, revision: baseSha, version: policy.version, sha256: policySha256,
       mode: selected.mode, producer: selected.adoptionEvidenceProducer,
       workflowPath: selected.adoptionEvidenceWorkflowPath, jobName: selected.adoptionEvidenceJobName },
-    authoritySet: { ids: [...authoritySet.ids], digest: authoritySet.digest },
+    authoritySet: { ids: [...authoritySet.ids], digest: authoritySet.digest,
+      repository: authoritySetProvenance.selfRepository, revision: authoritySetProvenance.authorityRevision,
+      manifestSha256: authoritySetProvenance.manifestSha256,
+      members: authoritySetProvenance.members.map(member => ({ ...member })) },
     addition: { authorityId: procedure.authorityId, authorityPath: procedure.authorityPath,
       tagRef: procedure.tagRef, tagObjectOid: procedure.tagObjectOid,
       additionRecordSha256: procedure.additionRecordSha256, ownerDecisionId: procedure.missingDecisionId,
@@ -346,6 +364,9 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
   const procedure = { status: 'verified', digest: artifacts.digests.procedure, repository,
     baseSha, bSha, targetBranch, pullRequestNumber, tagTargetSha: bSha,
     tagObjectOid: procedureSource.tagObjectOid, ownerDecisionId: procedureSource.missingDecisionId,
+    authorityId: procedureSource.authorityId, authorityPath: procedureSource.authorityPath,
+    tagRef: procedureSource.tagRef, additionRecordSha256: procedureSource.additionRecordSha256,
+    missingDecisionId: procedureSource.missingDecisionId,
     authoritySetDigest: procedureSource.authoritySet.setDigest,
     authorityIds: artifacts.authoritySetProvenance.members.map(member => member.id) };
   const ordinaryDecision = { status: 'verified', decision: artifacts.ordinaryDecision.decision,
@@ -353,6 +374,7 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
     authoritySetDigest: artifacts.ordinaryDecision.authoritySetDigest,
     authorityIds: artifacts.ordinaryDecision.authorityIds };
   const authoritySet = { status: 'verified', ids: procedure.authorityIds, digest: procedure.authoritySetDigest };
+  const authoritySetProvenance = artifacts.authoritySetProvenance;
   const eligibility = { status: 'verified', digest: artifacts.digests.eligibilityDecision,
     result: 'eligible', repository, baseSha, bSha, pullRequestNumber,
     authoritySetDigest: procedure.authoritySetDigest, authorityIds: procedure.authorityIds };
@@ -385,7 +407,8 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
   };
   const record = buildOwnerAdditionFinalRecord({ repository, targetBranch, pullRequestNumber, baseSha, bSha, bTree,
     authorityDigest, policy, policySha256: hash(policyBytes), policyPath, procedure, ordinaryDecision, authoritySet,
-    selected, eligibility, eligibilityEvidence, merge: merged, targetReadback: readback.targetReadback, identities: boundIdentities });
+    selected, eligibility, authoritySetProvenance, eligibilityEvidence, merge: merged,
+    targetReadback: readback.targetReadback, identities: boundIdentities });
   if (record.outcome.adoption !== 'valid' || record.outcome.canonical !== 'verified') fail(`final adoption is ${record.outcome.adoption}/${record.outcome.canonical}.`);
   return record;
 }
