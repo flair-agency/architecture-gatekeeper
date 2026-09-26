@@ -38,15 +38,23 @@ test('distinguishes waiver, policy failure, review failure, and malformed output
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: '{}' }).conclusion, 'ERROR');
 });
 
-test('advisory ordinary PASS and BLOCK remain informational with separate report marker', () => {
+test('advisory ordinary PASS and BLOCK require a completed procedure before informational reporting', () => {
   for (const semantic of ['PASS', 'BLOCK']) {
-    const classified = classifyReview({ mode: 'advisory', policyResult: 'success', reviewResult: 'success',
+    const incomplete = classifyReview({ mode: 'advisory', policyResult: 'success', reviewResult: 'success',
       rawDecision: JSON.stringify({ decision: semantic, summary: 'ordinary review' }) });
+    assert.equal(incomplete.conclusion, 'ERROR');
+    const classified = classifyReview({ mode: 'advisory', policyResult: 'success', reviewResult: 'success',
+      rawDecision: JSON.stringify({ decision: semantic, summary: 'ordinary review' }),
+      ownerAdditionSelected: true, ownerAdditionResult: 'success',
+      ownerAdditionProcedure: { procedure: 'VALID_G0_OWNER_ADDITION' } });
     assert.equal(classified.conclusion, 'ADVISORY_ONLY');
     assert.equal(classified.procedureEligibility, 'ineligible');
-    const report = renderReport(classified, { mode: 'advisory', policySha256: 'a'.repeat(64) });
+    const report = renderReport(classified, { mode: 'advisory', policySha256: 'a'.repeat(64),
+      ownerAdditionProcedure: { procedure: 'VALID_G0_OWNER_ADDITION' } });
     assert.ok(report.includes('Ordinary semantic decision: `' + semantic + '`'));
     assert.match(report, /policyProtection=`not_claimed`/);
+    assert.match(report, /exactClaimAuthorization=`not_verified`/);
+    assert.match(report, /Policy version: `3`/);
     assert.ok(report.endsWith(`${ADVISORY_COMMENT_MARKER}\n`));
     assert.doesNotMatch(report, /Architecture Gate — PASS/);
   }

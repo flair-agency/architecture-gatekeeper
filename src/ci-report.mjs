@@ -137,7 +137,8 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision,
         ownerAdditionProcedure?.procedure === 'VALID_G0_OWNER_ADDITION' &&
         decision.ownerDecisionId === ownerAdditionProcedure.missingDecisionId;
     if (mode === 'advisory') {
-      if (decision.decision === 'OWNER_DECISION' && !nestedBlock && ownerAdditionResult !== 'success') {
+      if (!ownerAdditionSelected || ownerAdditionResult !== 'success' ||
+          ownerAdditionProcedure?.procedure !== 'VALID_G0_OWNER_ADDITION') {
         return { conclusion: 'ERROR',
           summary: 'The advisory owner-addition procedure or required eligibility evidence did not complete.', decision };
       }
@@ -209,9 +210,9 @@ export function renderReport(classified, metadata = {}) {
   }
   if (classified.conclusion === 'ADVISORY_ONLY') {
     const p = metadata.ownerAdditionProcedure;
-    body += `\nThis informational report does not accept B or A and cannot satisfy Architecture Gate / accept. Ordinary semantic decision: \`${cleanText(decision?.decision, 100)}\` · Procedure eligibility: \`${cleanText(classified.procedureEligibility, 100)}\` · policyProtection=\`not_claimed\` · hostEnforcement=\`not_verified\` · canonicalTransition=\`not_verified\` · principalAuthentication=\`not_verified\`.\n`;
-    body += `\nReport version: \`2\` · Repository: \`${cleanText(p?.repository || metadata.repository, 150)}\` · Recorded base and policy revision: \`${cleanText(p?.baseSha || metadata.baseSha, 64)}\` · Policy SHA-256: \`${cleanText(metadata.policySha256, 64)}\` · Candidate head: \`${cleanText(p?.headSha || metadata.headSha, 64)}\`\n`;
-    if (p) body += `\nProcedure: \`${cleanText(p.procedure, 100)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag object OID: \`${cleanText(p.tagObjectOid, 64)}\`\n`;
+    body += `\nThis informational report does not accept B or A and cannot satisfy Architecture Gate / accept. Ordinary semantic decision: \`${cleanText(decision?.decision, 100)}\` · Procedure eligibility: \`${cleanText(classified.procedureEligibility, 100)}\` · policyProtection=\`not_claimed\` · hostEnforcement=\`not_verified\` · canonicalTransition=\`not_verified\` · principalAuthentication=\`not_verified\` · exactClaimAuthorization=\`not_verified\` · quorum=\`not_verified\` · evidenceFreshness=\`observed_in_this_run_only\`.\n`;
+    body += `\nPolicy version: \`3\` · Report version: \`2\` · Repository: \`${cleanText(p?.repository || metadata.repository, 150)}\` · Recorded base and policy revision: \`${cleanText(p?.baseSha || metadata.baseSha, 64)}\` · Policy SHA-256: \`${cleanText(metadata.policySha256, 64)}\` · Candidate head: \`${cleanText(p?.headSha || metadata.headSha, 64)}\`\n`;
+    if (p) body += `\nProcedure: \`${cleanText(p.procedure, 100)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag ref observed: \`${cleanText(p.tagRef, 150)}\` · Tag object OID: \`${cleanText(p.tagObjectOid, 64)}\`\n`;
   }
   if (metadata.authorityProvenance) {
     const selected = metadata.authorityProvenance;
