@@ -2,8 +2,10 @@
 import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { validateAuthoritySetDecision } from './authority-set.mjs';
+import { validateMultiAuthorityDecision } from './multi-authority-provenance.mjs';
 
 export function validatePreparedAuthorityDecision(decision, provenance) {
+  if (provenance?.version === 2) return validateMultiAuthorityDecision(decision, provenance);
   if (!provenance || provenance.version !== 1 || !Array.isArray(provenance.members) ||
       !/^[a-f0-9]{64}$/.test(provenance.manifestSha256) || !/^[a-f0-9]{64}$/.test(provenance.setDigest)) {
     throw new Error('Authority Set provenance is invalid.');

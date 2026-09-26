@@ -39,6 +39,9 @@ jobs:
       effort: ${{ steps.resolve.outputs.reasoningEffort }}
       authority_manifest_path: ${{ steps.resolve.outputs.authorityManifestPath }}
       authority_limits_base64: ${{ steps.resolve.outputs.authorityLimitsBase64 }}
+      authority_profile: ${{ steps.resolve.outputs.authorityProfile }}
+      owner_addition_version: ${{ steps.resolve.outputs.ownerAdditionVersion }}
+      owner_addition_authority_id: ${{ steps.resolve.outputs.ownerAdditionAuthorityId }}
       owner_addition_grade: ${{ steps.resolve.outputs.ownerAdditionGrade }}
       owner_addition_authority_path: ${{ steps.resolve.outputs.ownerAdditionAuthorityPath }}
       owner_addition_prompt_path: ${{ steps.resolve.outputs.ownerAdditionPromptPath }}
@@ -210,15 +213,24 @@ jobs:
           SELF_REPOSITORY: ${{ github.repository }}
           GATEKEEPER_SOURCE_TOKEN: ${{ secrets.CI_SOURCE_READ_TOKEN || github.token }}
           AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
+          AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
+          OWNER_AUTHORITY_ID: ${{ needs.policy.outputs.owner_addition_authority_id }}
+          OWNER_AUTHORITY_PATH: ${{ needs.policy.outputs.owner_addition_authority_path }}
         run: |
           umask 077
           git show "$BASE_SHA:$MANIFEST_PATH" > "$RUNNER_TEMP/architecture-gate-authorities.json"
+          PROFILE_ARGS=()
+          if test "$AUTHORITY_PROFILE" = owner-addition-v2; then
+            PROFILE_ARGS=(--affected-id "$OWNER_AUTHORITY_ID" --affected-path "$OWNER_AUTHORITY_PATH")
+          fi
           node .architecture-gatekeeper-validation-runtime/src/prepare-authority-set.mjs \
             --manifest "$RUNNER_TEMP/architecture-gate-authorities.json" \
             --self-repository "$SELF_REPOSITORY" \
             --self-root . \
             --authority-sha "$BASE_SHA" \
             --limits-base64 "$AUTHORITY_LIMITS_BASE64" \
+            --profile "$AUTHORITY_PROFILE" \
+            "${PROFILE_ARGS[@]}" \
             --output-dir "$RUNNER_TEMP/architecture-gate-authority-set"
           cat "$RUNNER_TEMP/architecture-gate-prompt.md" \
             "$RUNNER_TEMP/architecture-gate-authority-set/authority-prompt.md" \
@@ -228,6 +240,7 @@ jobs:
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
           AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
+          AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
         run: |
           node .architecture-gatekeeper-validation-runtime/src/preflight-authority-set-review.mjs \
             "$RUNNER_TEMP/architecture-gate-decision.schema.json" \
@@ -345,6 +358,8 @@ jobs:
           OWNER_SCHEMA_PATH: ${{ needs.policy.outputs.owner_addition_schema_path }}
           ORDINARY_SCHEMA_PATH: ${{ inputs.schema-path }}
           ORDINARY_DECISION: ${{ needs.review.outputs.final_message }}
+          ORDINARY_AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
+          GATEKEEPER_SOURCE_TOKEN: ${{ needs.policy.outputs.owner_addition_version == '2' && (secrets.CI_SOURCE_READ_TOKEN || github.token) || '' }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
         run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs prepare
       - name: Review B-specific missing-decision eligibility

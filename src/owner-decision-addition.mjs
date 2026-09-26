@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
+import { validateMultiAuthorityProvenance } from './multi-authority-provenance.mjs';
 
 const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
@@ -111,7 +112,7 @@ function validateAdditionRecord(addition, current) {
   requirePurpose(addition.purpose);
 }
 
-function validateTag(tag, current) {
+function validateTag(tag, current, validateRecord = validateAdditionRecord) {
   record(tag, ['ref', 'objectOid', 'objectBytes'], 'annotated tag');
   requireMatch(tag.ref, ADDITION_TAG_REF, 'annotated tag ref');
   requireCommit(tag.objectOid, 'annotated tag OID', current.headSha.length);
@@ -132,7 +133,7 @@ function validateTag(tag, current) {
   }
   let addition;
   try { addition = JSON.parse(source.slice(separator + 2)); } catch { fail('tag annotation does not contain valid AdditionRecord JSON.'); }
-  validateAdditionRecord(addition, current);
+  validateRecord(addition, current);
   const expectedMessage = `${JSON.stringify(canonical(addition))}\n`;
   if (source.slice(separator + 2) !== expectedMessage) fail('tag annotation is not the canonical AdditionRecord encoding.');
   return addition;
@@ -164,4 +165,43 @@ export function validateOwnerDecisionAdditionG0Procedure({ policy, current, tag 
     tagRef: tag.ref, tagObjectOid: tag.objectOid, principalAuthentication: 'not_verified',
     semanticEligibility: 'requires_separate_protected_review',
   });
+}
+
+/** Version 2 extends the binding without reinterpreting any v1 tag or policy. */
+export function validateMultiAuthorityAdditionG0Procedure({ policy, current, tag }) {
+  record(policy, ['version', 'repository', 'revision', 'sha256', 'ownerAddition'], 'v2 policy');
+  record(policy.ownerAddition, ['grade', 'authorityId', 'authorityPath'], 'v2 owner-addition policy');
+  if (policy.version !== 2) fail('unsupported multi-document policy descriptor version.');
+  requireMatch(policy.sha256, SHA256, 'v2 policy digest');
+  requireMatch(policy.ownerAddition.authorityId, ID, 'affected authority ID');
+  const legacyPolicy = { version: 1, repository: policy.repository, revision: policy.revision,
+    ownerAddition: { grade: policy.ownerAddition.grade, authorityPath: policy.ownerAddition.authorityPath } };
+  validatePolicy(legacyPolicy);
+  record(current, ['repository', 'baseSha', 'headSha', 'policyRevision', 'baseAuthority', 'headAuthority', 'changedFiles', 'tagRefOid', 'authoritySet'], 'v2 current state');
+  const { authoritySet, ...legacyCurrent } = current;
+  validateCurrent(legacyCurrent, legacyPolicy);
+  validateMultiAuthorityProvenance(authoritySet);
+  const affected = authoritySet.members.filter(member => member.repository === current.repository && member.path === current.baseAuthority.path);
+  if (authoritySet.selfRepository !== current.repository || authoritySet.authorityRevision !== current.baseSha ||
+      affected.length !== 1 || affected[0].id !== policy.ownerAddition.authorityId ||
+      affected[0].id !== current.baseAuthority.id || affected[0].sha256 !== current.baseAuthority.sha256) {
+    fail('complete selected set does not bind exactly the affected self authority.');
+  }
+  const addition = validateTag(tag, current, candidate => {
+    record(candidate, ['version', 'repository', 'baseSha', 'headSha', 'policyRevision', 'policySha256', 'authoritySet', 'authority', 'missingDecision', 'purpose'], 'v2 AdditionRecord');
+    record(candidate.authoritySet, ['manifestSha256', 'setDigest'], 'v2 AdditionRecord Authority Set');
+    if (candidate.version !== 2 || candidate.policySha256 !== policy.sha256 ||
+        candidate.authoritySet.manifestSha256 !== authoritySet.manifestSha256 ||
+        candidate.authoritySet.setDigest !== authoritySet.setDigest) fail('v2 AdditionRecord policy or Authority Set binding differs.');
+    const { policySha256, authoritySet: selectedSet, ...legacy } = candidate;
+    validateAdditionRecord({ ...legacy, version: 1 }, legacyCurrent);
+  });
+  return Object.freeze({ version: 2, procedure: 'VALID_G0_OWNER_ADDITION', grade: 'G0',
+    repository: current.repository, baseSha: current.baseSha, headSha: current.headSha,
+    policyRevision: policy.revision, policySha256: policy.sha256, authoritySet,
+    authorityId: current.baseAuthority.id, authorityPath: current.baseAuthority.path,
+    previousAuthoritySha256: current.baseAuthority.sha256, newAuthoritySha256: current.headAuthority.sha256,
+    missingDecisionId: addition.missingDecision.id, additionRecordSha256: digestOwnerDecisionAddition(addition),
+    tagRef: tag.ref, tagObjectOid: tag.objectOid, principalAuthentication: 'not_verified',
+    semanticEligibility: 'requires_separate_protected_review' });
 }

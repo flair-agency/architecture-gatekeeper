@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 
 const suppliedBin = process.argv[2];
@@ -54,6 +54,30 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   if (v2Native.decision !== 'PASS' || v2Native.authoritySet?.members[0]?.id !== 'architecture') throw new Error('native Authority Set adapter did not pass');
   const policyPath = join(parent, 'policy.json'); writeFileSync(policyPath, JSON.stringify({ version: 1, default: { mode: 'local-only' }, branches: {} }));
   if (!run('architecture-gate-policy', [policyPath, 'main']).includes('mode=local-only')) throw new Error('policy adapter did not pass');
+  const multiLimits = { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 262144, maxTotalBytes: 524288, maxPromptBytes: 1048576 };
+  writeFileSync(policyPath, JSON.stringify({ version: 4, default: { mode: 'local-only' }, branches: { main: {
+    mode: 'enforced', model: 'fixture-model', reasoningEffort: 'low', authorityManifestPath: '.codex/gatekeeper/authorities.json',
+    authorityLimits: multiLimits, ownerAddition: { version: 2, grade: 'G0', authorityId: 'architecture', authorityPath: 'AGENTS.md',
+      promptPath: '.codex/gatekeeper/prompt.md', schemaPath: '.codex/gatekeeper/schema.json' },
+  } } }));
+  if (!run('architecture-gate-policy', [policyPath, 'main']).includes('authorityProfile=owner-addition-v2')) throw new Error('installed policy v4 route did not resolve');
+  writeFileSync(join(root, 'large-authority.md'), 'x'.repeat(153943));
+  writeFileSync(join(gate, 'authorities.json'), JSON.stringify({ version: 1, authorities: [
+    { id: 'architecture', repository: 'self', revision: 'authority-revision', path: 'AGENTS.md' },
+    { id: 'large-authority', repository: 'self', revision: 'authority-revision', path: 'large-authority.md' },
+  ] }));
+  execFileSync('git', ['add', '.'], { cwd: root }); execFileSync('git', ['commit', '-m', 'CI multi-document smoke'], { cwd: root });
+  const base = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+  const installedSrc = dirname(realpathSync(join(installedBin, 'architecture-review-native')));
+  const multiOutput = join(parent, 'multi-authority');
+  execFileSync(process.execPath, [join(installedSrc, 'prepare-authority-set.mjs'), '--manifest', join(gate, 'authorities.json'),
+    '--self-repository', 'example/consumer', '--self-root', root, '--authority-sha', base,
+    '--limits-base64', Buffer.from(JSON.stringify(multiLimits)).toString('base64'), '--profile', 'owner-addition-v2',
+    '--affected-id', 'architecture', '--affected-path', 'AGENTS.md', '--output-dir', multiOutput], { cwd: root });
+  const multiProvenance = JSON.parse(readFileSync(join(multiOutput, 'authority-provenance.json'), 'utf8'));
+  if (multiProvenance.version !== 2 || multiProvenance.members.length !== 2) throw new Error('installed multi-document materialization omitted authority');
+  execFileSync(process.execPath, [join(installedSrc, 'validate-authority-set-decision.mjs'), join(multiOutput, 'authority-provenance.json')],
+    { cwd: root, input: JSON.stringify({ decision: 'PASS', authorityIds: ['architecture', 'large-authority'], authoritySetDigest: multiProvenance.setDigest }) });
 } finally {
   rmSync(parent, { recursive: true, force: true });
 }
