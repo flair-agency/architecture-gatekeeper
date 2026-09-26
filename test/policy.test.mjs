@@ -85,6 +85,25 @@ test('only a protected v2 enforced branch may select the exact G0 authority', ()
     mode: 'local-only', ownerAddition: enabled,
   } }, 'main'));
 });
+test('v3 advisory is explicit and cannot mix legacy or self-selected modes', () => {
+  const branch = { ...distributed.branches.main, mode: 'advisory', ownerAddition: {
+    grade: 'G0', authorityPath: 'docs/architecture.md',
+    promptPath: '.codex/gatekeeper/owner-addition-prompt.md',
+    schemaPath: '.codex/gatekeeper/owner-addition.schema.json',
+  } };
+  const advisory = { version: 3, default: branch, branches: {} };
+  assert.deepEqual(resolveCiPolicy(advisory, 'main').ownerAdditionRoute, 'advisory-only');
+  assert.equal(resolveCiPolicy(advisory, 'main').mode, 'advisory');
+  assert.throws(() => resolveCiPolicy({ ...distributed, default: branch }, 'main'), /mode/);
+  assert.throws(() => resolveCiPolicy({ ...advisory, default: { ...branch, mode: 'enforced' } }, 'main'), /explicit advisory/);
+  assert.throws(() => resolveCiPolicy({ ...advisory, default: { ...branch, ownerAddition: { ...branch.ownerAddition, route: 'advisory-only' } } }, 'main'), /Unknown/);
+  assert.throws(() => resolveCiPolicy({ ...advisory, default: { ...branch, ownerAddition: undefined } }, 'main'));
+  assert.throws(() => resolveCiPolicy({ ...advisory, branches: { other: { ...branch, authorityManifestPath: undefined } } }, 'main'));
+  const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
+  assert.match(workflow, /if: needs\.policy\.outputs\.mode == 'advisory'\n        run: \|\n          echo 'ADVISORY_ONLY is informational[^\n]*\n          exit 1/);
+  assert.match(workflow, /git show "\$BASE_SHA:\$POLICY_PATH" > "\$RUNNER_TEMP\/architecture-gate-policy\.json"/);
+  assert.match(workflow, /policySha256=\$\(sha256sum/);
+});
 test('protected policy rejects duplicate JSON keys before resolving effective limits', t => {
   const repeated = JSON.stringify(distributed).replace('"maxMembers":16', '"maxMembers":16,"maxMembers":32');
   assert.throws(() => parseCiPolicyJson(repeated), /duplicate JSON key/);
@@ -101,7 +120,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /uses: flair-agency\/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537/);
   assert.doesNotMatch(workflow, /uses: openai\/codex-action@/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?repository: flair-agency\/codex-action/);
-  assert.match(workflow, /codex-action-integrity:\n    if: needs\.policy\.outputs\.mode == 'enforced'\n    needs: policy/);
+  assert.match(workflow, /codex-action-integrity:\n    if: needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'advisory'\n    needs: policy/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?timeout-minutes: 5/);
   assert.match(workflow, /review:\n[\s\S]*?timeout-minutes: 20/);
   assert.match(workflow, /src\/verify-codex-action\.mjs/);

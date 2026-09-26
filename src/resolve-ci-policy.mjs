@@ -3,7 +3,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { rejectDuplicateJsonKeys, validateAuthorityLimits } from './authority-set.mjs';
 
-const MODES = new Set(['enforced', 'local-only']);
+const MODES = new Set(['enforced', 'local-only', 'advisory']);
 const EFFORTS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
 const AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.json$/;
 const OWNER_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
@@ -22,7 +22,7 @@ function requireOnlyKeys(value, allowed, label) {
 
 function validateBranch(branch, label, version) {
   requireOnlyKeys(branch, version === 1 ? new Set(['mode', 'model', 'reasoningEffort']) : new Set(['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition']), label);
-  if (!MODES.has(branch.mode)) throw new Error(`Invalid ${label} mode`);
+  if (!MODES.has(branch.mode) || (branch.mode === 'advisory' && version !== 3)) throw new Error(`Invalid ${label} mode`);
   if (branch.mode === 'local-only') {
     if (Object.keys(branch).length !== 1) throw new Error(`Invalid ${label}`);
     return;
@@ -31,7 +31,7 @@ function validateBranch(branch, label, version) {
     throw new Error(`Enforced ${label} requires a valid model`);
   }
   if (!EFFORTS.has(branch.reasoningEffort)) throw new Error(`Invalid reasoning effort for ${label}`);
-  if (version === 2) {
+  if (version >= 2) {
     if (Object.hasOwn(branch, 'ownerAddition')) {
       requireOnlyKeys(branch.ownerAddition, new Set(['grade', 'authorityPath', 'promptPath', 'schemaPath']), `${label} owner addition`);
       if (branch.ownerAddition.grade !== 'G0' ||
@@ -56,6 +56,9 @@ function validateBranch(branch, label, version) {
     if (Object.hasOwn(branch, 'ownerAddition') && !hasPath) {
       throw new Error(`${label} owner addition requires a protected Authority Set`);
     }
+    if (version === 3 && (branch.mode !== 'advisory' || !Object.hasOwn(branch, 'ownerAddition'))) {
+      throw new Error(`${label} v3 requires explicit advisory owner addition`);
+    }
     if (hasPath) {
       if (typeof branch.authorityManifestPath !== 'string' || branch.authorityManifestPath.length > 240 ||
           !AUTHORITY_PATH.test(branch.authorityManifestPath) || branch.authorityManifestPath.split('/').some(part => part === '.' || part === '..')) {
@@ -67,7 +70,7 @@ function validateBranch(branch, label, version) {
 }
 
 export function resolveCiPolicy(policy, baseBranch) {
-  if (!isRecord(policy) || ![1, 2].includes(policy.version)) throw new Error('Unsupported Architecture Gate CI policy version');
+  if (!isRecord(policy) || ![1, 2, 3].includes(policy.version)) throw new Error('Unsupported Architecture Gate CI policy version');
   requireOnlyKeys(policy, new Set(['version', 'default', 'branches']), 'CI policy');
   if (!baseBranch || typeof baseBranch !== 'string') throw new Error('A base branch is required');
   if (!isRecord(policy.default)) throw new Error('CI policy requires default');
@@ -81,7 +84,8 @@ export function resolveCiPolicy(policy, baseBranch) {
   const selected = Object.hasOwn(policy.branches, baseBranch) ? policy.branches[baseBranch] : policy.default;
   const result = selected.mode === 'local-only'
     ? { baseBranch, mode: 'local-only', model: '', reasoningEffort: '' }
-    : { baseBranch, mode: 'enforced', model: selected.model, reasoningEffort: selected.reasoningEffort };
+    : { baseBranch, mode: selected.mode, model: selected.model, reasoningEffort: selected.reasoningEffort };
+  if (policy.version === 3) result.policyVersion = 3;
   if (selected.authorityManifestPath) {
     result.authorityManifestPath = selected.authorityManifestPath;
     result.authorityLimitsBase64 = Buffer.from(JSON.stringify(validateAuthorityLimits(selected.authorityLimits))).toString('base64');
@@ -89,6 +93,7 @@ export function resolveCiPolicy(policy, baseBranch) {
   if (selected.ownerAddition) {
     result.ownerAdditionAuthorityPath = selected.ownerAddition.authorityPath;
     result.ownerAdditionGrade = selected.ownerAddition.grade;
+    if (policy.version === 3) result.ownerAdditionRoute = 'advisory-only';
     result.ownerAdditionPromptPath = selected.ownerAddition.promptPath;
     result.ownerAdditionSchemaPath = selected.ownerAddition.schemaPath;
   }

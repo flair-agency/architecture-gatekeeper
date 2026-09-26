@@ -91,19 +91,19 @@ test('disabled or error-ignored full verification is rejected', () => {
     },
     (args) => {
       args.workflow = args.workflow.replace(
-        '  codex-action-integrity:\n    if: needs.policy.outputs.mode == \'enforced\'\n',
+        '  codex-action-integrity:\n    if: needs.policy.outputs.mode == \'enforced\' || needs.policy.outputs.mode == \'advisory\'\n',
         '  codex-action-integrity:\n    if: false\n',
       );
     },
     (args) => {
       args.workflow = args.workflow.replace(
-        '  codex-action-integrity:\n    if: needs.policy.outputs.mode == \'enforced\'\n',
-        '  codex-action-integrity:\n    if: needs.policy.outputs.mode == \'enforced\'\n    continue-on-error: true\n',
+        '  codex-action-integrity:\n    if: needs.policy.outputs.mode == \'enforced\' || needs.policy.outputs.mode == \'advisory\'\n',
+        '  codex-action-integrity:\n    if: needs.policy.outputs.mode == \'enforced\' || needs.policy.outputs.mode == \'advisory\'\n    continue-on-error: true\n',
       );
     },
     (args) => {
       args.workflow = args.workflow.replace(
-        '  review:\n    if: needs.policy.outputs.mode == \'enforced\'\n',
+        '  review:\n    if: needs.policy.outputs.mode == \'enforced\' || needs.policy.outputs.mode == \'advisory\'\n',
         '  review:\n    if: false\n',
       );
     },
@@ -113,6 +113,6 @@ test('disabled or error-ignored full verification is rejected', () => {
 
 test('observation job is outside the enforced review and acceptance dependencies', () => {
   assert.match(baseline.workflow, /  codex-action-integrity-observe:\n(?:.|\n)*?    continue-on-error: true/);
-  assert.match(baseline.workflow, /  review:\n    if: needs\.policy\.outputs\.mode == 'enforced'\n    needs: \[policy, codex-action-integrity\]/);
+  assert.match(baseline.workflow, /  review:\n    if: needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'advisory'\n    needs: \[policy, codex-action-integrity\]/);
   assert.doesNotMatch(baseline.workflow, /needs:.*codex-action-integrity-observe/);
 });

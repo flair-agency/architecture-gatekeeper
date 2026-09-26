@@ -302,6 +302,19 @@ is complete. See the
 [owner-intervention runbook](docs/owner-intervention.md).
 A review comment or workflow approval alone does not replace canonical adoption.
 
+An owner may explicitly select the version 3 `advisory` mode for the same
+missing-decision procedure when host merge enforcement cannot be verified. A
+version 3 branch entry uses the version 2 Authority Set limits and
+`ownerAddition` fields (`grade: "G0"`, `authorityPath`, `promptPath`,
+`schemaPath`), with `mode: "advisory"`, `model`, and `reasoningEffort`. Every
+version 3 branch entry must select that mode and procedure. The policy and
+authority are read from the recorded base; B cannot enable the route in its
+own run. The existing annotated tag format remains the procedure input. An
+eligible result is reported as `ADVISORY_ONLY` with bound base, head, policy
+digest and tag object, and explicit unverified assurance dimensions. It never
+satisfies `Architecture Gate / accept`: that job fails even when the advisory
+procedure completes. Version 1 and 2 policies keep their previous behavior.
+
 For `OWNER_DECISION` and CI review failures caused by API, billing, model,
 credential or service availability, follow the
 [owner-intervention runbook](docs/owner-intervention.md). CI failure remains

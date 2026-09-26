@@ -88,6 +88,18 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
     rawDecision: env.ORDINARY_DECISION, ownerAdditionSelected: true,
     ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE', ownerAdditionProcedure: procedure });
   assert.equal(classified.conclusion, 'OWNER_ADDITION_G0');
+  const advisory = classifyReview({ mode: 'advisory', policyResult: 'success', reviewResult: 'success',
+    rawDecision: env.ORDINARY_DECISION, ownerAdditionSelected: true,
+    ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE', ownerAdditionProcedure: procedure });
+  assert.equal(advisory.conclusion, 'ADVISORY_ONLY');
+  const advisoryReport = renderReport(advisory, { ownerAdditionProcedure: procedure, policySha256: sha256(JSON.stringify(policy)) });
+  assert.match(advisoryReport, /policyProtection=`not_claimed`/);
+  assert.match(advisoryReport, /hostEnforcement=`not_verified`/);
+  assert.match(advisoryReport, /canonicalTransition=`not_verified`/);
+  assert.match(advisoryReport, /Recorded base and policy revision/);
+  assert.equal(classifyReview({ mode: 'advisory', policyResult: 'success', reviewResult: 'success',
+    rawDecision: env.ORDINARY_DECISION, ownerAdditionSelected: true,
+    ownerAdditionResult: 'failure', ownerAdditionEligibility: '', ownerAdditionProcedure: null }).conclusion, 'OWNER_DECISION');
   const report = renderReport(classified, { ownerAdditionProcedure: procedure });
   assert.match(report, /OWNER_ADDITION \/ G0/);
   assert.match(report, /Tag actor or owner identity was not authenticated/);

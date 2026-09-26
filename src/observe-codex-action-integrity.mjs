@@ -95,8 +95,8 @@ export function observeWorkflowIdentity(workflow, procedure) {
   // The observer accepts only the known policy condition for the protected
   // jobs. Candidate condition changes must not hide execution or weaken the
   // independent full verification boundary.
-  requireJobControls(workflow, 'review', "if: needs.policy.outputs.mode == 'enforced'");
-  requireJobControls(workflow, 'codex-action-integrity', "if: needs.policy.outputs.mode == 'enforced'");
+  requireJobControls(workflow, 'review', "if: needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'advisory'");
+  requireJobControls(workflow, 'codex-action-integrity', "if: needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'advisory'");
   const verifyJob = parseJob(workflow, 'codex-action-integrity');
   if (verifyJob.some((line) => /^    continue-on-error:/.test(line))) {
     throw new Error('Full verification job must not continue on error');

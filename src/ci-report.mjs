@@ -101,6 +101,7 @@ function labelFor(decision) {
     BLOCK: ['🛑', 'BLOCK'],
     OWNER_DECISION: ['⚠️', 'OWNER DECISION REQUIRED'],
     OWNER_ADDITION_G0: ['✅', 'OWNER_ADDITION / G0'],
+    ADVISORY_ONLY: ['ℹ️', 'ADVISORY ONLY'],
     WAIVED: ['➖', 'ACCEPTED WITHOUT CI AI REVIEW'],
     ERROR: ['❌', 'REVIEW FAILED'],
   }[decision];
@@ -114,7 +115,7 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision,
   if (mode === 'local-only') {
     return { conclusion: 'WAIVED', summary: 'The protected base-branch policy explicitly waives the CI AI review.', decision: null };
   }
-  if (mode !== 'enforced') {
+  if (mode !== 'enforced' && mode !== 'advisory') {
     return { conclusion: 'ERROR', summary: 'Architecture Gate resolved an unsupported policy mode.', decision: null };
   }
   if (reviewResult !== 'success') {
@@ -130,6 +131,12 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision,
       : 'No summary was supplied by the architecture reviewer.';
     const nestedBlock = decision.gates && typeof decision.gates === 'object' && !Array.isArray(decision.gates) &&
       Object.values(decision.gates).some(gate => gate?.decision === 'BLOCK');
+    if (mode === 'advisory' && decision.decision === 'OWNER_DECISION' && !nestedBlock &&
+        ownerAdditionSelected && ownerAdditionResult === 'success' && ownerAdditionEligibility === 'ELIGIBLE' &&
+        ownerAdditionProcedure?.procedure === 'VALID_G0_OWNER_ADDITION' &&
+        decision.ownerDecisionId === ownerAdditionProcedure.missingDecisionId) {
+      return { conclusion: 'ADVISORY_ONLY', summary: 'The recorded-base advisory procedure and separate missing-decision eligibility review completed. This is not merge acceptance.', decision };
+    }
     if (decision.decision === 'OWNER_DECISION' && !nestedBlock && ownerAdditionSelected && ownerAdditionResult === 'success' &&
         ownerAdditionEligibility === 'ELIGIBLE' && ownerAdditionProcedure?.procedure === 'VALID_G0_OWNER_ADDITION' &&
         decision.ownerDecisionId === ownerAdditionProcedure.missingDecisionId) {
@@ -174,6 +181,9 @@ function renderGateDetails(gates) {
 }
 
 export function renderReport(classified, metadata = {}) {
+  if (classified.conclusion === 'ADVISORY_ONLY' && !/^[a-f0-9]{64}$/.test(metadata.policySha256 || '')) {
+    throw new Error('Advisory report requires the recorded-base policy digest.');
+  }
   const [icon, label] = labelFor(classified.conclusion);
   const decision = classified.decision;
   const decisionDigest = metadata.decisionDigest || digestDecision(decision);
@@ -188,6 +198,11 @@ export function renderReport(classified, metadata = {}) {
     const p = metadata.ownerAdditionProcedure;
     body += '\nThis is a procedural acceptance result for authority-only B, not semantic PASS for B or A. Tag actor or owner identity was not authenticated. A requires a fresh review after B becomes canonical. A later tag-ref change is not covered by this check.\n';
     if (p) body += `\nProtected policy/base: \`${cleanText(p.policyRevision, 64)}\` · B head: \`${cleanText(p.headSha, 64)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag ref observed: \`${cleanText(p.tagRef, 150)}\` → object OID \`${cleanText(p.tagObjectOid, 64)}\` · Principal authentication: \`not_verified\`\n`;
+  }
+  if (classified.conclusion === 'ADVISORY_ONLY') {
+    const p = metadata.ownerAdditionProcedure;
+    body += '\nThis informational report does not accept B or A and cannot satisfy Architecture Gate / accept. policyProtection=`not_claimed` · hostEnforcement=`not_verified` · canonicalTransition=`not_verified` · principalAuthentication=`not_verified`.\n';
+    if (p) body += `\nReport version: \`2\` · Repository: \`${cleanText(p.repository, 150)}\` · Recorded base and policy revision: \`${cleanText(p.baseSha, 64)}\` · Policy SHA-256: \`${cleanText(metadata.policySha256, 64)}\` · Candidate head: \`${cleanText(p.headSha, 64)}\` · Procedure: \`${cleanText(p.procedure, 100)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag object OID: \`${cleanText(p.tagObjectOid, 64)}\`\n`;
   }
   if (metadata.authorityProvenance) {
     const selected = metadata.authorityProvenance;
@@ -216,7 +231,9 @@ export function renderReport(classified, metadata = {}) {
   if (metadata.runUrl) links.push(`[Actions run](${cleanText(metadata.runUrl, 1_000)})`);
   if (metadata.workflowRef) links.push(`Workflow: \`${cleanText(metadata.workflowRef, 300)}\``);
   const provenance = links.length ? `\n${links.join(' · ')}\n` : '';
-  const ending = `${provenance}\n${COMMENT_MARKER}\n`;
+  const marker = metadata.mode === 'advisory' || classified.conclusion === 'ADVISORY_ONLY'
+    ? '<!-- architecture-gatekeeper:result:v2 -->' : COMMENT_MARKER;
+  const ending = `${provenance}\n${marker}\n`;
   const truncation = '\n\n_Report truncated._\n';
   if (body.length + ending.length > MAX_REPORT_LENGTH) {
     body = `${body.slice(0, Math.max(0, MAX_REPORT_LENGTH - ending.length - truncation.length))}${truncation}`;
@@ -239,7 +256,8 @@ export async function upsertPullRequestComment({ fetchImpl = fetch, apiUrl, repo
     const listed = await fetchImpl(commentsUrl, { headers });
     if (!listed.ok) throw new Error(`list comments returned HTTP ${listed.status}`);
     const comments = await listed.json();
-    existing = comments.find((comment) => comment?.user?.login === 'github-actions[bot]' && comment?.body?.includes(COMMENT_MARKER));
+    existing = comments.find((comment) => comment?.user?.login === 'github-actions[bot]' &&
+      (comment?.body?.includes(COMMENT_MARKER) || comment?.body?.includes('<!-- architecture-gatekeeper:result:v2 -->')));
     if (existing) break;
     const link = listed.headers?.get?.('link') || '';
     commentsUrl = link.match(/<([^>]+)>;\s*rel="next"/)?.[1] || '';
@@ -276,6 +294,8 @@ async function main() {
     ownerAdditionProcedure,
   });
   const report = renderReport(classified, {
+    mode: process.env.MODE,
+    policySha256: process.env.POLICY_SHA256,
     reviewedSha: process.env.REVIEWED_SHA,
     headSha: process.env.HEAD_SHA,
     runUrl: process.env.RUN_URL,

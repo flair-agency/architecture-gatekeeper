@@ -35,6 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mode: ${{ steps.resolve.outputs.mode }}
+      policy_version: ${{ steps.resolve.outputs.policyVersion }}
+      policy_sha256: ${{ steps.resolve.outputs.policySha256 }}
       model: ${{ steps.resolve.outputs.model }}
       effort: ${{ steps.resolve.outputs.reasoningEffort }}
       authority_manifest_path: ${{ steps.resolve.outputs.authorityManifestPath }}
@@ -66,6 +68,7 @@ jobs:
           if test -s "$RUNNER_TEMP/architecture-gate-policy-tree"; then
             git show "$BASE_SHA:$POLICY_PATH" > "$RUNNER_TEMP/architecture-gate-policy.json"
             node .architecture-gatekeeper-runtime/src/resolve-ci-policy.mjs "$RUNNER_TEMP/architecture-gate-policy.json" "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
+            echo "policySha256=$(sha256sum "$RUNNER_TEMP/architecture-gate-policy.json" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           else
             echo "Base revision has no CI policy; using fail-safe bootstrap enforcement."
             echo "baseBranch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
@@ -80,7 +83,7 @@ jobs:
         run: test "$PROTECTED_INSTRUCTIONS" = true
 
   codex-action-integrity:
-    if: needs.policy.outputs.mode == 'enforced'
+    if: needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'advisory'
     needs: policy
     permissions:
       contents: read
@@ -127,7 +130,7 @@ jobs:
   codex-action-integrity-observe:
     # Issue #45: observation only. This job has no secrets, no outputs used by
     # review or accept, and no authority to replace the full integrity job.
-    if: needs.policy.outputs.mode == 'enforced'
+    if: needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'advisory'
     needs: policy
     permissions:
       contents: read
@@ -151,7 +154,7 @@ jobs:
             .architecture-gatekeeper-runtime
 
   review:
-    if: needs.policy.outputs.mode == 'enforced'
+    if: needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'advisory'
     needs: [policy, codex-action-integrity]
     permissions:
       contents: read
@@ -393,6 +396,7 @@ jobs:
           POLICY_RESULT: ${{ needs.policy.result }}
           REVIEW_RESULT: ${{ needs.review.result }}
           MODE: ${{ needs.policy.outputs.mode }}
+          POLICY_SHA256: ${{ needs.policy.outputs.policy_sha256 }}
           DECISION: ${{ needs.review.outputs.final_message }}
           REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
           AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
@@ -422,7 +426,7 @@ jobs:
           MODE: ${{ needs.policy.outputs.mode }}
         run: |
           test "$POLICY_RESULT" = success
-          test "$MODE" = enforced || test "$MODE" = local-only
+          test "$MODE" = enforced || test "$MODE" = local-only || test "$MODE" = advisory
       - name: Require successful reporting
         env:
           REPORT_RESULT: ${{ needs.report.result }}
@@ -433,6 +437,11 @@ jobs:
           echo "Architecture Gate: ACCEPTED WITHOUT CI AI REVIEW"
           echo "Base branch: ${{ github.base_ref }}"
           echo "AI acceptance review: WAIVED BY BASE-BRANCH POLICY"
+      - name: Keep advisory procedure outside merge acceptance
+        if: needs.policy.outputs.mode == 'advisory'
+        run: |
+          echo 'ADVISORY_ONLY is informational and cannot satisfy Architecture Gate / accept.'
+          exit 1
       - name: Require model-backed PASS or verified G0 owner addition
         if: needs.policy.outputs.mode == 'enforced'
         env:
