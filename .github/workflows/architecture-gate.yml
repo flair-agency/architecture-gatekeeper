@@ -412,6 +412,7 @@ jobs:
           name: owner-addition-eligibility-evidence-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/architecture-gate-owner-addition/eligibility-evidence.json
           if-no-files-found: error
+          overwrite: false
           retention-days: 90
 
   report:

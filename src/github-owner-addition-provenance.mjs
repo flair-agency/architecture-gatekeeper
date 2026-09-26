@@ -9,6 +9,7 @@ const ARTIFACT_MAX_BYTES = 1_048_576;
 const ZIP_ENTRY_MAX_BYTES = 524_288;
 const ARTIFACT_NAME_PREFIX = 'owner-addition-eligibility-evidence-';
 const ARTIFACT_FILE = 'eligibility-evidence.json';
+const ARTIFACT_UPLOAD_STEP = 'Preserve exact v5 pre-merge eligibility evidence';
 const HEX40 = /^[a-f0-9]{40}$/;
 const HEX64 = /^[a-f0-9]{64}$/;
 const DECIMAL = /^\d+$/;
@@ -231,6 +232,17 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   // Pull-request runs commonly execute on GitHub's synthetic merge SHA.
   // The run's PR snapshot binds that execution to exact B above.
   same(job.head_sha, run.head_sha, 'producer job run head');
+  if (!Array.isArray(job.steps)) fail('selected producer job has no step-level provenance.');
+  const uploadSteps = job.steps.filter(step => step?.name === ARTIFACT_UPLOAD_STEP);
+  if (uploadSteps.length !== 1) fail('selected producer job must contain exactly one evidence artifact upload step.');
+  const uploadStep = uploadSteps[0];
+  same(uploadStep.status, 'completed', 'evidence artifact upload step status');
+  same(uploadStep.conclusion, 'success', 'evidence artifact upload step conclusion');
+  const uploadStartedMs = timestamp(uploadStep.started_at, 'evidence artifact upload start');
+  const uploadCompletedMs = timestamp(uploadStep.completed_at, 'evidence artifact upload completion');
+  if (uploadStartedMs < runStarted || uploadCompletedMs < uploadStartedMs || uploadCompletedMs > timestamp(job.completed_at, 'producer job completion')) {
+    fail('evidence artifact upload step is outside the selected producer job interval.');
+  }
   const completedMs = timestamp(job.completed_at, 'producer job completion');
   if (completedMs >= mergeTime || completedMs < runStarted) fail('eligibility producer did not complete within the pre-merge run interval.');
   if (typeof job.check_run_url !== 'string') fail('producer job has no check run identity.');
@@ -280,8 +292,8 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   same(String(artifact.workflow_run?.id), String(runId), 'artifact workflow run');
   same(artifact.workflow_run?.head_sha, run.head_sha, 'artifact workflow run head');
   const createdMs = timestamp(artifact.created_at, 'artifact creation');
-  if (createdMs < runStarted || createdMs > completedMs || createdMs >= mergeTime) {
-    fail('evidence artifact was not created during the completed pre-merge producer job.');
+  if (createdMs < uploadStartedMs || createdMs > uploadCompletedMs || createdMs > completedMs || createdMs >= mergeTime) {
+    fail('evidence artifact was not created during the selected upload step in the pre-merge producer job.');
   }
   if (typeof artifact.digest !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(artifact.digest)) fail('artifact metadata has no SHA-256 digest.');
   const zip = await request(apiUrl(`${repository}/actions/artifacts/${artifact.id}/zip`), true);

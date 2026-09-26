@@ -405,10 +405,12 @@ match its `owner-addition` job. The base policy selects both; B cannot change
 them for its own review. The B check records `eligibility=eligible`,
 `adoption=pending`, `canonical=pending` and uploads the exact review evidence.
 The green check alone does not establish adoption. After an ordinary PR merge
-commit, the finalizer checks the pre-merge Actions run and job, its completion
-time and artifact, the exact B and two-parent merge commit, and a fresh read
-of the target branch and authority bytes. Only then can the record report
-valid `OWNER_ADDITION / G0` adoption and verified canonical placement. v0.5.1
+commit, the finalizer checks the pre-merge Actions run and selected producer
+job, including its unique successful evidence-upload step and the artifact's
+creation time and digest, then checks the exact B and two-parent merge commit
+and freshly reads the target branch and authority bytes. Only then can the
+record report valid `OWNER_ADDITION / G0` adoption and verified canonical
+placement. v0.5.1
 does not support squash or rebase merge for B. G0 leaves actor identity
 unverified, and this route does not claim GitHub enforced the check.
 

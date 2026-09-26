@@ -73,12 +73,15 @@ function prepare({ event = 'pull_request', runHead = candidate.syntheticSha } = 
       head: { sha: candidate.bSha }, base: { sha: candidate.baseSha, ref: candidate.targetBranch } }] };
   const job = { id: candidate.jobId, name: candidate.jobName, status: 'completed', conclusion: 'success',
     head_sha: runHead, completed_at: completedAt,
+    steps: [{ name: 'Preserve exact v5 pre-merge eligibility evidence', status: 'completed', conclusion: 'success', number: 7,
+      started_at: '2026-09-26T00:58:30.000Z', completed_at: '2026-09-26T00:59:30.000Z' }],
     check_run_url: `https://api.github.com/repos/${candidate.repository}/check-runs/555` };
   const check = { id: 555, name: candidate.jobName, status: 'completed', conclusion: 'success', head_sha: runHead,
     app: { id: 15368 } };
   const acceptName = candidate.jobName.replace(/\/ owner-addition$/, '/ accept');
   const acceptJob = { id: 778, name: acceptName, status: 'completed', conclusion: 'success',
     head_sha: runHead, completed_at: '2026-09-26T01:03:00.000Z',
+    steps: [],
     check_run_url: `https://api.github.com/repos/${candidate.repository}/check-runs/556` };
   const acceptCheck = { id: 556, name: acceptName, status: 'completed', conclusion: 'success',
     head_sha: runHead, app: { id: 15368 } };
@@ -147,6 +150,21 @@ test('rejects wrong candidate, failed or late producer, wrong app, or mismatched
     ['duplicate reusable workflow identity', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).referenced_workflows.push({ ...gatekeeperWorkflow }); }],
     ['wrong job identity', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`).jobs[0].name = 'other-job'; }],
     ['late producer', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`).jobs[0].completed_at = candidate.mergeAt; }],
+    ['selected producer has no upload step while another job has one', f => {
+      const jobs = f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`).jobs;
+      jobs[0].steps = [];
+      jobs[1].steps = [{ name: 'Preserve exact v5 pre-merge eligibility evidence', status: 'completed', conclusion: 'success', number: 4,
+        started_at: '2026-09-26T00:58:30.000Z', completed_at: '2026-09-26T00:59:30.000Z' }];
+    }],
+    ['selected upload step failed', f => {
+      f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`).jobs[0].steps[0].conclusion = 'failure';
+    }],
+    ['selected upload step is duplicated', f => {
+      const steps = f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`).jobs[0].steps;
+      steps.push({ ...steps[0], number: 8 });
+    }],
+    ['artifact predates selected upload step', f => { f.artifact.created_at = '2026-09-26T00:58:29.000Z'; }],
+    ['artifact is created after selected upload step', f => { f.artifact.created_at = '2026-09-26T00:59:31.000Z'; }],
     ['wrong check-run app', f => { f.responses.get(`/repos/${candidate.repository}/check-runs/555`).app.id = 42; }],
     ['missing Gatekeeper accept job', f => { const page = f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`); page.jobs.pop(); page.total_count = 1; }],
     ['failed Gatekeeper accept job', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`).jobs[1].conclusion = 'failure'; }],
