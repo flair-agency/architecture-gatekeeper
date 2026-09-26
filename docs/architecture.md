@@ -907,6 +907,18 @@ Architecture Gatekeeper does not own:
 - consumer architecture creation by inference;
 - human owner decisions that are absent from canonical authority.
 
+Gatekeeper evaluates proposed changes against consumer-owned canonical
+authority and validates and reports the selected review decision, procedure,
+bound evidence and assurance dimensions under the applicable consumer policy.
+It does not warrant the substantive quality or correctness of
+a consumer's architecture or an owner's decision. The consumer owns those
+decisions and its use of the result; the hosting platform and repository
+administrators own the protection, permissions, evidence availability and
+merge controls they configure. A host feature's availability, a successful
+check, or the `G0` label alone does not establish an assurance that was not
+verified. The software's legal warranty terms are in `LICENSE`; this
+responsibility boundary specifies what the mechanism claims in its reports.
+
 Other controls may provide these capabilities. Their existence must not be
 misrepresented as an Architecture Gatekeeper guarantee.
 

@@ -17,6 +17,10 @@ its authority list, reviewer prompt, decision schema, model selection and
 target-branch CI policy. The runtime does not grant filesystem, publication,
 deployment, credential or service authority.
 
+For the architecture responsibility boundary, GitHub plan and visibility
+limits, and this repository's observed reference configuration, see
+[GitHub assurance and reference configuration](docs/github-assurance.md).
+
 Consumers may also own an optional decision-validation policy. The output
 schema uses the following fail-closed subset of the JSON Schema constructs
 accepted by OpenAI Structured Outputs: `$schema`, `description`, `$defs`, local
@@ -318,8 +322,9 @@ That exception is outside Gatekeeper acceptance. The fixture E2E is the v0.5.1
 package-release gate; it does not establish activation for a consumer. The
 representative LIVE Agency E2E remains a separate route-activation prerequisite
 under the owner-adopted contract in `docs/architecture.md` (PR #140). The
-fixture E2E and package publication remain pending, so no release or consumer
-activation is claimed here. The
+published [v0.5.1 release](https://github.com/flair-agency/architecture-gatekeeper/releases/tag/v0.5.1)
+alone does not establish that the full fixture A fresh-review sequence passed
+or activate the route for another consumer. The
 route does not resolve unsupported claims that work is complete. See the
 [owner-intervention runbook](docs/owner-intervention.md).
 A review comment or workflow approval alone does not replace canonical adoption.
