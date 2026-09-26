@@ -22,7 +22,7 @@ function requireOnlyKeys(value, allowed, label) {
 }
 
 function validateBranch(branch, label, version) {
-  requireOnlyKeys(branch, version === 1 ? new Set(['mode', 'model', 'reasoningEffort', 'authorityFiles', 'promptPath', 'schemaPath']) : new Set(['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition']), label);
+  requireOnlyKeys(branch, version === 1 ? new Set(['mode', 'model', 'reasoningEffort', 'authorityFiles', 'promptPath', 'schemaPath', 'validationPath']) : new Set(['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition']), label);
   if (!MODES.has(branch.mode)) throw new Error(`Invalid ${label} mode`);
   if (branch.mode === 'local-only') {
     if (Object.keys(branch).length !== 1) throw new Error(`Invalid ${label}`);
@@ -38,6 +38,11 @@ function validateBranch(branch, label, version) {
         typeof branch.schemaPath !== 'string' || branch.schemaPath.length > 240 ||
         !OWNER_SCHEMA_PATH.test(branch.schemaPath) || branch.schemaPath.split('/').some(part => part === '.' || part === '..')) {
       throw new Error(`Enforced ${label} requires base-selected promptPath and schemaPath`);
+    }
+    if (Object.hasOwn(branch, 'validationPath') && (typeof branch.validationPath !== 'string' ||
+        branch.validationPath.length > 240 || !OWNER_SCHEMA_PATH.test(branch.validationPath) ||
+        branch.validationPath.split('/').some(part => part === '.' || part === '..'))) {
+      throw new Error(`Invalid base-selected validationPath for ${label}`);
     }
     if (!Array.isArray(branch.authorityFiles) || branch.authorityFiles.length < 1 || branch.authorityFiles.length > 16 ||
         new Set(branch.authorityFiles).size !== branch.authorityFiles.length ||
@@ -107,6 +112,7 @@ export function resolveCiPolicy(policy, baseBranch) {
     result.legacyAuthorityFilesBase64 = Buffer.from(JSON.stringify(selected.authorityFiles)).toString('base64');
     result.legacyPromptPath = selected.promptPath;
     result.legacySchemaPath = selected.schemaPath;
+    result.legacyValidationPath = selected.validationPath || '';
   }
   if (selected.authorityManifestPath) {
     result.authorityManifestPath = selected.authorityManifestPath;

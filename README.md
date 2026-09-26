@@ -188,7 +188,9 @@ branch use one of these shapes:
 `local-only` accepts only `mode`; legacy v1 `enforced` requires `mode`, `model`,
 `reasoningEffort`, a nonempty, unique `authorityFiles` list of canonical
 Markdown paths, and `promptPath` and `schemaPath`. These selectors come from
-the recorded base policy. Under a `pull_request` caller, `policy-path` must be
+the recorded base policy. An optional `validationPath` selects consumer
+decision validation from the same base; caller input cannot waive or replace
+it for v1. Under a `pull_request` caller, `policy-path` must be
 the fixed `.codex/gatekeeper/ci-policy.json` path. The v1 CI
 review requires `protected-review-instructions: true`, receives those base
 snapshots with protected prompt and schema, verifies the

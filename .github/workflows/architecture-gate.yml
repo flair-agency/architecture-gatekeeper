@@ -39,6 +39,7 @@ jobs:
       legacy_authority_files_base64: ${{ steps.resolve.outputs.legacyAuthorityFilesBase64 }}
       legacy_prompt_path: ${{ steps.resolve.outputs.legacyPromptPath }}
       legacy_schema_path: ${{ steps.resolve.outputs.legacySchemaPath }}
+      legacy_validation_path: ${{ steps.resolve.outputs.legacyValidationPath }}
       model: ${{ steps.resolve.outputs.model }}
       effort: ${{ steps.resolve.outputs.reasoningEffort }}
       authority_manifest_path: ${{ steps.resolve.outputs.authorityManifestPath }}
@@ -203,13 +204,13 @@ jobs:
           git show "$BASE_SHA:$PROMPT_PATH" > "$RUNNER_TEMP/architecture-gate-prompt.md"
           git show "$BASE_SHA:$SCHEMA_PATH" > "$RUNNER_TEMP/architecture-gate-decision.schema.json"
       - name: Materialize protected decision validation policy
-        if: inputs.validation-path != ''
+        if: (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '')
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          VALIDATION_PATH: ${{ inputs.validation-path }}
+          VALIDATION_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path || inputs.validation-path }}
         run: git show "$BASE_SHA:$VALIDATION_PATH" > "$RUNNER_TEMP/architecture-gate-decision.validation.json"
       - name: Check out the pinned validation runtime
-        if: inputs.validation-path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
+        if: inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
         uses: actions/checkout@v5
         with:
           repository: ${{ job.workflow_repository }}
@@ -313,7 +314,7 @@ jobs:
           fi
           npm list -g --depth=0 @openai/codex @openai/codex-responses-api-proxy || true
       - name: Apply consumer-owned decision validation
-        if: inputs.validation-path != ''
+        if: (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '')
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
         run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-decision.mjs "$RUNNER_TEMP/architecture-gate-decision.validation.json"
