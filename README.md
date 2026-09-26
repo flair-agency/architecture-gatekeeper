@@ -284,12 +284,16 @@ the base, an implementation PR cannot resolve its own review by adding that
 decision to its head. The target `OWNER_ADDITION / G0` route would let a
 consumer whose previous protected policy opts in adopt a predecessor B
 containing only that missing decision, with an annotated tag object bound to
-B's exact commit. G0 does not authenticate the tagger or claim that a mutable
-tag ref remains unchanged after verification. After B becomes canonical, the
-implementation change still needs a fresh review. This route is not
-implemented or enabled, and does not resolve unsupported claims that work is
-complete. See the [owner-intervention runbook](docs/owner-intervention.md). A
-review comment or workflow approval alone does not replace canonical adoption.
+B's exact commit. The previous protected Authority Set must have exactly one
+`self` member whose path matches the selected authority. A completed ordinary
+`OWNER_DECISION` carries a protected structured `ownerDecisionId`; the tag's
+`missingDecision.id` must match it, and B-specific eligibility review verifies
+that match and the addition's scope. G0 does not authenticate the tagger or
+claim that a mutable tag ref remains unchanged after verification. After B
+becomes canonical, the implementation change still needs a fresh review. This
+route is not implemented or enabled, and does not resolve unsupported claims
+that work is complete. See the [owner-intervention runbook](docs/owner-intervention.md).
+A review comment or workflow approval alone does not replace canonical adoption.
 
 For `OWNER_DECISION` and CI review failures caused by API, billing, model,
 credential or service availability, follow the

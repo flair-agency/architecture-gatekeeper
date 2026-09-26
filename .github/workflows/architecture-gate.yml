@@ -39,6 +39,10 @@ jobs:
       effort: ${{ steps.resolve.outputs.reasoningEffort }}
       authority_manifest_path: ${{ steps.resolve.outputs.authorityManifestPath }}
       authority_limits_base64: ${{ steps.resolve.outputs.authorityLimitsBase64 }}
+      owner_addition_grade: ${{ steps.resolve.outputs.ownerAdditionGrade }}
+      owner_addition_authority_path: ${{ steps.resolve.outputs.ownerAdditionAuthorityPath }}
+      owner_addition_prompt_path: ${{ steps.resolve.outputs.ownerAdditionPromptPath }}
+      owner_addition_schema_path: ${{ steps.resolve.outputs.ownerAdditionSchemaPath }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -282,9 +286,91 @@ jobs:
           DECISION: ${{ steps.codex.outputs.final-message }}
         run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
+  owner-addition:
+    if: needs.policy.outputs.owner_addition_grade == 'G0'
+    needs: [policy, codex-action-integrity, review]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      procedure_base64: ${{ steps.prepare.outputs.procedure_base64 }}
+      eligibility: ${{ steps.eligibility.outputs.eligibility }}
+    steps:
+      - name: Check out only the previous protected base
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out the immutable Gatekeeper runtime
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Fetch B and its annotated tag as Git objects only
+        env:
+          FETCH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "${#HEAD_SHA}" = 40
+          TAG_REF="refs/tags/architecture-owner-addition/$HEAD_SHA"
+          AUTH="$(printf 'x-access-token:%s' "$FETCH_TOKEN" | base64 -w0)"
+          git -c "http.extraheader=AUTHORIZATION: basic $AUTH" fetch --no-tags origin "refs/pull/$PR_NUMBER/head"
+          test "$(git rev-parse FETCH_HEAD)" = "$HEAD_SHA"
+          git -c "http.extraheader=AUTHORIZATION: basic $AUTH" fetch --no-tags origin "refs/pull/$PR_NUMBER/merge"
+          test "$(git rev-parse FETCH_HEAD)" = "$REVIEWED_SHA"
+          read -r MERGE_PARENT_BASE MERGE_PARENT_HEAD < <(git rev-list --parents -n 1 "$REVIEWED_SHA" | cut -d' ' -f2-)
+          test "$MERGE_PARENT_BASE" = "$BASE_SHA"
+          test "$MERGE_PARENT_HEAD" = "$HEAD_SHA"
+          git -c "http.extraheader=AUTHORIZATION: basic $AUTH" fetch --no-tags --force origin "+$TAG_REF:$TAG_REF"
+          REMOTE_OID="$(git -c "http.extraheader=AUTHORIZATION: basic $AUTH" ls-remote --refs origin "$TAG_REF" | cut -f1)"
+          test -n "$REMOTE_OID"
+          test "$(git rev-parse "$TAG_REF")" = "$REMOTE_OID"
+      - name: Verify the exact G0 procedure and prepare protected eligibility input
+        id: prepare
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          POLICY_PATH: ${{ inputs.policy-path }}
+          OWNER_AUTHORITY_PATH: ${{ needs.policy.outputs.owner_addition_authority_path }}
+          OWNER_PROMPT_PATH: ${{ needs.policy.outputs.owner_addition_prompt_path }}
+          OWNER_SCHEMA_PATH: ${{ needs.policy.outputs.owner_addition_schema_path }}
+          ORDINARY_SCHEMA_PATH: ${{ inputs.schema-path }}
+          ORDINARY_DECISION: ${{ needs.review.outputs.final_message }}
+          OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
+        run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs prepare
+      - name: Review B-specific missing-decision eligibility
+        id: codex-addition
+        timeout-minutes: 5
+        uses: flair-agency/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          output-file: ${{ runner.temp }}/architecture-gate-owner-addition-final.json
+          prompt-file: ${{ runner.temp }}/architecture-gate-owner-addition/eligibility-prompt.md
+          output-schema-file: ${{ runner.temp }}/architecture-gate-owner-addition/eligibility.schema.json
+          model: ${{ needs.policy.outputs.model }}
+          effort: ${{ needs.policy.outputs.effort }}
+          sandbox: read-only
+          safety-strategy: drop-sudo
+          codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
+      - name: Require completed B-specific eligibility review
+        id: eligibility
+        env:
+          DECISION: ${{ steps.codex-addition.outputs.final-message }}
+          OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
+        run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs validate
+
   report:
     if: always()
-    needs: [policy, review]
+    needs: [policy, review, owner-addition]
     permissions:
       contents: read
       pull-requests: write
@@ -311,6 +397,11 @@ jobs:
           REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
           AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
           AUTHORITY_ROUTE_SELECTED: ${{ needs.policy.outputs.authority_manifest_path != '' }}
+          OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade == 'G0' }}
+          OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
+          OWNER_ADDITION_ELIGIBILITY: ${{ needs['owner-addition'].outputs.eligibility }}
+          OWNER_ADDITION_PROCEDURE_BASE64: ${{ needs['owner-addition'].outputs.procedure_base64 }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           WORKFLOW_REF: ${{ job.workflow_ref }}
@@ -320,7 +411,7 @@ jobs:
 
   accept:
     if: always()
-    needs: [policy, review, report]
+    needs: [policy, review, owner-addition, report]
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -342,11 +433,18 @@ jobs:
           echo "Architecture Gate: ACCEPTED WITHOUT CI AI REVIEW"
           echo "Base branch: ${{ github.base_ref }}"
           echo "AI acceptance review: WAIVED BY BASE-BRANCH POLICY"
-      - name: Require model-backed PASS
+      - name: Require model-backed PASS or verified G0 owner addition
         if: needs.policy.outputs.mode == 'enforced'
         env:
           REVIEW_RESULT: ${{ needs.review.result }}
           CONCLUSION: ${{ needs.report.outputs.conclusion }}
+          OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
+          OWNER_ADDITION_ELIGIBILITY: ${{ needs['owner-addition'].outputs.eligibility }}
+          OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade }}
         run: |
           test "$REVIEW_RESULT" = success
-          test "$CONCLUSION" = PASS
+          if test "$CONCLUSION" = PASS; then exit 0; fi
+          test "$CONCLUSION" = OWNER_ADDITION_G0
+          test "$OWNER_ADDITION_SELECTED" = G0
+          test "$OWNER_ADDITION_RESULT" = success
+          test "$OWNER_ADDITION_ELIGIBILITY" = ELIGIBLE

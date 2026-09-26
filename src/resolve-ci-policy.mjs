@@ -6,6 +6,8 @@ import { rejectDuplicateJsonKeys, validateAuthorityLimits } from './authority-se
 const MODES = new Set(['enforced', 'local-only']);
 const EFFORTS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
 const AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.json$/;
+const OWNER_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
+const OWNER_SCHEMA_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.json$/;
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -19,7 +21,7 @@ function requireOnlyKeys(value, allowed, label) {
 }
 
 function validateBranch(branch, label, version) {
-  requireOnlyKeys(branch, version === 1 ? new Set(['mode', 'model', 'reasoningEffort']) : new Set(['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits']), label);
+  requireOnlyKeys(branch, version === 1 ? new Set(['mode', 'model', 'reasoningEffort']) : new Set(['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition']), label);
   if (!MODES.has(branch.mode)) throw new Error(`Invalid ${label} mode`);
   if (branch.mode === 'local-only') {
     if (Object.keys(branch).length !== 1) throw new Error(`Invalid ${label}`);
@@ -30,9 +32,30 @@ function validateBranch(branch, label, version) {
   }
   if (!EFFORTS.has(branch.reasoningEffort)) throw new Error(`Invalid reasoning effort for ${label}`);
   if (version === 2) {
+    if (Object.hasOwn(branch, 'ownerAddition')) {
+      requireOnlyKeys(branch.ownerAddition, new Set(['grade', 'authorityPath', 'promptPath', 'schemaPath']), `${label} owner addition`);
+      if (branch.ownerAddition.grade !== 'G0' ||
+          typeof branch.ownerAddition.authorityPath !== 'string' ||
+          branch.ownerAddition.authorityPath.length > 240 ||
+          !OWNER_AUTHORITY_PATH.test(branch.ownerAddition.authorityPath) ||
+          branch.ownerAddition.authorityPath.split('/').some(part => part === '.' || part === '..') ||
+          typeof branch.ownerAddition.promptPath !== 'string' ||
+          branch.ownerAddition.promptPath.length > 240 ||
+          !OWNER_AUTHORITY_PATH.test(branch.ownerAddition.promptPath) ||
+          branch.ownerAddition.promptPath.split('/').some(part => part === '.' || part === '..') ||
+          typeof branch.ownerAddition.schemaPath !== 'string' ||
+          branch.ownerAddition.schemaPath.length > 240 ||
+          !OWNER_SCHEMA_PATH.test(branch.ownerAddition.schemaPath) ||
+          branch.ownerAddition.schemaPath.split('/').some(part => part === '.' || part === '..')) {
+        throw new Error(`Invalid ${label} owner addition`);
+      }
+    }
     const hasPath = Object.hasOwn(branch, 'authorityManifestPath');
     const hasLimits = Object.hasOwn(branch, 'authorityLimits');
     if (hasPath !== hasLimits) throw new Error(`${label} must specify both Authority Set path and limits`);
+    if (Object.hasOwn(branch, 'ownerAddition') && !hasPath) {
+      throw new Error(`${label} owner addition requires a protected Authority Set`);
+    }
     if (hasPath) {
       if (typeof branch.authorityManifestPath !== 'string' || branch.authorityManifestPath.length > 240 ||
           !AUTHORITY_PATH.test(branch.authorityManifestPath) || branch.authorityManifestPath.split('/').some(part => part === '.' || part === '..')) {
@@ -62,6 +85,12 @@ export function resolveCiPolicy(policy, baseBranch) {
   if (selected.authorityManifestPath) {
     result.authorityManifestPath = selected.authorityManifestPath;
     result.authorityLimitsBase64 = Buffer.from(JSON.stringify(validateAuthorityLimits(selected.authorityLimits))).toString('base64');
+  }
+  if (selected.ownerAddition) {
+    result.ownerAdditionAuthorityPath = selected.ownerAddition.authorityPath;
+    result.ownerAdditionGrade = selected.ownerAddition.grade;
+    result.ownerAdditionPromptPath = selected.ownerAddition.promptPath;
+    result.ownerAdditionSchemaPath = selected.ownerAddition.schemaPath;
   }
   return result;
 }

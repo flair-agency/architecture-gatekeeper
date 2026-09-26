@@ -17,19 +17,28 @@ work was completed.
 ## Minimal OWNER_ADDITION / G0 route
 
 1. The consumer's **previous protected-base policy** explicitly opts in and
-   identifies the authority in scope. B cannot enable the route for itself.
+   identifies the authority in scope. The previous protected Authority Set
+   contains exactly one `self` member whose path matches the selected
+   authority. B cannot enable the route for itself.
 2. B contains only the missing architecture decision being added to that
    authority. It does not amend an existing rule, include implementation or
    workflow changes, or claim that work was completed. Unrelated findings,
    contradictions or unresolved decisions make B ineligible.
-3. Create a deliberate annotated Git tag object that targets B's exact commit
-   and whose annotation identifies the selected authority and missing decision.
-   The verifier checks the tag object bytes and records its object OID with the
+3. The completed ordinary `OWNER_DECISION` carries a protected structured
+   `ownerDecisionId`. Create a deliberate annotated Git tag object whose
+   versioned `AdditionRecord` has `missingDecision.id` equal to that ID and
+   targets B's exact commit. B-specific eligibility review verifies the ID
+   match and checks that B adds that unresolved choice without conflicting
+   with existing authority. The tag record is a claim; the pure procedure
+   verifier does not infer its semantic validity from text.
+4. The verifier checks the tag object bytes and records its object OID with the
    B revision, previous protected base/policy and authority state. The OID
    identifies immutable object bytes; the remote tag ref is mutable. Reading
    the ref confirms its mapping only at that time and does not prove that it
-   cannot later move or be deleted.
-4. The protected verifier emits a distinct `OWNER_ADDITION / G0` result for B.
+   cannot later move or be deleted. A historical `BLOCK` ReviewRecord is not
+   required, and this route does not require retaining a reusable historical
+   review artifact.
+5. The protected verifier emits a distinct `OWNER_ADDITION / G0` result for B.
    It does not require a historical `BLOCK` ReviewRecord, an authenticated
    exact-claim receipt, an identity provider or a revocation service. G0 makes
    no claim that the tagger, pusher or owner was authenticated. It also makes
@@ -37,7 +46,7 @@ work was completed.
    Missing, stale or unverifiable inputs and required service failures remain
    incomplete/fail closed; no untrusted B code or package lifecycle script
    runs in a credential-bearing job.
-5. After B actually becomes canonical, update A to the new protected base and
+6. After B actually becomes canonical, update A to the new protected base and
    run a fresh review and normal acceptance check. A's prior `OWNER_DECISION`
    remains unchanged as historical evidence; G0 does not accept A.
 
@@ -51,7 +60,8 @@ its own acceptance depends on that fact.
 ## Proof gates
 
 - Accept only a previous-policy-enabled, exact, in-scope missing-decision B
-  with an annotated tag object bound to its exact commit.
+  with exactly one matching `self` Authority Set member and an annotated tag
+  object bound to its exact commit and `ownerDecisionId`.
 - Reject candidate self-enablement, tag objects targeting another commit,
   changed policy/base/authority/B, changes to existing rules, implementation
   or workflow changes, unsupported completion claims, contradictions and
