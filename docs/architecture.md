@@ -386,6 +386,106 @@ acceptance behavior remains in force. Enabling `G0` for this repository for
 the first time cannot be justified by the candidate policy in that same
 change; its adoption follows the existing owner-controlled exception process.
 
+### Governance assurance dimensions and advisory procedural route ([Issue #121](https://github.com/flair-agency/architecture-gatekeeper/issues/121) owner decision)
+
+The scalar `G0` label is retained for compatibility with existing v0.5
+`OWNER_ADDITION` and `OWNER_AMENDMENT` artifacts. It means only that the
+annotated-tag actor's principal identity was not verified. It is not a total
+governance-strength grade and makes no claim about exact-claim authorization,
+quorum, policy protection, host merge enforcement, or a completed canonical
+transition. Existing v0.5 policy bytes, artifacts, route behavior, and
+historical results keep their original meanings.
+
+Future governance reports must keep these assurance facts distinct:
+
+- **Procedure and eligibility:** whether route-specific evidence and semantic
+  checks are `eligible`, `ineligible`, or `incomplete` for the exact candidate.
+- **Principal authentication:** whether an approved identity mechanism
+  verified the relevant actor. Existing G0 reports `not_verified`; tagger
+  name/email or a claim in the candidate does not change that state.
+- **Exact-claim authorization:** whether a principal with the required owner
+  authority authorized the bound claim. This is independent of actor
+  authentication and requires its own selected evidence contract.
+- **Quorum:** whether the number and relationship of authorized attestations
+  selected by policy are satisfied. Quorum does not alter the strength of the
+  identity mechanism for each attester.
+- **Policy protection:** whether evidence establishes that the policy used for
+  a decision was protected from candidate self-selection or alteration.
+- **Host enforcement:** whether evidence establishes that the hosting service
+  applied a merge rule to the exact target, required check and producer, with
+  its bypass scope and observation time identified.
+- **Canonical transition:** whether separate host evidence establishes that
+  the exact candidate became canonical. A configured rule or successful check
+  alone is not a transition receipt.
+- **Evidence freshness:** which bound evidence was checked and for which
+  route-specific lifecycle boundary.
+
+An unavailable source is reported as unavailable; a fact that was not
+verified is not inferred from a green check. Reports bind their repository,
+recorded base and candidate head, policy/report versions and digests, and
+evidence identities. The status and provenance of each dimension remain
+separate; no scalar grade may summarize them as an overall assurance level.
+
+Following the owner selection recorded in Issue #121, this contract defines a
+separately versioned **advisory-only procedural route** for repositories that
+cannot establish host merge enforcement but still want a recorded procedure
+evaluation. This route is distinct from protected-policy acceptance. A
+consumer owner must explicitly select it in consumer canonical authority or
+its governance record, and each run reads the selected policy bytes only from
+the recorded base revision, never from candidate B. Bind and report that base
+revision and policy digest. This selection and binding do not establish that
+the base, policy or route selection is protected; the report must say
+`policyProtection=not_claimed`.
+
+The advisory outcome is `ADVISORY_ONLY`, a top-level reporting result distinct
+from semantic `PASS`, `BLOCK` and `OWNER_DECISION` decisions and from
+`OWNER_ADDITION / G0` acceptance. It may state that the route's procedure was
+eligible, but it must report
+`hostEnforcement=not_verified` or `unavailable` and
+`canonicalTransition=not_verified`. It does not assert that B was accepted,
+that a host would block an unaccepted B, or that B became canonical. A
+separately named informational report may complete successfully; the advisory
+result must not satisfy or be presented as the required
+`Architecture Gate / accept` check. If an implementation cannot keep the
+informational result distinct from that check, the accept path must return
+non-success.
+
+Advisory selection is explicit and never a fallback. Candidate B cannot enable
+the route, weaken its requirements, or select policy from its own head within
+the same run. If the recorded base policy selects an enforced route and its
+required host evidence is absent, inaccessible (including plan-restricted
+HTTP 403), stale, or invalid, that run is incomplete and cannot downgrade to
+advisory. When the advisory route itself is selected, lack of host-enforcement
+evidence is reported as not verified or unavailable and cannot be converted
+into a protected acceptance claim. Other required procedure evidence must
+still validate; its absence makes the procedure incomplete or ineligible.
+
+New advisory policy and report formats must use explicit versions distinct
+from current v0.5. Consumers that have not selected the new version keep their
+existing behavior. A new verifier must reject ambiguous mixing of legacy and
+new fields; it must not upgrade old G0 artifacts, policy bytes, or historical
+results by reinterpretation. A successful advisory report means only that the
+selected advisory evaluation completed with its recorded inputs. It does not
+imply that the decision was protected or that any later merge is valid.
+This is a target contract, not an active route. It becomes available only
+after the versioned policy and report, deterministic evaluation, and
+non-accepting reporting path are implemented and tested. Until then, existing
+acceptance behavior remains in force.
+
+Evidence lifecycle remains route-specific. Existing `OWNER_ADDITION / G0`
+observes the mutable tag-ref mapping to the bound tag object at verification
+time and makes no promise that the ref remains unchanged through a later
+transition. This point-in-time semantics applies to historical v0.5 artifacts
+and is not strengthened or weakened by the advisory route. `OWNER_AMENDMENT`
+continues to require its bound evidence to remain valid through the protected
+canonical transition; its freshness requirement cannot be reduced to G0's
+verification-time observation.
+
+Issue #119 (complete multi-document Authority Set support) and Issue #120
+(legacy PR-head authority failure) remain independent blockers for the LIVE
+Agency trial. This assurance decision does not resolve either issue or
+authorize a consumer-specific architecture.
+
 ### Three separate concepts and target contracts
 
 The architecture separates three concerns, even though the current CI path
