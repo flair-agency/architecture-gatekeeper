@@ -63,8 +63,10 @@ export async function prepareMultiAuthorityAddition(env, selected, policyBytes, 
   const { GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: repository, BASE_SHA: baseSha, HEAD_SHA: headSha,
     OWNER_AUTHORITY_PATH: authorityPath, OWNER_PROMPT_PATH: promptPath, OWNER_SCHEMA_PATH: schemaPath,
     ORDINARY_SCHEMA_PATH: ordinarySchemaPath, ORDINARY_DECISION: ordinaryRaw, OUTPUT_DIR: outputDir } = env;
-  if (selected.policyVersion !== 4 || selected.ownerAdditionVersion !== 2 || selected.authorityProfile !== MULTI_AUTHORITY_PROFILE) {
-    throw new Error('Multi-document owner addition requires previous-base policy v4.');
+  if (![4, 5].includes(selected.policyVersion) || selected.ownerAdditionVersion !== 2 ||
+      selected.authorityProfile !== MULTI_AUTHORITY_PROFILE ||
+      (selected.policyVersion === 5 && selected.mode !== 'procedural')) {
+    throw new Error('Multi-document owner addition requires a selected previous-base policy v4 or procedural v5.');
   }
   const limits = decodeLimits(selected.authorityLimitsBase64, MULTI_AUTHORITY_PROFILE);
   const read = (revision, path, maxBytes = 65_536) => readCommittedAuthorityFile(root, revision, path, maxBytes);
