@@ -50,7 +50,7 @@ function zipOne(name, bytes) {
   return Buffer.concat([archiveData, directory, end]);
 }
 function encodedJson(value) { return Buffer.from(JSON.stringify(value)); }
-function prepare() {
+function prepare({ event = 'pull_request', runHead = candidate.syntheticSha } = {}) {
   const raw = {
     procedure: encodedJson(candidate.procedure), ordinaryDecision: encodedJson(candidate.ordinary),
     eligibilityDecision: encodedJson(candidate.eligibility), authoritySetProvenance: encodedJson(candidate.authoritySet),
@@ -64,25 +64,27 @@ function prepare() {
   const evidenceBytes = encodedJson(envelope);
   const zip = zipOne('eligibility-evidence.json', evidenceBytes);
   const completedAt = '2026-09-26T01:00:00.000Z';
-  const run = { id: candidate.runId, run_attempt: candidate.attempt, repository: { full_name: candidate.repository }, event: 'pull_request',
-    status: 'completed', conclusion: 'success', path: `${candidate.callerPath}@refs/pull/${candidate.pullRequestNumber}/merge`, head_sha: candidate.syntheticSha,
+  const workflowRef = event === 'pull_request_target' ? `refs/heads/${candidate.targetBranch}`
+    : `refs/pull/${candidate.pullRequestNumber}/merge`;
+  const run = { id: candidate.runId, run_attempt: candidate.attempt, repository: { full_name: candidate.repository }, event,
+    status: 'completed', conclusion: 'success', path: `${candidate.callerPath}@${workflowRef}`, head_sha: runHead,
     referenced_workflows: [{ ...gatekeeperWorkflow }],
     run_started_at: '2026-09-26T00:55:00.000Z', pull_requests: [{ number: candidate.pullRequestNumber,
       head: { sha: candidate.bSha }, base: { sha: candidate.baseSha, ref: candidate.targetBranch } }] };
   const job = { id: candidate.jobId, name: candidate.jobName, status: 'completed', conclusion: 'success',
-    head_sha: candidate.syntheticSha, completed_at: completedAt,
+    head_sha: runHead, completed_at: completedAt,
     check_run_url: `https://api.github.com/repos/${candidate.repository}/check-runs/555` };
-  const check = { id: 555, name: candidate.jobName, status: 'completed', conclusion: 'success', head_sha: candidate.syntheticSha,
+  const check = { id: 555, name: candidate.jobName, status: 'completed', conclusion: 'success', head_sha: runHead,
     app: { id: 15368 } };
   const acceptName = candidate.jobName.replace(/\/ owner-addition$/, '/ accept');
   const acceptJob = { id: 778, name: acceptName, status: 'completed', conclusion: 'success',
-    head_sha: candidate.syntheticSha, completed_at: '2026-09-26T01:03:00.000Z',
+    head_sha: runHead, completed_at: '2026-09-26T01:03:00.000Z',
     check_run_url: `https://api.github.com/repos/${candidate.repository}/check-runs/556` };
   const acceptCheck = { id: 556, name: acceptName, status: 'completed', conclusion: 'success',
-    head_sha: candidate.syntheticSha, app: { id: 15368 } };
+    head_sha: runHead, app: { id: 15368 } };
   const artifact = { id: 987, name: `owner-addition-eligibility-evidence-${candidate.bSha}-${candidate.attempt}`, expired: false,
     size_in_bytes: zip.length, digest: `sha256:${digest(zip)}`, created_at: '2026-09-26T00:59:00.000Z',
-    workflow_run: { id: candidate.runId, head_sha: candidate.syntheticSha } };
+    workflow_run: { id: candidate.runId, head_sha: runHead } };
   const responses = new Map([
     [`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`, run],
     [`/repos/${candidate.repository}/pulls/${candidate.pullRequestNumber}`, { number: candidate.pullRequestNumber,
@@ -123,9 +125,23 @@ test('verifies recorded-base run, producer, exact-B pre-merge artifact and retur
   assert.equal(result.provenance.eligibilityDigest, result.artifacts.digests.eligibilityDecision);
 });
 
+test('verifies a pull_request_target producer bound to the exact PR head', async () => {
+  const { args } = prepare({ event: 'pull_request_target', runHead: candidate.bSha });
+  const result = await verifyOwnerAdditionEligibilityProvenance(args);
+  assert.equal(result.status, 'verified');
+});
+
 test('rejects wrong candidate, failed or late producer, wrong app, or mismatched artifact digest', async t => {
   const cases = [
     ['wrong workflow-associated B', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).pull_requests[0].head.sha = sha('9'); }],
+    ['wrong workflow-associated base', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).pull_requests[0].base.sha = sha('9'); }],
+    ['unsupported non-PR event', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).event = 'workflow_dispatch'; }],
+    ['pull_request_target run head differs from exact B', f => {
+      f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).event = 'pull_request_target';
+    }],
+    ['pull_request_target producer job is not bound to the exact B head', f => {
+      f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`).jobs[0].head_sha = candidate.syntheticSha;
+    }, { event: 'pull_request_target', runHead: candidate.bSha }],
     ['failed run', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).conclusion = 'failure'; }],
     ['wrong reusable workflow SHA', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).referenced_workflows[0].sha = sha('4'); }],
     ['duplicate reusable workflow identity', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`).referenced_workflows.push({ ...gatekeeperWorkflow }); }],
@@ -138,8 +154,8 @@ test('rejects wrong candidate, failed or late producer, wrong app, or mismatched
     ['wrong artifact bytes digest', f => { f.artifact.digest = `sha256:${'f'.repeat(64)}`; }],
     ['artifact after producer completion', f => { f.artifact.created_at = '2026-09-26T01:02:00.000Z'; }],
   ];
-  for (const [label, mutate] of cases) await t.test(label, async () => {
-    const f = prepare(); mutate(f);
+  for (const [label, mutate, options] of cases) await t.test(label, async () => {
+    const f = prepare(options); mutate(f);
     await assert.rejects(verifyOwnerAdditionEligibilityProvenance(f.args));
   });
 });

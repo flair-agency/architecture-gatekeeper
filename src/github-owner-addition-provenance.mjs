@@ -188,9 +188,15 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   same(String(run.id), String(runId), 'workflow run ID');
   same(Number(run.run_attempt), Number(attempt), 'workflow run attempt');
   same(run.repository?.full_name, repository, 'workflow repository');
-  same(run.event, 'pull_request', 'workflow event');
+  if (!['pull_request', 'pull_request_target'].includes(run.event)) fail('workflow event is not a supported pull-request event.');
   same(run.status, 'completed', 'workflow status');
   same(run.conclusion, 'success', 'workflow conclusion');
+  if (!HEX40.test(run.head_sha || '')) fail('workflow run head is invalid.');
+  // pull_request_target runs execute in the base workflow context but GitHub's
+  // run record still identifies the exact triggering PR head. Bind that form
+  // explicitly; pull_request runs remain bound through their PR association
+  // and the synthetic merge SHA used by their jobs and check runs.
+  if (run.event === 'pull_request_target') same(run.head_sha, bSha, 'pull_request_target exact B head');
   if (!Array.isArray(run.referenced_workflows) || run.referenced_workflows.length > 20) fail('workflow run has no bounded reusable-workflow provenance.');
   const matchingGatekeeperWorkflows = run.referenced_workflows.filter(workflow => workflow?.path === expectedGatekeeperWorkflow.path);
   if (matchingGatekeeperWorkflows.length !== 1) fail('selected Gatekeeper reusable workflow is absent or ambiguous in run metadata.');
