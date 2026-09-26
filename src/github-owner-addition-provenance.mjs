@@ -201,7 +201,9 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   // and the synthetic merge SHA used by their jobs and check runs.
   if (run.event === 'pull_request_target') same(run.head_sha, bSha, 'pull_request_target exact B head');
   if (!Array.isArray(run.referenced_workflows) || run.referenced_workflows.length > 20) fail('workflow run has no bounded reusable-workflow provenance.');
-  const matchingGatekeeperWorkflows = run.referenced_workflows.filter(workflow => workflow?.path === expectedGatekeeperWorkflow.path);
+  const expectedWorkflowPath = expectedGatekeeperWorkflow.path.endsWith(`@${expectedGatekeeperWorkflow.sha}`)
+    ? expectedGatekeeperWorkflow.path : `${expectedGatekeeperWorkflow.path}@${expectedGatekeeperWorkflow.sha}`;
+  const matchingGatekeeperWorkflows = run.referenced_workflows.filter(workflow => workflow?.path === expectedWorkflowPath);
   if (matchingGatekeeperWorkflows.length !== 1) fail('selected Gatekeeper reusable workflow is absent or ambiguous in run metadata.');
   const gatekeeperWorkflow = matchingGatekeeperWorkflows[0];
   same(gatekeeperWorkflow.sha, expectedGatekeeperWorkflow.sha, 'selected Gatekeeper reusable-workflow SHA');
@@ -211,12 +213,18 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   if (run.path !== callerPath && (!run.path.startsWith(`${callerPath}@`) || run.path.length > callerPath.length + 256)) {
     fail('workflow run path has an invalid ref suffix.');
   }
-  if (!Array.isArray(run.pull_requests) || run.pull_requests.length !== 1) fail('workflow run must be associated with exactly one pull request.');
-  const runPr = run.pull_requests[0];
-  same(runPr.number, pullRequestNumber, 'workflow-associated pull request');
-  same(runPr.head?.sha, bSha, 'workflow-associated exact B');
-  same(runPr.base?.sha, baseSha, 'workflow-associated recorded base');
-  same(runPr.base?.ref, targetBranch, 'workflow-associated target branch');
+  if (!Array.isArray(run.pull_requests) || run.pull_requests.length > 1) fail('workflow run has ambiguous pull request association.');
+  if (run.pull_requests.length === 1) {
+    const runPr = run.pull_requests[0];
+    same(runPr.number, pullRequestNumber, 'workflow-associated pull request');
+    same(runPr.head?.sha, bSha, 'workflow-associated exact B');
+    same(runPr.base?.sha, baseSha, 'workflow-associated recorded base');
+    same(runPr.base?.ref, targetBranch, 'workflow-associated target branch');
+  } else {
+    // GitHub can clear this association after merge. In that case, only an
+    // exact-head run is usable; the PR and evidence artifact bind B and base.
+    same(run.head_sha, bSha, 'unassociated workflow run exact B head');
+  }
   const runStarted = timestamp(run.run_started_at, 'workflow run start');
   const pr = await request(apiUrl(`${repository}/pulls/${pullRequestNumber}`));
   same(pr.number, pullRequestNumber, 'pull request number');
@@ -376,7 +384,10 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   same(authoritySetProvenance.setDigest, actualAuthoritySetDigest, 'Authority Set digest');
   same(ordinaryDecision.decision, 'OWNER_DECISION', 'ordinary decision');
   same(ordinaryDecision.ownerDecisionId, procedure.missingDecisionId, 'ordinary missing decision binding');
-  same(ordinaryDecision.version, 2, 'ordinary decision schema version');
+  // The ordinary review uses the recorded-base consumer schema. Some such
+  // schemas have no version property; the v2 envelope and eligibility result
+  // carry the route version without rewriting the model's ordinary decision.
+  if (ordinaryDecision.version !== undefined) same(ordinaryDecision.version, 2, 'ordinary decision schema version');
   same(ordinaryDecision.authoritySetDigest, actualAuthoritySetDigest, 'ordinary decision Authority Set');
   if (!Array.isArray(ordinaryDecision.authorityIds) || ordinaryDecision.authorityIds.length !== actualAuthorityIds.length ||
       ordinaryDecision.authorityIds.some((id, index) => id !== actualAuthorityIds[index])) fail('ordinary decision does not identify the complete selected Authority Set.');

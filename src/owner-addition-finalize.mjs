@@ -184,7 +184,15 @@ export function parseGatekeeperWorkflowDefaults(workflowBytes) {
 /** Create a serializable final record only from the trusted facts passed by adapters. */
 export function buildOwnerAdditionFinalRecord({ repository, targetBranch, pullRequestNumber, baseSha, bSha, bTree,
   authorityDigest, policy, selected, policySha256, policyPath, procedure, ordinaryDecision, authoritySet, eligibility,
-  authoritySetProvenance, eligibilityEvidence, merge, targetReadback, identities = {}, generatedAt = new Date().toISOString() }) {
+  authoritySetProvenance, eligibilityEvidence, eligibilityArtifactBinding, merge, targetReadback,
+  identities = {}, generatedAt = new Date().toISOString() }) {
+  if (!eligibilityArtifactBinding || !/^\d+$/.test(eligibilityArtifactBinding.checkRunId) ||
+      !/^\d+$/.test(eligibilityArtifactBinding.artifactId) ||
+      !/^sha256:[a-f0-9]{64}$/.test(eligibilityArtifactBinding.artifactDigest) ||
+      eligibilityArtifactBinding.annotationTitle !== 'AGK_OWNER_ADDITION_ARTIFACT_V1' ||
+      typeof eligibilityArtifactBinding.annotationMessage !== 'string') {
+    fail('verified eligibility artifact identity is missing from the final record.');
+  }
   validateMultiAuthorityProvenance(authoritySetProvenance);
   if (authoritySetProvenance.selfRepository !== repository || authoritySetProvenance.authorityRevision !== baseSha ||
       authoritySetProvenance.setDigest !== authoritySet.digest ||
@@ -218,7 +226,8 @@ export function buildOwnerAdditionFinalRecord({ repository, targetBranch, pullRe
       additionRecordSha256: procedure.additionRecordSha256, ownerDecisionId: procedure.missingDecisionId,
       authoritySha256: authorityDigest, refReadback: identities.g0TagReadback ?? { status: 'unavailable' } },
     eligibility: { result: eligibility.result, digest: eligibility.digest,
-      producer: result.eligibilityProducer, completedAt: result.eligibilityCompletedAt },
+      producer: result.eligibilityProducer, completedAt: result.eligibilityCompletedAt,
+      artifactBinding: { ...eligibilityArtifactBinding } },
     merge: { sha: merge.commit.sha, parents: [...merge.commit.parents], tree: merge.commit.tree,
       mergedAt: merge.hostMetadata.mergedAt },
     canonical: { ref: targetReadback.targetRef, observedSha: targetReadback.targetSha,
@@ -378,7 +387,13 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
   const eligibility = { status: 'verified', digest: artifacts.digests.eligibilityDecision,
     result: 'eligible', repository, baseSha, bSha, pullRequestNumber,
     authoritySetDigest: procedure.authoritySetDigest, authorityIds: procedure.authorityIds };
-  const eligibilityEvidence = { status: 'verified', provenance: provenanceResult.provenance,
+  const { status: producerStatus, selection, workflow, repository: producerRepository, targetBranch: producerTarget,
+    pullRequestNumber: producerPr, baseSha: producerBase, bSha: producerB, authoritySetDigest: producerAuthoritySet,
+    procedureDigest, eligibilityDigest, completedAt } = provenanceResult.provenance;
+  const eligibilityEvidence = { status: 'verified', provenance: { status: producerStatus, selection, workflow,
+    repository: producerRepository, targetBranch: producerTarget, pullRequestNumber: producerPr,
+    baseSha: producerBase, bSha: producerB, authoritySetDigest: producerAuthoritySet,
+    procedureDigest, eligibilityDigest, completedAt },
     completedAt: provenanceResult.completedAt };
   const merged = readback.merge;
   const promptPath = selected.ownerAdditionPromptPath;
@@ -407,9 +422,10 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
   };
   const record = buildOwnerAdditionFinalRecord({ repository, targetBranch, pullRequestNumber, baseSha, bSha, bTree,
     authorityDigest, policy, policySha256: hash(policyBytes), policyPath, procedure, ordinaryDecision, authoritySet,
-    selected, eligibility, authoritySetProvenance, eligibilityEvidence, merge: merged,
+    selected, eligibility, authoritySetProvenance, eligibilityEvidence,
+    eligibilityArtifactBinding: provenanceResult.provenance.artifactBinding, merge: merged,
     targetReadback: readback.targetReadback, identities: boundIdentities });
-  if (record.outcome.adoption !== 'valid' || record.outcome.canonical !== 'verified') fail(`final adoption is ${record.outcome.adoption}/${record.outcome.canonical}.`);
+  if (record.outcome.adoption !== 'valid' || record.outcome.canonical !== 'verified') fail(`final adoption is ${record.outcome.adoption}/${record.outcome.canonical}: ${JSON.stringify(record.outcome)}.`);
   return record;
 }
 
