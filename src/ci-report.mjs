@@ -13,7 +13,7 @@ const MAX_REPORT_LENGTH = 60_000;
 const DECISIONS = new Set(['PASS', 'BLOCK', 'OWNER_DECISION']);
 const AUTHORITY_ID = /^[a-z][a-z0-9-]{0,63}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
-const AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
+const AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -49,6 +49,33 @@ export function parseAuthorityProvenance(encoded, required = false) {
         !/^[a-f0-9]{64}$/.test(member.sha256)) ||
       new Set(value.members.map(member => member.id)).size !== value.members.length) {
     throw new Error('Invalid Authority Set provenance record.');
+  }
+  return value;
+}
+
+export function parseLegacyAuthorityProvenance(encoded, required = false) {
+  if (!encoded) {
+    if (required) throw new Error('Missing legacy base authority provenance.');
+    return null;
+  }
+  if (typeof encoded !== 'string' || encoded.length > 16_384 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+    throw new Error('Invalid legacy base authority provenance.');
+  }
+  const bytes = Buffer.from(encoded, 'base64');
+  if (bytes.toString('base64') !== encoded) throw new Error('Invalid legacy base authority provenance encoding.');
+  const value = JSON.parse(bytes.toString('utf8'));
+  const validInput = input => input && typeof input.path === 'string' && input.path.length <= 240 &&
+    AUTHORITY_PATH.test(input.path) && input.path.split('/').every(part => part !== '.' && part !== '..') &&
+    /^[a-f0-9]{64}$/.test(input.sha256);
+  if (!value || value.version !== 1 || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value.baseSha) ||
+      !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value.headSha) ||
+      !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value.reviewedSha) ||
+      !validInput(value.policy) || !validInput(value.prompt) || !validInput(value.schema) ||
+      !(value.validation === null || validInput(value.validation)) || !Array.isArray(value.members) ||
+      value.members.length < 1 || value.members.length > 16 ||
+      value.members.some(member => !validInput(member)) ||
+      new Set(value.members.map(member => member.path)).size !== value.members.length) {
+    throw new Error('Invalid legacy base authority provenance record.');
   }
   return value;
 }
@@ -225,6 +252,17 @@ export function renderReport(classified, metadata = {}) {
     body += `\n**Selected Authority Set**\n\nManifest SHA-256: \`${cleanText(selected.manifestSha256, 64)}\` · Set SHA-256: \`${cleanText(selected.setDigest, 64)}\`\n`;
     body += renderList('Resolved members', selected.members.map(member => `${member.id}: ${member.repository}@${member.resolvedCommit}:${member.path} (SHA-256 ${member.sha256})`));
   }
+  if (metadata.legacyAuthorityProvenance) {
+    const selected = metadata.legacyAuthorityProvenance;
+    body += `\n**Recorded-base legacy review inputs**\n\nBase: \`${cleanText(selected.baseSha, 64)}\` · Candidate head: \`${cleanText(selected.headSha, 64)}\` · Reviewed merge: \`${cleanText(selected.reviewedSha, 64)}\`\n`;
+    body += renderList('Policy, prompt, schema, and validation snapshots', [
+      `${selected.policy.path} (SHA-256 ${selected.policy.sha256})`,
+      `${selected.prompt.path} (SHA-256 ${selected.prompt.sha256})`,
+      `${selected.schema.path} (SHA-256 ${selected.schema.sha256})`,
+      selected.validation ? `${selected.validation.path} (SHA-256 ${selected.validation.sha256})` : 'validationPath: null (no validation file selected)',
+    ]);
+    body += renderList('Selected authority files', selected.members.map(member => `${member.path} (SHA-256 ${member.sha256})`));
+  }
   body += renderGates(decision?.gates);
   if (decision) {
     const context = [
@@ -309,12 +347,20 @@ async function main() {
     ownerAdditionEligibility: process.env.OWNER_ADDITION_ELIGIBILITY,
     ownerAdditionProcedure,
   });
+  const legacyAuthorityProvenance = parseLegacyAuthorityProvenance(process.env.LEGACY_AUTHORITY_PROVENANCE_BASE64,
+    process.env.POLICY_VERSION === '1' && process.env.REVIEW_RESULT === 'success');
+  if (legacyAuthorityProvenance && (legacyAuthorityProvenance.baseSha !== process.env.BASE_SHA ||
+      legacyAuthorityProvenance.headSha !== process.env.HEAD_SHA ||
+      legacyAuthorityProvenance.reviewedSha !== process.env.REVIEWED_SHA)) {
+    throw new Error('Legacy authority provenance does not match this pull request.');
+  }
   const report = renderReport(classified, {
     reviewedSha: process.env.REVIEWED_SHA,
     headSha: process.env.HEAD_SHA,
     runUrl: process.env.RUN_URL,
     workflowRef: process.env.WORKFLOW_REF,
     authorityProvenance,
+    legacyAuthorityProvenance,
     ownerAdditionProcedure,
   });
   const decisionDigest = digestDecision(classified.decision);

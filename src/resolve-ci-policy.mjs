@@ -10,6 +10,7 @@ const OWNER_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
 const OWNER_SCHEMA_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.json$/;
 const ADOPTION_WORKFLOW_PATH = /^\.github\/workflows\/[A-Za-z0-9._-]+\.ya?ml$/;
 const ADOPTION_JOB_NAME = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63} \/ [A-Za-z0-9_][A-Za-z0-9 ._-]{0,63}$/;
+const LEGACY_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -23,7 +24,7 @@ function requireOnlyKeys(value, allowed, label) {
 }
 
 function validateBranch(branch, label, version) {
-  const allowed = version === 1 ? ['mode', 'model', 'reasoningEffort'] :
+  const allowed = version === 1 ? ['mode', 'model', 'reasoningEffort', 'authorityFiles', 'promptPath', 'schemaPath', 'validationPath'] :
     ['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition', ...(version === 5 ? ['adoptionEvidence'] : [])];
   requireOnlyKeys(branch, new Set(allowed), label);
   if (!MODES.has(branch.mode)) throw new Error(`Invalid ${label} mode`);
@@ -37,6 +38,26 @@ function validateBranch(branch, label, version) {
     throw new Error(`${branch.mode === 'procedural' ? 'Procedural' : 'Enforced'} ${label} requires a valid model`);
   }
   if (!EFFORTS.has(branch.reasoningEffort)) throw new Error(`Invalid reasoning effort for ${label}`);
+  if (version === 1) {
+    if (typeof branch.promptPath !== 'string' || branch.promptPath.length > 240 ||
+        !OWNER_AUTHORITY_PATH.test(branch.promptPath) || branch.promptPath.split('/').some(part => part === '.' || part === '..') ||
+        typeof branch.schemaPath !== 'string' || branch.schemaPath.length > 240 ||
+        !OWNER_SCHEMA_PATH.test(branch.schemaPath) || branch.schemaPath.split('/').some(part => part === '.' || part === '..')) {
+      throw new Error(`Enforced ${label} requires base-selected promptPath and schemaPath`);
+    }
+    if (!Object.hasOwn(branch, 'validationPath') || (branch.validationPath !== null &&
+        (typeof branch.validationPath !== 'string' || branch.validationPath.length > 240 ||
+          !OWNER_SCHEMA_PATH.test(branch.validationPath) ||
+          branch.validationPath.split('/').some(part => part === '.' || part === '..')))) {
+      throw new Error(`Enforced ${label} requires an explicit base-selected validationPath or null`);
+    }
+    if (!Array.isArray(branch.authorityFiles) || branch.authorityFiles.length < 1 || branch.authorityFiles.length > 16 ||
+        new Set(branch.authorityFiles).size !== branch.authorityFiles.length ||
+        branch.authorityFiles.some(path => typeof path !== 'string' || path.length > 240 ||
+          !LEGACY_AUTHORITY_PATH.test(path) || path.split('/').some(part => part === '.' || part === '..'))) {
+      throw new Error(`Enforced ${label} requires explicit base-selected authorityFiles`);
+    }
+  }
   if (version === 2 || version === 4 || version === 5) {
     if (Object.hasOwn(branch, 'ownerAddition')) {
       requireOnlyKeys(branch.ownerAddition, new Set(['grade', 'authorityPath', 'promptPath', 'schemaPath', ...([4, 5].includes(version) ? ['version', 'authorityId'] : [])]), `${label} owner addition`);
@@ -106,6 +127,13 @@ export function resolveCiPolicy(policy, baseBranch) {
   const result = selected.mode === 'local-only'
     ? { baseBranch, mode: 'local-only', model: '', reasoningEffort: '' }
     : { baseBranch, mode: selected.mode, model: selected.model, reasoningEffort: selected.reasoningEffort };
+  if (policy.version === 1 && selected.mode === 'enforced') {
+    result.policyVersion = 1;
+    result.legacyAuthorityFilesBase64 = Buffer.from(JSON.stringify(selected.authorityFiles)).toString('base64');
+    result.legacyPromptPath = selected.promptPath;
+    result.legacySchemaPath = selected.schemaPath;
+    result.legacyValidationPath = selected.validationPath ?? '';
+  }
   if (selected.authorityManifestPath) {
     result.authorityManifestPath = selected.authorityManifestPath;
     const profile = [4, 5].includes(policy.version) ? MULTI_AUTHORITY_PROFILE : 'v1';

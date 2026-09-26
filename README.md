@@ -176,14 +176,32 @@ branch use one of these shapes:
     "main": {
       "mode": "enforced",
       "model": "gpt-6-sol",
-      "reasoningEffort": "medium"
+      "reasoningEffort": "medium",
+      "authorityFiles": ["docs/architecture.md"],
+      "promptPath": ".codex/gatekeeper/ci-prompt.md",
+      "schemaPath": ".codex/gatekeeper/decision.schema.json",
+      "validationPath": null
     }
   }
 }
 ```
 
-`local-only` accepts only `mode`; `enforced` requires `mode`, `model`, and
-`reasoningEffort`, with no other fields. `model` is a nonempty identifier using
+`local-only` accepts only `mode`; legacy v1 `enforced` requires `mode`, `model`,
+`reasoningEffort`, a nonempty, unique `authorityFiles` list of canonical
+repository paths, `promptPath`, `schemaPath`, and an explicit `validationPath`.
+Set `validationPath` to a canonical JSON path to run consumer decision
+validation, or to `null` to declare that no additional validation is selected.
+The caller's `validation-path` input must exactly match that recorded-base
+selection; omission or replacement fails before review. Under a `pull_request`
+caller, `policy-path` must be
+the fixed `.codex/gatekeeper/ci-policy.json` path. The v1 CI
+review requires `protected-review-instructions: true`, receives those base
+snapshots with protected prompt and schema, verifies the
+same exact paths in the decision, and fails closed if B modifies any selected
+authority file. Existing enforced v1 consumers without this selector must
+adopt an explicit path or `null` in their base policy and set the matching
+caller input before ordinary acceptance can resume. A change
+to the selector in a candidate head cannot enable its own review. `model` is a nonempty identifier using
 letters, digits, `.`, `_`, or `-`; `reasoningEffort` is one of `minimal`, `low`,
 `medium`, `high`, `xhigh`, `max`, or `ultra`. Policy resolution validates every
 branch entry, even when another branch is being reviewed. Unknown fields,
