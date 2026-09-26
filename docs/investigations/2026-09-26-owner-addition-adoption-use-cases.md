@@ -1,10 +1,10 @@
 # OWNER_ADDITION adoption without verified host enforcement: use-case evaluation (#121)
 
-**Status: proposal for owner decision.** This record evaluates the v0.5.1
-consumer scenario. It does not amend [`docs/architecture.md`](../architecture.md)
-or activate a new route. The earlier #121 advisory-only decision remains the
-normative contract until the owner selects a replacement and it is recorded
-there.
+**Status: owner decisions accepted; canonical amendment proposed in PR #129.**
+This record evaluates the v0.5.1 consumer scenario. The normative contract is
+[`docs/architecture.md`](../architecture.md); the amendment has effect only
+after adoption into the canonical branch. This investigation does not activate
+the route or claim release readiness.
 
 ## Observed consumer constraints
 
@@ -63,9 +63,10 @@ The cases support four separate questions:
    1–3, and a successful merge does not answer the host-enforcement question.
 
 A pre-merge result therefore cannot state that B is already adopted or
-canonical. A post-merge record could state procedural G0 adoption only if it
-validates both eligibility and the selected adoption act for exact B and
-verifies canonical placement. It must still report
+canonical. A post-merge record may state procedural G0 adoption only if it
+validates the exact-B eligibility result from before merge, including producer
+and time, the supported ordinary merge-commit relationship, and canonical
+readback. It must still report
 `principalAuthentication=not_verified` and
 `hostEnforcement=unavailable|not_verified` where applicable. An ineligible B
 that was merged can have verified canonical placement and invalid or unverified
@@ -73,17 +74,17 @@ OWNER_ADDITION adoption at the same time.
 
 ## Evidence boundary and implementation options
 
-The initial G0 annotated tag is an immutable object binding exact B and the
-missing decision, but its actor is unverified and its ref is mutable. It can
-be the selected procedural artifact without proving that a named owner acted.
-The owner must decide whether that artifact, a pre-merge eligible result and a
-normal PR merge constitute the G0 adoption act. If the product claims that an
-eligible check existed *before* the merge, it needs bound run/producer/time
-evidence; a post-merge rerun can establish eligibility at its own observation
-time but cannot invent that earlier fact. The new route must not silently
+The G0 annotated tag is an immutable object binding exact B and the missing
+decision, but its actor is unverified and its ref is mutable. It is procedural
+evidence without proving that a named owner acted. The accepted procedure
+requires that tag, a bound eligible pre-merge result with verifiable producer
+and time, an ordinary PR merge commit whose ordered parents are recorded base
+and exact B and whose tree equals B's tree, and a later canonical readback
+bound to the observed target ref. A post-merge rerun cannot substitute for
+proof that eligibility existed before merge. The new route must not silently
 upgrade historical v0.5 results or treat arbitrary saved green text as proof.
 
-For canonical placement, a narrow first adapter could require an ordinary
+For canonical placement, the selected first adapter requires an ordinary
 merge commit M with exact recorded base and B as ordered parents, B's tree as
 M's tree, and an observed target T containing M and the proposed authority
 bytes. This directly covers case 1 because LIVE Agency allows merge commits.
@@ -91,36 +92,35 @@ It deliberately reports case 6 as unsupported, not as a failed adoption in
 principle. Squash/rebase support needs a separate exact integration proof that
 binds B's identity, before/after authority bytes, host merge result and target
 readback. `PR.merged=true` or matching authority digests alone cannot establish
-that mapping. The choice is a release-scope decision, not something the
-implementation should infer.
+that mapping. The selected v0.5.1 release scope is merge-commit integration;
+[Issue #130](https://github.com/flair-agency/architecture-gatekeeper/issues/130)
+tracks the later squash/rebase contract.
 
-## Decisions requested of the owner
+## Owner decisions recorded
 
-1. **Adoption act:** For G0 where required checks are not verified, is a valid
-   exact-B annotated tag + bound eligible pre-merge Gate result + ordinary PR
-   merge + verified canonical readback sufficient to call B adopted through
-   `OWNER_ADDITION / G0`, while explicitly saying owner identity and host
-   enforcement were not verified? Recommended **yes** for v0.5.1. If the
-   pre-merge result's provenance cannot be verified, report adoption
-   incomplete rather than substituting a post-merge rerun silently.
-2. **Merge method:** May v0.5.1 support merge commits first, with squash and
-   rebase integration proof as follow-up? Recommended **yes** for the shortest
-   #106 E2E, since LIVE Agency permits merge commits. Case 6 remains a valid
-   future use case and must not be described as conceptually invalid.
-3. **Result vocabulary:** Should pre-merge report an `OWNER_ADDITION` candidate
-   with `eligibility=eligible, adoption=pending, canonical=pending`, and the
-   post-merge result update those independent states, instead of creating a
-   permanent `ADVISORY_ONLY` class? Recommended **yes**. Historical G0 results
-   keep their original meaning; the new policy/report versions are explicit.
-4. **Pre-merge proof:** Must the completed adoption record verify that an
-   eligible check for exact B existed before merge, including its producer and
-   time, rather than relying only on a post-merge rerun? Recommended **yes**
-   because the #106 use case says the owner sees B's G0 result before adoption.
-   A later rerun can still diagnose the state, but must be labeled as later.
+The owner accepted all four decisions. The proposed canonical amendment in
+`docs/architecture.md` records them:
 
-After these decisions, amend canonical architecture first, then replace the
-draft #123 route, finish #120, and prove cases 1–5 plus the declared case-6
-limit in focused tests. The v0.5.1 release still requires the real sequence
+1. The exact-B G0 tag, pre-merge eligibility result, ordinary PR merge and
+   post-merge canonical readback form the procedural adoption evidence.
+2. v0.5.1 supports merge commits first. Squash and rebase require a later
+   integration-proof contract.
+3. Before merge, report
+   `eligibility=eligible, adoption=pending, canonical=pending`; a permanent
+   `ADVISORY_ONLY` classification is not required for this route.
+4. The final adoption record verifies that eligibility for exact B existed
+   before merge, including its producer and time.
+
+Owner authentication and host enforcement remain independent assurance
+dimensions and must be reported as unverified or unavailable when that is
+what the evidence supports.
+
+The route remains inactive until implementation, focused verification and
+the representative LIVE Agency end-to-end sequence are complete.
+
+The remaining implementation work is to replace the draft #123 route, finish
+#120, and verify cases 1–5 plus the declared case-6 limit. The v0.5.1 release
+still requires the real sequence
 `#106 OWNER_DECISION -> eligible B -> B adoption -> B canonical -> #106 fresh
 review` without forced merge. The consumer owner must separately resolve
 #112's existing-rule conflict and completed-work assertion before B can pass.
