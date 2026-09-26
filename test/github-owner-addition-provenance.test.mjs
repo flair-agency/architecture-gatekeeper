@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { deflateRawSync } from 'node:zlib';
+import { deflateRawSync, inflateRawSync } from 'node:zlib';
 import { verifyOwnerAdditionEligibilityProvenance } from '../src/github-owner-addition-provenance.mjs';
 
 const sha = char => char.repeat(40);
@@ -34,8 +34,8 @@ const crcTable = (() => {
   return table;
 })();
 function crc32(bytes) { let crc = 0xffffffff; for (const byte of bytes) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8); return (crc ^ 0xffffffff) >>> 0; }
-function zipOne(name, bytes) {
-  const compressed = deflateRawSync(bytes);
+function zipOne(name, bytes, level = 6) {
+  const compressed = deflateRawSync(bytes, { level });
   const fileName = Buffer.from(name); const local = Buffer.alloc(30); local.writeUInt32LE(0x04034b50, 0);
   local.writeUInt16LE(20, 4); local.writeUInt16LE(0x808, 6); local.writeUInt16LE(8, 8); local.writeUInt16LE(fileName.length, 26);
   const localPart = Buffer.concat([local, fileName, compressed]);
@@ -48,6 +48,14 @@ function zipOne(name, bytes) {
   const directory = Buffer.concat([central, fileName]); const end = Buffer.alloc(22); end.writeUInt32LE(0x06054b50, 0);
   end.writeUInt16LE(1, 8); end.writeUInt16LE(1, 10); end.writeUInt32LE(directory.length, 12); end.writeUInt32LE(archiveData.length, 16);
   return Buffer.concat([archiveData, directory, end]);
+}
+function unzipOne(zip) {
+  const directoryOffset = zip.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+  const nameLength = zip.readUInt16LE(26);
+  const extraLength = zip.readUInt16LE(28);
+  const dataOffset = 30 + nameLength + extraLength;
+  const compressedSize = zip.readUInt32LE(directoryOffset + 20);
+  return inflateRawSync(zip.subarray(dataOffset, dataOffset + compressedSize));
 }
 function encodedJson(value) { return Buffer.from(JSON.stringify(value)); }
 function prepare({ event = 'pull_request', runHead = candidate.syntheticSha } = {}) {
@@ -73,8 +81,12 @@ function prepare({ event = 'pull_request', runHead = candidate.syntheticSha } = 
       head: { sha: candidate.bSha }, base: { sha: candidate.baseSha, ref: candidate.targetBranch } }] };
   const job = { id: candidate.jobId, name: candidate.jobName, status: 'completed', conclusion: 'success',
     head_sha: runHead, completed_at: completedAt,
-    steps: [{ name: 'Preserve exact v5 pre-merge eligibility evidence', status: 'completed', conclusion: 'success', number: 7,
-      started_at: '2026-09-26T00:58:30.000Z', completed_at: '2026-09-26T00:59:30.000Z' }],
+    steps: [
+      { name: 'Preserve exact v5 pre-merge eligibility evidence', status: 'completed', conclusion: 'success', number: 7,
+        started_at: '2026-09-26T00:58:30.000Z', completed_at: '2026-09-26T00:59:30.000Z' },
+      { name: 'Record exact uploaded eligibility artifact binding', status: 'completed', conclusion: 'success', number: 8,
+        started_at: '2026-09-26T00:59:30.000Z', completed_at: '2026-09-26T00:59:31.000Z' },
+    ],
     check_run_url: `https://api.github.com/repos/${candidate.repository}/check-runs/555` };
   const check = { id: 555, name: candidate.jobName, status: 'completed', conclusion: 'success', head_sha: runHead,
     app: { id: 15368 } };
@@ -88,22 +100,27 @@ function prepare({ event = 'pull_request', runHead = candidate.syntheticSha } = 
   const artifact = { id: 987, name: `owner-addition-eligibility-evidence-${candidate.bSha}-${candidate.attempt}`, expired: false,
     size_in_bytes: zip.length, digest: `sha256:${digest(zip)}`, created_at: '2026-09-26T00:59:00.000Z',
     workflow_run: { id: candidate.runId, head_sha: runHead } };
+  const annotations = [{ path: '.github/workflows/review.yml', start_line: 1, end_line: 1, annotation_level: 'notice',
+    title: 'AGK_OWNER_ADDITION_ARTIFACT_V1', message: `id=${artifact.id};sha256=${digest(zip)}` }];
   const responses = new Map([
     [`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`, run],
     [`/repos/${candidate.repository}/pulls/${candidate.pullRequestNumber}`, { number: candidate.pullRequestNumber,
       base: { ref: candidate.targetBranch }, head: { sha: candidate.bSha } }],
     [`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`, { total_count: 2, jobs: [job, acceptJob] }],
     [`/repos/${candidate.repository}/check-runs/555`, check],
+    [`/repos/${candidate.repository}/check-runs/555/annotations?per_page=100`, annotations],
     [`/repos/${candidate.repository}/check-runs/556`, acceptCheck],
     [`/repos/${candidate.repository}/actions/runs/${candidate.runId}/artifacts?per_page=100`, { total_count: 1, artifacts: [artifact] }],
     [`/repos/${candidate.repository}/actions/artifacts/${artifact.id}/zip`, zip],
   ]);
+  const responseHeaders = new Map();
   const fetchImpl = async (url) => {
     const path = new URL(url).pathname + new URL(url).search;
     const value = responses.get(path);
     if (!value) return { ok: false, status: 404 };
     if (Buffer.isBuffer(value)) return { ok: true, arrayBuffer: async () => value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength) };
-    return { ok: true, json: async () => structuredClone(value) };
+    return { ok: true, headers: { get: name => name.toLowerCase() === 'link' ? responseHeaders.get(path) ?? null : null },
+      json: async () => structuredClone(value) };
   };
   const args = { githubToken: 'token', repository: candidate.repository, targetBranch: candidate.targetBranch,
     pullRequestNumber: candidate.pullRequestNumber, baseSha: candidate.baseSha, bSha: candidate.bSha,
@@ -111,11 +128,11 @@ function prepare({ event = 'pull_request', runHead = candidate.syntheticSha } = 
     attempt: candidate.attempt, jobId: candidate.jobId, policySha256,
     expectedGatekeeperWorkflow: gatekeeperWorkflow,
     mergeAt: candidate.mergeAt, fetchImpl };
-  return { args, responses, artifact, zip, raw };
+  return { args, responses, responseHeaders, artifact, zip, raw };
 }
 
 test('verifies recorded-base run, producer, exact-B pre-merge artifact and returns API-derived provenance', async () => {
-  const { args } = prepare();
+  const { args, zip } = prepare();
   const result = await verifyOwnerAdditionEligibilityProvenance(args);
   assert.equal(result.status, 'verified');
   assert.equal(result.provenance.selection, 'recorded-base-policy');
@@ -126,6 +143,12 @@ test('verifies recorded-base run, producer, exact-B pre-merge artifact and retur
   assert.deepEqual(result.artifacts.eligibilityDecision, candidate.eligibility);
   assert.equal(result.provenance.procedureDigest, result.artifacts.digests.procedure);
   assert.equal(result.provenance.eligibilityDigest, result.artifacts.digests.eligibilityDecision);
+  assert.equal(result.provenance.artifactBinding.checkRunId, '555');
+  assert.equal(result.provenance.artifactBinding.artifactId, '987');
+  assert.equal(result.provenance.artifactBinding.artifactDigest, result.artifacts.evidenceArtifact.digest);
+  assert.equal(result.provenance.artifactBinding.annotationTitle, 'AGK_OWNER_ADDITION_ARTIFACT_V1');
+  assert.equal(result.provenance.artifactBinding.annotationMessage, `id=987;sha256=${digest(zip)}`);
+  assert.equal(result.artifacts.evidenceArtifact.id, 987);
 });
 
 test('verifies a pull_request_target producer bound to the exact PR head', async () => {
@@ -165,6 +188,34 @@ test('rejects wrong candidate, failed or late producer, wrong app, or mismatched
     }],
     ['artifact predates selected upload step', f => { f.artifact.created_at = '2026-09-26T00:58:29.000Z'; }],
     ['artifact is created after selected upload step', f => { f.artifact.created_at = '2026-09-26T00:59:31.000Z'; }],
+    ['selected artifact binding step failed', f => {
+      f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`).jobs[0].steps[1].conclusion = 'failure';
+    }],
+    ['selected artifact binding step is not after upload', f => {
+      const steps = f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`).jobs[0].steps;
+      [steps[0], steps[1]] = [steps[1], steps[0]];
+    }],
+    ['artifact replacement has same name and time but a different ID and digest', f => {
+      const replacementZip = zipOne('eligibility-evidence.json', unzipOne(f.zip), 0);
+      f.artifact.id = 988;
+      f.artifact.size_in_bytes = replacementZip.length;
+      f.artifact.digest = `sha256:${digest(replacementZip)}`;
+      f.responses.set(`/repos/${candidate.repository}/actions/artifacts/${f.artifact.id}/zip`, replacementZip);
+    }],
+    ['duplicate artifact binding annotations fail closed', f => {
+      const annotations = f.responses.get(`/repos/${candidate.repository}/check-runs/555/annotations?per_page=100`);
+      annotations.push({ ...annotations[0] });
+    }],
+    ['annotation pagination fails closed', f => {
+      f.responseHeaders.set(`/repos/${candidate.repository}/check-runs/555/annotations?per_page=100`, '<https://api.github.com/page/2>; type="application/json"; rel="next"');
+    }],
+    ['artifact binding annotation from another job cannot satisfy selected producer', f => {
+      f.responses.delete(`/repos/${candidate.repository}/check-runs/555/annotations?per_page=100`);
+      f.responses.set(`/repos/${candidate.repository}/check-runs/556/annotations?per_page=100`, [{
+        path: '.github/workflows/review.yml', start_line: 1, end_line: 1, annotation_level: 'notice',
+        title: 'AGK_OWNER_ADDITION_ARTIFACT_V1', message: `id=${f.artifact.id};sha256=${digest(f.zip)}`,
+      }]);
+    }],
     ['wrong check-run app', f => { f.responses.get(`/repos/${candidate.repository}/check-runs/555`).app.id = 42; }],
     ['missing Gatekeeper accept job', f => { const page = f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`); page.jobs.pop(); page.total_count = 1; }],
     ['failed Gatekeeper accept job', f => { f.responses.get(`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`).jobs[1].conclusion = 'failure'; }],
@@ -186,5 +237,7 @@ test('rejects altered exact decision bytes and malformed or multi-entry ZIP arch
   f.responses.set(`/repos/${candidate.repository}/actions/artifacts/${f.artifact.id}/zip`, wrongZip);
   f.artifact.size_in_bytes = wrongZip.length;
   f.artifact.digest = `sha256:${digest(wrongZip)}`;
+  f.responses.get(`/repos/${candidate.repository}/check-runs/555/annotations?per_page=100`)[0].message =
+    `id=${f.artifact.id};sha256=${digest(wrongZip)}`;
   await assert.rejects(verifyOwnerAdditionEligibilityProvenance(f.args), /exact eligibility evidence file/);
 });

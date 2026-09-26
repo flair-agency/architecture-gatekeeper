@@ -406,6 +406,7 @@ jobs:
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
         run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs validate
       - name: Preserve exact v5 pre-merge eligibility evidence
+        id: eligibility-evidence
         if: needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -414,6 +415,16 @@ jobs:
           if-no-files-found: error
           overwrite: false
           retention-days: 90
+      - name: Record exact uploaded eligibility artifact binding
+        if: needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
+        env:
+          ARTIFACT_ID: ${{ steps.eligibility-evidence.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.eligibility-evidence.outputs.artifact-digest }}
+        run: |
+          set -euo pipefail
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          [[ "$ARTIFACT_DIGEST" =~ ^[a-f0-9]{64}$ ]]
+          printf '::notice title=AGK_OWNER_ADDITION_ARTIFACT_V1::id=%s;sha256=%s\n' "$ARTIFACT_ID" "$ARTIFACT_DIGEST"
 
   report:
     if: always()

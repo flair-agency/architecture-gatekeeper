@@ -10,6 +10,8 @@ const ZIP_ENTRY_MAX_BYTES = 524_288;
 const ARTIFACT_NAME_PREFIX = 'owner-addition-eligibility-evidence-';
 const ARTIFACT_FILE = 'eligibility-evidence.json';
 const ARTIFACT_UPLOAD_STEP = 'Preserve exact v5 pre-merge eligibility evidence';
+const ARTIFACT_BINDING_STEP = 'Record exact uploaded eligibility artifact binding';
+const ARTIFACT_BINDING_TITLE = 'AGK_OWNER_ADDITION_ARTIFACT_V1';
 const HEX40 = /^[a-f0-9]{40}$/;
 const HEX64 = /^[a-f0-9]{64}$/;
 const DECIMAL = /^\d+$/;
@@ -243,6 +245,19 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   if (uploadStartedMs < runStarted || uploadCompletedMs < uploadStartedMs || uploadCompletedMs > timestamp(job.completed_at, 'producer job completion')) {
     fail('evidence artifact upload step is outside the selected producer job interval.');
   }
+  const bindingSteps = job.steps.filter(step => step?.name === ARTIFACT_BINDING_STEP);
+  if (bindingSteps.length !== 1 || job.steps.indexOf(bindingSteps[0]) <= job.steps.indexOf(uploadStep)) {
+    fail('selected producer job must contain exactly one post-upload artifact binding step.');
+  }
+  const bindingStep = bindingSteps[0];
+  same(bindingStep.status, 'completed', 'artifact binding step status');
+  same(bindingStep.conclusion, 'success', 'artifact binding step conclusion');
+  const bindingStartedMs = timestamp(bindingStep.started_at, 'artifact binding step start');
+  const bindingCompletedMs = timestamp(bindingStep.completed_at, 'artifact binding step completion');
+  if (bindingStartedMs < uploadCompletedMs || bindingCompletedMs < bindingStartedMs ||
+      bindingCompletedMs > timestamp(job.completed_at, 'producer job completion')) {
+    fail('artifact binding step is not completed after the selected upload step.');
+  }
   const completedMs = timestamp(job.completed_at, 'producer job completion');
   if (completedMs >= mergeTime || completedMs < runStarted) fail('eligibility producer did not complete within the pre-merge run interval.');
   if (typeof job.check_run_url !== 'string') fail('producer job has no check run identity.');
@@ -255,6 +270,19 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   same(check.head_sha, run.head_sha, 'producer check-run run head');
   same(check.app?.id, ACTIONS_APP_ID, 'producer GitHub Actions app ID');
   same(String(check.id), String(checkUrl.pathname.split('/').at(-1)), 'producer check-run ID');
+  const annotationUrl = `${checkUrl.href}/annotations?per_page=100`;
+  const annotationResponse = await fetchImpl(annotationUrl, { headers, redirect: 'follow' });
+  if (!annotationResponse?.ok) fail(`producer annotation request failed (${annotationResponse?.status ?? 'no response'}).`);
+  const linkHeader = annotationResponse.headers?.get?.('link') ?? '';
+  if (typeof linkHeader !== 'string' || linkHeader.trim() !== '') fail('producer annotations exceed the bounded single-page limit.');
+  let annotations;
+  try { annotations = await annotationResponse.json(); } catch { fail('GitHub returned malformed producer annotations.'); }
+  if (!Array.isArray(annotations) || annotations.length > 100) fail('producer annotations response is invalid or oversized.');
+  const bindingAnnotations = annotations.filter(annotation => annotation?.title === ARTIFACT_BINDING_TITLE);
+  if (bindingAnnotations.length !== 1 || bindingAnnotations[0]?.annotation_level !== 'notice') {
+    fail('producer check run must contain exactly one artifact binding notice.');
+  }
+  const bindingAnnotation = bindingAnnotations[0];
 
   const acceptName = `${jobName.slice(0, -' / owner-addition'.length)} / accept`;
   const acceptJobs = jobsPage.jobs.filter(candidate => candidate.name === acceptName);
@@ -291,6 +319,8 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
       artifact.size_in_bytes < 1 || artifact.size_in_bytes > ARTIFACT_MAX_BYTES) fail('evidence artifact is expired or outside its byte limit.');
   same(String(artifact.workflow_run?.id), String(runId), 'artifact workflow run');
   same(artifact.workflow_run?.head_sha, run.head_sha, 'artifact workflow run head');
+  const expectedBindingMessage = `id=${artifact.id};sha256=${artifact.digest?.replace(/^sha256:/, '')}`;
+  same(bindingAnnotation.message, expectedBindingMessage, 'selected producer artifact ID and digest annotation');
   const createdMs = timestamp(artifact.created_at, 'artifact creation');
   if (createdMs < uploadStartedMs || createdMs > uploadCompletedMs || createdMs > completedMs || createdMs >= mergeTime) {
     fail('evidence artifact was not created during the selected upload step in the pre-merge producer job.');
@@ -362,8 +392,11 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
     workflow: { runId: String(runId), attempt: Number(attempt), jobId: String(jobId), workflowPath: callerPath, callerPath },
     repository, targetBranch, pullRequestNumber, baseSha, bSha, authoritySetDigest: actualAuthoritySetDigest,
     procedureDigest: digests.procedure, eligibilityDigest: digests.eligibilityDecision, completedAt,
+    artifactBinding: { checkRunId: String(check.id), artifactId: String(artifact.id), artifactDigest: artifact.digest,
+      annotationTitle: ARTIFACT_BINDING_TITLE, annotationMessage: bindingAnnotation.message },
   };
   return { status: 'verified', provenance, completedAt, authorityIds: actualAuthorityIds,
     gatekeeperWorkflow: { path: gatekeeperWorkflow.path, sha: gatekeeperWorkflow.sha },
-    artifacts: { procedure, ordinaryDecision, eligibilityDecision, authoritySetProvenance, digests } };
+    artifacts: { evidenceArtifact: { id: artifact.id, name: artifact.name, digest: artifact.digest,
+      createdAt: artifact.created_at }, procedure, ordinaryDecision, eligibilityDecision, authoritySetProvenance, digests } };
 }

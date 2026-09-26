@@ -407,8 +407,9 @@ them for its own review. The B check records `eligibility=eligible`,
 The green check alone does not establish adoption. After an ordinary PR merge
 commit, the finalizer checks the pre-merge Actions run and selected producer
 job, including its unique successful evidence-upload step and the artifact's
-creation time and digest, then checks the exact B and two-parent merge commit
-and freshly reads the target branch and authority bytes. Only then can the
+job-scoped check annotation that binds the uploader's artifact ID and digest.
+It then checks the exact B and two-parent merge commit and freshly reads the
+target branch and authority bytes. Only then can the
 record report valid `OWNER_ADDITION / G0` adoption and verified canonical
 placement. v0.5.1
 does not support squash or rebase merge for B. G0 leaves actor identity
@@ -420,6 +421,8 @@ locally authenticated `gh` token unless `GH_TOKEN` or `GITHUB_TOKEN` is set,
 reads GitHub evidence, and writes a record only when an output path is
 explicitly given. Its output does not replace A's fresh review after B is
 canonical. See the [owner-intervention runbook](docs/owner-intervention.md).
+The token needs read access to both Actions and Checks evidence in the target
+repository; a fine-grained token must include Actions: read and Checks: read.
 
 For `OWNER_DECISION` and CI review failures caused by API, billing, model,
 credential or service availability, follow the

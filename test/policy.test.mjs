@@ -236,10 +236,16 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(additionJob, /src\/owner-addition-ci\.mjs validate/);
   assert.match(additionJob, /POLICY_VERSION: \$\{\{ needs\.policy\.outputs\.policy_version \}\}/);
   assert.match(additionJob, /prompt-file: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-addition\/eligibility-prompt\.md/);
-  assert.match(additionJob, /name: Preserve exact v5 pre-merge eligibility evidence\n        if: needs\.policy\.outputs\.policy_version == '5'/);
+  assert.match(additionJob, /name: Preserve exact v5 pre-merge eligibility evidence\n        id: eligibility-evidence\n        if: needs\.policy\.outputs\.policy_version == '5'/);
   assert.match(additionJob, /uses: actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4/);
+  assert.match(additionJob, /id: eligibility-evidence\n        if: needs\.policy\.outputs\.policy_version == '5'/);
+  assert.match(additionJob, /overwrite: false/);
   assert.match(additionJob, /name: owner-addition-eligibility-evidence-\$\{\{ github\.event\.pull_request\.head\.sha \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.match(additionJob, /path: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-addition\/eligibility-evidence\.json/);
+  assert.match(additionJob, /name: Record exact uploaded eligibility artifact binding/);
+  assert.match(additionJob, /steps\.eligibility-evidence\.outputs\.artifact-id/);
+  assert.match(additionJob, /steps\.eligibility-evidence\.outputs\.artifact-digest/);
+  assert.match(additionJob, /AGK_OWNER_ADDITION_ARTIFACT_V1/);
   assert.match(workflow, /ci-procedural-acceptance\.mjs/);
   const proceduralAcceptance = readFileSync(join(root, 'src/ci-procedural-acceptance.mjs'), 'utf8');
   assert.match(proceduralAcceptance, /OWNER_ADDITION_G0_PENDING/);
