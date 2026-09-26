@@ -99,7 +99,7 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
   assert.match(advisoryReport, /Recorded base and policy revision/);
   assert.equal(classifyReview({ mode: 'advisory', policyResult: 'success', reviewResult: 'success',
     rawDecision: env.ORDINARY_DECISION, ownerAdditionSelected: true,
-    ownerAdditionResult: 'failure', ownerAdditionEligibility: '', ownerAdditionProcedure: null }).conclusion, 'ADVISORY_ONLY');
+    ownerAdditionResult: 'failure', ownerAdditionEligibility: '', ownerAdditionProcedure: null }).conclusion, 'ERROR');
   const report = renderReport(classified, { ownerAdditionProcedure: procedure });
   assert.match(report, /OWNER_ADDITION \/ G0/);
   assert.match(report, /Tag actor or owner identity was not authenticated/);

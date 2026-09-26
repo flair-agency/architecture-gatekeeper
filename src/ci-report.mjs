@@ -137,6 +137,10 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision,
         ownerAdditionProcedure?.procedure === 'VALID_G0_OWNER_ADDITION' &&
         decision.ownerDecisionId === ownerAdditionProcedure.missingDecisionId;
     if (mode === 'advisory') {
+      if (decision.decision === 'OWNER_DECISION' && !nestedBlock && ownerAdditionResult !== 'success') {
+        return { conclusion: 'ERROR',
+          summary: 'The advisory owner-addition procedure or required eligibility evidence did not complete.', decision };
+      }
       return { conclusion: 'ADVISORY_ONLY',
         summary: eligibleAddition
           ? 'The recorded-base advisory procedure and separate missing-decision eligibility review completed. This is not merge acceptance.'
