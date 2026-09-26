@@ -18,9 +18,11 @@ The fixture uses synthetic authority and changes.
 | B′, eligible authority addition | [PR #6](https://github.com/flair-agency/architecture-gatekeeper-v05-fixture/pull/6), [run 36219201636](https://github.com/flair-agency/architecture-gatekeeper-v05-fixture/actions/runs/36219201636) | `OWNER_ADDITION / G0` accepted under the fixture's previous protected policy. The annotated tag object OID was `f7ef46fb4c0d8b654a809e39e0b176c5271c46ff`. B′ then merged normally at `00401a3`. |
 | A′, rebased after B′ | [PR #5](https://github.com/flair-agency/architecture-gatekeeper-v05-fixture/pull/5), [run 36219396555](https://github.com/flair-agency/architecture-gatekeeper-v05-fixture/actions/runs/36219396555) | Fresh semantic review returned `OWNER_DECISION` again. A′ remains not `PASS` and not accepted. |
 
-A later attempted A-conformance run did not reach semantic review: the runner
-failed during `drop-sudo` startup. It is an infrastructure failure, not a
-completed A result.
+A later attempted A-conformance run did not reach semantic review: the Codex
+Action reported `Quota exceeded. Check your plan and billing details.` before
+producing a decision. The wrapper subsequently reported a `sudo` child exit,
+which was a consequence of the Codex failure, not the root cause. This is an
+API availability failure, not a completed A result.
 
 ## Audit trail and limits
 
