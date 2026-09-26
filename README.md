@@ -281,7 +281,7 @@ direction for the Gatekeeper to decide. The current `Architecture Gate / accept`
 check therefore fails. The accountable owner proposes the missing decision in
 canonical consumer-owned authority. When protected CI selects authority from
 the base, an implementation PR cannot resolve its own review by adding that
-decision to its head. The target `OWNER_ADDITION / G0` route would let a
+decision to its head. The `OWNER_ADDITION / G0` route lets a
 consumer whose previous protected policy opts in adopt a predecessor B
 containing only that missing decision, with an annotated tag object bound to
 B's exact commit. The previous protected Authority Set must have exactly one
@@ -289,15 +289,16 @@ B's exact commit. The previous protected Authority Set must have exactly one
 `OWNER_DECISION` carries a protected structured `ownerDecisionId`; the tag's
 `missingDecision.id` must match it, and B-specific eligibility review verifies
 that match and the addition's scope. G0 does not authenticate the tagger or
-claim that a mutable tag ref remains unchanged after verification. After B
-becomes canonical, the implementation change still needs a fresh review. This
-route is implemented and conditionally available only when selected by the
-previous protected-base policy; this repository's current policy leaves it
-inactive. Its first policy adoption requires the authorized one-time
+claim that a mutable tag ref remains unchanged after verification. This route
+mechanism is implemented in v0.5 and is conditionally available only
+when selected by the previous protected consumer policy; this repository's
+self policy remains unselected. The mechanism is not owner-authenticated, so
+after B becomes canonical the implementation change still needs a fresh
+review. Its first policy adoption requires the authorized one-time
 owner-controlled administrative exception after code review and fixture E2E.
 That exception is outside Gatekeeper acceptance. No release or consumer
-activation is claimed until E2E and release are complete. The route does not
-resolve unsupported claims that work is complete. See the
+activation is claimed. The route does not resolve unsupported claims that work
+is complete. See the
 [owner-intervention runbook](docs/owner-intervention.md).
 A review comment or workflow approval alone does not replace canonical adoption.
 
