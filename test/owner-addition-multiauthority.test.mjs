@@ -52,7 +52,7 @@ async function fixture(t, options = {}) {
   write(root, 'docs/privacy.md', other);
   write(root, '.gate/policy.json', policyBytes);
   write(root, '.gate/authorities.json', manifestBytes);
-  write(root, '.gate/eligibility.md', 'Check this candidate against every base authority.');
+  write(root, '.gate/eligibility.md', options.prompt || 'Check this candidate against every base authority.');
   write(root, '.gate/eligibility.json', JSON.stringify(schema));
   write(root, '.gate/ordinary.json', JSON.stringify({ type: 'object', required: ['decision', 'summary', 'ownerDecisionId', 'authorityIds', 'authoritySetDigest'], properties: {
     decision: { type: 'string' }, summary: { type: 'string' }, ownerDecisionId: { type: 'string' },
@@ -124,6 +124,26 @@ test('real Git CLI path includes the complete base set and reports bound v2 proc
   assert.match(report, /procedure\/report version: `2`/); assert.ok(report.includes(hash(f.policyBytes)));
   for (const member of f.provenance.members) assert.ok(report.includes(member.sha256));
   assert.match(report, /not semantic PASS/);
+});
+
+test('eligibility preserves BOM-prefixed candidate, authority and instruction bytes', async t => {
+  const instructions = '\ufeffCheck this candidate against every base authority.';
+  const other = '\ufeff# Privacy\nReports must never disclose secrets.\n';
+  const f = await fixture(t, { after: '\ufeff# Architecture\nThe product owner owns reporting.\n', other, prompt: instructions });
+  const procedure = await f.prepare();
+  const prompt = readFileSync(join(f.env.OUTPUT_DIR, 'eligibility-prompt.md'), 'utf8');
+  const header = `\nCandidate affected authority (architecture, docs/architecture.md, SHA-256 ${procedure.newAuthoritySha256}):\n`;
+  const start = prompt.indexOf(header) + header.length;
+  assert.ok(start >= header.length);
+  const proposedSnapshot = Buffer.from(prompt.slice(start, prompt.indexOf('\n\nExact B diff', start)), 'utf8');
+  const proposedBytes = execFileSync('git', ['show', `${f.head}:docs/architecture.md`], { cwd: f.root });
+  assert.deepEqual(proposedSnapshot, proposedBytes);
+  assert.equal(hash(proposedSnapshot), procedure.newAuthoritySha256);
+  assert.ok(prompt.startsWith(instructions));
+  const selected = JSON.parse(prompt.split('\n').find(line => line.startsWith('[{"id":')));
+  const unchanged = selected.find(member => member.id === 'privacy');
+  assert.equal(unchanged.content, other);
+  assert.equal(hash(Buffer.from(unchanged.content, 'utf8')), unchanged.sha256);
 });
 
 test('ordinary review and eligibility both reject omitted, duplicate, extra IDs and another set identity', async t => {

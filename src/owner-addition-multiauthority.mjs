@@ -15,7 +15,7 @@ import { assertSameMultiAuthorityProvenance, multiAuthorityProvenance,
 
 const SPECIAL = ['version', 'authorityIds', 'authoritySetDigest'];
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
-const decode = bytes => new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+const decode = bytes => new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
 function parse(source) { rejectDuplicateJsonKeys(source, 'owner-addition input'); return JSON.parse(source); }
 function git(root, ...args) {
   return execFileSync('git', args, { cwd: root, encoding: 'buffer', maxBuffer: 2_000_000, timeout: 10_000,
