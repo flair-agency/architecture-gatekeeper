@@ -37,6 +37,8 @@ jobs:
       mode: ${{ steps.resolve.outputs.mode }}
       policy_version: ${{ steps.resolve.outputs.policyVersion }}
       legacy_authority_files_base64: ${{ steps.resolve.outputs.legacyAuthorityFilesBase64 }}
+      legacy_prompt_path: ${{ steps.resolve.outputs.legacyPromptPath }}
+      legacy_schema_path: ${{ steps.resolve.outputs.legacySchemaPath }}
       model: ${{ steps.resolve.outputs.model }}
       effort: ${{ steps.resolve.outputs.reasoningEffort }}
       authority_manifest_path: ${{ steps.resolve.outputs.authorityManifestPath }}
@@ -67,11 +69,18 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           POLICY_PATH: ${{ inputs.policy-path }}
         run: |
+          if test "$GITHUB_EVENT_NAME" = pull_request; then
+            test "$POLICY_PATH" = .codex/gatekeeper/ci-policy.json
+          fi
           git ls-tree -z --full-tree "$BASE_SHA" -- "$POLICY_PATH" > "$RUNNER_TEMP/architecture-gate-policy-tree"
           if test -s "$RUNNER_TEMP/architecture-gate-policy-tree"; then
             git show "$BASE_SHA:$POLICY_PATH" > "$RUNNER_TEMP/architecture-gate-policy.json"
             node .architecture-gatekeeper-runtime/src/resolve-ci-policy.mjs "$RUNNER_TEMP/architecture-gate-policy.json" "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
           else
+            if test "$GITHUB_EVENT_NAME" = pull_request; then
+              echo 'Recorded-base CI policy is required for pull_request callers.' >&2
+              exit 1
+            fi
             echo "Base revision has no CI policy; using fail-safe bootstrap enforcement."
             echo "baseBranch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
             echo "mode=enforced" >> "$GITHUB_OUTPUT"
@@ -188,8 +197,8 @@ jobs:
         if: inputs.protected-review-instructions
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PROMPT_PATH: ${{ inputs.prompt-path }}
-          SCHEMA_PATH: ${{ inputs.schema-path }}
+          PROMPT_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_prompt_path || inputs.prompt-path }}
+          SCHEMA_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_schema_path || inputs.schema-path }}
         run: |
           git show "$BASE_SHA:$PROMPT_PATH" > "$RUNNER_TEMP/architecture-gate-prompt.md"
           git show "$BASE_SHA:$SCHEMA_PATH" > "$RUNNER_TEMP/architecture-gate-decision.schema.json"

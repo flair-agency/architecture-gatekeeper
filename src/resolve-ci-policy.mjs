@@ -22,7 +22,7 @@ function requireOnlyKeys(value, allowed, label) {
 }
 
 function validateBranch(branch, label, version) {
-  requireOnlyKeys(branch, version === 1 ? new Set(['mode', 'model', 'reasoningEffort', 'authorityFiles']) : new Set(['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition']), label);
+  requireOnlyKeys(branch, version === 1 ? new Set(['mode', 'model', 'reasoningEffort', 'authorityFiles', 'promptPath', 'schemaPath']) : new Set(['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition']), label);
   if (!MODES.has(branch.mode)) throw new Error(`Invalid ${label} mode`);
   if (branch.mode === 'local-only') {
     if (Object.keys(branch).length !== 1) throw new Error(`Invalid ${label}`);
@@ -33,6 +33,12 @@ function validateBranch(branch, label, version) {
   }
   if (!EFFORTS.has(branch.reasoningEffort)) throw new Error(`Invalid reasoning effort for ${label}`);
   if (version === 1) {
+    if (typeof branch.promptPath !== 'string' || branch.promptPath.length > 240 ||
+        !OWNER_AUTHORITY_PATH.test(branch.promptPath) || branch.promptPath.split('/').some(part => part === '.' || part === '..') ||
+        typeof branch.schemaPath !== 'string' || branch.schemaPath.length > 240 ||
+        !OWNER_SCHEMA_PATH.test(branch.schemaPath) || branch.schemaPath.split('/').some(part => part === '.' || part === '..')) {
+      throw new Error(`Enforced ${label} requires base-selected promptPath and schemaPath`);
+    }
     if (!Array.isArray(branch.authorityFiles) || branch.authorityFiles.length < 1 || branch.authorityFiles.length > 16 ||
         new Set(branch.authorityFiles).size !== branch.authorityFiles.length ||
         branch.authorityFiles.some(path => typeof path !== 'string' || path.length > 240 ||
@@ -99,6 +105,8 @@ export function resolveCiPolicy(policy, baseBranch) {
   if (policy.version === 1 && selected.mode === 'enforced') {
     result.policyVersion = 1;
     result.legacyAuthorityFilesBase64 = Buffer.from(JSON.stringify(selected.authorityFiles)).toString('base64');
+    result.legacyPromptPath = selected.promptPath;
+    result.legacySchemaPath = selected.schemaPath;
   }
   if (selected.authorityManifestPath) {
     result.authorityManifestPath = selected.authorityManifestPath;

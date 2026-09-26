@@ -177,15 +177,19 @@ branch use one of these shapes:
       "mode": "enforced",
       "model": "gpt-6-sol",
       "reasoningEffort": "medium",
-      "authorityFiles": ["docs/architecture.md"]
+      "authorityFiles": ["docs/architecture.md"],
+      "promptPath": ".codex/gatekeeper/ci-prompt.md",
+      "schemaPath": ".codex/gatekeeper/decision.schema.json"
     }
   }
 }
 ```
 
 `local-only` accepts only `mode`; legacy v1 `enforced` requires `mode`, `model`,
-`reasoningEffort`, and a nonempty, unique `authorityFiles` list of canonical
-Markdown paths. The list is selected from the recorded base policy. The v1 CI
+`reasoningEffort`, a nonempty, unique `authorityFiles` list of canonical
+Markdown paths, and `promptPath` and `schemaPath`. These selectors come from
+the recorded base policy. Under a `pull_request` caller, `policy-path` must be
+the fixed `.codex/gatekeeper/ci-policy.json` path. The v1 CI
 review requires `protected-review-instructions: true`, receives those base
 snapshots with protected prompt and schema, verifies the
 same exact paths in the decision, and fails closed if B modifies any selected

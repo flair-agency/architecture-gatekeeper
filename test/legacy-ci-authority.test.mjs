@@ -20,6 +20,7 @@ test('legacy v1 uses recorded-base authority and rejects candidate self-authoriz
   const authorityPath = 'docs/architecture.md';
   const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: {
     mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authorityFiles: [authorityPath],
+    promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json',
   } } };
   write(root, policyPath, JSON.stringify(policy));
   write(root, authorityPath, '# Architecture\n\nMigration completion is unverified.\n');
