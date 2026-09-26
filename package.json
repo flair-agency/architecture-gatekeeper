@@ -1,6 +1,6 @@
 {
   "name": "@flair-agency/architecture-gatekeeper",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Reusable local and CI architecture gates for Codex repositories",
   "type": "module",
   "license": "MIT",

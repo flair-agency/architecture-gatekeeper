@@ -622,12 +622,13 @@ Architecture-changing work follows this order:
 - Issue #20 specifies the evidence format, attestation choice, protected-policy
   routes and model-free CI verification needed to fully separate review
   execution from acceptance verification.
-- Issue #111 defines the missing-decision adoption problem. Its target first
-  route is `OWNER_ADDITION / G0`, selected by previous protected-base policy
-  and bound to B by an annotated tag object. It does not require the historical
-  `BLOCK` evidence or exact-claim authorization mechanisms of `OWNER_AMENDMENT`;
-  the route remains inactive until its verifier, protected integration and
-  credential boundary are implemented and tested.
+- Issue #111 defines the missing-decision adoption problem. Its `OWNER_ADDITION
+  / G0` mechanism is implemented in v0.5 and available only when a previous
+  protected consumer policy selects it; this repository's self policy remains
+  unselected. The candidate is bound to B by an annotated tag object. It does
+  not require the historical `BLOCK` evidence or exact-claim authorization
+  mechanisms of `OWNER_AMENDMENT`. The mechanism is not owner-authenticated,
+  and implementation changes after B becomes canonical require a fresh review.
 - Issue #75 defines the owner-amendment governance route. Issue #78 develops
   its core and explicit `G0` policy path; Issue #79 investigates a later
   production attestation adapter for a higher grade.
