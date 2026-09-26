@@ -317,8 +317,9 @@ owner-controlled administrative exception after code review and fixture E2E.
 That exception is outside Gatekeeper acceptance. The fixture E2E is the v0.5.1
 package-release gate; it does not establish activation for a consumer. The
 representative LIVE Agency E2E remains a separate route-activation prerequisite
-under the proposed Issue #140 contract. That proposal is pending
-canonicalization, so no release or consumer activation is claimed here. The
+under the owner-adopted contract in `docs/architecture.md` (PR #140). The
+fixture E2E and package publication remain pending, so no release or consumer
+activation is claimed here. The
 route does not resolve unsupported claims that work is complete. See the
 [owner-intervention runbook](docs/owner-intervention.md).
 A review comment or workflow approval alone does not replace canonical adoption.
@@ -402,8 +403,8 @@ not itself resolve its consumer-specific rule conflict or migration evidence.
 Policy v5 implements a separate `procedural` route selected from the recorded
 base. It keeps the v4 complete Authority Set review and one-file B write scope.
 The v0.5.1 package-release gate is the fixture E2E. The representative LIVE
-Agency E2E remains a separate route-activation prerequisite under proposed
-Issue #140; that contract is pending canonicalization. A package release does
+Agency E2E remains a separate route-activation prerequisite under the
+owner-adopted contract in `docs/architecture.md` (PR #140). A package release does
 not by itself activate the route for LIVE Agency. When the route is released,
 a consumer without a required `Architecture Gate / accept` check can keep the
 absence of host enforcement explicit. Its v5 policy then
