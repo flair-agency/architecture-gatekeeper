@@ -221,14 +221,14 @@ policy explicitly selects it and all verifier requirements above pass. This
 repository's current protected policy does not select the route, so it remains
 inactive for self-review. A first-time policy adoption may use the one-time,
 owner-controlled administrative exception described by the consumer's existing
-governance, after code review and fixture E2E have completed; that exception is
-separate from Gatekeeper acceptance and does not itself enable the route for a
-review. No release or consumer activation is claimed until the E2E and release
-steps are complete. The original live-agency B is ineligible: its assertion
-that migration and cutover were complete is a work-completion claim, not the
-missing architecture decision. A repaired B may add the prospective
-responsibility decision only; A still needs evidence of completed migration if
-its acceptance depends on it.
+governance, after code review and the fixture full-cycle E2E below; that
+exception is separate from Gatekeeper acceptance and does not itself enable the
+route for a review. The v0.5.1 package release is gated by that public fixture
+E2E and the package release checks. Passing the fixture does not activate this
+repository's self-review route or any real consumer's route. The fixture does
+not settle a real consumer's architecture or migration status. A work-completion
+claim is not a missing architecture decision; consumer owners must establish
+any required completion evidence separately.
 
 ### Target multi-document OWNER_ADDITION route (Issue #119 owner decision)
 
@@ -308,12 +308,47 @@ limits; a verifier must reject ambiguous version mixing rather than upgrade
 them by reinterpretation.
 
 This is an authorized target contract, not an active route or a release
-claim. Implementation, focused negative verification, and representative LIVE
-Agency E2E remain required before activation. Issue #120 independently owns
-the legacy PR-head authority failure. LIVE Agency's proposed B also requires
-consumer-owner resolution of its existing-rule conflict and removal of its
-completion claims before it can qualify as a missing-decision addition; this
-shared mechanism does not resolve either consumer requirement.
+claim. Implementation, focused negative verification, and the v0.5.1 fixture
+full-cycle E2E below are required before package release. The fixture uses
+synthetic consumer data and demonstrates the mechanism's sequence; passing it
+does not prove that a real consumer is ready or activate the route for one.
+The existing representative LIVE Agency end-to-end prerequisite remains in
+force for real-consumer route activation; the fixture is a separate package
+release gate and cannot satisfy that activation prerequisite.
+Issue #120 independently owns the legacy PR-head authority failure. Consumer
+owners classify their own decisions and existing-rule changes; those cases
+cannot substitute for the synthetic A/B lifecycle in the fixture and are not
+v0.5.1 fixture-release gates.
+
+#### v0.5.1 public fixture full-cycle release gate (owner decision)
+
+The owner selected the public
+`flair-agency/architecture-gatekeeper-v05-fixture` repository as the v0.5.1
+release E2E. With synthetic consumer data, the fixture must demonstrate the
+complete sequence:
+
+1. Change A receives an ordinary `OWNER_DECISION` with its exact
+   `ownerDecisionId`.
+2. Authority-only Change B binds that decision, is assessed against the complete
+   selected Authority Set, and reports `eligible` before merge. This is not a
+   semantic `PASS` for B or A.
+3. The exact eligible B is adopted by an ordinary pull-request merge commit
+   whose first parent is the recorded base, second parent is exact B, and tree
+   equals B's tree.
+4. A post-merge canonical readback verifies that the target contains that
+   merge commit and the expected authority state.
+5. A is reviewed freshly against the resulting canonical authority and returns
+   `PASS` under the fixture's normal review policy.
+
+The fixture must preserve every eligibility, binding, merge, and readback
+condition in the Issue #119 and #121 contracts above; this release gate does
+not relax them. A's historical `OWNER_DECISION` remains unchanged; the fresh
+`PASS` is a new result under the new base. Passing this synthetic
+fixture E2E is a v0.5.1 package-release condition only. It does not prove
+readiness, policy selection, owner authorization, or host enforcement for LIVE
+Agency or another real consumer. Real consumer adoption and its readiness
+verification are separate follow-up work. The representative LIVE Agency
+end-to-end prerequisite for real-consumer activation remains outstanding.
 
 ### Target owner-amendment governance (Issue #75 owner decision)
 
@@ -576,9 +611,13 @@ behavior and historical results keep their original meanings; a verifier must
 reject ambiguous version mixing and must not upgrade historical G0 results by
 reinterpretation. This Issue #121 contract is limited to OWNER_ADDITION and
 does not generalize to OWNER_AMENDMENT or other routes. It defines the target
-contract, not an active route or release claim; implementation, focused
-verification and the representative LIVE Agency end-to-end sequence remain
-required before activation.
+contract, not an active route. Implementation, focused negative verification,
+and the public fixture full-cycle E2E specified in the Issue #119 release gate
+are required for the v0.5.1 package release. Passing that fixture does not
+prove readiness or adoption for a real consumer or replace the protected
+representative LIVE Agency end-to-end prerequisite for route activation. Each
+consumer must separately select and verify the route under its own base policy
+and governance.
 
 Evidence lifecycle remains route-specific. Existing `OWNER_ADDITION / G0`
 observes the mutable tag-ref mapping to the bound tag object at verification
@@ -591,9 +630,10 @@ canonical transition; its freshness requirement cannot be reduced to G0's
 verification-time observation.
 
 Issue #119 (complete multi-document Authority Set support) and Issue #120
-(legacy PR-head authority failure) remain independent blockers for the LIVE
-Agency trial. This assurance decision does not resolve either issue or
-authorize a consumer-specific architecture.
+(legacy PR-head authority failure) remain independent blockers for a LIVE
+Agency consumer trial. Those trial-specific blockers are not part of the
+v0.5.1 public-fixture release gate above. This assurance decision does not
+resolve either issue or authorize a consumer-specific architecture.
 
 ### Three separate concepts and target contracts
 
