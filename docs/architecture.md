@@ -907,9 +907,10 @@ Architecture Gatekeeper does not own:
 - consumer architecture creation by inference;
 - human owner decisions that are absent from canonical authority.
 
-Gatekeeper's architecture responsibility is to validate and report only the
-procedure, bound evidence and assurance dimensions selected by the applicable
-consumer policy. It does not warrant the substantive quality or correctness of
+Gatekeeper evaluates proposed changes against consumer-owned canonical
+authority and validates and reports the selected review decision, procedure,
+bound evidence and assurance dimensions under the applicable consumer policy.
+It does not warrant the substantive quality or correctness of
 a consumer's architecture or an owner's decision. The consumer owns those
 decisions and its use of the result; the hosting platform and repository
 administrators own the protection, permissions, evidence availability and

@@ -106,14 +106,14 @@ under the current contract.
 
 ## This repository as a reference
 
-The following is an observed configuration on 2026-09-27, not a permanent
-hosting guarantee or proof of `OWNER_AMENDMENT`:
+The following is a configuration observed through the GitHub API during this
+change. It is not a permanent hosting guarantee or proof of `OWNER_AMENDMENT`:
 
 - `flair-agency/architecture-gatekeeper` is **public**. `main` has branch
   protection with `architecture-gate / accept` required from the GitHub Actions
   App, strict base freshness, and force-push/deletion disabled. These controls
   are available for a public repository on GitHub Free. The repository ruleset
-  API returned no rulesets on the observation date; the branch protection rule
+  API returned no rulesets during this readback; the branch protection rule
   supplies these current controls.
 - [The caller workflow](../.github/workflows/self-architecture-gate.yml)
   invokes [the reusable Gate](../.github/workflows/architecture-gate.yml) on
