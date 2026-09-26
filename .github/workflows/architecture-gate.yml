@@ -35,6 +35,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mode: ${{ steps.resolve.outputs.mode }}
+      policy_version: ${{ steps.resolve.outputs.policyVersion }}
+      policy_sha256: ${{ steps.resolve.outputs.sha256 }}
+      legacy_authority_files_base64: ${{ steps.resolve.outputs.legacyAuthorityFilesBase64 }}
+      legacy_prompt_path: ${{ steps.resolve.outputs.legacyPromptPath }}
+      legacy_schema_path: ${{ steps.resolve.outputs.legacySchemaPath }}
+      legacy_validation_path: ${{ steps.resolve.outputs.legacyValidationPath }}
       model: ${{ steps.resolve.outputs.model }}
       effort: ${{ steps.resolve.outputs.reasoningEffort }}
       authority_manifest_path: ${{ steps.resolve.outputs.authorityManifestPath }}
@@ -46,7 +52,6 @@ jobs:
       owner_addition_authority_path: ${{ steps.resolve.outputs.ownerAdditionAuthorityPath }}
       owner_addition_prompt_path: ${{ steps.resolve.outputs.ownerAdditionPromptPath }}
       owner_addition_schema_path: ${{ steps.resolve.outputs.ownerAdditionSchemaPath }}
-      policy_version: ${{ steps.resolve.outputs.policyVersion }}
       adoption_evidence_producer: ${{ steps.resolve.outputs.adoptionEvidenceProducer }}
       adoption_evidence_workflow_path: ${{ steps.resolve.outputs.adoptionEvidenceWorkflowPath }}
       adoption_evidence_job_name: ${{ steps.resolve.outputs.adoptionEvidenceJobName }}
@@ -69,22 +74,35 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           POLICY_PATH: ${{ inputs.policy-path }}
         run: |
-          git ls-tree -z --full-tree "$BASE_SHA" -- "$POLICY_PATH" > "$RUNNER_TEMP/architecture-gate-policy-tree"
-          if test -s "$RUNNER_TEMP/architecture-gate-policy-tree"; then
-            git show "$BASE_SHA:$POLICY_PATH" > "$RUNNER_TEMP/architecture-gate-policy.json"
+          if test "$GITHUB_EVENT_NAME" = pull_request; then
+            test "$POLICY_PATH" = .codex/gatekeeper/ci-policy.json
+          fi
+          if git cat-file -e "$BASE_SHA:$POLICY_PATH" 2>/dev/null; then
+            node .architecture-gatekeeper-runtime/src/materialize-regular-git-snapshot.mjs \
+              "$BASE_SHA" "$POLICY_PATH" "$RUNNER_TEMP/architecture-gate-policy.json" >> "$GITHUB_OUTPUT"
             node .architecture-gatekeeper-runtime/src/resolve-ci-policy.mjs "$RUNNER_TEMP/architecture-gate-policy.json" "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
           else
+            if test "$GITHUB_EVENT_NAME" = pull_request; then
+              echo 'Recorded-base CI policy is required for pull_request callers.' >&2
+              exit 1
+            fi
             echo "Base revision has no CI policy; using fail-safe bootstrap enforcement."
             echo "baseBranch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
             echo "mode=enforced" >> "$GITHUB_OUTPUT"
             echo "model=gpt-5.6-sol" >> "$GITHUB_OUTPUT"
             echo "reasoningEffort=medium" >> "$GITHUB_OUTPUT"
           fi
-      - name: Require protected instructions for selected Authority Set
-        if: steps.resolve.outputs.authorityManifestPath != ''
+      - name: Require protected instructions for selected Authority Set or legacy v1
+        if: steps.resolve.outputs.authorityManifestPath != '' || steps.resolve.outputs.policyVersion == '1'
         env:
           PROTECTED_INSTRUCTIONS: ${{ inputs.protected-review-instructions }}
         run: test "$PROTECTED_INSTRUCTIONS" = true
+      - name: Require caller validation selection to match recorded-base v1 policy
+        if: steps.resolve.outputs.policyVersion == '1'
+        env:
+          CALLER_VALIDATION_PATH: ${{ inputs.validation-path }}
+          BASE_VALIDATION_PATH: ${{ steps.resolve.outputs.legacyValidationPath }}
+        run: node .architecture-gatekeeper-runtime/src/verify-legacy-validation-selection.mjs "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"
 
   codex-action-integrity:
     if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
@@ -172,6 +190,7 @@ jobs:
       reviewed_sha: ${{ steps.revision.outputs.sha }}
       authority_provenance: ${{ steps.authority.outputs.provenance }}
       selected_authority_changed: ${{ steps.selected-authority-change.outputs.changed }}
+      legacy_authority_provenance: ${{ steps.legacy-authority.outputs.provenance }}
     steps:
       - name: Check enforced credentials
         env:
@@ -188,28 +207,48 @@ jobs:
         id: revision
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Materialize protected review instructions
-        if: inputs.protected-review-instructions
+        if: inputs.protected-review-instructions && needs.policy.outputs.policy_version != '1'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PROMPT_PATH: ${{ inputs.prompt-path }}
-          SCHEMA_PATH: ${{ inputs.schema-path }}
+          PROMPT_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_prompt_path || inputs.prompt-path }}
+          SCHEMA_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_schema_path || inputs.schema-path }}
         run: |
           git show "$BASE_SHA:$PROMPT_PATH" > "$RUNNER_TEMP/architecture-gate-prompt.md"
           git show "$BASE_SHA:$SCHEMA_PATH" > "$RUNNER_TEMP/architecture-gate-decision.schema.json"
       - name: Materialize protected decision validation policy
-        if: inputs.validation-path != ''
+        if: needs.policy.outputs.policy_version != '1' && inputs.validation-path != ''
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          VALIDATION_PATH: ${{ inputs.validation-path }}
+          VALIDATION_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path || inputs.validation-path }}
         run: git show "$BASE_SHA:$VALIDATION_PATH" > "$RUNNER_TEMP/architecture-gate-decision.validation.json"
       - name: Check out the pinned validation runtime
-        if: inputs.validation-path != '' || needs.policy.outputs.authority_manifest_path != ''
+        if: inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
         uses: actions/checkout@v5
         with:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-validation-runtime
           persist-credentials: false
+      - name: Materialize recorded-base legacy authority before review
+        if: needs.policy.outputs.policy_version == '1'
+        id: legacy-authority
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ steps.revision.outputs.sha }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          POLICY_PATH: ${{ inputs.policy-path }}
+          POLICY_SHA256: ${{ needs.policy.outputs.policy_sha256 }}
+          AUTHORITY_FILES_BASE64: ${{ needs.policy.outputs.legacy_authority_files_base64 }}
+          PROMPT_PATH: ${{ needs.policy.outputs.legacy_prompt_path }}
+          SCHEMA_PATH: ${{ needs.policy.outputs.legacy_schema_path }}
+          VALIDATION_PATH: ${{ needs.policy.outputs.legacy_validation_path }}
+          PROMPT_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-prompt.md
+          SCHEMA_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-decision.schema.json
+          VALIDATION_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-decision.validation.json
+          OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-legacy-prompt.md
+          PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
+        run: node .architecture-gatekeeper-validation-runtime/src/prepare-legacy-ci-authority.mjs prepare
       - name: Materialize protected Authority Set before review
         if: needs.policy.outputs.authority_manifest_path != ''
         id: authority
@@ -270,12 +309,12 @@ jobs:
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           output-file: ${{ runner.temp }}/architecture-gate-codex-final.json
-          prompt-file: ${{ needs.policy.outputs.authority_manifest_path != '' && format('{0}/architecture-gate-complete-prompt.md', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || inputs.prompt-path }}
+          prompt-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-legacy-prompt.md', runner.temp) || needs.policy.outputs.authority_manifest_path != '' && format('{0}/architecture-gate-complete-prompt.md', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || inputs.prompt-path }}
           model: ${{ needs.policy.outputs.model }}
           effort: ${{ needs.policy.outputs.effort }}
           sandbox: read-only
           safety-strategy: drop-sudo
-          output-schema-file: ${{ inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
+          output-schema-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
           # PR-owned AGENTS.md files are review evidence, never reviewer instructions.
           codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
       - name: Diagnose architecture reviewer completion
@@ -310,10 +349,16 @@ jobs:
           DECISION: ${{ steps.codex.outputs.final-message }}
         run: node .architecture-gatekeeper-validation-runtime/src/ci-decision-kind.mjs
       - name: Apply consumer-owned decision validation
-        if: inputs.validation-path != ''
+        if: (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '')
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
         run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-decision.mjs "$RUNNER_TEMP/architecture-gate-decision.validation.json"
+      - name: Require exact reported legacy authority files
+        if: needs.policy.outputs.policy_version == '1'
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+          PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
+        run: node .architecture-gatekeeper-validation-runtime/src/prepare-legacy-ci-authority.mjs validate
       - name: Require exact reported Authority IDs
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
@@ -451,9 +496,11 @@ jobs:
           POLICY_RESULT: ${{ needs.policy.result }}
           REVIEW_RESULT: ${{ needs.review.result }}
           MODE: ${{ needs.policy.outputs.mode }}
+          POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
           DECISION: ${{ needs.review.outputs.final_message }}
           REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
           AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
+          LEGACY_AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.legacy_authority_provenance }}
           AUTHORITY_ROUTE_SELECTED: ${{ needs.policy.outputs.authority_manifest_path != '' }}
           OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade == 'G0' }}
           OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
