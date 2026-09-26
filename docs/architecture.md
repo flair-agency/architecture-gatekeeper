@@ -95,7 +95,8 @@ evidence.
 
 This target contract applies only after the route is implemented and explicitly
 selected. Existing single-repository and CI compatibility routes retain their
-current assurance claims; naming a protected architecture file in a prompt
+current assurance claims except for the explicit fail-closed legacy v1 repair
+below; naming a protected architecture file in a prompt
 alone does not satisfy the materialization requirement above. An enabled
 enforced review cannot downgrade to an older route when resolution fails.
 
@@ -704,6 +705,38 @@ first base-owned instructions. That route provides model review but does not
 claim protected-instruction assurance. A privileged caller that requires
 protected acceptance must select protected review instructions, as this
 repository's self-review does.
+
+#### Legacy v1 CI authority repair (Issue #120 owner decision)
+
+The LIVE Agency #106 trial exposed a false acceptance: an enforced legacy v1
+review treated candidate-edited authority and unsupported completion claims as
+canonical. The owner explicitly authorized a fail-closed repair for v0.5.1 on
+2026-09-26, including a compatibility break for existing enforced v1 consumers.
+Historical v1 reports are not retroactively reclassified.
+
+For an enforced v1 review, the recorded base policy must select a nonempty,
+bounded list of canonical authority paths and the review prompt and decision
+schema paths. The workflow must read the selected policy, instructions and
+authority bytes from that same recorded base, validate regular-file snapshots,
+and make their identities visible in the report. The candidate cannot choose a
+different base file through caller-supplied paths, alter the selected policy or
+instructions for its own review, or have changed authority treated as adopted.
+The ordinary v1 accept path must fail closed when any selected authority is
+changed by the candidate, the selector or required snapshot is absent or
+invalid, or the decision omits or adds a selected authority path. A separate
+previous-base-authorized addition route remains available for an eligible
+authority-only B; an ordinary v1 `PASS` cannot substitute for it.
+
+Previously valid enforced v1 policies without these base-selected inputs cease
+to qualify for acceptance after this repair. A candidate PR cannot enable its
+own acceptance by adding the fields to its head; the consumer must first adopt
+the base policy and a base-owned caller under its own governance. A caller
+loaded from a pull-request merge commit can itself be candidate-controlled,
+including its selected reusable-workflow revision. Until the caller and
+required check producer are controlled by the applicable host mechanism, the
+workflow result alone cannot claim protected merge enforcement or a protected
+canonical transition. A consumer without that mechanism may select the
+separate advisory-only route, which never satisfies the required accept check.
 
 CI execution is one evidence source, not a prerequisite for every repository
 to obtain local/manual review. Repositories may select a local-only guardrail,
