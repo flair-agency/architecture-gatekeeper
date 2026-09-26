@@ -105,3 +105,24 @@ test('protected input drift and incomplete decision are incomplete', async t => 
   incomplete.decision.decision = 'OWNER_DECISION';
   assert.equal((await inspectHistoricalBlock({ ...data, recordBytes: Buffer.from(`${JSON.stringify(incomplete, null, 2)}\n`) })).status, 'INCOMPLETE');
 });
+
+test('lost BLOCK evidence can be replaced only by a separately verified fresh attempt', async t => {
+  const earlier = await fixture(t);
+  assert.equal((await inspectHistoricalBlock(earlier)).status, 'VERIFIED_TEST_ONLY_BLOCK');
+  assert.equal((await inspectHistoricalBlock({ ...earlier, recordBytes: undefined })).status, 'INCOMPLETE');
+
+  // This models a new protected run for the same exact A and previous base.
+  // The verified certificate is a fixture; live signer verification remains separate.
+  const record = JSON.parse(earlier.recordBytes);
+  record.runAttempt = '4';
+  const recordBytes = Buffer.from(`${JSON.stringify(record)}\n`);
+  const verified = structuredClone(earlier.verified);
+  verified[0].verificationResult.signature.certificate.runInvocationURI =
+    `https://github.com/${repository}/actions/runs/42/attempts/4`;
+  verified[0].verificationResult.statement.subject[0].digest.sha256 = hash(recordBytes);
+  const fresh = { ...earlier, expected: { ...earlier.expected, runAttempt: '4' }, recordBytes, verified };
+  assert.equal((await inspectHistoricalBlock(fresh)).status, 'VERIFIED_TEST_ONLY_BLOCK');
+  const oldRecordForNewAttempt = { ...fresh, recordBytes: earlier.recordBytes, verified: earlier.verified };
+  assert.equal((await inspectHistoricalBlock(oldRecordForNewAttempt)).status, 'INCOMPLETE');
+  assert.notEqual(hash(fresh.recordBytes), hash(earlier.recordBytes));
+});
