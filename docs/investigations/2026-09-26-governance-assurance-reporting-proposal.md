@@ -27,6 +27,7 @@ Replace the implication of a single scalar grade in future reporting with indepe
 | `principalAuthentication` | `not_verified`, `verified:<principal>`, `unknown`, `unavailable` | Whether an approved identity mechanism authenticated the relevant actor. Legacy G0 maps to `not_verified`. |
 | `exactClaimAuthorization` | `not_required`, `authorized:<claim-id>`, `not_verified`, `unknown`, `unavailable` | Whether an authorized principal approved this exact claim under an adopted contract. |
 | `quorum` | `not_required`, `satisfied`, `unsatisfied`, `unknown` | Whether the policy's required attester relationship/count was met. |
+| `policyProtection` | `verified`, `not_claimed`, `unknown`, `unavailable` | Whether host evidence establishes that the selected policy revision itself was protected from candidate self-selection or alteration. Advisory mode uses `not_claimed`. |
 | `hostEnforcement` | `verified`, `not_verified`, `unavailable`, `not_applicable` | Whether evidence proves the required host mechanism applied to the target and required producer/check, with bypass scope recorded. |
 | `canonicalTransition` | `verified:<receipt-id>`, `not_verified`, `pending`, `unknown` | Whether a separate host readback/receipt verifies the exact candidate became canonical. |
 | `evidenceFreshness` | route-specific structured state | Which bound evidence was checked, at what event/time, and through which lifecycle boundary. |
@@ -37,25 +38,25 @@ Keep the legacy string `OWNER_ADDITION / G0` for interpreting existing v0.5 resu
 
 ## Route choices requiring owner decision
 
-### Option A: retain protected-only governance routes
+### Option A: require host enforcement for formal governance acceptance
 
-Require verifiable host enforcement for every formal governance acceptance. If enforcement evidence cannot be obtained, the route is incomplete and no acceptance is reported. This keeps the current protected-only model narrow, but repositories on plans or hosts that cannot expose/require such a control cannot use the governance acceptance route. They may still use local/manual feedback under their existing contract.
+As a future target contract, require verifiable host enforcement for every result described as formal governance acceptance. If enforcement evidence cannot be obtained, the route is incomplete and no acceptance is reported. This is stronger than the current v0.5 `Architecture Gate / accept` behavior: v0.5 does not verify host rules, and its green check must not be represented as proof that the host required it for merge. Repositories on plans or hosts that cannot expose or require such a control could not use this future acceptance route, though local/manual feedback remains available under its existing contract.
 
 ### Option B: add an explicit advisory-only procedure (recommended for owner review)
 
-Add a separately named, opt-in mode for repositories that can verify route procedure and bind it to a recorded protected base but cannot prove host merge enforcement. It may report the procedure decision, exact inputs, policy and evidence observations for human follow-up. It must explicitly report `advisory_only`, `hostEnforcement=not_verified` (or `unavailable`), and `canonicalTransition=not_verified`. It does not emit `OWNER_ADDITION_G0` as acceptance, satisfy a required `Architecture Gate / accept` check, or imply that B is canonical. An eligible B that remains a pull request therefore has an advisory result only.
+Add a separately named, opt-in mode for repositories that can verify route procedure against a recorded base revision but cannot prove host merge enforcement. The consumer owner records the mode choice in canonical consumer authority or its governance record; that owner decision does not make the base or policy protected. The report must say `advisory_only`, `hostEnforcement=not_verified` (or `unavailable`), `canonicalTransition=not_verified`, and `policyProtection=not_claimed`. It may report the procedure decision, exact inputs, recorded base/policy identity, and evidence observations for human follow-up. It does not emit `OWNER_ADDITION_G0` as acceptance, satisfy a required `Architecture Gate / accept` check, or imply that B is canonical. An eligible B that remains a pull request therefore has an advisory result only.
 
-The advisory mode is not an automatic fallback. The previous protected-base policy must explicitly select it. If an enforced route was selected and host evidence is missing, inaccessible (including a plan-restricted 403), stale, or invalid, the result remains incomplete/fail-closed; it cannot downgrade to advisory. Candidate B cannot enable advisory mode, change its assurance requirements, or select a different policy. If a repository cannot protect that selection itself, the mode cannot claim protected-base policy assurance; the consumer owner must choose an external governance process or keep the route unavailable.
+The advisory mode is not an automatic fallback. Each run selects policy only from the recorded base revision, never from candidate B; B cannot enable advisory mode, change its assurance requirements, or select a different policy within that run. The report must identify the base revision and state that its selection is not host-protected. An enforced route selected by base policy remains incomplete/fail-closed if host evidence is missing, inaccessible (including a plan-restricted 403), stale, or invalid; it cannot downgrade to advisory. Because advisory mode makes no host-protection claim, the consumer owner must account for the fact that the recorded policy and any later canonical transition are not protected by this route.
 
 **Owner decision:** choose Option A or Option B, name the dimensions and report vocabulary, and define whether a host readback is required for each procedure. Record the decision in `docs/architecture.md` before implementation. This proposal does not decide that advisory-only behavior is part of the product contract.
 
 ## Compatibility and migration proposal
 
 1. Do not rewrite, reinterpret, or invalidate historical v0.5 `G0` artifacts or policy bytes. Their claims remain bounded by the original contract: identity unverified; tag-ref mapping observed at verification; no promise of later freshness or host merge enforcement.
-2. Give any new route and report a new explicit policy/report version. Old consumers keep current behavior until a protected-base policy opts into the new version through the normal owner-controlled adoption path.
+2. Give any new route and report a new explicit policy/report version. Old consumers keep current behavior until the consumer owner records an explicit choice to use the new version through its canonical governance process. Only a route claiming protected acceptance requires a protected-base selection; advisory mode explicitly makes no such claim.
 3. During migration, render old G0 records with an explicit legacy explanation and unknown enforcement/transition facts. Do not infer values from a green check. New verifiers must reject an ambiguous mixture of legacy and new fields instead of silently upgrading old evidence.
 4. Do not change `OWNER_AMENDMENT` freshness semantics. Its evidence remains valid through its protected transition; G0 remains a point-in-time verification result.
-5. A consumer that cannot read host enforcement configuration may select the proposed advisory mode only after owner adoption and only if its policy selection is itself protected. If it cannot satisfy that prerequisite, there is no Gatekeeper acceptance route. The 403 is a visible reason, not a waiver or fallback trigger.
+5. A consumer that cannot read host enforcement configuration may select the proposed advisory mode only after owner adoption. Its policy is read from the recorded base revision, and the report states that neither the policy selection nor canonical transition is claimed to be host-protected. A plan-restricted 403 is reported as unavailable evidence, not as host enforcement, a waiver, or a fallback trigger.
 
 ## Failure semantics
 
@@ -80,7 +81,7 @@ The advisory mode is not an automatic fallback. The previous protected-base poli
 ### Host E2E
 
 - On a supported repository/plan, observe the protected rule and its target, required check/producer, bypass scope and timing; attempt a controlled ineligible candidate and demonstrate the host blocks its canonical transition. Separately read back the resulting canonical revision for a qualifying candidate to produce a transition receipt.
-- On a private repository where the host API denies rule inspection with 403, run only the explicitly adopted advisory path. Confirm report status is advisory, enforcement and canonical transition are unverified, and no required acceptance signal is emitted.
+- On a private repository where the host API denies rule inspection with 403, record owner adoption of the advisory mode and run it using policy read only from the recorded base revision. Confirm the report explicitly makes no policy-protection claim, marks enforcement and canonical transition unverified, and emits no required acceptance signal.
 - Exercise a change between green check and transition (evidence, policy, tag ref, or required-check state as applicable) and prove the enforced path revalidates or prevents transition. Keep G0's existing limited freshness claim separate from the stronger `OWNER_AMENDMENT` transition contract.
 
 No route should be enabled until owner approval, deterministic tests, and the relevant host E2E are complete. Issues [#119](https://github.com/flair-agency/architecture-gatekeeper/issues/119) and [#120](https://github.com/flair-agency/architecture-gatekeeper/issues/120) remain separate required work for the referenced LIVE Agency trial.
