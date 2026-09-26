@@ -94,6 +94,8 @@ test('v3 advisory is explicit and cannot mix legacy or self-selected modes', () 
   const advisory = { version: 3, default: branch, branches: {} };
   assert.deepEqual(resolveCiPolicy(advisory, 'main').ownerAdditionRoute, 'advisory-only');
   assert.equal(resolveCiPolicy(advisory, 'main').mode, 'advisory');
+  assert.throws(() => resolveCiPolicy({ ...advisory, default: { mode: 'local-only' } }, 'main'), /explicit advisory/);
+  assert.throws(() => resolveCiPolicy({ ...advisory, branches: { other: { mode: 'local-only' } } }, 'main'), /explicit advisory/);
   assert.throws(() => resolveCiPolicy({ ...distributed, default: branch }, 'main'), /mode/);
   assert.throws(() => resolveCiPolicy({ ...advisory, default: { ...branch, mode: 'enforced' } }, 'main'), /explicit advisory/);
   assert.throws(() => resolveCiPolicy({ ...advisory, default: { ...branch, ownerAddition: { ...branch.ownerAddition, route: 'advisory-only' } } }, 'main'), /Unknown/);

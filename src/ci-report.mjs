@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const COMMENT_MARKER = '<!-- architecture-gatekeeper:result:v1 -->';
+export const ADVISORY_COMMENT_MARKER = '<!-- architecture-gatekeeper:result:v2 -->';
 const OWNER_INTERVENTION_URL = 'https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/owner-intervention.md';
 const MAX_ITEM_LENGTH = 2_000;
 const MAX_REPORT_LENGTH = 60_000;
@@ -131,15 +132,18 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision,
       : 'No summary was supplied by the architecture reviewer.';
     const nestedBlock = decision.gates && typeof decision.gates === 'object' && !Array.isArray(decision.gates) &&
       Object.values(decision.gates).some(gate => gate?.decision === 'BLOCK');
-    if (mode === 'advisory' && decision.decision === 'OWNER_DECISION' && !nestedBlock &&
+    const eligibleAddition = decision.decision === 'OWNER_DECISION' && !nestedBlock &&
         ownerAdditionSelected && ownerAdditionResult === 'success' && ownerAdditionEligibility === 'ELIGIBLE' &&
         ownerAdditionProcedure?.procedure === 'VALID_G0_OWNER_ADDITION' &&
-        decision.ownerDecisionId === ownerAdditionProcedure.missingDecisionId) {
-      return { conclusion: 'ADVISORY_ONLY', summary: 'The recorded-base advisory procedure and separate missing-decision eligibility review completed. This is not merge acceptance.', decision };
+        decision.ownerDecisionId === ownerAdditionProcedure.missingDecisionId;
+    if (mode === 'advisory') {
+      return { conclusion: 'ADVISORY_ONLY',
+        summary: eligibleAddition
+          ? 'The recorded-base advisory procedure and separate missing-decision eligibility review completed. This is not merge acceptance.'
+          : `The advisory procedure did not establish an eligible owner addition. Ordinary semantic decision: ${decision.decision}. This is not merge acceptance.`,
+        decision, procedureEligibility: eligibleAddition ? 'eligible' : 'ineligible' };
     }
-    if (decision.decision === 'OWNER_DECISION' && !nestedBlock && ownerAdditionSelected && ownerAdditionResult === 'success' &&
-        ownerAdditionEligibility === 'ELIGIBLE' && ownerAdditionProcedure?.procedure === 'VALID_G0_OWNER_ADDITION' &&
-        decision.ownerDecisionId === ownerAdditionProcedure.missingDecisionId) {
+    if (eligibleAddition) {
       return { conclusion: 'OWNER_ADDITION_G0',
         summary: 'The previous protected policy selected G0; the exact B tag procedure and separate missing-decision eligibility review completed.',
         decision };
@@ -201,7 +205,7 @@ export function renderReport(classified, metadata = {}) {
   }
   if (classified.conclusion === 'ADVISORY_ONLY') {
     const p = metadata.ownerAdditionProcedure;
-    body += '\nThis informational report does not accept B or A and cannot satisfy Architecture Gate / accept. policyProtection=`not_claimed` · hostEnforcement=`not_verified` · canonicalTransition=`not_verified` · principalAuthentication=`not_verified`.\n';
+    body += `\nThis informational report does not accept B or A and cannot satisfy Architecture Gate / accept. Ordinary semantic decision: \`${cleanText(decision?.decision, 100)}\` · Procedure eligibility: \`${cleanText(classified.procedureEligibility, 100)}\` · policyProtection=\`not_claimed\` · hostEnforcement=\`not_verified\` · canonicalTransition=\`not_verified\` · principalAuthentication=\`not_verified\`.\n`;
     if (p) body += `\nReport version: \`2\` · Repository: \`${cleanText(p.repository, 150)}\` · Recorded base and policy revision: \`${cleanText(p.baseSha, 64)}\` · Policy SHA-256: \`${cleanText(metadata.policySha256, 64)}\` · Candidate head: \`${cleanText(p.headSha, 64)}\` · Procedure: \`${cleanText(p.procedure, 100)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag object OID: \`${cleanText(p.tagObjectOid, 64)}\`\n`;
   }
   if (metadata.authorityProvenance) {
@@ -232,7 +236,7 @@ export function renderReport(classified, metadata = {}) {
   if (metadata.workflowRef) links.push(`Workflow: \`${cleanText(metadata.workflowRef, 300)}\``);
   const provenance = links.length ? `\n${links.join(' · ')}\n` : '';
   const marker = metadata.mode === 'advisory' || classified.conclusion === 'ADVISORY_ONLY'
-    ? '<!-- architecture-gatekeeper:result:v2 -->' : COMMENT_MARKER;
+    ? ADVISORY_COMMENT_MARKER : COMMENT_MARKER;
   const ending = `${provenance}\n${marker}\n`;
   const truncation = '\n\n_Report truncated._\n';
   if (body.length + ending.length > MAX_REPORT_LENGTH) {
@@ -252,12 +256,12 @@ export async function upsertPullRequestComment({ fetchImpl = fetch, apiUrl, repo
   const root = `${apiUrl}/repos/${repository}`;
   let commentsUrl = `${root}/issues/${pullRequest}/comments?per_page=100`;
   let existing;
+  const marker = body.includes(ADVISORY_COMMENT_MARKER) ? ADVISORY_COMMENT_MARKER : COMMENT_MARKER;
   while (commentsUrl) {
     const listed = await fetchImpl(commentsUrl, { headers });
     if (!listed.ok) throw new Error(`list comments returned HTTP ${listed.status}`);
     const comments = await listed.json();
-    existing = comments.find((comment) => comment?.user?.login === 'github-actions[bot]' &&
-      (comment?.body?.includes(COMMENT_MARKER) || comment?.body?.includes('<!-- architecture-gatekeeper:result:v2 -->')));
+    existing = comments.find((comment) => comment?.user?.login === 'github-actions[bot]' && comment?.body?.includes(marker));
     if (existing) break;
     const link = listed.headers?.get?.('link') || '';
     commentsUrl = link.match(/<([^>]+)>;\s*rel="next"/)?.[1] || '';

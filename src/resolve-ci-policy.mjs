@@ -24,6 +24,7 @@ function validateBranch(branch, label, version) {
   requireOnlyKeys(branch, version === 1 ? new Set(['mode', 'model', 'reasoningEffort']) : new Set(['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition']), label);
   if (!MODES.has(branch.mode) || (branch.mode === 'advisory' && version !== 3)) throw new Error(`Invalid ${label} mode`);
   if (branch.mode === 'local-only') {
+    if (version === 3) throw new Error(`${label} v3 requires explicit advisory owner addition`);
     if (Object.keys(branch).length !== 1) throw new Error(`Invalid ${label}`);
     return;
   }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COMMENT_MARKER, classifyReview, digestDecision, renderReport, upsertPullRequestComment } from '../src/ci-report.mjs';
+import { ADVISORY_COMMENT_MARKER, COMMENT_MARKER, classifyReview, digestDecision, renderReport, upsertPullRequestComment } from '../src/ci-report.mjs';
 
 const decision = {
   decision: 'BLOCK',
@@ -36,6 +36,20 @@ test('distinguishes waiver, policy failure, review failure, and malformed output
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'failure' }).conclusion, 'ERROR');
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'failure' }).conclusion, 'ERROR');
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: '{}' }).conclusion, 'ERROR');
+});
+
+test('advisory ordinary PASS and BLOCK remain informational with separate report marker', () => {
+  for (const semantic of ['PASS', 'BLOCK']) {
+    const classified = classifyReview({ mode: 'advisory', policyResult: 'success', reviewResult: 'success',
+      rawDecision: JSON.stringify({ decision: semantic, summary: 'ordinary review' }) });
+    assert.equal(classified.conclusion, 'ADVISORY_ONLY');
+    assert.equal(classified.procedureEligibility, 'ineligible');
+    const report = renderReport(classified, { mode: 'advisory', policySha256: 'a'.repeat(64) });
+    assert.ok(report.includes('Ordinary semantic decision: `' + semantic + '`'));
+    assert.match(report, /policyProtection=`not_claimed`/);
+    assert.ok(report.endsWith(`${ADVISORY_COMMENT_MARKER}\n`));
+    assert.doesNotMatch(report, /Architecture Gate — PASS/);
+  }
 });
 
 test('reports owner decisions as unaccepted canonical-authority escalations', () => {
@@ -129,6 +143,21 @@ test('updates the existing bot comment and ignores lookalike user comments', asy
   assert.deepEqual(result, { status: 'updated' });
   assert.equal(calls[1].options.method, 'PATCH');
   assert.match(calls[1].url, /issues\/comments\/11$/);
+});
+
+test('advisory and enforced bot comments are updated independently', async () => {
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    return calls.length === 1
+      ? { ok: true, json: async () => [
+          { id: 11, user: { login: 'github-actions[bot]' }, body: COMMENT_MARKER },
+          { id: 12, user: { login: 'github-actions[bot]' }, body: ADVISORY_COMMENT_MARKER },
+        ] }
+      : { ok: true };
+  };
+  await upsertPullRequestComment({ fetchImpl, apiUrl: 'https://api.test', repository: 'o/r', pullRequest: '7', token: 'token', body: ADVISORY_COMMENT_MARKER });
+  assert.match(calls[1].url, /issues\/comments\/12$/);
 });
 
 test('follows comment pagination before updating the marker-owned comment', async () => {
