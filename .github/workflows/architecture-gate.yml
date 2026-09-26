@@ -171,6 +171,7 @@ jobs:
       decision_kind: ${{ steps.decision.outputs.kind }}
       reviewed_sha: ${{ steps.revision.outputs.sha }}
       authority_provenance: ${{ steps.authority.outputs.provenance }}
+      selected_authority_changed: ${{ steps.selected-authority-change.outputs.changed }}
     steps:
       - name: Check enforced credentials
         env:
@@ -241,6 +242,15 @@ jobs:
             "$RUNNER_TEMP/architecture-gate-authority-set/authority-prompt.md" \
             > "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
           echo "provenance=$(base64 -w0 "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json")" >> "$GITHUB_OUTPUT"
+      - name: Detect candidate changes to the selected Authority Set
+        if: needs.policy.outputs.mode == 'procedural'
+        id: selected-authority-change
+        env:
+          AUTHORITY_PROVENANCE: ${{ steps.authority.outputs.provenance }}
+          SELF_REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .architecture-gatekeeper-validation-runtime/src/ci-procedural-authority-change.mjs
       - name: Check protected Authority Set schema and complete prompt
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
@@ -469,6 +479,14 @@ jobs:
           echo "Architecture Gate: ACCEPTED WITHOUT CI AI REVIEW"
           echo "Base branch: ${{ github.base_ref }}"
           echo "AI acceptance review: WAIVED BY BASE-BRANCH POLICY"
+      - name: Check out the protected procedural acceptance verifier
+        if: needs.policy.outputs.mode == 'procedural'
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
       - name: Require model-backed PASS or verified G0 owner addition
         if: needs.policy.outputs.mode == 'enforced'
         env:
@@ -494,12 +512,5 @@ jobs:
           OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade }}
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
           EVIDENCE_PRODUCER: ${{ needs.policy.outputs.adoption_evidence_producer }}
-        run: |
-          test "$POLICY_VERSION" = 5
-          test "$EVIDENCE_PRODUCER" = github-actions
-          test "$REVIEW_RESULT" = success
-          if test "$CONCLUSION" = PASS; then exit 0; fi
-          test "$CONCLUSION" = OWNER_ADDITION_G0_PENDING
-          test "$OWNER_ADDITION_SELECTED" = G0
-          test "$OWNER_ADDITION_RESULT" = success
-          test "$OWNER_ADDITION_ELIGIBILITY" = ELIGIBLE
+          SELECTED_AUTHORITY_CHANGED: ${{ needs.review.outputs.selected_authority_changed }}
+        run: node .architecture-gatekeeper-runtime/src/ci-procedural-acceptance.mjs

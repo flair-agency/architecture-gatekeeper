@@ -240,7 +240,10 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(additionJob, /uses: actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4/);
   assert.match(additionJob, /name: owner-addition-eligibility-evidence-\$\{\{ github\.event\.pull_request\.head\.sha \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.match(additionJob, /path: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-addition\/eligibility-evidence\.json/);
-  assert.match(workflow, /OWNER_ADDITION_G0_PENDING/);
+  assert.match(workflow, /ci-procedural-acceptance\.mjs/);
+  const proceduralAcceptance = readFileSync(join(root, 'src/ci-procedural-acceptance.mjs'), 'utf8');
+  assert.match(proceduralAcceptance, /OWNER_ADDITION_G0_PENDING/);
+  assert.match(proceduralAcceptance, /selected authority requires successful OWNER_ADDITION/);
   assert.match(workflow, /POLICY_VERSION: \$\{\{ needs\.policy\.outputs\.policy_version \}\}/);
 });
 
