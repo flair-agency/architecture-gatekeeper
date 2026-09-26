@@ -343,7 +343,7 @@ jobs:
           fi
           npm list -g --depth=0 @openai/codex @openai/codex-responses-api-proxy || true
       - name: Identify the completed ordinary decision
-        if: needs.policy.outputs.mode == 'procedural'
+        if: needs.policy.outputs.mode == 'procedural' || (needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_addition_grade == 'G0')
         id: decision
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
@@ -366,7 +366,7 @@ jobs:
         run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
   owner-addition:
-    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.owner_addition_grade == 'G0' && (needs.policy.outputs.mode == 'enforced' || needs.review.outputs.decision_kind == 'OWNER_DECISION')
+    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.owner_addition_grade == 'G0' && needs.review.outputs.decision_kind == 'OWNER_DECISION'
     needs: [policy, codex-action-integrity, review]
     permissions:
       contents: read
