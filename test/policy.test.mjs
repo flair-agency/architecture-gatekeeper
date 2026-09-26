@@ -249,13 +249,13 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /name: Require model-backed PASS or verified G0 owner addition\n        if: needs\.policy\.outputs\.mode == 'enforced'/);
   assert.match(workflow, /name: Require PASS or pre-merge G0 eligibility\n        if: needs\.policy\.outputs\.mode == 'procedural'/);
   assert.match(workflow, /decision_kind: \$\{\{ steps\.decision\.outputs\.kind \}\}/);
-  assert.match(workflow, /name: Identify the completed ordinary decision\n        if: needs\.policy\.outputs\.mode == 'procedural'\n        id: decision/);
+  assert.match(workflow, /name: Identify the completed ordinary decision\n        if: needs\.policy\.outputs\.mode == 'procedural' \|\| \(needs\.policy\.outputs\.mode == 'enforced' && needs\.policy\.outputs\.owner_addition_grade == 'G0'\)\n        id: decision/);
   assert.match(workflow, /test "\$CONCLUSION" = PASS/);
   assert.match(workflow, /test "\$CONCLUSION" = OWNER_ADDITION_G0/);
   assert.match(workflow, /test "\$OWNER_ADDITION_RESULT" = success/);
   const additionJob = workflow.match(/  owner-addition:\n([\s\S]*?)\n  report:/)?.[1];
   assert.ok(additionJob);
-  assert.match(additionJob, /if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\) && needs\.policy\.outputs\.owner_addition_grade == 'G0' && \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.review\.outputs\.decision_kind == 'OWNER_DECISION'\)/);
+  assert.match(additionJob, /if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\) && needs\.policy\.outputs\.owner_addition_grade == 'G0' && needs\.review\.outputs\.decision_kind == 'OWNER_DECISION'/);
   assert.match(additionJob, /needs: \[policy, codex-action-integrity, review\]/);
   assert.match(additionJob, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
   assert.doesNotMatch(additionJob, /ref: refs\/pull\/.*\/merge/);
