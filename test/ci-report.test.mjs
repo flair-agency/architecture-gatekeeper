@@ -1,6 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COMMENT_MARKER, classifyReview, digestDecision, renderReport, upsertPullRequestComment } from '../src/ci-report.mjs';
+import { COMMENT_MARKER, classifyReview, digestDecision, parseLegacyAuthorityProvenance, renderReport, upsertPullRequestComment } from '../src/ci-report.mjs';
+
+test('legacy provenance binds base/head, policy and selected authority in report', () => {
+  const provenance = { version: 1, baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40),
+    policySha256: 'c'.repeat(64), members: [{ path: 'docs/architecture.md', sha256: 'd'.repeat(64) }] };
+  const parsed = parseLegacyAuthorityProvenance(Buffer.from(JSON.stringify(provenance)).toString('base64'), true);
+  assert.deepEqual(parsed, provenance);
+  const report = renderReport({ conclusion: 'PASS', summary: 'Existing authority permits the change.', decision: {
+    decision: 'PASS', summary: 'Existing authority permits the change.', authorityFiles: ['docs/architecture.md'],
+  } }, { legacyAuthorityProvenance: parsed });
+  assert.match(report, /Recorded-base legacy authority/);
+  assert.match(report, /docs\/architecture\.md \(SHA-256/);
+  assert.throws(() => parseLegacyAuthorityProvenance('', true), /Missing legacy/);
+  assert.throws(() => parseLegacyAuthorityProvenance(Buffer.from(JSON.stringify({ ...provenance, members: [] })).toString('base64'), true), /Invalid legacy/);
+});
 
 const decision = {
   decision: 'BLOCK',

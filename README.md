@@ -176,14 +176,22 @@ branch use one of these shapes:
     "main": {
       "mode": "enforced",
       "model": "gpt-6-sol",
-      "reasoningEffort": "medium"
+      "reasoningEffort": "medium",
+      "authorityFiles": ["docs/architecture.md"]
     }
   }
 }
 ```
 
-`local-only` accepts only `mode`; `enforced` requires `mode`, `model`, and
-`reasoningEffort`, with no other fields. `model` is a nonempty identifier using
+`local-only` accepts only `mode`; legacy v1 `enforced` requires `mode`, `model`,
+`reasoningEffort`, and a nonempty, unique `authorityFiles` list of canonical
+Markdown paths. The list is selected from the recorded base policy. The v1 CI
+review requires `protected-review-instructions: true`, receives those base
+snapshots with protected prompt and schema, verifies the
+same exact paths in the decision, and fails closed if B modifies any selected
+authority file. Existing enforced v1 consumers without this selector must
+adopt it in their base policy before ordinary acceptance can resume. A change
+to the selector in a candidate head cannot enable its own review. `model` is a nonempty identifier using
 letters, digits, `.`, `_`, or `-`; `reasoningEffort` is one of `minimal`, `low`,
 `medium`, `high`, `xhigh`, `max`, or `ultra`. Policy resolution validates every
 branch entry, even when another branch is being reviewed. Unknown fields,

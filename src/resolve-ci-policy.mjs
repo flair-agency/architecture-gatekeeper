@@ -8,6 +8,7 @@ const EFFORTS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ul
 const AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.json$/;
 const OWNER_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
 const OWNER_SCHEMA_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.json$/;
+const LEGACY_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -21,7 +22,7 @@ function requireOnlyKeys(value, allowed, label) {
 }
 
 function validateBranch(branch, label, version) {
-  requireOnlyKeys(branch, version === 1 ? new Set(['mode', 'model', 'reasoningEffort']) : new Set(['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition']), label);
+  requireOnlyKeys(branch, version === 1 ? new Set(['mode', 'model', 'reasoningEffort', 'authorityFiles']) : new Set(['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition']), label);
   if (!MODES.has(branch.mode)) throw new Error(`Invalid ${label} mode`);
   if (branch.mode === 'local-only') {
     if (Object.keys(branch).length !== 1) throw new Error(`Invalid ${label}`);
@@ -31,6 +32,14 @@ function validateBranch(branch, label, version) {
     throw new Error(`Enforced ${label} requires a valid model`);
   }
   if (!EFFORTS.has(branch.reasoningEffort)) throw new Error(`Invalid reasoning effort for ${label}`);
+  if (version === 1) {
+    if (!Array.isArray(branch.authorityFiles) || branch.authorityFiles.length < 1 || branch.authorityFiles.length > 16 ||
+        new Set(branch.authorityFiles).size !== branch.authorityFiles.length ||
+        branch.authorityFiles.some(path => typeof path !== 'string' || path.length > 240 ||
+          !LEGACY_AUTHORITY_PATH.test(path) || path.split('/').some(part => part === '.' || part === '..'))) {
+      throw new Error(`Enforced ${label} requires explicit base-selected authorityFiles`);
+    }
+  }
   if (version === 2 || version === 4) {
     if (Object.hasOwn(branch, 'ownerAddition')) {
       requireOnlyKeys(branch.ownerAddition, new Set(['grade', 'authorityPath', 'promptPath', 'schemaPath', ...(version === 4 ? ['version', 'authorityId'] : [])]), `${label} owner addition`);
@@ -87,6 +96,10 @@ export function resolveCiPolicy(policy, baseBranch) {
   const result = selected.mode === 'local-only'
     ? { baseBranch, mode: 'local-only', model: '', reasoningEffort: '' }
     : { baseBranch, mode: 'enforced', model: selected.model, reasoningEffort: selected.reasoningEffort };
+  if (policy.version === 1 && selected.mode === 'enforced') {
+    result.policyVersion = 1;
+    result.legacyAuthorityFilesBase64 = Buffer.from(JSON.stringify(selected.authorityFiles)).toString('base64');
+  }
   if (selected.authorityManifestPath) {
     result.authorityManifestPath = selected.authorityManifestPath;
     const profile = policy.version === 4 ? MULTI_AUTHORITY_PROFILE : 'v1';
