@@ -715,9 +715,13 @@ canonical. The owner explicitly authorized a fail-closed repair for v0.5.1 on
 Historical v1 reports are not retroactively reclassified.
 
 For an enforced v1 review, the recorded base policy must select a nonempty,
-bounded list of canonical authority paths and the review prompt and decision
-schema paths, plus any selected decision-validation path. The workflow must
-read the selected policy, instructions and authority bytes from that same
+bounded `authorityFiles` list of canonical repository paths, plus canonical
+`promptPath` and `schemaPath` values. It must include `validationPath`, either
+set to a canonical JSON path for additional decision validation or explicitly
+to `null` when no additional validation is selected. The caller's
+`validation-path` input must match this recorded-base value exactly. Missing,
+malformed, or mismatched validation selections fail before review. The workflow
+must read the selected policy, instructions and authority bytes from that same
 recorded base, validate regular-file snapshots, and make their identities
 visible in the report. The candidate cannot choose a different base file
 through caller-supplied paths or change the policy, instructions, or validation
@@ -729,16 +733,17 @@ invalid, or the decision omits or adds a selected authority path. A separate
 previous-base-authorized addition route remains available for an eligible
 authority-only B; an ordinary v1 `PASS` cannot substitute for it.
 
-Previously valid enforced v1 policies without these base-selected inputs cease
-to qualify for acceptance after this repair. A candidate PR cannot enable its
-own acceptance by adding the fields to its head; the consumer must first adopt
-the base policy and a base-owned caller under its own governance. A caller
-loaded from a pull-request merge commit can itself be candidate-controlled,
-including its selected reusable-workflow revision. Until the caller and
-required check producer are controlled by the applicable host mechanism, the
-workflow result alone cannot claim protected merge enforcement or a protected
-canonical transition. A consumer without that mechanism may select the
-separate advisory-only route, which never satisfies the required accept check.
+Previously valid enforced v1 policies without these base-selected inputs, or
+without a matching caller validation selection, cease to qualify for acceptance
+after this repair. A candidate PR cannot enable its own acceptance by adding
+the fields to its head; the consumer must first adopt the base policy and a
+base-owned caller under its own governance. A caller loaded from a pull-request
+merge commit can itself be candidate-controlled, including its selected
+reusable-workflow revision. Until the caller and required check producer are
+controlled by the applicable host mechanism, the workflow result alone cannot
+claim protected merge enforcement or a protected canonical transition. A
+consumer without that mechanism may select the separate advisory-only route,
+which never satisfies the required accept check.
 
 CI execution is one evidence source, not a prerequisite for every repository
 to obtain local/manual review. Repositories may select a local-only guardrail,
