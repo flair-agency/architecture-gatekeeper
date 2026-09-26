@@ -3,6 +3,8 @@ import { appendFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertSameMultiAuthorityProvenance, validateMultiAuthorityDecision,
+  validateMultiAuthorityProvenance } from './multi-authority-provenance.mjs';
 
 export const COMMENT_MARKER = '<!-- architecture-gatekeeper:result:v1 -->';
 const OWNER_INTERVENTION_URL = 'https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/owner-intervention.md';
@@ -35,6 +37,7 @@ export function parseAuthorityProvenance(encoded, required = false) {
   const bytes = Buffer.from(encoded, 'base64');
   if (bytes.toString('base64') !== encoded) throw new Error('Invalid Authority Set provenance encoding.');
   const value = JSON.parse(bytes.toString('utf8'));
+  if (value?.version === 2) return validateMultiAuthorityProvenance(value);
   if (!value || value.version !== 1 || !/^[a-f0-9]{64}$/.test(value.manifestSha256) ||
       !/^[a-f0-9]{64}$/.test(value.setDigest) || !Array.isArray(value.members) ||
       !value.members.length || value.members.length > 32 ||
@@ -55,12 +58,30 @@ export function parseOwnerAdditionProcedure(encoded, required = false) {
     if (required) throw new Error('Missing G0 owner-addition procedure output.');
     return null;
   }
-  if (typeof encoded !== 'string' || encoded.length > 8_192 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+  if (typeof encoded !== 'string' || encoded.length > 65_536 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
     throw new Error('Invalid G0 owner-addition procedure output.');
   }
   const bytes = Buffer.from(encoded, 'base64');
   if (bytes.toString('base64') !== encoded) throw new Error('Invalid G0 owner-addition procedure encoding.');
   const value = JSON.parse(bytes.toString('utf8'));
+  if (value?.version === 2) {
+    const expected = ['version', 'procedure', 'grade', 'repository', 'baseSha', 'headSha', 'policyRevision', 'policySha256',
+      'authoritySet', 'authorityId', 'authorityPath', 'previousAuthoritySha256', 'newAuthoritySha256', 'missingDecisionId',
+      'additionRecordSha256', 'tagRef', 'tagObjectOid', 'principalAuthentication', 'semanticEligibility'];
+    if (Object.keys(value).length !== expected.length || expected.some(key => !Object.hasOwn(value, key))) {
+      throw new Error('Incomplete or mixed v2 owner-addition procedure fields.');
+    }
+    validateMultiAuthorityProvenance(value.authoritySet);
+    if (!/^[a-f0-9]{64}$/.test(value.policySha256) || value.authoritySet.selfRepository !== value.repository ||
+        value.authoritySet.authorityRevision !== value.baseSha) throw new Error('Invalid v2 owner-addition procedure binding.');
+    const affected = value.authoritySet.members.filter(member => member.repository === value.repository && member.path === value.authorityPath);
+    if (affected.length !== 1 || affected[0].id !== value.authorityId || affected[0].sha256 !== value.previousAuthoritySha256) {
+      throw new Error('Invalid v2 owner-addition affected authority binding.');
+    }
+  } else if (Object.hasOwn(value || {}, 'version') || Object.hasOwn(value || {}, 'authoritySet') ||
+      Object.hasOwn(value || {}, 'policySha256') || encoded.length > 8_192) {
+    throw new Error('Unsupported or mixed owner-addition procedure version.');
+  }
   if (!value || value.procedure !== 'VALID_G0_OWNER_ADDITION' || value.grade !== 'G0' ||
       !REPOSITORY.test(value.repository) ||
       !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value.baseSha) ||
@@ -133,6 +154,7 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision,
     if (decision.decision === 'OWNER_DECISION' && !nestedBlock && ownerAdditionSelected && ownerAdditionResult === 'success' &&
         ownerAdditionEligibility === 'ELIGIBLE' && ownerAdditionProcedure?.procedure === 'VALID_G0_OWNER_ADDITION' &&
         decision.ownerDecisionId === ownerAdditionProcedure.missingDecisionId) {
+      if (ownerAdditionProcedure.version === 2) validateMultiAuthorityDecision(decision, ownerAdditionProcedure.authoritySet);
       return { conclusion: 'OWNER_ADDITION_G0',
         summary: 'The previous protected policy selected G0; the exact B tag procedure and separate missing-decision eligibility review completed.',
         decision };
@@ -188,6 +210,7 @@ export function renderReport(classified, metadata = {}) {
     const p = metadata.ownerAdditionProcedure;
     body += '\nThis is a procedural acceptance result for authority-only B, not semantic PASS for B or A. Tag actor or owner identity was not authenticated. A requires a fresh review after B becomes canonical. A later tag-ref change is not covered by this check.\n';
     if (p) body += `\nProtected policy/base: \`${cleanText(p.policyRevision, 64)}\` · B head: \`${cleanText(p.headSha, 64)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag ref observed: \`${cleanText(p.tagRef, 150)}\` → object OID \`${cleanText(p.tagObjectOid, 64)}\` · Principal authentication: \`not_verified\`\n`;
+    if (p?.version === 2) body += `\nOwner-addition procedure/report version: \`2\` · Policy SHA-256: \`${cleanText(p.policySha256, 64)}\` · AdditionRecord SHA-256: \`${cleanText(p.additionRecordSha256, 64)}\` · Bound Authority Set SHA-256: \`${cleanText(p.authoritySet.setDigest, 64)}\`\n`;
   }
   if (metadata.authorityProvenance) {
     const selected = metadata.authorityProvenance;
@@ -265,6 +288,9 @@ async function main() {
       ownerAdditionProcedure.headSha !== process.env.HEAD_SHA)) {
     throw new Error('G0 owner-addition procedure does not match this pull request.');
   }
+  const authorityProvenance = parseAuthorityProvenance(process.env.AUTHORITY_PROVENANCE_BASE64,
+    process.env.AUTHORITY_ROUTE_SELECTED === 'true' && process.env.REVIEW_RESULT === 'success');
+  if (ownerAdditionProcedure?.version === 2) assertSameMultiAuthorityProvenance(authorityProvenance, ownerAdditionProcedure.authoritySet);
   const classified = classifyReview({
     mode: process.env.MODE,
     policyResult: process.env.POLICY_RESULT,
@@ -280,8 +306,7 @@ async function main() {
     headSha: process.env.HEAD_SHA,
     runUrl: process.env.RUN_URL,
     workflowRef: process.env.WORKFLOW_REF,
-    authorityProvenance: parseAuthorityProvenance(process.env.AUTHORITY_PROVENANCE_BASE64,
-      process.env.AUTHORITY_ROUTE_SELECTED === 'true' && process.env.REVIEW_RESULT === 'success'),
+    authorityProvenance,
     ownerAdditionProcedure,
   });
   const decisionDigest = digestDecision(classified.decision);

@@ -7,6 +7,8 @@ const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,
 const ID = /^[a-z][a-z0-9-]{0,63}$/;
 const LIMIT_KEYS = ['maxManifestBytes', 'maxMembers', 'maxFileBytes', 'maxTotalBytes', 'maxPromptBytes'];
 export const MAX_AUTHORITY_LIMITS = Object.freeze({ maxManifestBytes: 65_536, maxMembers: 32, maxFileBytes: 131_072, maxTotalBytes: 524_288, maxPromptBytes: 1_048_576 });
+export const MULTI_AUTHORITY_PROFILE = 'owner-addition-v2';
+export const MAX_MULTI_AUTHORITY_LIMITS = Object.freeze({ ...MAX_AUTHORITY_LIMITS, maxFileBytes: 262_144 });
 const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 
 function fail(message) { throw new Error(`Authority Set: ${message}`); }
@@ -15,13 +17,15 @@ function own(object, key) { return Object.prototype.hasOwnProperty.call(object, 
 function exactKeys(object, keys, label) {
   if (!object || Array.isArray(object) || typeof object !== 'object' || Object.keys(object).length !== keys.length || keys.some(key => !own(object, key))) fail(`${label} has missing or unknown fields.`);
 }
-function limitsOf(limits) {
+function limitsOf(limits, profile = 'v1') {
+  if (!['v1', MULTI_AUTHORITY_PROFILE].includes(profile)) fail('unsupported authority profile.');
+  const ceilings = profile === MULTI_AUTHORITY_PROFILE ? MAX_MULTI_AUTHORITY_LIMITS : MAX_AUTHORITY_LIMITS;
   exactKeys(limits, LIMIT_KEYS, 'limits');
   const snapshot = Object.fromEntries(LIMIT_KEYS.map(key => [key, limits[key]]));
-  for (const key of LIMIT_KEYS) if (!Number.isSafeInteger(snapshot[key]) || snapshot[key] < 1 || snapshot[key] > MAX_AUTHORITY_LIMITS[key]) fail(`${key} must be a positive safe integer within the supported ceiling.`);
+  for (const key of LIMIT_KEYS) if (!Number.isSafeInteger(snapshot[key]) || snapshot[key] < 1 || snapshot[key] > ceilings[key]) fail(`${key} must be a positive safe integer within the supported ceiling.`);
   return Object.freeze(snapshot);
 }
-export function validateAuthorityLimits(limits) { return limitsOf(limits); }
+export function validateAuthorityLimits(limits, profile = 'v1') { return limitsOf(limits, profile); }
 function bytesOf(value, label) {
   if (Buffer.isBuffer(value)) return value;
   if (typeof value === 'string') return Buffer.from(value, 'utf8');
@@ -70,8 +74,8 @@ export function rejectDuplicateJsonKeys(source, label = 'manifest') {
 }
 
 /** Parse an explicit v1 selector. The caller must obtain these bytes from its recorded authority revision. */
-export function parseAuthorityManifest(input, limits) {
-  const budget = limitsOf(limits);
+export function parseAuthorityManifest(input, limits, profile = 'v1') {
+  const budget = limitsOf(limits, profile);
   const raw = bytesOf(input, 'manifest');
   if (!raw.length || raw.length > budget.maxManifestBytes) fail('manifest byte limit exceeded or manifest is empty.');
   let source, manifest;
@@ -123,14 +127,14 @@ function render(members, maxPromptBytes) {
 }
 
 /** Resolve all members before returning any review input. The external adapter must verify GitHub object identity and regular-file mode; this layer checks its returned metadata and bytes. */
-export async function materializeAuthoritySet({ manifestBytes, limits, selfRepository, selfRoot, authorityRevision, fetchExternal }) {
-  const budget = limitsOf(limits);
+export async function materializeAuthoritySet({ manifestBytes, limits, selfRepository, selfRoot, authorityRevision, fetchExternal, profile = 'v1' }) {
+  const budget = limitsOf(limits, profile);
   if (!validRepository(selfRepository)) fail('self repository identity is invalid.');
   if (typeof selfRoot !== 'string' || !selfRoot || !HEX40.test(authorityRevision)) fail('self root and immutable authority revision are required.');
   const manifestInput = bytesOf(manifestBytes, 'manifest');
   if (!manifestInput.length || manifestInput.length > budget.maxManifestBytes) fail('manifest byte limit exceeded or manifest is empty.');
   const manifestSnapshot = Buffer.from(manifestInput);
-  const manifest = parseAuthorityManifest(manifestSnapshot, budget);
+  const manifest = parseAuthorityManifest(manifestSnapshot, budget, profile);
   if (manifest.authorities.some(member => member.repository !== 'self' && member.repository.toLowerCase() === selfRepository.toLowerCase())) fail('self repository must use self at the authority revision.');
   if (manifest.authorities.some(member => member.repository !== 'self') && typeof fetchExternal !== 'function') fail('external source adapter is required.');
   const members = [];
@@ -156,11 +160,15 @@ export async function materializeAuthoritySet({ manifestBytes, limits, selfRepos
     members.push({ id: member.id, repository, resolvedCommit, path: member.path, byteLength: content.length, sha256: hash(content), content: decoded });
   }
   const records = members.map(({ content, ...record }) => record);
+  const setDigest = hash(Buffer.from(JSON.stringify(records)));
+  const prompt = render(members, budget.maxPromptBytes) + (profile === MULTI_AUTHORITY_PROFILE
+    ? `\nReport authoritySetDigest exactly as ${setDigest}, binding your decision to this complete selected set.\n` : '');
+  if (Buffer.byteLength(prompt) > budget.maxPromptBytes) fail('rendered authority prompt exceeds limit.');
   return {
     manifestSha256: hash(manifestSnapshot),
-    setDigest: hash(Buffer.from(JSON.stringify(records))),
+    setDigest,
     members,
-    prompt: render(members, budget.maxPromptBytes),
+    prompt,
   };
 }
 

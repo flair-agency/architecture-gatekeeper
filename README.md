@@ -284,7 +284,7 @@ the base, an implementation PR cannot resolve its own review by adding that
 decision to its head. The `OWNER_ADDITION / G0` route lets a
 consumer whose previous protected policy opts in adopt a predecessor B
 containing only that missing decision, with an annotated tag object bound to
-B's exact commit. The previous protected Authority Set must have exactly one
+B's exact commit. The initial policy-v2 route's protected Authority Set must have exactly one
 `self` member whose path matches the selected authority. A completed ordinary
 `OWNER_DECISION` carries a protected structured `ownerDecisionId`; the tag's
 `missingDecision.id` must match it, and B-specific eligibility review verifies
@@ -301,6 +301,80 @@ activation is claimed. The route does not resolve unsupported claims that work
 is complete. See the
 [owner-intervention runbook](docs/owner-intervention.md).
 A review comment or workflow approval alone does not replace canonical adoption.
+
+### Versioned multi-document owner additions
+
+The v0.5.1 implementation adds an opt-in **policy v4** enforced route. Policy
+v2 and historical G0 records retain their existing limits and interpretation.
+Adopt the new configuration and schemas in the protected base before proposing
+B; B cannot enable or reconfigure its own route. The complete Authority Set
+must contain the affected `self` member exactly once by ID and path, along with
+every other governing document. B still modifies exactly that one existing
+file. Both ordinary review and B-specific eligibility review load the complete
+base-selected set; candidate B bytes and its diff are additional evidence.
+
+```json
+{
+  "version": 4,
+  "default": { "mode": "local-only" },
+  "branches": {
+    "main": {
+      "mode": "enforced",
+      "model": "gpt-6-sol",
+      "reasoningEffort": "medium",
+      "authorityManifestPath": ".codex/gatekeeper/authorities.json",
+      "authorityLimits": {
+        "maxManifestBytes": 16384,
+        "maxMembers": 16,
+        "maxFileBytes": 262144,
+        "maxTotalBytes": 524288,
+        "maxPromptBytes": 1048576
+      },
+      "ownerAddition": {
+        "version": 2,
+        "grade": "G0",
+        "authorityId": "architecture-contract",
+        "authorityPath": "docs/architecture.md",
+        "promptPath": ".codex/gatekeeper/owner-addition.md",
+        "schemaPath": ".codex/gatekeeper/owner-addition.schema.json"
+      }
+    }
+  }
+}
+```
+
+Only this route supports the 262,144-byte per-file ceiling. A consumer's lower
+effective limits still apply; initial CI and local/manual routes retain the
+131,072-byte runtime ceiling. Base and proposed authority sets must each fit
+the selected total limit. The entire review prompt must fit its limit,
+including authority bytes, proposed bytes, diff, instructions and metadata.
+No member is truncated or omitted to fit a budget.
+
+The ordinary schema must require `authorityIds`, `authoritySetDigest` and
+`ownerDecisionId`. The model must return every selected ID exactly once and
+the supplied set digest; `ownerDecisionId` identifies the missing choice when
+the result is `OWNER_DECISION`. The version-2 eligibility schema adds required
+`version: 2`, `authorityIds` and `authoritySetDigest` to the existing eligibility
+booleans. See the [example schema](examples/owner-addition-v2/eligibility.schema.json).
+Consumer-specific boolean checks may be added and must all be true.
+
+Create a new annotated tag for exact B using **AdditionRecord version 2**.
+Alongside the v1 repository/base/head/policy-revision, affected authority
+before/after digests, missing-decision and purpose fields, v2 requires
+`policySha256` (digest of exact previous-base policy bytes) and `authoritySet`
+with `manifestSha256` and `setDigest` from the complete materialized base set.
+The existing canonical JSON annotation encoding and exact-B tag name remain
+required. A v1 tag cannot be upgraded by changing policy alone. The version-2
+procedure/report records those bindings, every member's immutable provenance,
+and the observed tag-object mapping; the ordinary and eligibility results must
+agree on the complete set. A mismatch or unavailable member fails closed.
+
+Eligibility continues to reject a change to an existing rule, an unsupported
+completion claim, a contradiction in any unchanged member, an unrelated owner
+choice, or an ordinary `BLOCK`. G0 still does not authenticate an owner or
+promise that the tag ref remains available later. LIVE Agency adoption and its
+representative E2E remain separate rollout work; implementing this route does
+not itself resolve its consumer-specific rule conflict or migration evidence.
 
 For `OWNER_DECISION` and CI review failures caused by API, billing, model,
 credential or service availability, follow the

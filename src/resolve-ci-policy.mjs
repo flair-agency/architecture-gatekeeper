@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { rejectDuplicateJsonKeys, validateAuthorityLimits } from './authority-set.mjs';
+import { MULTI_AUTHORITY_PROFILE, rejectDuplicateJsonKeys, validateAuthorityLimits } from './authority-set.mjs';
 
 const MODES = new Set(['enforced', 'local-only']);
 const EFFORTS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
@@ -31,9 +31,13 @@ function validateBranch(branch, label, version) {
     throw new Error(`Enforced ${label} requires a valid model`);
   }
   if (!EFFORTS.has(branch.reasoningEffort)) throw new Error(`Invalid reasoning effort for ${label}`);
-  if (version === 2) {
+  if (version === 2 || version === 4) {
     if (Object.hasOwn(branch, 'ownerAddition')) {
-      requireOnlyKeys(branch.ownerAddition, new Set(['grade', 'authorityPath', 'promptPath', 'schemaPath']), `${label} owner addition`);
+      requireOnlyKeys(branch.ownerAddition, new Set(['grade', 'authorityPath', 'promptPath', 'schemaPath', ...(version === 4 ? ['version', 'authorityId'] : [])]), `${label} owner addition`);
+      if (version === 4 && (branch.ownerAddition.version !== 2 ||
+          !/^[a-z][a-z0-9-]{0,63}$/.test(branch.ownerAddition.authorityId || ''))) {
+        throw new Error(`${label} v4 requires version 2 owner addition and an affected authorityId`);
+      }
       if (branch.ownerAddition.grade !== 'G0' ||
           typeof branch.ownerAddition.authorityPath !== 'string' ||
           branch.ownerAddition.authorityPath.length > 240 ||
@@ -56,18 +60,19 @@ function validateBranch(branch, label, version) {
     if (Object.hasOwn(branch, 'ownerAddition') && !hasPath) {
       throw new Error(`${label} owner addition requires a protected Authority Set`);
     }
+    if (version === 4 && !Object.hasOwn(branch, 'ownerAddition')) throw new Error(`${label} v4 requires explicit multi-document owner addition`);
     if (hasPath) {
       if (typeof branch.authorityManifestPath !== 'string' || branch.authorityManifestPath.length > 240 ||
           !AUTHORITY_PATH.test(branch.authorityManifestPath) || branch.authorityManifestPath.split('/').some(part => part === '.' || part === '..')) {
         throw new Error(`Invalid Authority Set manifest path for ${label}`);
       }
-      validateAuthorityLimits(branch.authorityLimits);
+      validateAuthorityLimits(branch.authorityLimits, version === 4 ? MULTI_AUTHORITY_PROFILE : 'v1');
     }
   }
 }
 
 export function resolveCiPolicy(policy, baseBranch) {
-  if (!isRecord(policy) || ![1, 2].includes(policy.version)) throw new Error('Unsupported Architecture Gate CI policy version');
+  if (!isRecord(policy) || ![1, 2, 4].includes(policy.version)) throw new Error('Unsupported Architecture Gate CI policy version');
   requireOnlyKeys(policy, new Set(['version', 'default', 'branches']), 'CI policy');
   if (!baseBranch || typeof baseBranch !== 'string') throw new Error('A base branch is required');
   if (!isRecord(policy.default)) throw new Error('CI policy requires default');
@@ -84,9 +89,16 @@ export function resolveCiPolicy(policy, baseBranch) {
     : { baseBranch, mode: 'enforced', model: selected.model, reasoningEffort: selected.reasoningEffort };
   if (selected.authorityManifestPath) {
     result.authorityManifestPath = selected.authorityManifestPath;
-    result.authorityLimitsBase64 = Buffer.from(JSON.stringify(validateAuthorityLimits(selected.authorityLimits))).toString('base64');
+    const profile = policy.version === 4 ? MULTI_AUTHORITY_PROFILE : 'v1';
+    result.authorityLimitsBase64 = Buffer.from(JSON.stringify(validateAuthorityLimits(selected.authorityLimits, profile))).toString('base64');
+    if (policy.version === 4) result.authorityProfile = profile;
   }
   if (selected.ownerAddition) {
+    if (policy.version === 4) {
+      result.policyVersion = 4;
+      result.ownerAdditionVersion = 2;
+      result.ownerAdditionAuthorityId = selected.ownerAddition.authorityId;
+    }
     result.ownerAdditionAuthorityPath = selected.ownerAddition.authorityPath;
     result.ownerAdditionGrade = selected.ownerAddition.grade;
     result.ownerAdditionPromptPath = selected.ownerAddition.promptPath;

@@ -2,7 +2,7 @@
 import { constants, openSync, readSync, closeSync, fstatSync, mkdirSync, writeFileSync, rmSync, lstatSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys, validateAuthorityLimits } from './authority-set.mjs';
+import { MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys, validateAuthorityLimits } from './authority-set.mjs';
 import { createGitHubAuthoritySource } from './github-authority-source.mjs';
 
 const MAX_LIMITS_BYTES = 4 * 1024;
@@ -44,13 +44,13 @@ function readLimits(path) {
   }
 }
 
-export function decodeLimits(encoded) {
+export function decodeLimits(encoded, profile = 'v1') {
   if (typeof encoded !== 'string' || encoded.length > MAX_LIMITS_BYTES * 2 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) throw new Error('Encoded limits are invalid.');
   const bytes = Buffer.from(encoded, 'base64');
   if (bytes.toString('base64') !== encoded || bytes.length > MAX_LIMITS_BYTES) throw new Error('Encoded limits are invalid.');
   const source = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   rejectDuplicateJsonKeys(source, 'limits');
-  return validateAuthorityLimits(JSON.parse(source));
+  return validateAuthorityLimits(JSON.parse(source), profile);
 }
 
 function usage() {
@@ -63,24 +63,35 @@ function parseArgs(args) {
     ['--manifest', 'manifest'], ['--self-repository', 'selfRepository'],
     ['--self-root', 'selfRoot'], ['--authority-sha', 'authorityRevision'],
     ['--limits', 'limits'], ['--limits-base64', 'limitsBase64'], ['--output-dir', 'outputDir'],
+    ['--profile', 'profile'],
+    ['--affected-id', 'affectedId'], ['--affected-path', 'affectedPath'],
   ]);
   for (let i = 0; i < args.length; i += 2) {
     const key = names.get(args[i]);
     if (!key || values[key] !== undefined || typeof args[i + 1] !== 'string' || args[i + 1].startsWith('--')) usage();
     values[key] = args[i + 1];
   }
-  if (Object.keys(values).length !== names.size - 1 || Boolean(values.limits) === Boolean(values.limitsBase64)) usage();
+  if (['manifest', 'selfRepository', 'selfRoot', 'authorityRevision', 'outputDir'].some(key => !values[key]) ||
+      Boolean(values.limits) === Boolean(values.limitsBase64)) usage();
+  if (values.profile === MULTI_AUTHORITY_PROFILE ? (!values.affectedId || !values.affectedPath)
+    : (values.affectedId !== undefined || values.affectedPath !== undefined)) usage();
   return values;
 }
 
 /** Materialize into a new private directory; remove it completely if any output write fails. */
-export async function prepareAuthoritySet({ manifestPath, manifestBytes, selfRepository, selfRoot, authorityRevision, limitsPath, limits, outputDir, token, fetchExternal }) {
+export async function prepareAuthoritySet({ manifestPath, manifestBytes, selfRepository, selfRoot, authorityRevision, limitsPath, limits, outputDir, token, fetchExternal, profile = 'v1', affectedAuthority }) {
   limits ??= readLimits(limitsPath);
   manifestBytes ??= readBounded(manifestPath, Math.min(MAX_MANIFEST_INPUT_BYTES, limits.maxManifestBytes), 'Manifest');
-  const parsedManifest = parseAuthorityManifest(manifestBytes, limits);
+  const parsedManifest = parseAuthorityManifest(manifestBytes, limits, profile);
+  if (profile === MULTI_AUTHORITY_PROFILE) {
+    const affected = parsedManifest.authorities.filter(member => member.repository === 'self' && member.path === affectedAuthority?.path);
+    if (affected.length !== 1 || affected[0].id !== affectedAuthority?.id) {
+      throw new Error('Multi-document route must select exactly its affected self member by ID and path.');
+    }
+  }
   const externalSelected = parsedManifest.authorities.some(member => member.repository !== 'self');
   if (externalSelected && !fetchExternal) fetchExternal = createGitHubAuthoritySource({ token });
-  const result = await materializeAuthoritySet({ manifestBytes, limits, selfRepository, selfRoot, authorityRevision, fetchExternal });
+  const result = await materializeAuthoritySet({ manifestBytes, limits, selfRepository, selfRoot, authorityRevision, fetchExternal, profile });
   const destination = resolve(outputDir);
   let created = false;
   try {
@@ -88,7 +99,7 @@ export async function prepareAuthoritySet({ manifestPath, manifestBytes, selfRep
     created = true;
     if ((lstatSync(destination).mode & 0o777) !== 0o700) throw new Error('Output directory permissions are not private.');
     const provenance = {
-      version: 1,
+      version: profile === MULTI_AUTHORITY_PROFILE ? 2 : 1,
       selfRepository,
       authorityRevision: authorityRevision.toLowerCase(),
       manifestSha256: result.manifestSha256,
@@ -109,13 +120,15 @@ export async function prepareAuthoritySet({ manifestPath, manifestBytes, selfRep
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const limits = args.limits ? readLimits(args.limits) : decodeLimits(args.limitsBase64);
+  const profile = args.profile || 'v1';
+  const limits = args.limits ? validateAuthorityLimits(readLimits(args.limits), profile) : decodeLimits(args.limitsBase64, profile);
   const manifestBytes = readBounded(args.manifest, Math.min(MAX_MANIFEST_INPUT_BYTES, limits.maxManifestBytes), 'Manifest');
-  const parsedManifest = parseAuthorityManifest(manifestBytes, limits);
+  const parsedManifest = parseAuthorityManifest(manifestBytes, limits, profile);
   const externalSelected = parsedManifest.authorities.some(member => member.repository !== 'self');
   const token = externalSelected ? process.env.GATEKEEPER_SOURCE_TOKEN : undefined;
   await prepareAuthoritySet({ manifestPath: args.manifest, selfRepository: args.selfRepository, selfRoot: args.selfRoot,
-    authorityRevision: args.authorityRevision, limitsPath: args.limits, outputDir: args.outputDir, manifestBytes, limits, token });
+    authorityRevision: args.authorityRevision, limitsPath: args.limits, outputDir: args.outputDir, manifestBytes, limits, token, profile,
+    affectedAuthority: profile === MULTI_AUTHORITY_PROFILE ? { id: args.affectedId, path: args.affectedPath } : undefined });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(resolve(process.argv[1]))).href) {

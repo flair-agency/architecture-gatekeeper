@@ -8,6 +8,7 @@ import { TextDecoder } from 'node:util';
 import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
 import { parseAuthorityManifest } from './authority-set.mjs';
 import { validateOwnerDecisionAdditionG0Procedure } from './owner-decision-addition.mjs';
+import { prepareMultiAuthorityAddition, validateMultiAuthorityEligibility } from './owner-addition-multiauthority.mjs';
 
 const SHA = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
@@ -135,7 +136,7 @@ export function validateOrdinaryOwnerDecision(rawDecision, missingDecisionId) {
   return decision;
 }
 
-function prepare(env) {
+async function prepare(env) {
   const { GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: repository, BASE_SHA: baseSha,
     HEAD_SHA: headSha, BASE_BRANCH: baseBranch, POLICY_PATH: policyPath,
     OWNER_AUTHORITY_PATH: authorityPath, OWNER_PROMPT_PATH: promptPath,
@@ -149,6 +150,9 @@ function prepare(env) {
       selected.ownerAdditionAuthorityPath !== authorityPath ||
       selected.ownerAdditionPromptPath !== promptPath || selected.ownerAdditionSchemaPath !== schemaPath) {
     throw new Error('Previous protected policy does not select this owner-addition route.');
+  }
+  if (selected.ownerAdditionVersion === 2) {
+    return prepareMultiAuthorityAddition(env, selected, policyBytes);
   }
   const prompt = committedFile(root, baseSha, promptPath, 65_536);
   const schemaBytes = committedFile(root, baseSha, schemaPath, 65_536);
@@ -203,10 +207,15 @@ function prepare(env) {
 }
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv[2] === 'prepare') prepare(process.env);
+  if (process.argv[2] === 'prepare') await prepare(process.env);
   else if (process.argv[2] === 'validate') {
     const schemaPath = join(process.env.OUTPUT_DIR || '', 'eligibility.schema.json');
-    validateOwnerAdditionEligibility(process.env.DECISION || '', JSON.parse(readFileSync(schemaPath, 'utf8')));
+    const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
+    if (schema.properties?.version?.type === 'integer') {
+      const procedure = JSON.parse(readFileSync(join(process.env.OUTPUT_DIR || '', 'procedure.json'), 'utf8'));
+      if (procedure.version !== 2) throw new Error('Multi-document eligibility requires a version 2 procedure.');
+      validateMultiAuthorityEligibility(process.env.DECISION || '', schema, procedure.authoritySet);
+    } else validateOwnerAdditionEligibility(process.env.DECISION || '', schema);
     if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, 'eligibility=ELIGIBLE\n', { flag: 'a' });
   } else throw new Error('Usage: owner-addition-ci.mjs prepare|validate');
 }
