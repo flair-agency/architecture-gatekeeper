@@ -191,7 +191,9 @@ function prepare(env) {
     `\nProposed B authority (${authorityPath}, SHA-256 ${sha256(after)}):\n${afterText}\n`,
     `\nExact B diff (base ${baseSha}, head ${headSha}):\n${diffText}\n`,
   ].join('');
-  if (Buffer.byteLength(completePrompt) > 524_288) throw new Error('Owner-addition complete prompt exceeds the review limit.');
+  if (Buffer.byteLength(completePrompt) > Math.min(524_288, authorityLimits.maxPromptBytes)) {
+    throw new Error('Owner-addition complete prompt exceeds the review limit.');
+  }
   mkdirSync(outputDir, { recursive: true, mode: 0o700 });
   writeFileSync(join(outputDir, 'eligibility-prompt.md'), completePrompt, { mode: 0o600 });
   writeFileSync(join(outputDir, 'eligibility.schema.json'), schemaBytes, { mode: 0o600 });

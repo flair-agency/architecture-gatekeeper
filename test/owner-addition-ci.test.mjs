@@ -72,6 +72,7 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
     ORDINARY_DECISION: '{"decision":"OWNER_DECISION","ownerDecisionId":"reporting-owner","summary":"reporting owner is not selected"}',
     OUTPUT_DIR: outputDir, GITHUB_OUTPUT: outputFile };
   execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'], { cwd: root, env });
+  assert.ok(Buffer.byteLength(readFileSync(join(outputDir, 'eligibility-prompt.md'))) <= 524288);
   const output = readFileSync(outputFile, 'utf8');
   const procedure = parseOwnerAdditionProcedure(output.match(/^procedure_base64=(.+)$/m)[1], true);
   assert.equal(procedure.headSha, head);
@@ -178,6 +179,55 @@ test('G0 applies protected file and total limits to both authority snapshots', t
   assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'],
     { cwd: root, env: { ...env, BASE_SHA: oversizedBaseSha, HEAD_SHA: smallerHeadSha } }),
   /Protected file has invalid size: docs\/architecture\.md/);
+});
+
+test('G0 applies the protected maxPromptBytes to the complete eligibility prompt', t => {
+  const root = mkdtempSync(join(tmpdir(), 'owner-addition-prompt-limit-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  run(root, 'git', 'init', '-q');
+  const maxPromptBytes = 128;
+  const authority = '# Architecture\n\nThe reporting owner is unselected.\n';
+  const policy = { version: 2, default: { mode: 'local-only' }, branches: { main: {
+    mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json',
+    authorityLimits: { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536,
+      maxTotalBytes: 262144, maxPromptBytes },
+    ownerAddition: { grade: 'G0', authorityPath: 'docs/architecture.md',
+      promptPath: '.codex/gatekeeper/owner-addition.md', schemaPath: '.codex/gatekeeper/owner-addition.schema.json' },
+  } } };
+  write(root, 'docs/architecture.md', authority);
+  write(root, '.codex/gatekeeper/ci-policy.json', JSON.stringify(policy));
+  write(root, '.codex/gatekeeper/authorities.json', JSON.stringify({ version: 1, authorities: [
+    { id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' },
+  ] }));
+  write(root, '.codex/gatekeeper/owner-addition.md', 'Review the missing reporting decision.');
+  write(root, '.codex/gatekeeper/owner-addition.schema.json', JSON.stringify(schema));
+  write(root, '.codex/gatekeeper/ordinary.schema.json', JSON.stringify({ type: 'object',
+    required: ['decision', 'summary', 'ownerDecisionId'], properties: {
+      decision: { type: 'string' }, summary: { type: 'string' }, ownerDecisionId: { type: 'string' },
+    } }));
+  run(root, 'git', 'add', '.'); run(root, 'git', 'commit', '-qm', 'protected base');
+  const base = run(root, 'git', 'rev-parse', 'HEAD');
+  write(root, 'docs/architecture.md', `${authority}\n## Reporting choice\n\nThe product owner owns reporting.\n`);
+  run(root, 'git', 'add', 'docs/architecture.md'); run(root, 'git', 'commit', '-qm', 'add missing decision');
+  const head = run(root, 'git', 'rev-parse', 'HEAD');
+  const record = { version: 1, repository: 'example/project', baseSha: base, headSha: head, policyRevision: base,
+    authority: { id: 'architecture-contract', path: 'docs/architecture.md', previousSha256: sha256(authority),
+      newSha256: sha256(`${authority}\n## Reporting choice\n\nThe product owner owns reporting.\n`) },
+    missingDecision: { id: 'reporting-owner', summary: 'Select the reporting owner.' },
+    purpose: 'Add the missing reporting ownership decision' };
+  const recordPath = join(root, 'tag-message.json');
+  writeFileSync(recordPath, `${JSON.stringify(canonical(record))}\n`);
+  run(root, 'git', 'tag', '-a', `architecture-owner-addition/${head}`, '-F', recordPath, head);
+  const env = { ...process.env, GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: 'example/project', BASE_SHA: base,
+    HEAD_SHA: head, BASE_BRANCH: 'main', POLICY_PATH: '.codex/gatekeeper/ci-policy.json',
+    OWNER_AUTHORITY_PATH: 'docs/architecture.md', OWNER_PROMPT_PATH: '.codex/gatekeeper/owner-addition.md',
+    OWNER_SCHEMA_PATH: '.codex/gatekeeper/owner-addition.schema.json',
+    ORDINARY_SCHEMA_PATH: '.codex/gatekeeper/ordinary.schema.json',
+    ORDINARY_DECISION: '{"decision":"OWNER_DECISION","ownerDecisionId":"reporting-owner","summary":"missing"}',
+    OUTPUT_DIR: join(root, 'output'), GITHUB_OUTPUT: join(root, 'output.txt') };
+  assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'],
+    { cwd: root, env }), /Owner-addition complete prompt exceeds the review limit/);
 });
 
 test('G0 rejects a protected Authority Set with another member', t => {
