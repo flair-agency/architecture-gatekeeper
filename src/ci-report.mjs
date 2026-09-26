@@ -50,6 +50,39 @@ export function parseAuthorityProvenance(encoded, required = false) {
   return value;
 }
 
+export function parseOwnerAdditionProcedure(encoded, required = false) {
+  if (!encoded) {
+    if (required) throw new Error('Missing G0 owner-addition procedure output.');
+    return null;
+  }
+  if (typeof encoded !== 'string' || encoded.length > 8_192 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+    throw new Error('Invalid G0 owner-addition procedure output.');
+  }
+  const bytes = Buffer.from(encoded, 'base64');
+  if (bytes.toString('base64') !== encoded) throw new Error('Invalid G0 owner-addition procedure encoding.');
+  const value = JSON.parse(bytes.toString('utf8'));
+  if (!value || value.procedure !== 'VALID_G0_OWNER_ADDITION' || value.grade !== 'G0' ||
+      !REPOSITORY.test(value.repository) ||
+      !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value.baseSha) ||
+      !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value.headSha) ||
+      value.baseSha.length !== value.headSha.length ||
+      value.policyRevision !== value.baseSha ||
+      !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value.tagObjectOid) ||
+      value.tagObjectOid.length !== value.headSha.length ||
+      !AUTHORITY_ID.test(value.authorityId) ||
+      typeof value.authorityPath !== 'string' || !AUTHORITY_PATH.test(value.authorityPath) ||
+      !/^[a-f0-9]{64}$/.test(value.previousAuthoritySha256) ||
+      !/^[a-f0-9]{64}$/.test(value.newAuthoritySha256) ||
+      value.tagRef !== `refs/tags/architecture-owner-addition/${value.headSha}` ||
+      typeof value.missingDecisionId !== 'string' || value.missingDecisionId.length > 100 ||
+      !/^[a-f0-9]{64}$/.test(value.additionRecordSha256) ||
+      value.principalAuthentication !== 'not_verified' ||
+      value.semanticEligibility !== 'requires_separate_protected_review') {
+    throw new Error('Invalid G0 owner-addition procedure record.');
+  }
+  return value;
+}
+
 function cleanText(value, limit = MAX_ITEM_LENGTH) {
   const text = String(value ?? '')
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
@@ -67,12 +100,14 @@ function labelFor(decision) {
     PASS: ['✅', 'PASS'],
     BLOCK: ['🛑', 'BLOCK'],
     OWNER_DECISION: ['⚠️', 'OWNER DECISION REQUIRED'],
+    OWNER_ADDITION_G0: ['✅', 'OWNER_ADDITION / G0'],
     WAIVED: ['➖', 'ACCEPTED WITHOUT CI AI REVIEW'],
     ERROR: ['❌', 'REVIEW FAILED'],
   }[decision];
 }
 
-export function classifyReview({ mode, policyResult, reviewResult, rawDecision }) {
+export function classifyReview({ mode, policyResult, reviewResult, rawDecision,
+  ownerAdditionSelected = false, ownerAdditionResult = 'skipped', ownerAdditionEligibility = '', ownerAdditionProcedure = null }) {
   if (policyResult !== 'success') {
     return { conclusion: 'ERROR', summary: 'Architecture Gate could not resolve the protected base-branch policy.', decision: null };
   }
@@ -93,6 +128,15 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision }
     const summary = typeof decision.summary === 'string' && decision.summary.trim()
       ? decision.summary
       : 'No summary was supplied by the architecture reviewer.';
+    const nestedBlock = decision.gates && typeof decision.gates === 'object' && !Array.isArray(decision.gates) &&
+      Object.values(decision.gates).some(gate => gate?.decision === 'BLOCK');
+    if (decision.decision === 'OWNER_DECISION' && !nestedBlock && ownerAdditionSelected && ownerAdditionResult === 'success' &&
+        ownerAdditionEligibility === 'ELIGIBLE' && ownerAdditionProcedure?.procedure === 'VALID_G0_OWNER_ADDITION' &&
+        decision.ownerDecisionId === ownerAdditionProcedure.missingDecisionId) {
+      return { conclusion: 'OWNER_ADDITION_G0',
+        summary: 'The previous protected policy selected G0; the exact B tag procedure and separate missing-decision eligibility review completed.',
+        decision };
+    }
     return { conclusion: decision.decision, summary, decision };
   } catch {
     return { conclusion: 'ERROR', summary: 'The architecture reviewer returned an invalid structured decision.', decision: null };
@@ -139,6 +183,11 @@ export function renderReport(classified, metadata = {}) {
   } else if (classified.conclusion === 'ERROR') {
     const runReference = metadata.runUrl ? `[Actions run](${cleanText(metadata.runUrl, 1_000)})` : 'Actions run';
     body += `\nInspect the ${runReference} to identify the cause. If the CI reviewer is unavailable because of API, billing, model, credential, or service failure, follow [CI review unavailable](${OWNER_INTERVENTION_URL}#ci-review-unavailable). This result is not a PASS.\n`;
+  }
+  if (classified.conclusion === 'OWNER_ADDITION_G0') {
+    const p = metadata.ownerAdditionProcedure;
+    body += '\nThis is a procedural acceptance result for authority-only B, not semantic PASS for B or A. Tag actor or owner identity was not authenticated. A requires a fresh review after B becomes canonical. A later tag-ref change is not covered by this check.\n';
+    if (p) body += `\nProtected policy/base: \`${cleanText(p.policyRevision, 64)}\` · B head: \`${cleanText(p.headSha, 64)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag ref observed: \`${cleanText(p.tagRef, 150)}\` → object OID \`${cleanText(p.tagObjectOid, 64)}\` · Principal authentication: \`not_verified\`\n`;
   }
   if (metadata.authorityProvenance) {
     const selected = metadata.authorityProvenance;
@@ -202,11 +251,29 @@ export async function upsertPullRequestComment({ fetchImpl = fetch, apiUrl, repo
 }
 
 async function main() {
+  const ordinary = classifyReview({
+    mode: process.env.MODE, policyResult: process.env.POLICY_RESULT,
+    reviewResult: process.env.REVIEW_RESULT, rawDecision: process.env.DECISION || '',
+  });
+  const requiresAdditionProcedure = ordinary.conclusion === 'OWNER_DECISION' &&
+    process.env.OWNER_ADDITION_SELECTED === 'true' && process.env.OWNER_ADDITION_RESULT === 'success' &&
+    process.env.OWNER_ADDITION_ELIGIBILITY === 'ELIGIBLE';
+  const ownerAdditionProcedure = requiresAdditionProcedure
+    ? parseOwnerAdditionProcedure(process.env.OWNER_ADDITION_PROCEDURE_BASE64, true) : null;
+  if (ownerAdditionProcedure && (ownerAdditionProcedure.repository !== process.env.GITHUB_REPOSITORY ||
+      ownerAdditionProcedure.baseSha !== process.env.BASE_SHA ||
+      ownerAdditionProcedure.headSha !== process.env.HEAD_SHA)) {
+    throw new Error('G0 owner-addition procedure does not match this pull request.');
+  }
   const classified = classifyReview({
     mode: process.env.MODE,
     policyResult: process.env.POLICY_RESULT,
     reviewResult: process.env.REVIEW_RESULT,
     rawDecision: process.env.DECISION || '',
+    ownerAdditionSelected: process.env.OWNER_ADDITION_SELECTED === 'true',
+    ownerAdditionResult: process.env.OWNER_ADDITION_RESULT,
+    ownerAdditionEligibility: process.env.OWNER_ADDITION_ELIGIBILITY,
+    ownerAdditionProcedure,
   });
   const report = renderReport(classified, {
     reviewedSha: process.env.REVIEWED_SHA,
@@ -215,6 +282,7 @@ async function main() {
     workflowRef: process.env.WORKFLOW_REF,
     authorityProvenance: parseAuthorityProvenance(process.env.AUTHORITY_PROVENANCE_BASE64,
       process.env.AUTHORITY_ROUTE_SELECTED === 'true' && process.env.REVIEW_RESULT === 'success'),
+    ownerAdditionProcedure,
   });
   const decisionDigest = digestDecision(classified.decision);
   if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, report);

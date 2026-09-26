@@ -13,16 +13,50 @@ consumer's canonical authority does not resolve. The current run cannot accept
 the change.
 
 1. Read the decision and identify the unresolved responsibility or boundary.
-2. The accountable owner makes the architecture decision and records it in the
-   consumer repository's canonical authority.
-3. Commit that authority update with the proposed change, then rerun the Gate
-   against the updated revision.
-4. Merge only after the new authoritative result permits it. A new review may
-   return `PASS` or `BLOCK`.
+2. The accountable owner makes the architecture decision and proposes the
+   canonical-authority update. Keep the proposed change (A) distinct from the
+   authority update (B) when protected CI selects authority from the base;
+   authority written only in A's head cannot resolve A's current review.
+3. Check whether B can proceed under the repository's existing protected
+   policy. A separate B is not automatically eligible for `PASS`, and the
+   historical-`BLOCK` `OWNER_AMENDMENT` route does not cover `OWNER_DECISION`.
+   If B is unresolved or blocked, it remains so unless an applicable process
+   in the consumer's existing policy permits otherwise. This runbook does not
+   impose a universal file-scope rule on B.
+4. Once B has actually become canonical, update A to the new base and request
+   a fresh review. Preserve A's prior `OWNER_DECISION` as historical evidence;
+   do not rewrite it as accepted. Merge A only if the fresh review and
+   protected acceptance policy permit it. A fresh review may identify a
+   different unresolved choice.
 
-A PR comment, workflow approval, or merge bypass does not record canonical
-architecture authority. Bypassing the check is not the normal resolution for
-`OWNER_DECISION`.
+The implemented `OWNER_ADDITION / G0` route in [the architecture
+contract](architecture.md) applies only when the consumer's previous
+protected-base policy opts in. This repository's current policy does not opt
+in, so its route is inactive. Its first policy adoption may use the authorized
+one-time owner-controlled administrative exception after code review and
+fixture E2E; that exception is outside Gatekeeper acceptance and does not claim
+a release or consumer activation. The previous protected Authority Set must
+have exactly one `self` member matching the policy's selected authority path. A
+completed ordinary `OWNER_DECISION` must carry a protected structured
+`ownerDecisionId`; B's annotated tag `AdditionRecord` binds
+`missingDecision.id` to that ID, and B-specific eligibility review verifies
+the match and that the proposal is limited to the missing choice. Under that
+route, B must contain only the missing architecture decision and must bind to
+an annotated tag object that targets B's exact commit. The object OID
+identifies immutable tag-object bytes; the tag ref is mutable, so a read proves
+only its mapping at that time. G0 does not authenticate the tagger or owner and
+does not claim that a later tag-ref change invalidates a green check. It
+requires no historical `BLOCK` ReviewRecord, exact-claim identity receipt,
+revocation service or identity provider. B cannot use it to assert that work is
+complete: for example, an ownership decision about a migration does not
+establish that the migration or cutover occurred. A still needs completion
+evidence if its own acceptance depends on those facts.
+
+A PR comment or workflow approval alone does not record canonical architecture
+authority. An administrator's existing bypass power is outside Gatekeeper's
+protected result and cannot be described as `PASS` or `OWNER_ADDITION / G0`.
+Any existing owner-authorized administrative exception remains governed by the
+consumer's policy and must be recorded separately from Gatekeeper acceptance.
 
 ## CI review unavailable
 

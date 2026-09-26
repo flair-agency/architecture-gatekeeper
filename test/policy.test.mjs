@@ -52,6 +52,39 @@ test('v2 rejects incomplete, invalid and over-ceiling limits even on unselected 
   }
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: { ...policy.branches.main, authorityManifestPath: 'authorities.json' } } }, 'main'), /Unknown/);
 });
+test('only a protected v2 enforced branch may select the exact G0 authority', () => {
+  const enabled = { grade: 'G0', authorityPath: 'docs/architecture.md',
+    promptPath: '.codex/gatekeeper/owner-addition-prompt.md', schemaPath: '.codex/gatekeeper/owner-addition.schema.json' };
+  const selected = resolveCiPolicy({ ...distributed, branches: { main: {
+    ...distributed.branches.main, ownerAddition: enabled,
+  } } }, 'main');
+  assert.equal(selected.ownerAdditionGrade, 'G0');
+  assert.equal(selected.ownerAdditionAuthorityPath, 'docs/architecture.md');
+  assert.equal(selected.ownerAdditionPromptPath, enabled.promptPath);
+  assert.equal(selected.ownerAdditionSchemaPath, enabled.schemaPath);
+  assert.throws(() => resolveCiPolicy({ version: 2, default: { mode: 'local-only' }, branches: { main: {
+    mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', ownerAddition: enabled,
+  } } }, 'main'), /requires a protected Authority Set/);
+  assert.equal(Object.hasOwn(resolveCiPolicy(distributed, 'main'), 'ownerAdditionGrade'), false);
+  for (const ownerAddition of [
+    { ...enabled, grade: 'G1' },
+    { ...enabled, authorityPath: '../docs/architecture.md' },
+    { ...enabled, promptPath: '../owner-addition-prompt.md' },
+    { ...enabled, schemaPath: 'schema.md' },
+    { ...enabled, allowBlock: true },
+    { grade: 'G0', authorityPath: 'docs/architecture.md' },
+  ]) {
+    assert.throws(() => resolveCiPolicy({ ...distributed, branches: {
+      main: distributed.branches.main, other: { ...distributed.branches.main, ownerAddition },
+    } }, 'main'));
+  }
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: {
+    ...policy.branches.main, ownerAddition: enabled,
+  } } }, 'main'), /Unknown/);
+  assert.throws(() => resolveCiPolicy({ ...distributed, default: {
+    mode: 'local-only', ownerAddition: enabled,
+  } }, 'main'));
+});
 test('protected policy rejects duplicate JSON keys before resolving effective limits', t => {
   const repeated = JSON.stringify(distributed).replace('"maxMembers":16', '"maxMembers":16,"maxMembers":32');
   assert.throws(() => parseCiPolicyJson(repeated), /duplicate JSON key/);
@@ -123,8 +156,24 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.doesNotMatch(workflow, /owner-decision-preflight/);
   assert.doesNotMatch(workflow, /Require protected owner approval/);
   assert.match(workflow, /name: Require successful reporting\n[\s\S]*?REPORT_RESULT: \$\{\{ needs\.report\.result \}\}\n[\s\S]*?test "\$REPORT_RESULT" = success/);
-  assert.match(workflow, /name: Require model-backed PASS\n        if: needs\.policy\.outputs\.mode == 'enforced'/);
+  assert.match(workflow, /name: Require model-backed PASS or verified G0 owner addition\n        if: needs\.policy\.outputs\.mode == 'enforced'/);
   assert.match(workflow, /test "\$CONCLUSION" = PASS/);
+  assert.match(workflow, /test "\$CONCLUSION" = OWNER_ADDITION_G0/);
+  assert.match(workflow, /test "\$OWNER_ADDITION_RESULT" = success/);
+  const additionJob = workflow.match(/  owner-addition:\n([\s\S]*?)\n  report:/)?.[1];
+  assert.ok(additionJob);
+  assert.match(additionJob, /if: needs\.policy\.outputs\.owner_addition_grade == 'G0'/);
+  assert.match(additionJob, /needs: \[policy, codex-action-integrity, review\]/);
+  assert.match(additionJob, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+  assert.doesNotMatch(additionJob, /ref: refs\/pull\/.*\/merge/);
+  assert.match(additionJob, /Fetch B and its annotated tag as Git objects only/);
+  assert.match(additionJob, /test "\$\(git rev-parse FETCH_HEAD\)" = "\$REVIEWED_SHA"/);
+  assert.match(additionJob, /test "\$MERGE_PARENT_HEAD" = "\$HEAD_SHA"/);
+  assert.match(additionJob, /git -c "http\.extraheader=.*" fetch --no-tags/);
+  assert.match(additionJob, /src\/owner-addition-ci\.mjs prepare/);
+  assert.match(additionJob, /ORDINARY_DECISION: \$\{\{ needs\.review\.outputs\.final_message \}\}/);
+  assert.match(additionJob, /src\/owner-addition-ci\.mjs validate/);
+  assert.match(additionJob, /prompt-file: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-addition\/eligibility-prompt\.md/);
 });
 
 test('dogfoods only the protected reusable workflow with separated permissions', () => {
