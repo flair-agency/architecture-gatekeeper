@@ -17,6 +17,11 @@ its authority list, reviewer prompt, decision schema, model selection and
 target-branch CI policy. The runtime does not grant filesystem, publication,
 deployment, credential or service authority.
 
+For project participation and maintenance expectations, see
+[Contributing](CONTRIBUTING.md), [Security](SECURITY.md), and
+[Support](SUPPORT.md). Architecture Gatekeeper is maintained on a best-effort
+basis; only the latest published release is supported.
+
 For the architecture responsibility boundary, GitHub plan and visibility
 limits, and this repository's observed reference configuration, see
 [GitHub assurance and reference configuration](docs/github-assurance.md).
