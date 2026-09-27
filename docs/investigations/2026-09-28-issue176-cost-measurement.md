@@ -121,3 +121,53 @@ Add the run's duration, result, request and token counts, and provider cost
 only when each value is available from a source tied to that exact attempt.
 Mark missing provider data as unavailable instead of filling it from the
 weekly aggregate.
+
+## First self probe: observed run evidence
+
+The following are two consecutive **PR #178 revisions**, not a controlled
+same-diff comparison. GitHub Actions reports attempt 1 in each case. The
+review job includes checkout and setup, so its duration is not model latency.
+The token number is the Codex CLI's terminal `tokens used` display, not a
+provider usage or billable-token breakdown.
+
+| Run / exact head | Requested tier | Review job (UTC) | Duration | CLI tokens used | Decision / acceptance |
+| --- | --- | --- | ---: | ---: | --- |
+| [36332044377](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/36332044377) / `370e45b6b3212780b473432ca4b1bf989a62b575` | Flex | 2026-09-27 16:08:16–16:09:00 | 44 s | 47,706 | PASS / required accept success |
+| [36332457809](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/36332457809) / `1abcdb734d715d46d21b7aa302261504efbe25eb` | Default | 2026-09-27 16:15:00–16:15:54 | 54 s | 45,581 | PASS / required accept success |
+
+The first run's review job received `self-flex-probe=true` and the Codex
+argument `service_tier='flex'`. The second run had the probe step skipped after
+the temporary variable was removed. The second revision also changes the
+workflow and tests, so the 10-second difference does not establish a tier
+latency effect. Neither log establishes the **effective provider tier**, model
+request count, cache-read/write split, or per-Gate API cost. These fields remain
+`unavailable` until attributable provider records are supplied.
+
+The owner supplied organization exports covering 2026-08-29 through
+2026-09-28. Both contain **daily buckets**, with no request ID, GitHub run ID,
+or request timestamp. The completion usage export groups by model and service
+tier; the cost export has one organization-wide amount per day. On 2026-09-27
+UTC, they report:
+
+| Export cohort | Requests | Input tokens | Cached input tokens | Cache-write tokens | Output tokens |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `gpt-6-sol` / `flex-tier` | 5 | 166,102 | 120,457 | 45,630 | 2,061 |
+| `gpt-6-sol` / `default` | 284 | 11,711,756 | 9,684,924 | 2,025,980 | 120,792 |
+
+The cost export reports **$11.67463621 for the whole organization on that
+UTC day**; it does not split cost by model, tier, repository, or run. The five
+Flex requests show that the provider processed some `gpt-6-sol` requests at
+Flex tier that day. The export cannot prove which run incurred them, even
+though the intended probe was in that window. Therefore the effective tier,
+request/token split, and API cost of run 36332044377 remain `unavailable` at
+run level. No cost saving can be calculated from these exports.
+
+For 2026-09-21 through 2026-09-27 UTC, these later exports total 2,511 model
+requests and $75.41207220. The earlier issue snapshot gave approximately
+2,483 and $74.69; its export generation time and completeness are unknown.
+Keep both as separately sourced snapshots rather than silently replacing the
+issue's figures. The [official organization usage API](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage)
+documents aggregate buckets and service-tier grouping, but no exact GitHub
+run-attempt join key. Per-Gate cost needs request-level records or a separately
+validated exclusive-use measurement window with an appropriately grouped cost
+source.
