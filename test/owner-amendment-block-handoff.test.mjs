@@ -33,9 +33,10 @@ function fixture(t) {
   const amendmentBytes = Buffer.from(JSON.stringify(amendment));
   const recordPath = join(dir, 'review-record.json'), bundlePath = join(dir, 'bundle.json'), amendmentPath = join(dir, 'amendment-record.json');
   writeFileSync(recordPath, recordBytes); writeFileSync(bundlePath, bundleBytes); writeFileSync(amendmentPath, amendmentBytes);
-  const signer = `https://github.com/${expected.repository}/${expected.workflowPath}@${expected.workflowRef}`;
+  const signer = `https://github.com/${expected.repository}/.github/workflows/architecture-gate.yml@${expected.workflowRef}`;
+  const caller = `https://github.com/${expected.repository}/${expected.workflowPath}@${expected.workflowRef}`;
   const verified = [{ verificationResult: { signature: { certificate: {
-    subjectAlternativeName: signer, buildSignerURI: signer, buildConfigURI: signer,
+    subjectAlternativeName: signer, buildSignerURI: signer, buildConfigURI: caller,
     githubWorkflowRepository: expected.repository, githubWorkflowSHA: expected.workflowSha,
     buildSignerDigest: expected.workflowSha, buildConfigDigest: expected.workflowSha,
     sourceRepositoryDigest: expected.workflowSha, sourceRepositoryURI: `https://github.com/${expected.repository}`,

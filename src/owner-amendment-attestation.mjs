@@ -60,10 +60,13 @@ export function inspectOwnerAmendmentAttestation({ recordBytes, verified, expect
     const statement = result?.statement;
     if (!certificate || !statement) fail('Verified certificate or statement is absent.');
 
-    const signer = `https://github.com/${expected.repository}/${expected.workflowPath}@${expected.workflowRef}`;
+    // GitHub's certificate identifies the reusable workflow as the signer,
+    // while buildConfigURI identifies the consumer workflow that called it.
+    const signer = `https://github.com/${expected.repository}/.github/workflows/architecture-gate.yml@${expected.workflowRef}`;
+    const caller = `https://github.com/${expected.repository}/${expected.workflowPath}@${expected.workflowRef}`;
     same(certificate.subjectAlternativeName, signer, 'Certificate subject alternative name');
     same(certificate.buildSignerURI, signer, 'Build signer URI');
-    same(certificate.buildConfigURI, signer, 'Build config URI');
+    same(certificate.buildConfigURI, caller, 'Build config URI');
     same(certificate.githubWorkflowRepository, expected.repository, 'Signer repository');
     same(certificate.githubWorkflowSHA, expected.workflowSha, 'Workflow revision');
     same(certificate.buildSignerDigest, expected.workflowSha, 'Signer digest');
