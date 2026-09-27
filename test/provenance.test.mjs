@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { verifyProvenance } from '../src/verify-codex-action.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const manifest = JSON.parse(readFileSync(join(root, 'provenance/codex-action-v1.12-issue176-telemetry.json'), 'utf8'));
+const manifest = JSON.parse(readFileSync(join(root, 'provenance/codex-action-v1.12-issue176-cache-write.json'), 'utf8'));
 const observed = {
   baseCommit: manifest.baseCommit,
   baseTree: manifest.baseTree,
@@ -18,6 +18,10 @@ const observed = {
 };
 
 test('accepts the complete reviewed Codex Action provenance', () => {
+  assert.equal(manifest.gatekeeperPullRequest, 4);
+  assert.equal(manifest.headCommit, 'fd900e4108e7a526da3e955a6b56408802f03223');
+  assert.equal(manifest.commits.at(-1), manifest.headCommit);
+  assert.equal(manifest.files['src/runCodexExec.ts'], '94913739459a78774f555891b5671178ac0d2c44d40117e778265ad5f06d655e');
   assert.equal(verifyProvenance(manifest, observed), true);
 });
 

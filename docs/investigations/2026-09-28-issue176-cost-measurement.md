@@ -122,6 +122,18 @@ only when each value is available from a source tied to that exact attempt.
 Mark missing provider data as unavailable instead of filling it from the
 weekly aggregate.
 
+The merged [Codex Action PR #4](https://github.com/flair-agency/codex-action/pull/4)
+adds a numeric cache-write token field to the action's JSONL telemetry. The
+Architecture Gate now pins its exact merge commit
+`fd900e4108e7a526da3e955a6b56408802f03223` and verifies the reviewed source,
+generated entrypoint, and tests against the protected provenance manifest
+before review credentials are exposed. The emitted field is
+`cache_write_input_tokens`; the action reports `unavailable` when usage data is
+missing or invalid. This makes cache-write tokens observable when the provider
+includes them in the Responses usage event, but it does not provide provider
+cost, request-to-attempt attribution, or evidence of a cache write when the
+field is unavailable.
+
 ## First self probe: observed run evidence
 
 The following are two consecutive **PR #178 revisions**, not a controlled

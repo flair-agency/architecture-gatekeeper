@@ -9,7 +9,7 @@
   },
   "commands": [
     "node .architecture-gatekeeper-runtime/src/verify-codex-action.mjs \\",
-    "  .architecture-gatekeeper-runtime/provenance/codex-action-v1.12-issue176-telemetry.json \\",
+    "  .architecture-gatekeeper-runtime/provenance/codex-action-v1.12-issue176-cache-write.json \\",
     "  .codex-action-source",
     "cd .codex-action-source",
     "pnpm install --frozen-lockfile",
