@@ -102,3 +102,22 @@ identify avoidable spend or establish that a cheaper service tier, model,
 reasoning effort, routing rule, or reduced review frequency preserves semantic
 review quality. Those changes require their own measured comparison and
 protected-policy review.
+
+## Self probe execution record
+
+For the first bounded self probe, record the exact pull request head and
+workflow run/attempt before comparing results. Set the repository variables
+`ARCHITECTURE_GATE_SELF_FLEX=true`, `ARCHITECTURE_GATE_SELF_FLEX_PR` to the
+decimal PR number, and `ARCHITECTURE_GATE_SELF_FLEX_HEAD` to its exact head SHA.
+Remove all three variables after the intended run starts. The caller enables
+Flex only when all three values match that event, so another PR's event cannot
+enter the probe while the variables exist. Verify the run received
+`self-flex-probe=true` and that
+the reviewer actually used Flex; the workflow input alone does not prove the
+provider's effective service tier. Keep the ordinary required check enabled,
+and record any unavailable or failed review as incomplete rather than PASS.
+
+Add the run's duration, result, request and token counts, and provider cost
+only when each value is available from a source tied to that exact attempt.
+Mark missing provider data as unavailable instead of filling it from the
+weekly aggregate.
