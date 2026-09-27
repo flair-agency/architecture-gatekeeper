@@ -1,6 +1,10 @@
 // Pure inspection of a cryptographically verified GitHub artifact attestation.
 // This binds producer provenance to exact ReviewRecord bytes; it is not acceptance.
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const SHA = /^[a-f0-9]{40}$/;
@@ -8,6 +12,7 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const DECODER = new TextDecoder('utf-8', { fatal: true });
 const MAX_RECORD_BYTES = 1024 * 1024;
 const EXPECTED_FIELDS = ['repository', 'workflowPath', 'workflowSha', 'workflowRef', 'runId', 'runAttempt'];
+const MAX_BUNDLE_BYTES = 65_536;
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 function fail(reason) { throw new Error(reason); }
@@ -83,6 +88,43 @@ export function inspectOwnerAmendmentAttestation({ recordBytes, verified, expect
     }
 
     return Object.freeze({ status: 'VERIFIED_PRODUCER_ATTESTATION', recordSha256: digest(recordBytes) });
+  } catch (error) {
+    return Object.freeze({ status: 'INCOMPLETE', reason: error.message });
+  }
+}
+
+/** Run the GitHub CLI verifier against the supplied exact record and bundle bytes. */
+export function verifyOwnerAmendmentBlockEvidence({ recordPath, bundlePath, recordBytes: suppliedRecordBytes,
+  bundleBytes: suppliedBundleBytes, expected, runGh = execFileSync }) {
+  try {
+    expected = validateExpected(expected);
+    if (typeof recordPath !== 'string' || !recordPath || typeof bundlePath !== 'string' || !bundlePath) fail('ReviewRecord or bundle path is absent.');
+    const recordBytes = suppliedRecordBytes ?? readFileSync(recordPath);
+    const bundleBytes = suppliedBundleBytes ?? readFileSync(bundlePath);
+    if (!Buffer.isBuffer(recordBytes) || !Buffer.isBuffer(bundleBytes)) fail('Evidence inputs must be exact byte buffers.');
+    if (!recordBytes.length || recordBytes.length > MAX_RECORD_BYTES) fail('Exact ReviewRecord bytes are absent or exceed the byte limit.');
+    if (!bundleBytes.length || bundleBytes.length > MAX_BUNDLE_BYTES) fail('Exact attestation bundle bytes are absent or exceed the byte limit.');
+    // Verify private copies of the exact bytes returned to the caller. This
+    // prevents a mutable download path changing between readback and gh.
+    const temporary = mkdtempSync(join(tmpdir(), 'agk-block-verify-'));
+    let verified;
+    try {
+      const exactRecordPath = join(temporary, 'review-record.json');
+      const exactBundlePath = join(temporary, 'attestation-bundle.json');
+      writeFileSync(exactRecordPath, recordBytes, { flag: 'wx', mode: 0o600 });
+      writeFileSync(exactBundlePath, bundleBytes, { flag: 'wx', mode: 0o600 });
+      verified = runGh('gh', ['attestation', 'verify', exactRecordPath, '--bundle', exactBundlePath, '--format', 'json', '--repo', expected.repository,
+        '--signer-repo', expected.repository], {
+        encoding: 'utf8', maxBuffer: MAX_RECORD_BYTES, timeout: 30_000,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+    } catch (error) {
+      fail(`GitHub attestation verification failed: ${error.message}`);
+    } finally { rmSync(temporary, { recursive: true, force: true }); }
+    let parsed;
+    try { parsed = JSON.parse(typeof verified === 'string' ? verified : verified.toString('utf8')); }
+    catch { fail('GitHub attestation verifier output is malformed JSON.'); }
+    return inspectOwnerAmendmentAttestation({ recordBytes, verified: parsed, expected });
   } catch (error) {
     return Object.freeze({ status: 'INCOMPLETE', reason: error.message });
   }
