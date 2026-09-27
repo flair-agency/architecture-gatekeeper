@@ -10,6 +10,7 @@ const previousSha256 = '1'.repeat(64);
 const newSha256 = '2'.repeat(64);
 const repository = 'flair-agency/architecture-gatekeeper';
 const purpose = 'Update the self architecture contract for verified evidence handoff';
+const attestationBundleBytes = Buffer.from('{"fixture":"verified attestation bundle"}\n');
 const scope = Object.freeze({ baseSha, headSha: bSha, authorityId: 'architecture', authorityPath: 'docs/architecture.md',
   previousSha256, newSha256 });
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -49,17 +50,18 @@ function reviewBytes(overrides = {}) {
   return Buffer.from(`${JSON.stringify(record)}\n`);
 }
 
-test('builds exact canonical AmendmentRecord v1 bytes bound to the verified BLOCK and inspected B scope', () => {
+test('builds exact canonical self BLOCK AmendmentRecord v2 bytes bound to the verified evidence and B scope', () => {
   const sourceBytes = reviewBytes();
-  const result = buildOwnerAmendmentRecord({ scope, reviewRecordBytes: sourceBytes, repository, purpose });
+  const result = buildOwnerAmendmentRecord({ attestationBundleBytes, scope, reviewRecordBytes: sourceBytes, repository, purpose });
   const expected = {
-    version: 1,
+    version: 2,
     repository,
     baseSha,
     headSha: bSha,
     policyRevision: baseSha,
     authority: { id: 'architecture', path: 'docs/architecture.md', previousSha256, newSha256 },
     triggeringReviewSha256: sha(sourceBytes),
+    attestationBundleSha256: sha(attestationBundleBytes),
     purpose,
   };
   assert.deepEqual(result.record, expected);
@@ -76,7 +78,7 @@ test('rejects ReviewRecord repository, base and B-head mismatches', async t => {
     ['head equal to B', { headSha: bSha }, /repository, base or historical head/],
   ];
   for (const [name, changes, pattern] of cases) await t.test(name, () => {
-    assert.throws(() => buildOwnerAmendmentRecord({ scope, reviewRecordBytes: reviewBytes(changes), repository, purpose }), pattern);
+    assert.throws(() => buildOwnerAmendmentRecord({ attestationBundleBytes, scope, reviewRecordBytes: reviewBytes(changes), repository, purpose }), pattern);
   });
 });
 
@@ -88,7 +90,7 @@ test('rejects a BLOCK that cites another authority, repository or prior authorit
     ['decision authority id', { decision: { decision: 'BLOCK', authorityIds: ['other'] } }, /authority does not match/],
   ];
   for (const [name, changes, pattern] of cases) await t.test(name, () => {
-    assert.throws(() => buildOwnerAmendmentRecord({ scope, reviewRecordBytes: reviewBytes(changes), repository, purpose }), pattern);
+    assert.throws(() => buildOwnerAmendmentRecord({ attestationBundleBytes, scope, reviewRecordBytes: reviewBytes(changes), repository, purpose }), pattern);
   });
 });
 
@@ -96,26 +98,31 @@ test('rejects non-BLOCK, tampered decision bytes, duplicate keys and malformed s
   const nonBlock = reviewBytes({ decision: { decision: 'PASS', authorityIds: ['architecture'] } });
   const tampered = JSON.parse(reviewBytes());
   tampered.decisionBytesBase64 = Buffer.from(JSON.stringify({ decision: 'PASS', authorityIds: ['architecture'] })).toString('base64');
-  await t.test('non-BLOCK', () => assert.throws(() => buildOwnerAmendmentRecord({ scope, reviewRecordBytes: nonBlock, repository, purpose }), /completed single-authority BLOCK/));
-  await t.test('tampered bytes', () => assert.throws(() => buildOwnerAmendmentRecord({ scope, reviewRecordBytes: Buffer.from(JSON.stringify(tampered)), repository, purpose }), /decision bytes or digest/));
-  await t.test('duplicate keys', () => assert.throws(() => buildOwnerAmendmentRecord({ scope, reviewRecordBytes: Buffer.from('{"version":1,"version":1}'), repository, purpose }), /duplicate/i));
-  await t.test('malformed UTF-8', () => assert.throws(() => buildOwnerAmendmentRecord({ scope, reviewRecordBytes: Buffer.from([0xff]), repository, purpose }), /UTF-8/));
+  await t.test('non-BLOCK', () => assert.throws(() => buildOwnerAmendmentRecord({ attestationBundleBytes, scope, reviewRecordBytes: nonBlock, repository, purpose }), /completed single-authority BLOCK/));
+  await t.test('tampered bytes', () => assert.throws(() => buildOwnerAmendmentRecord({ attestationBundleBytes, scope, reviewRecordBytes: Buffer.from(JSON.stringify(tampered)), repository, purpose }), /decision bytes or digest/));
+  await t.test('duplicate keys', () => assert.throws(() => buildOwnerAmendmentRecord({ attestationBundleBytes, scope, reviewRecordBytes: Buffer.from('{"version":1,"version":1}'), repository, purpose }), /duplicate/i));
+  await t.test('malformed UTF-8', () => assert.throws(() => buildOwnerAmendmentRecord({ attestationBundleBytes, scope, reviewRecordBytes: Buffer.from([0xff]), repository, purpose }), /UTF-8/));
+});
+
+test('requires exact bounded attestation bundle bytes', async t => {
+  await t.test('missing', () => assert.throws(() => buildOwnerAmendmentRecord({ scope, reviewRecordBytes: reviewBytes(), repository, purpose }), /attestation bundle bytes are missing/));
+  await t.test('oversized', () => assert.throws(() => buildOwnerAmendmentRecord({ scope, reviewRecordBytes: reviewBytes(), attestationBundleBytes: Buffer.alloc(65_537), repository, purpose }), /attestation bundle bytes are missing/));
 });
 
 test('rejects invalid scope, repository, or malformed purpose', async t => {
-  await t.test('head and base coincide', () => assert.throws(() => buildOwnerAmendmentRecord({
+  await t.test('head and base coincide', () => assert.throws(() => buildOwnerAmendmentRecord({ attestationBundleBytes,
     scope: { ...scope, headSha: baseSha }, reviewRecordBytes: reviewBytes(), repository, purpose,
   }), /inspected self scope is invalid/));
-  await t.test('repository differs from ReviewRecord', () => assert.throws(() => buildOwnerAmendmentRecord({
+  await t.test('repository differs from ReviewRecord', () => assert.throws(() => buildOwnerAmendmentRecord({ attestationBundleBytes,
     scope, reviewRecordBytes: reviewBytes(), repository: 'other/project', purpose,
   }), /repository, base or historical head/));
-  await t.test('empty purpose', () => assert.throws(() => buildOwnerAmendmentRecord({
+  await t.test('empty purpose', () => assert.throws(() => buildOwnerAmendmentRecord({ attestationBundleBytes,
     scope, reviewRecordBytes: reviewBytes(), repository, purpose: '   ',
   }), /purpose/));
-  await t.test('line breaks', () => assert.throws(() => buildOwnerAmendmentRecord({
+  await t.test('line breaks', () => assert.throws(() => buildOwnerAmendmentRecord({ attestationBundleBytes,
     scope, reviewRecordBytes: reviewBytes(), repository, purpose: 'line one\nline two',
   }), /purpose/));
-  await t.test('too long', () => assert.throws(() => buildOwnerAmendmentRecord({
+  await t.test('too long', () => assert.throws(() => buildOwnerAmendmentRecord({ attestationBundleBytes,
     scope, reviewRecordBytes: reviewBytes(), repository, purpose: 'x'.repeat(501),
   }), /purpose/));
 });

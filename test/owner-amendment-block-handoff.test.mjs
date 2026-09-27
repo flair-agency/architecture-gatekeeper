@@ -25,11 +25,11 @@ function fixture(t) {
     decisionBytesBase64: decisionBytes.toString('base64'), decisionSha256: sha(decisionBytes), decision };
   const recordBytes = Buffer.from(`${JSON.stringify(record)}\n`);
   const bundleBytes = Buffer.from('{"bundle":"valid fixture"}\n');
-  const amendment = { version: 1, repository: expected.repository, baseSha: expected.workflowSha, headSha: bSha,
+  const amendment = { version: 2, repository: expected.repository, baseSha: expected.workflowSha, headSha: bSha,
     policyRevision: expected.workflowSha,
     authority: { id: 'architecture', path: 'docs/architecture.md', previousSha256: record.authority.members[0].sha256,
       newSha256: sha(Buffer.from('new authority')) },
-    triggeringReviewSha256: sha(recordBytes), purpose: 'Adopt editorial ownership' };
+    triggeringReviewSha256: sha(recordBytes), attestationBundleSha256: sha(bundleBytes), purpose: 'Adopt editorial ownership' };
   const amendmentBytes = Buffer.from(JSON.stringify(amendment));
   const recordPath = join(dir, 'review-record.json'), bundlePath = join(dir, 'bundle.json'), amendmentPath = join(dir, 'amendment-record.json');
   writeFileSync(recordPath, recordBytes); writeFileSync(bundlePath, bundleBytes); writeFileSync(amendmentPath, amendmentBytes);
@@ -99,12 +99,13 @@ test('rejects a tag envelope candidate whose AmendmentRecord targets a different
   const f = fixture(t);
   const altered = JSON.parse(f.amendmentBytes.toString('utf8'));
   altered.headSha = 'e'.repeat(40);
-  assert.throws(() => prepare(f, Buffer.from(JSON.stringify(altered))), /does not bind this exact BLOCK ReviewRecord and B/);
+  assert.throws(() => prepare(f, Buffer.from(JSON.stringify(altered))), /does not bind these exact BLOCK ReviewRecord/);
 });
 
 test('rejects stale or incomplete AmendmentRecord bindings before preparing a tag', t => {
   const f = fixture(t);
   for (const change of [
+    a => { a.version = 1; delete a.attestationBundleSha256; },
     a => { a.baseSha = 'e'.repeat(40); },
     a => { a.policyRevision = 'e'.repeat(40); },
     a => { a.authority.previousSha256 = 'e'.repeat(64); },
@@ -115,4 +116,16 @@ test('rejects stale or incomplete AmendmentRecord bindings before preparing a ta
     change(candidate);
     assert.throws(() => prepare(f, Buffer.from(JSON.stringify(candidate))), /AmendmentRecord does not bind/);
   }
+});
+
+test('rejects an AmendmentRecord that does not bind the exact verified attestation bundle bytes', t => {
+  const f = fixture(t);
+  const changedBundle = Buffer.from('{"bundle":"different valid bytes"}\n');
+  const changedVerification = structuredClone(f.verified);
+  changedVerification[0].verificationResult.statement.subject[0].digest.sha256 = sha(f.recordBytes);
+  const provenanceResult = verifyOwnerAmendmentBlockEvidence({ recordBytes: f.recordBytes,
+    bundleBytes: changedBundle, expected, runGh: () => JSON.stringify(changedVerification) });
+  assert.equal(provenanceResult.status, 'VERIFIED_PRODUCER_ATTESTATION');
+  assert.throws(() => prepareOwnerAmendmentBlockHandoff({ recordBytes: f.recordBytes, bundleBytes: changedBundle,
+    amendmentRecordBytes: f.amendmentBytes, expected, bSha, provenanceResult }), /attestation bundle bytes/);
 });

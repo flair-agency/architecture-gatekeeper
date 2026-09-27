@@ -11,13 +11,14 @@ const fail = message => { throw new Error(`Owner amendment BLOCK handoff: ${mess
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 
 function validateContext(context) {
-  const keys = ['repository', 'artifactId', 'runId', 'runAttempt', 'baseSha', 'headSha', 'workflowPath', 'workflowRef', 'workflowSha', 'bSha'];
+  const keys = ['repository', 'artifactId', 'runId', 'runAttempt', 'baseSha', 'headSha', 'aPrNumber', 'workflowPath', 'workflowRef', 'workflowSha', 'bSha'];
   if (!context || typeof context !== 'object' || Array.isArray(context) ||
       Object.keys(context).sort().join(',') !== [...keys].sort().join(',')) fail('trusted protected context is incomplete or contains unknown fields.');
   if (typeof context.repository !== 'string' ||
       !/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/.test(context.repository) ||
       ![context.artifactId, context.runId, context.runAttempt].every(value =>
         (typeof value === 'string' && /^[1-9]\d*$/.test(value)) || (Number.isSafeInteger(value) && value > 0)) ||
+      !Number.isSafeInteger(context.aPrNumber) || context.aPrNumber < 1 ||
       ![context.baseSha, context.headSha, context.workflowSha, context.bSha].every(value => SHA.test(value)) ||
       context.baseSha !== context.workflowSha || context.baseSha === context.headSha || context.bSha === context.baseSha ||
       typeof context.workflowPath !== 'string' || !/^\.github\/workflows\/[A-Za-z0-9._-]+\.yml$/.test(context.workflowPath) ||
@@ -37,6 +38,7 @@ function crossBindReviewRecord(recordBytes, context) {
     headSha: context.headSha,
     workflowSha: context.workflowSha,
     workflowPath: context.workflowPath,
+    prNumber: context.aPrNumber,
     runId: String(context.runId),
     runAttempt: String(context.runAttempt),
   };
@@ -49,12 +51,18 @@ function crossBindReviewRecord(recordBytes, context) {
 }
 
 /** Fetch and validate one historical BLOCK and prepare its exact-B tag message. */
-export async function composeOwnerAmendmentBlockHandoff({ context, token, amendmentRecordBytes, fetchImpl = fetch, runGh }) {
+export async function composeOwnerAmendmentBlockHandoff({ context, token, amendmentRecordBytes,
+  buildAmendmentRecordBytes, fetchImpl = fetch, runGh }) {
   try {
     context = validateContext(context);
     if (typeof token !== 'string' || !token) fail('GitHub API token is required.');
     if (typeof fetchImpl !== 'function' || typeof runGh !== 'function') fail('fetch and attestation verifier helpers are required.');
-    if (!Buffer.isBuffer(amendmentRecordBytes)) fail('exact AmendmentRecord bytes are required.');
+    const hasBytes = amendmentRecordBytes !== undefined;
+    const hasBuilder = buildAmendmentRecordBytes !== undefined;
+    if (hasBytes === hasBuilder || (hasBytes && !Buffer.isBuffer(amendmentRecordBytes)) ||
+        (hasBuilder && typeof buildAmendmentRecordBytes !== 'function')) {
+      fail('provide either exact AmendmentRecord bytes or a protected AmendmentRecord builder.');
+    }
 
     const fetched = await fetchOwnerAmendmentBlockArtifact({
       expected: { repository: context.repository, artifactId: context.artifactId, runId: context.runId,
@@ -71,6 +79,12 @@ export async function composeOwnerAmendmentBlockHandoff({ context, token, amendm
     const provenance = verifyOwnerAmendmentBlockEvidence({ recordBytes: extracted.reviewRecordBytes,
       bundleBytes: extracted.attestationBundleBytes, expected: producerExpected, runGh });
     if (provenance.status !== 'VERIFIED_PRODUCER_ATTESTATION') fail(provenance.reason ?? 'BLOCK producer provenance is unverified.');
+
+    // The builder form lets a protected caller bind the exact verified BLOCK
+    // bytes into the AmendmentRecord without fetching the artifact twice.
+    if (hasBuilder) amendmentRecordBytes = buildAmendmentRecordBytes(
+      Buffer.from(extracted.reviewRecordBytes), Buffer.from(extracted.attestationBundleBytes));
+    if (!Buffer.isBuffer(amendmentRecordBytes)) fail('AmendmentRecord builder did not return exact bytes.');
 
     const prepared = prepareOwnerAmendmentBlockHandoff({ recordBytes: extracted.reviewRecordBytes,
       bundleBytes: extracted.attestationBundleBytes, amendmentRecordBytes, expected: producerExpected,

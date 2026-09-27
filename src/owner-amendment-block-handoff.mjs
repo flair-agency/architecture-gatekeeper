@@ -58,10 +58,11 @@ export function prepareOwnerAmendmentBlockHandoff({ recordBytes, bundleBytes, am
   const prior = reviewRecord.authority?.members;
   const authority = amendmentRecord?.authority;
   if (!exactKeys(amendmentRecord, ['version', 'repository', 'baseSha', 'headSha', 'policyRevision',
-    'authority', 'triggeringReviewSha256', 'purpose']) || amendmentRecord.version !== 1 ||
+    'authority', 'triggeringReviewSha256', 'attestationBundleSha256', 'purpose']) || amendmentRecord.version !== 2 ||
       amendmentRecord.headSha !== bSha || amendmentRecord.repository !== reviewRecord.repository ||
       amendmentRecord.baseSha !== reviewRecord.baseSha || amendmentRecord.policyRevision !== reviewRecord.baseSha ||
       amendmentRecord.triggeringReviewSha256 !== digest(recordBytes) ||
+      amendmentRecord.attestationBundleSha256 !== digest(bundleBytes) ||
       !Array.isArray(prior) || prior.length !== 1 || prior[0]?.repository !== reviewRecord.repository ||
       prior[0]?.resolvedCommit !== reviewRecord.baseSha ||
       !exactKeys(authority, ['id', 'path', 'previousSha256', 'newSha256']) ||
@@ -71,7 +72,7 @@ export function prepareOwnerAmendmentBlockHandoff({ recordBytes, bundleBytes, am
       typeof amendmentRecord.purpose !== 'string' || amendmentRecord.purpose.length < 1 ||
       amendmentRecord.purpose.length > 500 || !/^[\x20-\x7e]+$/.test(amendmentRecord.purpose) ||
       !amendmentRecord.purpose.trim()) {
-    fail('AmendmentRecord does not bind this exact BLOCK ReviewRecord and B.');
+    fail('AmendmentRecord does not bind these exact BLOCK ReviewRecord and attestation bundle bytes and B.');
   }
   const envelope = {
     version: 2,
