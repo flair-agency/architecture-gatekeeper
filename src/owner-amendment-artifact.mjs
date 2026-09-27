@@ -72,6 +72,7 @@ export async function fetchOwnerAmendmentBlockArtifact({ expected, token, fetchI
     const [owner, repositoryName] = expected.repository.split('/');
     const repo = `${encodeURIComponent(owner)}/${encodeURIComponent(repositoryName)}`;
     const runId = encodeURIComponent(String(expected.runId));
+    const runAttempt = encodeURIComponent(String(expected.runAttempt));
     const api = 'https://api.github.com';
     const headers = { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`, 'x-github-api-version': '2022-11-28' };
     const getJson = async url => {
@@ -79,7 +80,9 @@ export async function fetchOwnerAmendmentBlockArtifact({ expected, token, fetchI
       if (!response?.ok) fail(`GitHub API request failed (${response?.status ?? 'no response'}).`);
       return response.json();
     };
-    const run = await getJson(`${api}/repos/${repo}/actions/runs/${runId}`);
+    // The unqualified endpoint describes the latest attempt. A retried run can
+    // therefore hide the metadata for the exact producer attempt being checked.
+    const run = await getJson(`${api}/repos/${repo}/actions/runs/${runId}/attempts/${runAttempt}`);
     if (String(run.id) !== String(expected.runId) || run.event !== 'pull_request_target' ||
         run.repository?.full_name !== expected.repository ||
         run.head_repository?.full_name !== expected.repository || run.head_sha !== expected.headSha ||

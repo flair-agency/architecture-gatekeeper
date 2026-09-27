@@ -143,9 +143,12 @@ export function extractOwnerAmendmentBlockArtifactZip(zipInput) {
       ranges.push([result.rangeStart, result.rangeEnd]);
     }
     ranges.sort((left, right) => left[0] - right[0]);
-    for (let index = 1; index < ranges.length; index++) {
-      if (ranges[index][0] < ranges[index - 1][1]) fail('local entries overlap.');
+    let coveredUntil = 0;
+    for (const [start, end] of ranges) {
+      if (start !== coveredUntil) fail('local entry ranges overlap or leave unindexed bytes.');
+      coveredUntil = end;
     }
+    if (coveredUntil !== centralOffset) fail('unindexed bytes precede the central directory.');
     return Object.freeze({ status: 'EXTRACTED_OWNER_AMENDMENT_BLOCK_ARTIFACT',
       reviewRecordBytes: Buffer.from(extracted['review-record.json']),
       attestationBundleBytes: Buffer.from(extracted['attestation-bundle.json']) });

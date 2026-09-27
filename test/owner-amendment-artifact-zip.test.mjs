@@ -69,6 +69,24 @@ function makeZip(entries, { comment = Buffer.alloc(0) } = {}) {
   return Buffer.concat([...locals, centralBytes, end, comment]);
 }
 
+function insertUnindexedBytes(zip, position, bytes = Buffer.from('junk')) {
+  const result = Buffer.concat([zip.subarray(0, position), bytes, zip.subarray(position)]);
+  const oldEnd = zip.length - 22;
+  const newEnd = oldEnd + bytes.length;
+  const oldCentral = zip.readUInt32LE(oldEnd + 16);
+  result.writeUInt32LE(oldCentral + (position <= oldCentral ? bytes.length : 0), newEnd + 16);
+
+  let central = oldCentral + (position <= oldCentral ? bytes.length : 0);
+  const count = result.readUInt16LE(newEnd + 10);
+  for (let index = 0; index < count; index++) {
+    const localOffsetField = central + 42;
+    const localOffset = result.readUInt32LE(localOffsetField);
+    if (localOffset >= position) result.writeUInt32LE(localOffset + bytes.length, localOffsetField);
+    central += 46 + result.readUInt16LE(central + 28) + result.readUInt16LE(central + 30) + result.readUInt16LE(central + 32);
+  }
+  return result;
+}
+
 const normalEntries = () => [
   { name: 'review-record.json', content: Buffer.from('{"decision":"BLOCK"}') },
   { name: 'attestation-bundle.json', content: Buffer.from('{"attestations":[]}') },
@@ -87,6 +105,24 @@ test('accepts UTF-8 entries with a ZIP data descriptor and EOCD comment', () => 
   const entries = normalEntries().map(entry => ({ ...entry, descriptor: true }));
   const result = extractOwnerAmendmentBlockArtifactZip(makeZip(entries, { comment: Buffer.from('comment') }));
   assert.equal(result.status, 'EXTRACTED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
+});
+
+test('rejects unindexed preamble, gaps between entries, and trailing local-region bytes', () => {
+  const valid = makeZip(normalEntries());
+  const end = valid.length - 22;
+  const centralOffset = valid.readUInt32LE(end + 16);
+  const firstNameLength = valid.readUInt16LE(centralOffset + 28);
+  const secondCentral = centralOffset + 46 + firstNameLength;
+  const secondLocalOffset = valid.readUInt32LE(secondCentral + 42);
+
+  const preamble = insertUnindexedBytes(valid, 0);
+  assert.equal(extractOwnerAmendmentBlockArtifactZip(preamble).status, 'INCOMPLETE');
+
+  const gap = insertUnindexedBytes(valid, secondLocalOffset);
+  assert.equal(extractOwnerAmendmentBlockArtifactZip(gap).status, 'INCOMPLETE');
+
+  const trailing = insertUnindexedBytes(valid, centralOffset);
+  assert.equal(extractOwnerAmendmentBlockArtifactZip(trailing).status, 'INCOMPLETE');
 });
 
 test('rejects unexpected paths, extra entries, and duplicate names', async t => {

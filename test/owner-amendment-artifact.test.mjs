@@ -6,23 +6,25 @@ import { fetchOwnerAmendmentBlockArtifact, OWNER_AMENDMENT_ARTIFACT_LIMITS } fro
 const expected = { repository: 'flair-agency/example', artifactId: '88', runId: '42', runAttempt: '2', baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40) };
 const digest = bytes => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
 
-function fixture() {
+function fixture({ attempt = 2, latestAttempt = attempt } = {}) {
   const zip = Buffer.from('offline zip fixture bytes');
   const repo = { id: 7, full_name: expected.repository };
   const headRepo = { id: 7, full_name: expected.repository };
-  const run = { id: 42, event: 'pull_request_target', run_attempt: 2, repository: repo, head_repository: headRepo,
+  const run = { id: 42, event: 'pull_request_target', run_attempt: attempt, repository: repo, head_repository: headRepo,
     head_sha: expected.headSha, pull_requests: [] };
-  const artifact = { id: 88, name: `owner-amendment-block-${expected.baseSha}-${expected.headSha}-42-2`, expired: false,
+  const latestRun = { ...run, run_attempt: latestAttempt };
+  const artifact = { id: 88, name: `owner-amendment-block-${expected.baseSha}-${expected.headSha}-42-${attempt}`, expired: false,
     size_in_bytes: zip.length, digest: digest(zip), workflow_run: { id: 42, repository_id: 7, head_repository_id: 7, head_sha: expected.headSha } };
   const fetchImpl = async url => {
     assert.match(url, /\/repos\/flair-agency\/example\//);
     assert.doesNotMatch(url, /flair-agency%2Fexample/);
-    if (url.endsWith('/actions/runs/42')) return { ok: true, json: async () => run };
+    if (url.endsWith(`/actions/runs/42/attempts/${attempt}`)) return { ok: true, json: async () => run };
+    if (url.endsWith('/actions/runs/42')) return { ok: true, json: async () => latestRun };
     if (url.endsWith('/actions/artifacts/88')) return { ok: true, json: async () => artifact };
     if (url.endsWith('/actions/artifacts/88/zip')) return new Response(zip);
     throw new Error(`unexpected URL ${url}`);
   };
-  return { run, artifact, zip, fetchImpl };
+  return { run, latestRun, artifact, zip, fetchImpl };
 }
 
 async function retrieve(f = fixture(), values = {}) {
@@ -60,6 +62,18 @@ test('rejects wrong run context, metadata, expiration, and digest', async t => {
     const result = await retrieve(f);
     assert.equal(result.status, 'INCOMPLETE');
   });
+});
+
+test('uses the selected historical run attempt instead of the latest attempt', async () => {
+  const f = fixture({ attempt: 1, latestAttempt: 2 });
+  const urls = [];
+  const originalFetch = f.fetchImpl;
+  f.fetchImpl = async (url, options) => { urls.push({ url, options }); return originalFetch(url, options); };
+  const result = await retrieve(f, { expected: { runAttempt: '1' } });
+  assert.equal(result.status, 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
+  assert.equal(result.runAttempt, '1');
+  assert.ok(urls.some(({ url }) => url.endsWith('/actions/runs/42/attempts/1')));
+  assert.ok(urls.every(({ url }) => !url.endsWith('/actions/runs/42')));
 });
 
 test('fetches the trusted artifact ID directly and rejects ID or name mismatch', async t => {
