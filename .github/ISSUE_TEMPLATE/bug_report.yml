@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible defect in Architecture Gatekeeper
+title: "Bug: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report vulnerabilities here. Follow SECURITY.md instead.
+  - type: input
+    id: version
+    attributes:
+      label: Release or commit
+      description: Provide the exact release or immutable commit.
+      placeholder: v0.5.1 or a full commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: route
+    attributes:
+      label: Affected route
+      options:
+        - Local hook
+        - Manual CLI
+        - Native Codex Skill
+        - GitHub Actions / CI
+        - Package or installation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest safe steps, inputs and observed output needed to reproduce the defect.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Remove credentials, private repository content and personal data.

@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a focused improvement to the shared package
+title: "Feature: "
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the shared-package problem, not a consumer-specific architecture decision.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Proposed outcome
+      description: State the observable outcome without assuming new trust or acceptance guarantees.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Architecture and assurance impact
+      description: Identify affected responsibilities, trust boundaries, evidence or acceptance policy, or state that none change.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

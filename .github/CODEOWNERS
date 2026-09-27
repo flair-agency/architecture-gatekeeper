@@ -4,6 +4,9 @@
 # Architecture policy, review semantics, and the distributed review workflow.
 /AGENTS.md @flair-agency/architecture @flair-agency/engineering
 /README.md @flair-agency/architecture @flair-agency/engineering
+/CONTRIBUTING.md @flair-agency/architecture @flair-agency/engineering
+/SECURITY.md @flair-agency/security @flair-agency/architecture
+/SUPPORT.md @flair-agency/architecture @flair-agency/engineering
 /docs/architecture.md @flair-agency/architecture
 /docs/development.md @flair-agency/architecture @flair-agency/engineering
 /package.json @flair-agency/architecture @flair-agency/engineering
