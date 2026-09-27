@@ -65,12 +65,24 @@ test('provides a committed self local review configuration', () => {
 
 test('CI reviewer excludes checkout-owned AGENTS.md instructions', () => {
   const workflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
-  const args = workflow.match(/^\s+codex-args: '([^']+)'$/mu);
-  assert.ok(args, 'CI review must set explicit Codex arguments');
-  assert.deepEqual(JSON.parse(args[1]), [
+  const args = workflow.match(/^\s+codex-args: \$\{\{ inputs\.self-flex-probe && '(.+)' \|\| '([^']+)' \}\}$/mu);
+  assert.ok(args, 'CI review must set explicit default and self Flex Codex arguments');
+  assert.deepEqual(JSON.parse(args[2]), [
     '--ephemeral',
     '-c',
     'project_doc_max_bytes=0',
   ]);
+  // GitHub expression literals decode doubled single quotes before sending
+  // this JSON string to codex-action.
+  assert.deepEqual(JSON.parse(args[1].replaceAll("''", "'")), [
+    '--ephemeral',
+    '-c',
+    'project_doc_max_bytes=0',
+    '-c',
+    "service_tier='flex'",
+  ]);
+  assert.match(workflow, /Confine optional Flex probe to the self reviewer/);
+  const selfWorkflow = readFileSync(new URL('../.github/workflows/self-architecture-gate.yml', import.meta.url), 'utf8');
+  assert.match(selfWorkflow, /self-flex-probe: \$\{\{ vars\.ARCHITECTURE_GATE_SELF_FLEX == 'true' \}\}/);
   assert.match(workflow, /protected-review-instructions/);
 });

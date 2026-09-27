@@ -18,6 +18,8 @@ jobs:
     uses: ./.github/workflows/architecture-gate.yml
     with:
       protected-review-instructions: true
+      # Off by default. Enable only for a bounded self-review cost experiment.
+      self-flex-probe: ${{ vars.ARCHITECTURE_GATE_SELF_FLEX == 'true' }}
       schema-path: .codex/gatekeeper/ci-decision.schema.json
       validation-path: .codex/gatekeeper/decision.validation.json
     secrets:
