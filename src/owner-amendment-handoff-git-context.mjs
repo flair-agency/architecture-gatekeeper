@@ -117,8 +117,9 @@ export function resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, he
   try { manifest = parseAuthorityManifest(manifestBytes, limits, profile); }
   catch { fail('previous-base Authority Set manifest is invalid.'); }
   const path = policy.ownerAmendmentAuthorityPath;
-  const baseAuthorityBytes = readRegularBlob(runGit, baseSha, path, limits.maxFileBytes);
-  const headAuthorityBytes = readRegularBlob(runGit, headSha, path, limits.maxFileBytes);
+  const authorityByteLimit = Math.min(limits.maxFileBytes, limits.maxTotalBytes);
+  const baseAuthorityBytes = readRegularBlob(runGit, baseSha, path, authorityByteLimit);
+  const headAuthorityBytes = readRegularBlob(runGit, headSha, path, authorityByteLimit);
   const files = changedFiles(runGit, baseSha, headSha);
   let scope;
   try { scope = inspectOwnerAmendmentSelfScope({ policy, manifest, baseSha, headSha,

@@ -120,6 +120,12 @@ test('rejects malformed selected manifest and missing or oversized authority blo
     // A missing selected member is never treated as a valid amendment input.
     assert.throws(() => resolve(missingHead));
   } finally { missingHead.cleanup(); }
+
+  const constrained = structuredClone(policy);
+  constrained.branches.main.authorityLimits = { ...limits, maxFileBytes: 256, maxTotalBytes: 16 };
+  const overTotal = fixture({ basePolicy: constrained, baseAuthority: 'old architecture bytes\n' });
+  try { assert.throws(() => resolve(overTotal), /protected size limit/); }
+  finally { overTotal.cleanup(); }
 });
 
 test('requires exact base ancestry and rejects malformed injected Git output', () => {
