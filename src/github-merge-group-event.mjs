@@ -1,0 +1,44 @@
+// Parse GitHub's merge_group event into untrusted event facts. This does not
+// establish exact-B identity, provenance, eligibility, or acceptance.
+const SHA = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
+const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const REF_FORBIDDEN = /[\x00-\x20\x7f~^:?*\\[]/;
+
+function invalid(reason) {
+  return Object.freeze({ status: 'INCOMPLETE', reason: `GitHub merge_group event ${reason}` });
+}
+
+function validBranchRef(value) {
+  if (typeof value !== 'string' || !value.startsWith('refs/heads/')) return false;
+  const name = value.slice('refs/heads/'.length);
+  if (!name || name.startsWith('/') || name.endsWith('/') || name.endsWith('.') ||
+      name.includes('..') || name.includes('//') || name.includes('@{') || REF_FORBIDDEN.test(name)) return false;
+  return name.split('/').every(part => part && !part.startsWith('.') && !part.endsWith('.lock'));
+}
+
+/**
+ * Read only the conservative facts in a GitHub `merge_group` checks_requested
+ * payload. The caller must independently establish trust and bind these facts
+ * to its protected policy and exact candidate.
+ */
+export function parseGithubMergeGroupEvent(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return invalid('payload is missing or malformed.');
+  if (payload.action !== 'checks_requested') return invalid('action is not checks_requested.');
+  const group = payload.merge_group;
+  if (!group || typeof group !== 'object' || Array.isArray(group)) return invalid('merge_group is missing or malformed.');
+  const repository = payload.repository?.full_name;
+  if (typeof repository !== 'string' || !REPOSITORY.test(repository)) return invalid('repository.full_name is missing or malformed.');
+  if (typeof group.base_sha !== 'string' || !SHA.test(group.base_sha) ||
+      typeof group.head_sha !== 'string' || !SHA.test(group.head_sha) ||
+      group.base_sha === group.head_sha) return invalid('base_sha or head_sha is missing or malformed.');
+  if (!validBranchRef(group.base_ref)) return invalid('base_ref is missing or malformed.');
+
+  return Object.freeze({
+    status: 'PARSED_MERGE_GROUP_EVENT',
+    action: payload.action,
+    repository,
+    baseSha: group.base_sha,
+    headSha: group.head_sha,
+    baseRef: group.base_ref,
+  });
+}
