@@ -916,6 +916,51 @@ misrepresented as an Architecture Gatekeeper guarantee.
 
 ## Dogfooding and change discipline
 
+### Development sequence and v0.6.0 self reference profile (owner decision)
+
+The project first establishes the smallest complete workflow it can operate
+on itself, then verifies it through dogfooding. It does not build a universal
+host, repository-plan, provenance, or Git merge adapter in anticipation of
+possible OSS use. After the self workflow is proven, additional capabilities
+are derived from concrete consumer use cases and their required assurance.
+This sequencing does not weaken an existing consumer's selected policy or
+turn a self-only result into a general support claim.
+
+For v0.6.0, the reference environment is this repository on GitHub Free,
+public visibility. Its first `OWNER_AMENDMENT / G0` deployment selects the
+following existing host primitives, subject to the validation requirements
+above and an explicit previous-base policy opt-in:
+
+| Concern | Self reference selection |
+| --- | --- |
+| Completed `BLOCK` bytes | Exact, versioned ReviewRecord in a GitHub Actions artifact |
+| Producer provenance | GitHub artifact attestation over those exact bytes, verified against the selected protected producer workflow, revision, run and attempt |
+| Protected B transition | Required check on a `merge_group`, GitHub merge queue using a merge commit, and post-merge canonical readback; the merge commit retains exact B as its second parent |
+| Git history | Linear history is not a requirement of this self profile; required checks and PR protection remain |
+
+```mermaid
+flowchart LR
+    A[A reviewed] --> BL[Completed BLOCK]
+    BL --> E[Artifact bytes + verified attestation]
+    E --> B[Exact authority-only B and tag]
+    B --> Q[Required merge_group check]
+    Q --> M[Merge commit retains exact B]
+    M --> C[Canonical readback]
+    C --> R[A reviewed afresh]
+```
+
+The selected artifact must be retrievable and its attestation verifiable
+through B's canonical transition. If it is lost beforehand, the pending B is
+`INCOMPLETE`; an authorized fresh review may produce a new completed `BLOCK`
+and requires B's record and tag to be rebound to that new evidence. A queue
+check rerun by itself does not prove that separately deletable evidence remains
+valid until the transition. The first deployment must demonstrate the final
+validation/transition ordering and the complete A → BLOCK → B → canonical →
+A fresh-review cycle before reporting `OWNER_AMENDMENT / G0` or releasing
+v0.6.0. This profile selects no private-repository provenance adapter,
+linear-history rewrite binding, or squash/rebase adoption route. G0 still
+reports principal authentication as `not_verified`.
+
 Dogfooding means exercising every major path the repository requires of
 consumers, not merely invoking the reusable CI workflow. Before broader rollout
 of a path, at least one representative repository must exercise, as applicable:
