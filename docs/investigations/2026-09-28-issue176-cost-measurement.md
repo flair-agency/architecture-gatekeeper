@@ -143,9 +143,31 @@ latency effect. Neither log establishes the **effective provider tier**, model
 request count, cache-read/write split, or per-Gate API cost. These fields remain
 `unavailable` until attributable provider records are supplied.
 
-The OpenAI organization usage endpoint publishes time-bucketed aggregate
-results that can be grouped by service tier; the organization costs endpoint
-is likewise aggregated. Their documented fields do not by themselves provide
-an exact GitHub run-attempt join key. An export with individual request IDs or
-another validated request-to-run mapping is needed to claim per-Gate cost.
-See the [official organization usage API](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage).
+The owner supplied organization exports covering 2026-08-29 through
+2026-09-28. Both contain **daily buckets**, with no request ID, GitHub run ID,
+or request timestamp. The completion usage export groups by model and service
+tier; the cost export has one organization-wide amount per day. On 2026-09-27
+UTC, they report:
+
+| Export cohort | Requests | Input tokens | Cached input tokens | Cache-write tokens | Output tokens |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `gpt-6-sol` / `flex-tier` | 5 | 166,102 | 120,457 | 45,630 | 2,061 |
+| `gpt-6-sol` / `default` | 284 | 11,711,756 | 9,684,924 | 2,025,980 | 120,792 |
+
+The cost export reports **$11.67463621 for the whole organization on that
+UTC day**; it does not split cost by model, tier, repository, or run. The five
+Flex requests show that the provider processed some `gpt-6-sol` requests at
+Flex tier that day. The export cannot prove which run incurred them, even
+though the intended probe was in that window. Therefore the effective tier,
+request/token split, and API cost of run 36332044377 remain `unavailable` at
+run level. No cost saving can be calculated from these exports.
+
+For 2026-09-21 through 2026-09-27 UTC, these later exports total 2,511 model
+requests and $75.41207220. The earlier issue snapshot gave approximately
+2,483 and $74.69; its export generation time and completeness are unknown.
+Keep both as separately sourced snapshots rather than silently replacing the
+issue's figures. The [official organization usage API](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage)
+documents aggregate buckets and service-tier grouping, but no exact GitHub
+run-attempt join key. Per-Gate cost needs request-level records or a separately
+validated exclusive-use measurement window with an appropriately grouped cost
+source.
