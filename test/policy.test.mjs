@@ -249,7 +249,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /name: Require model-backed PASS or verified G0 owner addition\n        if: needs\.policy\.outputs\.mode == 'enforced'/);
   assert.match(workflow, /name: Require PASS or pre-merge G0 eligibility\n        if: needs\.policy\.outputs\.mode == 'procedural'/);
   assert.match(workflow, /decision_kind: \$\{\{ steps\.decision\.outputs\.kind \}\}/);
-  assert.match(workflow, /name: Identify the completed ordinary decision\n        if: needs\.policy\.outputs\.mode == 'procedural' \|\| \(needs\.policy\.outputs\.mode == 'enforced' && needs\.policy\.outputs\.owner_addition_grade == 'G0'\)\n        id: decision/);
+  assert.match(workflow, /name: Identify the completed ordinary decision\n        if: needs\.policy\.outputs\.mode == 'procedural' \|\| \(needs\.policy\.outputs\.mode == 'enforced' && \(needs\.policy\.outputs\.owner_addition_grade == 'G0' \|\| needs\.policy\.outputs\.owner_amendment_grade == 'G0'\)\)\n        id: decision/);
   assert.match(workflow, /test "\$CONCLUSION" = PASS/);
   assert.match(workflow, /test "\$CONCLUSION" = OWNER_ADDITION_G0/);
   assert.match(workflow, /test "\$OWNER_ADDITION_RESULT" = success/);
@@ -299,6 +299,45 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.doesNotMatch(caller, /owner-decision-environment/);
   assert.match(caller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
   assert.doesNotMatch(caller, /actions\/checkout/);
+});
+
+test('produces attested BLOCK records only in a credential-separated signer job', () => {
+  const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
+  const reviewJob = workflow.match(/  review:\n([\s\S]*?)\n  block-review-record:/)?.[1];
+  const recordJob = workflow.match(/  block-review-record:\n([\s\S]*?)\n  owner-addition:/)?.[1];
+  const acceptJob = workflow.match(/  accept:\n([\s\S]*)$/)?.[1];
+  assert.ok(reviewJob);
+  assert.ok(recordJob);
+  assert.ok(acceptJob);
+  assert.match(reviewJob, /permissions:\n      contents: read/);
+  assert.doesNotMatch(reviewJob, /id-token: write|attestations: write/);
+  assert.match(workflow, /owner_amendment_grade: \$\{\{ steps\.resolve\.outputs\.ownerAmendmentGrade \}\}/);
+  assert.match(workflow, /name: Confine first owner-amendment evidence profile to self\n        if: steps\.resolve\.outputs\.ownerAmendmentGrade == 'G0'/);
+  assert.match(workflow, /test "\$REPOSITORY" = flair-agency\/architecture-gatekeeper/);
+  assert.match(workflow, /test "\$GITHUB_WORKFLOW_REF" = flair-agency\/architecture-gatekeeper\/\.github\/workflows\/self-architecture-gate\.yml@refs\/heads\/main/);
+  assert.match(workflow, /if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.event_name == 'pull_request_target' && github\.event\.pull_request\.base\.ref == 'main' && github\.event\.pull_request\.draft == false && needs\.policy\.result == 'success' && needs\.review\.result == 'success' && needs\.policy\.outputs\.owner_amendment_grade == 'G0' && needs\.policy\.outputs\.owner_amendment_evidence_producer == 'github-actions-attestation' && needs\.review\.outputs\.decision_kind == 'BLOCK'/);
+  assert.match(recordJob, /permissions:\n      contents: read\n      id-token: write\n      attestations: write/);
+  assert.doesNotMatch(recordJob, /OPENAI_API_KEY|secrets\.OPENAI_API_KEY/);
+  assert.match(recordJob, /name: Check out the protected base only\n        uses: actions\/checkout@v5\n        with:\n          ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}\n          fetch-depth: 1/);
+  assert.doesNotMatch(recordJob, /git fetch|refs\/pull\/\$PR_NUMBER\/merge/);
+  assert.match(recordJob, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.doesNotMatch(recordJob, /working-directory: candidate|path: candidate|ref: refs\/pull\//);
+  assert.match(recordJob, /RECORD_DIR: \.agk-block-record-input/);
+  assert.match(recordJob, /cp "\$GITHUB_EVENT_PATH" "\$RECORD_DIR\/event\.json"/);
+  assert.match(recordJob, /MERGE_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
+  assert.match(recordJob, /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+  assert.match(recordJob, /node \.architecture-gatekeeper-runtime\/scripts\/owner-amendment-block-producer\.mjs\n/);
+  assert.match(recordJob, /ref: \$\{\{ job\.workflow_sha \}\}/);
+  assert.match(recordJob, /WORKFLOW_PATH: \.github\/workflows\/self-architecture-gate\.yml/);
+  assert.match(recordJob, /RUN_ID: \$\{\{ github\.run_id \}\}/);
+  assert.match(recordJob, /RUN_ATTEMPT: \$\{\{ github\.run_attempt \}\}/);
+  assert.match(recordJob, /scripts\/owner-amendment-block-producer\.mjs/);
+  assert.match(recordJob, /uses: actions\/attest\@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4\.2\.2/);
+  assert.match(recordJob, /subject-path: \.agk-block-record-input\/review-record\.json/);
+  assert.match(recordJob, /attestation-bundle\.json/);
+  assert.match(recordJob, /uses: actions\/upload-artifact\@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4/);
+  assert.match(recordJob, /artifact-sha256=%s;attestation-id=%s;run-id=%s;run-attempt=%s/);
+  assert.doesNotMatch(acceptJob, /block-review-record/);
 });
 
 test('selects and materializes the protected self Authority Set for CI and local review', async () => {

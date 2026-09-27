@@ -52,6 +52,9 @@ jobs:
       owner_addition_authority_path: ${{ steps.resolve.outputs.ownerAdditionAuthorityPath }}
       owner_addition_prompt_path: ${{ steps.resolve.outputs.ownerAdditionPromptPath }}
       owner_addition_schema_path: ${{ steps.resolve.outputs.ownerAdditionSchemaPath }}
+      owner_amendment_version: ${{ steps.resolve.outputs.ownerAmendmentVersion }}
+      owner_amendment_grade: ${{ steps.resolve.outputs.ownerAmendmentGrade }}
+      owner_amendment_evidence_producer: ${{ steps.resolve.outputs.ownerAmendmentEvidenceProducer }}
       adoption_evidence_producer: ${{ steps.resolve.outputs.adoptionEvidenceProducer }}
       adoption_evidence_workflow_path: ${{ steps.resolve.outputs.adoptionEvidenceWorkflowPath }}
       adoption_evidence_job_name: ${{ steps.resolve.outputs.adoptionEvidenceJobName }}
@@ -92,6 +95,16 @@ jobs:
             echo "model=gpt-5.6-sol" >> "$GITHUB_OUTPUT"
             echo "reasoningEffort=medium" >> "$GITHUB_OUTPUT"
           fi
+      - name: Confine first owner-amendment evidence profile to self
+        if: steps.resolve.outputs.ownerAmendmentGrade == 'G0'
+        env:
+          REPOSITORY: ${{ github.repository }}
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          test "$REPOSITORY" = flair-agency/architecture-gatekeeper
+          test "$BASE_BRANCH" = main
+          test "$GITHUB_WORKFLOW_REF" = flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main
       - name: Require protected instructions for selected Authority Set or legacy v1
         if: steps.resolve.outputs.authorityManifestPath != '' || steps.resolve.outputs.policyVersion == '1'
         env:
@@ -343,7 +356,7 @@ jobs:
           fi
           npm list -g --depth=0 @openai/codex @openai/codex-responses-api-proxy || true
       - name: Identify the completed ordinary decision
-        if: needs.policy.outputs.mode == 'procedural' || (needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_addition_grade == 'G0')
+        if: needs.policy.outputs.mode == 'procedural' || (needs.policy.outputs.mode == 'enforced' && (needs.policy.outputs.owner_addition_grade == 'G0' || needs.policy.outputs.owner_amendment_grade == 'G0'))
         id: decision
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
@@ -364,6 +377,99 @@ jobs:
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
         run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
+
+  block-review-record:
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && needs.policy.result == 'success' && needs.review.result == 'success' && needs.policy.outputs.owner_amendment_grade == 'G0' && needs.policy.outputs.owner_amendment_evidence_producer == 'github-actions-attestation' && needs.review.outputs.decision_kind == 'BLOCK'
+    needs: [policy, review]
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the protected base only
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Check out the protected producer runtime
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Produce the exact protected-base BLOCK ReviewRecord
+        env:
+          DECISION: ${{ needs.review.outputs.final_message }}
+          AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MERGE_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          WORKFLOW_PATH: .github/workflows/self-architecture-gate.yml
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          GH_TOKEN: ${{ github.token }}
+          RECORD_DIR: .agk-block-record-input
+        run: |
+          set -euo pipefail
+          mkdir -m 700 -p "$RECORD_DIR"
+          cp "$GITHUB_EVENT_PATH" "$RECORD_DIR/event.json"
+          printf '%s' "$DECISION" > "$RECORD_DIR/decision.json"
+          printf '%s' "$AUTHORITY_PROVENANCE_BASE64" | base64 --decode > "$RECORD_DIR/authority-provenance.json"
+          jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --argjson prNumber "$PR_NUMBER" \
+            --arg baseSha "$BASE_SHA" \
+            --arg headSha "$HEAD_SHA" \
+            --arg mergeSha "$MERGE_SHA" \
+            --arg workflowSha "$GITHUB_WORKFLOW_SHA" \
+            --arg workflowPath "$WORKFLOW_PATH" \
+            --arg runId "$RUN_ID" \
+            --arg runAttempt "$RUN_ATTEMPT" \
+            '{context:{repository:$repository,prNumber:$prNumber,baseSha:$baseSha,headSha:$headSha,mergeSha:$mergeSha,workflowSha:$workflowSha,workflowPath:$workflowPath,runId:$runId,runAttempt:$runAttempt}}' \
+            > "$RECORD_DIR/recorded-context.json"
+          node .architecture-gatekeeper-runtime/scripts/owner-amendment-block-producer.mjs
+      - name: Attest the exact ReviewRecord bytes
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: .agk-block-record-input/review-record.json
+      - name: Assemble exact record and attestation bundle
+        env:
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+          EVIDENCE_DIR: ${{ runner.temp }}/architecture-gate-block-evidence
+          INPUT_DIR: .agk-block-record-input
+        run: |
+          set -euo pipefail
+          test -s "$BUNDLE_PATH"
+          mkdir -m 700 -p "$EVIDENCE_DIR"
+          cp "$INPUT_DIR/review-record.json" "$EVIDENCE_DIR/review-record.json"
+          cp "$BUNDLE_PATH" "$EVIDENCE_DIR/attestation-bundle.json"
+      - name: Preserve the exact ReviewRecord and attestation bundle
+        id: evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: owner-amendment-block-${{ github.event.pull_request.base.sha }}-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/architecture-gate-block-evidence/
+          if-no-files-found: error
+          overwrite: false
+          retention-days: 90
+      - name: Report the immutable run binding
+        env:
+          ARTIFACT_ID: ${{ steps.evidence.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.evidence.outputs.artifact-digest }}
+          ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
+        run: |
+          set -euo pipefail
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          [[ "$ARTIFACT_DIGEST" =~ ^[a-f0-9]{64}$ ]]
+          [[ "$ATTESTATION_ID" =~ ^[0-9]+$ ]]
+          printf '::notice title=AGK_OWNER_AMENDMENT_BLOCK_RECORD_V1::artifact-id=%s;artifact-sha256=%s;attestation-id=%s;run-id=%s;run-attempt=%s\n' \
+            "$ARTIFACT_ID" "$ARTIFACT_DIGEST" "$ATTESTATION_ID" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
 
   owner-addition:
     if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.owner_addition_grade == 'G0' && needs.review.outputs.decision_kind == 'OWNER_DECISION'

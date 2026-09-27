@@ -10,6 +10,7 @@ const OWNER_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
 const OWNER_SCHEMA_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.json$/;
 const ADOPTION_WORKFLOW_PATH = /^\.github\/workflows\/[A-Za-z0-9._-]+\.ya?ml$/;
 const ADOPTION_JOB_NAME = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63} \/ [A-Za-z0-9_][A-Za-z0-9 ._-]{0,63}$/;
+const AMENDMENT_TAG_NAMESPACE = 'refs/tags/architecture-gatekeeper/amendments';
 const LEGACY_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
 
 function isRecord(value) {
@@ -25,7 +26,7 @@ function requireOnlyKeys(value, allowed, label) {
 
 function validateBranch(branch, label, version) {
   const allowed = version === 1 ? ['mode', 'model', 'reasoningEffort', 'authorityFiles', 'promptPath', 'schemaPath', 'validationPath'] :
-    ['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition', ...(version === 5 ? ['adoptionEvidence'] : [])];
+    ['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition', ...(version === 2 ? ['ownerAmendment'] : []), ...(version === 5 ? ['adoptionEvidence'] : [])];
   requireOnlyKeys(branch, new Set(allowed), label);
   if (!MODES.has(branch.mode)) throw new Error(`Invalid ${label} mode`);
   if (branch.mode === 'local-only') {
@@ -109,6 +110,18 @@ function validateBranch(branch, label, version) {
   } else if (Object.hasOwn(branch, 'adoptionEvidence')) {
     throw new Error(`${label} adoption evidence requires CI policy v5`);
   }
+  if (Object.hasOwn(branch, 'ownerAmendment')) {
+    const amendment = branch.ownerAmendment;
+    requireOnlyKeys(amendment, new Set(['version', 'grade', 'scope', 'triggerProfile', 'authorityId', 'authorityPath', 'evidenceProducer', 'tagNamespace']), `${label} owner amendment`);
+    if (version !== 2 || branch.mode !== 'enforced' || !Object.hasOwn(branch, 'authorityManifestPath') || amendment.version !== 1 || amendment.grade !== 'G0' ||
+        amendment.scope !== 'authority-only' || amendment.triggerProfile !== 'completed-block-v1' ||
+        !/^[a-z][a-z0-9-]{0,63}$/.test(amendment.authorityId || '') ||
+        typeof amendment.authorityPath !== 'string' || amendment.authorityPath.length > 240 ||
+        !OWNER_AUTHORITY_PATH.test(amendment.authorityPath) || amendment.authorityPath.split('/').some(part => part === '.' || part === '..') ||
+        amendment.evidenceProducer !== 'github-actions-attestation' || amendment.tagNamespace !== AMENDMENT_TAG_NAMESPACE) {
+      throw new Error(`Invalid ${label} owner amendment selection`);
+    }
+  }
 }
 
 export function resolveCiPolicy(policy, baseBranch) {
@@ -155,6 +168,16 @@ export function resolveCiPolicy(policy, baseBranch) {
     result.adoptionEvidenceProducer = selected.adoptionEvidence.producer;
     result.adoptionEvidenceWorkflowPath = selected.adoptionEvidence.workflowPath;
     result.adoptionEvidenceJobName = selected.adoptionEvidence.jobName;
+  }
+  if (selected.ownerAmendment) {
+    result.ownerAmendmentVersion = selected.ownerAmendment.version;
+    result.ownerAmendmentGrade = selected.ownerAmendment.grade;
+    result.ownerAmendmentScope = selected.ownerAmendment.scope;
+    result.ownerAmendmentTriggerProfile = selected.ownerAmendment.triggerProfile;
+    result.ownerAmendmentAuthorityId = selected.ownerAmendment.authorityId;
+    result.ownerAmendmentAuthorityPath = selected.ownerAmendment.authorityPath;
+    result.ownerAmendmentEvidenceProducer = selected.ownerAmendment.evidenceProducer;
+    result.ownerAmendmentTagNamespace = selected.ownerAmendment.tagNamespace;
   }
   return result;
 }

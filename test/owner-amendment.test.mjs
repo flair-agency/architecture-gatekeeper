@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { digestOwnerAmendmentRecord, validateOwnerAmendmentG0Procedure } from '../src/owner-amendment.mjs';
+import { digestOwnerAmendmentRecord, validateOwnerAmendmentG0Procedure, validateOwnerAmendmentG0TagEnvelope } from '../src/owner-amendment.mjs';
 
 const a = 'a'.repeat(40);
 const b = 'b'.repeat(40);
@@ -51,6 +51,29 @@ function rejects(change, pattern) {
   const input = fixture();
   change(input);
   assert.throws(() => validateOwnerAmendmentG0Procedure(input), pattern);
+}
+
+function useV2Envelope(input, edit = () => {}) {
+  // These are producer bytes, with insertion order and terminal newline preserved.
+  const reviewBytes = Buffer.from(`${JSON.stringify(input.reviewRecord)}\n`);
+  const amendmentBytes = Buffer.from(`${JSON.stringify(input.amendmentRecord)}\n`);
+  const bundleBytes = Buffer.from('{"attestation":"fixture"}');
+  const envelope = {
+    version: 2, profile: 'self-g0', bSha: input.current.headSha,
+    reviewRecordBase64: reviewBytes.toString('base64'), reviewRecordSha256: createHash('sha256').update(reviewBytes).digest('hex'),
+    attestationBundleBase64: bundleBytes.toString('base64'), attestationBundleSha256: createHash('sha256').update(bundleBytes).digest('hex'),
+    amendmentRecordBase64: amendmentBytes.toString('base64'), amendmentRecordSha256: createHash('sha256').update(amendmentBytes).digest('hex'),
+  };
+  edit(envelope);
+  const sortedEnvelope = Object.fromEntries(Object.entries(envelope).sort(([x], [y]) => x.localeCompare(y)));
+  const message = `${JSON.stringify(sortedEnvelope)}\n`;
+  const tagName = input.tag.ref.slice('refs/tags/'.length);
+  input.tag.objectBytes = Buffer.from(`object ${input.current.headSha}\ntype commit\ntag ${tagName}\n` +
+    `tagger Anyone <anyone@example.invalid> 1789990000 +0900\n\n${message}`);
+  input.tag.objectOid = createHash('sha1').update(Buffer.from(`tag ${input.tag.objectBytes.length}\0`)).update(input.tag.objectBytes).digest('hex');
+  input.current.tagRefOid = input.tag.objectOid;
+  return { headSha: input.current.headSha, tag: input.tag, tagRef: input.tag.ref, observedTagRefOid: input.tag.objectOid,
+    reviewRecordBytes: reviewBytes, amendmentRecordBytes: amendmentBytes, attestationBundleBytes: bundleBytes };
 }
 
 test('G0 validates only exact authority-only B with a real annotated-tag object and no principal claim', () => {
@@ -117,4 +140,53 @@ test('G0 checks tag payload even when its OID and ref are recomputed consistentl
   x.tag.objectOid = createHash('sha1').update(Buffer.from(`tag ${x.tag.objectBytes.length}\0`)).update(x.tag.objectBytes).digest('hex');
   x.current.tagRefOid = x.tag.objectOid;
   assert.throws(() => validateOwnerAmendmentG0Procedure(x), /message does not bind/);
+});
+
+test('G0 v2 evidence envelope binds exact B, raw records and attestation bundle bytes', () => {
+  const input = fixture();
+  const args = useV2Envelope(input);
+  assert.notEqual(createHash('sha256').update(args.reviewRecordBytes).digest('hex'), digestOwnerAmendmentRecord(input.reviewRecord));
+  const result = validateOwnerAmendmentG0TagEnvelope(args);
+  assert.equal(result.profile, 'self-g0');
+  assert.equal(result.tagObjectOid, input.tag.objectOid);
+});
+
+test('G0 v2 evidence envelope rejects wrong B, bad digests, noncanonical base64 and unknown fields', () => {
+  for (const [edit, pattern] of [
+    [e => { e.bSha = c; }, /exact B and self-G0 profile/],
+    [e => { e.attestationBundleSha256 = 'f'.repeat(64); }, /bundle bytes or raw-byte digest differ/],
+    [e => { e.reviewRecordBase64 += '\n'; }, /base64 is invalid or noncanonical/],
+    [e => { e.extra = true; }, /missing or unknown fields/],
+  ]) {
+    const input = fixture();
+    const args = useV2Envelope(input, edit);
+    assert.throws(() => validateOwnerAmendmentG0TagEnvelope(args), pattern);
+  }
+});
+
+test('G0 v2 evidence envelope rejects duplicate or noncanonical JSON fields', () => {
+  const input = fixture();
+  const args = useV2Envelope(input);
+  const source = input.tag.objectBytes.toString();
+  const separator = source.indexOf('\n\n');
+  const payload = source.slice(separator + 2).trimEnd();
+  input.tag.objectBytes = Buffer.from(`${source.slice(0, separator + 2)}${payload.slice(0, -1)},"version":2}\n`);
+  input.tag.objectOid = createHash('sha1').update(Buffer.from(`tag ${input.tag.objectBytes.length}\0`)).update(input.tag.objectBytes).digest('hex');
+  input.current.tagRefOid = input.tag.objectOid;
+  args.observedTagRefOid = input.tag.objectOid;
+  assert.throws(() => validateOwnerAmendmentG0TagEnvelope(args), /JSON is not canonical/);
+});
+
+test('G0 v2 raw validator rejects legacy v1 tag, wrong observed ref and altered raw bytes', () => {
+  const input = fixture();
+  const args = useV2Envelope(input);
+  args.observedTagRefOid = c;
+  assert.throws(() => validateOwnerAmendmentG0TagEnvelope(args), /observed annotated tag ref/);
+  args.observedTagRefOid = input.tag.objectOid;
+  args.reviewRecordBytes = Buffer.from(`${args.reviewRecordBytes.toString()} `);
+  assert.throws(() => validateOwnerAmendmentG0TagEnvelope(args), /raw-byte digest differ/);
+  const legacy = fixture();
+  const legacyArgs = { ...args, headSha: legacy.current.headSha, tag: legacy.tag, tagRef: legacy.tag.ref,
+    observedTagRefOid: legacy.tag.objectOid };
+  assert.throws(() => validateOwnerAmendmentG0TagEnvelope(legacyArgs), /missing or unknown fields|exact B|JSON is not canonical/);
 });
