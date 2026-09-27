@@ -104,11 +104,14 @@ function validatePurpose(purpose) {
   }
 }
 
-/** Build canonical AmendmentRecord v1 bytes from the inspected B scope and verified historical BLOCK bytes. */
-export function buildOwnerAmendmentRecord({ scope, reviewRecordBytes, repository, purpose }) {
+/** Build canonical AmendmentRecord v1 bytes from the inspected B scope and verified historical BLOCK evidence bytes. */
+export function buildOwnerAmendmentRecord({ scope, reviewRecordBytes, attestationBundleBytes, repository, purpose }) {
   validateScope(scope);
   if (typeof repository !== 'string' || !REPOSITORY.test(repository)) fail('repository identity is invalid.');
   validatePurpose(purpose);
+  if (!Buffer.isBuffer(attestationBundleBytes) || !attestationBundleBytes.length || attestationBundleBytes.length > 65_536) {
+    fail('exact verified attestation bundle bytes are missing or oversized.');
+  }
   const review = parseVerifiedBlock(reviewRecordBytes);
   validateBinding(review, { scope, repository });
   const amendment = {
@@ -124,6 +127,7 @@ export function buildOwnerAmendmentRecord({ scope, reviewRecordBytes, repository
       newSha256: scope.newSha256,
     },
     triggeringReviewSha256: digest(reviewRecordBytes),
+    attestationBundleSha256: digest(attestationBundleBytes),
     purpose,
   };
   const bytes = Buffer.from(JSON.stringify(canonical(amendment)));

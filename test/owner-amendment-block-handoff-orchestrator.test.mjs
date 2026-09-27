@@ -134,7 +134,8 @@ test('discovers, verifies once, builds AmendmentRecord from exact BLOCK, and tra
   assert.equal(result.amendmentRecordSha256, sha(Buffer.from(JSON.stringify(canonical({
     version: 1, repository, baseSha, headSha: bSha, policyRevision: baseSha,
     authority: { id: 'architecture-contract', path: 'docs/architecture.md', previousSha256: sha(baseAuthorityBytes), newSha256: sha(headAuthorityBytes) },
-    triggeringReviewSha256: sha(f.recordBytes), purpose: 'Amend the self architecture contract after the completed BLOCK',
+    triggeringReviewSha256: sha(f.recordBytes), attestationBundleSha256: sha(f.bundleBytes),
+    purpose: 'Amend the self architecture contract after the completed BLOCK',
   })))));
   assert.equal(f.calls.filter(call => call.path.endsWith(`/actions/artifacts/${artifactId}/zip`)).length, 1);
   assert.equal(f.calls.filter(call => call.path.endsWith(`/actions/runs/${runId}/attempts/${runAttempt}`)).length, 2);

@@ -82,7 +82,8 @@ export async function composeOwnerAmendmentBlockHandoff({ context, token, amendm
 
     // The builder form lets a protected caller bind the exact verified BLOCK
     // bytes into the AmendmentRecord without fetching the artifact twice.
-    if (hasBuilder) amendmentRecordBytes = buildAmendmentRecordBytes(Buffer.from(extracted.reviewRecordBytes));
+    if (hasBuilder) amendmentRecordBytes = buildAmendmentRecordBytes(
+      Buffer.from(extracted.reviewRecordBytes), Buffer.from(extracted.attestationBundleBytes));
     if (!Buffer.isBuffer(amendmentRecordBytes)) fail('AmendmentRecord builder did not return exact bytes.');
 
     const prepared = prepareOwnerAmendmentBlockHandoff({ recordBytes: extracted.reviewRecordBytes,

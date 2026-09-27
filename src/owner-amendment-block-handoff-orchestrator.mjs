@@ -61,8 +61,8 @@ export async function orchestrateOwnerAmendmentBlockHandoff({
       workflowPath: blockRun.workflowPath, workflowRef: blockRun.workflowRef,
       workflowSha: blockRun.workflowSha, bSha };
     const composed = await composeOwnerAmendmentBlockHandoff({ context, token, fetchImpl, runGh,
-      buildAmendmentRecordBytes: reviewRecordBytes => buildOwnerAmendmentRecord({
-        scope, reviewRecordBytes, repository, purpose,
+      buildAmendmentRecordBytes: (reviewRecordBytes, attestationBundleBytes) => buildOwnerAmendmentRecord({
+        scope, reviewRecordBytes, attestationBundleBytes, repository, purpose,
       }).bytes });
     if (composed.status !== 'PREPARED_BLOCK_HANDOFF_TAG_MESSAGE') fail(composed.reason ?? 'verified BLOCK handoff could not be prepared.');
 

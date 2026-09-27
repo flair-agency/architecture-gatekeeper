@@ -49,7 +49,8 @@ function fixture({ recordChanges = {}, artifactChanges = {}, amendmentChanges = 
   const amendment = { version: 1, repository: context.repository, baseSha: context.baseSha, headSha: context.bSha,
     policyRevision: context.baseSha, authority: { id: 'architecture', path: 'docs/architecture.md',
       previousSha256: record.authority.members[0].sha256, newSha256: sha(Buffer.from('new authority')) },
-    triggeringReviewSha256: sha(recordBytes), purpose: 'Adopt the owner-approved responsibility boundary' };
+    triggeringReviewSha256: sha(recordBytes), attestationBundleSha256: sha(bundleBytes),
+    purpose: 'Adopt the owner-approved responsibility boundary' };
   Object.assign(amendment, amendmentChanges);
   const amendmentRecordBytes = Buffer.from(JSON.stringify(amendment));
   const run = { id: 42, event: 'pull_request_target', repository: { full_name: context.repository, id: 10 },
@@ -144,9 +145,10 @@ test('builds AmendmentRecord after the one authenticated artifact fetch and prov
   const phases = [];
   const result = await compose(f, {
     amendmentRecordBytes: undefined,
-    buildAmendmentRecordBytes(recordBytes) {
+    buildAmendmentRecordBytes(recordBytes, bundleBytes) {
       phases.push('build');
       assert.deepEqual(recordBytes, f.recordBytes);
+      assert.deepEqual(bundleBytes, f.bundleBytes);
       return f.amendmentRecordBytes;
     },
     runGh(...args) { phases.push('verify'); return f.runGh(...args); },
