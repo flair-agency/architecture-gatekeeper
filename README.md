@@ -22,6 +22,13 @@ For project participation and maintenance expectations, see
 [Support](SUPPORT.md). Architecture Gatekeeper is maintained on a best-effort
 basis; only the latest published release is supported.
 
+## Sponsorship
+
+You can support ongoing maintenance, security and quality improvements, and
+documentation through [GitHub Sponsors](https://github.com/sponsors/flair-agency).
+Sponsorship does not grant authority over architecture, review outcomes,
+acceptance policy, issue priority, or release decisions.
+
 For the architecture responsibility boundary, GitHub plan and visibility
 limits, and this repository's observed reference configuration, see
 [GitHub assurance and reference configuration](docs/github-assurance.md).
