@@ -15,6 +15,16 @@
         "maxFileBytes": 65536,
         "maxTotalBytes": 262144,
         "maxPromptBytes": 524288
+      },
+      "ownerAmendment": {
+        "version": 1,
+        "grade": "G0",
+        "scope": "authority-only",
+        "triggerProfile": "completed-block-v1",
+        "authorityId": "architecture-contract",
+        "authorityPath": "docs/architecture.md",
+        "evidenceProducer": "github-actions-attestation",
+        "tagNamespace": "refs/tags/architecture-gatekeeper/amendments"
       }
     }
   }
