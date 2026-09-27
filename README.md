@@ -99,15 +99,8 @@ the complete workflow example and protected-base behavior.
 
 ## Documentation
 
-| Document | Purpose |
-| --- | --- |
-| [Architecture](docs/architecture.md) | Normative responsibilities, invariants, and assurance contract |
-| [Integration reference](docs/integration-reference.md) | Detailed configuration, CI, distribution, limits, and trust boundaries |
-| [GitHub assurance](docs/github-assurance.md) | GitHub plan, visibility, and reference configuration limits |
-| [Reviewer host permissions](docs/reviewer-host-permissions.md) | Child-process and host authorization boundary |
-| [Owner intervention](docs/owner-intervention.md) | Authorized owner-decision handling |
-| [Self-gate Actions policy](docs/self-gate-actions-policy.md) | Repository self-review workflow policy |
-| [Development guide](docs/development.md) | Repository layout, verification, and rollout |
+Use the [documentation map](docs/README.md) to choose between the normative
+architecture contract, integration reference, and operational guides.
 
 ## Project participation
 

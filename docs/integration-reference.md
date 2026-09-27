@@ -1,41 +1,25 @@
 # Architecture Gatekeeper integration reference
 
-This guide preserves the detailed integration, policy, distribution, and trust
-boundary reference. For the project overview and shortest adoption path, start
-with the [README](../README.md).
+For a short adoption path, start with the [project README](../README.md).
 
-The normative Why, What, responsibility boundaries and invariants are defined
-in [`docs/architecture.md`](architecture.md). This README describes the
-current implementation and integration surface; it does not replace that
-contract.
+The [architecture contract](architecture.md) defines responsibilities and
+assurance. This reference describes the current integration surface; the
+[documentation map](README.md) points to operational guides.
 
-Architecture Gatekeeper supplies reusable mechanics for three semantic design
-review stages:
+```mermaid
+flowchart LR
+    C[Recorded consumer inputs] --> L[Local Hook or manual CLI]
+    C --> S[Codex-hosted Skill]
+    C --> CI[Protected-base CI review]
+    L --> F[Development feedback]
+    S --> F
+    CI --> V[Structured decision validation]
+    V --> G[Architecture Gate / accept under selected policy]
+```
 
-- a fast, read-only local Codex hook;
-- an explicit, on-demand manual architecture review;
-- a higher-assurance pull-request review from a clean GitHub checkout.
-
-The package does not define a repository's architecture. Every consumer owns
-its authority list, reviewer prompt, decision schema, model selection and
-target-branch CI policy. The runtime does not grant filesystem, publication,
-deployment, credential or service authority.
-
-For project participation and maintenance expectations, see
-[Contributing](../CONTRIBUTING.md), [Security](../SECURITY.md), and
-[Support](../SUPPORT.md). Architecture Gatekeeper is maintained on a best-effort
-basis; only the latest published release is supported.
-
-## Sponsorship
-
-You can support ongoing maintenance, security and quality improvements, and
-documentation through [GitHub Sponsors](https://github.com/sponsors/flair-agency).
-Sponsorship does not grant authority over architecture, review outcomes,
-acceptance policy, issue priority, or release decisions.
-
-For the architecture responsibility boundary, GitHub plan and visibility
-limits, and this repository's observed reference configuration, see
-[GitHub assurance and reference configuration](github-assurance.md).
+The consumer owns its architecture and policy; this package supplies review
+mechanics. For plan limits and this repository's host setup, see
+[GitHub assurance](github-assurance.md).
 
 Consumers may also own an optional decision-validation policy. The output
 schema uses the following fail-closed subset of the JSON Schema constructs
@@ -313,37 +297,17 @@ result remain available and comment delivery is reported as a warning. Do not
 switch to `pull_request_target` merely to make comments writable while checking
 out or executing pull-request code.
 
-`OWNER_DECISION` is an architecture escalation, not an alternate acceptance
-route. It means the protected consumer authority does not contain enough owner
-direction for the Gatekeeper to decide. The current `Architecture Gate / accept`
-check therefore fails. The accountable owner proposes the missing decision in
-canonical consumer-owned authority. When protected CI selects authority from
-the base, an implementation PR cannot resolve its own review by adding that
-decision to its head. The `OWNER_ADDITION / G0` route lets a
-consumer whose previous protected policy opts in adopt a predecessor B
-containing only that missing decision, with an annotated tag object bound to
-B's exact commit. The initial policy-v2 route's protected Authority Set must have exactly one
-`self` member whose path matches the selected authority. A completed ordinary
-`OWNER_DECISION` carries a protected structured `ownerDecisionId`; the tag's
-`missingDecision.id` must match it, and B-specific eligibility review verifies
-that match and the addition's scope. G0 does not authenticate the tagger or
-claim that a mutable tag ref remains unchanged after verification. This route
-mechanism is implemented in v0.5 and is conditionally available only
-when selected by the previous protected consumer policy; this repository's
-self policy remains unselected. The mechanism is not owner-authenticated, so
-after B becomes canonical the implementation change still needs a fresh
-review. Its first policy adoption requires the authorized one-time
-owner-controlled administrative exception after code review and fixture E2E.
-That exception is outside Gatekeeper acceptance. The fixture E2E is the v0.5.1
-package-release gate; it does not establish activation for a consumer. The
-representative LIVE Agency E2E remains a separate route-activation prerequisite
-under the owner-adopted contract in `docs/architecture.md` (PR #140). The
-published [v0.5.1 release](https://github.com/flair-agency/architecture-gatekeeper/releases/tag/v0.5.1)
-alone does not establish that the full fixture A fresh-review sequence passed
-or activate the route for another consumer. The
-route does not resolve unsupported claims that work is complete. See the
-[owner-intervention runbook](owner-intervention.md).
-A review comment or workflow approval alone does not replace canonical adoption.
+`OWNER_DECISION` fails the current accept check. A missing decision belongs in
+a separate authority-only B; an implementation PR cannot use authority added
+in its own head to resolve its protected-base review. A previous-base policy
+may opt in to `OWNER_ADDITION / G0` with an exact-B annotated tag and matching
+`ownerDecisionId`. Policy v2 requires one `self` authority; v4/v5 review the
+complete set while B changes one existing file. G0 does not authenticate the
+tagger, and B's adoption does not accept A. See the
+[owner-intervention runbook](owner-intervention.md) for the sequence and
+[architecture contract](architecture.md) for the route's exact conditions.
+The self policy has not selected it. A release or fixture result alone does
+not activate a consumer route or establish a work-completion claim.
 
 ### Versioned multi-document owner additions
 
@@ -473,36 +437,24 @@ operational exception outside Architecture Gate acceptance.
 This repository dogfoods the reusable workflow through
 `.github/workflows/self-architecture-gate.yml`. The `pull_request_target` caller
 requires the scoped [self-Gate Actions event policy](self-gate-actions-policy.md)
-before GitHub enforces its public-repository default on 2026-11-02. The
-policy's configuration, verification, and recovery steps are documented there.
-The `pull_request_target` caller
-always comes from the protected base revision; it never runs a workflow supplied
-by the pull request. Jobs that check out the pull-request merge revision have
-only `contents: read`. The reporting job inherits `pull-requests: write`, but it
-checks out only the called workflow's immutable source and never executes
-pull-request code. The review prompt, output schema and CI policy are also read
-from the protected base revision under `.codex/gatekeeper/`. This caller sets
-`protected-review-instructions: true`; privileged triggers must enable that
-input so a pull request cannot replace its own reviewer instructions. The
-CI reviewer also disables automatic loading of checkout-owned `AGENTS.md`
-files; they remain review evidence, not reviewer instructions. The
-default remains `false` for compatibility with consumers that are still
-bootstrapping their first base-owned prompt and schema.
+before GitHub's 2026-11-02 enforcement date. The caller and its policy, prompt
+and schema come from the protected base, with
+`protected-review-instructions: true`. Jobs checking out candidate code have
+only `contents: read`; the reporting job has `pull-requests: write` but checks
+out only the immutable called-workflow source and executes no candidate code.
+Checkout-owned `AGENTS.md` is evidence, not automatically loaded reviewer
+instruction. The input defaults to `false` only for consumers bootstrapping
+their first base-owned prompt and schema.
 
 The repository also dogfoods the local and Codex-hosted Skill paths through
-`.codex/gatekeeper/config.json`. Its version 2 configuration selects the
-committed `authorities.json` manifest, a declared self repository and all five
-effective Authority Set limits. Manual CLI, Hook and native preparation read
-these inputs and every self authority file from one recorded commit. They
-require exact `authorityIds` for every decision and report the selected set
-digest and member provenance. The full local prompt, including task and Hook
-context, must fit the configured prompt limit. An external member currently
-leaves local review incomplete; it cannot fall back to version 1 or use a
-source token. Version 1 consumer configurations retain their synchronous
-public request and review APIs. Local implementation and working-tree content
-remain review evidence rather than authority. The native self-review has a
-bounded 180-second deadline and remains fail closed if the reviewer does not
-complete within it.
+`.codex/gatekeeper/config.json`. Version 2 selects a committed authority
+manifest, self repository and five effective limits. Manual CLI, Hook and
+native preparation read one recorded commit, require exact `authorityIds`,
+and report set digest and member provenance. The complete local prompt must
+fit its limit. An external member leaves local review incomplete; it cannot
+fall back or use a source token. Version 1 public request/review APIs remain.
+Working-tree content is evidence, not authority. Native self-review fails
+closed after its 180-second deadline.
 
 Lifecycle-workaround adoption evidence and repeat dogfood results are tracked
 in [architecture-gatekeeper issue #15](https://github.com/flair-agency/architecture-gatekeeper/issues/15).

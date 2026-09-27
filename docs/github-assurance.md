@@ -24,6 +24,20 @@ new B bindings; the old bytes cannot be reconstructed from a digest. See
 [#78](https://github.com/flair-agency/architecture-gatekeeper/issues/78) and
 [#83](https://github.com/flair-agency/architecture-gatekeeper/issues/83).
 
+```mermaid
+flowchart TD
+    A[A reviewed] --> BR[Completed BLOCK record]
+    BR --> EV{Exact bytes and trusted producer verifiable?}
+    EV -->|No| F[INCOMPLETE; optionally review A again and rebind B]
+    EV -->|Yes| B[Check authority-only B, prior policy, and exact tag]
+    B --> H{Required host transition verified?}
+    H -->|No| I[Do not claim the current protected G0 route]
+    H -->|Yes| C[Read back canonical B, then review A afresh]
+```
+
+This diagram describes the current **protected** amendment target. A future
+procedural route for private GitHub Free would need a separate owner decision.
+
 ## GitHub.com plan and visibility limits
 
 These are *available host capabilities*, not proof that a repository enabled

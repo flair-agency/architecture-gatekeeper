@@ -16,7 +16,18 @@ and only `pull_request_target` in `allowed_events`.
 The **active repository Actions event policy** targets only
 `.github/workflows/self-architecture-gate.yml` and allows the
 `pull_request_target` event. Do not target all workflow paths or add other
-events to this policy. GitHub's Actions policy API represents the setting as:
+events to this policy. The permitted execution path is:
+
+```mermaid
+flowchart LR
+    PR[Non-draft pull request] --> AP[Scoped Actions event policy]
+    AP -->|pull_request_target allowed| BC[Protected-base caller]
+    BC --> RG[Reusable Architecture Gate]
+    RG --> RC[Review and acceptance checks]
+    AP -->|blocked or wrong scope| FC[Fail closed; inspect policy]
+```
+
+The saved policy has this API shape:
 
 ```json
 {
