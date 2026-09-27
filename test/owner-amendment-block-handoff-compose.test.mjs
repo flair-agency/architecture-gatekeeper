@@ -4,7 +4,7 @@ import test from 'node:test';
 import { composeOwnerAmendmentBlockHandoff } from '../src/owner-amendment-block-handoff-compose.mjs';
 
 const context = Object.freeze({ repository: 'flair-agency/example', artifactId: '77', runId: '42', runAttempt: '2',
-  baseSha: 'a'.repeat(40), headSha: 'c'.repeat(40), workflowPath: '.github/workflows/self-architecture-gate.yml',
+  baseSha: 'a'.repeat(40), headSha: 'c'.repeat(40), aPrNumber: 9, workflowPath: '.github/workflows/self-architecture-gate.yml',
   workflowRef: 'refs/heads/main', workflowSha: 'a'.repeat(40), bSha: 'b'.repeat(40) });
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const crc32 = bytes => {
@@ -106,6 +106,7 @@ test('fails closed when ReviewRecord base, head, run, or attempt differs from tr
   const cases = [
     ['base', { baseSha: 'e'.repeat(40) }, /baseSha/],
     ['head', { headSha: 'e'.repeat(40) }, /headSha/],
+    ['A pull request', { prNumber: 10 }, /prNumber/],
     ['run', { runId: '43' }, /runId/],
     ['attempt', { runAttempt: '3' }, /runAttempt/],
   ];
@@ -136,4 +137,39 @@ test('fails closed when the upstream artifact retrieval stage is incomplete', as
   const failedApi = async () => ({ ok: false, status: 503 });
   const result = await compose(f, { fetchImpl: failedApi });
   assert.equal(result.status, 'INCOMPLETE'); assert.match(result.reason, /GitHub API request failed/);
+});
+
+test('builds AmendmentRecord after the one authenticated artifact fetch and provenance verification', async () => {
+  const f = fixture();
+  const phases = [];
+  const result = await compose(f, {
+    amendmentRecordBytes: undefined,
+    buildAmendmentRecordBytes(recordBytes) {
+      phases.push('build');
+      assert.deepEqual(recordBytes, f.recordBytes);
+      return f.amendmentRecordBytes;
+    },
+    runGh(...args) { phases.push('verify'); return f.runGh(...args); },
+  });
+  assert.equal(result.status, 'PREPARED_BLOCK_HANDOFF_TAG_MESSAGE');
+  assert.deepEqual(phases, ['verify', 'build']);
+  assert.equal(f.fetchCalls.length, 3);
+  assert.equal(result.amendmentRecordSha256, sha(f.amendmentRecordBytes));
+});
+
+test('does not invoke the AmendmentRecord builder before successful evidence verification', async () => {
+  const f = fixture({ invalidProvenance: true });
+  let called = false;
+  const result = await compose(f, { amendmentRecordBytes: undefined, buildAmendmentRecordBytes() { called = true; return f.amendmentRecordBytes; } });
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.equal(called, false);
+  assert.equal(f.fetchCalls.length, 3);
+});
+
+test('requires exactly one AmendmentRecord source', async () => {
+  const f = fixture();
+  const result = await compose(f, { amendmentRecordBytes: undefined });
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /either exact AmendmentRecord bytes or a protected AmendmentRecord builder/);
+  assert.equal(f.fetchCalls.length, 0);
 });
