@@ -25,17 +25,22 @@ new B bindings; the old bytes cannot be reconstructed from a digest. See
 [#83](https://github.com/flair-agency/architecture-gatekeeper/issues/83).
 The owner has selected a compact
 [v0.6.0 public/self reference profile](architecture.md#development-sequence-and-v060-self-reference-profile-owner-decision):
-Actions artifact plus artifact attestation for the `BLOCK`, and required
-`merge_group` checks plus a merge commit for exact B identity. Selection is
-not E2E verification or permission to claim the route before final ordering
-and canonical readback are proven.
+Actions artifact plus artifact attestation for initial `BLOCK` production,
+followed by verified handoff of the exact record and bundle bytes into a
+versioned annotated amendment tag targeting B. The tag ref must be protected
+against update and deletion through B's transition; after verified handoff,
+the original Actions artifact need not persist. Required `merge_group` checks
+and a merge commit retain exact B identity. Selection is not E2E verification
+or permission to claim the route before final ordering and canonical readback
+are proven.
 
 ```mermaid
 flowchart TD
     A[A reviewed] --> BR[Completed BLOCK record]
     BR --> EV{Exact bytes and trusted producer verifiable?}
     EV -->|No| F[INCOMPLETE; optionally review A again and rebind B]
-    EV -->|Yes| B[Check authority-only B, prior policy, and exact tag]
+    EV -->|Yes| T[Verify handoff into protected exact-B tag]
+    T --> B[Check authority-only B, prior policy, and retained evidence]
     B --> H{Required host transition verified?}
     H -->|No| I[Do not claim the current protected G0 route]
     H -->|Yes| C[Read back canonical B, then review A afresh]
@@ -148,8 +153,11 @@ change. It is not a permanent hosting guarantee or proof of `OWNER_AMENDMENT`:
   attestation. Its [investigation report](investigations/2026-09-25-real-pr-block-probe-implementation.md)
   and test-only verifier remain. An [isolated merge-queue probe](https://github.com/flair-agency/architecture-gatekeeper/pull/155)
   also reran a required check on `merge_group` and preserved the exact PR head
-  as a merge commit parent. Neither probe establishes final BLOCK evidence
-  validity or enables production G0; the temporary probe ruleset was removed.
+  as a merge commit parent. A later [isolated tag probe](https://github.com/flair-agency/architecture-gatekeeper/issues/83#issuecomment-5854459496)
+  recovered test-only BLOCK bytes and its attestation bundle from an annotated
+  tag; an active, bypass-free tag ruleset rejected update and deletion. None
+  of these probes establishes the full protected G0 transition or enables
+  production G0; temporary probe rulesets and refs were removed.
 
 Inspect the *current* host configuration before using this example:
 

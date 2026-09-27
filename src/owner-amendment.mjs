@@ -7,6 +7,10 @@ const ID = /^[a-z][a-z0-9-]{0,63}$/;
 const PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const TAG_REF = /^refs\/tags\/architecture-gatekeeper\/amendments\/[a-z0-9][a-z0-9._-]{0,63}$/;
+const TAG_OBJECT_MAX_BYTES = 262_144;
+const REVIEW_RECORD_MAX_BYTES = 131_072;
+const AMENDMENT_RECORD_MAX_BYTES = 8_192;
+const ATTESTATION_BUNDLE_MAX_BYTES = 65_536;
 
 function fail(message) { throw new Error(`Owner amendment: ${message}`); }
 function record(value, keys, label) {
@@ -32,6 +36,27 @@ function canonical(value) {
     return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
   }
   return value;
+}
+
+function parseCanonicalJson(bytes, label, maxBytes) {
+  if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length > maxBytes) fail(`${label} is missing or oversized.`);
+  let source;
+  try { source = decoder.decode(bytes); } catch { fail(`${label} is not UTF-8.`); }
+  let value;
+  try { value = JSON.parse(source); } catch { fail(`${label} is not valid JSON.`); }
+  // Canonical re-serialization rejects duplicate keys, alternate encodings,
+  // whitespace and noncanonical key order in one deterministic comparison.
+  if (JSON.stringify(canonical(value)) !== source) fail(`${label} JSON is not canonical.`);
+  return value;
+}
+
+function decodeCanonicalBase64(value, label, maxBytes) {
+  if (typeof value !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+    fail(`${label} base64 is invalid or noncanonical.`);
+  }
+  const bytes = Buffer.from(value, 'base64');
+  if (!bytes.length || bytes.length > maxBytes || bytes.toString('base64') !== value) fail(`${label} bytes are missing, oversized or noncanonical.`);
+  return bytes;
 }
 
 /** Stable identity of a validated structured record, independent of JSON key order. */
@@ -149,8 +174,68 @@ function validateTag(tag, current, amendment, reviewDigest, amendmentDigest) {
       !/^tagger [^\n<>]+ <[^\n<>]+> [0-9]+ [+-][0-9]{4}$/.test(headers[3])) {
     fail('annotated tag header does not bind the exact amendment commit and tag ref.');
   }
+  const message = source.slice(separator + 2);
   const expectedMessage = `${JSON.stringify({ version: 1, purpose: amendment.purpose, reviewRecordSha256: reviewDigest, amendmentRecordSha256: amendmentDigest })}\n`;
-  if (source.slice(separator + 2) !== expectedMessage) fail('annotated tag message does not bind the amendment purpose and records.');
+  if (message !== expectedMessage) fail('annotated tag message does not bind the amendment purpose and records.');
+}
+
+function validateRawTagEnvelope(envelope, { headSha, tag, tagRef, observedTagRefOid, reviewRecordBytes, amendmentRecordBytes, attestationBundleBytes }) {
+  record(envelope, ['version', 'profile', 'bSha', 'reviewRecordBase64', 'reviewRecordSha256',
+    'attestationBundleBase64', 'attestationBundleSha256', 'amendmentRecordBase64', 'amendmentRecordSha256'], 'tag evidence envelope');
+  if (envelope.version !== 2 || envelope.profile !== 'self-g0' || envelope.bSha !== headSha) fail('tag evidence envelope does not bind exact B and self-G0 profile.');
+  requireMatch(headSha, /^[a-f0-9]{40}$|^[a-f0-9]{64}$/, 'exact B SHA');
+  record(tag, ['ref', 'objectOid', 'objectBytes'], 'annotated tag');
+  requireMatch(tag.ref, TAG_REF, 'annotated tag ref');
+  if (tag.ref !== tagRef || observedTagRefOid !== tag.objectOid) fail('observed annotated tag ref does not resolve to the exact requested object.');
+  requireSha(tag.objectOid, 'annotated tag OID', headSha.length);
+  if (!Buffer.isBuffer(tag.objectBytes) || !tag.objectBytes.length || tag.objectBytes.length > TAG_OBJECT_MAX_BYTES) fail('annotated tag object bytes are missing or oversized.');
+  const algorithm = headSha.length === 40 ? 'sha1' : 'sha256';
+  const computedOid = createHash(algorithm).update(Buffer.from(`tag ${tag.objectBytes.length}\0`)).update(tag.objectBytes).digest('hex');
+  if (computedOid !== tag.objectOid) fail('annotated tag object OID is invalid.');
+  let source;
+  try { source = decoder.decode(tag.objectBytes); } catch { fail('annotated tag object is not UTF-8.'); }
+  const separator = source.indexOf('\n\n');
+  if (separator < 0) fail('annotated tag object has no message.');
+  const headers = source.slice(0, separator).split('\n');
+  if (headers.length !== 4 || headers[0] !== `object ${headSha}` || headers[1] !== 'type commit' ||
+      headers[2] !== `tag ${tag.ref.slice('refs/tags/'.length)}` ||
+      !/^tagger [^\n<>]+ <[^\n<>]+> [0-9]+ [+-][0-9]{4}$/.test(headers[3])) fail('annotated tag header does not bind exact B and tag ref.');
+  const message = source.slice(separator + 2);
+  if (!message.endsWith('\n') || message.slice(0, -1).includes('\n')) fail('tag evidence envelope message must be one JSON line.');
+  const parsed = parseCanonicalJson(Buffer.from(message.slice(0, -1)), 'tag evidence envelope', TAG_OBJECT_MAX_BYTES);
+  if (JSON.stringify(parsed) !== JSON.stringify(envelope)) fail('tag evidence envelope differs from the tag message.');
+  requireMatch(envelope.reviewRecordSha256, SHA256, 'envelope ReviewRecord digest');
+  requireMatch(envelope.amendmentRecordSha256, SHA256, 'envelope AmendmentRecord digest');
+  requireMatch(envelope.attestationBundleSha256, SHA256, 'envelope attestation bundle digest');
+  const expectedBytes = [
+    [envelope.reviewRecordBase64, envelope.reviewRecordSha256, reviewRecordBytes, REVIEW_RECORD_MAX_BYTES, 'ReviewRecord'],
+    [envelope.amendmentRecordBase64, envelope.amendmentRecordSha256, amendmentRecordBytes, AMENDMENT_RECORD_MAX_BYTES, 'AmendmentRecord'],
+    [envelope.attestationBundleBase64, envelope.attestationBundleSha256, attestationBundleBytes, ATTESTATION_BUNDLE_MAX_BYTES, 'attestation bundle'],
+  ];
+  for (const [encoded, digest, expected, maxBytes, label] of expectedBytes) {
+    const embedded = decodeCanonicalBase64(encoded, `envelope ${label}`, maxBytes);
+    if (!Buffer.isBuffer(expected) || !expected.length || expected.length > maxBytes) fail(`exact ${label} bytes are missing or oversized.`);
+    const actualDigest = createHash('sha256').update(expected).digest('hex');
+    if (actualDigest !== digest || !embedded.equals(expected)) fail(`tag envelope ${label} bytes or raw-byte digest differ.`);
+  }
+  return Object.freeze({ profile: 'self-g0', headSha, tagObjectOid: tag.objectOid,
+    reviewRecordSha256: envelope.reviewRecordSha256, amendmentRecordSha256: envelope.amendmentRecordSha256,
+    attestationBundleSha256: envelope.attestationBundleSha256 });
+}
+
+/** Validate only the deterministic self-G0 tag envelope and byte bindings.
+ * Callers must independently validate/prove provenance for the supplied records,
+ * bundle and fresh remote tag-ref mapping before deriving any acceptance result.
+ */
+export function validateOwnerAmendmentG0TagEnvelope({ headSha, tag, tagRef, observedTagRefOid, reviewRecordBytes, amendmentRecordBytes, attestationBundleBytes }) {
+  if (!Buffer.isBuffer(tag?.objectBytes) || !tag.objectBytes.length || tag.objectBytes.length > TAG_OBJECT_MAX_BYTES) fail('annotated tag object bytes are missing or oversized.');
+  const source = decoder.decode(tag.objectBytes);
+  const separator = source.indexOf('\n\n');
+  if (separator < 0) fail('annotated tag object has no message.');
+  const message = source.slice(separator + 2);
+  if (!message.endsWith('\n')) fail('tag evidence envelope is missing its final newline.');
+  const envelope = parseCanonicalJson(Buffer.from(message.slice(0, -1)), 'tag evidence envelope', TAG_OBJECT_MAX_BYTES);
+  return validateRawTagEnvelope(envelope, { headSha, tag, tagRef, observedTagRefOid, reviewRecordBytes, amendmentRecordBytes, attestationBundleBytes });
 }
 
 /**
