@@ -121,3 +121,31 @@ Add the run's duration, result, request and token counts, and provider cost
 only when each value is available from a source tied to that exact attempt.
 Mark missing provider data as unavailable instead of filling it from the
 weekly aggregate.
+
+## First self probe: observed run evidence
+
+The following are two consecutive **PR #178 revisions**, not a controlled
+same-diff comparison. GitHub Actions reports attempt 1 in each case. The
+review job includes checkout and setup, so its duration is not model latency.
+The token number is the Codex CLI's terminal `tokens used` display, not a
+provider usage or billable-token breakdown.
+
+| Run / exact head | Requested tier | Review job (UTC) | Duration | CLI tokens used | Decision / acceptance |
+| --- | --- | --- | ---: | ---: | --- |
+| [36332044377](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/36332044377) / `370e45b6b3212780b473432ca4b1bf989a62b575` | Flex | 2026-09-27 16:08:16–16:09:00 | 44 s | 47,706 | PASS / required accept success |
+| [36332457809](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/36332457809) / `1abcdb734d715d46d21b7aa302261504efbe25eb` | Default | 2026-09-27 16:15:00–16:15:54 | 54 s | 45,581 | PASS / required accept success |
+
+The first run's review job received `self-flex-probe=true` and the Codex
+argument `service_tier='flex'`. The second run had the probe step skipped after
+the temporary variable was removed. The second revision also changes the
+workflow and tests, so the 10-second difference does not establish a tier
+latency effect. Neither log establishes the **effective provider tier**, model
+request count, cache-read/write split, or per-Gate API cost. These fields remain
+`unavailable` until attributable provider records are supplied.
+
+The OpenAI organization usage endpoint publishes time-bucketed aggregate
+results that can be grouped by service tier; the organization costs endpoint
+is likewise aggregated. Their documented fields do not by themselves provide
+an exact GitHub run-attempt join key. An export with individual request IDs or
+another validated request-to-run mapping is needed to claim per-Gate cost.
+See the [official organization usage API](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage).
