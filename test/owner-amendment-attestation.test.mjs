@@ -11,9 +11,10 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 function fixture() {
   // Deliberately untrusted claims: this module binds bytes, not record assertions.
   const recordBytes = Buffer.from('{"repository":"attacker/claimed","decision":"BLOCK"}\n');
-  const signer = `https://github.com/${expected.repository}/${expected.workflowPath}@${expected.workflowRef}`;
+  const signer = `https://github.com/${expected.repository}/.github/workflows/architecture-gate.yml@${expected.workflowRef}`;
+  const caller = `https://github.com/${expected.repository}/${expected.workflowPath}@${expected.workflowRef}`;
   const verified = [{ verificationResult: { signature: { certificate: {
-    subjectAlternativeName: signer, buildSignerURI: signer, buildConfigURI: signer,
+    subjectAlternativeName: signer, buildSignerURI: signer, buildConfigURI: caller,
     githubWorkflowRepository: expected.repository, githubWorkflowSHA: expected.workflowSha,
     buildSignerDigest: expected.workflowSha, buildConfigDigest: expected.workflowSha,
     sourceRepositoryDigest: expected.workflowSha,
@@ -63,6 +64,20 @@ test('rejects signer, revision, ref, run, attempt and predicate mismatches', () 
   }
   const verified = structuredClone(input.verified);
   verified[0].verificationResult.statement.predicateType = 'https://example.invalid/other';
+  assert.equal(inspectOwnerAmendmentAttestation({ ...input, verified }).status, 'INCOMPLETE');
+});
+
+test('binds the reusable signer and expected calling workflow separately', () => {
+  const input = fixture();
+  for (const field of ['subjectAlternativeName', 'buildSignerURI']) {
+    const verified = structuredClone(input.verified);
+    verified[0].verificationResult.signature.certificate[field] =
+      `https://github.com/${expected.repository}/${expected.workflowPath}@${expected.workflowRef}`;
+    assert.equal(inspectOwnerAmendmentAttestation({ ...input, verified }).status, 'INCOMPLETE');
+  }
+  const verified = structuredClone(input.verified);
+  verified[0].verificationResult.signature.certificate.buildConfigURI =
+    `https://github.com/${expected.repository}/.github/workflows/architecture-gate.yml@${expected.workflowRef}`;
   assert.equal(inspectOwnerAmendmentAttestation({ ...input, verified }).status, 'INCOMPLETE');
 });
 
