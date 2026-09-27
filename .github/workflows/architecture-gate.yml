@@ -18,6 +18,9 @@ on:
       protected-review-instructions:
         type: boolean
         default: false
+      self-flex-probe:
+        type: boolean
+        default: false
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -205,6 +208,18 @@ jobs:
       selected_authority_changed: ${{ steps.selected-authority-change.outputs.changed }}
       legacy_authority_provenance: ${{ steps.legacy-authority.outputs.provenance }}
     steps:
+      - name: Confine optional Flex probe to the self reviewer
+        if: inputs.self-flex-probe
+        env:
+          REPOSITORY: ${{ github.repository }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          MODEL: ${{ needs.policy.outputs.model }}
+          EFFORT: ${{ needs.policy.outputs.effort }}
+        run: |
+          test "$REPOSITORY" = flair-agency/architecture-gatekeeper
+          test "$WORKFLOW_REF" = flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main
+          test "$MODEL" = gpt-6-sol
+          test "$EFFORT" = medium
       - name: Check enforced credentials
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -329,7 +344,7 @@ jobs:
           safety-strategy: drop-sudo
           output-schema-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
           # PR-owned AGENTS.md files are review evidence, never reviewer instructions.
-          codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
+          codex-args: ${{ inputs.self-flex-probe && '["--ephemeral","-c","project_doc_max_bytes=0","-c","service_tier=''flex''"]' || '["--ephemeral","-c","project_doc_max_bytes=0"]' }}
       - name: Diagnose architecture reviewer completion
         if: always()
         timeout-minutes: 1
