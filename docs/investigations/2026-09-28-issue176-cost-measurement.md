@@ -153,9 +153,11 @@ Malformed or oversized event lines can leave telemetry incomplete without
 changing the Action's final-message or acceptance result.
 
 For the next exact-head probe, capture the Action's numeric telemetry line,
-the review run and attempt, the selected PR head, the Gate decision, and the
-required acceptance result together. Compare those observations with a later
-default-tier run only when the reviewed diff and review inputs are held fixed.
+the review run and attempt, the selected PR head, protected base and reviewed
+merge SHAs, the Gate decision, and the required acceptance result together.
+Compare those observations with a later default-tier run only when all three
+revisions and the review inputs match. The same PR head alone is insufficient:
+an advancing base can change the merge revision and protected inputs.
 Continue to mark billed cost and effective tier unavailable without
 request-level provider evidence.
 
