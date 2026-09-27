@@ -140,8 +140,11 @@ change. It is not a permanent hosting guarantee or proof of `OWNER_AMENDMENT`:
   disabled. The selected v0.6.0 merge-commit profile therefore requires a
   later reviewed host-rule change; this guide does not make that change. These
   controls are available for a public repository on GitHub Free. The
-  repository ruleset API returned no rulesets during this readback; the
-  branch protection rule supplies these current controls.
+  branch protection rule supplies these current branch controls. A separate
+  [self amendment tag ruleset](https://github.com/flair-agency/architecture-gatekeeper/rules/24072482)
+  is active for `refs/tags/architecture-gatekeeper/amendments/*`, with no
+  bypass actors and update/deletion restrictions. Its configuration alone does
+  not prove a complete amendment transition.
 - [The caller workflow](../.github/workflows/self-architecture-gate.yml)
   invokes [the reusable Gate](../.github/workflows/architecture-gate.yml) on
   non-draft pull requests. It requests protected review instructions and
