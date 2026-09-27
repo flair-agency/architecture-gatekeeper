@@ -6,6 +6,23 @@ owner may need to act, but the action depends on the cause. This runbook is
 operational guidance; each consumer's canonical architecture and repository
 administration rules remain authoritative.
 
+```mermaid
+flowchart TD
+    A[Change A: normal review] --> D{Result}
+    D -->|PASS| P[Normal acceptance policy]
+    D -->|OWNER_DECISION: missing rule| B1[Owner decides; propose authority-only B]
+    D -->|BLOCK: existing rule conflicts| B2[Separate amendment B, if its route is enabled]
+    D -->|ERROR or incomplete| E[Diagnose and rerun; no decision]
+    B1 --> G1[Verify OWNER_ADDITION eligibility]
+    B2 --> G2[Verify BLOCK evidence and OWNER_AMENDMENT eligibility]
+    G1 --> C[B adopted and canonical]
+    G2 --> C
+    C --> R[Rebase A and request a fresh review]
+```
+
+The diagram shows the intended order, not an enabled amendment route. The
+consumer's selected policy determines which B procedure is available.
+
 ## OWNER_DECISION
 
 `OWNER_DECISION` means the reviewer found an architecture choice that the
@@ -29,30 +46,19 @@ the change.
    protected acceptance policy permit it. A fresh review may identify a
    different unresolved choice.
 
-The implemented `OWNER_ADDITION / G0` route in [the architecture
-contract](architecture.md) applies only when the consumer's previous
-protected-base policy opts in. This repository's current policy does not opt
-in, so its route is inactive. Its first policy adoption may use the authorized
-one-time owner-controlled administrative exception after code review and
-fixture E2E; that exception is outside Gatekeeper acceptance and does not claim
-a release or consumer activation. The initial policy-v2 Authority Set must
-have exactly one `self` member. The versioned policy-v4 and policy-v5 routes
-review the complete selected Authority Set while B still changes only its one
-selected existing authority file. A
-completed ordinary `OWNER_DECISION` must carry a protected structured
-`ownerDecisionId`; B's annotated tag `AdditionRecord` binds
-`missingDecision.id` to that ID, and B-specific eligibility review verifies
-the match and that the proposal is limited to the missing choice. Under that
-route, B must contain only the missing architecture decision and must bind to
-an annotated tag object that targets B's exact commit. The object OID
-identifies immutable tag-object bytes; the tag ref is mutable, so a read proves
-only its mapping at that time. G0 does not authenticate the tagger or owner and
-does not claim that a later tag-ref change invalidates a green check. It
-requires no historical `BLOCK` ReviewRecord, exact-claim identity receipt,
-revocation service or identity provider. B cannot use it to assert that work is
-complete: for example, an ownership decision about a migration does not
-establish that the migration or cutover occurred. A still needs completion
-evidence if its own acceptance depends on those facts.
+The implemented `OWNER_ADDITION / G0` route applies only when the previous
+base policy opts in; [the contract](architecture.md)
+defines its scope. This repository's policy does not opt in. Initial policy
+adoption may require an authorized, separately recorded administrative
+exception after review and fixture E2E; that exception is not Gatekeeper
+acceptance. Policy v2 requires a one-member `self` Authority Set; v4 and v5
+review the complete selected set while B edits one existing authority file.
+The completed `OWNER_DECISION` ID must match B's exact-commit annotated
+`AdditionRecord` tag. G0 authenticates neither the tagger nor owner; a mutable
+tag ref is observed only at verification time. This route needs no historical
+`BLOCK` evidence, identity provider, exact-claim receipt or revocation service.
+B cannot assert that work is complete; migration or cutover completion needs
+its own evidence when A's acceptance depends on it.
 
 A PR comment or workflow approval alone does not record canonical architecture
 authority. An administrator's existing bypass power is outside Gatekeeper's

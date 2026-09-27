@@ -6,6 +6,10 @@ conform to it. When an implementation detail conflicts with this document, the
 detail does not silently redefine the architecture; the contract must be
 changed explicitly through owner review first.
 
+For an operational starting point, use the [documentation map](README.md).
+The diagrams below explain the order of operations; the surrounding text
+defines the requirements and assurance claims.
+
 ## Why
 
 Repositories accumulate architecture decisions in canonical documents, but
@@ -307,18 +311,12 @@ historical results retain their original single-member interpretation and
 limits; a verifier must reject ambiguous version mixing rather than upgrade
 them by reinterpretation.
 
-This is an authorized target contract, not an active route or a release
-claim. Implementation, focused negative verification, and the v0.5.1 fixture
-full-cycle E2E below are required before package release. The fixture uses
-synthetic consumer data and demonstrates the mechanism's sequence; passing it
-does not prove that a real consumer is ready or activate the route for one.
-The existing representative LIVE Agency end-to-end prerequisite remains in
-force for real-consumer route activation; the fixture is a separate package
-release gate and cannot satisfy that activation prerequisite.
-Issue #120 independently owns the legacy PR-head authority failure. Consumer
-owners classify their own decisions and existing-rule changes; those cases
-cannot substitute for the synthetic A/B lifecycle in the fixture and are not
-v0.5.1 fixture-release gates.
+This authorized target requires implementation, focused negative verification,
+and the synthetic fixture E2E below for v0.5.1 package release. It does not
+activate a real consumer: representative LIVE Agency E2E remains its separate
+activation prerequisite. Issue #120 owns legacy PR-head authority repair;
+consumer-specific decision classification and rule amendments cannot replace
+the fixture's A/B lifecycle.
 
 #### v0.5.1 public fixture full-cycle release gate (owner decision)
 
@@ -340,15 +338,10 @@ complete sequence:
 5. A is reviewed freshly against the resulting canonical authority and returns
    `PASS` under the fixture's normal review policy.
 
-The fixture must preserve every eligibility, binding, merge, and readback
-condition in the Issue #119 and #121 contracts above; this release gate does
-not relax them. A's historical `OWNER_DECISION` remains unchanged; the fresh
-`PASS` is a new result under the new base. Passing this synthetic
-fixture E2E is a v0.5.1 package-release condition only. It does not prove
-readiness, policy selection, owner authorization, or host enforcement for LIVE
-Agency or another real consumer. Real consumer adoption and its readiness
-verification are separate follow-up work. The representative LIVE Agency
-end-to-end prerequisite for real-consumer activation remains outstanding.
+The Issue #119 and #121 eligibility, binding, merge, and readback conditions
+still apply. A's earlier `OWNER_DECISION` remains historical; fresh `PASS` is
+a new result. Passing this package-release fixture proves no real consumer's
+readiness, policy selection, owner authorization, or host enforcement.
 
 ### Target owner-amendment governance (Issue #75 owner decision)
 
@@ -666,24 +659,23 @@ grant merge acceptance, and CI is not the definition of architecture review.
 
 ## Conceptual operation
 
-```text
-design or implementation change
-             |
-             v
-      review execution
-      /              \
- local/manual       CI model review
-      \              /
-       architecture evidence
-               |
-               v
- protected-policy acceptance verification
-               |
-      accept valid PASS evidence, or (when enabled) accept a
-      separate eligible B through OWNER_ADDITION / G0
-      (when implemented and enabled) or OWNER_AMENDMENT;
-      otherwise do not accept
+```mermaid
+flowchart TD
+    C[Proposed change] --> R{Review execution}
+    R --> L[Local or manual review]
+    R --> CI[CI model review]
+    L --> E[Validated decision and evidence]
+    CI --> E
+    E --> P{Selected policy and evidence valid?}
+    P -->|PASS under an allowed route| A[Accept the reviewed change]
+    P -->|Eligible separate B under an enabled route| B[Accept B through its own procedure]
+    P -->|No, incomplete, BLOCK, or unresolved OWNER_DECISION| X[Do not accept]
+    B --> F[Review original change A afresh after B is canonical]
 ```
+
+Local feedback is not automatically merge evidence. `OWNER_ADDITION / G0` and
+`OWNER_AMENDMENT` are separate acceptance procedures for B; neither converts
+A's earlier decision into `PASS`.
 
 ### Local and manual review
 
