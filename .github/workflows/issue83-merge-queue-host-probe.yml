@@ -1,0 +1,35 @@
+name: Issue 83 merge queue host probe
+
+on:
+  pull_request:
+    branches: [codex/issue83-queue-base]
+  merge_group:
+    types: [checks_requested]
+
+permissions: {}
+
+jobs:
+  accept:
+    name: issue83-queue-probe / accept
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check the target event without checkout or secrets
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          GROUP_BASE: ${{ github.event.merge_group.base_ref }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          case "$EVENT_NAME" in
+            pull_request)
+              test "$PR_BASE" = codex/issue83-queue-base
+              ;;
+            merge_group)
+              test "$GROUP_BASE" = refs/heads/codex/issue83-queue-base
+              ;;
+            *) exit 1 ;;
+          esac
+          test "${#HEAD_SHA}" -eq 40
+          printf 'event=%s head=%s\n' "$EVENT_NAME" "$HEAD_SHA"
