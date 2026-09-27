@@ -143,14 +143,21 @@ latency effect. Neither log establishes the **effective provider tier**, model
 request count, cache-read/write split, or per-Gate API cost. These fields remain
 `unavailable` until attributable provider records are supplied.
 
-With the proposed Action pin, the self Flex probe can request Codex JSONL output for that exact
-PR head. The pinned Action consumes the stream in memory and writes only
+With the pinned Action, the self Flex probe can request Codex JSONL output for
+that exact PR head. The Action consumes the stream in memory and writes only
 numeric turn usage, cached-input token, and tool-start counts to the Actions
 log; it does not persist or print raw JSONL. The ordinary review path does not
 request JSONL. These Codex-reported token counts remain attempt-level runtime
 observations, not provider billing records or proof of effective service tier.
 Malformed or oversized event lines can leave telemetry incomplete without
 changing the Action's final-message or acceptance result.
+
+For the next exact-head probe, capture the Action's numeric telemetry line,
+the review run and attempt, the selected PR head, the Gate decision, and the
+required acceptance result together. Compare those observations with a later
+default-tier run only when the reviewed diff and review inputs are held fixed.
+Continue to mark billed cost and effective tier unavailable without
+request-level provider evidence.
 
 The owner supplied organization exports covering 2026-08-29 through
 2026-09-28. Both contain **daily buckets**, with no request ID, GitHub run ID,
