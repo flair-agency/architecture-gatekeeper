@@ -83,6 +83,8 @@ test('CI reviewer excludes checkout-owned AGENTS.md instructions', () => {
   ]);
   assert.match(workflow, /Confine optional Flex probe to the self reviewer/);
   const selfWorkflow = readFileSync(new URL('../.github/workflows/self-architecture-gate.yml', import.meta.url), 'utf8');
-  assert.match(selfWorkflow, /self-flex-probe: \$\{\{ vars\.ARCHITECTURE_GATE_SELF_FLEX == 'true' \}\}/);
+  assert.match(selfWorkflow, /self-flex-probe: \$\{\{ vars\.ARCHITECTURE_GATE_SELF_FLEX == 'true'/);
+  assert.match(selfWorkflow, /vars\.ARCHITECTURE_GATE_SELF_FLEX_PR == format\('\{0\}', github\.event\.pull_request\.number\)/);
+  assert.match(selfWorkflow, /vars\.ARCHITECTURE_GATE_SELF_FLEX_HEAD == github\.event\.pull_request\.head\.sha/);
   assert.match(workflow, /protected-review-instructions/);
 });

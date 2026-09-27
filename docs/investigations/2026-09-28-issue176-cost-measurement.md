@@ -106,9 +106,13 @@ protected-policy review.
 ## Self probe execution record
 
 For the first bounded self probe, record the exact pull request head and
-workflow run/attempt before comparing results. Temporarily set the repository
-variable `ARCHITECTURE_GATE_SELF_FLEX=true` only while starting that run, then
-remove the variable. Verify the run received `self-flex-probe=true` and that
+workflow run/attempt before comparing results. Set the repository variables
+`ARCHITECTURE_GATE_SELF_FLEX=true`, `ARCHITECTURE_GATE_SELF_FLEX_PR` to the
+decimal PR number, and `ARCHITECTURE_GATE_SELF_FLEX_HEAD` to its exact head SHA.
+Remove all three variables after the intended run starts. The caller enables
+Flex only when all three values match that event, so another PR's event cannot
+enter the probe while the variables exist. Verify the run received
+`self-flex-probe=true` and that
 the reviewer actually used Flex; the workflow input alone does not prove the
 provider's effective service tier. Keep the ordinary required check enabled,
 and record any unavailable or failed review as incomplete rather than PASS.
