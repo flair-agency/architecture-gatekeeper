@@ -12,6 +12,7 @@ const fail = message => { throw new Error(`Owner amendment artifact: ${message}`
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const validPositiveId = value => (typeof value === 'string' && /^[1-9]\d*$/.test(value)) ||
   (Number.isSafeInteger(value) && value > 0);
+const validGitHubNumericId = value => Number.isSafeInteger(value) && value > 0;
 
 function validateExpected(expected) {
   if (!expected || typeof expected !== 'object' || Array.isArray(expected) ||
@@ -89,13 +90,16 @@ export async function fetchOwnerAmendmentBlockArtifact({ expected, token, fetchI
     if (String(run.id) !== String(expected.runId) || run.event !== 'pull_request_target' ||
         run.repository?.full_name !== expected.repository ||
         run.head_repository?.full_name !== expected.repository || run.head_sha !== expected.headSha ||
-        String(run.run_attempt) !== String(expected.runAttempt)) {
+        String(run.run_attempt) !== String(expected.runAttempt) ||
+        !validGitHubNumericId(run.repository?.id) || !validGitHubNumericId(run.head_repository?.id)) {
       fail('workflow run event, repository, head, attempt, or run ID differs from trusted expectation.');
     }
     const artifact = await getJson(`${api}/repos/${repo}/actions/artifacts/${encodeURIComponent(String(expected.artifactId))}`);
     const artifactName = `owner-amendment-block-${expected.baseSha}-${expected.headSha}-${expected.runId}-${expected.runAttempt}`;
     if (String(artifact.id) !== String(expected.artifactId) || artifact.name !== artifactName || artifact.expired !== false ||
         artifact.workflow_run?.id == null || String(artifact.workflow_run.id) !== String(expected.runId) ||
+        !validGitHubNumericId(artifact.workflow_run?.repository_id) ||
+        !validGitHubNumericId(artifact.workflow_run?.head_repository_id) ||
         artifact.workflow_run?.repository_id !== run.repository?.id ||
         artifact.workflow_run?.head_repository_id !== run.head_repository?.id ||
         artifact.workflow_run?.head_sha !== expected.headSha ||

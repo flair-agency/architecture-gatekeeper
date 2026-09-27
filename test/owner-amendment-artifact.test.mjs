@@ -114,6 +114,20 @@ test('rejects wrong run context, metadata, expiration, and digest', async t => {
     ['wrong event', f => { f.run.event = 'workflow_dispatch'; }],
     ['wrong attempt', f => { f.run.run_attempt = 1; }],
     ['missing attempt', f => { delete f.run.run_attempt; }],
+    ['missing run repository ID', f => { delete f.run.repository.id; }],
+    ['malformed run repository ID', f => { f.run.repository.id = '7'; }],
+    ['missing run head repository ID', f => { delete f.run.head_repository.id; }],
+    ['malformed run head repository ID', f => { f.run.head_repository.id = 0; }],
+    ['missing artifact repository ID', f => { delete f.artifact.workflow_run.repository_id; }],
+    ['malformed artifact repository ID', f => { f.artifact.workflow_run.repository_id = '7'; }],
+    ['missing artifact head repository ID', f => { delete f.artifact.workflow_run.head_repository_id; }],
+    ['malformed artifact head repository ID', f => { f.artifact.workflow_run.head_repository_id = 7.5; }],
+    ['both run and artifact repository IDs missing', f => {
+      delete f.run.repository.id;
+      delete f.run.head_repository.id;
+      delete f.artifact.workflow_run.repository_id;
+      delete f.artifact.workflow_run.head_repository_id;
+    }],
     ['wrong artifact ID', f => { f.artifact.id = 89; }],
     ['wrong name', f => { f.artifact.name = 'other'; }],
     ['expired artifact', f => { f.artifact.expired = true; }],
