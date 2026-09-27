@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { verifyProvenance } from '../src/verify-codex-action.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const manifest = JSON.parse(readFileSync(join(root, 'provenance/codex-action-v1.12-pr151.json'), 'utf8'));
+const manifest = JSON.parse(readFileSync(join(root, 'provenance/codex-action-v1.12-issue176-telemetry.json'), 'utf8'));
 const observed = {
   baseCommit: manifest.baseCommit,
   baseTree: manifest.baseTree,
