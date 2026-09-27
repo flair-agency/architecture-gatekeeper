@@ -28,6 +28,9 @@ test('binds one modified self authority to exact B without deriving acceptance',
 test('rejects absent opt-in, wrong trigger, extra files, external authority and unchanged bytes', () => {
   const cases = [
     { policy: { ...policy, ownerAmendmentGrade: undefined } },
+    { policy: { ...policy, ownerAmendmentAuthorityId: undefined, ownerAmendmentAuthorityPath: undefined },
+      manifest: { ...manifest, authorities: [{ repository: 'self', revision: 'authority-revision' }] },
+      changedFiles: [{ status: 'modified' }] },
     { policy: { ...policy, ownerAmendmentTriggerProfile: 'completed-owner-decision-self-v1' } },
     { changedFiles: [...valid.changedFiles, { path: 'src/index.mjs', status: 'modified' }] },
     { changedFiles: [{ path, status: 'added' }] },

@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 
 const SHA = /^[a-f0-9]{40}$/;
+const ID = /^[a-z][a-z0-9-]{0,63}$/;
+const PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 
 /**
@@ -20,7 +22,9 @@ export function inspectOwnerAmendmentSelfScope({ policy, manifest, baseSha, head
   }
   const id = policy.ownerAmendmentAuthorityId;
   const path = policy.ownerAmendmentAuthorityPath;
-  if (!manifest || manifest.version !== 1 || !Array.isArray(manifest.authorities) ||
+  if (typeof id !== 'string' || !ID.test(id) || typeof path !== 'string' ||
+      !PATH.test(path) || path.length > 240 || path.split('/').some(part => part === '.' || part === '..') ||
+      !manifest || manifest.version !== 1 || !Array.isArray(manifest.authorities) ||
       manifest.authorities.length !== 1 ||
       manifest.authorities[0]?.id !== id || manifest.authorities[0]?.path !== path ||
       manifest.authorities[0]?.repository !== 'self' ||
