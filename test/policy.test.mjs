@@ -312,7 +312,10 @@ test('produces attested BLOCK records only in a credential-separated signer job'
   assert.match(reviewJob, /permissions:\n      contents: read/);
   assert.doesNotMatch(reviewJob, /id-token: write|attestations: write/);
   assert.match(workflow, /owner_amendment_grade: \$\{\{ steps\.resolve\.outputs\.ownerAmendmentGrade \}\}/);
-  assert.match(workflow, /if: github\.event_name == 'pull_request_target' && github\.event\.pull_request\.base\.ref == 'main' && github\.event\.pull_request\.draft == false && needs\.policy\.result == 'success' && needs\.review\.result == 'success' && needs\.policy\.outputs\.owner_amendment_grade == 'G0' && needs\.policy\.outputs\.owner_amendment_evidence_producer == 'github-actions-attestation' && needs\.review\.outputs\.decision_kind == 'BLOCK'/);
+  assert.match(workflow, /name: Confine first owner-amendment evidence profile to self\n        if: steps\.resolve\.outputs\.ownerAmendmentGrade == 'G0'/);
+  assert.match(workflow, /test "\$REPOSITORY" = flair-agency\/architecture-gatekeeper/);
+  assert.match(workflow, /test "\$GITHUB_WORKFLOW_REF" = flair-agency\/architecture-gatekeeper\/\.github\/workflows\/self-architecture-gate\.yml@refs\/heads\/main/);
+  assert.match(workflow, /if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.event_name == 'pull_request_target' && github\.event\.pull_request\.base\.ref == 'main' && github\.event\.pull_request\.draft == false && needs\.policy\.result == 'success' && needs\.review\.result == 'success' && needs\.policy\.outputs\.owner_amendment_grade == 'G0' && needs\.policy\.outputs\.owner_amendment_evidence_producer == 'github-actions-attestation' && needs\.review\.outputs\.decision_kind == 'BLOCK'/);
   assert.match(recordJob, /permissions:\n      contents: read\n      id-token: write\n      attestations: write/);
   assert.doesNotMatch(recordJob, /OPENAI_API_KEY|secrets\.OPENAI_API_KEY/);
   assert.match(recordJob, /name: Check out the protected base only\n        uses: actions\/checkout@v5\n        with:\n          ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}\n          fetch-depth: 1/);

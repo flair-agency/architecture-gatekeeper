@@ -95,6 +95,16 @@ jobs:
             echo "model=gpt-5.6-sol" >> "$GITHUB_OUTPUT"
             echo "reasoningEffort=medium" >> "$GITHUB_OUTPUT"
           fi
+      - name: Confine first owner-amendment evidence profile to self
+        if: steps.resolve.outputs.ownerAmendmentGrade == 'G0'
+        env:
+          REPOSITORY: ${{ github.repository }}
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          test "$REPOSITORY" = flair-agency/architecture-gatekeeper
+          test "$BASE_BRANCH" = main
+          test "$GITHUB_WORKFLOW_REF" = flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main
       - name: Require protected instructions for selected Authority Set or legacy v1
         if: steps.resolve.outputs.authorityManifestPath != '' || steps.resolve.outputs.policyVersion == '1'
         env:
@@ -369,7 +379,7 @@ jobs:
         run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
   block-review-record:
-    if: github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && needs.policy.result == 'success' && needs.review.result == 'success' && needs.policy.outputs.owner_amendment_grade == 'G0' && needs.policy.outputs.owner_amendment_evidence_producer == 'github-actions-attestation' && needs.review.outputs.decision_kind == 'BLOCK'
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && needs.policy.result == 'success' && needs.review.result == 'success' && needs.policy.outputs.owner_amendment_grade == 'G0' && needs.policy.outputs.owner_amendment_evidence_producer == 'github-actions-attestation' && needs.review.outputs.decision_kind == 'BLOCK'
     needs: [policy, review]
     permissions:
       contents: read
