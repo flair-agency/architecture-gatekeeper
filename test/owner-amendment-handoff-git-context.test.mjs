@@ -126,7 +126,7 @@ test('requires exact base ancestry and rejects malformed injected Git output', (
   const f = fixture();
   try {
     const malformedGit = args => {
-      if (args[0] === 'cat-file' && args[1] === '-t') return Buffer.from('tree\n');
+      if (args[1] === 'cat-file' && args[2] === '-t') return Buffer.from('tree\n');
       return f.runGit(args);
     };
     assert.throws(() => resolveOwnerAmendmentHandoffGitContext({ repository, baseSha: f.baseSha,
@@ -135,5 +135,31 @@ test('requires exact base ancestry and rejects malformed injected Git output', (
       headSha: f.baseSha, runGit: f.runGit }), /ancestor/);
     assert.throws(() => resolveOwnerAmendmentHandoffGitContext({ repository, baseSha: 'z'.repeat(40),
       headSha: f.headSha, runGit: f.runGit }), /SHAs/);
+  } finally { f.cleanup(); }
+});
+
+test('ignores local replacement refs when resolving exact protected objects', () => {
+  const f = fixture();
+  try {
+    const replacement = git(f.root, ['commit-tree', git(f.root, ['rev-parse', `${f.baseSha}^{tree}`]).toString('ascii').trim(), '-m', 'replacement']).toString('ascii').trim();
+    git(f.root, ['replace', f.headSha, replacement]);
+    const result = resolve(f);
+    assert.equal(result.scope.headSha, f.headSha);
+    assert.equal(result.authorityBytes.head.toString(), 'amended architecture\n');
+  } finally { f.cleanup(); }
+});
+
+test('does not expose mutable protected bytes or parsed context', () => {
+  const f = fixture();
+  try {
+    const result = resolve(f);
+    result.authorityBytes.head[0] = 0x58;
+    result.policyBytes[0] = 0x58;
+    result.manifestBytes[0] = 0x58;
+    assert.equal(result.authorityBytes.head.toString(), 'amended architecture\n');
+    assert.equal(result.policyBytes[0], 0x7b);
+    assert.equal(result.manifestBytes[0], 0x7b);
+    assert.throws(() => { result.policy.ownerAmendmentGrade = 'G1'; }, TypeError);
+    assert.throws(() => { result.manifest.authorities[0].path = 'other.md'; }, TypeError);
   } finally { f.cleanup(); }
 });

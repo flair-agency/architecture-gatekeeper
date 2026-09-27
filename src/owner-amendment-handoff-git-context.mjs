@@ -12,9 +12,19 @@ function fail(message) { throw new Error(`Owner amendment Git context: ${message
 
 function git(runGit, args, maxBytes = 1_048_576) {
   let result;
-  try { result = runGit(args); } catch { fail(`git operation failed: ${args[0]}.`); }
+  // A local refs/replace entry must never redefine the protected object's
+  // contents while the returned context still names its original SHA.
+  try { result = runGit(['--no-replace-objects', ...args]); } catch { fail(`git operation failed: ${args[0]}.`); }
   if (!Buffer.isBuffer(result) || result.length > maxBytes) fail(`git returned malformed or oversized output for ${args[0]}.`);
   return result;
+}
+
+function deepFreeze(value) {
+  if (value && typeof value === 'object') {
+    for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
 }
 
 function text(bytes, label) {
@@ -70,7 +80,8 @@ function decodeLimits(encoded, profile) {
 
 /**
  * Resolve all handoff inputs from exact Git objects. `runGit` must execute its
- * argument array against a checkout containing both commits and return raw
+ * argument array (including Git's --no-replace-objects global option) against
+ * a checkout containing both commits and return raw
  * stdout bytes. This prepares eligibility inputs only; it does not accept B or
  * create/read a tag.
  */
@@ -114,8 +125,16 @@ export function resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, he
     changedFiles: files, baseAuthorityBytes, headAuthorityBytes }); }
   catch { fail('exact B does not satisfy the previous-base self authority-only scope.'); }
 
-  return Object.freeze({ repository, baseSha, headSha, policyPath: POLICY_PATH,
-    policyBytes, parsedPolicy, policy, manifestPath: policy.authorityManifestPath,
-    manifestBytes, manifest, limits, changedFiles: Object.freeze(files.map(file => Object.freeze(file))),
-    authorityBytes: Object.freeze({ base: baseAuthorityBytes, head: headAuthorityBytes }), scope });
+  const immutable = { repository, baseSha, headSha, policyPath: POLICY_PATH,
+    parsedPolicy: deepFreeze(parsedPolicy), policy: deepFreeze(policy),
+    manifestPath: policy.authorityManifestPath, manifest: deepFreeze(manifest),
+    limits: deepFreeze(limits), changedFiles: deepFreeze(files), scope };
+  Object.defineProperties(immutable, {
+    policyBytes: { enumerable: true, get: () => Buffer.from(policyBytes) },
+    manifestBytes: { enumerable: true, get: () => Buffer.from(manifestBytes) },
+    authorityBytes: { enumerable: true, get: () => Object.freeze({
+      base: Buffer.from(baseAuthorityBytes), head: Buffer.from(headAuthorityBytes),
+    }) },
+  });
+  return Object.freeze(immutable);
 }
