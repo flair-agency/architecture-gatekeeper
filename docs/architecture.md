@@ -165,11 +165,16 @@ Semantic review may return `PASS`, `BLOCK`, or `OWNER_DECISION`.
 `OWNER_DECISION` is an escalation that requires a decision to be recorded in
 canonical consumer authority. These are review decisions, not the complete set
 of acceptance outcomes. `OWNER_DECISION` is not an alternate form of acceptance.
+`OWNER_ADDITION` and `OWNER_AMENDMENT` are separate authority-governance
+results. Their distinction is the authority change: addition supplies a
+missing decision; amendment changes, replaces, removes, or refines an existing
+canonical decision. A historical semantic result is never rewritten as `PASS`.
 
 ### OWNER_ADDITION / G0 route for missing decisions (Issue #111)
 
-An `OWNER_DECISION` rejects the reviewed change A until the missing
-architecture decision is canonical and A receives a fresh review. A consumer
+When `OWNER_DECISION` identifies a missing architecture decision, it rejects
+the reviewed change A until that decision is canonical and A receives a fresh
+review. A consumer
 may separately opt in to a predecessor-B governance result called
 `OWNER_ADDITION / G0`. It is not a semantic `PASS` for B or A, and it does not
 change or erase A's prior `OWNER_DECISION`.
@@ -346,13 +351,27 @@ readiness, policy selection, owner authorization, or host enforcement.
 ### Target owner-amendment governance (Issue #75 owner decision)
 
 `OWNER_AMENDMENT` is an acceptance result for a separate, authority-only
-amendment Change B. It is not a semantic-review decision and does not turn a
-historical `BLOCK` into `PASS`. The originally blocked implementation Change A
-remains rejected until B becomes canonical and A receives a fresh review.
-An `OWNER_DECISION` result is not eligible for this route.
+amendment Change B that changes an existing canonical architecture decision.
+It is not a semantic-review decision and does not turn a historical `BLOCK` or
+`OWNER_DECISION` into `PASS`. A prior `BLOCK` is a representative trigger, not
+the definition of amendment. A completed `OWNER_DECISION` may also identify an
+owner choice to change an existing decision; a missing-decision addition still
+belongs to `OWNER_ADDITION`. The originally reviewed Change A remains rejected
+until B becomes canonical and A receives a fresh review where A exists.
 
-The first implementation may accept Change B at governance grade `G0` when
-the **previous protected-base policy** explicitly authorizes that grade for
+The BLOCK-evidence procedure below is one versioned amendment trigger profile.
+Its historical-BLOCK requirements apply to that profile and do not establish
+a general requirement that every amendment originate in `BLOCK`. A distinct
+OWNER_DECISION trigger profile must specify exact completed review evidence,
+predecessor authority binding, the owner procedure, protected producer and
+transition checks before it can be selected. No policy may infer that profile
+from a tag or candidate-authored claim, and no new profile is enabled by this
+definition alone. In particular, a candidate B cannot select its own route or
+use its proposed policy to authorize its adoption.
+
+The first BLOCK-triggered implementation may accept Change B at governance
+grade `G0` when the **previous protected-base policy** explicitly authorizes
+that grade for
 the affected authority and amendment scope. `G0` still requires a deliberate,
 per-amendment annotated-tag artifact. The verifier must check its immutable
 object identity, exact B revision, amendment purpose and triggering `BLOCK`
@@ -372,8 +391,9 @@ mechanism. `G0` gives those repositories a formal, auditable procedure without
 falsely claiming that each tag was pushed by the owner. It does not remove the
 repository's responsibility to control who can merge under its hosting rules.
 
-The value of this route is procedural: it replaces a recurring, unstructured
-merge exception with a separate amendment Change, an annotated tag binding
+The value of this BLOCK-triggered route is procedural: it replaces a
+recurring, unstructured merge exception with a separate amendment Change,
+an annotated tag binding
 that change to the exact triggering `BLOCK`, protected acceptance conditions
 and an audit record. That improvement in process traceability must not be
 described as improvement in per-change owner authentication; the latter
@@ -472,10 +492,11 @@ to the exact claim at authorization time and demonstrate that revocation or
 claim change after a green check cannot permit a later canonical transition.
 No exact-claim authorization route may be enabled until those properties and
 the selected policy are proved end to end. This decision does not remove the
-current target contract's triggering-`BLOCK` requirement or authorize the
-broader generalized Amendment Claim evidence model proposed in #107.
+current BLOCK-evidence profile's trigger requirements or authorize the broader
+Amendment Claim evidence model proposed in #107.
 
-Even at `G0`, the protected verifier must validate a versioned ReviewRecord
+In the BLOCK-evidence profile, even at `G0`, the protected verifier must
+validate a versioned ReviewRecord
 for the exact historical `BLOCK`, an AmendmentRecord binding B to that review
 and the authority being amended, the current repository/base/head and
 authority identities, and the strict authority-amendment scope. It must reject
@@ -873,10 +894,13 @@ Every implementation and rollout must preserve these invariants:
 8. `BLOCK` rejects the reviewed change. A separate authority-only amendment
    may be accepted through an explicitly enabled `OWNER_AMENDMENT` route
    without changing that historical `BLOCK`. `OWNER_DECISION` rejects the
-   reviewed change. A separately adopted missing decision may become canonical
-   through an explicitly enabled protected route or the versioned Issue #121
-   recorded-base route with its stated assurance; the original change still
-   requires a fresh review and acceptable evidence.
+   reviewed change. If a decision is missing, a separate addition may become
+   canonical through an explicitly enabled protected route or the versioned
+   Issue #121 recorded-base route with its stated assurance. If an existing
+   decision must change, an amendment may become canonical through a separately
+   enabled and verified trigger profile, including a completed
+   `OWNER_DECISION` profile once defined. The original reviewed change still
+   requires a fresh review and acceptable evidence where applicable.
 9. Privileged credentials are not exposed to pull-request code or package
    lifecycle scripts. Credential-bearing third-party actions remain part of the
    selected CI trust boundary and follow its explicit supply-chain policy; this
@@ -927,7 +951,16 @@ This sequencing does not weaken an existing consumer's selected policy or
 turn a self-only result into a general support claim.
 
 For v0.6.0, the reference environment is this repository on GitHub Free,
-public visibility. Its first `OWNER_AMENDMENT / G0` deployment selects the
+public visibility. The release goal is a minimal dogfoodable self consumer:
+the `OWNER_ADDITION` path from v0.5.x can add a missing canonical decision
+once selected by this repository's previous-base policy, and
+`OWNER_AMENDMENT / G0` can change an existing one through normal protected
+adoption without routine administrator bypass. The release must prove both a
+completed `BLOCK` amendment case and a completed `OWNER_DECISION` amendment
+case, including a self normative-contract change under the previous protected
+base policy (Issue #137). These cases must preserve historical semantic
+results and establish exact B, protected evidence, canonical readback, and
+fresh review where applicable. The first BLOCK-triggered deployment selects the
 following existing host primitives, subject to the validation requirements
 above and an explicit previous-base policy opt-in:
 
@@ -966,9 +999,11 @@ unverifiable source evidence before handoff, tag content, tag-ref protection,
 policy, or transition ordering leaves B `INCOMPLETE`. A queue check rerun by
 itself does not establish evidence validity through transition. A fresh
 completed `BLOCK` requires B's AmendmentRecord and tag to be rebound to that
-new evidence. The first deployment must demonstrate the complete A → BLOCK →
-tag handoff → B → canonical → A fresh-review cycle before reporting
-`OWNER_AMENDMENT / G0` or releasing v0.6.0. This profile selects no
+new evidence. The first BLOCK-triggered deployment must demonstrate the
+complete A → BLOCK → tag handoff → B → canonical → A fresh-review cycle before
+reporting `OWNER_AMENDMENT / G0` for that case. This is necessary but
+insufficient for v0.6.0: the OWNER_DECISION-triggered self contract-update
+case must also complete the protected path. This profile selects no
 private-repository provenance adapter, linear-history rewrite binding, or
 squash/rebase adoption route. G0 still reports principal authentication as
 `not_verified`.

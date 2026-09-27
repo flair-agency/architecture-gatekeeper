@@ -10,33 +10,41 @@ administration rules remain authoritative.
 flowchart TD
     A[Change A: normal review] --> D{Result}
     D -->|PASS| P[Normal acceptance policy]
-    D -->|OWNER_DECISION: missing rule| B1[Owner decides; propose authority-only B]
-    D -->|BLOCK: existing rule conflicts| B2[Separate amendment B, if its route is enabled]
+    D -->|OWNER_DECISION| O[Owner identifies whether a decision is missing or an existing one must change]
+    O -->|Missing decision| B1[Separate addition B]
+    O -->|Existing decision changes| B2[Separate amendment B, if its trigger profile is enabled]
+    D -->|BLOCK: existing rule conflicts| B2
     D -->|ERROR or incomplete| E[Diagnose and rerun; no decision]
     B1 --> G1[Verify OWNER_ADDITION eligibility]
-    B2 --> G2[Verify BLOCK evidence and OWNER_AMENDMENT eligibility]
+    B2 --> G2[Verify completed trigger evidence and OWNER_AMENDMENT eligibility]
     G1 --> C[B adopted and canonical]
     G2 --> C
     C --> R[Rebase A and request a fresh review]
 ```
 
-The diagram shows the intended order, not an enabled amendment route. The
-consumer's selected policy determines which B procedure is available.
+The diagram shows the intended order, not an enabled amendment route. A
+`BLOCK` is one amendment trigger; an `OWNER_DECISION` can also call for a
+change to an existing decision. The authority change distinguishes
+`OWNER_ADDITION` from `OWNER_AMENDMENT`. The consumer's previous protected-base
+policy determines which B procedure and trigger profile is available.
 
 ## OWNER_DECISION
 
 `OWNER_DECISION` means the reviewer found an architecture choice that the
-consumer's canonical authority does not resolve. The current run cannot accept
-the change.
+consumer's canonical authority does not resolve. The choice may be a missing
+decision or whether an existing decision should change. The current run cannot
+accept the change.
 
 1. Read the decision and identify the unresolved responsibility or boundary.
 2. The accountable owner makes the architecture decision and proposes the
    canonical-authority update. Keep the proposed change (A) distinct from the
    authority update (B) when protected CI selects authority from the base;
    authority written only in A's head cannot resolve A's current review.
-3. Check whether B can proceed under the repository's existing protected
-   policy. A separate B is not automatically eligible for `PASS`, and the
-   historical-`BLOCK` `OWNER_AMENDMENT` route does not cover `OWNER_DECISION`.
+3. Determine whether B adds a missing decision or changes an existing one,
+   then check whether B can proceed under the repository's existing protected
+   policy. A separate B is not automatically eligible for `PASS`. The current
+   BLOCK-evidence `OWNER_AMENDMENT` profile does not cover `OWNER_DECISION`;
+   a distinct trigger profile requires its own protected evidence and opt-in.
    If B is unresolved or blocked, it remains so unless an applicable process
    in the consumer's existing policy permits otherwise. This runbook does not
    impose a universal file-scope rule on B.
