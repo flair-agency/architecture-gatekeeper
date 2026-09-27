@@ -2,6 +2,7 @@
 
 Thank you for helping improve Architecture Gatekeeper. Bug reports,
 documentation fixes, tests and focused implementation changes are welcome.
+Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Before opening work
 
