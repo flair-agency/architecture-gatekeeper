@@ -7,7 +7,8 @@ const selected = { status: 'SELECTED_OWNER_AMENDMENT_HANDOFF_PR_RUN_CONTEXT',
   repository: 'flair-agency/architecture-gatekeeper', baseSha, bPrNumber: '201', bHeadSha,
   aPrNumber: '199', aHeadSha, runId: '55', runAttempt: '2' };
 const env = { GITHUB_REPOSITORY: selected.repository, GITHUB_REF: 'refs/heads/main',
-  GITHUB_EVENT_NAME: 'workflow_dispatch', B_PR_NUMBER: '201', A_PR_NUMBER: '199',
+  GITHUB_EVENT_NAME: 'repository_dispatch', GITHUB_EVENT_ACTION: 'owner-amendment-block-handoff-v1',
+  B_PR_NUMBER: '201', A_PR_NUMBER: '199',
   BLOCK_RUN_ID: '55', BLOCK_RUN_ATTEMPT: '2', GH_TOKEN: 'token' };
 
 function fixture(overrides = {}) {
@@ -86,9 +87,11 @@ test('fails closed if B changes between tag object and protected ref creation', 
   assert.equal(f.calls.some(call => call.url?.endsWith('/git/refs')), false);
 });
 
-test('requires protected workflow_dispatch context and GH_TOKEN', async t => {
+test('requires default-branch repository_dispatch context and GH_TOKEN', async t => {
   for (const [label, changes] of [
     ['pull request context', { GITHUB_REF: 'refs/pull/201/merge' }],
+    ['branch-selectable manual event', { GITHUB_EVENT_NAME: 'workflow_dispatch' }],
+    ['wrong dispatch type', { GITHUB_EVENT_ACTION: 'other' }],
     ['missing token', { GH_TOKEN: '' }],
     ['wrong repository', { GITHUB_REPOSITORY: 'fork/repo' }],
   ]) await t.test(label, async () => {

@@ -41,8 +41,9 @@ export async function runOwnerAmendmentHandoff({ env = process.env, fetchImpl = 
   resolveGitContext = resolveOwnerAmendmentHandoffGitContext,
   orchestrate = orchestrateOwnerAmendmentBlockHandoff, now = () => new Date() } = {}) {
   try {
-    if (env.GITHUB_REF !== 'refs/heads/main' || env.GITHUB_EVENT_NAME !== 'workflow_dispatch') {
-      fail('handoff must execute from a workflow_dispatch run on protected main.');
+    if (env.GITHUB_REF !== 'refs/heads/main' || env.GITHUB_EVENT_NAME !== 'repository_dispatch' ||
+        env.GITHUB_EVENT_ACTION !== 'owner-amendment-block-handoff-v1') {
+      fail('handoff must execute from a default-branch repository_dispatch run on protected main.');
     }
     const input = requestInput(env);
     const token = env.GH_TOKEN;
