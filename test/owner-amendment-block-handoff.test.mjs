@@ -25,7 +25,7 @@ function fixture(t) {
     decisionBytesBase64: decisionBytes.toString('base64'), decisionSha256: sha(decisionBytes), decision };
   const recordBytes = Buffer.from(`${JSON.stringify(record)}\n`);
   const bundleBytes = Buffer.from('{"bundle":"valid fixture"}\n');
-  const amendment = { version: 1, repository: expected.repository, baseSha: expected.workflowSha, headSha: bSha,
+  const amendment = { version: 2, repository: expected.repository, baseSha: expected.workflowSha, headSha: bSha,
     policyRevision: expected.workflowSha,
     authority: { id: 'architecture', path: 'docs/architecture.md', previousSha256: record.authority.members[0].sha256,
       newSha256: sha(Buffer.from('new authority')) },
@@ -105,6 +105,7 @@ test('rejects a tag envelope candidate whose AmendmentRecord targets a different
 test('rejects stale or incomplete AmendmentRecord bindings before preparing a tag', t => {
   const f = fixture(t);
   for (const change of [
+    a => { a.version = 1; delete a.attestationBundleSha256; },
     a => { a.baseSha = 'e'.repeat(40); },
     a => { a.policyRevision = 'e'.repeat(40); },
     a => { a.authority.previousSha256 = 'e'.repeat(64); },

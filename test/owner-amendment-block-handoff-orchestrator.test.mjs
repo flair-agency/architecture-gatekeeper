@@ -132,7 +132,7 @@ test('discovers, verifies once, builds AmendmentRecord from exact BLOCK, and tra
   assert.equal(result.reviewRecordSha256, sha(f.recordBytes));
   assert.equal(result.attestationBundleSha256, sha(f.bundleBytes));
   assert.equal(result.amendmentRecordSha256, sha(Buffer.from(JSON.stringify(canonical({
-    version: 1, repository, baseSha, headSha: bSha, policyRevision: baseSha,
+    version: 2, repository, baseSha, headSha: bSha, policyRevision: baseSha,
     authority: { id: 'architecture-contract', path: 'docs/architecture.md', previousSha256: sha(baseAuthorityBytes), newSha256: sha(headAuthorityBytes) },
     triggeringReviewSha256: sha(f.recordBytes), attestationBundleSha256: sha(f.bundleBytes),
     purpose: 'Amend the self architecture contract after the completed BLOCK',

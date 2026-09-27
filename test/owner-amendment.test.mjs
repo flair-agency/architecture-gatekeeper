@@ -53,16 +53,23 @@ function rejects(change, pattern) {
   assert.throws(() => validateOwnerAmendmentG0Procedure(input), pattern);
 }
 
-function useV2Envelope(input, edit = () => {}) {
+function useV2Envelope(input, edit = () => {}, editAmendment = () => {}) {
   // These are producer bytes, with insertion order and terminal newline preserved.
   const reviewBytes = Buffer.from(`${JSON.stringify(input.reviewRecord)}\n`);
-  const amendmentBytes = Buffer.from(`${JSON.stringify(input.amendmentRecord)}\n`);
   const bundleBytes = Buffer.from('{"attestation":"fixture"}');
+  const rawDigest = bytes => createHash('sha256').update(bytes).digest('hex');
+  const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ?
+    Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
+  const selfAmendment = { ...input.amendmentRecord,
+    version: 2, triggeringReviewSha256: rawDigest(reviewBytes), attestationBundleSha256: rawDigest(bundleBytes),
+  };
+  editAmendment(selfAmendment);
+  const amendmentBytes = Buffer.from(JSON.stringify(canonical(selfAmendment)));
   const envelope = {
     version: 2, profile: 'self-g0', bSha: input.current.headSha,
-    reviewRecordBase64: reviewBytes.toString('base64'), reviewRecordSha256: createHash('sha256').update(reviewBytes).digest('hex'),
-    attestationBundleBase64: bundleBytes.toString('base64'), attestationBundleSha256: createHash('sha256').update(bundleBytes).digest('hex'),
-    amendmentRecordBase64: amendmentBytes.toString('base64'), amendmentRecordSha256: createHash('sha256').update(amendmentBytes).digest('hex'),
+    reviewRecordBase64: reviewBytes.toString('base64'), reviewRecordSha256: rawDigest(reviewBytes),
+    attestationBundleBase64: bundleBytes.toString('base64'), attestationBundleSha256: rawDigest(bundleBytes),
+    amendmentRecordBase64: amendmentBytes.toString('base64'), amendmentRecordSha256: rawDigest(amendmentBytes),
   };
   edit(envelope);
   const sortedEnvelope = Object.fromEntries(Object.entries(envelope).sort(([x], [y]) => x.localeCompare(y)));
@@ -149,6 +156,14 @@ test('G0 v2 evidence envelope binds exact B, raw records and attestation bundle 
   const result = validateOwnerAmendmentG0TagEnvelope(args);
   assert.equal(result.profile, 'self-g0');
   assert.equal(result.tagObjectOid, input.tag.objectOid);
+});
+
+test('G0 v2 evidence envelope rejects legacy v1 AmendmentRecord semantics', () => {
+  const args = useV2Envelope(fixture(), () => {}, amendment => {
+    amendment.version = 1;
+    delete amendment.attestationBundleSha256;
+  });
+  assert.throws(() => validateOwnerAmendmentG0TagEnvelope(args), /self BLOCK AmendmentRecord/);
 });
 
 test('G0 v2 evidence envelope rejects wrong B, bad digests, noncanonical base64 and unknown fields', () => {

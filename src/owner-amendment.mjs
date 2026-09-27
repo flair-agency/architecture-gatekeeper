@@ -218,14 +218,25 @@ function validateRawTagEnvelope(envelope, { headSha, tag, tagRef, observedTagRef
     const actualDigest = createHash('sha256').update(expected).digest('hex');
     if (actualDigest !== digest || !embedded.equals(expected)) fail(`tag envelope ${label} bytes or raw-byte digest differ.`);
   }
+  // The self BLOCK handoff uses AmendmentRecord v2. Legacy v1 remains scoped
+  // to validateOwnerAmendmentG0Procedure and keeps its original field set.
+  const amendment = parseCanonicalJson(amendmentRecordBytes, 'self BLOCK AmendmentRecord', AMENDMENT_RECORD_MAX_BYTES);
+  record(amendment, ['version', 'repository', 'baseSha', 'headSha', 'policyRevision', 'authority',
+    'triggeringReviewSha256', 'attestationBundleSha256', 'purpose'], 'self BLOCK AmendmentRecord');
+  if (amendment.version !== 2 || amendment.headSha !== headSha ||
+      amendment.triggeringReviewSha256 !== envelope.reviewRecordSha256 ||
+      amendment.attestationBundleSha256 !== envelope.attestationBundleSha256) {
+    fail('self BLOCK AmendmentRecord v2 does not bind exact B and evidence bytes.');
+  }
   return Object.freeze({ profile: 'self-g0', headSha, tagObjectOid: tag.objectOid,
     reviewRecordSha256: envelope.reviewRecordSha256, amendmentRecordSha256: envelope.amendmentRecordSha256,
     attestationBundleSha256: envelope.attestationBundleSha256 });
 }
 
 /** Validate only the deterministic self-G0 tag envelope and byte bindings.
- * Callers must independently validate/prove provenance for the supplied records,
- * bundle and fresh remote tag-ref mapping before deriving any acceptance result.
+ * Callers must independently bind the v2 AmendmentRecord repository, previous
+ * base/policy, affected authority and purpose to protected Git state, and prove
+ * provenance plus a fresh remote tag-ref mapping before deriving acceptance.
  */
 export function validateOwnerAmendmentG0TagEnvelope({ headSha, tag, tagRef, observedTagRefOid, reviewRecordBytes, amendmentRecordBytes, attestationBundleBytes }) {
   if (!Buffer.isBuffer(tag?.objectBytes) || !tag.objectBytes.length || tag.objectBytes.length > TAG_OBJECT_MAX_BYTES) fail('annotated tag object bytes are missing or oversized.');

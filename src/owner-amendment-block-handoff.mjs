@@ -58,7 +58,7 @@ export function prepareOwnerAmendmentBlockHandoff({ recordBytes, bundleBytes, am
   const prior = reviewRecord.authority?.members;
   const authority = amendmentRecord?.authority;
   if (!exactKeys(amendmentRecord, ['version', 'repository', 'baseSha', 'headSha', 'policyRevision',
-    'authority', 'triggeringReviewSha256', 'attestationBundleSha256', 'purpose']) || amendmentRecord.version !== 1 ||
+    'authority', 'triggeringReviewSha256', 'attestationBundleSha256', 'purpose']) || amendmentRecord.version !== 2 ||
       amendmentRecord.headSha !== bSha || amendmentRecord.repository !== reviewRecord.repository ||
       amendmentRecord.baseSha !== reviewRecord.baseSha || amendmentRecord.policyRevision !== reviewRecord.baseSha ||
       amendmentRecord.triggeringReviewSha256 !== digest(recordBytes) ||

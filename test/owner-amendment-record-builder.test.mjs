@@ -50,11 +50,11 @@ function reviewBytes(overrides = {}) {
   return Buffer.from(`${JSON.stringify(record)}\n`);
 }
 
-test('builds exact canonical AmendmentRecord v1 bytes bound to the verified BLOCK and inspected B scope', () => {
+test('builds exact canonical self BLOCK AmendmentRecord v2 bytes bound to the verified evidence and B scope', () => {
   const sourceBytes = reviewBytes();
   const result = buildOwnerAmendmentRecord({ attestationBundleBytes, scope, reviewRecordBytes: sourceBytes, repository, purpose });
   const expected = {
-    version: 1,
+    version: 2,
     repository,
     baseSha,
     headSha: bSha,

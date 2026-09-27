@@ -46,7 +46,7 @@ function fixture({ recordChanges = {}, artifactChanges = {}, amendmentChanges = 
   const recordBytes = Buffer.from(`${JSON.stringify(record)}\n`);
   const bundleBytes = Buffer.from('{"bundle":"verified fixture"}\n');
   const zipBytes = makeZip([{ name: 'review-record.json', bytes: recordBytes }, { name: 'attestation-bundle.json', bytes: bundleBytes }]);
-  const amendment = { version: 1, repository: context.repository, baseSha: context.baseSha, headSha: context.bSha,
+  const amendment = { version: 2, repository: context.repository, baseSha: context.baseSha, headSha: context.bSha,
     policyRevision: context.baseSha, authority: { id: 'architecture', path: 'docs/architecture.md',
       previousSha256: record.authority.members[0].sha256, newSha256: sha(Buffer.from('new authority')) },
     triggeringReviewSha256: sha(recordBytes), attestationBundleSha256: sha(bundleBytes),
