@@ -80,7 +80,9 @@ test('CI reviewer excludes checkout-owned AGENTS.md instructions', () => {
     'project_doc_max_bytes=0',
     '-c',
     "service_tier='flex'",
+    '--json',
   ]);
+  assert.equal(JSON.parse(args[2]).includes('--json'), false);
   assert.match(workflow, /Confine optional Flex probe to the self reviewer/);
   const selfWorkflow = readFileSync(new URL('../.github/workflows/self-architecture-gate.yml', import.meta.url), 'utf8');
   assert.match(selfWorkflow, /self-flex-probe: \$\{\{ vars\.ARCHITECTURE_GATE_SELF_FLEX == 'true'/);
