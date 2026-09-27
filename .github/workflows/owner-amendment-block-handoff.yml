@@ -1,0 +1,51 @@
+name: Owner Amendment BLOCK Handoff
+
+on:
+  workflow_dispatch:
+    inputs:
+      b_pr_number:
+        description: Open authority-only amendment PR number
+        required: true
+        type: string
+      a_pr_number:
+        description: Rejected Change A PR number
+        required: true
+        type: string
+      block_run_id:
+        description: Completed protected BLOCK producer run ID
+        required: true
+        type: string
+      block_run_attempt:
+        description: Exact BLOCK producer run attempt
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: read
+
+jobs:
+  handoff:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Verify evidence and transport exact-B tag
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          B_PR_NUMBER: ${{ inputs.b_pr_number }}
+          A_PR_NUMBER: ${{ inputs.a_pr_number }}
+          BLOCK_RUN_ID: ${{ inputs.block_run_id }}
+          BLOCK_RUN_ATTEMPT: ${{ inputs.block_run_attempt }}
+          GH_TOKEN: ${{ github.token }}
+        run: node src/owner-amendment-handoff-cli.mjs
