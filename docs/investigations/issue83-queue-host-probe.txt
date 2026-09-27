@@ -1,0 +1,2 @@
+Disposable GitHub merge queue host probe for Issue #83.
+This branch carries no Architecture Gatekeeper contract or runtime change.
