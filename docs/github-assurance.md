@@ -146,9 +146,12 @@ change. It is not a permanent hosting guarantee or proof of `OWNER_AMENDMENT`:
   invokes [the reusable Gate](../.github/workflows/architecture-gate.yml) on
   non-draft pull requests. It requests protected review instructions and
   reads [self policy](../.codex/gatekeeper/ci-policy.json) from the base.
-- The self policy currently selects `enforced` v2 ordinary review on `main`.
-  It has **no `ownerAmendment` opt-in**. `OWNER_AMENDMENT / G0` cannot be inferred
-  from this repository's successful ordinary `PASS` checks.
+- The self policy selects `enforced` v2 ordinary review on `main` and opts in
+  to the self-only `completed-block-v1` `ownerAmendment` evidence producer.
+  After this policy is adopted on `main`, a completed `BLOCK` can trigger
+  production of a ReviewRecord and GitHub attestation. This opt-in does not
+  enable `OWNER_AMENDMENT / G0` acceptance; a successful ordinary `PASS` check
+  or a produced BLOCK record alone does not establish adoption.
 - #83 exercised test-only real-PR BLOCK production and GitHub artifact
   attestation. Its [investigation report](investigations/2026-09-25-real-pr-block-probe-implementation.md)
   and test-only verifier remain. An [isolated merge-queue probe](https://github.com/flair-agency/architecture-gatekeeper/pull/155)
