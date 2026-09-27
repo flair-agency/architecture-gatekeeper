@@ -2,7 +2,7 @@
 // This binds producer provenance to exact ReviewRecord bytes; it is not acceptance.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -94,13 +94,9 @@ export function inspectOwnerAmendmentAttestation({ recordBytes, verified, expect
 }
 
 /** Run the GitHub CLI verifier against the supplied exact record and bundle bytes. */
-export function verifyOwnerAmendmentBlockEvidence({ recordPath, bundlePath, recordBytes: suppliedRecordBytes,
-  bundleBytes: suppliedBundleBytes, expected, runGh = execFileSync }) {
+export function verifyOwnerAmendmentBlockEvidence({ recordBytes, bundleBytes, expected, runGh = execFileSync }) {
   try {
     expected = validateExpected(expected);
-    if (typeof recordPath !== 'string' || !recordPath || typeof bundlePath !== 'string' || !bundlePath) fail('ReviewRecord or bundle path is absent.');
-    const recordBytes = suppliedRecordBytes ?? readFileSync(recordPath);
-    const bundleBytes = suppliedBundleBytes ?? readFileSync(bundlePath);
     if (!Buffer.isBuffer(recordBytes) || !Buffer.isBuffer(bundleBytes)) fail('Evidence inputs must be exact byte buffers.');
     if (!recordBytes.length || recordBytes.length > MAX_RECORD_BYTES) fail('Exact ReviewRecord bytes are absent or exceed the byte limit.');
     if (!bundleBytes.length || bundleBytes.length > MAX_BUNDLE_BYTES) fail('Exact attestation bundle bytes are absent or exceed the byte limit.');

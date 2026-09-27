@@ -4,7 +4,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { prepareOwnerAmendmentBlockHandoffFromFiles } from '../src/owner-amendment-block-handoff.mjs';
+import { prepareOwnerAmendmentBlockHandoff } from '../src/owner-amendment-block-handoff.mjs';
+import { verifyOwnerAmendmentBlockEvidence } from '../src/owner-amendment-attestation.mjs';
 
 const expected = { repository: 'flair-agency/example', workflowPath: '.github/workflows/owner-amendment.yml',
   workflowSha: 'a'.repeat(40), workflowRef: 'refs/heads/main', runId: '42', runAttempt: '2' };
@@ -55,10 +56,16 @@ function fixture(t) {
   return { dir, record, recordBytes, bundleBytes, amendmentBytes, recordPath, bundlePath, amendmentPath, verified, runGh };
 }
 
+function prepare(f, amendmentRecordBytes = f.amendmentBytes) {
+  const provenanceResult = verifyOwnerAmendmentBlockEvidence({ recordBytes: f.recordBytes,
+    bundleBytes: f.bundleBytes, expected, runGh: f.runGh });
+  return prepareOwnerAmendmentBlockHandoff({ recordBytes: f.recordBytes, bundleBytes: f.bundleBytes,
+    amendmentRecordBytes, expected, bSha, provenanceResult });
+}
+
 test('runs gh attestation verify over exact record and bundle paths and constructs the v2 B tag message', t => {
   const f = fixture(t);
-  const result = prepareOwnerAmendmentBlockHandoffFromFiles({ recordPath: f.recordPath, bundlePath: f.bundlePath,
-    amendmentRecordPath: f.amendmentPath, expected, bSha, runGh: f.runGh });
+  const result = prepare(f);
   assert.equal(result.status, 'PREPARED_BLOCK_HANDOFF_TAG_MESSAGE');
   assert.equal(result.envelope.version, 2);
   assert.equal(result.envelope.bSha, bSha);
@@ -69,22 +76,29 @@ test('runs gh attestation verify over exact record and bundle paths and construc
 
 test('rejects malformed verifier output, malformed bundle verification, and raw-byte mismatch', t => {
   const f = fixture(t);
-  assert.throws(() => prepareOwnerAmendmentBlockHandoffFromFiles({ recordPath: f.recordPath, bundlePath: f.bundlePath,
-    amendmentRecordPath: f.amendmentPath, expected, bSha, runGh: () => '{' }), /malformed/);
-  assert.throws(() => prepareOwnerAmendmentBlockHandoffFromFiles({ recordPath: f.recordPath, bundlePath: f.bundlePath,
-    amendmentRecordPath: f.amendmentPath, expected, bSha, runGh: () => { throw new Error('invalid bundle'); } }), /verification failed/);
-  writeFileSync(f.recordPath, Buffer.concat([f.recordBytes, Buffer.from(' ')]));
-  assert.throws(() => prepareOwnerAmendmentBlockHandoffFromFiles({ recordPath: f.recordPath, bundlePath: f.bundlePath,
-    amendmentRecordPath: f.amendmentPath, expected, bSha, runGh: () => JSON.stringify(f.verified) }), /exact ReviewRecord bytes/);
+  const malformed = verifyOwnerAmendmentBlockEvidence({ recordBytes: f.recordBytes, bundleBytes: f.bundleBytes,
+    expected, runGh: () => '{' });
+  assert.equal(malformed.status, 'INCOMPLETE');
+  assert.match(malformed.reason, /malformed/);
+  const rejected = verifyOwnerAmendmentBlockEvidence({ recordBytes: f.recordBytes, bundleBytes: f.bundleBytes,
+    expected, runGh: () => { throw new Error('invalid bundle'); } });
+  assert.equal(rejected.status, 'INCOMPLETE');
+  assert.match(rejected.reason, /verification failed/);
+  const changedRecordBytes = Buffer.concat([f.recordBytes, Buffer.from(' ')]);
+  const mismatchedProof = verifyOwnerAmendmentBlockEvidence({ recordBytes: changedRecordBytes,
+    bundleBytes: f.bundleBytes, expected, runGh: () => JSON.stringify(f.verified) });
+  assert.equal(mismatchedProof.status, 'INCOMPLETE');
+  assert.match(mismatchedProof.reason, /exact ReviewRecord bytes/);
+  assert.throws(() => prepareOwnerAmendmentBlockHandoff({ recordBytes: changedRecordBytes,
+    bundleBytes: f.bundleBytes, amendmentRecordBytes: f.amendmentBytes, expected, bSha,
+    provenanceResult: mismatchedProof }), /exact ReviewRecord bytes/);
 });
 
 test('rejects a tag envelope candidate whose AmendmentRecord targets a different exact B', t => {
   const f = fixture(t);
   const altered = JSON.parse(f.amendmentBytes.toString('utf8'));
   altered.headSha = 'e'.repeat(40);
-  writeFileSync(f.amendmentPath, JSON.stringify(altered));
-  assert.throws(() => prepareOwnerAmendmentBlockHandoffFromFiles({ recordPath: f.recordPath, bundlePath: f.bundlePath,
-    amendmentRecordPath: f.amendmentPath, expected, bSha, runGh: f.runGh }), /does not bind this exact BLOCK ReviewRecord and B/);
+  assert.throws(() => prepare(f, Buffer.from(JSON.stringify(altered))), /does not bind this exact BLOCK ReviewRecord and B/);
 });
 
 test('rejects stale or incomplete AmendmentRecord bindings before preparing a tag', t => {
@@ -98,8 +112,6 @@ test('rejects stale or incomplete AmendmentRecord bindings before preparing a ta
   ]) {
     const candidate = JSON.parse(f.amendmentBytes.toString('utf8'));
     change(candidate);
-    writeFileSync(f.amendmentPath, JSON.stringify(candidate));
-    assert.throws(() => prepareOwnerAmendmentBlockHandoffFromFiles({ recordPath: f.recordPath, bundlePath: f.bundlePath,
-      amendmentRecordPath: f.amendmentPath, expected, bSha, runGh: f.runGh }), /AmendmentRecord does not bind/);
+    assert.throws(() => prepare(f, Buffer.from(JSON.stringify(candidate))), /AmendmentRecord does not bind/);
   }
 });

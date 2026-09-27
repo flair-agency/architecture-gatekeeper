@@ -18,9 +18,8 @@ const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-function fileBytes(path, max = MAX_BYTES) {
-  const value = readFileSync(path);
-  if (!value.length || value.length > max) throw new Error(`Invalid input size: ${path}`);
+function checkedBytes(value, label, max = MAX_BYTES) {
+  if (!value.length || value.length > max) throw new Error(`Invalid input size: ${label}`);
   return value;
 }
 function jsonBytes(raw, label) {
@@ -28,7 +27,6 @@ function jsonBytes(raw, label) {
   rejectDuplicateJsonKeys(source, label);
   return JSON.parse(source);
 }
-function jsonFile(path, max = MAX_BYTES) { return jsonBytes(fileBytes(path, max), path); }
 function git(args, binary = false) {
   return execFileSync('git', args, { encoding: binary ? 'buffer' : 'utf8', maxBuffer: MAX_BYTES,
     timeout: 10_000, env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -96,16 +94,15 @@ export function produceOwnerAmendmentBlock({ decisionBytes, provenance, context,
     validation: jsonBytes(baseInputs.validation, 'protected validation'), authority: provenance, context, inputDigests });
 }
 
-export function main(args) {
-  if (args.length !== 4) throw new Error('Usage: owner-amendment-block-producer <decision.json> <authority-provenance.json> <recorded-context.json> <output.json>');
-  const [decisionPath, provenancePath, contextPath, outputPath] = args;
-  const decisionBytes = fileBytes(decisionPath, 65_536);
-  const provenance = jsonFile(provenancePath, 65_536);
-  const recorded = jsonFile(contextPath, 65_536);
+export function main() {
+  const decisionBytes = checkedBytes(readFileSync('.agk-block-record-input/decision.json'), 'decision', 65_536);
+  const provenance = jsonBytes(checkedBytes(readFileSync('.agk-block-record-input/authority-provenance.json'), 'authority provenance', 65_536), 'authority provenance');
+  const recorded = jsonBytes(checkedBytes(readFileSync('.agk-block-record-input/recorded-context.json'), 'recorded context', 65_536), 'recorded context');
   const repository = process.env.GITHUB_REPOSITORY;
   const workflowSha = process.env.GITHUB_WORKFLOW_SHA;
   const parents = git(['rev-list', '--parents', '-n', '1', recorded.context.mergeSha]).trim().split(' ').slice(1);
-  const context = validateRecordedContext({ context: recorded.context, event: jsonFile(process.env.GITHUB_EVENT_PATH, 262_144), repository, workflowSha,
+  const event = jsonBytes(checkedBytes(readFileSync('.agk-block-record-input/event.json'), 'GitHub event', 262_144), 'GitHub event');
+  const context = validateRecordedContext({ context: recorded.context, event, repository, workflowSha,
     workflowRef: process.env.GITHUB_WORKFLOW_REF, parents });
   if (process.env.GITHUB_RUN_ID !== context.runId || process.env.GITHUB_RUN_ATTEMPT !== context.runAttempt ||
       git(['ls-remote', 'origin', `refs/pull/${context.prNumber}/merge`]).toString('utf8').trim().split('\t')[0] !== context.mergeSha) {
@@ -119,9 +116,9 @@ export function main(args) {
     validation: '.codex/gatekeeper/decision.validation.json', manifest: selected.authorityManifestPath };
   const baseInputs = Object.fromEntries(Object.entries(paths).map(([key, path]) => [key, protectedBytes(context.baseSha, path)]));
   const record = produceOwnerAmendmentBlock({ decisionBytes, provenance, context, baseInputs });
-  writeFileSync(outputPath, `${JSON.stringify(record)}\n`, { flag: 'wx', mode: 0o600 });
+  writeFileSync('.agk-block-record-input/review-record.json', `${JSON.stringify(record)}\n`, { flag: 'wx', mode: 0o600 });
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  try { main(process.argv.slice(2)); } catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 1; }
+  try { main(); } catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 1; }
 }

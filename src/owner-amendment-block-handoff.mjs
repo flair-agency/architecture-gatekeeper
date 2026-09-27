@@ -1,7 +1,4 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
-import { verifyOwnerAmendmentBlockEvidence } from './owner-amendment-attestation.mjs';
-
 const SHA = /^[a-f0-9]{40}$|^[a-f0-9]{64}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const MAX_REVIEW_RECORD_BYTES = 131_072;
@@ -92,18 +89,4 @@ export function prepareOwnerAmendmentBlockHandoff({ recordBytes, bundleBytes, am
   return Object.freeze({ status: 'PREPARED_BLOCK_HANDOFF_TAG_MESSAGE', bSha, envelope, tagMessage,
     reviewRecordSha256: envelope.reviewRecordSha256, amendmentRecordSha256: envelope.amendmentRecordSha256,
     attestationBundleSha256: envelope.attestationBundleSha256, provenance });
-}
-
-/** File-oriented entrypoint that invokes `gh attestation verify` on exact source files. */
-export function prepareOwnerAmendmentBlockHandoffFromFiles({ recordPath, bundlePath, amendmentRecordPath, expected, bSha, runGh }) {
-  const recordBytes = readFileSync(recordPath);
-  const bundleBytes = readFileSync(bundlePath);
-  const amendmentRecordBytes = readFileSync(amendmentRecordPath);
-  const provenance = verifyOwnerAmendmentBlockEvidence({ recordPath, bundlePath, recordBytes, bundleBytes, expected, ...(runGh ? { runGh } : {}) });
-  return prepareOwnerAmendmentBlockHandoff({ recordBytes, bundleBytes, amendmentRecordBytes, expected, bSha, provenanceResult: provenance });
-}
-
-export function writeOwnerAmendmentTagMessage(result, outputPath) {
-  if (result?.status !== 'PREPARED_BLOCK_HANDOFF_TAG_MESSAGE' || typeof result.tagMessage !== 'string') fail('prepared handoff tag message is required.');
-  writeFileSync(outputPath, result.tagMessage, { flag: 'wx', mode: 0o600 });
 }

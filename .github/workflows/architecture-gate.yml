@@ -378,13 +378,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Check out the reviewed merge commit as inert Git objects
+      - name: Check out the protected base only
         uses: actions/checkout@v5
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
-          fetch-depth: 0
-          path: candidate
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
           persist-credentials: false
+      - name: Fetch the reviewed merge commit as a Git object
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: git fetch --no-tags origin "refs/pull/$PR_NUMBER/merge"
       - name: Check out the protected producer runtime
         uses: actions/checkout@v5
         with:
@@ -393,7 +396,6 @@ jobs:
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
       - name: Produce the exact protected-base BLOCK ReviewRecord
-        working-directory: candidate
         env:
           DECISION: ${{ needs.review.outputs.final_message }}
           AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
@@ -404,10 +406,11 @@ jobs:
           WORKFLOW_PATH: .github/workflows/self-architecture-gate.yml
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
-          RECORD_DIR: ${{ runner.temp }}/architecture-gate-block-record
+          RECORD_DIR: .agk-block-record-input
         run: |
           set -euo pipefail
           mkdir -m 700 -p "$RECORD_DIR"
+          cp "$GITHUB_EVENT_PATH" "$RECORD_DIR/event.json"
           printf '%s' "$DECISION" > "$RECORD_DIR/decision.json"
           printf '%s' "$AUTHORITY_PROVENANCE_BASE64" | base64 --decode > "$RECORD_DIR/authority-provenance.json"
           jq -n \
@@ -422,26 +425,22 @@ jobs:
             --arg runAttempt "$RUN_ATTEMPT" \
             '{context:{repository:$repository,prNumber:$prNumber,baseSha:$baseSha,headSha:$headSha,mergeSha:$mergeSha,workflowSha:$workflowSha,workflowPath:$workflowPath,runId:$runId,runAttempt:$runAttempt}}' \
             > "$RECORD_DIR/recorded-context.json"
-          node ../.architecture-gatekeeper-runtime/scripts/owner-amendment-block-producer.mjs \
-            "$RECORD_DIR/decision.json" \
-            "$RECORD_DIR/authority-provenance.json" \
-            "$RECORD_DIR/recorded-context.json" \
-            "$RECORD_DIR/review-record.json"
+          node .architecture-gatekeeper-runtime/scripts/owner-amendment-block-producer.mjs
       - name: Attest the exact ReviewRecord bytes
         id: attest
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: ${{ runner.temp }}/architecture-gate-block-record/review-record.json
+          subject-path: .agk-block-record-input/review-record.json
       - name: Assemble exact record and attestation bundle
         env:
           BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
-          RECORD_DIR: ${{ runner.temp }}/architecture-gate-block-record
           EVIDENCE_DIR: ${{ runner.temp }}/architecture-gate-block-evidence
+          INPUT_DIR: .agk-block-record-input
         run: |
           set -euo pipefail
           test -s "$BUNDLE_PATH"
           mkdir -m 700 -p "$EVIDENCE_DIR"
-          cp "$RECORD_DIR/review-record.json" "$EVIDENCE_DIR/review-record.json"
+          cp "$INPUT_DIR/review-record.json" "$EVIDENCE_DIR/review-record.json"
           cp "$BUNDLE_PATH" "$EVIDENCE_DIR/attestation-bundle.json"
       - name: Preserve the exact ReviewRecord and attestation bundle
         id: evidence
