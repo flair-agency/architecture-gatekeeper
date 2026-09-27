@@ -32,6 +32,56 @@ async function retrieve(f = fixture(), values = {}) {
     fetchImpl: f.fetchImpl });
 }
 
+function capturedSelfBlockFixture() {
+  // Captured from GitHub REST for run 36315628115, attempt 1, artifact
+  // 10930004669. The archive itself is synthetic but padded to the captured
+  // 10,596-byte size; its digest is computed from these bytes so this remains
+  // an offline transport test. Run, artifact, repository, and SHA metadata
+  // match the live API response.
+  const captured = {
+    repository: 'flair-agency/architecture-gatekeeper',
+    artifactId: '10930004669',
+    runId: '36315628115',
+    runAttempt: '1',
+    baseSha: 'a21d1e9b92d58d93f5ea5c63fb405a68730519db',
+    headSha: '33737066fdf228e5913ac57e43c8153d074333ba',
+  };
+  const zip = Buffer.alloc(10596, 0x5a);
+  const run = {
+    id: 36315628115,
+    event: 'pull_request_target',
+    run_attempt: 1,
+    repository: { id: 1379218762, full_name: captured.repository },
+    head_repository: { id: 1379218762, full_name: captured.repository },
+    head_sha: captured.headSha,
+    pull_requests: [],
+  };
+  const artifact = {
+    id: 10930004669,
+    name: `owner-amendment-block-${captured.baseSha}-${captured.headSha}-${captured.runId}-${captured.runAttempt}`,
+    expired: false,
+    size_in_bytes: 10596,
+    digest: digest(zip),
+    workflow_run: {
+      id: 36315628115,
+      repository_id: 1379218762,
+      head_repository_id: 1379218762,
+      head_sha: captured.headSha,
+    },
+  };
+  const fetchImpl = async url => {
+    if (url.endsWith(`/actions/runs/${captured.runId}/attempts/${captured.runAttempt}`)) {
+      return { ok: true, json: async () => run };
+    }
+    if (url.endsWith(`/actions/artifacts/${captured.artifactId}`)) {
+      return { ok: true, json: async () => artifact };
+    }
+    if (url.endsWith(`/actions/artifacts/${captured.artifactId}/zip`)) return new Response(zip);
+    throw new Error(`unexpected URL ${url}`);
+  };
+  return { captured, run, artifact, zip, fetchImpl };
+}
+
 test('retrieves bounded zip bytes from the expected artifact and run', async () => {
   const f = fixture();
   const requests = [];
@@ -43,6 +93,19 @@ test('retrieves bounded zip bytes from the expected artifact and run', async () 
   assert.equal(result.artifactId, '88');
   assert.deepEqual(OWNER_AMENDMENT_ARTIFACT_LIMITS, { maxZipBytes: 2 * 1024 * 1024 });
   assert.equal(requests.find(request => request.url.endsWith('/actions/artifacts/88/zip')).options.redirect, 'follow');
+});
+
+test('accepts captured GitHub self BLOCK metadata with PR head SHA and rejects base SHA as the head', async () => {
+  const f = capturedSelfBlockFixture();
+  const result = await retrieve(f, { expected: f.captured });
+  assert.equal(result.status, 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
+  assert.equal(result.baseSha, f.captured.baseSha);
+  assert.equal(result.headSha, f.captured.headSha);
+  assert.deepEqual(result.zipBytes, f.zip);
+
+  const wrongHead = await retrieve(f, { expected: { ...f.captured, headSha: f.captured.baseSha } });
+  assert.equal(wrongHead.status, 'INCOMPLETE');
+  assert.match(wrongHead.reason, /head, attempt, or run ID differs/);
 });
 
 test('rejects wrong run context, metadata, expiration, and digest', async t => {

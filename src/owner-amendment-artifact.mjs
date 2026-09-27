@@ -83,6 +83,9 @@ export async function fetchOwnerAmendmentBlockArtifact({ expected, token, fetchI
     // The unqualified endpoint describes the latest attempt. A retried run can
     // therefore hide the metadata for the exact producer attempt being checked.
     const run = await getJson(`${api}/repos/${repo}/actions/runs/${runId}/attempts/${runAttempt}`);
+    // REST run.head_sha and artifact.workflow_run.head_sha identify the PR head
+    // for our observed pull_request_target producer. They are distinct from the
+    // event's GITHUB_SHA, which identifies the protected base workflow revision.
     if (String(run.id) !== String(expected.runId) || run.event !== 'pull_request_target' ||
         run.repository?.full_name !== expected.repository ||
         run.head_repository?.full_name !== expected.repository || run.head_sha !== expected.headSha ||
