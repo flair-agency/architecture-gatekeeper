@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Run tests
+        run: npm test
+      - name: Pack, install, and smoke-test the distributable package
+        run: |
+          npm pack --ignore-scripts --json > "$RUNNER_TEMP/pack.json"
+          ARCHIVE="$(node -p "require('$RUNNER_TEMP/pack.json')[0].filename")"
+          case "$ARCHIVE" in
+            ''|*/*) echo "npm pack returned an unsafe archive name" >&2; exit 1 ;;
+          esac
+          ARCHIVE_PATH="$GITHUB_WORKSPACE/$ARCHIVE"
+          test -f "$ARCHIVE_PATH"
+          node -e "const p=require(process.argv[1])[0]; const names=new Set(p.files.map(f=>f.path)); for (const required of ['package.json','README.md','docs/architecture.md','docs/integration-reference.md','src/local-gate.mjs','src/manual-review.mjs','src/native-review.mjs']) if (!names.has(required)) throw new Error('archive missing '+required)" "$RUNNER_TEMP/pack.json"
+          mkdir "$RUNNER_TEMP/install"
+          cd "$RUNNER_TEMP/install"
+          npm init -y >/dev/null
+          npm install --ignore-scripts --offline "$ARCHIVE_PATH"
+          node "$GITHUB_WORKSPACE/test/installed-smoke.mjs" "$PWD/node_modules/.bin"
