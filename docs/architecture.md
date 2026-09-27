@@ -933,33 +933,45 @@ above and an explicit previous-base policy opt-in:
 
 | Concern | Self reference selection |
 | --- | --- |
-| Completed `BLOCK` bytes | Exact, versioned ReviewRecord in a GitHub Actions artifact |
+| Initial `BLOCK` transport | Exact, versioned ReviewRecord in a GitHub Actions artifact |
 | Producer provenance | GitHub artifact attestation over those exact bytes, verified against the selected protected producer workflow, revision, run and attempt |
+| Transition evidence | Versioned annotated amendment tag targeting exact B and binding the completed ReviewRecord bytes, the verifiable attestation bundle bytes and AmendmentRecord; the tag ref is protected against update and deletion |
 | Protected B transition | Required check on a `merge_group`, GitHub merge queue using a merge commit, and post-merge canonical readback; the merge commit retains exact B as its second parent |
 | Git history | Linear history is not a requirement of this self profile; required checks and PR protection remain |
 
 ```mermaid
 flowchart LR
     A[A reviewed] --> BL[Completed BLOCK]
-    BL --> E[Artifact bytes + verified attestation]
-    E --> B[Exact authority-only B and tag]
-    B --> Q[Required merge_group check]
-    Q --> M[Merge commit retains exact B]
+    BL --> E[Actions artifact bytes + verified attestation]
+    E --> T[Protected versioned annotated tag targets exact B and binds record, bundle, AmendmentRecord]
+    T --> Q[Required merge_group check revalidates tag ref, evidence, prior policy, and exact B]
+    Q --> M[Protected transition; merge commit retains exact B]
     M --> C[Canonical readback]
     C --> R[A reviewed afresh]
 ```
 
-The selected artifact must be retrievable and its attestation verifiable
-through B's canonical transition. If it is lost beforehand, the pending B is
-`INCOMPLETE`; an authorized fresh review may produce a new completed `BLOCK`
-and requires B's record and tag to be rebound to that new evidence. A queue
-check rerun by itself does not prove that separately deletable evidence remains
-valid until the transition. The first deployment must demonstrate the final
-validation/transition ordering and the complete A → BLOCK → B → canonical →
-A fresh-review cycle before reporting `OWNER_AMENDMENT / G0` or releasing
-v0.6.0. This profile selects no private-repository provenance adapter,
-linear-history rewrite binding, or squash/rebase adoption route. G0 still
-reports principal authentication as `not_verified`.
+At the protected-tag handoff, the Actions artifact must be retrievable and its
+attestation verifiable. The exact completed ReviewRecord bytes and attestation
+bundle bytes must be copied into the tag and bound by its AmendmentRecord.
+The verifier must establish byte-for-byte identity and validate the producer
+provenance before relying on the tag. After that verified handoff, the original
+Actions artifact need not remain available through B's canonical transition;
+the protected tag becomes the transition evidence source. Its versioned tag
+object must target exact B, bind the exact evidence and applicable previous
+protected-base policy, and its remote ref must be protected against update and
+deletion. The final required `merge_group` validation and host ordering must
+establish those properties through the protected canonical transition; a
+point-in-time read or successful check alone is insufficient. Missing or
+unverifiable source evidence before handoff, tag content, tag-ref protection,
+policy, or transition ordering leaves B `INCOMPLETE`. A queue check rerun by
+itself does not establish evidence validity through transition. A fresh
+completed `BLOCK` requires B's AmendmentRecord and tag to be rebound to that
+new evidence. The first deployment must demonstrate the complete A → BLOCK →
+tag handoff → B → canonical → A fresh-review cycle before reporting
+`OWNER_AMENDMENT / G0` or releasing v0.6.0. This profile selects no
+private-repository provenance adapter, linear-history rewrite binding, or
+squash/rebase adoption route. G0 still reports principal authentication as
+`not_verified`.
 
 Dogfooding means exercising every major path the repository requires of
 consumers, not merely invoking the reusable CI workflow. Before broader rollout
