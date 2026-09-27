@@ -23,6 +23,12 @@ BLOCK record disappears, a permitted fresh review can yield a new BLOCK, with
 new B bindings; the old bytes cannot be reconstructed from a digest. See
 [#78](https://github.com/flair-agency/architecture-gatekeeper/issues/78) and
 [#83](https://github.com/flair-agency/architecture-gatekeeper/issues/83).
+The owner has selected a compact
+[v0.6.0 public/self reference profile](architecture.md#development-sequence-and-v060-self-reference-profile-owner-decision):
+Actions artifact plus artifact attestation for the `BLOCK`, and required
+`merge_group` checks plus a merge commit for exact B identity. Selection is
+not E2E verification or permission to claim the route before final ordering
+and canonical readback are proven.
 
 ```mermaid
 flowchart TD
@@ -125,10 +131,12 @@ change. It is not a permanent hosting guarantee or proof of `OWNER_AMENDMENT`:
 
 - `flair-agency/architecture-gatekeeper` is **public**. `main` has branch
   protection with `architecture-gate / accept` required from the GitHub Actions
-  App, strict base freshness, and force-push/deletion disabled. These controls
-  are available for a public repository on GitHub Free. The repository ruleset
-  API returned no rulesets during this readback; the branch protection rule
-  supplies these current controls.
+  App, strict base freshness, linear history required, and force-push/deletion
+  disabled. The selected v0.6.0 merge-commit profile therefore requires a
+  later reviewed host-rule change; this guide does not make that change. These
+  controls are available for a public repository on GitHub Free. The
+  repository ruleset API returned no rulesets during this readback; the
+  branch protection rule supplies these current controls.
 - [The caller workflow](../.github/workflows/self-architecture-gate.yml)
   invokes [the reusable Gate](../.github/workflows/architecture-gate.yml) on
   non-draft pull requests. It requests protected review instructions and
@@ -137,10 +145,11 @@ change. It is not a permanent hosting guarantee or proof of `OWNER_AMENDMENT`:
   It has **no `ownerAmendment` opt-in**. `OWNER_AMENDMENT / G0` cannot be inferred
   from this repository's successful ordinary `PASS` checks.
 - #83 exercised test-only real-PR BLOCK production and GitHub artifact
-  attestation in this public repo. The probe workflow triggers were removed;
-  its [investigation report](investigations/2026-09-25-real-pr-block-probe-implementation.md)
-  and test-only verifier remain. Those observations do not establish a live
-  B adoption or enable production G0.
+  attestation. Its [investigation report](investigations/2026-09-25-real-pr-block-probe-implementation.md)
+  and test-only verifier remain. An [isolated merge-queue probe](https://github.com/flair-agency/architecture-gatekeeper/pull/155)
+  also reran a required check on `merge_group` and preserved the exact PR head
+  as a merge commit parent. Neither probe establishes final BLOCK evidence
+  validity or enables production G0; the temporary probe ruleset was removed.
 
 Inspect the *current* host configuration before using this example:
 
