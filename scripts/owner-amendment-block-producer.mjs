@@ -33,6 +33,25 @@ function git(args, binary = false) {
 }
 function protectedBytes(baseSha, path) { return git(['show', `${baseSha}:${path}`], true); }
 
+export function parseGithubMergeCommit(raw, expectedSha) {
+  let commit;
+  try { commit = JSON.parse(raw); } catch { throw new Error('GitHub merge commit response is malformed.'); }
+  const parents = commit?.parents;
+  if (!SHA.test(expectedSha ?? '') || commit?.sha !== expectedSha || !Array.isArray(parents) ||
+      parents.length !== 2 || !parents.every(parent => SHA.test(parent?.sha ?? ''))) {
+    throw new Error('GitHub merge commit identity or parents are invalid.');
+  }
+  return parents.map(parent => parent.sha);
+}
+
+function githubMergeParents(repository, mergeSha) {
+  if (!REPOSITORY.test(repository ?? '') || !SHA.test(mergeSha ?? '')) throw new Error('Invalid GitHub merge commit lookup.');
+  const raw = execFileSync('gh', ['api', `repos/${repository}/git/commits/${mergeSha}`], {
+    encoding: 'utf8', maxBuffer: MAX_BYTES, timeout: 10_000, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  return parseGithubMergeCommit(raw, mergeSha);
+}
+
 export function validateRecordedContext({ context, event, repository, workflowSha, workflowRef, parents }) {
   const pr = event?.pull_request;
   const sha = [context?.baseSha, context?.headSha, context?.mergeSha, context?.workflowSha];
@@ -100,7 +119,7 @@ export function main() {
   const recorded = jsonBytes(checkedBytes(readFileSync('.agk-block-record-input/recorded-context.json'), 'recorded context', 65_536), 'recorded context');
   const repository = process.env.GITHUB_REPOSITORY;
   const workflowSha = process.env.GITHUB_WORKFLOW_SHA;
-  const parents = git(['rev-list', '--parents', '-n', '1', recorded.context.mergeSha]).trim().split(' ').slice(1);
+  const parents = githubMergeParents(repository, recorded.context.mergeSha);
   const event = jsonBytes(checkedBytes(readFileSync('.agk-block-record-input/event.json'), 'GitHub event', 262_144), 'GitHub event');
   const context = validateRecordedContext({ context: recorded.context, event, repository, workflowSha,
     workflowRef: process.env.GITHUB_WORKFLOW_REF, parents });

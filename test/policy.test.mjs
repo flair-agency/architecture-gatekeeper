@@ -316,7 +316,8 @@ test('produces attested BLOCK records only in a credential-separated signer job'
   assert.match(recordJob, /permissions:\n      contents: read\n      id-token: write\n      attestations: write/);
   assert.doesNotMatch(recordJob, /OPENAI_API_KEY|secrets\.OPENAI_API_KEY/);
   assert.match(recordJob, /name: Check out the protected base only\n        uses: actions\/checkout@v5\n        with:\n          ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}\n          fetch-depth: 1/);
-  assert.match(recordJob, /name: Fetch the reviewed merge commit as a Git object\n        env:\n          PR_NUMBER: \$\{\{ github\.event\.pull_request\.number \}\}\n        run: git fetch --no-tags origin "refs\/pull\/\$PR_NUMBER\/merge"/);
+  assert.doesNotMatch(recordJob, /git fetch|refs\/pull\/\$PR_NUMBER\/merge/);
+  assert.match(recordJob, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.doesNotMatch(recordJob, /working-directory: candidate|path: candidate|ref: refs\/pull\//);
   assert.match(recordJob, /RECORD_DIR: \.agk-block-record-input/);
   assert.match(recordJob, /cp "\$GITHUB_EVENT_PATH" "\$RECORD_DIR\/event\.json"/);

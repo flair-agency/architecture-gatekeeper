@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { produceOwnerAmendmentBlock, validateRecordedContext } from '../scripts/owner-amendment-block-producer.mjs';
+import { parseGithubMergeCommit, produceOwnerAmendmentBlock, validateRecordedContext } from '../scripts/owner-amendment-block-producer.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', args, { encoding: 'buffer' });
@@ -33,6 +33,14 @@ test('accepts only merge context bound to the recorded protected base, head, and
   assert.throws(() => validateRecordedContext({ context, event, repository, workflowSha: baseSha, workflowRef, parents: [context.headSha, baseSha] }));
   assert.throws(() => validateRecordedContext({ context: { ...context, unknown: true }, event, repository, workflowSha: baseSha, workflowRef, parents }));
   assert.throws(() => validateRecordedContext({ context, event, repository, workflowSha: baseSha, workflowRef: `${repository}/.github/workflows/other.yml@refs/heads/main`, parents }));
+});
+
+test('accepts only the exact GitHub merge commit and two expected parent SHAs', () => {
+  const response = JSON.stringify({ sha: context.mergeSha, parents: parents.map(value => ({ sha: value })) });
+  assert.deepEqual(parseGithubMergeCommit(response, context.mergeSha), parents);
+  assert.throws(() => parseGithubMergeCommit(response, 'd'.repeat(40)), /identity or parents/);
+  assert.throws(() => parseGithubMergeCommit(JSON.stringify({ sha: context.mergeSha, parents: [parents[0]] }), context.mergeSha), /identity or parents/);
+  assert.throws(() => parseGithubMergeCommit('{', context.mergeSha), /malformed/);
 });
 
 test('re-derives protected digests and builds deterministic BLOCK record from exact decision bytes', () => {
