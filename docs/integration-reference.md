@@ -315,6 +315,11 @@ not serialized by this group. The report job already holds the
 `pull-requests: write` token; no credential is passed to the reviewer. Output
 schemas without `findings` remain compatible.
 
+Inline review delivery currently targets the GitHub.com public API only. The
+reporter rejects another API origin or malformed repository, PR-number, or
+head-SHA context before making comment API requests; GitHub Enterprise Server
+delivery is not supported by this integration.
+
 `OWNER_DECISION` fails the current accept check. A missing decision belongs in
 a separate authority-only B; an implementation PR cannot use authority added
 in its own head to resolve its protected-base review. A previous-base policy

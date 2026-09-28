@@ -16,6 +16,24 @@ const DECISIONS = new Set(['PASS', 'BLOCK', 'OWNER_DECISION']);
 const AUTHORITY_ID = /^[a-z][a-z0-9-]{0,63}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
+const GITHUB_COM_API = 'https://api.github.com';
+
+export function sanitizeReportApiContext({ apiUrl, repository, pullRequest, expectedHead }) {
+  let parsed;
+  try { parsed = new URL(apiUrl); } catch { throw new Error('Invalid GitHub API URL.'); }
+  if (parsed.origin !== GITHUB_COM_API || parsed.pathname !== '/' || parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error('Report API must use the GitHub.com public API origin.');
+  }
+  if (typeof repository !== 'string' || !REPOSITORY.test(repository)) throw new Error('Invalid GitHub repository identity.');
+  const rawPullRequest = String(pullRequest ?? '');
+  if (!/^\d{1,16}$/.test(rawPullRequest)) throw new Error('Invalid pull request number.');
+  const pullRequestNumber = BigInt(rawPullRequest);
+  if (pullRequestNumber < 1n || pullRequestNumber > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Invalid pull request number.');
+  if (typeof expectedHead !== 'string' || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(expectedHead)) {
+    throw new Error('Invalid pull request head SHA.');
+  }
+  return { apiUrl: GITHUB_COM_API, repository, pullRequest: pullRequestNumber.toString(), expectedHead };
+}
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -491,21 +509,33 @@ async function main() {
     throw new Error('Legacy authority provenance does not match this pull request.');
   }
   let inlineDelivery = null;
+  let reportApiContext = null;
   try {
-    inlineDelivery = await postInlineReview({
-      apiUrl: process.env.GITHUB_API_URL || 'https://api.github.com',
+    reportApiContext = sanitizeReportApiContext({
+      apiUrl: process.env.GITHUB_API_URL || GITHUB_COM_API,
       repository: process.env.GITHUB_REPOSITORY,
       pullRequest: process.env.PR_NUMBER,
-      token: process.env.GITHUB_TOKEN,
       expectedHead: process.env.HEAD_SHA,
-      findings: classified.decision?.findings,
     });
-    for (const item of inlineDelivery.checked || []) {
-      if (!item.valid) console.warn(`::warning title=Architecture Gate inline finding deferred::Finding ${item.index + 1}: ${cleanText(item.reason, 300)}`);
-    }
   } catch (error) {
-    inlineDelivery = { status: 'unavailable', reason: cleanText(error.message, 500) };
-    console.warn(`::warning title=Architecture Gate inline review unavailable::${inlineDelivery.reason}`);
+    console.warn(`::warning title=Architecture Gate report API context rejected::${cleanText(error.message, 300)}`);
+  }
+  if (reportApiContext) {
+    try {
+      inlineDelivery = await postInlineReview({
+        ...reportApiContext,
+        token: process.env.GITHUB_TOKEN,
+        findings: classified.decision?.findings,
+      });
+      for (const item of inlineDelivery.checked || []) {
+        if (!item.valid) console.warn(`::warning title=Architecture Gate inline finding deferred::Finding ${item.index + 1}: ${cleanText(item.reason, 300)}`);
+      }
+    } catch (error) {
+      inlineDelivery = { status: 'unavailable', reason: cleanText(error.message, 500) };
+      console.warn(`::warning title=Architecture Gate inline review unavailable::${inlineDelivery.reason}`);
+    }
+  } else if (classified.decision?.findings?.length) {
+    inlineDelivery = { status: 'unavailable', reason: 'report API context failed validation' };
   }
   if (inlineDelivery?.status && inlineDelivery.status !== 'skipped') {
     console.log(`Architecture Gate inline review: ${inlineDelivery.status}${inlineDelivery.count ? ` (${inlineDelivery.count} finding(s))` : ''}${inlineDelivery.reason ? ` (${inlineDelivery.reason})` : ''}`);
@@ -524,10 +554,11 @@ async function main() {
   if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, report);
   if (process.env.REPORT_PATH) await writeFile(process.env.REPORT_PATH, report);
   try {
+    if (!reportApiContext) throw new Error('Report API context failed validation.');
     const result = await upsertPullRequestComment({
-      apiUrl: process.env.GITHUB_API_URL || 'https://api.github.com',
-      repository: process.env.GITHUB_REPOSITORY,
-      pullRequest: process.env.PR_NUMBER,
+      apiUrl: reportApiContext.apiUrl,
+      repository: reportApiContext.repository,
+      pullRequest: reportApiContext.pullRequest,
       token: process.env.GITHUB_TOKEN,
       body: report,
     });

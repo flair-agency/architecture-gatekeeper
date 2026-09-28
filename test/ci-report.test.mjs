@@ -1,6 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COMMENT_MARKER, classifyReview, digestDecision, parseLegacyAuthorityProvenance, postInlineReview, renderReport, upsertPullRequestComment, validateInlineFindings } from '../src/ci-report.mjs';
+import { COMMENT_MARKER, classifyReview, digestDecision, parseLegacyAuthorityProvenance, postInlineReview, renderReport, sanitizeReportApiContext, upsertPullRequestComment, validateInlineFindings } from '../src/ci-report.mjs';
+
+test('sanitizes report API context to GitHub.com and canonical PR identity', () => {
+  assert.deepEqual(sanitizeReportApiContext({ apiUrl: 'https://api.github.com/', repository: 'flair-agency/architecture-gatekeeper',
+    pullRequest: '000191', expectedHead: 'a'.repeat(40) }), {
+    apiUrl: 'https://api.github.com', repository: 'flair-agency/architecture-gatekeeper', pullRequest: '191', expectedHead: 'a'.repeat(40),
+  });
+  for (const context of [
+    { apiUrl: 'https://attacker.example', repository: 'o/r', pullRequest: '1', expectedHead: 'a'.repeat(40) },
+    { apiUrl: 'https://api.github.com.evil/', repository: 'o/r', pullRequest: '1', expectedHead: 'a'.repeat(40) },
+    { apiUrl: 'https://user@api.github.com/', repository: 'o/r', pullRequest: '1', expectedHead: 'a'.repeat(40) },
+    { apiUrl: 'https://api.github.com/repos/o/r', repository: 'o/r', pullRequest: '1', expectedHead: 'a'.repeat(40) },
+    { apiUrl: 'https://api.github.com', repository: 'o/r?x=evil', pullRequest: '1', expectedHead: 'a'.repeat(40) },
+    { apiUrl: 'https://api.github.com', repository: 'o/r', pullRequest: '1/../../x', expectedHead: 'a'.repeat(40) },
+    { apiUrl: 'https://api.github.com', repository: 'o/r', pullRequest: '1', expectedHead: 'A'.repeat(40) },
+  ]) assert.throws(() => sanitizeReportApiContext(context));
+});
 
 test('legacy provenance binds base/head, policy and selected authority in report', () => {
   const provenance = { version: 1, baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), reviewedSha: '2'.repeat(40),
