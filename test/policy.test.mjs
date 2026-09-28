@@ -242,6 +242,12 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
   assert.match(workflow, /report:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
+  const reportJob = workflow.match(/  report:\n([\s\S]*?)\n  accept:/)?.[1];
+  const reviewJob = workflow.match(/  review:\n([\s\S]*?)\n  block-review-record:/)?.[1];
+  assert.ok(reportJob);
+  assert.ok(reviewJob);
+  assert.match(reportJob, /concurrency:\n      group: architecture-gate-report-\$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \}\}\n      cancel-in-progress: false/);
+  assert.doesNotMatch(reviewJob, /concurrency:/);
   assert.doesNotMatch(workflow, /owner-decision-environment/);
   assert.doesNotMatch(workflow, /owner-decision-preflight/);
   assert.doesNotMatch(workflow, /Require protected owner approval/);

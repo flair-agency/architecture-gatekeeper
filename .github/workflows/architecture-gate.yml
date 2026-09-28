@@ -595,6 +595,9 @@ jobs:
   report:
     if: always()
     needs: [policy, review, owner-addition]
+    concurrency:
+      group: architecture-gate-report-${{ github.workflow }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
     permissions:
       contents: read
       pull-requests: write

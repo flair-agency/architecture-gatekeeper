@@ -92,6 +92,12 @@ review path. It does not publish raw Codex JSONL, per-request API cost, or proof
 of the provider's effective service tier; missing or malformed usage remains
 unavailable for cost attribution.
 
+Consumers can optionally declare structured `findings` in their decision
+schema to receive verified added/deleted-line feedback in one non-accepting
+GitHub `COMMENT` review. The existing job summary and sticky report remain the
+fallback. See the [CI integration reference](docs/integration-reference.md)
+for location validation, bounds and rerun behavior.
+
 ## Assurance boundary
 
 - Consumers own architecture and policy; this package only executes the
