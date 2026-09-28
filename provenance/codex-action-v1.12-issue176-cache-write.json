@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "repository": "flair-agency/codex-action",
+  "upstreamRepository": "openai/codex-action",
+  "upstreamPullRequest": 151,
+  "gatekeeperPullRequest": 4,
+  "baseCommit": "86365089eb2b84e0a8fb0717b304f8bdcb13b20e",
+  "baseTree": "81b31f506095e8ae70a5512d4981972de179878a",
+  "headCommit": "fd900e4108e7a526da3e955a6b56408802f03223",
+  "headTree": "b6540107342eb666cf1df89b44e1fae530ba2705",
+  "commits": [
+    "49f62e0f958fd4c896f05380a482bf2f0fc26938",
+    "728f32df85ecf0d0287368bebbcaf54df7303ca6",
+    "f93255fd2e5a17a0b4bd557599535e80c8607537",
+    "c6863b2a6bacada3af28a5e5bd636030601ff801",
+    "977c833ab1447b3a2dd3c0cea2be4d5d458d6387",
+    "acb3f892339d669c3d0c9b5a6093aaf5b220032e",
+    "63b3a418e1f9efa046cc017c350f1af647076cc3",
+    "7848e6a2e3dbd49348411616f65450afcaf8bb91",
+    "f0e5e120244b92378e96557fe3325f912b1c5efa",
+    "fd900e4108e7a526da3e955a6b56408802f03223"
+  ],
+  "files": {
+    "dist/main.js": "975166845eff340ca50e5ea5465013fa593fad62ef1c5e4ea145852015d90252",
+    "src/runCodexExec.ts": "94913739459a78774f555891b5671178ac0d2c44d40117e778265ad5f06d655e",
+    "test/runCodexExec.test.mjs": "c7054bb611f665765549fab95ecdbfea263c477dab045575b5433a06312e4580",
+    "test/runCodexExecStreams.test.mjs": "a4af0a39da2ad570376d8b00e1fecceb58e8fe6f9da55f3afaa19600194d859f"
+  }
+}

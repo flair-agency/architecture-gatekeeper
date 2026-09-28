@@ -3,14 +3,14 @@
   "state": "unpromoted-fixture",
   "action": {
     "repository": "flair-agency/codex-action",
-    "commit": "7848e6a2e3dbd49348411616f65450afcaf8bb91",
-    "tree": "96ec704678686d138b06d877491e2331f7a6d207",
+    "commit": "fd900e4108e7a526da3e955a6b56408802f03223",
+    "tree": "b6540107342eb666cf1df89b44e1fae530ba2705",
     "entrypoint": "dist/main.js",
-    "entrypointSha256": "8edb07fcb39f905be13a113bb818f8e63785138e14144d998304c09579430286"
+    "entrypointSha256": "975166845eff340ca50e5ea5465013fa593fad62ef1c5e4ea145852015d90252"
   },
   "procedure": {
     "epoch": 1,
-    "sha256": "d8d116eaf80096bb3c7ca99748e24bcb848f2bdc33ba4f2900dea38fc75e73f3"
+    "sha256": "301b232a6f43b909c44d59c593c9eb5fad077bff955b05f7f73ab9cae0c4ff90"
   },
   "verification": {
     "result": "not-recorded"
