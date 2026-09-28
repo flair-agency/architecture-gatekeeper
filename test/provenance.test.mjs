@@ -18,10 +18,10 @@ const observed = {
 };
 
 test('accepts the complete reviewed Codex Action provenance', () => {
-  assert.equal(manifest.gatekeeperPullRequest, 7);
-  assert.equal(manifest.headCommit, 'e47781445af6df3039f835c86ee5bbf4a61d80fe');
+  assert.equal(manifest.gatekeeperPullRequest, 8);
+  assert.equal(manifest.headCommit, 'a08d8428145bbbe903d46d6b41c9585690c13d16');
   assert.equal(manifest.commits.at(-1), manifest.headCommit);
-  assert.equal(manifest.files['test/dropSudo.test.mjs'], '6855e9c5a87a49db3041fc980693069ed004c1ba5f52f1567d5c9bbd93b3775f');
+  assert.equal(manifest.files['test/dropSudo.test.mjs'], 'b4b3761842ac5c4af6cf6dc24e63feb981ccdf20c8cf3dabdc441e3d46deb2c4');
   assert.equal(verifyProvenance(manifest, observed), true);
 });
 
