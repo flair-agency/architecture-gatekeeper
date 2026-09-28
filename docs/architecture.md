@@ -375,10 +375,11 @@ verified route; no G0 fallback.
 B-specific semantic eligibility is a common `OWNER_AMENDMENT` invariant,
 independent of trigger. Review the exact authority-only B against the full
 previous protected policy and Authority Set; confirm it materially addresses
-its declared trigger and target, makes no unrelated or unsupported completion
-claims, and leaves the resulting authority coherent. Assess resulting rules
-without requiring agreement with superseded rules. This does not impose a
-universal one-file limit or decision ID. Before merge, a trusted producer must
+its declared trigger and amends only its target decision; exclude unrelated
+changes, implementation/workflow/executable-policy edits and unsupported
+completion claims, and leave resulting authority coherent. Assess resulting
+rules without requiring agreement with superseded rules. This does not impose
+a universal one-file limit or decision ID. Before merge, a trusted producer must
 issue versioned eligibility evidence binding exact B, trigger profile and
 ReviewRecord digest, AmendmentRecord, and previous policy/Set; validate record
 bytes and producer provenance. `merge_group` deterministically revalidates
