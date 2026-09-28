@@ -103,16 +103,11 @@ async function githubJson(fetchImpl, url, headers) {
   return response.json();
 }
 
-async function githubList(fetchImpl, firstUrl, headers, maxItems = 3_000) {
+async function githubList(fetchPage, pageSize = 100, maxItems = 3_000) {
   const values = [];
-  const endpoint = new URL(firstUrl);
-  const pageSize = Number(endpoint.searchParams.get('per_page')) || 100;
   let pageNumber = 1;
   while (values.length < maxItems) {
-    endpoint.searchParams.set('page', String(pageNumber));
-    const response = await fetchImpl(endpoint.toString(), { headers });
-    if (!response.ok) throw new Error(`GitHub API returned HTTP ${response.status}`);
-    const page = await response.json();
+    const page = await fetchPage(pageNumber);
     if (!Array.isArray(page)) throw new Error('GitHub API returned an invalid list response');
     values.push(...page.slice(0, maxItems - values.length));
     if (page.length < pageSize) break;
@@ -132,11 +127,19 @@ export async function postInlineReview({ fetchImpl = fetch, apiUrl, repository, 
   const currentHead = pr?.head?.sha;
   if (currentHead !== expectedHead) return { status: 'fallback', reason: 'pull request head changed during reporting',
     checked: validateInlineFindings(findings, { expectedHead, currentHead, files: [] }) };
-  const files = await githubList(fetchImpl, `${root}/pulls/${pullRequest}/files?per_page=100`, headers, 3_000);
+  const files = await githubList(async pageNumber => {
+    const response = await fetchImpl(`${root}/pulls/${pullRequest}/files?per_page=100&page=${pageNumber}`, { headers });
+    if (!response.ok) throw new Error(`list pull request files returned HTTP ${response.status}`);
+    return response.json();
+  }, 100, 3_000);
   const checked = validateInlineFindings(findings, { expectedHead, currentHead, files });
   const valid = checked.filter(item => item.valid);
   if (!valid.length) return { status: 'fallback', reason: 'no findings have a valid changed-line location', checked };
-  const existingComments = await githubList(fetchImpl, `${root}/pulls/${pullRequest}/comments?per_page=100`, headers);
+  const existingComments = await githubList(async pageNumber => {
+    const response = await fetchImpl(`${root}/pulls/${pullRequest}/comments?per_page=100&page=${pageNumber}`, { headers });
+    if (!response.ok) throw new Error(`list pull request review comments returned HTTP ${response.status}`);
+    return response.json();
+  });
   const existing = new Set(existingComments.filter(item => item?.commit_id === expectedHead)
     .flatMap(item => [...String(item.body || '').matchAll(/<!-- architecture-gatekeeper:inline:v1:([a-f0-9]{64}) -->/g)].map(match => match[1])));
   const pending = valid.filter(item => !existing.has(item.key));
@@ -440,7 +443,11 @@ export async function upsertPullRequestComment({ fetchImpl = fetch, apiUrl, repo
     'x-github-api-version': '2022-11-28',
   };
   const root = `${apiUrl}/repos/${repository}`;
-  const comments = await githubList(fetchImpl, `${root}/issues/${pullRequest}/comments?per_page=100`, headers);
+  const comments = await githubList(async pageNumber => {
+    const response = await fetchImpl(`${root}/issues/${pullRequest}/comments?per_page=100&page=${pageNumber}`, { headers });
+    if (!response.ok) throw new Error(`list issue comments returned HTTP ${response.status}`);
+    return response.json();
+  });
   const existing = comments.find((comment) => comment?.user?.login === 'github-actions[bot]' && comment?.body?.includes(COMMENT_MARKER));
   const url = existing ? `${root}/issues/comments/${existing.id}` : `${root}/issues/${pullRequest}/comments`;
   const response = await fetchImpl(url, { method: existing ? 'PATCH' : 'POST', headers, body: JSON.stringify({ body }) });
