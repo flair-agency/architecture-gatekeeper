@@ -174,7 +174,7 @@ test('updates the existing bot comment and ignores lookalike user comments', asy
   assert.match(calls[1].url, /issues\/comments\/11$/);
 });
 
-test('follows comment pagination before updating the marker-owned comment', async () => {
+test('paginates fixed comment endpoint and ignores response-provided Link URLs', async () => {
   const calls = [];
   const fetchImpl = async (url, options) => {
     calls.push({ url, options });
@@ -182,7 +182,7 @@ test('follows comment pagination before updating the marker-owned comment', asyn
       return {
         ok: true,
         json: async () => Array.from({ length: 100 }, (_, id) => ({ id, user: { login: 'someone' }, body: 'ordinary comment' })),
-        headers: { get: () => '<https://api.test/repos/o/r/issues/7/comments?per_page=100&page=2>; rel="next", <https://api.test/repos/o/r/issues/7/comments?per_page=100&page=2>; rel="last"' },
+        headers: { get: () => '<https://attacker.invalid/steal-token?page=2>; rel="next", <https://attacker.invalid/steal-token?page=9>; rel="last"' },
       };
     }
     if (calls.length === 2) {
@@ -196,7 +196,9 @@ test('follows comment pagination before updating the marker-owned comment', asyn
   };
   const result = await upsertPullRequestComment({ fetchImpl, apiUrl: 'https://api.test', repository: 'o/r', pullRequest: '7', token: 'token', body: COMMENT_MARKER });
   assert.deepEqual(result, { status: 'updated' });
-  assert.match(calls[1].url, /page=2/);
+  assert.match(calls[0].url, /^https:\/\/api\.test\/repos\/o\/r\/issues\/7\/comments\?per_page=100&page=1$/);
+  assert.match(calls[1].url, /^https:\/\/api\.test\/repos\/o\/r\/issues\/7\/comments\?per_page=100&page=2$/);
+  assert.doesNotMatch(calls.map(call => call.url).join('\n'), /attacker\.invalid/);
   assert.match(calls[2].url, /issues\/comments\/101$/);
 });
 

@@ -105,14 +105,18 @@ async function githubJson(fetchImpl, url, headers) {
 
 async function githubList(fetchImpl, firstUrl, headers, maxItems = 3_000) {
   const values = [];
-  let url = firstUrl;
-  while (url && values.length < maxItems) {
-    const response = await fetchImpl(url, { headers });
+  const endpoint = new URL(firstUrl);
+  const pageSize = Number(endpoint.searchParams.get('per_page')) || 100;
+  let pageNumber = 1;
+  while (values.length < maxItems) {
+    endpoint.searchParams.set('page', String(pageNumber));
+    const response = await fetchImpl(endpoint.toString(), { headers });
     if (!response.ok) throw new Error(`GitHub API returned HTTP ${response.status}`);
     const page = await response.json();
     if (!Array.isArray(page)) throw new Error('GitHub API returned an invalid list response');
     values.push(...page.slice(0, maxItems - values.length));
-    url = response.headers?.get?.('link')?.match(/<([^>]+)>;\s*rel="next"/)?.[1] || '';
+    if (page.length < pageSize) break;
+    pageNumber += 1;
   }
   return values;
 }
@@ -436,17 +440,8 @@ export async function upsertPullRequestComment({ fetchImpl = fetch, apiUrl, repo
     'x-github-api-version': '2022-11-28',
   };
   const root = `${apiUrl}/repos/${repository}`;
-  let commentsUrl = `${root}/issues/${pullRequest}/comments?per_page=100`;
-  let existing;
-  while (commentsUrl) {
-    const listed = await fetchImpl(commentsUrl, { headers });
-    if (!listed.ok) throw new Error(`list comments returned HTTP ${listed.status}`);
-    const comments = await listed.json();
-    existing = comments.find((comment) => comment?.user?.login === 'github-actions[bot]' && comment?.body?.includes(COMMENT_MARKER));
-    if (existing) break;
-    const link = listed.headers?.get?.('link') || '';
-    commentsUrl = link.match(/<([^>]+)>;\s*rel="next"/)?.[1] || '';
-  }
+  const comments = await githubList(fetchImpl, `${root}/issues/${pullRequest}/comments?per_page=100`, headers);
+  const existing = comments.find((comment) => comment?.user?.login === 'github-actions[bot]' && comment?.body?.includes(COMMENT_MARKER));
   const url = existing ? `${root}/issues/comments/${existing.id}` : `${root}/issues/${pullRequest}/comments`;
   const response = await fetchImpl(url, { method: existing ? 'PATCH' : 'POST', headers, body: JSON.stringify({ body }) });
   if (!response.ok) throw new Error(`${existing ? 'update' : 'create'} comment returned HTTP ${response.status}`);
