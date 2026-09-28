@@ -161,10 +161,10 @@ The shared package owns reusable mechanics:
   contract is implemented and selected;
 - reporting an authoritative acceptance result according to protected policy.
 
-Semantic review may return `PASS`, `BLOCK`, or `OWNER_DECISION`.
-`OWNER_DECISION` is an escalation that requires a decision to be recorded in
-canonical consumer authority. These are review decisions, not the complete set
-of acceptance outcomes. `OWNER_DECISION` is not an alternate form of acceptance.
+Semantic review may return `PASS`, `BLOCK`, or `OWNER_DECISION`. The latter is
+an escalation requiring a decision in canonical consumer authority. Review
+decisions are not the complete set of acceptance outcomes; `OWNER_DECISION`
+is not an alternate form of acceptance.
 `OWNER_ADDITION` and `OWNER_AMENDMENT` are separate authority-governance
 results. Their distinction is the authority change: addition supplies a
 missing decision; amendment changes, replaces, removes, or refines an existing
@@ -316,25 +316,22 @@ historical results retain their original single-member interpretation and
 limits; a verifier must reject ambiguous version mixing rather than upgrade
 them by reinterpretation.
 
-This authorized target requires implementation, focused negative verification,
-and the synthetic fixture E2E below for v0.5.1 package release. It does not
-activate a real consumer: representative LIVE Agency E2E remains its separate
-activation prerequisite. Issue #120 owns legacy PR-head authority repair;
-consumer-specific decision classification and rule amendments cannot replace
-the fixture's A/B lifecycle.
+This target requires implementation, focused negative verification and the
+synthetic fixture E2E below for v0.5.1 package release. It does not activate a
+real consumer; representative LIVE Agency E2E remains a separate prerequisite.
+Issue #120 owns legacy PR-head authority repair; consumer-specific decision
+classification and rule amendments cannot replace the fixture A/B lifecycle.
 
 #### v0.5.1 public fixture full-cycle release gate (owner decision)
 
-The owner selected the public
-`flair-agency/architecture-gatekeeper-v05-fixture` repository as the v0.5.1
-release E2E. With synthetic consumer data, the fixture must demonstrate the
-complete sequence:
+The public `flair-agency/architecture-gatekeeper-v05-fixture` is the v0.5.1
+release E2E. With synthetic data it must demonstrate:
 
 1. Change A receives an ordinary `OWNER_DECISION` with its exact
    `ownerDecisionId`.
-2. Authority-only Change B binds that decision, is assessed against the complete
-   selected Authority Set, and reports `eligible` before merge. This is not a
-   semantic `PASS` for B or A.
+2. Authority-only B binds that decision, is assessed against the complete
+   selected Authority Set, and reports `eligible` before merge, not semantic
+   `PASS` for B or A.
 3. The exact eligible B is adopted by an ordinary pull-request merge commit
    whose first parent is the recorded base, second parent is exact B, and tree
    equals B's tree.
@@ -343,10 +340,9 @@ complete sequence:
 5. A is reviewed freshly against the resulting canonical authority and returns
    `PASS` under the fixture's normal review policy.
 
-The Issue #119 and #121 eligibility, binding, merge, and readback conditions
-still apply. A's earlier `OWNER_DECISION` remains historical; fresh `PASS` is
-a new result. Passing this package-release fixture proves no real consumer's
-readiness, policy selection, owner authorization, or host enforcement.
+Issues #119/#121 conditions still apply. A's earlier `OWNER_DECISION` remains
+historical; fresh `PASS` is new. Fixture success proves no real consumer's
+readiness, policy, owner authorization or host enforcement.
 
 ### Target owner-amendment governance (Issue #75 owner decision)
 
@@ -359,41 +355,46 @@ owner choice to change an existing decision; a missing-decision addition still
 belongs to `OWNER_ADDITION`. The originally reviewed Change A remains rejected
 until B becomes canonical and A receives a fresh review where A exists.
 
-The BLOCK-evidence procedure below is one versioned amendment trigger profile.
-Its historical-BLOCK requirements apply to that profile and do not establish
-a general requirement that every amendment originate in `BLOCK`. A distinct
-OWNER_DECISION trigger profile must specify exact completed review evidence,
-predecessor authority binding, the owner procedure, protected producer and
-transition checks before it can be selected. No policy may infer that profile
-from a tag or candidate-authored claim, and no new profile is enabled by this
-definition alone. In particular, a candidate B cannot select its own route or
-use its proposed policy to authorize its adoption.
+The procedures below are versioned trigger profiles: BLOCK evidence is
+specific to its profile and is not required for all amendments. Each profile
+must specify exact completed review evidence, predecessor binding, owner
+procedure, protected producer and transition checks. A tag or candidate claim
+cannot infer or enable a profile; B cannot select its route or authorize its
+adoption through proposed policy.
 
 The owner adopts profile `completed-owner-decision-self-v1`. The exact
 completed ReviewRecord digest identifies escalation/revision, not human choice
 or identity. AmendmentRecord and deliberate annotated tag bind exact B, target
-existing decision, trigger ReviewRecord digest, prior/resulting Sets and purpose: proposed
-resolution, not authenticated approval. At G0, `principalAuthentication` and
-`exactClaimAuthorization` are `not_verified`; the owner procedure is prior-policy-authorized
-declaration and protected adoption, not proof of owner approval. Stronger
-assurance needs a separate verified route; no G0 fallback.
+existing decision, trigger ReviewRecord digest, prior/resulting Sets and
+purpose: proposed resolution, not authenticated approval. At G0,
+`principalAuthentication` and `exactClaimAuthorization` are `not_verified`;
+the owner procedure is prior-policy-authorized declaration and protected
+adoption, not proof of owner approval. Stronger assurance needs a separate
+verified route; no G0 fallback.
 
-B-specific semantic review of the full previous protected Authority Set must
-confirm B resolves escalation, amends only the target decision, excludes
-unrelated changes, implementation/workflow/executable-policy edits, and
-unsupported completion claims, and leaves resulting authority coherent. Assess
-resulting rules without requiring agreement with the superseded rule. Before
-merge, produce versioned eligibility evidence bound to exact B, AmendmentRecord,
-the exact trigger ReviewRecord digest and previous policy/Set; verify both
-records' bytes and trusted producer provenance.
-`merge_group` deterministically checks these, the trigger ReviewRecord,
-protected tag and transition; trigger/tag alone is insufficient. Only
-previous-base policy opts in/scopes; B cannot self-authorize. Preserve the
-historical `OWNER_DECISION`. This B-self profile is not a general trigger. If
-prior policy cannot authorize first opt-in, use owner-controlled bootstrap.
-Contract entry alone enables no route.
+B-specific semantic eligibility is a common `OWNER_AMENDMENT` invariant,
+independent of trigger. Review the exact authority-only B against the full
+previous protected policy and Authority Set; confirm it materially addresses
+its declared trigger and target, makes no unrelated or unsupported completion
+claims, and leaves the resulting authority coherent. Assess resulting rules
+without requiring agreement with superseded rules. This does not impose a
+universal one-file limit or decision ID. Before merge, a trusted producer must
+issue versioned eligibility evidence binding exact B, trigger profile and
+ReviewRecord digest, AmendmentRecord, and previous policy/Set; validate record
+bytes and producer provenance. `merge_group` deterministically revalidates
+eligibility, trigger evidence, protected tag and transition, failing closed on
+missing, stale, mismatched or unverifiable evidence. The profiles retain their
+own trigger-specific evidence and semantic questions: this profile preserves
+the historical `OWNER_DECISION` and assesses resolution of its escalation;
+the BLOCK profile below requires a completed BLOCK and assesses resolution of
+the identified conflict. Only previous-base policy opts in and scopes a route;
+B cannot self-authorize. If prior policy cannot authorize first opt-in, use
+owner-controlled bootstrap. Contract entry alone enables no route.
 
-The first BLOCK-triggered implementation may accept Change B at governance
+For BLOCK-triggered amendments, the exact completed `BLOCK` must identify the
+conflict that B's semantic eligibility assesses. Preserve that historical
+result; B never changes it to `PASS`. The first BLOCK-triggered implementation
+may accept Change B at governance
 grade `G0` when the **previous protected-base policy** explicitly authorizes
 that grade for
 the affected authority and amendment scope. `G0` still requires a deliberate,
