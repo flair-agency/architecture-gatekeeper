@@ -372,7 +372,7 @@ use its proposed policy to authorize its adoption.
 The owner adopts profile `completed-owner-decision-self-v1`. The exact
 completed ReviewRecord digest identifies escalation/revision, not human choice
 or identity. AmendmentRecord and deliberate annotated tag bind exact B, target
-existing decision, prior/resulting Authority Sets and purpose: proposed
+existing decision, trigger ReviewRecord digest, prior/resulting Sets and purpose: proposed
 resolution, not authenticated approval. At G0, `principalAuthentication` and
 `exactClaimAuthorization` are `not_verified`; the owner procedure is prior-policy-authorized
 declaration and protected adoption, not proof of owner approval. Stronger
@@ -383,8 +383,9 @@ confirm B resolves escalation, amends only the target decision, excludes
 unrelated changes, implementation/workflow/executable-policy edits, and
 unsupported completion claims, and leaves resulting authority coherent. Assess
 resulting rules without requiring agreement with the superseded rule. Before
-merge, produce versioned eligibility evidence bound to exact B, AmendmentRecord
-and previous policy/Set; verify bytes and trusted producer provenance.
+merge, produce versioned eligibility evidence bound to exact B, AmendmentRecord,
+the exact trigger ReviewRecord digest and previous policy/Set; verify both
+records' bytes and trusted producer provenance.
 `merge_group` deterministically checks these, the trigger ReviewRecord,
 protected tag and transition; trigger/tag alone is insufficient. Only
 previous-base policy opts in/scopes; B cannot self-authorize. Preserve the
