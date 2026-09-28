@@ -86,6 +86,12 @@ policy, prompt, schema, and optional validation policy in the consuming
 repository. See the [integration reference](docs/integration-reference.md) for
 the complete workflow example and protected-base behavior.
 
+The reviewer job emits bounded numeric Codex usage and tool counts to its
+Actions log when the pinned Action supplies them. This includes the ordinary
+review path. It does not publish raw Codex JSONL, per-request API cost, or proof
+of the provider's effective service tier; missing or malformed usage remains
+unavailable for cost attribution.
+
 ## Assurance boundary
 
 - Consumers own architecture and policy; this package only executes the
