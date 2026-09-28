@@ -10,10 +10,30 @@ export const COMMENT_MARKER = '<!-- architecture-gatekeeper:result:v1 -->';
 const OWNER_INTERVENTION_URL = 'https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/owner-intervention.md';
 const MAX_ITEM_LENGTH = 2_000;
 const MAX_REPORT_LENGTH = 60_000;
+const MAX_INLINE_FINDINGS = 20;
+const INLINE_MARKER = '<!-- architecture-gatekeeper:inline:v1:';
 const DECISIONS = new Set(['PASS', 'BLOCK', 'OWNER_DECISION']);
 const AUTHORITY_ID = /^[a-z][a-z0-9-]{0,63}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
+const GITHUB_COM_API = 'https://api.github.com';
+
+export function sanitizeReportApiContext({ apiUrl, repository, pullRequest, expectedHead }) {
+  let parsed;
+  try { parsed = new URL(apiUrl); } catch { throw new Error('Invalid GitHub API URL.'); }
+  if (parsed.origin !== GITHUB_COM_API || parsed.pathname !== '/' || parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error('Report API must use the GitHub.com public API origin.');
+  }
+  if (typeof repository !== 'string' || !REPOSITORY.test(repository)) throw new Error('Invalid GitHub repository identity.');
+  const rawPullRequest = String(pullRequest ?? '');
+  if (!/^\d{1,16}$/.test(rawPullRequest)) throw new Error('Invalid pull request number.');
+  const pullRequestNumber = BigInt(rawPullRequest);
+  if (pullRequestNumber < 1n || pullRequestNumber > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Invalid pull request number.');
+  if (typeof expectedHead !== 'string' || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(expectedHead)) {
+    throw new Error('Invalid pull request head SHA.');
+  }
+  return { apiUrl: GITHUB_COM_API, repository, pullRequest: pullRequestNumber.toString(), expectedHead };
+}
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -26,6 +46,150 @@ function canonicalize(value) {
 export function digestDecision(decision) {
   if (!decision || typeof decision !== 'object') return '';
   return createHash('sha256').update(JSON.stringify(canonicalize(decision))).digest('hex');
+}
+
+function normalizeFindingPath(path) {
+  if (typeof path !== 'string' || !path || path.length > 240 || path.startsWith('/') || path.includes('\\') ||
+      path.split('/').some(part => !part || part === '.' || part === '..')) return null;
+  return path;
+}
+
+function changedLines(file) {
+  const added = new Set();
+  const deleted = new Set();
+  if (file?.status === 'renamed' || file?.previous_filename) return { added, deleted, reason: 'renamed files are not supported for inline locations' };
+  if (!Number.isInteger(file?.additions) || file.additions < 0 || !Number.isInteger(file?.deletions) || file.deletions < 0) {
+    return { added, deleted, reason: 'diff addition/deletion counts are missing or invalid' };
+  }
+  const patch = file?.patch;
+  if (typeof patch !== 'string' || !patch) return { added, deleted, reason: 'diff patch is missing or binary' };
+  let oldLine = 0;
+  let newLine = 0;
+  let oldExpected = 0;
+  let newExpected = 0;
+  let oldSeen = 0;
+  let newSeen = 0;
+  let hasHunk = false;
+  const finishHunk = () => !hasHunk || (oldSeen === oldExpected && newSeen === newExpected);
+  const rows = patch.split('\n');
+  if (rows.at(-1) === '') rows.pop();
+  for (const row of rows) {
+    const hunk = row.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
+    if (hunk) {
+      if (!finishHunk()) return { added: new Set(), deleted: new Set(), reason: 'diff patch is truncated' };
+      hasHunk = true;
+      oldLine = Number(hunk[1]); newLine = Number(hunk[3]);
+      oldExpected = Number(hunk[2] ?? 1); newExpected = Number(hunk[4] ?? 1);
+      oldSeen = 0; newSeen = 0;
+      continue;
+    }
+    if (!hasHunk) return { added: new Set(), deleted: new Set(), reason: 'diff patch has invalid hunk data' };
+    if (row.startsWith('\\')) continue;
+    if (row.startsWith('+')) { added.add(newLine++); newSeen += 1; }
+    else if (row.startsWith('-')) { deleted.add(oldLine++); oldSeen += 1; }
+    else if (row.startsWith(' ')) { oldLine += 1; newLine += 1; oldSeen += 1; newSeen += 1; }
+    else return { added: new Set(), deleted: new Set(), reason: 'diff patch has invalid hunk data' };
+  }
+  if (!hasHunk || !finishHunk()) return { added: new Set(), deleted: new Set(), reason: 'diff patch is truncated' };
+  if (added.size !== file.additions || deleted.size !== file.deletions) {
+    return { added: new Set(), deleted: new Set(), reason: 'diff patch is incomplete or truncated relative to API file counts' };
+  }
+  return { added, deleted, reason: '' };
+}
+
+export function validateInlineFindings(findings, { expectedHead, currentHead, files }) {
+  if (!Array.isArray(findings)) return [];
+  const byPath = new Map((Array.isArray(files) ? files : []).map(file => [file.filename, changedLines(file)]));
+  const seen = new Set();
+  return findings.slice(0, MAX_INLINE_FINDINGS).map((finding, index) => {
+    const body = typeof finding?.body === 'string' ? finding.body.trim() : '';
+    const title = typeof finding?.title === 'string' ? finding.title.trim() : '';
+    const location = finding?.location;
+    let reason = '';
+    if (!title || title.length > 200 || !body || body.length > 2_000 || /[\r\n]/.test(title)) reason = 'invalid finding text';
+    else if (!expectedHead || expectedHead !== currentHead) reason = 'pull request head changed during reporting';
+    else if (!location || typeof location !== 'object') reason = 'finding has no inline location';
+    else if (!normalizeFindingPath(location.path) || !Number.isInteger(location.line) || location.line < 1 || !['LEFT', 'RIGHT'].includes(location.side)) reason = 'invalid inline location';
+    else if (byPath.get(location.path)?.reason) reason = byPath.get(location.path).reason;
+    else if (!byPath.get(location.path)?.[location.side === 'RIGHT' ? 'added' : 'deleted'].has(location.line)) reason = `location is not a ${location.side === 'RIGHT' ? 'added' : 'deleted'} line in the pull request diff`;
+    const canonicalLocation = location && typeof location === 'object'
+      ? { path: location.path, line: location.line, side: location.side } : null;
+    const key = createHash('sha256').update(JSON.stringify({ head: expectedHead, title, body, location: canonicalLocation })).digest('hex');
+    if (seen.has(key)) reason = 'duplicate finding in this result';
+    seen.add(key);
+    return { index, title, body, location, key, valid: !reason, reason };
+  });
+}
+
+async function githubJson(fetchImpl, url, headers) {
+  const response = await fetchImpl(url, { headers });
+  if (!response.ok) throw new Error(`GitHub API returned HTTP ${response.status}`);
+  return response.json();
+}
+
+async function githubList(fetchPage, pageSize = 100, maxItems = 3_000) {
+  const values = [];
+  let pageNumber = 1;
+  while (values.length < maxItems) {
+    const page = await fetchPage(pageNumber);
+    if (!Array.isArray(page)) throw new Error('GitHub API returned an invalid list response');
+    values.push(...page.slice(0, maxItems - values.length));
+    if (page.length < pageSize) break;
+    pageNumber += 1;
+  }
+  return values;
+}
+
+export async function postInlineReview({ fetchImpl = fetch, apiUrl, repository, pullRequest, token,
+  expectedHead, findings }) {
+  if (!Array.isArray(findings) || findings.length === 0) return { status: 'skipped', reason: 'no structured findings were supplied' };
+  if (!token || !repository || !pullRequest) return { status: 'skipped', reason: 'comment credentials or pull request context unavailable' };
+  const headers = { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`,
+    'content-type': 'application/json', 'x-github-api-version': '2022-11-28' };
+  const root = `${apiUrl}/repos/${repository}`;
+  const pr = await githubJson(fetchImpl, `${root}/pulls/${pullRequest}`, headers);
+  const currentHead = pr?.head?.sha;
+  if (currentHead !== expectedHead) return { status: 'fallback', reason: 'pull request head changed during reporting',
+    checked: validateInlineFindings(findings, { expectedHead, currentHead, files: [] }) };
+  const files = await githubList(async pageNumber => {
+    const response = await fetchImpl(`${root}/pulls/${pullRequest}/files?per_page=100&page=${pageNumber}`, { headers });
+    if (!response.ok) throw new Error(`list pull request files returned HTTP ${response.status}`);
+    return response.json();
+  }, 100, 3_000);
+  const checked = validateInlineFindings(findings, { expectedHead, currentHead, files });
+  const valid = checked.filter(item => item.valid);
+  if (!valid.length) return { status: 'fallback', reason: 'no findings have a valid changed-line location', checked };
+  const existingComments = await githubList(async pageNumber => {
+    const response = await fetchImpl(`${root}/pulls/${pullRequest}/comments?per_page=100&page=${pageNumber}`, { headers });
+    if (!response.ok) throw new Error(`list pull request review comments returned HTTP ${response.status}`);
+    return response.json();
+  });
+  const existing = new Set(existingComments.filter(item => item?.user?.login === 'github-actions[bot]' && item?.commit_id === expectedHead)
+    .flatMap(item => [...String(item.body || '').matchAll(/<!-- architecture-gatekeeper:inline:v1:([a-f0-9]{64}) -->/g)].map(match => match[1])));
+  const pending = valid.filter(item => !existing.has(item.key));
+  if (!pending.length) return { status: 'unchanged', checked };
+  const latest = await githubJson(fetchImpl, `${root}/pulls/${pullRequest}`, headers);
+  if (latest?.head?.sha !== expectedHead) return { status: 'fallback', reason: 'pull request head changed immediately before inline review creation',
+    checked: checked.map(item => ({ ...item, valid: false, reason: 'pull request head changed immediately before inline review creation' })) };
+  const comments = pending.map(item => ({ path: item.location.path, line: item.location.line, side: item.location.side,
+    body: `**${cleanText(item.title, 200)}**\n\n${cleanText(item.body)}\n\n${INLINE_MARKER}${item.key} -->` }));
+  const response = await fetchImpl(`${root}/pulls/${pullRequest}/reviews`, { method: 'POST', headers,
+    body: JSON.stringify({ commit_id: expectedHead, event: 'COMMENT', comments }) });
+  if (!response.ok) throw new Error(`create inline review returned HTTP ${response.status}`);
+  return { status: 'created', count: pending.length, checked };
+}
+
+function renderFindings(findings, delivery) {
+  if (!Array.isArray(findings) || !findings.length) return '';
+  const checked = new Map((delivery?.checked || []).map(item => [item.index, item]));
+  const status = delivery?.status ? `${delivery.status}${delivery.reason ? `: ${delivery.reason}` : ''}` : 'not attempted';
+  return `\n**Reviewer findings**\n\nInline delivery: **${cleanText(status, 300)}**\n\n${findings.slice(0, MAX_INLINE_FINDINGS).map((finding, index) => {
+    const location = finding?.location && normalizeFindingPath(finding.location.path) && Number.isInteger(finding.location.line) && ['LEFT', 'RIGHT'].includes(finding.location.side)
+      ? `\`${cleanText(finding.location.path, 240)}:${finding.location.line} ${finding.location.side}\`` : 'no inline location';
+    const check = checked.get(index);
+    const outcome = check ? check.valid ? 'posted or already present' : `deferred: ${check.reason}` : delivery?.status === 'created' || delivery?.status === 'unchanged' ? 'included in inline review' : delivery?.status === 'fallback' || delivery?.status === 'unavailable' || delivery?.status === 'skipped' ? `deferred: ${delivery.reason || 'delivery unavailable'}` : 'not eligible for inline delivery';
+    return `${index + 1}. **${cleanText(finding?.title || 'Finding', 200)}** (${location}; ${cleanText(outcome, 300)}) — ${cleanText(finding?.body || '')}`;
+  }).join('\n')}\n`;
 }
 
 export function parseAuthorityProvenance(encoded, required = false) {
@@ -236,6 +400,7 @@ export function renderReport(classified, metadata = {}) {
     const runReference = metadata.runUrl ? `[Actions run](${cleanText(metadata.runUrl, 1_000)})` : 'Actions run';
     body += `\nInspect the ${runReference} to identify the cause. If the CI reviewer is unavailable because of API, billing, model, credential, or service failure, follow [CI review unavailable](${OWNER_INTERVENTION_URL}#ci-review-unavailable). This result is not a PASS.\n`;
   }
+  body += renderFindings(decision?.findings, metadata.inlineDelivery);
   if (classified.conclusion === 'OWNER_ADDITION_G0') {
     const p = metadata.ownerAdditionProcedure;
     body += '\nThis is a procedural acceptance result for authority-only B, not semantic PASS for B or A. Tag actor or owner identity was not authenticated. A requires a fresh review after B becomes canonical. A later tag-ref change is not covered by this check.\n';
@@ -302,17 +467,12 @@ export async function upsertPullRequestComment({ fetchImpl = fetch, apiUrl, repo
     'x-github-api-version': '2022-11-28',
   };
   const root = `${apiUrl}/repos/${repository}`;
-  let commentsUrl = `${root}/issues/${pullRequest}/comments?per_page=100`;
-  let existing;
-  while (commentsUrl) {
-    const listed = await fetchImpl(commentsUrl, { headers });
-    if (!listed.ok) throw new Error(`list comments returned HTTP ${listed.status}`);
-    const comments = await listed.json();
-    existing = comments.find((comment) => comment?.user?.login === 'github-actions[bot]' && comment?.body?.includes(COMMENT_MARKER));
-    if (existing) break;
-    const link = listed.headers?.get?.('link') || '';
-    commentsUrl = link.match(/<([^>]+)>;\s*rel="next"/)?.[1] || '';
-  }
+  const comments = await githubList(async pageNumber => {
+    const response = await fetchImpl(`${root}/issues/${pullRequest}/comments?per_page=100&page=${pageNumber}`, { headers });
+    if (!response.ok) throw new Error(`list issue comments returned HTTP ${response.status}`);
+    return response.json();
+  });
+  const existing = comments.find((comment) => comment?.user?.login === 'github-actions[bot]' && comment?.body?.includes(COMMENT_MARKER));
   const url = existing ? `${root}/issues/comments/${existing.id}` : `${root}/issues/${pullRequest}/comments`;
   const response = await fetchImpl(url, { method: existing ? 'PATCH' : 'POST', headers, body: JSON.stringify({ body }) });
   if (!response.ok) throw new Error(`${existing ? 'update' : 'create'} comment returned HTTP ${response.status}`);
@@ -354,6 +514,38 @@ async function main() {
       legacyAuthorityProvenance.reviewedSha !== process.env.REVIEWED_SHA)) {
     throw new Error('Legacy authority provenance does not match this pull request.');
   }
+  let inlineDelivery = null;
+  let reportApiContext = null;
+  try {
+    reportApiContext = sanitizeReportApiContext({
+      apiUrl: process.env.GITHUB_API_URL || GITHUB_COM_API,
+      repository: process.env.GITHUB_REPOSITORY,
+      pullRequest: process.env.PR_NUMBER,
+      expectedHead: process.env.HEAD_SHA,
+    });
+  } catch (error) {
+    console.warn(`::warning title=Architecture Gate report API context rejected::${cleanText(error.message, 300)}`);
+  }
+  if (reportApiContext) {
+    try {
+      inlineDelivery = await postInlineReview({
+        ...reportApiContext,
+        token: process.env.GITHUB_TOKEN,
+        findings: classified.decision?.findings,
+      });
+      for (const item of inlineDelivery.checked || []) {
+        if (!item.valid) console.warn(`::warning title=Architecture Gate inline finding deferred::Finding ${item.index + 1}: ${cleanText(item.reason, 300)}`);
+      }
+    } catch (error) {
+      inlineDelivery = { status: 'unavailable', reason: cleanText(error.message, 500) };
+      console.warn(`::warning title=Architecture Gate inline review unavailable::${inlineDelivery.reason}`);
+    }
+  } else if (classified.decision?.findings?.length) {
+    inlineDelivery = { status: 'unavailable', reason: 'report API context failed validation' };
+  }
+  if (inlineDelivery?.status && inlineDelivery.status !== 'skipped') {
+    console.log(`Architecture Gate inline review: ${inlineDelivery.status}${inlineDelivery.count ? ` (${inlineDelivery.count} finding(s))` : ''}${inlineDelivery.reason ? ` (${inlineDelivery.reason})` : ''}`);
+  }
   const report = renderReport(classified, {
     reviewedSha: process.env.REVIEWED_SHA,
     headSha: process.env.HEAD_SHA,
@@ -362,15 +554,17 @@ async function main() {
     authorityProvenance,
     legacyAuthorityProvenance,
     ownerAdditionProcedure,
+    inlineDelivery,
   });
   const decisionDigest = digestDecision(classified.decision);
   if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, report);
   if (process.env.REPORT_PATH) await writeFile(process.env.REPORT_PATH, report);
   try {
+    if (!reportApiContext) throw new Error('Report API context failed validation.');
     const result = await upsertPullRequestComment({
-      apiUrl: process.env.GITHUB_API_URL || 'https://api.github.com',
-      repository: process.env.GITHUB_REPOSITORY,
-      pullRequest: process.env.PR_NUMBER,
+      apiUrl: reportApiContext.apiUrl,
+      repository: reportApiContext.repository,
+      pullRequest: reportApiContext.pullRequest,
       token: process.env.GITHUB_TOKEN,
       body: report,
     });
