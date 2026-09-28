@@ -72,14 +72,17 @@ export async function runOwnerAmendmentHandoff({ env = process.env, fetchImpl = 
       workflowPath: '.github/workflows/self-architecture-gate.yml', workflowRef, workflowSha: selected.baseSha };
     const tagger = { name: 'Architecture Gatekeeper', email: 'architecture-gatekeeper@users.noreply.github.com',
       date: now().toISOString() };
+    const assertCurrentBContext = async () => {
+      const currentB = await getJson(fetchImpl, token,
+        `/repos/${encodeURIComponent(selected.repository.split('/')[0])}/${encodeURIComponent(selected.repository.split('/')[1])}/pulls/${selected.bPrNumber}`);
+      if (currentB.state !== 'open' || currentB.draft !== false || currentB.head?.sha !== selected.bHeadSha ||
+          currentB.base?.sha !== selected.baseSha || currentB.base?.ref !== 'main') {
+        fail('B PR head or protected previous base changed during tag handoff.');
+      }
+    };
     const guardedFetch = async (url, options = {}) => {
       if (options.method === 'POST' && /\/git\/(?:tags|refs)$/.test(new URL(url).pathname)) {
-        const currentB = await getJson(fetchImpl, token,
-          `/repos/${encodeURIComponent(selected.repository.split('/')[0])}/${encodeURIComponent(selected.repository.split('/')[1])}/pulls/${selected.bPrNumber}`);
-        if (currentB.state !== 'open' || currentB.draft !== false || currentB.head?.sha !== selected.bHeadSha ||
-            currentB.base?.sha !== selected.baseSha || currentB.base?.ref !== 'main') {
-          fail('B PR head or protected base changed immediately before tag mutation.');
-        }
+        await assertCurrentBContext();
       }
       return fetchImpl(url, options);
     };
@@ -90,6 +93,10 @@ export async function runOwnerAmendmentHandoff({ env = process.env, fetchImpl = 
       purpose: 'Amend canonical architecture authority under the previous protected main policy.',
       token, runGh, rulesetId: RULESET_ID, tagger, fetchImpl: guardedFetch });
     if (result.status !== 'TAG_TRANSPORTED_AND_READ_BACK') fail(result.reason ?? 'tag handoff did not complete.');
+    // An existing exact tag takes a GET-only path and may never reach the
+    // mutation guard above. Revalidate the selected B and previous-base pair
+    // before accepting either transport outcome.
+    await assertCurrentBContext();
     return result;
   } catch (error) {
     return Object.freeze({ status: 'INCOMPLETE', reason: error.message });

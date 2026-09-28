@@ -14,13 +14,17 @@ const env = { GITHUB_REPOSITORY: selected.repository, GITHUB_REF: 'refs/heads/ma
 function fixture(overrides = {}) {
   const calls = [];
   let currentBHead = bHeadSha;
+  let currentBBase = baseSha;
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url, options });
     if (url.endsWith('/actions/runs/55/attempts/2')) return { ok: true, json: async () => ({
       head_sha: baseSha, head_branch: 'main', path: '.github/workflows/self-architecture-gate.yml@refs/heads/main',
     }) };
     if (url.endsWith('/pulls/201')) return { ok: true, json: async () => ({ state: 'open', draft: false,
-      head: { sha: currentBHead }, base: { sha: baseSha, ref: 'main' } }) };
+      head: { sha: currentBHead }, base: { sha: currentBBase, ref: 'main' } }) };
+    if (url.includes('/git/ref/') || (url.includes('/git/tags/') && options.method !== 'POST')) {
+      return { ok: true, json: async () => ({}) };
+    }
     if (options.method === 'POST') {
       if (url.endsWith('/git/tags') && overrides.moveAfterTag) currentBHead = 'e'.repeat(40);
       return { ok: true };
@@ -41,6 +45,13 @@ function fixture(overrides = {}) {
   };
   const orchestrate = async input => {
     calls.push({ orchestrate: input });
+    if (overrides.existingTag) {
+      await input.fetchImpl('https://api.github.com/repos/flair-agency/architecture-gatekeeper/git/ref/tags/example');
+      await input.fetchImpl('https://api.github.com/repos/flair-agency/architecture-gatekeeper/git/tags/' + 'd'.repeat(40));
+      if (overrides.moveAfterExistingTagReadback) currentBHead = 'e'.repeat(40);
+      if (overrides.movePreviousBaseAfterExistingTagReadback) currentBBase = 'f'.repeat(40);
+      return { status: 'TAG_TRANSPORTED_AND_READ_BACK', transportStatus: 'ALREADY_PRESENT_AND_READ_BACK' };
+    }
     await input.fetchImpl('https://api.github.com/repos/flair-agency/architecture-gatekeeper/git/tags',
       { method: 'POST' });
     await input.fetchImpl('https://api.github.com/repos/flair-agency/architecture-gatekeeper/git/refs',
@@ -57,7 +68,7 @@ test('runs protected exact-base handoff and re-reads B immediately before tag cr
   const f = fixture();
   const result = await f.run();
   assert.equal(result.status, 'TAG_TRANSPORTED_AND_READ_BACK');
-  assert.equal(f.calls.filter(call => call.url?.endsWith('/pulls/201')).length, 2);
+  assert.equal(f.calls.filter(call => call.url?.endsWith('/pulls/201')).length, 3);
   assert.equal(f.calls.findIndex(call => call.url?.endsWith('/pulls/201')) <
     f.calls.findIndex(call => call.url?.endsWith('/git/tags')), true);
   const orchestrated = f.calls.find(call => call.orchestrate).orchestrate;
@@ -75,7 +86,7 @@ test('fails closed if the candidate B head changes before tag creation', async (
   f.changeBHead('e'.repeat(40));
   const result = await f.run();
   assert.equal(result.status, 'INCOMPLETE');
-  assert.match(result.reason, /immediately before tag mutation/);
+  assert.match(result.reason, /changed during tag handoff/);
   assert.equal(f.calls.some(call => call.url?.endsWith('/git/tags')), false);
 });
 
@@ -83,8 +94,23 @@ test('fails closed if B changes between tag object and protected ref creation', 
   const f = fixture({ moveAfterTag: true });
   const result = await f.run();
   assert.equal(result.status, 'INCOMPLETE');
-  assert.match(result.reason, /immediately before tag mutation/);
+  assert.match(result.reason, /changed during tag handoff/);
   assert.equal(f.calls.some(call => call.url?.endsWith('/git/refs')), false);
+});
+
+test('fails closed when an existing tag readback is followed by a changed B head', async () => {
+  const f = fixture({ existingTag: true, moveAfterExistingTagReadback: true });
+  const result = await f.run();
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /changed during tag handoff/);
+  assert.equal(f.calls.filter(call => call.url?.endsWith('/pulls/201')).length, 1);
+});
+
+test('fails closed when an existing tag readback is followed by a changed previous base', async () => {
+  const f = fixture({ existingTag: true, movePreviousBaseAfterExistingTagReadback: true });
+  const result = await f.run();
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /changed during tag handoff/);
 });
 
 test('requires default-branch repository_dispatch context and GH_TOKEN', async t => {
