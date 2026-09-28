@@ -369,6 +369,30 @@ from a tag or candidate-authored claim, and no new profile is enabled by this
 definition alone. In particular, a candidate B cannot select its own route or
 use its proposed policy to authorize its adoption.
 
+The owner adopts profile `completed-owner-decision-self-v1`. The exact
+completed ReviewRecord digest identifies escalation/revision, not human choice
+or identity. AmendmentRecord and deliberate annotated tag bind exact B, target
+existing decision, trigger ReviewRecord digest, prior/resulting Sets and purpose: proposed
+resolution, not authenticated approval. At G0, `principalAuthentication` and
+`exactClaimAuthorization` are `not_verified`; the owner procedure is prior-policy-authorized
+declaration and protected adoption, not proof of owner approval. Stronger
+assurance needs a separate verified route; no G0 fallback.
+
+B-specific semantic review of the full previous protected Authority Set must
+confirm B resolves escalation, amends only the target decision, excludes
+unrelated changes, implementation/workflow/executable-policy edits, and
+unsupported completion claims, and leaves resulting authority coherent. Assess
+resulting rules without requiring agreement with the superseded rule. Before
+merge, produce versioned eligibility evidence bound to exact B, AmendmentRecord,
+the exact trigger ReviewRecord digest and previous policy/Set; verify both
+records' bytes and trusted producer provenance.
+`merge_group` deterministically checks these, the trigger ReviewRecord,
+protected tag and transition; trigger/tag alone is insufficient. Only
+previous-base policy opts in/scopes; B cannot self-authorize. Preserve the
+historical `OWNER_DECISION`. This B-self profile is not a general trigger. If
+prior policy cannot authorize first opt-in, use owner-controlled bootstrap.
+Contract entry alone enables no route.
+
 The first BLOCK-triggered implementation may accept Change B at governance
 grade `G0` when the **previous protected-base policy** explicitly authorizes
 that grade for
