@@ -297,6 +297,29 @@ result remain available and comment delivery is reported as a warning. Do not
 switch to `pull_request_target` merely to make comments writable while checking
 out or executing pull-request code.
 
+A consumer may add an optional `findings` array to its output schema. Each
+finding has a short `title`, actionable `body`, and optional `location` with a
+repository-relative `path`, `line`, and `side` (`RIGHT` for an added new-file
+line or `LEFT` for a deleted old-file line). The reporter caps this at 20
+findings (200-character titles and 2,000-character bodies), checks the live PR
+head and confirms each location against complete added/deleted diff hunks from
+the PR files API, then posts all new valid findings in one GitHub review with
+event `COMMENT`. Renamed, binary, missing, and truncated patches are deferred
+to the summary. The review is feedback only; it does not affect
+`Architecture Gate / accept`.
+Unlocated, invalid, stale-head, or unpostable findings remain in the job
+summary/sticky report, and delivery/API errors produce a warning. A stable
+per-head finding marker and a report-job-only PR concurrency group prevent
+reposting the same finding on reruns; semantic review and acceptance jobs are
+not serialized by this group. The report job already holds the
+`pull-requests: write` token; no credential is passed to the reviewer. Output
+schemas without `findings` remain compatible.
+
+Inline review delivery currently targets the GitHub.com public API only. The
+reporter rejects another API origin or malformed repository, PR-number, or
+head-SHA context before making comment API requests; GitHub Enterprise Server
+delivery is not supported by this integration.
+
 `OWNER_DECISION` fails the current accept check. A missing decision belongs in
 a separate authority-only B; an implementation PR cannot use authority added
 in its own head to resolve its protected-base review. A previous-base policy
