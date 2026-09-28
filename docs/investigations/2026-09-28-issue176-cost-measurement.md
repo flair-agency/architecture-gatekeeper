@@ -102,3 +102,124 @@ identify avoidable spend or establish that a cheaper service tier, model,
 reasoning effort, routing rule, or reduced review frequency preserves semantic
 review quality. Those changes require their own measured comparison and
 protected-policy review.
+
+## Self probe execution record
+
+For the first bounded self probe, record the exact pull request head and
+workflow run/attempt before comparing results. Set the repository variables
+`ARCHITECTURE_GATE_SELF_FLEX=true`, `ARCHITECTURE_GATE_SELF_FLEX_PR` to the
+decimal PR number, and `ARCHITECTURE_GATE_SELF_FLEX_HEAD` to its exact head SHA.
+Remove all three variables after the intended run starts. The caller enables
+Flex only when all three values match that event, so another PR's event cannot
+enter the probe while the variables exist. Verify the run received
+`self-flex-probe=true` and that
+the reviewer actually used Flex; the workflow input alone does not prove the
+provider's effective service tier. Keep the ordinary required check enabled,
+and record any unavailable or failed review as incomplete rather than PASS.
+
+Add the run's duration, result, request and token counts, and provider cost
+only when each value is available from a source tied to that exact attempt.
+Mark missing provider data as unavailable instead of filling it from the
+weekly aggregate.
+
+The merged [Codex Action PR #4](https://github.com/flair-agency/codex-action/pull/4)
+adds a numeric cache-write token field to the action's JSONL telemetry. The
+Architecture Gate now pins its exact merge commit
+`fd900e4108e7a526da3e955a6b56408802f03223` and verifies the reviewed source,
+generated entrypoint, and tests against the protected provenance manifest
+before review credentials are exposed. The emitted field is
+`cache_write_input_tokens`; the action reports `unavailable` when usage data is
+missing or invalid. This makes cache-write tokens observable when the provider
+includes them in the Responses usage event, but it does not provide provider
+cost, request-to-attempt attribution, or evidence of a cache write when the
+field is unavailable.
+
+## First self probe: observed run evidence
+
+The following are two consecutive **PR #178 revisions**, not a controlled
+same-diff comparison. GitHub Actions reports attempt 1 in each case. The
+review job includes checkout and setup, so its duration is not model latency.
+The token number is the Codex CLI's terminal `tokens used` display, not a
+provider usage or billable-token breakdown.
+
+| Run / exact head | Requested tier | Review job (UTC) | Duration | CLI tokens used | Decision / acceptance |
+| --- | --- | --- | ---: | ---: | --- |
+| [36332044377](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/36332044377) / `370e45b6b3212780b473432ca4b1bf989a62b575` | Flex | 2026-09-27 16:08:16–16:09:00 | 44 s | 47,706 | PASS / required accept success |
+| [36332457809](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/36332457809) / `1abcdb734d715d46d21b7aa302261504efbe25eb` | Default | 2026-09-27 16:15:00–16:15:54 | 54 s | 45,581 | PASS / required accept success |
+
+The first run's review job received `self-flex-probe=true` and the Codex
+argument `service_tier='flex'`. The second run had the probe step skipped after
+the temporary variable was removed. The second revision also changes the
+workflow and tests, so the 10-second difference does not establish a tier
+latency effect. Neither log establishes the **effective provider tier**, model
+request count, cache-read/write split, or per-Gate API cost. These fields remain
+`unavailable` until attributable provider records are supplied.
+
+With the pinned Action, the self Flex probe can request Codex JSONL output for
+that exact PR head. The Action consumes the stream in memory and writes only
+numeric turn usage, cached-input token, and tool-start counts to the Actions
+log; it does not persist or print raw JSONL. The ordinary review path did not
+request JSONL for the #184 comparison. The follow-up enables the same bounded
+numeric telemetry there. These Codex-reported token counts remain attempt-level
+runtime observations, not provider billing records or proof of effective tier.
+Malformed or oversized event lines can leave telemetry incomplete without
+changing the Action's final-message or acceptance result.
+
+For the next exact-head probe, capture the Action's numeric telemetry line,
+the review run and attempt, the selected PR head, protected base and reviewed
+merge SHAs, the Gate decision, and the required acceptance result together.
+Compare those observations with a later default-tier run only when all three
+revisions and the review inputs match. The same PR head alone is insufficient:
+an advancing base can change the merge revision and protected inputs.
+Continue to mark billed cost and effective tier unavailable without
+request-level provider evidence.
+
+The owner supplied organization exports covering 2026-08-29 through
+2026-09-28. Both contain **daily buckets**, with no request ID, GitHub run ID,
+or request timestamp. The completion usage export groups by model and service
+tier; the cost export has one organization-wide amount per day. On 2026-09-27
+UTC, they report:
+
+| Export cohort | Requests | Input tokens | Cached input tokens | Cache-write tokens | Output tokens |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `gpt-6-sol` / `flex-tier` | 5 | 166,102 | 120,457 | 45,630 | 2,061 |
+| `gpt-6-sol` / `default` | 284 | 11,711,756 | 9,684,924 | 2,025,980 | 120,792 |
+
+The cost export reports **$11.67463621 for the whole organization on that
+UTC day**; it does not split cost by model, tier, repository, or run. The five
+Flex requests show that the provider processed some `gpt-6-sol` requests at
+Flex tier that day. The export cannot prove which run incurred them, even
+though the intended probe was in that window. Therefore the effective tier,
+request/token split, and API cost of run 36332044377 remain `unavailable` at
+run level. No cost saving can be calculated from these exports.
+
+For 2026-09-21 through 2026-09-27 UTC, these later exports total 2,511 model
+requests and $75.41207220. The earlier issue snapshot gave approximately
+2,483 and $74.69; its export generation time and completeness are unknown.
+Keep both as separately sourced snapshots rather than silently replacing the
+issue's figures. The [official organization usage API](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage)
+documents aggregate buckets and service-tier grouping, but no exact GitHub
+run-attempt join key. Per-Gate cost needs request-level records or a separately
+validated exclusive-use measurement window with an appropriately grouped cost
+source.
+
+## Paired self probe after cache-write telemetry pin
+
+The first run after the Action pin in PR #182 is a necessary runtime check, but
+it cannot by itself prove Flex savings. Use this documentation-only PR as a
+bounded probe candidate. Run the ordinary required self Gate first, then, only
+if its review completes, rerun the **same PR head** with the self Flex selector
+limited to this PR number and exact head SHA. Do not modify the PR head between
+attempts. Record the actual protected base SHA, reviewed merge SHA, model,
+effort, decision, Action pin, review-job duration, and numeric-only Action
+telemetry for each attempt. A matching head without matching base and reviewed
+merge is not a same-input comparison. Clear the temporary selector after the
+Flex attempt starts and verify that it is absent.
+
+This pairing checks whether the newly pinned Action emits cache-write usage
+when the provider supplies it, and describes runtime token/turn differences
+for two comparable attempts. It still cannot establish effective provider
+service tier or billed dollars without attributable provider records. If the
+second attempt would consume excess API credit or the first is incomplete,
+stop the probe and record the incomplete comparison; do not weaken required
+acceptance or substitute another model.

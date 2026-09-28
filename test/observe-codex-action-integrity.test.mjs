@@ -9,7 +9,7 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const bytes = (path) => readFileSync(resolve(root, path));
 const baseline = {
   workflow: bytes('.github/workflows/architecture-gate.yml').toString(),
-  manifest: JSON.parse(bytes('provenance/codex-action-v1.12-pr151.json')),
+  manifest: JSON.parse(bytes('provenance/codex-action-v1.12-issue176-cache-write.json')),
   record: JSON.parse(bytes('provenance/fixtures/codex-action-integrity-candidate-v1.json')),
   procedure: JSON.parse(bytes('provenance/codex-action-integrity-procedure-v1.json')),
   procedureBytes: bytes('provenance/codex-action-integrity-procedure-v1.json'),
@@ -43,9 +43,9 @@ test('changed Action repository with the same SHA does not match checkout', () =
 
 test('changed Action SHA, checkout SHA, tree, entrypoint, or executable digest is rejected', () => {
   const cases = [
-    (args) => { args.workflow = args.workflow.replace('codex-action@f93255', 'codex-action@a93255'); },
-    (args) => { args.workflow = args.workflow.replace('ref: f93255', 'ref: a93255'); },
-    (args) => { args.record.action.tree = `b${args.record.action.tree.slice(1)}`; },
+    (args) => { args.workflow = args.workflow.replace('codex-action@fd900e', 'codex-action@ad900e'); },
+    (args) => { args.workflow = args.workflow.replace('ref: fd900e', 'ref: ad900e'); },
+    (args) => { args.record.action.tree = `c${args.record.action.tree.slice(1)}`; },
     (args) => { args.record.action.entrypoint = 'dist/other.js'; },
     (args) => { args.record.action.entrypointSha256 = `a${args.record.action.entrypointSha256.slice(1)}`; },
   ];
@@ -54,10 +54,10 @@ test('changed Action SHA, checkout SHA, tree, entrypoint, or executable digest i
 
 test('expressions, tags, duplicate review Action, and duplicate uses are rejected', () => {
   const cases = [
-    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537', 'uses: flair-agency/codex-action@${{ github.sha }}'); },
-    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537', 'uses: flair-agency/codex-action@v1'); },
+    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@fd900e4108e7a526da3e955a6b56408802f03223', 'uses: flair-agency/codex-action@${{ github.sha }}'); },
+    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@fd900e4108e7a526da3e955a6b56408802f03223', 'uses: flair-agency/codex-action@v1'); },
     (args) => { args.workflow = args.workflow.replace('      - name: Run read-only architecture review', '      - name: Run read-only architecture review\n      - name: Run read-only architecture review'); },
-    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537', 'uses: flair-agency/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537\n        uses: flair-agency/codex-action@f93255fd2e5a17a0b4bd557599535e80c8607537'); },
+    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@fd900e4108e7a526da3e955a6b56408802f03223', 'uses: flair-agency/codex-action@fd900e4108e7a526da3e955a6b56408802f03223\n        uses: flair-agency/codex-action@fd900e4108e7a526da3e955a6b56408802f03223'); },
   ];
   for (const change of cases) assert.throws(candidate(change));
 });
