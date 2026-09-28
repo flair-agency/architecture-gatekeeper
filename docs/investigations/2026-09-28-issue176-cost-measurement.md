@@ -158,9 +158,10 @@ request count, cache-read/write split, or per-Gate API cost. These fields remain
 With the pinned Action, the self Flex probe can request Codex JSONL output for
 that exact PR head. The Action consumes the stream in memory and writes only
 numeric turn usage, cached-input token, and tool-start counts to the Actions
-log; it does not persist or print raw JSONL. The ordinary review path does not
-request JSONL. These Codex-reported token counts remain attempt-level runtime
-observations, not provider billing records or proof of effective service tier.
+log; it does not persist or print raw JSONL. The ordinary review path did not
+request JSONL for the #184 comparison. The follow-up enables the same bounded
+numeric telemetry there. These Codex-reported token counts remain attempt-level
+runtime observations, not provider billing records or proof of effective tier.
 Malformed or oversized event lines can leave telemetry incomplete without
 changing the Action's final-message or acceptance result.
 
