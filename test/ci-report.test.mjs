@@ -237,7 +237,7 @@ test('validates inline locations only on added diff lines and bounds findings', 
     { title: 'Traversal', body: 'Invalid.', location: { path: '../secret', line: 4, side: 'RIGHT' } },
   ];
   const checked = validateInlineFindings(findings, { expectedHead: 'a'.repeat(40), currentHead: 'a'.repeat(40),
-    files: [{ filename: 'src/a.mjs', patch: inlinePatch }] });
+    files: [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] });
   assert.deepEqual(checked.map(item => item.valid), [true, false, false, false]);
   assert.match(checked[1].reason, /added line/);
   assert.match(checked[2].reason, /no inline location/);
@@ -247,12 +247,12 @@ test('validates inline locations only on added diff lines and bounds findings', 
     { expectedHead: 'a'.repeat(40), currentHead: 'a'.repeat(40), files: [] })[0].reason, 'invalid finding text');
   const deletion = validateInlineFindings([{ title: 'Removed behavior', body: 'This removal breaks callers.',
     location: { path: 'src/deleted.mjs', line: 4, side: 'LEFT' } }],
-  { expectedHead: 'a'.repeat(40), currentHead: 'a'.repeat(40), files: [{ filename: 'src/deleted.mjs', patch: deletedPatch }] });
+  { expectedHead: 'a'.repeat(40), currentHead: 'a'.repeat(40), files: [{ filename: 'src/deleted.mjs', additions: 0, deletions: 2, patch: deletedPatch }] });
   assert.equal(deletion[0].valid, true);
   for (const file of [
-    { filename: 'src/a.mjs', status: 'renamed', previous_filename: 'src/b.mjs', patch: inlinePatch },
-    { filename: 'src/a.mjs', status: 'modified' },
-    { filename: 'src/a.mjs', patch: '@@ -3,2 +4,2 @@\n+truncated' },
+    { filename: 'src/a.mjs', status: 'renamed', previous_filename: 'src/b.mjs', additions: 2, deletions: 0, patch: inlinePatch },
+    { filename: 'src/a.mjs', status: 'modified', additions: 0, deletions: 0 },
+    { filename: 'src/a.mjs', additions: 2, deletions: 0, patch: '@@ -3,2 +4,2 @@\n+truncated' },
   ]) {
     const result = validateInlineFindings([{ title: 'Issue', body: 'Details',
       location: { path: 'src/a.mjs', line: 4, side: 'RIGHT' } }],
@@ -260,8 +260,18 @@ test('validates inline locations only on added diff lines and bounds findings', 
     assert.equal(result[0].valid, false);
     assert.match(result[0].reason, /renamed|missing or binary|truncated/);
   }
+  const omittedLaterHunk = validateInlineFindings([{ title: 'Issue', body: 'Details',
+    location: { path: 'src/a.mjs', line: 4, side: 'RIGHT' } }],
+  { expectedHead: 'a'.repeat(40), currentHead: 'a'.repeat(40), files: [{ filename: 'src/a.mjs', additions: 2, deletions: 0,
+    patch: '@@ -3,0 +4,1 @@\n+first hunk' }] });
+  assert.equal(omittedLaterHunk[0].valid, false);
+  assert.match(omittedLaterHunk[0].reason, /incomplete or truncated relative to API file counts/);
+  const absentCounts = validateInlineFindings([{ title: 'Issue', body: 'Details',
+    location: { path: 'src/a.mjs', line: 4, side: 'RIGHT' } }],
+  { expectedHead: 'a'.repeat(40), currentHead: 'a'.repeat(40), files: [{ filename: 'src/a.mjs', patch: inlinePatch }] });
+  assert.match(absentCounts[0].reason, /counts are missing or invalid/);
   assert.equal(validateInlineFindings(findings, { expectedHead: 'a'.repeat(40), currentHead: 'b'.repeat(40),
-    files: [{ filename: 'src/a.mjs', patch: inlinePatch }] })[0].reason, 'pull request head changed during reporting');
+    files: [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] })[0].reason, 'pull request head changed during reporting');
 });
 
 test('posts one COMMENT review and skips already posted same-head findings', async () => {
@@ -274,7 +284,8 @@ test('posts one COMMENT review and skips already posted same-head findings', asy
     calls.push({ url, options });
     if (url.endsWith('/pulls/7')) return { ok: true, json: async () => ({ head: { sha: 'a'.repeat(40) } }) };
     if (url.includes('/files?')) return { ok: true, json: async () => [
-      { filename: 'src/a.mjs', patch: inlinePatch }, { filename: 'src/deleted.mjs', patch: deletedPatch },
+      { filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch },
+      { filename: 'src/deleted.mjs', additions: 0, deletions: 2, patch: deletedPatch },
     ] };
     if (url.includes('/comments?')) return { ok: true, json: async () => [] };
     return { ok: true, json: async () => ({}) };
@@ -298,11 +309,11 @@ test('falls back on stale head and deduplicates matching review comments', async
   let stale = true;
   const finding = { title: 'Issue', body: 'Explanation', location: { path: 'src/a.mjs', line: 4, side: 'RIGHT' } };
   const digest = validateInlineFindings([finding], { expectedHead: 'a'.repeat(40), currentHead: 'a'.repeat(40),
-    files: [{ filename: 'src/a.mjs', patch: inlinePatch }] })[0].key;
+    files: [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] })[0].key;
   const fetchImpl = async (url) => {
     if (url.endsWith('/pulls/7')) return { ok: true, json: async () => ({ head: { sha: stale ? 'b'.repeat(40) : 'a'.repeat(40) } }) };
-    if (url.includes('/files?')) return { ok: true, json: async () => [{ filename: 'src/a.mjs', patch: inlinePatch }] };
-    if (url.includes('/comments?')) return { ok: true, json: async () => [{ commit_id: 'a'.repeat(40), body: `comment ${'<!-- architecture-gatekeeper:inline:v1:' + digest + ' -->'}` }] };
+    if (url.includes('/files?')) return { ok: true, json: async () => [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] };
+    if (url.includes('/comments?')) return { ok: true, json: async () => [{ user: { login: 'github-actions[bot]' }, commit_id: 'a'.repeat(40), body: `comment ${'<!-- architecture-gatekeeper:inline:v1:' + digest + ' -->'}` }] };
     throw new Error('unexpected write');
   };
   const args = { fetchImpl, apiUrl: 'https://api.test', repository: 'o/r', pullRequest: '7', token: 'token', expectedHead: 'a'.repeat(40), findings: [finding] };
@@ -311,11 +322,34 @@ test('falls back on stale head and deduplicates matching review comments', async
   assert.equal((await postInlineReview(args)).status, 'unchanged');
 });
 
+test('forged or stale-head markers from non-Actions comments do not suppress a review', async () => {
+  const head = 'a'.repeat(40);
+  const finding = { title: 'Issue', body: 'Explanation', location: { path: 'src/a.mjs', line: 4, side: 'RIGHT' } };
+  const key = validateInlineFindings([finding], { expectedHead: head, currentHead: head,
+    files: [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] })[0].key;
+  const posted = [];
+  const fetchImpl = async (url, options = {}) => {
+    if (options.method === 'POST') { posted.push(JSON.parse(options.body)); return { ok: true }; }
+    if (url.endsWith('/pulls/7')) return { ok: true, json: async () => ({ head: { sha: head } }) };
+    if (url.includes('/files?')) return { ok: true, json: async () => [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] };
+    if (url.includes('/comments?')) return { ok: true, json: async () => [
+      { user: { login: 'pull-request-author' }, commit_id: head, body: `<!-- architecture-gatekeeper:inline:v1:${key} -->` },
+      { user: { login: 'github-actions[bot]' }, commit_id: 'b'.repeat(40), body: `<!-- architecture-gatekeeper:inline:v1:${key} -->` },
+    ] };
+    throw new Error(`unexpected URL ${url}`);
+  };
+  const result = await postInlineReview({ fetchImpl, apiUrl: 'https://api.test', repository: 'o/r', pullRequest: '7',
+    token: 'token', expectedHead: head, findings: [finding] });
+  assert.equal(result.status, 'created');
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0].comments.length, 1);
+});
+
 test('finding markers ignore location property insertion order across reruns', () => {
   const expectedHead = 'a'.repeat(40);
   const first = { title: 'Issue', body: 'Explanation', location: { path: 'src/a.mjs', line: 4, side: 'RIGHT' } };
   const reordered = { title: 'Issue', body: 'Explanation', location: { side: 'RIGHT', line: 4, path: 'src/a.mjs' } };
-  const options = { expectedHead, currentHead: expectedHead, files: [{ filename: 'src/a.mjs', patch: inlinePatch }] };
+  const options = { expectedHead, currentHead: expectedHead, files: [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] };
   assert.equal(validateInlineFindings([first], options)[0].key, validateInlineFindings([reordered], options)[0].key);
 });
 
@@ -332,7 +366,7 @@ test('rechecks PR head immediately before POST and renders delivery plus deferra
         reads += 1;
         return { ok: true, json: async () => ({ head: { sha: reads === 1 ? 'a'.repeat(40) : 'b'.repeat(40) } }) };
       }
-      if (url.includes('/files?')) return { ok: true, json: async () => [{ filename: 'src/a.mjs', patch: inlinePatch }] };
+      if (url.includes('/files?')) return { ok: true, json: async () => [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] };
       if (url.includes('/comments?')) return { ok: true, json: async () => [] };
       throw new Error('unexpected request');
     },

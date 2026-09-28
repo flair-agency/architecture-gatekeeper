@@ -58,6 +58,9 @@ function changedLines(file) {
   const added = new Set();
   const deleted = new Set();
   if (file?.status === 'renamed' || file?.previous_filename) return { added, deleted, reason: 'renamed files are not supported for inline locations' };
+  if (!Number.isInteger(file?.additions) || file.additions < 0 || !Number.isInteger(file?.deletions) || file.deletions < 0) {
+    return { added, deleted, reason: 'diff addition/deletion counts are missing or invalid' };
+  }
   const patch = file?.patch;
   if (typeof patch !== 'string' || !patch) return { added, deleted, reason: 'diff patch is missing or binary' };
   let oldLine = 0;
@@ -88,6 +91,9 @@ function changedLines(file) {
     else return { added: new Set(), deleted: new Set(), reason: 'diff patch has invalid hunk data' };
   }
   if (!hasHunk || !finishHunk()) return { added: new Set(), deleted: new Set(), reason: 'diff patch is truncated' };
+  if (added.size !== file.additions || deleted.size !== file.deletions) {
+    return { added: new Set(), deleted: new Set(), reason: 'diff patch is incomplete or truncated relative to API file counts' };
+  }
   return { added, deleted, reason: '' };
 }
 
@@ -158,7 +164,7 @@ export async function postInlineReview({ fetchImpl = fetch, apiUrl, repository, 
     if (!response.ok) throw new Error(`list pull request review comments returned HTTP ${response.status}`);
     return response.json();
   });
-  const existing = new Set(existingComments.filter(item => item?.commit_id === expectedHead)
+  const existing = new Set(existingComments.filter(item => item?.user?.login === 'github-actions[bot]' && item?.commit_id === expectedHead)
     .flatMap(item => [...String(item.body || '').matchAll(/<!-- architecture-gatekeeper:inline:v1:([a-f0-9]{64}) -->/g)].map(match => match[1])));
   const pending = valid.filter(item => !existing.has(item.key));
   if (!pending.length) return { status: 'unchanged', checked };
