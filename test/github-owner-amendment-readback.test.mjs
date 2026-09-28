@@ -72,6 +72,12 @@ test('rejects squash/rebase and wrong previous-base parent', async () => {
   }
 });
 
+test('rejects matching merge parents when the merge tree differs from exact B', async () => {
+  const f = setup();
+  f.responses.get(`${root}/git/commits/${f.mergeSha}`).tree.sha = oid('9');
+  await assert.rejects(verifyGitHubOwnerAmendmentReadback(f.input), /merge commit tree differs from exact B tree/);
+});
+
 test('rejects absent ancestry, changing target ref, or wrong canonical bytes', async () => {
   const ancestry = setup();
   ancestry.responses.get(`${root}/compare/${ancestry.mergeSha}...${ancestry.targetSha}`).merge_base_commit.sha = oid('5');

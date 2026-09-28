@@ -51,6 +51,11 @@ export async function verifyGitHubOwnerAmendmentReadback({ token, repository, ta
       merge.parents[0]?.sha !== previousBaseSha || merge.parents[1]?.sha !== bSha) {
     fail('PR did not produce a two-parent merge commit with the expected previous base and exact B.');
   }
+  const bCommit = await get(`${root}/git/commits/${bSha}`);
+  if (bCommit.sha !== bSha || !HEX40.test(bCommit.tree?.sha ?? '') || !HEX40.test(merge.tree?.sha ?? '') ||
+      bCommit.tree.sha !== merge.tree.sha) {
+    fail('PR merge commit tree differs from exact B tree.');
+  }
 
   const targetRef = await get(`${root}/git/ref/heads/${targetBranch}`);
   const targetSha = targetRef.object?.sha;
@@ -86,6 +91,7 @@ export async function verifyGitHubOwnerAmendmentReadback({ token, repository, ta
       finalTargetRef.object?.sha !== targetSha) fail('current target ref moved during canonical readback.');
   return Object.freeze({ status: 'VERIFIED_OWNER_AMENDMENT_CANONICAL_READBACK',
     repository, pullRequestNumber, targetBranch, previousBaseSha, bSha, mergeSha, targetSha,
+    treeSha: merge.tree.sha,
     mergedAt: new Date(Date.parse(pr.merged_at)).toISOString(), authorityPath,
     authorityDigest: mergeDigest, targetAuthorityDigest: targetDigest,
     assurance: 'canonical readback only; does not establish OWNER_AMENDMENT acceptance' });
