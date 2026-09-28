@@ -201,3 +201,24 @@ documents aggregate buckets and service-tier grouping, but no exact GitHub
 run-attempt join key. Per-Gate cost needs request-level records or a separately
 validated exclusive-use measurement window with an appropriately grouped cost
 source.
+
+## Paired self probe after cache-write telemetry pin
+
+The first run after the Action pin in PR #182 is a necessary runtime check, but
+it cannot by itself prove Flex savings. Use this documentation-only PR as a
+bounded probe candidate. Run the ordinary required self Gate first, then, only
+if its review completes, rerun the **same PR head** with the self Flex selector
+limited to this PR number and exact head SHA. Do not modify the PR head between
+attempts. Record the actual protected base SHA, reviewed merge SHA, model,
+effort, decision, Action pin, review-job duration, and numeric-only Action
+telemetry for each attempt. A matching head without matching base and reviewed
+merge is not a same-input comparison. Clear the temporary selector after the
+Flex attempt starts and verify that it is absent.
+
+This pairing checks whether the newly pinned Action emits cache-write usage
+when the provider supplies it, and describes runtime token/turn differences
+for two comparable attempts. It still cannot establish effective provider
+service tier or billed dollars without attributable provider records. If the
+second attempt would consume excess API credit or the first is incomplete,
+stop the probe and record the incomplete comparison; do not weaken required
+acceptance or substitute another model.
