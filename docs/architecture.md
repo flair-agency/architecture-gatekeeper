@@ -445,7 +445,8 @@ keys and unknown, missing, noncanonical, or invalid fields at every level.
 The exact top-level field set is `version,kind,eligibility,repository,baseSha,
 bSha,triggerProfile,triggerReviewRecordSha256,amendmentRecordSha256,
 policyRevision,policySha256,authoritySetDigest,authorityIds,changes,diffSha256,
-promptSha256,schemaSha256,decisionSha256,tag,producer`;
+promptSha256,schemaSha256,decisionSha256,model,reasoningEffort,gatekeeper,
+tag,producer`;
 `policyRevision=baseSha`. All `*Sha256` fields hash the named exact raw bytes
 (decision bytes use the canonical decision encoding); `authoritySetDigest`
 uses the member-descriptor algorithm above. `changes` is an ordered array of exact
@@ -454,12 +455,21 @@ uses the member-descriptor algorithm above. `changes` is an ordered array of exa
 annotated object and observed ref mapping; it makes no claim the mutable ref
 cannot later move or disappear. `producer` is exactly
 `{workflowPath,workflowSha,workflowRef,runId,runAttempt,jobId}`, identifying
-the selected protected workflow and exact job execution. Its provenance must
-authenticate separately before acceptance; fields alone do not authenticate
-the producer. The verifier requires every receipt identity/digest to match
-the protected selection and review input. Only a validated `ELIGIBLE` receipt
-can serve as input to a separately implemented acceptance route; it never
-reports `OWNER_AMENDMENT` or authorizes B.
+the selected protected workflow and exact job execution. `gatekeeper` is
+exactly `{repository,revision,package}`: the canonical Gatekeeper repository,
+full immutable Git commit SHA of the runtime source, and either `null` for
+direct Git execution or an exact `{name,version,integrity}` package identity.
+For package execution, these values identify the selected package and its
+registry-read version and integrity, as required by the package distribution
+contract. This is distinct from producer workflow/job identity. `model` and
+`reasoningEffort` record the exact values selected by the previous-base
+policy. The verifier matches runtime identity, producer, model, and effort to
+their protected selections. Producer provenance must authenticate separately
+before acceptance; fields alone do not authenticate the producer. It requires
+every receipt identity/digest to match the protected selection and review
+input. Only a validated `ELIGIBLE` receipt can serve as input to a separately
+implemented acceptance route; it never reports `OWNER_AMENDMENT` or
+authorizes B.
 
 For BLOCK-triggered amendments, the exact completed `BLOCK` must identify the
 conflict that B's semantic eligibility assesses. Preserve that historical
