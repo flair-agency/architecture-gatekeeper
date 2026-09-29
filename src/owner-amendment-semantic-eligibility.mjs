@@ -87,6 +87,25 @@ function parseBase64(value, label, maximum) {
   return bytes;
 }
 
+function exactDiffPaths(diffBytes) {
+  if (!Buffer.isBuffer(diffBytes) || !diffBytes.length || diffBytes.length > MAX_PROMPT_BYTES) {
+    fail('complete B diff bytes are missing or oversized.');
+  }
+  let diff;
+  try { diff = DECODER.decode(diffBytes); } catch { fail('complete B diff is not UTF-8.'); }
+  const paths = [];
+  for (const line of diff.split('\n')) {
+    if (!line.startsWith('diff --git ')) continue;
+    const match = /^diff --git a\/([^\s]+) b\/([^\s]+)$/.exec(line);
+    if (!match || match[1] !== match[2]) fail('complete B diff has a malformed, renamed, or unusually encoded path.');
+    validatePath(match[1], 'complete B diff path');
+    if (paths.includes(match[1]) || paths.length >= 32) fail('complete B diff has duplicate paths or exceeds its changed-file limit.');
+    paths.push(match[1]);
+  }
+  if (!paths.length) fail('complete B diff has no changed paths.');
+  return Object.freeze(paths);
+}
+
 function validatePolicy({ policyBytes, policyRevision, baseSha, baseBranch, triggerProfile }) {
   if (policyRevision !== baseSha) fail('policy revision is not the exact previous protected base.');
   if (typeof baseBranch !== 'string' || !/^[A-Za-z0-9._/-]{1,255}$/.test(baseBranch) || baseBranch.startsWith('-') ||
@@ -516,14 +535,15 @@ function prepareOwnerAmendmentSemanticEligibilityInternal({ repository, baseSha,
 
 /**
  * Bind profile-specific evidence validators as trusted construction-time
- * dependencies. The protected Git adapter resolves exact object bytes; a
- * separate adapter derives the complete diff from those bound Git objects and
- * the producer requires byte-for-byte equality before rendering. Per-invocation
- * evidence is data only and cannot substitute its own verifier callbacks.
+ * dependencies. The protected Git adapter resolves exact base object bytes; a
+ * separate adapter derives the unfiltered complete diff and exact B file bytes
+ * from repository Git objects. The producer requires byte-for-byte equality
+ * before rendering. Per-invocation evidence is data only and cannot substitute
+ * its own verifier callbacks.
  */
-export function createOwnerAmendmentSemanticEligibilityProducer({ resolveProtectedInputs, resolveExactGitDiff, resolveProtectedSelection, validateTriggerProvenance,
+export function createOwnerAmendmentSemanticEligibilityProducer({ resolveProtectedInputs, resolveExactGitDiff, resolveExactBFiles, resolveProtectedSelection, validateTriggerProvenance,
   validateAmendmentRecord, validateTag } = {}) {
-  for (const [name, validator] of Object.entries({ resolveProtectedInputs, resolveExactGitDiff, resolveProtectedSelection, validateTriggerProvenance, validateAmendmentRecord, validateTag })) {
+  for (const [name, validator] of Object.entries({ resolveProtectedInputs, resolveExactGitDiff, resolveExactBFiles, resolveProtectedSelection, validateTriggerProvenance, validateAmendmentRecord, validateTag })) {
     if (typeof validator !== 'function') fail(`trusted ${name} dependency is required at construction.`);
   }
   return Object.freeze({
@@ -547,6 +567,25 @@ export function createOwnerAmendmentSemanticEligibilityProducer({ resolveProtect
       if (!Buffer.isBuffer(exactGitDiff.diffBytes) || !exactGitDiff.diffBytes.length ||
           !protectedInputs.diffBytes.equals(exactGitDiff.diffBytes)) {
         fail('adapter diff bytes differ from the independently derived complete base-to-B Git diff.');
+      }
+      const exactPaths = exactDiffPaths(exactGitDiff.diffBytes);
+      let exactBFiles;
+      try { exactBFiles = resolveExactBFiles({ repository, bSha, paths: exactPaths }); }
+      catch { fail('protected Git adapter could not resolve exact B object bytes for every changed authority path.'); }
+      exact(exactBFiles, ['files'], 'exact B Git file bytes');
+      if (!Array.isArray(exactBFiles.files) || exactBFiles.files.length !== exactPaths.length ||
+          !Array.isArray(protectedInputs.changes) || protectedInputs.changes.length !== exactPaths.length) {
+        fail('exact B Git file bytes do not cover the complete diff path set.');
+      }
+      for (let index = 0; index < exactPaths.length; index++) {
+        const file = exactBFiles.files[index];
+        const change = protectedInputs.changes[index];
+        exact(file, ['path', 'bytes'], 'exact B Git file');
+        if (file.path !== exactPaths[index] || change?.path !== exactPaths[index] ||
+            !Buffer.isBuffer(file.bytes) || !file.bytes.length || file.bytes.length > 131_072 ||
+            !Buffer.isBuffer(change.afterBytes) || !file.bytes.equals(change.afterBytes)) {
+          fail(`changed after-bytes for ${exactPaths[index]} differ from its exact B Git object.`);
+        }
       }
       let protectedSelection;
       try {

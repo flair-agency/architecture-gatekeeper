@@ -150,6 +150,10 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
   const protectedInputs = { baseBranch, policyBytes, manifestBytes, authoritySet, changes, diffBytes };
   const validators = { resolveProtectedInputs: () => structuredCloneProtectedInputs(protectedInputs),
     resolveExactGitDiff: () => ({ diffBytes: Buffer.from(diffBytes) }),
+    resolveExactBFiles: ({ paths }) => ({ files: paths.map(value => {
+      const change = changes.find(candidate => candidate.path === value);
+      return { path: value, bytes: Buffer.from(change.afterBytes) };
+    }) }),
     resolveProtectedSelection: () => ({ selectedProducer: semanticProducer, selectedGatekeeper: gatekeeper }),
     validateTriggerProvenance: verifyTrigger, validateAmendmentRecord: verifyAmendment, validateTag: verifyTag };
   const producer = createOwnerAmendmentSemanticEligibilityProducer(validators);
@@ -309,7 +313,9 @@ test('enforces resulting per-file and aggregate limits and requires the selected
   const oversizedFile = structuredCloneProtectedInputs(limitedFile.validators.resolveProtectedInputs());
   oversizedFile.changes[0].afterBytes = Buffer.alloc(129, 'x');
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...limitedFile.validators,
-    resolveProtectedInputs: () => oversizedFile }).prepare(limitedFile.args), /change is not one exact/);
+    resolveProtectedInputs: () => oversizedFile,
+    resolveExactBFiles: () => ({ files: [{ path: oversizedFile.changes[0].path, bytes: Buffer.from(oversizedFile.changes[0].afterBytes) }] })
+  }).prepare(limitedFile.args), /change is not one exact/);
 
   const multiple = fixture('completed-block-v1', { multiAuthority: true, maxTotalBytes: 240 });
   const oversizedSet = structuredCloneProtectedInputs(multiple.validators.resolveProtectedInputs());
@@ -326,13 +332,16 @@ test('enforces resulting per-file and aggregate limits and requires the selected
   oversizedSet.diffBytes = Buffer.from(lines.join('\n'));
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...multiple.validators,
     resolveProtectedInputs: () => oversizedSet,
-    resolveExactGitDiff: () => ({ diffBytes: Buffer.from(oversizedSet.diffBytes) }) }).prepare(multiple.args), /resulting Authority Set exceeds/);
+    resolveExactGitDiff: () => ({ diffBytes: Buffer.from(oversizedSet.diffBytes) }),
+    resolveExactBFiles: ({ paths }) => ({ files: paths.map(value => ({ path: value,
+      bytes: Buffer.from(oversizedSet.changes.find(change => change.path === value).afterBytes) })) })
+  }).prepare(multiple.args), /resulting Authority Set exceeds/);
 
   const nonTarget = fixture('completed-block-v1', { multiAuthority: true });
   const onlyOtherTarget = structuredCloneProtectedInputs(nonTarget.validators.resolveProtectedInputs());
   onlyOtherTarget.changes = [onlyOtherTarget.changes[1]];
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...nonTarget.validators,
-    resolveProtectedInputs: () => onlyOtherTarget }).prepare(nonTarget.args), /policy-selected amendment target/);
+    resolveProtectedInputs: () => onlyOtherTarget }).prepare(nonTarget.args), /complete diff path set|policy-selected amendment target/);
 });
 
 test('binds complete Authority Set, manifest and trigger identities to protected adapter selection', () => {
@@ -375,6 +384,14 @@ test('binds complete Authority Set, manifest and trigger identities to protected
     resolveExactGitDiff: request => { exactDiffRequest = request; return { diffBytes: completeBaseToB }; }
   }).prepare(omittedWorkflow.args), /differ from the independently derived complete base-to-B Git diff/);
   assert.deepEqual(Object.keys(exactDiffRequest).sort(), ['bSha', 'baseSha', 'repository']);
+
+  const reordered = fixture('completed-block-v1');
+  const reorderedInputs = structuredCloneProtectedInputs(reordered.validators.resolveProtectedInputs());
+  const reorderedLines = reorderedInputs.changes[0].afterBytes.toString('utf8').trimEnd().split('\n');
+  reorderedInputs.changes[0].afterBytes = Buffer.from(`${reorderedLines.reverse().join('\n')}\n`);
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...reordered.validators,
+    resolveProtectedInputs: () => reorderedInputs
+  }).prepare(reordered.args), /differ from its exact B Git object/);
 
   for (const field of ['manifestSha256', 'policy']) {
     const bad = structuredCloneProtectedInputs(full);
