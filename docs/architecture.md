@@ -407,8 +407,14 @@ raise it. The complete prompt must fit. The protected producer supplies the
 exact raw UTF-8 policy, full Authority Set and member bytes, repository/base/B,
 all changed authority paths' before/after bytes and complete diff, trigger,
 ReviewRecord and AmendmentRecord digests, and annotated-tag identity. It
-verifies their bindings before review and presents policy/authority content as
-data. No one-file limit applies. IDs follow protected manifest order.
+materializes the exact completed trigger ReviewRecord, verifies its selected
+profile, digest, predecessor bindings, and trusted producer provenance before
+constructing the prompt, then includes its decoded content as untrusted data.
+The record supplies escalation/revision context only; it neither states owner
+choice nor replaces canonical authority. The producer verifies all input
+bindings before review and presents policy, authority, and ReviewRecord
+content as data, not instructions. No one-file limit applies. IDs follow
+protected manifest order.
 `authoritySetDigest` is SHA-256 of compact UTF-8 JSON for the ordered member
 descriptors `{id,repository,resolvedCommit,path,byteLength,sha256}`.
 
@@ -434,11 +440,11 @@ array order preserved, compact separators, one final LF. Reject duplicate
 keys and unknown, missing, noncanonical, or invalid fields at every level.
 The exact top-level field set is `version,kind,eligibility,repository,baseSha,
 bSha,triggerProfile,triggerReviewRecordSha256,amendmentRecordSha256,
-policyRevision,policySha256,authoritySetSha256,authoritySetDigest,authorityIds,
-changes,diffSha256,promptSha256,schemaSha256,decisionSha256,tag,producer`;
+policyRevision,policySha256,authoritySetDigest,authorityIds,changes,diffSha256,
+promptSha256,schemaSha256,decisionSha256,tag,producer`;
 `policyRevision=baseSha`. All `*Sha256` fields hash the named exact raw bytes
-(the set digest uses the member-descriptor algorithm above; decision bytes
-use the canonical decision encoding). `changes` is an ordered array of exact
+(decision bytes use the canonical decision encoding); `authoritySetDigest`
+uses the member-descriptor algorithm above. `changes` is an ordered array of exact
 `{path,beforeSha256,afterSha256}` objects. `tag` is exactly
 `{tagRef,tagObjectOid,observedTagRefOid}`, binding the protected ref, exact
 annotated object and observed ref mapping; it makes no claim the mutable ref
