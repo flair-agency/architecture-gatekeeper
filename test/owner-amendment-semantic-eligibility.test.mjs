@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
 import {
   completeOwnerAmendmentSemanticEligibility,
-  prepareOwnerAmendmentSemanticEligibility,
+  createOwnerAmendmentSemanticEligibilityProducer,
   validateOwnerAmendmentSemanticEligibilityReceipt,
 } from '../src/owner-amendment-semantic-eligibility.mjs';
 
@@ -18,6 +22,10 @@ const gitTagOid = bytes => createHash('sha1').update(Buffer.from(`tag ${bytes.le
 const authorityBytes = Buffer.from('# Previous canonical architecture\nExisting rule: retain the protected boundary.\n');
 const proposedAuthorityBytes = Buffer.from('# Previous canonical architecture\nExisting rule: amend the protected boundary.\n');
 const digest = byte => sha256(Buffer.from(byte));
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
+  ? Object.fromEntries(Object.keys(value).sort((a, b) => a < b ? -1 : a > b ? 1 : 0).map(key => [key, canonical(value[key])])) : value;
+const canonicalBytes = value => Buffer.from(`${JSON.stringify(canonical(value))}\n`);
 
 function fixture(triggerProfile, { multiAuthority = false } = {}) {
   const policy = {
@@ -38,7 +46,7 @@ function fixture(triggerProfile, { multiAuthority = false } = {}) {
   const authoritySet = { members: members.map(member => ({ ...member, bytes: member.bytes ?? authorityBytes })),
     digest: sha256(Buffer.from(JSON.stringify(members.map(({ bytes, ...member }) => member)))) };
   const descriptors = authoritySet.members.map(({ bytes, ...member }) => member);
-  const decision = { decision: triggerProfile === 'completed-block-self-v1' ? 'BLOCK' : 'OWNER_DECISION',
+  const decision = { decision: triggerProfile === 'completed-block-v1' ? 'BLOCK' : 'OWNER_DECISION',
     ...(triggerProfile === 'completed-owner-decision-self-v1' ? { ownerDecisionId: 'existing-rule-17' } : {}),
     authorityIds: members.map(member => member.id), summary: 'The existing rule requires an owner choice.' };
   const decisionBytes = Buffer.from(`${JSON.stringify(decision)}\n`);
@@ -47,7 +55,7 @@ function fixture(triggerProfile, { multiAuthority = false } = {}) {
     runId: '1001', runAttempt: '1', jobId: 'architecture-gate' };
   const triggerRecord = {
     version: 1,
-    kind: triggerProfile === 'completed-block-self-v1'
+    kind: triggerProfile === 'completed-block-v1'
       ? 'owner-amendment-block-review-record'
       : 'owner-amendment-owner-decision-review-record',
     repository, prNumber: 77, baseSha, headSha: triggerHeadSha, mergeSha,
@@ -116,13 +124,14 @@ function fixture(triggerProfile, { multiAuthority = false } = {}) {
       triggerReviewRecordSha256: expected.triggerReviewRecordSha256, amendmentRecordSha256: expected.amendmentRecordSha256,
       tagRef: expected.tagRef, tagObjectOid: expected.tagObjectOid, observedTagRefOid: expected.observedTagRefOid };
   };
+  const validators = { validateTriggerProvenance: verifyTrigger, validateAmendmentRecord: verifyAmendment, validateTag: verifyTag };
+  const producer = createOwnerAmendmentSemanticEligibilityProducer(validators);
   const args = { repository, baseSha, bSha, triggerProfile, policyRevision: baseSha, policyBytes,
-    authoritySet, changes, diffBytes, triggerReviewRecordBytes, triggerProducer,
-    validateTriggerProvenance: verifyTrigger, amendmentRecordBytes, validateAmendmentRecord: verifyAmendment,
-    tag, tagObjectBytes, validateTag: verifyTag, producer: semanticProducer, selectedProducer: semanticProducer,
+    authoritySet, changes, diffBytes, triggerReviewRecordBytes, triggerProducer, amendmentRecordBytes,
+    tag, tagObjectBytes, producer: semanticProducer, selectedProducer: semanticProducer,
     gatekeeper, selectedGatekeeper: gatekeeper, reviewModel: policy.branches.main.model,
     reviewReasoningEffort: policy.branches.main.reasoningEffort };
-  return { args, policy, authoritySet, triggerRecord, triggerReviewRecordBytes, amendmentRecordBytes,
+  return { args, producer, validators, policy, authoritySet, triggerRecord, triggerReviewRecordBytes, amendmentRecordBytes,
     semanticProducer, gatekeeper, tag, tagObjectBytes, resultingAuthoritySetDigest };
 }
 
@@ -133,15 +142,15 @@ function eligibilityDecision(prepared, result = 'ELIGIBLE') {
     'resultingAuthorityIsCoherent', 'assessesResultingRulesWithoutRequiringAgreementWithSupersededRules',
   ].map(key => [key, true]));
   if (result === 'INELIGIBLE') checks.excludesUnrelatedChanges = false;
-  return Buffer.from(JSON.stringify({ version: 1, kind: 'owner-amendment-semantic-eligibility-decision',
+  return canonicalBytes({ version: 1, kind: 'owner-amendment-semantic-eligibility-decision',
     eligibility: result, triggerProfile: prepared.triggerProfile, authorityIds: [...prepared.authorityIds],
-    authoritySetDigest: prepared.authoritySetDigest, checks }));
+    authoritySetDigest: prepared.authoritySetDigest, checks });
 }
 
 test('one shared producer prepares and validates both self trigger profiles with exact receipt bindings', () => {
-  for (const profile of ['completed-block-self-v1', 'completed-owner-decision-self-v1']) {
+  for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
     const f = fixture(profile);
-    const prepared = prepareOwnerAmendmentSemanticEligibility(f.args);
+    const prepared = f.producer.prepare(f.args);
     assert.equal(prepared.status, 'PREPARED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY');
     assert.equal(prepared.triggerProfile, profile);
     assert.equal(prepared.authoritySetDigest, f.authoritySet.digest);
@@ -151,6 +160,9 @@ test('one shared producer prepares and validates both self trigger profiles with
     assert.equal(sha256(prepared.schemaBytes), prepared.schemaSha256);
     assert.match(prepared.promptBytes.toString('utf8'), new RegExp(profile));
     assert.match(prepared.promptBytes.toString('utf8'), /complete previous Authority Set/);
+    assert.match(prepared.promptBytes.toString('utf8'), /<untrusted-trigger-review-record-utf8>/);
+    assert.match(prepared.promptBytes.toString('utf8'), /<untrusted-amendment-record-utf8>/);
+    assert.match(prepared.promptBytes.toString('utf8'), /target and purpose are proposed claims/);
 
     const completed = completeOwnerAmendmentSemanticEligibility({ prepared,
       decisionBytes: eligibilityDecision(prepared), producer: f.semanticProducer, gatekeeper: f.gatekeeper,
@@ -173,7 +185,7 @@ test('one shared producer prepares and validates both self trigger profiles with
 
 test('supports multiple selected authority paths and binds the complete resulting Authority Set', () => {
   const f = fixture('completed-owner-decision-self-v1', { multiAuthority: true });
-  const prepared = prepareOwnerAmendmentSemanticEligibility(f.args);
+  const prepared = f.producer.prepare(f.args);
   assert.deepEqual(prepared.authorityIds, ['architecture', 'ownership']);
   assert.equal(prepared.changes.length, 2);
   assert.equal(prepared.resultingAuthoritySetDigest, f.resultingAuthoritySetDigest);
@@ -185,11 +197,13 @@ test('supports multiple selected authority paths and binds the complete resultin
 });
 
 test('closed decision rejects a missing, extra, mismatched, or inconsistent field', () => {
-  const f = fixture('completed-block-self-v1');
-  const prepared = prepareOwnerAmendmentSemanticEligibility(f.args);
+  const f = fixture('completed-block-v1');
+  const prepared = f.producer.prepare(f.args);
   const accepted = eligibilityDecision(prepared);
   const malformed = [
     Buffer.from('{'),
+    Buffer.from('{"version":1,"version":1}'),
+    Buffer.from(JSON.stringify(JSON.parse(accepted.toString('utf8')))),
     Buffer.from(JSON.stringify({ ...JSON.parse(accepted), surprise: true })),
     Buffer.from(JSON.stringify({ ...JSON.parse(accepted), triggerProfile: 'completed-owner-decision-self-v1' })),
     Buffer.from(JSON.stringify({ ...JSON.parse(accepted), authorityIds: [] })),
@@ -202,59 +216,82 @@ test('closed decision rejects a missing, extra, mismatched, or inconsistent fiel
 });
 
 test('fails closed for missing or wrong-profile trigger evidence and stale base or B bindings', () => {
-  const block = fixture('completed-block-self-v1');
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...block.args,
+  const block = fixture('completed-block-v1');
+  assert.throws(() => block.producer.prepare({ ...block.args,
     triggerReviewRecordBytes: Buffer.alloc(0) }), /trigger ReviewRecord bytes/);
   const policyForOwner = Buffer.from(JSON.stringify({ ...block.policy,
     branches: { main: { ...block.policy.branches.main, ownerAmendment: {
       ...block.policy.branches.main.ownerAmendment, triggerProfile: 'completed-owner-decision-self-v1' } } } }));
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...block.args,
+  assert.throws(() => block.producer.prepare({ ...block.args,
     triggerProfile: 'completed-owner-decision-self-v1', policyBytes: policyForOwner }), /different profile/);
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...block.args, policyRevision: 'f'.repeat(40) }), /policy revision/);
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...block.args, bSha: triggerHeadSha }), /trigger ReviewRecord is stale/);
+  assert.throws(() => block.producer.prepare({ ...block.args, policyRevision: 'f'.repeat(40) }), /policy revision/);
+  assert.throws(() => block.producer.prepare({ ...block.args, bSha: triggerHeadSha }), /trigger ReviewRecord is stale/);
+});
+
+test('enforces prompt and byte limits and requires trusted validators at producer construction', () => {
+  const f = fixture('completed-block-v1');
+  const tinyPromptPolicy = JSON.parse(f.args.policyBytes.toString('utf8'));
+  tinyPromptPolicy.branches.main.ownerAmendment.maxPromptBytes = 1;
+  assert.throws(() => f.producer.prepare({ ...f.args, policyBytes: Buffer.from(JSON.stringify(tinyPromptPolicy)) }), /exceeds the previous protected maxPromptBytes/);
+  assert.throws(() => f.producer.prepare({ ...f.args, diffBytes: Buffer.alloc(1_048_577) }), /diff bytes are missing or oversized/);
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators, validateTag: null }), /trusted validateTag dependency/);
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({}), /trusted validateTriggerProvenance dependency/);
+});
+
+test('real v2 resolver selects authority id/path and Authority Set limit separately; producer fails closed without ownerAmendment.maxPromptBytes', () => {
+  const policyBytes = readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'));
+  const selected = resolveCiPolicy(parseCiPolicyJson(policyBytes.toString('utf8')), 'main');
+  assert.equal(selected.ownerAmendmentTriggerProfile, 'completed-block-v1');
+  assert.equal(selected.ownerAmendmentAuthorityId, 'architecture-contract');
+  assert.equal(selected.ownerAmendmentAuthorityPath, 'docs/architecture.md');
+  assert.equal(JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64')).maxPromptBytes, 524_288);
+  const f = fixture('completed-block-v1');
+  assert.throws(() => f.producer.prepare({ ...f.args, policyBytes }), /previous protected policy/);
 });
 
 test('fails closed when B changes a non-authority path or a diff omits/changes declared paths', () => {
-  const f = fixture('completed-block-self-v1');
+  const f = fixture('completed-block-v1');
   const nonAuthority = { path: 'docs/README.md', beforeBytes: authorityBytes,
     afterBytes: proposedAuthorityBytes };
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...f.args,
+  assert.throws(() => f.producer.prepare({ ...f.args,
     changes: [nonAuthority], diffBytes: Buffer.from('diff --git a/docs/README.md b/docs/README.md\n') }), /non-authority path/);
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...f.args,
+  assert.throws(() => f.producer.prepare({ ...f.args,
     diffBytes: Buffer.from('diff --git a/docs/other.md b/docs/other.md\n') }), /do not exactly match/);
 });
 
 test('fails closed for trigger producer, semantic producer, model, effort, and Gatekeeper identity mismatches', () => {
   const f = fixture('completed-owner-decision-self-v1');
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...f.args,
+  assert.throws(() => f.producer.prepare({ ...f.args,
     producer: { ...f.semanticProducer, runId: '2003' } }), /differs from its protected selection/);
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...f.args,
+  assert.throws(() => f.producer.prepare({ ...f.args,
     triggerProducer: { ...f.args.triggerProducer, runId: '1002' } }), /selected protected producer/);
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...f.args, reviewModel: 'another-model' }), /reviewer model or reasoning effort/);
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...f.args, reviewReasoningEffort: 'high' }), /reviewer model or reasoning effort/);
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...f.args,
+  assert.throws(() => f.producer.prepare({ ...f.args, reviewModel: 'another-model' }), /reviewer model or reasoning effort/);
+  assert.throws(() => f.producer.prepare({ ...f.args, reviewReasoningEffort: 'high' }), /reviewer model or reasoning effort/);
+  assert.throws(() => f.producer.prepare({ ...f.args,
     gatekeeper: { ...f.gatekeeper, revision: '9'.repeat(40) } }), /differs from the protected selection/);
 });
 
 test('candidate cannot select its own profile or replace the protected AmendmentRecord/tag bindings', () => {
-  const f = fixture('completed-block-self-v1');
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...f.args,
+  const f = fixture('completed-block-v1');
+  assert.throws(() => f.producer.prepare({ ...f.args,
     policyBytes: Buffer.from(JSON.stringify({ ...f.policy, branches: { main: { ...f.policy.branches.main,
       ownerAmendment: { ...f.policy.branches.main.ownerAmendment, triggerProfile: 'completed-owner-decision-self-v1' } } } })) }), /previous protected policy/);
-  const wrongAmendment = (...args) => ({ ...f.args.validateAmendmentRecord(...args), resultingAuthoritySetDigest: '9'.repeat(64) });
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...f.args,
-    validateAmendmentRecord: wrongAmendment }), /AmendmentRecord profile validation/);
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...f.args,
+  const wrongAmendment = ({ bytes, expected }) => ({ ...f.validators.validateAmendmentRecord({ bytes, expected }), resultingAuthoritySetDigest: '9'.repeat(64) });
+  const untrustedOverride = { ...f.args, validateAmendmentRecord: () => { throw new Error('untrusted callback called'); } };
+  assert.doesNotThrow(() => f.producer.prepare(untrustedOverride));
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
+    validateAmendmentRecord: wrongAmendment }).prepare(f.args), /AmendmentRecord profile validation/);
+  assert.throws(() => f.producer.prepare({ ...f.args,
     tagObjectBytes: Buffer.from('forged tag') }), /does not hash its exact bytes/);
-  assert.throws(() => prepareOwnerAmendmentSemanticEligibility({ ...f.args,
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
     validateTag: () => ({ status: 'VERIFIED_OWNER_AMENDMENT_TAG', repository, baseSha, bSha,
       triggerProfile: f.args.triggerProfile, triggerReviewRecordSha256: '0'.repeat(64),
-      amendmentRecordSha256: '0'.repeat(64), ...f.tag }) }), /tag validation does not bind/);
+      amendmentRecordSha256: '0'.repeat(64), ...f.tag }) }).prepare(f.args), /tag validation does not bind/);
 });
 
 test('INELIGIBLE is a completed decision with a false check and cannot be rewritten in receipt bytes', () => {
   const f = fixture('completed-owner-decision-self-v1');
-  const prepared = prepareOwnerAmendmentSemanticEligibility(f.args);
+  const prepared = f.producer.prepare(f.args);
   const completed = completeOwnerAmendmentSemanticEligibility({ prepared,
     decisionBytes: eligibilityDecision(prepared, 'INELIGIBLE'), producer: f.semanticProducer, gatekeeper: f.gatekeeper,
     reviewModel: prepared.model, reviewReasoningEffort: prepared.reasoningEffort });
@@ -264,4 +301,10 @@ test('INELIGIBLE is a completed decision with a false check and cannot be rewrit
   const nonCanonical = Buffer.from(JSON.stringify(completed.receipt));
   assert.throws(() => validateOwnerAmendmentSemanticEligibilityReceipt({ receiptBytes: nonCanonical,
     expected: completed.receipt }), /canonical UTF-8 JSON/);
+  const duplicateReceipt = Buffer.from(`${completed.receiptBytes.toString('utf8').trimEnd().slice(0, -1)},"version":1}\n`);
+  assert.throws(() => validateOwnerAmendmentSemanticEligibilityReceipt({ receiptBytes: duplicateReceipt,
+    expected: completed.receipt }), /duplicate JSON key/);
+  const changedExpected = { ...completed.receipt, bSha: '9'.repeat(40) };
+  assert.throws(() => validateOwnerAmendmentSemanticEligibilityReceipt({ receiptBytes: completed.receiptBytes,
+    expected: changedExpected }), /differ from the protected prepared selection/);
 });
