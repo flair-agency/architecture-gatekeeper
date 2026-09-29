@@ -249,8 +249,12 @@ function renderFindings(findings, delivery, maxLength = MAX_REPORT_LENGTH) {
   const full = `${heading}${fullItems}${footer}`;
   if (full.length <= maxLength) return full;
 
-  const coreItems = entries.map((item, index) => `${index + 1}. **${cleanText(item.title, 160)}** — ${cleanText(item.location, 200)} · _Inline delivery: ${cleanText(item.outcome, 300)}_`);
-  const core = `${heading}${coreItems.join('\n\n')}${footer}`;
+  // In the compact form, titles, normalized locations, dispositions, and
+  // GitHub-returned direct links are the actionable essentials. Keep those
+  // intact; optional delivery diagnostics and reviewer explanations yield first.
+  const coreItems = entries.map((item, index) => `${index + 1}. **${item.title}** — ${item.location} · _Inline delivery: ${item.outcome}_`);
+  const compactFooter = `\n\n_Inline review status: ${cleanText(delivery?.status || 'not attempted', 80)}_\n`;
+  const core = `${heading}${coreItems.join('\n\n')}${compactFooter}`;
   if (core.length > maxLength) throw new Error('Finding titles, locations, and inline delivery links exceed the report length budget.');
   const bodyEntries = entries.map(item => cleanText(item.body, MAX_ITEM_LENGTH));
   const bodyCount = bodyEntries.filter(Boolean).length;
@@ -267,7 +271,7 @@ function renderFindings(findings, delivery, maxLength = MAX_REPORT_LENGTH) {
     const shortened = allowance < body.length;
     return `${line}${explanationLabel}${body.slice(0, allowance)}${shortened ? '…' : ''}`;
   });
-  return `${heading}${compactItems.join('\n\n')}${footer}`;
+  return `${heading}${compactItems.join('\n\n')}${compactFooter}`;
 }
 
 export function parseAuthorityProvenance(encoded, required = false) {

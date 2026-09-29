@@ -206,9 +206,9 @@ test('truncation retains max finding essentials, full gate table, and long requi
   }));
   const selected = { manifestSha256: 'c'.repeat(64), setDigest: 'e'.repeat(64), members };
   const findings = Array.from({ length: 20 }, (_, index) => ({
-    title: `Finding ${String(index).padStart(2, '0')} ${'title '.repeat(25)}`,
+    title: `Finding ${String(index).padStart(2, '0')} ${'t'.repeat(200 - `Finding ${String(index).padStart(2, '0')} `.length)}`,
     body: 'reviewer explanation '.repeat(150),
-    location: { path: `src/reviewed-${index}.mjs`, line: index + 3, side: 'RIGHT' },
+    location: { path: `src/${'p'.repeat(232 - String(index).length)}${index}.mjs`, line: index + 3, side: 'RIGHT' },
   }));
   const inlineDelivery = { status: 'created', checked: findings.map((_, index) => ({ index, valid: true,
     commentUrl: `https://github.com/flair-agency/architecture-gatekeeper/pull/208#discussion_r${9000 + index}` })) };
@@ -227,8 +227,10 @@ test('truncation retains max finding essentials, full gate table, and long requi
   assert.match(report, /### Findings/);
   assert.match(report, /### Gate results[\s\S]*\| sharedMechanism \| 🛑 BLOCK \| shared mechanism is blocked \|[\s\S]*\| trustBoundary \| ⚠️ OWNER DECISION REQUIRED \| owner must decide \|/);
   for (let index = 0; index < findings.length; index += 1) {
-    assert.ok(report.includes(`Finding ${String(index).padStart(2, '0')}`));
-    assert.ok(report.includes(`src/reviewed-${index}.mjs:${index + 3} RIGHT`));
+    assert.ok(report.includes(`**${findings[index].title}**`));
+    assert.equal(findings[index].title.length, 200);
+    assert.equal(findings[index].location.path.length, 240);
+    assert.ok(report.includes(`${findings[index].location.path}:${index + 3} RIGHT`));
     assert.ok(report.includes(`#discussion_r${9000 + index}`));
   }
   assert.ok(report.includes(selected.manifestSha256));
