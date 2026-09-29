@@ -57,7 +57,9 @@ jobs:
       owner_addition_schema_path: ${{ steps.resolve.outputs.ownerAdditionSchemaPath }}
       owner_amendment_version: ${{ steps.resolve.outputs.ownerAmendmentVersion }}
       owner_amendment_grade: ${{ steps.resolve.outputs.ownerAmendmentGrade }}
+      owner_amendment_trigger_profile: ${{ steps.resolve.outputs.ownerAmendmentTriggerProfile }}
       owner_amendment_evidence_producer: ${{ steps.resolve.outputs.ownerAmendmentEvidenceProducer }}
+      owner_amendment_max_prompt_bytes: ${{ steps.resolve.outputs.ownerAmendmentMaxPromptBytes }}
       adoption_evidence_producer: ${{ steps.resolve.outputs.adoptionEvidenceProducer }}
       adoption_evidence_workflow_path: ${{ steps.resolve.outputs.adoptionEvidenceWorkflowPath }}
       adoption_evidence_job_name: ${{ steps.resolve.outputs.adoptionEvidenceJobName }}
@@ -594,9 +596,212 @@ jobs:
           [[ "$ARTIFACT_DIGEST" =~ ^[a-f0-9]{64}$ ]]
           printf '::notice title=AGK_OWNER_ADDITION_ARTIFACT_V1::id=%s;sha256=%s\n' "$ARTIFACT_ID" "$ARTIFACT_DIGEST"
 
+  owner-amendment-owner-decision-record:
+    if: needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_amendment_grade == 'G0' && needs.policy.outputs.owner_amendment_trigger_profile == 'completed-owner-decision-self-v1' && needs.review.outputs.decision_kind == 'OWNER_DECISION'
+    needs: [policy, codex-action-integrity, review]
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the protected base only
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Check out the protected producer runtime
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Produce the exact protected-base OWNER_DECISION ReviewRecord
+        env:
+          DECISION: ${{ needs.review.outputs.final_message }}
+          AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MERGE_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          WORKFLOW_PATH: .github/workflows/self-architecture-gate.yml
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          GH_TOKEN: ${{ github.token }}
+          RECORD_DIR: .agk-owner-decision-record-input
+        run: |
+          set -euo pipefail
+          mkdir -m 700 -p "$RECORD_DIR"
+          cp "$GITHUB_EVENT_PATH" "$RECORD_DIR/event.json"
+          printf '%s' "$DECISION" > "$RECORD_DIR/decision.json"
+          printf '%s' "$AUTHORITY_PROVENANCE_BASE64" | base64 --decode > "$RECORD_DIR/authority-provenance.json"
+          jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --argjson prNumber "$PR_NUMBER" \
+            --arg baseSha "$BASE_SHA" \
+            --arg headSha "$HEAD_SHA" \
+            --arg mergeSha "$MERGE_SHA" \
+            --arg workflowSha "$GITHUB_WORKFLOW_SHA" \
+            --arg workflowPath "$WORKFLOW_PATH" \
+            --arg runId "$RUN_ID" \
+            --arg runAttempt "$RUN_ATTEMPT" \
+            '{context:{repository:$repository,prNumber:$prNumber,baseSha:$baseSha,headSha:$headSha,mergeSha:$mergeSha,workflowSha:$workflowSha,workflowPath:$workflowPath,runId:$runId,runAttempt:$runAttempt}}' \
+            > "$RECORD_DIR/recorded-context.json"
+          node .architecture-gatekeeper-runtime/scripts/owner-amendment-owner-decision-producer.mjs
+      - name: Attest the exact ReviewRecord bytes
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: .agk-owner-decision-record-input/review-record.json
+      - name: Assemble exact record and attestation bundle
+        env:
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+          EVIDENCE_DIR: ${{ runner.temp }}/architecture-gate-owner-decision-evidence
+          INPUT_DIR: .agk-owner-decision-record-input
+        run: |
+          set -euo pipefail
+          test -s "$BUNDLE_PATH"
+          mkdir -m 700 -p "$EVIDENCE_DIR"
+          cp "$INPUT_DIR/review-record.json" "$EVIDENCE_DIR/review-record.json"
+          cp "$BUNDLE_PATH" "$EVIDENCE_DIR/attestation-bundle.json"
+      - name: Preserve the exact ReviewRecord and attestation bundle
+        id: evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: owner-amendment-owner-decision-${{ github.event.pull_request.base.sha }}-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/architecture-gate-owner-decision-evidence/
+          if-no-files-found: error
+          overwrite: false
+          retention-days: 90
+      - name: Report the immutable run binding
+        env:
+          ARTIFACT_ID: ${{ steps.evidence.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.evidence.outputs.artifact-digest }}
+          ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
+        run: |
+          set -euo pipefail
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          [[ "$ARTIFACT_DIGEST" =~ ^[a-f0-9]{64}$ ]]
+          [[ "$ATTESTATION_ID" =~ ^[0-9]+$ ]]
+          printf '::notice title=AGK_OWNER_AMENDMENT_OWNER_DECISION_RECORD_V1::artifact-id=%s;artifact-sha256=%s;attestation-id=%s;run-id=%s;run-attempt=%s\n' \
+            "$ARTIFACT_ID" "$ARTIFACT_DIGEST" "$ATTESTATION_ID" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+
+  owner-amendment-semantic-eligibility:
+    if: needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_amendment_grade == 'G0'
+    needs: [policy, codex-action-integrity]
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      status: ${{ steps.prepare.outputs.status }}
+      eligibility: ${{ steps.complete.outputs.eligibility }}
+      artifact_id: ${{ steps.artifact.outputs.artifact-id }}
+      artifact_digest: ${{ steps.artifact.outputs.artifact-digest }}
+      completed_at: ${{ steps.complete.outputs.completed_at }}
+    steps:
+      - name: Check out exact B Git objects and protected base
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch exact B pull request head
+        env:
+          B_PR_NUMBER: ${{ github.event.pull_request.number }}
+          B_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "refs/pull/$B_PR_NUMBER/head"
+          test "$(git rev-parse FETCH_HEAD)" = "$B_HEAD_SHA"
+      - name: Check out the protected semantic producer runtime
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Prepare B-specific semantic eligibility prompt from exact Git and tag evidence
+        id: prepare
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          B_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          TRIGGER_PROFILE: ${{ needs.policy.outputs.owner_amendment_trigger_profile }}
+          GH_TOKEN: ${{ github.token }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+          OUTPUT_DIR: ${{ runner.temp }}/owner-amendment-eligibility
+        run: node .architecture-gatekeeper-runtime/scripts/owner-amendment-semantic-eligibility-producer.mjs prepare
+      - name: Run B-specific semantic eligibility review
+        id: codex-eligibility
+        if: steps.prepare.outputs.status == 'prepared'
+        uses: flair-agency/codex-action@8d35ab0e294c9ca3603f738c9cdf74d53081852f
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: ${{ runner.temp }}/owner-amendment-eligibility/eligibility-prompt.md
+          output-schema-file: ${{ runner.temp }}/owner-amendment-eligibility/eligibility.schema.json
+          model: ${{ steps.prepare.outputs.model }}
+          effort: ${{ steps.prepare.outputs.effort }}
+          sandbox: read-only
+          safety-strategy: drop-sudo
+          codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
+      - name: Produce exact semantic eligibility receipt
+        id: complete
+        if: steps.prepare.outputs.status == 'prepared'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          B_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          TRIGGER_PROFILE: ${{ needs.policy.outputs.owner_amendment_trigger_profile }}
+          GH_TOKEN: ${{ github.token }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+          OUTPUT_DIR: ${{ runner.temp }}/owner-amendment-eligibility
+          DECISION_FILE: ${{ runner.temp }}/owner-amendment-eligibility/decision.json
+          DECISION: ${{ steps.codex-eligibility.outputs.final-message }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$DECISION" > "$DECISION_FILE"
+          node .architecture-gatekeeper-runtime/scripts/owner-amendment-semantic-eligibility-producer.mjs complete >> "$GITHUB_OUTPUT"
+      - name: Attest exact B-specific eligibility receipt
+        id: attest
+        if: steps.prepare.outputs.status == 'prepared' && steps.complete.outputs.eligibility == 'ELIGIBLE'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/owner-amendment-eligibility/eligibility-receipt.json
+      - name: Bundle exact receipt and attestation
+        if: steps.prepare.outputs.status == 'prepared' && steps.complete.outputs.eligibility == 'ELIGIBLE'
+        env:
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+          SOURCE_DIR: ${{ runner.temp }}/owner-amendment-eligibility
+          EVIDENCE_DIR: ${{ runner.temp }}/owner-amendment-eligibility-evidence
+        run: |
+          set -euo pipefail
+          test -s "$BUNDLE_PATH"
+          mkdir -m 700 -p "$EVIDENCE_DIR"
+          cp "$SOURCE_DIR/eligibility-receipt.json" "$EVIDENCE_DIR/eligibility-receipt.json"
+          cp "$BUNDLE_PATH" "$EVIDENCE_DIR/attestation-bundle.json"
+      - name: Preserve exact eligibility evidence for merge-group verification
+        id: artifact
+        if: steps.prepare.outputs.status == 'prepared' && steps.complete.outputs.eligibility == 'ELIGIBLE'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: owner-amendment-eligibility-${{ github.event.pull_request.base.sha }}-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/owner-amendment-eligibility-evidence/
+          if-no-files-found: error
+          overwrite: false
+          retention-days: 90
+
   report:
     if: always()
-    needs: [policy, review, owner-addition]
+    needs: [policy, review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-semantic-eligibility]
     concurrency:
       group: architecture-gate-report-${{ github.workflow }}-${{ github.event.pull_request.number }}
       cancel-in-progress: false
@@ -642,7 +847,7 @@ jobs:
 
   accept:
     if: always()
-    needs: [policy, review, owner-addition, report]
+    needs: [policy, review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-semantic-eligibility, report]
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -664,6 +869,11 @@ jobs:
           echo "Architecture Gate: ACCEPTED WITHOUT CI AI REVIEW"
           echo "Base branch: ${{ github.base_ref }}"
           echo "AI acceptance review: WAIVED BY BASE-BRANCH POLICY"
+      - name: Require completed OWNER_DECISION evidence production when selected
+        if: needs.policy.outputs.owner_amendment_trigger_profile == 'completed-owner-decision-self-v1' && needs.review.outputs.decision_kind == 'OWNER_DECISION'
+        env:
+          RECORD_RESULT: ${{ needs['owner-amendment-owner-decision-record'].result }}
+        run: test "$RECORD_RESULT" = success
       - name: Check out the protected procedural acceptance verifier
         if: needs.policy.outputs.mode == 'procedural'
         uses: actions/checkout@v5
@@ -680,9 +890,19 @@ jobs:
           OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
           OWNER_ADDITION_ELIGIBILITY: ${{ needs['owner-addition'].outputs.eligibility }}
           OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade }}
+          OWNER_AMENDMENT_RESULT: ${{ needs['owner-amendment-semantic-eligibility'].result }}
+          OWNER_AMENDMENT_STATUS: ${{ needs['owner-amendment-semantic-eligibility'].outputs.status }}
+          OWNER_AMENDMENT_ELIGIBILITY: ${{ needs['owner-amendment-semantic-eligibility'].outputs.eligibility }}
+          OWNER_AMENDMENT_SELECTED: ${{ needs.policy.outputs.owner_amendment_grade }}
         run: |
           test "$REVIEW_RESULT" = success
           if test "$CONCLUSION" = PASS; then exit 0; fi
+          if test "$OWNER_AMENDMENT_SELECTED" = G0 && test "$OWNER_AMENDMENT_STATUS" = prepared; then
+            test "$OWNER_AMENDMENT_RESULT" = success
+            test "$OWNER_AMENDMENT_ELIGIBILITY" = ELIGIBLE
+            echo "OWNER_AMENDMENT / G0: eligible before merge; adoption and canonical transition remain pending the required merge_group check."
+            exit 0
+          fi
           test "$CONCLUSION" = OWNER_ADDITION_G0
           test "$OWNER_ADDITION_SELECTED" = G0
           test "$OWNER_ADDITION_RESULT" = success

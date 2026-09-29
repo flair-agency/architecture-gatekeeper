@@ -21,7 +21,7 @@ function fixture(overrides = {}) {
       baseRefOid: baseSha, headRefOid: bHeadSha,
       baseRepository: { id: graphRepoId, nameWithOwner: repository },
       headRepository: { id: graphRepoId, nameWithOwner: repository },
-      mergeQueueEntry: { state: 'AWAITING_CHECKS', baseCommit: { oid: baseSha },
+      mergeQueueEntry: { state: 'AWAITING_CHECKS', enqueuedAt: '2026-09-29T11:00:00Z', baseCommit: { oid: baseSha },
         headCommit: { oid: bHeadSha }, pullRequest: { number: 204 } },
     } } } };
   const state = { repo, mergeCommit, pr, graph, associated: [pr], ...overrides };
@@ -47,7 +47,8 @@ test('selects one exact open same-repository B bound by merge commit and queue e
   const result = await f.select();
   assert.deepEqual(result, { status: 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT',
     repository, repositoryId: repoId, mergeGroupBaseSha: baseSha, mergeGroupHeadSha: groupHeadSha,
-    bPrNumber: '204', bBaseSha: baseSha, bHeadSha, queueEntryState: 'AWAITING_CHECKS' });
+    bPrNumber: '204', bBaseSha: baseSha, bHeadSha, queueEntryState: 'AWAITING_CHECKS',
+    queueEnteredAt: '2026-09-29T11:00:00Z' });
   assert.equal(f.calls.length, 4);
   for (const call of f.calls) {
     assert.equal(call.options.headers.authorization, 'Bearer fixture-token');
@@ -134,6 +135,7 @@ test('requires authenticated GraphQL merge-queue entry for the same base, head, 
     ['entry wrong base', graph => { graph.data.repository.pullRequest.mergeQueueEntry.baseCommit.oid = 'd'.repeat(40); }],
     ['entry wrong head', graph => { graph.data.repository.pullRequest.mergeQueueEntry.headCommit.oid = 'd'.repeat(40); }],
     ['entry wrong PR', graph => { graph.data.repository.pullRequest.mergeQueueEntry.pullRequest.number = 999; }],
+    ['entry missing enqueue time', graph => { graph.data.repository.pullRequest.mergeQueueEntry.enqueuedAt = null; }],
     ['GraphQL error', graph => { graph.errors = [{ message: 'unavailable' }]; }],
   ];
   for (const [name, mutate] of cases) await t.test(name, async () => {

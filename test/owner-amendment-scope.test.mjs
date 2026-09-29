@@ -31,7 +31,6 @@ test('rejects absent opt-in, wrong trigger, extra files, external authority and 
     { policy: { ...policy, ownerAmendmentAuthorityId: undefined, ownerAmendmentAuthorityPath: undefined },
       manifest: { ...manifest, authorities: [{ repository: 'self', revision: 'authority-revision' }] },
       changedFiles: [{ status: 'modified' }] },
-    { policy: { ...policy, ownerAmendmentTriggerProfile: 'completed-owner-decision-self-v1' } },
     { changedFiles: [...valid.changedFiles, { path: 'src/index.mjs', status: 'modified' }] },
     { changedFiles: [{ path, status: 'added' }] },
     { manifest: { ...manifest, authorities: [{ ...manifest.authorities[0], repository: 'other/repo' }] } },
@@ -41,4 +40,12 @@ test('rejects absent opt-in, wrong trigger, extra files, external authority and 
     { baseSha: headSha },
   ];
   for (const changed of cases) assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid, ...changed }));
+});
+
+test('accepts the canonical completed OWNER_DECISION amendment trigger profile', () => {
+  const result = inspectOwnerAmendmentSelfScope({ ...valid, policy: {
+    ...policy, ownerAmendmentTriggerProfile: 'completed-owner-decision-self-v1',
+  } });
+  assert.equal(result.authorityId, 'architecture-contract');
+  assert.equal(Object.hasOwn(result, 'accepted'), false);
 });

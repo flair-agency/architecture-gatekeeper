@@ -5,6 +5,7 @@ const SHA = /^[a-f0-9]{40}$/;
 const PAGE_SIZE = 100;
 const MAX_PAGES = 100;
 const KEYS = ['repository', 'runId', 'runAttempt', 'baseSha', 'headSha'];
+const PROFILES = Object.freeze({ block: 'owner-amendment-block', ownerDecision: 'owner-amendment-owner-decision', eligibility: 'owner-amendment-eligibility' });
 
 const fail = message => { throw new Error(`Owner amendment artifact discovery: ${message}`); };
 const numericId = value => Number.isSafeInteger(value) && value > 0;
@@ -12,12 +13,14 @@ const positiveId = value => (typeof value === 'string' && /^[1-9]\d*$/.test(valu
   (Number.isSafeInteger(value) && value > 0);
 
 function validateExpected(expected) {
+  const keys = expected && Object.hasOwn(expected, 'profile') ? [...KEYS, 'profile'] : KEYS;
   if (!expected || typeof expected !== 'object' || Array.isArray(expected) ||
-      Object.keys(expected).sort().join(',') !== [...KEYS].sort().join(',')) {
+      Object.keys(expected).sort().join(',') !== [...keys].sort().join(',')) {
     fail('trusted run identity is incomplete or contains unknown fields.');
   }
   if (!REPOSITORY.test(expected.repository) || !positiveId(expected.runId) || !positiveId(expected.runAttempt) ||
-      !SHA.test(expected.baseSha) || !SHA.test(expected.headSha)) {
+      !SHA.test(expected.baseSha) || !SHA.test(expected.headSha) ||
+      (expected.profile !== undefined && !Object.hasOwn(PROFILES, expected.profile))) {
     fail('trusted run identity has invalid values.');
   }
   return expected;
@@ -74,7 +77,8 @@ export async function discoverOwnerAmendmentBlockArtifact({ expected, token, fet
     };
 
     const run = validateRun(await getJson(`${api}/repos/${repo}/actions/runs/${runId}/attempts/${attempt}`), expected);
-    const expectedName = `owner-amendment-block-${expected.baseSha}-${expected.headSha}-${expected.runId}-${expected.runAttempt}`;
+    const profile = expected.profile ?? 'block';
+    const expectedName = `${PROFILES[profile]}-${expected.baseSha}-${expected.headSha}-${expected.runId}-${expected.runAttempt}`;
     const artifacts = [];
     let totalCount;
     for (let page = 1; ; page += 1) {
@@ -95,7 +99,9 @@ export async function discoverOwnerAmendmentBlockArtifact({ expected, token, fet
     const matches = artifacts.filter(artifact => artifact?.name === expectedName);
     if (matches.length !== 1) fail(`expected exactly one matching BLOCK artifact; found ${matches.length}.`);
     const artifact = validateArtifact(matches[0], expected, run, expectedName);
-    return Object.freeze({ status: 'DISCOVERED_OWNER_AMENDMENT_BLOCK_ARTIFACT',
+    return Object.freeze({ status: profile === 'block' ? 'DISCOVERED_OWNER_AMENDMENT_BLOCK_ARTIFACT' :
+      profile === 'eligibility' ? 'DISCOVERED_OWNER_AMENDMENT_ELIGIBILITY_ARTIFACT' : 'DISCOVERED_OWNER_AMENDMENT_OWNER_DECISION_ARTIFACT',
+      ...(profile === 'block' ? {} : { profile }),
       artifactId: String(artifact.id), artifactName: artifact.name, runId: String(expected.runId),
       runAttempt: String(expected.runAttempt), baseSha: expected.baseSha, headSha: expected.headSha,
       expiresAt: artifact.expires_at });

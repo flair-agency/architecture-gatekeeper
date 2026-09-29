@@ -4,6 +4,8 @@ import { rejectDuplicateJsonKeys } from './authority-set.mjs';
 import { resolveOwnerAmendmentHandoffGitContext } from './owner-amendment-handoff-git-context.mjs';
 import { readOwnerAmendmentTagForMergeGroup } from './owner-amendment-tag-readback.mjs';
 import { verifyOwnerAmendmentBlockEvidenceBundle } from './owner-amendment-block-evidence-composer.mjs';
+import { verifyOwnerAmendmentOwnerDecisionContext } from './owner-amendment-owner-decision-context-verifier.mjs';
+import { verifyOwnerAmendmentBlockEvidence } from './owner-amendment-attestation.mjs';
 
 const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const SHA1 = /^[a-f0-9]{40}$/;
@@ -30,8 +32,14 @@ function parseTagEnvelope(tag, bSha) {
   let envelope;
   try { rejectDuplicateJsonKeys(json, 'tag evidence envelope'); envelope = JSON.parse(json); }
   catch { fail('tag evidence envelope JSON is invalid.'); }
-  if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope) ||
-      JSON.stringify(canonical(envelope)) !== json || envelope.version !== 2 || envelope.profile !== 'self-g0' || envelope.bSha !== bSha) {
+  const block = envelope?.version === 2 && envelope?.triggerProfile === undefined;
+  const ownerDecision = envelope?.version === 3 && envelope?.triggerProfile === 'completed-owner-decision-self-v1';
+  const keys = block
+    ? ['version', 'profile', 'bSha', 'reviewRecordBase64', 'reviewRecordSha256', 'attestationBundleBase64', 'attestationBundleSha256', 'amendmentRecordBase64', 'amendmentRecordSha256']
+    : ['version', 'profile', 'triggerProfile', 'bSha', 'reviewRecordBase64', 'reviewRecordSha256', 'attestationBundleBase64', 'attestationBundleSha256', 'amendmentRecordBase64', 'amendmentRecordSha256'];
+  if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope) || Object.keys(envelope).length !== keys.length ||
+      keys.some(key => !Object.hasOwn(envelope, key)) || JSON.stringify(canonical(envelope)) !== json ||
+      (!block && !ownerDecision) || envelope.profile !== 'self-g0' || envelope.bSha !== bSha) {
     fail('tag evidence envelope is noncanonical or does not identify exact B.');
   }
   const decode = (encoded, digest, label, maximum) => {
@@ -40,7 +48,8 @@ function parseTagEnvelope(tag, bSha) {
     if (!data.length || data.length > maximum || data.toString('base64') !== encoded || !SHA256.test(digest ?? '') || hash(data) !== digest) fail(`${label} bytes or digest are invalid.`);
     return data;
   };
-  return { reviewRecordBytes: decode(envelope.reviewRecordBase64, envelope.reviewRecordSha256, 'ReviewRecord', 131_072),
+  return { triggerProfile: block ? 'completed-block-v1' : envelope.triggerProfile,
+    reviewRecordBytes: decode(envelope.reviewRecordBase64, envelope.reviewRecordSha256, 'ReviewRecord', 131_072),
     attestationBundleBytes: decode(envelope.attestationBundleBase64, envelope.attestationBundleSha256, 'attestation bundle', 65_536),
     amendmentRecordBytes: decode(envelope.amendmentRecordBase64, envelope.amendmentRecordSha256, 'AmendmentRecord', 8_192) };
 }
@@ -91,14 +100,31 @@ export async function composeOwnerAmendmentMergeGroupEvidence({ repository, base
       ...parseTagEnvelope(tag, bSha) };
     const producerContext = producerFromRecord(tagEnvelope.reviewRecordBytes,
       { ...trustedContext, policySha256: hash(gitContext.policyBytes) });
-    const evidence = verifyEvidence({ trustedContext, producerContext, tagEnvelope, runGh });
-    if (evidence?.status !== 'VERIFIED_OWNER_AMENDMENT_BLOCK_EVIDENCE' || evidence.repository !== repository ||
+    if (tagEnvelope.triggerProfile !== trustedContext.policy.triggerProfile) fail('tag envelope trigger profile differs from previous protected policy.');
+    if (trustedContext.policy.triggerProfile === 'completed-owner-decision-self-v1') {
+      const provenance = verifyOwnerAmendmentBlockEvidence({ recordBytes: tagEnvelope.reviewRecordBytes,
+        bundleBytes: tagEnvelope.attestationBundleBytes, expected: producerContext, runGh });
+      if (provenance.status !== 'VERIFIED_PRODUCER_ATTESTATION' ||
+          provenance.recordSha256 !== hash(tagEnvelope.reviewRecordBytes)) fail(provenance.reason ?? 'OWNER_DECISION trigger producer provenance is unverified.');
+    }
+    const evidence = trustedContext.policy.triggerProfile === 'completed-owner-decision-self-v1'
+      ? verifyOwnerAmendmentOwnerDecisionContext({ trustedContext, tagEnvelope })
+      : verifyEvidence({ trustedContext, producerContext, tagEnvelope, runGh });
+    const validStatus = trustedContext.policy.triggerProfile === 'completed-owner-decision-self-v1'
+      ? 'VERIFIED_OWNER_DECISION_AMENDMENT_CONTEXT' : 'VERIFIED_OWNER_AMENDMENT_BLOCK_EVIDENCE';
+    if (evidence?.status !== validStatus || evidence.repository !== repository ||
         evidence.baseSha !== baseSha || evidence.bSha !== bSha || evidence.policyRevision !== baseSha ||
         evidence.tagObjectOid !== tag.tag.objectOid) fail(evidence?.reason ?? 'BLOCK evidence did not verify against exact Git and tag context.');
+    const triggerRecord = JSON.parse(decoder.decode(tagEnvelope.reviewRecordBytes));
+    const amendmentRecord = JSON.parse(decoder.decode(tagEnvelope.amendmentRecordBytes));
     return Object.freeze({ status: 'VERIFIED_OWNER_AMENDMENT_MERGE_GROUP_EVIDENCE', repository, baseSha, bSha,
       policyRevision: baseSha, policySha256: hash(gitContext.policyBytes),
-      authorityId: trustedContext.authority.id, previousAuthoritySha256: trustedContext.authority.previousSha256,
-      proposedAuthoritySha256: trustedContext.authority.newSha256,
+      triggerProfile: trustedContext.policy.triggerProfile, triggerDecision: trustedContext.policy.triggerProfile === 'completed-owner-decision-self-v1' ? 'OWNER_DECISION' : 'BLOCK',
+      ownerDecisionId: evidence.ownerDecisionId ?? null,
+      authorityId: evidence.authorityId ?? trustedContext.authority.id, previousAuthoritySha256: evidence.previousAuthoritySha256 ?? trustedContext.authority.previousSha256,
+      proposedAuthoritySha256: evidence.proposedAuthoritySha256 ?? trustedContext.authority.newSha256,
+      purpose: evidence.purpose ?? amendmentRecord.purpose, targetValidated: true,
+      priorAuthoritySetDigest: triggerRecord.authority?.setDigest,
       reviewRecordSha256: evidence.reviewRecordSha256, amendmentRecordSha256: evidence.amendmentRecordSha256,
       attestationBundleSha256: evidence.attestationBundleSha256, tagObjectOid: evidence.tagObjectOid,
       observedTagRefOid: tag.observedTagRefOid, producerRunId: producerContext.runId,

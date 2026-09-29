@@ -364,6 +364,25 @@ test('produces attested BLOCK records only in a credential-separated signer job'
   assert.doesNotMatch(acceptJob, /block-review-record/);
 });
 
+test('produces exact OWNER_DECISION trigger evidence only for the prior-policy-selected self profile', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
+  const recordJob = workflow.match(/  owner-amendment-owner-decision-record:\n([\s\S]*?)\n  owner-amendment-semantic-eligibility:/)?.[1];
+  assert.ok(recordJob);
+  assert.match(workflow, /owner_amendment_trigger_profile: \$\{\{ steps\.resolve\.outputs\.ownerAmendmentTriggerProfile \}\}/);
+  assert.match(recordJob, /if: needs\.policy\.outputs\.mode == 'enforced' && needs\.policy\.outputs\.owner_amendment_grade == 'G0' && needs\.policy\.outputs\.owner_amendment_trigger_profile == 'completed-owner-decision-self-v1' && needs\.review\.outputs\.decision_kind == 'OWNER_DECISION'/);
+  assert.match(recordJob, /needs: \[policy, codex-action-integrity, review\]/);
+  assert.match(recordJob, /contents: read\n      id-token: write\n      attestations: write/);
+  assert.doesNotMatch(recordJob, /OPENAI_API_KEY|secrets\.OPENAI_API_KEY/);
+  assert.match(recordJob, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+  assert.match(recordJob, /RECORD_DIR: \.agk-owner-decision-record-input/);
+  assert.match(recordJob, /node \.architecture-gatekeeper-runtime\/scripts\/owner-amendment-owner-decision-producer\.mjs/);
+  assert.match(recordJob, /subject-path: \.agk-owner-decision-record-input\/review-record\.json/);
+  assert.match(recordJob, /name: owner-amendment-owner-decision-\$\{\{ github\.event\.pull_request\.base\.sha \}\}-\$\{\{ github\.event\.pull_request\.head\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
+  assert.match(workflow, /Require completed OWNER_DECISION evidence production when selected/);
+  assert.match(workflow, /needs: \[policy, review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-semantic-eligibility, report\]/);
+  assert.match(workflow, /ownerAmendmentTriggerProfile/);
+});
+
 test('selects and materializes the protected self Authority Set for CI and local review', async () => {
   const selfPolicy = parseCiPolicyJson(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'), 'utf8'));
   const selected = resolveCiPolicy(selfPolicy, 'main');

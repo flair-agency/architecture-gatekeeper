@@ -38,12 +38,15 @@ test('v2 enforced self policy exposes optional previous-policy OWNER_AMENDMENT G
   assert.equal(Object.hasOwn(resolveCiPolicy(policy(amendment), 'preview'), 'ownerAmendmentGrade'), false);
 });
 
-test('resolves only the BLOCK self trigger profile and optional OWNER_AMENDMENT prompt limit', () => {
+test('resolves both canonical self trigger profiles and optional OWNER_AMENDMENT prompt limit', () => {
   const selected = resolveCiPolicy(policy({ ...amendment, triggerProfile: 'completed-block-v1', maxPromptBytes: 262_144 }), 'main');
   assert.equal(selected.ownerAmendmentTriggerProfile, 'completed-block-v1');
   assert.equal(selected.ownerAmendmentMaxPromptBytes, 262_144);
   assert.equal(JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64')).maxPromptBytes, limits.maxPromptBytes);
-  assert.throws(() => resolveCiPolicy(policy({ ...amendment, triggerProfile: 'completed-owner-decision-self-v1' }), 'main'));
+  const ownerDecision = resolveCiPolicy(policy({ ...amendment,
+    triggerProfile: 'completed-owner-decision-self-v1', maxPromptBytes: 262_144 }), 'main');
+  assert.equal(ownerDecision.ownerAmendmentTriggerProfile, 'completed-owner-decision-self-v1');
+  assert.equal(ownerDecision.ownerAmendmentGrade, 'G0');
   for (const maxPromptBytes of [0, -1, 1.5, '262144', 1_048_577, Number.MAX_SAFE_INTEGER + 1]) {
     assert.throws(() => resolveCiPolicy(policy({ ...amendment, maxPromptBytes }), 'main'));
   }
@@ -56,7 +59,6 @@ test('owner amendment selection rejects malformed scope, authority, producer, na
   for (const invalid of [
     { ...amendment, grade: 'G1' },
     { ...amendment, scope: 'any' },
-    { ...amendment, triggerProfile: 'completed-owner-decision-self-v1' },
     { ...amendment, triggerProfile: 'completed-owner-decision-v1' },
     { ...amendment, authorityId: '../architecture' },
     { ...amendment, authorityPath: '../docs/architecture.md' },

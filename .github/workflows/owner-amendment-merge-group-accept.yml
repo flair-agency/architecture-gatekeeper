@@ -1,0 +1,37 @@
+name: Architecture Gate / OWNER_AMENDMENT merge_group
+
+on:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+  checks: read
+  attestations: read
+
+jobs:
+  accept:
+    name: accept
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+      checks: read
+      attestations: read
+    steps:
+      - name: Check out the protected merge-group base
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.merge_group.base_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify the merge-group OWNER_AMENDMENT evidence chain
+        env:
+          GATEKEEPER_RUNTIME_SHA: ${{ github.workflow_sha }}
+          GH_TOKEN: ${{ github.token }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+        run: node scripts/owner-amendment-merge-group-gate.mjs

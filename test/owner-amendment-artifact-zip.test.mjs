@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
-import { extractOwnerAmendmentBlockArtifactZip, OWNER_AMENDMENT_ARTIFACT_ZIP_LIMITS } from '../src/owner-amendment-artifact-zip.mjs';
+import { extractOwnerAmendmentArtifactZip, extractOwnerAmendmentBlockArtifactZip, OWNER_AMENDMENT_ARTIFACT_ZIP_LIMITS } from '../src/owner-amendment-artifact-zip.mjs';
 
 const crc32 = bytes => {
   let crc = 0xffffffff;
@@ -99,6 +99,21 @@ test('extracts exact raw bytes for the two required root entries', () => {
   assert.deepEqual(result.reviewRecordBytes, entries[0].content);
   assert.deepEqual(result.attestationBundleBytes, entries[1].content);
   assert.deepEqual(OWNER_AMENDMENT_ARTIFACT_ZIP_LIMITS.requiredFiles, ['review-record.json', 'attestation-bundle.json']);
+});
+
+test('extracts exact eligibility receipt and attestation using a disjoint profile archive', () => {
+  const receipt = Buffer.from('{"eligibility":"ELIGIBLE"}');
+  const bundle = Buffer.from('{"attestations":[]}');
+  const result = extractOwnerAmendmentArtifactZip(makeZip([
+    { name: 'eligibility-receipt.json', content: receipt },
+    { name: 'attestation-bundle.json', content: bundle },
+  ]), { profile: 'eligibility' });
+  assert.equal(result.status, 'EXTRACTED_OWNER_AMENDMENT_ELIGIBILITY_ARTIFACT');
+  assert.deepEqual(result.eligibilityReceiptBytes, receipt);
+  assert.deepEqual(result.attestationBundleBytes, bundle);
+  assert.equal(extractOwnerAmendmentBlockArtifactZip(makeZip([
+    { name: 'eligibility-receipt.json', content: receipt }, { name: 'attestation-bundle.json', content: bundle },
+  ])).status, 'INCOMPLETE');
 });
 
 test('accepts UTF-8 entries with a ZIP data descriptor and EOCD comment', () => {

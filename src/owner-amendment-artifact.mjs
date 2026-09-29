@@ -7,6 +7,7 @@ const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const SHA = /^[a-f0-9]{40}$/;
 const MAX_ZIP_BYTES = 2 * 1024 * 1024;
 const EXPECTED_KEYS = ['repository', 'artifactId', 'runId', 'runAttempt', 'baseSha', 'headSha'];
+const PROFILES = Object.freeze({ block: 'owner-amendment-block', ownerDecision: 'owner-amendment-owner-decision', eligibility: 'owner-amendment-eligibility' });
 
 const fail = message => { throw new Error(`Owner amendment artifact: ${message}`); };
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -15,13 +16,15 @@ const validPositiveId = value => (typeof value === 'string' && /^[1-9]\d*$/.test
 const validGitHubNumericId = value => Number.isSafeInteger(value) && value > 0;
 
 function validateExpected(expected) {
+  const keys = expected && Object.hasOwn(expected, 'profile') ? [...EXPECTED_KEYS, 'profile'] : EXPECTED_KEYS;
   if (!expected || typeof expected !== 'object' || Array.isArray(expected) ||
-      Object.keys(expected).sort().join(',') !== [...EXPECTED_KEYS].sort().join(',')) {
+      Object.keys(expected).sort().join(',') !== [...keys].sort().join(',')) {
     fail('trusted run identity is incomplete or contains unknown fields.');
   }
   if (!REPOSITORY.test(expected.repository) || !validPositiveId(expected.artifactId) ||
       !validPositiveId(expected.runId) || !validPositiveId(expected.runAttempt) ||
-      !SHA.test(expected.baseSha) || !SHA.test(expected.headSha)) {
+      !SHA.test(expected.baseSha) || !SHA.test(expected.headSha) ||
+      (expected.profile !== undefined && !Object.hasOwn(PROFILES, expected.profile))) {
     fail('trusted run identity has invalid values.');
   }
   return expected;
@@ -95,7 +98,7 @@ export async function fetchOwnerAmendmentBlockArtifact({ expected, token, fetchI
       fail('workflow run event, repository, head, attempt, or run ID differs from trusted expectation.');
     }
     const artifact = await getJson(`${api}/repos/${repo}/actions/artifacts/${encodeURIComponent(String(expected.artifactId))}`);
-    const artifactName = `owner-amendment-block-${expected.baseSha}-${expected.headSha}-${expected.runId}-${expected.runAttempt}`;
+    const artifactName = `${PROFILES[expected.profile ?? 'block']}-${expected.baseSha}-${expected.headSha}-${expected.runId}-${expected.runAttempt}`;
     if (String(artifact.id) !== String(expected.artifactId) || artifact.name !== artifactName || artifact.expired !== false ||
         artifact.workflow_run?.id == null || String(artifact.workflow_run.id) !== String(expected.runId) ||
         !validGitHubNumericId(artifact.workflow_run?.repository_id) ||
@@ -112,7 +115,7 @@ export async function fetchOwnerAmendmentBlockArtifact({ expected, token, fetchI
     if (!response?.ok) fail(`artifact download failed (${response?.status ?? 'no response'}).`);
     const zipBytes = await readBoundedZip(response, artifact.size_in_bytes);
     if (`sha256:${sha256(zipBytes)}` !== artifact.digest) fail('downloaded zip SHA-256 differs from GitHub metadata.');
-    return Object.freeze({ status: 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT', artifactId: String(artifact.id),
+    return Object.freeze({ status: expected.profile === 'eligibility' ? 'FETCHED_OWNER_AMENDMENT_ELIGIBILITY_ARTIFACT' : 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT', artifactId: String(artifact.id),
       artifactName: artifact.name, artifactDigest: artifact.digest, runId: String(expected.runId), runAttempt: String(expected.runAttempt),
       baseSha: expected.baseSha, headSha: expected.headSha,
       zipBytes: Buffer.from(zipBytes) });

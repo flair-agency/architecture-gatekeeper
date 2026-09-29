@@ -104,6 +104,7 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
   const amendment = {
     fixtureSchema: `amendment-${triggerProfile}`,
     repository, baseSha, bSha, policyRevision: baseSha, triggerProfile,
+    ...(triggerProfile === 'completed-owner-decision-self-v1' ? { ownerDecisionId: decision.ownerDecisionId } : {}),
     triggerReviewRecordSha256: sha256(triggerReviewRecordBytes), priorAuthoritySetDigest: authoritySet.digest,
     resultingAuthoritySetDigest, target: 'architecture#existing-rule-17', purpose: 'Resolve the existing canonical rule escalation.',
   };
@@ -130,7 +131,8 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     const value = JSON.parse(bytes.toString('utf8'));
     assert.equal(value.fixtureSchema, `amendment-${expected.triggerProfile}`);
     for (const key of ['repository', 'baseSha', 'bSha', 'policyRevision', 'triggerProfile',
-      'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest']) {
+      'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest',
+      ...(expected.ownerDecisionId === undefined ? [] : ['ownerDecisionId'])]) {
       assert.equal(value[key], key === 'priorAuthoritySetDigest' ? expected.authoritySetDigest : expected[key]);
     }
     assert.ok(value.target);
@@ -138,7 +140,8 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
       baseSha: value.baseSha, bSha: value.bSha, policyRevision: value.policyRevision,
       triggerProfile: value.triggerProfile, triggerReviewRecordSha256: value.triggerReviewRecordSha256,
       priorAuthoritySetDigest: value.priorAuthoritySetDigest,
-      resultingAuthoritySetDigest: value.resultingAuthoritySetDigest, targetValidated: true, purpose: value.purpose };
+      resultingAuthoritySetDigest: value.resultingAuthoritySetDigest, targetValidated: true, purpose: value.purpose,
+      ...(expected.ownerDecisionId === undefined ? {} : { ownerDecisionId: value.ownerDecisionId }) };
   };
   const verifyTag = ({ tag: tagInput, expected }) => {
     assert.deepEqual(tagInput, tag);
@@ -219,9 +222,19 @@ test('shared producer prepares and validates the enabled BLOCK self trigger prof
   }
 });
 
-test('owner-decision profile remains fail-closed until protected transition acceptance is implemented', () => {
+test('owner-decision profile prepares the same bounded semantic review under explicit base opt-in', () => {
   const ownerDecision = fixture('completed-owner-decision-self-v1');
-  assert.throws(() => ownerDecision.producer.prepare(ownerDecision.args), /previous protected policy cannot be resolved/);
+  const prepared = ownerDecision.producer.prepare(ownerDecision.args);
+  assert.equal(prepared.triggerProfile, 'completed-owner-decision-self-v1');
+  assert.match(prepared.promptBytes.toString('utf8'), /preserve the completed historical OWNER_DECISION/);
+});
+
+test('owner-decision semantic eligibility rejects an AmendmentRecord naming a different decision', () => {
+  const f = fixture('completed-owner-decision-self-v1');
+  const amendment = JSON.parse(f.amendmentRecordBytes.toString('utf8'));
+  amendment.ownerDecisionId = 'unrelated-existing-decision';
+  f.args.amendmentRecordBytes = Buffer.from(JSON.stringify(amendment));
+  assert.throws(() => f.producer.prepare(f.args));
 });
 
 test('supports multiple selected authority paths and binds the complete resulting Authority Set', () => {

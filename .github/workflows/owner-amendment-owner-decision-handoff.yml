@@ -1,0 +1,41 @@
+name: Owner Amendment OWNER_DECISION Handoff
+
+on:
+  # repository_dispatch uses default-branch workflow bytes; never run a
+  # privileged handoff workflow from candidate B code.
+  repository_dispatch:
+    types: [owner-amendment-owner-decision-handoff-v1]
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: read
+
+jobs:
+  handoff:
+    if: github.ref == 'refs/heads/main' && github.event.action == 'owner-amendment-owner-decision-handoff-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Verify trigger evidence and transport exact-B tag
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_ACTION: ${{ github.event.action }}
+          B_PR_NUMBER: ${{ github.event.client_payload.b_pr_number }}
+          A_PR_NUMBER: ${{ github.event.client_payload.a_pr_number }}
+          OWNER_DECISION_RUN_ID: ${{ github.event.client_payload.run_id }}
+          OWNER_DECISION_RUN_ATTEMPT: ${{ github.event.client_payload.run_attempt }}
+          AMENDMENT_PURPOSE: ${{ github.event.client_payload.purpose }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+          GH_TOKEN: ${{ github.token }}
+        run: node src/owner-amendment-owner-decision-handoff-cli.mjs

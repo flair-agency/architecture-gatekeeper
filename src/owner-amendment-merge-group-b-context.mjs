@@ -45,7 +45,7 @@ const MERGE_QUEUE_QUERY = `query($owner: String!, $name: String!, $number: Int!)
       number state isDraft baseRefName baseRefOid headRefOid
       baseRepository { id nameWithOwner }
       headRepository { id nameWithOwner }
-      mergeQueueEntry { state baseCommit { oid } headCommit { oid } pullRequest { number } }
+      mergeQueueEntry { state enqueuedAt baseCommit { oid } headCommit { oid } pullRequest { number } }
     }
   }
 }`;
@@ -95,6 +95,7 @@ export async function selectOwnerAmendmentMergeGroupBContext({ event, token, fet
         queued?.baseRepository?.id !== graphRepo.id || queued?.baseRepository?.nameWithOwner !== parsed.repository ||
         queued?.headRepository?.id !== graphRepo.id || queued?.headRepository?.nameWithOwner !== parsed.repository ||
         !entry || !['AWAITING_CHECKS', 'LOCKED', 'MERGEABLE', 'QUEUED'].includes(entry.state) ||
+        typeof entry.enqueuedAt !== 'string' || !Number.isFinite(Date.parse(entry.enqueuedAt)) ||
         entry.baseCommit?.oid !== parsed.baseSha || entry.headCommit?.oid !== bHeadSha ||
         String(entry.pullRequest?.number) !== String(candidate.number)) {
       fail('authenticated merge queue entry does not bind this open PR to the exact event base and B head.');
@@ -103,7 +104,7 @@ export async function selectOwnerAmendmentMergeGroupBContext({ event, token, fet
     return Object.freeze({ status: 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT',
       repository: parsed.repository, repositoryId: repo.id, mergeGroupBaseSha: parsed.baseSha,
       mergeGroupHeadSha: parsed.headSha, bPrNumber: String(candidate.number), bBaseSha: parsed.baseSha,
-      bHeadSha, queueEntryState: entry.state });
+      bHeadSha, queueEntryState: entry.state, queueEnteredAt: entry.enqueuedAt });
   } catch (error) {
     return Object.freeze({ status: 'INCOMPLETE', reason: error.message });
   }
