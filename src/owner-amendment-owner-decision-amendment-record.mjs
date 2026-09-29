@@ -108,7 +108,6 @@ export function validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes, expe
       baseSha: value.baseSha, bSha: value.headSha, policyRevision: value.policyRevision,
       triggerProfile: value.triggerProfile, triggerReviewRecordSha256: value.triggeringReviewSha256,
       priorAuthoritySetDigest: expected.authoritySetDigest, resultingAuthoritySetDigest: expected.resultingAuthoritySetDigest,
-      targetValidated: true, purpose: value.purpose, ownerDecisionId: value.ownerDecisionId,
-      authority: value.authority });
+      targetValidated: true, purpose: value.purpose, ownerDecisionId: value.ownerDecisionId });
   } catch (error) { return Object.freeze({ status: 'INCOMPLETE', reason: error.message }); }
 }

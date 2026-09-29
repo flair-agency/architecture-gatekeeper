@@ -5,6 +5,8 @@ import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { buildOwnerAmendmentOwnerDecisionAmendmentRecord,
+  validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../src/owner-amendment-owner-decision-amendment-record.mjs';
 import {
   completeOwnerAmendmentSemanticEligibility,
   createOwnerAmendmentSemanticEligibilityProducer,
@@ -108,7 +110,13 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     triggerReviewRecordSha256: sha256(triggerReviewRecordBytes), priorAuthoritySetDigest: authoritySet.digest,
     resultingAuthoritySetDigest, target: 'architecture#existing-rule-17', purpose: 'Resolve the existing canonical rule escalation.',
   };
-  const amendmentRecordBytes = Buffer.from(JSON.stringify(amendment));
+  const attestationBundleBytes = Buffer.from('{"attestation":"fixture"}\n');
+  const amendmentRecordBytes = triggerProfile === 'completed-owner-decision-self-v1'
+    ? buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecordBytes: triggerReviewRecordBytes,
+      attestationBundleBytes, repository, baseSha, bSha, authorityId: 'architecture', authorityPath: path,
+      previousAuthorityBytes: authorityBytes, amendedAuthorityBytes: proposedAuthorityBytes,
+      purpose: amendment.purpose }).bytes
+    : Buffer.from(JSON.stringify(amendment));
   const semanticProducer = { workflowPath, workflowSha: baseSha, workflowRef: `refs/heads/${baseBranch}`,
     runId: '2002', runAttempt: '1', jobId: 'owner-amendment-eligibility' };
   const gatekeeper = { repository, revision: 'e'.repeat(40), package: null };
@@ -158,7 +166,11 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
       return { path: value, bytes: Buffer.from(change.afterBytes) };
     }) }),
     resolveProtectedSelection: () => ({ selectedProducer: semanticProducer, selectedGatekeeper: gatekeeper }),
-    validateTriggerProvenance: verifyTrigger, validateAmendmentRecord: verifyAmendment, validateTag: verifyTag };
+    validateTriggerProvenance: verifyTrigger,
+    validateAmendmentRecord: triggerProfile === 'completed-owner-decision-self-v1'
+      ? ({ bytes, expected }) => validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes, expected })
+      : verifyAmendment,
+    validateTag: verifyTag };
   const producer = createOwnerAmendmentSemanticEligibilityProducer(validators);
   const args = { repository, baseSha, bSha, triggerProfile, policyRevision: baseSha, policyBytes,
     authoritySet, manifestBytes, changes, diffBytes, triggerReviewRecordBytes, triggerProducer, amendmentRecordBytes,

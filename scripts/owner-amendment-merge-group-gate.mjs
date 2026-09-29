@@ -13,6 +13,7 @@ import { verifyOwnerAmendmentBlockEvidence } from '../src/owner-amendment-attest
 import { materializeAuthoritySet } from '../src/authority-set.mjs';
 import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;
 const token = process.env.GH_TOKEN;
@@ -45,35 +46,37 @@ async function getJson(url, { expectedOwnerAmendmentTagUrl } = {}) {
   return response.json();
 }
 
-async function eligibilityEvidence({ selection, queueEnteredAt }) {
-  if (!/^[a-f0-9]{40}$/.test(selection.bHeadSha ?? '')) fail('exact B SHA for producer lookup is invalid.');
-  const runsUrl = new URL('repos/flair-agency/architecture-gatekeeper/actions/runs', api);
-  runsUrl.searchParams.set('head_sha', selection.bHeadSha);
-  runsUrl.searchParams.set('event', 'pull_request_target');
-  runsUrl.searchParams.set('per_page', '100');
-  const runs = await getJson(runsUrl);
-  if (!Array.isArray(runs.workflow_runs) || runs.workflow_runs.length > 100) fail('producer workflow run listing is malformed.');
-  const candidates = runs.workflow_runs.filter(run => run.repository?.full_name === repository &&
-    run.head_repository?.full_name === repository && run.event === 'pull_request_target' &&
-    run.head_sha === selection.bHeadSha && /^\.github\/workflows\/self-architecture-gate\.yml@(?:refs\/heads\/main|main)$/.test(run.path ?? '') &&
-    run.status === 'completed').sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
-  if (!candidates.length) fail('no completed protected-base B workflow run exists for semantic eligibility.');
-  let chosen;
-  let job;
-  for (const run of candidates) {
-    if (!Number.isSafeInteger(run.id) || run.id < 1) fail('producer run ID is invalid.');
-    const attempt = String(run.run_attempt);
-    if (!/^[1-9]\d*$/.test(attempt)) fail('producer run attempt is invalid.');
-    const jobsUrl = `${api}repos/flair-agency/architecture-gatekeeper/actions/runs/${run.id}/attempts/${attempt}/jobs?per_page=100`;
-    const jobs = await getJson(jobsUrl);
-    if (!Array.isArray(jobs.jobs) || jobs.jobs.length > 100) fail('producer job list is malformed.');
-    const matches = jobs.jobs.filter(candidate => candidate.name === 'owner-amendment-semantic-eligibility-signer');
-    if (matches.length > 1) fail('producer run has duplicate semantic eligibility jobs.');
-    if (matches.length === 1) { chosen = run; job = matches[0]; break; }
-  }
+async function inspectProducerAttempts(selection) {
+  const readRuns = async ({ bHeadSha, page, perPage }) => {
+    const runsUrl = new URL('repos/flair-agency/architecture-gatekeeper/actions/runs', api);
+    runsUrl.searchParams.set('head_sha', bHeadSha);
+    runsUrl.searchParams.set('event', 'pull_request_target');
+    runsUrl.searchParams.set('per_page', String(perPage));
+    runsUrl.searchParams.set('page', String(page));
+    const result = await getJson(runsUrl);
+    if (!Number.isSafeInteger(result.total_count) || !Array.isArray(result.workflow_runs)) fail('producer workflow run listing is malformed.');
+    return { total_count: result.total_count, workflow_runs: result.workflow_runs };
+  };
+  const readJobs = async ({ runId, runAttempt, page, perPage }) => {
+    const jobsUrl = new URL(`repos/flair-agency/architecture-gatekeeper/actions/runs/${runId}/attempts/${runAttempt}/jobs`, api);
+    jobsUrl.searchParams.set('per_page', String(perPage));
+    jobsUrl.searchParams.set('page', String(page));
+    const result = await getJson(jobsUrl);
+    if (!Number.isSafeInteger(result.total_count) || !Array.isArray(result.jobs)) fail('producer job listing is malformed.');
+    return { total_count: result.total_count, jobs: result.jobs };
+  };
+  return inspectOwnerAmendmentSemanticProducerAttempts({ repository, bHeadSha: selection.bHeadSha,
+    queueEnteredAt: selection.queueEnteredAt, listRuns: readRuns, listJobs: readJobs });
+}
+
+async function eligibilityEvidence({ selection, attempts }) {
+  const chosen = attempts.latestSignerAttempt?.run;
+  const chosenAttempt = attempts.latestSignerAttempt?.runAttempt;
+  const job = attempts.latestSignerAttempt?.job;
+  if (!chosen) fail('no completed protected-base B workflow run exists for semantic eligibility.');
   if (!chosen || job?.status !== 'completed' || job.conclusion !== 'success' || typeof job.completed_at !== 'string' ||
-      Date.parse(job.completed_at) >= Date.parse(queueEnteredAt)) fail('latest B semantic eligibility job did not complete successfully before queue entry.');
-  const expected = { repository, runId: String(chosen.id), runAttempt: String(chosen.run_attempt),
+      Date.parse(job.completed_at) >= Date.parse(selection.queueEnteredAt)) fail('latest B semantic eligibility job did not complete successfully before queue entry.');
+  const expected = { repository, runId: String(chosen.id), runAttempt: chosenAttempt,
     baseSha: selection.bBaseSha, headSha: selection.bHeadSha, profile: 'eligibility' };
   const discovered = await discoverOwnerAmendmentBlockArtifact({ expected, token });
   if (discovered.status !== 'DISCOVERED_OWNER_AMENDMENT_ELIGIBILITY_ARTIFACT') fail(discovered.reason ?? 'exact eligibility artifact was not found.');
@@ -88,7 +91,7 @@ async function eligibilityEvidence({ selection, queueEnteredAt }) {
   const provenance = verifyOwnerAmendmentBlockEvidence({ recordBytes: receiptBytes,
     bundleBytes: extracted.attestationBundleBytes, expected: { repository,
       workflowPath: '.github/workflows/self-architecture-gate.yml', workflowSha: selection.bBaseSha,
-      workflowRef: 'refs/heads/main', runId: String(chosen.id), runAttempt: String(chosen.run_attempt) }, runGh: gh });
+      workflowRef: 'refs/heads/main', runId: String(chosen.id), runAttempt: chosenAttempt }, runGh: gh });
   if (provenance.status !== 'VERIFIED_PRODUCER_ATTESTATION' || provenance.recordSha256 !== hash(receiptBytes)) {
     fail(provenance.reason ?? 'eligibility receipt attestation is not trusted.');
   }
@@ -97,7 +100,7 @@ async function eligibilityEvidence({ selection, queueEnteredAt }) {
     artifactSha256: fetched.artifactDigest.slice('sha256:'.length), provenanceVerified: true,
     checkConclusion: 'success', completedAt: job.completed_at,
     producerWorkflowPath: '.github/workflows/self-architecture-gate.yml', producerWorkflowSha: selection.bBaseSha,
-    producerWorkflowRef: 'refs/heads/main', producerRunId: String(chosen.id), producerRunAttempt: String(chosen.run_attempt),
+    producerWorkflowRef: 'refs/heads/main', producerRunId: String(chosen.id), producerRunAttempt: chosenAttempt,
     producerJobId: 'owner-amendment-semantic-eligibility-signer', gatekeeperRepository: receipt.gatekeeper?.repository,
     gatekeeperRevision: receipt.gatekeeper?.revision, principalAuthentication: 'not_verified',
     exactClaimAuthorization: 'not_verified' };
@@ -124,10 +127,14 @@ async function main() {
   if (!['completed-block-v1', 'completed-owner-decision-self-v1'].includes(selectedPolicy.ownerAmendmentTriggerProfile)) {
     fail('previous-base policy selected an unsupported trigger profile.');
   }
+  const producerAttempts = await inspectProducerAttempts(selection);
   const exactTagRef = `${selectedPolicy.ownerAmendmentTagNamespace}/${selection.bHeadSha}`;
   const expectedTagUrl = ownerAmendmentTagApiUrl(repository, selectedPolicy.ownerAmendmentTagNamespace, selection.bHeadSha);
   const tagResponse = await getJson(expectedTagUrl, { expectedOwnerAmendmentTagUrl: expectedTagUrl });
   if (tagResponse === null) {
+    if (producerAttempts.hasSuccessfulSignerBeforeQueue) {
+      fail('exact B has a successful pre-queue semantic eligibility signer result but no protected amendment tag.');
+    }
     process.stdout.write('OWNER_AMENDMENT_NOT_APPLICABLE: exact B has no protected amendment tag.\n'); return;
   }
   if (!Number.isSafeInteger(tagRulesetId) || tagRulesetId < 1) fail('active tag ruleset ID is unavailable for exact B verification.');
@@ -181,11 +188,11 @@ async function main() {
       tagRef: `${context.policy.ownerAmendmentTagNamespace}/${selection.bHeadSha}`,
       tagObjectOid: value.tagObjectOid, observedTagRefOid: value.observedTagRefOid,
       protectedAgainstUpdateAndDeletion: true }; },
-    verifyEligibility: async () => eligibilityEvidence({ selection, queueEnteredAt: selection.queueEnteredAt }),
+    verifyEligibility: async () => eligibilityEvidence({ selection, attempts: producerAttempts }),
   });
   const result = await verifier.verify(event);
-  if (result.status !== 'ACCEPTED_OWNER_AMENDMENT_G0') fail(result.reason ?? 'merge-group OWNER_AMENDMENT verification failed.');
-  process.stdout.write(`OWNER_AMENDMENT / G0 accepted: ${JSON.stringify(result)}\n`);
+  if (result.status !== 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION') fail(result.reason ?? 'merge-group OWNER_AMENDMENT verification failed.');
+  process.stdout.write(`OWNER_AMENDMENT / G0 pre-transition eligibility verified; adoption and canonical placement remain pending: ${JSON.stringify(result)}\n`);
 }
 
 main().catch(error => { process.stderr.write(`${error.message}\n`); process.exitCode = 1; });

@@ -166,7 +166,8 @@ export function createOwnerAmendmentMergeGroupAcceptanceVerifier({ selectBContex
         const tag = validateTag(await verifyTag({ selection, policy, trigger }), policy, selection, trigger);
         const eligibility = validateEligibility(await verifyEligibility({ selection, policy, trigger, tag }),
           policy, selection, trigger, tag, selectedRuntime);
-        return Object.freeze({ status: 'ACCEPTED_OWNER_AMENDMENT_G0', repository: selection.repository,
+        return Object.freeze({ status: 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION', repository: selection.repository,
+          eligibility: 'eligible', adoption: 'pending', canonical: 'pending',
           baseSha: selection.bBaseSha, bSha: selection.bHeadSha, mergeGroupHeadSha: selection.mergeGroupHeadSha,
           bPrNumber: selection.bPrNumber, triggerProfile: policy.triggerProfile,
           triggerDecision: trigger.decision, triggerReviewRecordSha256: trigger.reviewRecordSha256,

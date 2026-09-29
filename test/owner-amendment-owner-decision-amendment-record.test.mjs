@@ -34,6 +34,9 @@ test('builds a closed OWNER_DECISION AmendmentRecord bound to exact trigger and 
   } });
   assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_RECORD');
   assert.equal(result.ownerDecisionId, 'decision-existing-42');
+  assert.deepEqual(Object.keys(result).sort(), ['status', 'repository', 'baseSha', 'bSha', 'policyRevision',
+    'triggerProfile', 'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest',
+    'targetValidated', 'purpose', 'ownerDecisionId'].sort());
 });
 
 test('rejects a different trigger digest, decision ID, or changed authority bytes', () => {

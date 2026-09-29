@@ -77,7 +77,10 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
   test(`accepts a fully verified ${profile} merge-group chain without a queue model call`, async () => {
     const f = fixture(profile);
     const result = await f.verifier.verify(event);
-    assert.equal(result.status, 'ACCEPTED_OWNER_AMENDMENT_G0');
+    assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION');
+    assert.equal(result.eligibility, 'eligible');
+    assert.equal(result.adoption, 'pending');
+    assert.equal(result.canonical, 'pending');
     assert.equal(result.triggerProfile, profile);
     assert.equal(result.triggerDecision, profile === 'completed-block-v1' ? 'BLOCK' : 'OWNER_DECISION');
     assert.deepEqual(result.assurance, { principalAuthentication: 'not_verified', exactClaimAuthorization: 'not_verified' });
