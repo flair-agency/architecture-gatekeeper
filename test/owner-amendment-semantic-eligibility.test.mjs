@@ -33,14 +33,15 @@ function structuredCloneProtectedInputs(value) {
     changes: value.changes.map(change => ({ ...change, beforeBytes: Buffer.from(change.beforeBytes), afterBytes: Buffer.from(change.afterBytes) })) };
 }
 
-function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_000 } = {}) {
+function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_000, maxFileBytes = 131_072,
+  maxTotalBytes = 524_288, baseBranch = 'main' } = {}) {
   const policy = {
     version: 2,
     default: { mode: 'local-only' },
-    branches: { main: { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
+    branches: { [baseBranch]: { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
       authorityManifestPath: '.codex/gatekeeper/authorities.json',
-      authorityLimits: { maxManifestBytes: 16_384, maxMembers: 16, maxFileBytes: 131_072,
-        maxTotalBytes: 524_288, maxPromptBytes: 524_288 },
+      authorityLimits: { maxManifestBytes: 16_384, maxMembers: 16, maxFileBytes,
+        maxTotalBytes, maxPromptBytes: 524_288 },
       ownerAmendment: { version: 1, grade: 'G0', scope: 'authority-only', triggerProfile,
         authorityId: 'architecture', authorityPath: path,
         evidenceProducer: 'github-actions-attestation', tagNamespace: 'refs/tags/architecture-gatekeeper/amendments',
@@ -65,7 +66,7 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     authorityIds: members.map(member => member.id), summary: 'The existing rule requires an owner choice.' };
   const decisionBytes = Buffer.from(`${JSON.stringify(decision)}\n`);
   const workflowPath = '.github/workflows/self-architecture-gate.yml';
-  const triggerProducer = { workflowPath, workflowSha: baseSha, workflowRef: 'refs/heads/main',
+  const triggerProducer = { workflowPath, workflowSha: baseSha, workflowRef: `refs/heads/${baseBranch}`,
     runId: '1001', runAttempt: '1', jobId: 'architecture-gate' };
   const triggerRecord = {
     version: 1,
@@ -107,7 +108,7 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     resultingAuthoritySetDigest, target: 'architecture#existing-rule-17', purpose: 'Resolve the existing canonical rule escalation.',
   };
   const amendmentRecordBytes = Buffer.from(JSON.stringify(amendment));
-  const semanticProducer = { workflowPath, workflowSha: baseSha, workflowRef: 'refs/heads/main',
+  const semanticProducer = { workflowPath, workflowSha: baseSha, workflowRef: `refs/heads/${baseBranch}`,
     runId: '2002', runAttempt: '1', jobId: 'owner-amendment-eligibility' };
   const gatekeeper = { repository, revision: 'e'.repeat(40), package: null };
   const tagRef = `refs/tags/architecture-gatekeeper/amendments/${bSha}`;
@@ -146,15 +147,16 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
       triggerReviewRecordSha256: expected.triggerReviewRecordSha256, amendmentRecordSha256: expected.amendmentRecordSha256,
       tagRef: expected.tagRef, tagObjectOid: expected.tagObjectOid, observedTagRefOid: expected.observedTagRefOid };
   };
-  const protectedInputs = { policyBytes, manifestBytes, authoritySet, changes, diffBytes };
+  const protectedInputs = { baseBranch, policyBytes, manifestBytes, authoritySet, changes, diffBytes };
   const validators = { resolveProtectedInputs: () => structuredCloneProtectedInputs(protectedInputs),
+    resolveProtectedSelection: () => ({ selectedProducer: semanticProducer, selectedGatekeeper: gatekeeper }),
     validateTriggerProvenance: verifyTrigger, validateAmendmentRecord: verifyAmendment, validateTag: verifyTag };
   const producer = createOwnerAmendmentSemanticEligibilityProducer(validators);
   const args = { repository, baseSha, bSha, triggerProfile, policyRevision: baseSha, policyBytes,
     authoritySet, manifestBytes, changes, diffBytes, triggerReviewRecordBytes, triggerProducer, amendmentRecordBytes,
     tag, tagObjectBytes, producer: semanticProducer, selectedProducer: semanticProducer,
-    gatekeeper, selectedGatekeeper: gatekeeper, reviewModel: policy.branches.main.model,
-    reviewReasoningEffort: policy.branches.main.reasoningEffort };
+    gatekeeper, selectedGatekeeper: gatekeeper, reviewModel: policy.branches[baseBranch].model,
+    reviewReasoningEffort: policy.branches[baseBranch].reasoningEffort };
   return { args, producer, validators, policy, authoritySet, triggerRecord, triggerReviewRecordBytes, amendmentRecordBytes,
     semanticProducer, gatekeeper, tag, tagObjectBytes, resultingAuthoritySetDigest };
 }
@@ -289,11 +291,42 @@ test('fails closed when B changes a non-authority path or a diff omits/changes d
   badChanges.changes = [nonAuthority];
   badChanges.diffBytes = Buffer.from('diff --git a/docs/README.md b/docs/README.md\n');
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
-    resolveProtectedInputs: () => badChanges }).prepare(f.args), /non-authority path/);
+    resolveProtectedInputs: () => badChanges }).prepare(f.args), /non-authority path|selected amendment target/);
   const badDiff = structuredCloneProtectedInputs(base);
   badDiff.diffBytes = Buffer.from('diff --git a/docs/other.md b/docs/other.md\n');
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
     resolveProtectedInputs: () => badDiff }).prepare(f.args), /do not exactly match/);
+});
+
+test('enforces resulting per-file and aggregate limits and requires the selected target path', () => {
+  const limitedFile = fixture('completed-block-v1', { maxFileBytes: 128 });
+  const oversizedFile = structuredCloneProtectedInputs(limitedFile.validators.resolveProtectedInputs());
+  oversizedFile.changes[0].afterBytes = Buffer.alloc(129, 'x');
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...limitedFile.validators,
+    resolveProtectedInputs: () => oversizedFile }).prepare(limitedFile.args), /change is not one exact/);
+
+  const multiple = fixture('completed-block-v1', { multiAuthority: true, maxTotalBytes: 240 });
+  const oversizedSet = structuredCloneProtectedInputs(multiple.validators.resolveProtectedInputs());
+  const second = oversizedSet.changes[1];
+  const previousLines = second.beforeBytes.toString('utf8').trimEnd().split('\n');
+  const replacement = Buffer.from(`${previousLines[0]}\n${'x'.repeat(200)}\n`);
+  second.afterBytes = replacement;
+  const lines = oversizedSet.diffBytes.toString('utf8').split('\n');
+  const oldOwnershipLine = 'Ownership remains with the project owner.';
+  const oldCandidateLine = 'Existing ownership remains with the project owner.';
+  const oldLine = lines.indexOf(`-${oldCandidateLine}`);
+  const newLine = lines.indexOf('+Ownership remains with the project owner.');
+  if (oldLine >= 0) lines[oldLine] = `-${oldCandidateLine}`;
+  if (newLine >= 0) lines[newLine] = `+${'x'.repeat(200)}`;
+  oversizedSet.diffBytes = Buffer.from(lines.join('\n'));
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...multiple.validators,
+    resolveProtectedInputs: () => oversizedSet }).prepare(multiple.args), /resulting Authority Set exceeds/);
+
+  const nonTarget = fixture('completed-block-v1', { multiAuthority: true });
+  const onlyOtherTarget = structuredCloneProtectedInputs(nonTarget.validators.resolveProtectedInputs());
+  onlyOtherTarget.changes = [onlyOtherTarget.changes[1]];
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...nonTarget.validators,
+    resolveProtectedInputs: () => onlyOtherTarget }).prepare(nonTarget.args), /policy-selected amendment target/);
 });
 
 test('binds complete Authority Set, manifest and trigger identities to protected adapter selection', () => {
@@ -349,6 +382,17 @@ test('fails closed for trigger producer, semantic producer, model, effort, and G
     gatekeeper: { ...f.gatekeeper, revision: '9'.repeat(40) } }), /differs from the protected selection/);
 });
 
+test('resolves the protected base branch and binds trigger and eligibility workflows to it', () => {
+  const f = fixture('completed-owner-decision-self-v1', { baseBranch: 'release/0.6' });
+  const selected = resolveCiPolicy(parseCiPolicyJson(f.args.policyBytes.toString('utf8')), 'release/0.6');
+  assert.equal(selected.ownerAmendmentTriggerProfile, f.args.triggerProfile);
+  assert.doesNotThrow(() => f.producer.prepare(f.args));
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
+    resolveProtectedInputs: () => ({ ...f.validators.resolveProtectedInputs(), baseBranch: 'main' }) }).prepare(f.args), /previous protected policy/);
+  assert.throws(() => f.producer.prepare({ ...f.args,
+    triggerProducer: { ...f.args.triggerProducer, workflowRef: 'refs/heads/main' } }), /producer identity/);
+});
+
 test('candidate cannot select its own profile or replace the protected AmendmentRecord/tag bindings', () => {
   const f = fixture('completed-block-v1');
   const changedPolicy = Buffer.from(JSON.stringify({ ...f.policy, branches: { main: { ...f.policy.branches.main,
@@ -360,10 +404,22 @@ test('candidate cannot select its own profile or replace the protected Amendment
   assert.doesNotThrow(() => f.producer.prepare(untrustedOverride));
   const untrustedAdapter = { ...f.args, resolveProtectedInputs: () => { throw new Error('untrusted adapter called'); } };
   assert.doesNotThrow(() => f.producer.prepare(untrustedAdapter));
+  const callerSelectionOverride = { ...f.args, selectedProducer: { ...f.semanticProducer, runId: '9009' },
+    selectedGatekeeper: { ...f.gatekeeper, revision: '9'.repeat(40) } };
+  assert.doesNotThrow(() => f.producer.prepare(callerSelectionOverride));
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
     resolveProtectedInputs: () => ({ policyBytes: Buffer.alloc(1) }) }).prepare(f.args), /protected Git adapter result/);
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
     validateAmendmentRecord: wrongAmendment }).prepare(f.args), /AmendmentRecord profile validation/);
+  for (const key of ['selectedProducer', 'selectedGatekeeper']) {
+    const selected = f.validators.resolveProtectedSelection();
+    if (key === 'selectedProducer') selected.selectedProducer = { ...selected.selectedProducer, runId: '9009' };
+    else selected.selectedGatekeeper = { ...selected.selectedGatekeeper, revision: '9'.repeat(40) };
+    assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
+      resolveProtectedSelection: () => selected }).prepare(f.args), /provenance differs from its protected selection|Gatekeeper runtime\/package identity differs/);
+  }
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
+    resolveProtectedSelection: () => ({ selectedProducer: f.semanticProducer }) }).prepare(f.args), /independent protected runtime selection/);
   assert.throws(() => f.producer.prepare({ ...f.args,
     tagObjectBytes: Buffer.from('forged tag') }), /does not hash its exact bytes/);
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,

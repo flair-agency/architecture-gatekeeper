@@ -87,14 +87,18 @@ function parseBase64(value, label, maximum) {
   return bytes;
 }
 
-function validatePolicy({ policyBytes, policyRevision, baseSha, triggerProfile }) {
+function validatePolicy({ policyBytes, policyRevision, baseSha, baseBranch, triggerProfile }) {
   if (policyRevision !== baseSha) fail('policy revision is not the exact previous protected base.');
+  if (typeof baseBranch !== 'string' || !/^[A-Za-z0-9._/-]{1,255}$/.test(baseBranch) || baseBranch.startsWith('-') ||
+      baseBranch.endsWith('/') || baseBranch.endsWith('.') || baseBranch.split('/').some(part => !part || part === '.' || part === '..' || part.endsWith('.lock'))) {
+    fail('protected base branch name is invalid.');
+  }
   const { source } = parseJson(policyBytes, 'previous protected policy', MAX_POLICY_BYTES);
   let parsed;
   let selected;
   try {
     parsed = parseCiPolicyJson(source);
-    selected = resolveCiPolicy(parsed, 'main');
+    selected = resolveCiPolicy(parsed, baseBranch);
   } catch (error) { fail(`previous protected policy cannot be resolved: ${error.message}`); }
   if (parsed.version !== 2 || selected.mode !== 'enforced' ||
       selected.ownerAmendmentVersion !== 1 || selected.ownerAmendmentGrade !== 'G0' ||
@@ -173,11 +177,14 @@ function validateAuthoritySet(authoritySet, manifestBytes, repository, baseSha, 
   return Object.freeze({ descriptors, ids: descriptors.map(member => member.id), paths, digest: computed });
 }
 
-function validateDiff(diffBytes, changes, selectedAuthority, repository) {
+function validateDiff(diffBytes, changes, selectedAuthority, repository, selectedPolicy) {
   if (!Buffer.isBuffer(diffBytes) || !diffBytes.length || diffBytes.length > MAX_PROMPT_BYTES) fail('complete B diff bytes are missing or oversized.');
   let diff;
   try { diff = DECODER.decode(diffBytes); } catch { fail('complete B diff is not UTF-8.'); }
   if (!Array.isArray(changes) || changes.length < 1 || changes.length > 32) fail('changed authority paths are missing or exceed their limit.');
+  if (!changes.some(change => change?.path === selectedPolicy.authorityPath)) {
+    fail('B does not modify the policy-selected amendment target authority.');
+  }
   const byPath = new Map();
   const records = [];
   for (const change of changes) {
@@ -185,7 +192,8 @@ function validateDiff(diffBytes, changes, selectedAuthority, repository) {
     validatePath(change.path, 'changed path');
     if (!Buffer.isBuffer(change.beforeBytes) || !change.beforeBytes.length ||
         !Buffer.isBuffer(change.afterBytes) || !change.afterBytes.length ||
-        change.beforeBytes.length > 131_072 || change.afterBytes.length > 131_072 ||
+        change.beforeBytes.length > Math.min(131_072, selectedPolicy.authorityLimits.maxFileBytes) ||
+        change.afterBytes.length > Math.min(131_072, selectedPolicy.authorityLimits.maxFileBytes) ||
         change.beforeBytes.equals(change.afterBytes) || byPath.has(change.path)) fail('change is not one exact, unique modified authority file.');
     const descriptor = selectedAuthority.paths.get(`${repository.toLowerCase()}\0${change.path}`);
     if (!descriptor) fail(`B changes non-authority path ${change.path}.`);
@@ -217,9 +225,12 @@ function validateDiff(diffBytes, changes, selectedAuthority, repository) {
     }
     const beforeLines = change.beforeBytes.toString('utf8').replace(/\n$/, '').split('\n');
     const afterLines = change.afterBytes.toString('utf8').replace(/\n$/, '').split('\n');
+    const context = section.filter(line => line.startsWith(' ') && !line.startsWith('--- ')).map(line => line.slice(1));
     const removed = section.filter(line => line.startsWith('-') && !line.startsWith('--- ')).map(line => line.slice(1));
     const added = section.filter(line => line.startsWith('+') && !line.startsWith('+++ ')).map(line => line.slice(1));
-    if (beforeLines.some(line => !afterLines.includes(line) && !removed.includes(line)) ||
+    if (context.some(line => !beforeLines.includes(line) || !afterLines.includes(line)) ||
+        removed.some(line => !beforeLines.includes(line)) || added.some(line => !afterLines.includes(line)) ||
+        beforeLines.some(line => !afterLines.includes(line) && !removed.includes(line)) ||
         afterLines.some(line => !beforeLines.includes(line) && !added.includes(line))) {
       fail(`B diff body does not represent exact before/after bytes for ${change.path}.`);
     }
@@ -229,6 +240,10 @@ function validateDiff(diffBytes, changes, selectedAuthority, repository) {
     if (!change || member.repository.toLowerCase() !== repository.toLowerCase()) return member;
     return { ...member, byteLength: change.afterBytes.length, sha256: digest(change.afterBytes) };
   });
+  const resultingTotal = resultingDescriptors.reduce((sum, member) => sum + member.byteLength, 0);
+  if (resultingTotal > Math.min(MAX_AUTHORITY_BYTES, selectedPolicy.authorityLimits.maxTotalBytes)) {
+    fail('resulting Authority Set exceeds the selected protected or runtime total byte limit.');
+  }
   return Object.freeze({ records: Object.freeze(records),
     resultingAuthoritySetDigest: digest(Buffer.from(JSON.stringify(resultingDescriptors), 'utf8')) });
 }
@@ -282,10 +297,12 @@ function validateTriggerRecord({ bytes, triggerProfile, repository, baseSha, bSh
   return Object.freeze({ sha256: digest(bytes), record, decision: decisionValue });
 }
 
-function validateProducer(value, baseSha) {
+function validateProducer(value, baseSha, baseBranch) {
   exact(value, ['workflowPath', 'workflowSha', 'workflowRef', 'runId', 'runAttempt', 'jobId'], 'semantic producer identity');
   if (typeof value.workflowPath !== 'string' || !/^\.github\/workflows\/[A-Za-z0-9._-]+\.yml$/.test(value.workflowPath) ||
-      value.workflowSha !== baseSha || !SHA1.test(value.workflowSha ?? '') || value.workflowRef !== 'refs/heads/main' ||
+      value.workflowSha !== baseSha || !SHA1.test(value.workflowSha ?? '') ||
+      typeof value.workflowRef !== 'string' || !/^refs\/heads\/[A-Za-z0-9._/-]{1,255}$/.test(value.workflowRef) ||
+      (baseBranch !== undefined && value.workflowRef !== `refs/heads/${baseBranch}`) ||
       ![value.runId, value.runAttempt].every(item => typeof item === 'string' && /^[1-9]\d*$/.test(item)) ||
       typeof value.jobId !== 'string' || !/^[A-Za-z0-9_][A-Za-z0-9 ._-]{0,63}$/.test(value.jobId)) fail('semantic producer identity is invalid or not protected-base code.');
   return Object.freeze({ ...value });
@@ -417,7 +434,7 @@ const SCHEMA_BYTES = canonicalBytes(schema);
  * validates their closed normalized results; it does not authenticate owners,
  * producer signatures, or tag protection by itself.
  */
-function prepareOwnerAmendmentSemanticEligibilityInternal({ repository, baseSha, bSha, triggerProfile,
+function prepareOwnerAmendmentSemanticEligibilityInternal({ repository, baseSha, bSha, baseBranch, triggerProfile,
   policyRevision, policyBytes, manifestBytes, authoritySet, changes, diffBytes, triggerReviewRecordBytes,
   triggerProducer, validateTriggerProvenance, amendmentRecordBytes, validateAmendment,
   tag, tagObjectBytes, validateTagForProfile, producer, selectedProducer,
@@ -427,14 +444,14 @@ function prepareOwnerAmendmentSemanticEligibilityInternal({ repository, baseSha,
   validateSha(baseSha, SHA1, 'previous protected base');
   validateSha(bSha, SHA1, 'exact B revision');
   if (baseSha === bSha) fail('B is not distinct from its previous protected base.');
-  const policy = validatePolicy({ policyBytes, policyRevision, baseSha, triggerProfile });
+  const policy = validatePolicy({ policyBytes, policyRevision, baseSha, baseBranch, triggerProfile });
   if (!Buffer.isBuffer(manifestBytes) || !manifestBytes.length || manifestBytes.length > policy.authorityLimits.maxManifestBytes) {
     fail('protected Authority Set manifest bytes are missing or oversized.');
   }
   const selectedAuthority = validateAuthoritySet(authoritySet, manifestBytes, repository, baseSha, policy);
-  const changeResult = validateDiff(diffBytes, changes, selectedAuthority, repository);
+  const changeResult = validateDiff(diffBytes, changes, selectedAuthority, repository, policy);
   const records = changeResult.records;
-  const triggerProducerIdentity = validateProducer(triggerProducer, baseSha);
+  const triggerProducerIdentity = validateProducer(triggerProducer, baseSha, baseBranch);
   const trigger = validateTriggerRecord({ bytes: triggerReviewRecordBytes, triggerProfile, repository, baseSha, bSha,
     producer: triggerProducerIdentity, selectedAuthority, manifestSha256: digest(manifestBytes), policySha256: policy.sha256 });
   validateTriggerProducerEvidence({ validator: validateTriggerProvenance, bytes: triggerReviewRecordBytes,
@@ -451,8 +468,8 @@ function prepareOwnerAmendmentSemanticEligibilityInternal({ repository, baseSha,
     expected: { repository, baseSha, bSha, triggerProfile, triggerReviewRecordSha256: trigger.sha256,
       amendmentRecordSha256: amendment.sha256, tagRef: `${policy.tagNamespace}/${bSha}`,
       tagObjectOid: tag?.tagObjectOid, observedTagRefOid: tag?.observedTagRefOid } });
-  const selectedProducerIdentity = validateProducer(selectedProducer, baseSha);
-  const producerIdentity = validateProducer(producer, baseSha);
+  const selectedProducerIdentity = validateProducer(selectedProducer, baseSha, baseBranch);
+  const producerIdentity = validateProducer(producer, baseSha, baseBranch);
   if (JSON.stringify(canonical(producerIdentity)) !== JSON.stringify(canonical(selectedProducerIdentity))) {
     fail('semantic producer provenance differs from its protected selection.');
   }
@@ -502,9 +519,9 @@ function prepareOwnerAmendmentSemanticEligibilityInternal({ repository, baseSha,
  * dependencies. Per-invocation evidence is data only and cannot substitute
  * its own verifier callbacks.
  */
-export function createOwnerAmendmentSemanticEligibilityProducer({ resolveProtectedInputs, validateTriggerProvenance,
+export function createOwnerAmendmentSemanticEligibilityProducer({ resolveProtectedInputs, resolveProtectedSelection, validateTriggerProvenance,
   validateAmendmentRecord, validateTag } = {}) {
-  for (const [name, validator] of Object.entries({ resolveProtectedInputs, validateTriggerProvenance, validateAmendmentRecord, validateTag })) {
+  for (const [name, validator] of Object.entries({ resolveProtectedInputs, resolveProtectedSelection, validateTriggerProvenance, validateAmendmentRecord, validateTag })) {
     if (typeof validator !== 'function') fail(`trusted ${name} dependency is required at construction.`);
   }
   return Object.freeze({
@@ -513,14 +530,24 @@ export function createOwnerAmendmentSemanticEligibilityProducer({ resolveProtect
       let protectedInputs;
       try { protectedInputs = resolveProtectedInputs({ repository, baseSha, bSha, triggerProfile }); }
       catch { fail('protected Git adapter could not resolve the exact base policy, complete Authority Set, and B diff.'); }
-      exact(protectedInputs, ['policyBytes', 'manifestBytes', 'authoritySet', 'changes', 'diffBytes'], 'protected Git adapter result');
-      if (![protectedInputs.policyBytes, protectedInputs.manifestBytes, protectedInputs.diffBytes].every(Buffer.isBuffer) ||
+      exact(protectedInputs, ['baseBranch', 'policyBytes', 'manifestBytes', 'authoritySet', 'changes', 'diffBytes'], 'protected Git adapter result');
+      if (typeof protectedInputs.baseBranch !== 'string' ||
+          ![protectedInputs.policyBytes, protectedInputs.manifestBytes, protectedInputs.diffBytes].every(Buffer.isBuffer) ||
           !Array.isArray(protectedInputs.authoritySet?.members) || !Array.isArray(protectedInputs.changes)) {
         fail('protected Git adapter returned malformed or incomplete source data.');
       }
+      let protectedSelection;
+      try {
+        protectedSelection = resolveProtectedSelection({ repository, baseSha, bSha, triggerProfile,
+          baseBranch: protectedInputs.baseBranch, policyBytes: Buffer.from(protectedInputs.policyBytes),
+          manifestBytes: Buffer.from(protectedInputs.manifestBytes) });
+      } catch { fail('independent protected runtime selector could not resolve selected producer and Gatekeeper identities.'); }
+      exact(protectedSelection, ['selectedProducer', 'selectedGatekeeper'], 'independent protected runtime selection');
       return prepareOwnerAmendmentSemanticEligibilityInternal({ ...input,
+        baseBranch: protectedInputs.baseBranch,
         policyBytes: protectedInputs.policyBytes, manifestBytes: protectedInputs.manifestBytes,
         authoritySet: protectedInputs.authoritySet, changes: protectedInputs.changes, diffBytes: protectedInputs.diffBytes,
+        selectedProducer: protectedSelection.selectedProducer, selectedGatekeeper: protectedSelection.selectedGatekeeper,
         validateTriggerProvenance, validateAmendment: validateAmendmentRecord, validateTagForProfile: validateTag });
     },
     complete: completeOwnerAmendmentSemanticEligibility,
