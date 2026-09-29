@@ -405,16 +405,20 @@ producer, and required `ownerAmendment.maxPromptBytes` (no default; positive
 safe integer, at most the 1,048,576-byte runtime ceiling). B cannot set or
 raise it. The complete prompt must fit. The protected producer supplies the
 exact raw UTF-8 policy, full Authority Set and member bytes, repository/base/B,
-all changed authority paths' before/after bytes and complete diff, trigger,
-ReviewRecord and AmendmentRecord digests, and annotated-tag identity. It
+all changed authority paths' before/after bytes and complete diff, trigger
+ReviewRecord bytes and AmendmentRecord bytes, and annotated-tag identity. It
 materializes the exact completed trigger ReviewRecord, verifies its selected
 profile, digest, predecessor bindings, and trusted producer provenance before
 constructing the prompt, then includes its decoded content as untrusted data.
 The record supplies escalation/revision context only; it neither states owner
 choice nor replaces canonical authority. The producer verifies all input
-bindings before review and presents policy, authority, and ReviewRecord
-content as data, not instructions. No one-file limit applies. IDs follow
-protected manifest order.
+bindings before review. It also validates the AmendmentRecord's profile schema,
+exact-byte digest, and applicable repository/base/B, trigger, target authority,
+and before/after bindings before prompt construction. The prompt includes both
+decoded records as separately identified untrusted data; the AmendmentRecord's
+target and purpose are proposed claims, not owner choice or approval. Policy,
+authority, and record content are data, not instructions. No one-file limit
+applies. IDs follow protected manifest order.
 `authoritySetDigest` is SHA-256 of compact UTF-8 JSON for the ordered member
 descriptors `{id,repository,resolvedCommit,path,byteLength,sha256}`.
 
