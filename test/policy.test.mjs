@@ -358,16 +358,18 @@ test('selects and materializes the protected self Authority Set for CI and local
   assert.equal(selected.ownerAmendmentEvidenceProducer, 'github-actions-attestation');
   assert.equal(selected.ownerAmendmentAuthorityId, 'architecture-contract');
   assert.equal(selected.ownerAmendmentAuthorityPath, 'docs/architecture.md');
-  assert.deepEqual(JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString()), effectiveLimits);
+  const selectedLimits = JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString());
+  assert.equal(selectedLimits.maxFileBytes, 73728);
+  assert.deepEqual(selectedLimits, { ...effectiveLimits, maxFileBytes: 73728 });
   const manifestBytes = readFileSync(join(root, selected.authorityManifestPath));
-  const manifest = parseAuthorityManifest(manifestBytes, effectiveLimits);
+  const manifest = parseAuthorityManifest(manifestBytes, selectedLimits);
   assert.deepEqual(manifest.authorities, [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }]);
   const authorityRevision = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-  const materialized = await materializeAuthoritySet({ manifestBytes, limits: effectiveLimits,
+  const materialized = await materializeAuthoritySet({ manifestBytes, limits: selectedLimits,
     selfRepository: 'flair-agency/architecture-gatekeeper', selfRoot: root, authorityRevision });
   assert.deepEqual(materialized.members.map(member => member.id), ['architecture-contract']);
   const completePrompt = readFileSync(join(root, '.codex/gatekeeper/ci-prompt.md')) + materialized.prompt;
-  assert.ok(Buffer.byteLength(completePrompt) <= effectiveLimits.maxPromptBytes);
+  assert.ok(Buffer.byteLength(completePrompt) <= selectedLimits.maxPromptBytes);
 
   const schemaPath = join(root, '.codex/gatekeeper/ci-decision.schema.json');
   const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
