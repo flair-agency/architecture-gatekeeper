@@ -47,7 +47,7 @@ async function fixture(t) {
     manifestSha256: set.manifestSha256, setDigest: set.setDigest,
     members: set.members.map(({ id, repository, resolvedCommit, path, byteLength, sha256 }) =>
       ({ id, repository, resolvedCommit, path, byteLength, sha256 })) };
-  const decision = { decision: 'BLOCK', summary: 'Weakens fail-closed behavior', authority: ['protected architecture'],
+  const decision = { decision: 'BLOCK', findings: [], summary: 'Weakens fail-closed behavior', authority: ['protected architecture'],
     authorityFiles: ['docs/architecture.md'], authorityIds: ['architecture-contract'],
     responsibility: ['acceptance'], capabilitySurface: ['CI'], qualityGuarantees: ['fail closed'],
     reviewedScope: ['fixture'], prohibitedChanges: ['accept timeout'], gates: {

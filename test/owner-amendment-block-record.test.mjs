@@ -13,7 +13,7 @@ const authority = { version: 1, selfRepository: context.repository, authorityRev
   members: [{ id: 'architecture-contract', repository: context.repository, resolvedCommit: a,
     path: 'docs/architecture.md', byteLength: 1234, sha256: 'f'.repeat(64) }] };
 const inputDigests = Object.fromEntries(['manifest', 'policy', 'prompt', 'schema', 'validation'].map(key => [key, d]));
-const decision = { decision: 'BLOCK', summary: 'The change weakens a required boundary.', authority: ['protected architecture'],
+const decision = { decision: 'BLOCK', findings: [], summary: 'The change weakens a required boundary.', authority: ['protected architecture'],
   authorityFiles: ['docs/architecture.md'], authorityIds: ['architecture-contract'], responsibility: ['acceptance'],
   capabilitySurface: ['CI'], qualityGuarantees: ['fail closed'], reviewedScope: ['change A'], prohibitedChanges: ['weaken gate'],
   gates: { sharedMechanism: { decision: 'BLOCK', summary: 'weakens validation', consumerOwnership: '', failClosedBehavior: '', compatibility: '', minimality: '' },

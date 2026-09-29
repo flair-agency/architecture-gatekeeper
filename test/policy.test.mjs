@@ -382,6 +382,16 @@ test('selects and materializes the protected self Authority Set for CI and local
   assert.deepEqual(schema.properties.decision.enum, ['PASS', 'BLOCK', 'OWNER_DECISION']);
   assert.deepEqual(schema.properties.gates.required, ['sharedMechanism', 'trustBoundary']);
   assert.equal('anyOf' in schema, false);
+  const assertStrictObjectRequirements = node => {
+    if (!node || typeof node !== 'object') return;
+    if (node.properties) {
+      assert.deepEqual([...node.required].sort(), Object.keys(node.properties).sort());
+      for (const property of Object.values(node.properties)) assertStrictObjectRequirements(property);
+    }
+    if (node.items) assertStrictObjectRequirements(node.items);
+  };
+  assertStrictObjectRequirements(schema);
+  assert.deepEqual(schema.properties.findings.items.properties.location.type, ['object', 'null']);
   const localConfig = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/config.json'), 'utf8'));
   assert.equal(localConfig.version, 2);
   assert.equal(localConfig.schemaPath, '.codex/gatekeeper/ci-decision.schema.json');
