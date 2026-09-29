@@ -76,6 +76,14 @@ test('rejects a same-repository authority member not pinned to the protected rev
   assert.throws(() => buildOwnerAmendmentOwnerDecisionRecord(x), /same-repository authority member is not from the protected review base/);
 });
 
+test('case-insensitively binds a same-repository member to the protected review base', () => {
+  const x = args();
+  x.authority.members[0].repository = 'Flair-Agency/Example';
+  x.authority.members[0].resolvedCommit = head;
+  x.authority.setDigest = createHash('sha256').update(JSON.stringify(x.authority.members)).digest('hex');
+  assert.throws(() => buildOwnerAmendmentOwnerDecisionRecord(x), /same-repository authority member is not from the protected review base/);
+});
+
 test('validator requires the distinct record kind and byte-for-byte rebuilt record', () => {
   const record = buildOwnerAmendmentOwnerDecisionRecord(args());
   const recordBytes = Buffer.from(`${JSON.stringify(record)}\n`);
