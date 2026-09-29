@@ -149,6 +149,7 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
   };
   const protectedInputs = { baseBranch, policyBytes, manifestBytes, authoritySet, changes, diffBytes };
   const validators = { resolveProtectedInputs: () => structuredCloneProtectedInputs(protectedInputs),
+    resolveExactGitDiff: () => ({ diffBytes: Buffer.from(diffBytes) }),
     resolveProtectedSelection: () => ({ selectedProducer: semanticProducer, selectedGatekeeper: gatekeeper }),
     validateTriggerProvenance: verifyTrigger, validateAmendmentRecord: verifyAmendment, validateTag: verifyTag };
   const producer = createOwnerAmendmentSemanticEligibilityProducer(validators);
@@ -265,7 +266,7 @@ test('enforces prompt and byte limits and requires trusted validators at produce
   const bounded = fixture('completed-block-v1');
   const oversized = { ...bounded.validators.resolveProtectedInputs(), diffBytes: Buffer.alloc(1_048_577) };
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...bounded.validators,
-    resolveProtectedInputs: () => oversized }).prepare(bounded.args), /diff bytes are missing or oversized/);
+    resolveProtectedInputs: () => oversized }).prepare(bounded.args), /malformed or incomplete source data/);
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators, validateTag: null }), /trusted validateTag dependency/);
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({}), /trusted resolveProtectedInputs dependency/);
 });
@@ -291,11 +292,11 @@ test('fails closed when B changes a non-authority path or a diff omits/changes d
   badChanges.changes = [nonAuthority];
   badChanges.diffBytes = Buffer.from('diff --git a/docs/README.md b/docs/README.md\n');
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
-    resolveProtectedInputs: () => badChanges }).prepare(f.args), /non-authority path|selected amendment target/);
+    resolveProtectedInputs: () => badChanges }).prepare(f.args), /differ from the independently derived complete base-to-B Git diff/);
   const badDiff = structuredCloneProtectedInputs(base);
   badDiff.diffBytes = Buffer.from('diff --git a/docs/other.md b/docs/other.md\n');
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
-    resolveProtectedInputs: () => badDiff }).prepare(f.args), /do not exactly match/);
+    resolveProtectedInputs: () => badDiff }).prepare(f.args), /differ from the independently derived complete base-to-B Git diff/);
 });
 
 test('enforces resulting per-file and aggregate limits and requires the selected target path', () => {
@@ -312,7 +313,6 @@ test('enforces resulting per-file and aggregate limits and requires the selected
   const replacement = Buffer.from(`${previousLines[0]}\n${'x'.repeat(200)}\n`);
   second.afterBytes = replacement;
   const lines = oversizedSet.diffBytes.toString('utf8').split('\n');
-  const oldOwnershipLine = 'Ownership remains with the project owner.';
   const oldCandidateLine = 'Existing ownership remains with the project owner.';
   const oldLine = lines.indexOf(`-${oldCandidateLine}`);
   const newLine = lines.indexOf('+Ownership remains with the project owner.');
@@ -320,7 +320,8 @@ test('enforces resulting per-file and aggregate limits and requires the selected
   if (newLine >= 0) lines[newLine] = `+${'x'.repeat(200)}`;
   oversizedSet.diffBytes = Buffer.from(lines.join('\n'));
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...multiple.validators,
-    resolveProtectedInputs: () => oversizedSet }).prepare(multiple.args), /resulting Authority Set exceeds/);
+    resolveProtectedInputs: () => oversizedSet,
+    resolveExactGitDiff: () => ({ diffBytes: Buffer.from(oversizedSet.diffBytes) }) }).prepare(multiple.args), /resulting Authority Set exceeds/);
 
   const nonTarget = fixture('completed-block-v1', { multiAuthority: true });
   const onlyOtherTarget = structuredCloneProtectedInputs(nonTarget.validators.resolveProtectedInputs());
@@ -349,7 +350,15 @@ test('binds complete Authority Set, manifest and trigger identities to protected
   const forgedDiff = structuredCloneProtectedInputs(full);
   forgedDiff.diffBytes = Buffer.from(forgedDiff.diffBytes.toString('utf8').replace(/[-+]Existing rule: [^\n]+/g, '-forged body\n+forged body'));
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
-    resolveProtectedInputs: () => forgedDiff }).prepare(f.args), /diff body/);
+    resolveProtectedInputs: () => forgedDiff }).prepare(f.args), /differ from the independently derived complete base-to-B Git diff/);
+  const duplicateLines = fixture('completed-block-v1');
+  const duplicateInputs = structuredCloneProtectedInputs(duplicateLines.validators.resolveProtectedInputs());
+  const duplicatePath = duplicateInputs.changes[0].path;
+  const completeDuplicateDiff = Buffer.from(`diff --git a/${duplicatePath} b/${duplicatePath}\nindex 1111111..2222222 100644\n--- a/${duplicatePath}\n+++ b/${duplicatePath}\n@@ -1,2 +1,2 @@\n-A\n-A\n+B\n+B\n`);
+  duplicateInputs.diffBytes = Buffer.from(`diff --git a/${duplicatePath} b/${duplicatePath}\nindex 1111111..2222222 100644\n--- a/${duplicatePath}\n+++ b/${duplicatePath}\n@@ -1,1 +1,1 @@\n-A\n+B\n`);
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...duplicateLines.validators,
+    resolveProtectedInputs: () => duplicateInputs, resolveExactGitDiff: () => ({ diffBytes: completeDuplicateDiff })
+  }).prepare(duplicateLines.args), /differ from the independently derived complete base-to-B Git diff/);
 
   for (const field of ['manifestSha256', 'policy']) {
     const bad = structuredCloneProtectedInputs(full);

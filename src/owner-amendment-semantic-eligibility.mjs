@@ -516,12 +516,14 @@ function prepareOwnerAmendmentSemanticEligibilityInternal({ repository, baseSha,
 
 /**
  * Bind profile-specific evidence validators as trusted construction-time
- * dependencies. Per-invocation evidence is data only and cannot substitute
- * its own verifier callbacks.
+ * dependencies. The protected Git adapter resolves exact object bytes; a
+ * separate adapter derives the complete diff from those bound Git objects and
+ * the producer requires byte-for-byte equality before rendering. Per-invocation
+ * evidence is data only and cannot substitute its own verifier callbacks.
  */
-export function createOwnerAmendmentSemanticEligibilityProducer({ resolveProtectedInputs, resolveProtectedSelection, validateTriggerProvenance,
+export function createOwnerAmendmentSemanticEligibilityProducer({ resolveProtectedInputs, resolveExactGitDiff, resolveProtectedSelection, validateTriggerProvenance,
   validateAmendmentRecord, validateTag } = {}) {
-  for (const [name, validator] of Object.entries({ resolveProtectedInputs, resolveProtectedSelection, validateTriggerProvenance, validateAmendmentRecord, validateTag })) {
+  for (const [name, validator] of Object.entries({ resolveProtectedInputs, resolveExactGitDiff, resolveProtectedSelection, validateTriggerProvenance, validateAmendmentRecord, validateTag })) {
     if (typeof validator !== 'function') fail(`trusted ${name} dependency is required at construction.`);
   }
   return Object.freeze({
@@ -533,8 +535,19 @@ export function createOwnerAmendmentSemanticEligibilityProducer({ resolveProtect
       exact(protectedInputs, ['baseBranch', 'policyBytes', 'manifestBytes', 'authoritySet', 'changes', 'diffBytes'], 'protected Git adapter result');
       if (typeof protectedInputs.baseBranch !== 'string' ||
           ![protectedInputs.policyBytes, protectedInputs.manifestBytes, protectedInputs.diffBytes].every(Buffer.isBuffer) ||
+          protectedInputs.diffBytes.length > MAX_PROMPT_BYTES ||
           !Array.isArray(protectedInputs.authoritySet?.members) || !Array.isArray(protectedInputs.changes)) {
         fail('protected Git adapter returned malformed or incomplete source data.');
+      }
+      let exactGitDiff;
+      try {
+        exactGitDiff = resolveExactGitDiff({ repository, baseSha, bSha,
+          paths: Object.freeze(protectedInputs.changes.map(change => change?.path)) });
+      } catch { fail('protected Git adapter could not independently derive the complete base-to-B diff from bound Git objects.'); }
+      exact(exactGitDiff, ['diffBytes'], 'independently derived exact Git diff');
+      if (!Buffer.isBuffer(exactGitDiff.diffBytes) || !exactGitDiff.diffBytes.length ||
+          !protectedInputs.diffBytes.equals(exactGitDiff.diffBytes)) {
+        fail('adapter diff bytes differ from the independently derived complete base-to-B Git diff.');
       }
       let protectedSelection;
       try {
