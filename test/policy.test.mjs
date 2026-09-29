@@ -375,7 +375,8 @@ test('produces exact OWNER_DECISION trigger evidence only for the prior-policy-s
   assert.doesNotMatch(recordJob, /OPENAI_API_KEY|secrets\.OPENAI_API_KEY/);
   assert.match(recordJob, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
   assert.match(recordJob, /RECORD_DIR="\$RUNNER_TEMP\/architecture-gate-owner-decision-record-input"/);
-  assert.match(recordJob, /node scripts\/owner-amendment-owner-decision-producer\.mjs/);
+  assert.match(recordJob, /working-directory: \$\{\{ runner\.temp \}\}/);
+  assert.match(recordJob, /node "\$GITHUB_WORKSPACE\/scripts\/owner-amendment-owner-decision-producer\.mjs"/);
   assert.match(recordJob, /subject-path: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-decision-record-input\/review-record\.json/);
   assert.doesNotMatch(recordJob, /job\.workflow_repository|job\.workflow_sha|\.architecture-gatekeeper-runtime/);
   assert.match(recordJob, /name: owner-amendment-owner-decision-\$\{\{ github\.event\.pull_request\.base\.sha \}\}-\$\{\{ github\.event\.pull_request\.head\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
@@ -394,8 +395,9 @@ test('OWNER_AMENDMENT semantic producer never checks out or executes pull-reques
   assert.match(semanticJob, /\[\[ "\$B_PR_NUMBER" =~ \^\[1-9\]\[0-9\]\*\$ \]\]/);
   assert.ok(semanticJob.includes('[[ "$B_HEAD_SHA" =~ ^[a-f0-9]{40}$ ]]'));
   assert.match(semanticJob, /git fetch --no-tags origin "refs\/pull\/\$\{B_PR_NUMBER\}\/head"/);
-  assert.match(semanticJob, /node scripts\/owner-amendment-semantic-eligibility-producer\.mjs prepare/);
-  assert.match(semanticJob, /node scripts\/owner-amendment-semantic-eligibility-producer\.mjs stage-review-output/);
+  assert.match(semanticJob, /working-directory: \$\{\{ runner\.temp \}\}/);
+  assert.match(semanticJob, /node "\$GITHUB_WORKSPACE\/scripts\/owner-amendment-semantic-eligibility-producer\.mjs" prepare/);
+  assert.match(semanticJob, /node "\$GITHUB_WORKSPACE\/scripts\/owner-amendment-semantic-eligibility-producer\.mjs" stage-review-output/);
   assert.match(semanticJob, /review_artifact_id: \$\{\{ steps\.review-artifact\.outputs\.artifact-id \}\}/);
   assert.doesNotMatch(semanticJob, /id-token: write|attestations: write|actions\/attest@/);
   assert.doesNotMatch(semanticJob, /job\.workflow_repository|job\.workflow_sha|ref: \$\{\{ github\.event\.pull_request\.head\.(?:sha|ref) \}\}|checkout.*head/i);
@@ -405,8 +407,8 @@ test('OWNER_AMENDMENT semantic producer never checks out or executes pull-reques
   assert.match(signerJob, /needs: \[policy, owner-amendment-semantic-eligibility\]/);
   assert.match(signerJob, /contents: read\n      actions: read\n      id-token: write\n      attestations: write/);
   assert.match(signerJob, /artifact-ids: \$\{\{ needs\['owner-amendment-semantic-eligibility'\]\.outputs\.review_artifact_id \}\}/);
-  assert.match(signerJob, /owner-amendment-semantic-eligibility-producer\.mjs prepare/);
-  assert.match(signerJob, /owner-amendment-semantic-eligibility-producer\.mjs complete/);
+  assert.match(signerJob, /owner-amendment-semantic-eligibility-producer\.mjs" prepare/);
+  assert.match(signerJob, /owner-amendment-semantic-eligibility-producer\.mjs" complete/);
   assert.doesNotMatch(signerJob, /owner-amendment-semantic-eligibility-producer\.mjs complete[^\n]*>>\s*"\$GITHUB_OUTPUT"/);
   assert.match(signerJob, /uses: actions\/attest@/);
   assert.doesNotMatch(signerJob, /codex-action@|OPENAI_API_KEY|secrets\.OPENAI_API_KEY/);

@@ -613,6 +613,7 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
       - name: Produce the exact protected-base OWNER_DECISION ReviewRecord
+        working-directory: ${{ runner.temp }}
         env:
           DECISION: ${{ needs.review.outputs.final_message }}
           AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
@@ -643,7 +644,7 @@ jobs:
             --arg runAttempt "$RUN_ATTEMPT" \
             '{context:{repository:$repository,prNumber:$prNumber,baseSha:$baseSha,headSha:$headSha,mergeSha:$mergeSha,workflowSha:$workflowSha,workflowPath:$workflowPath,runId:$runId,runAttempt:$runAttempt}}' \
             > "$RECORD_DIR/recorded-context.json"
-          node scripts/owner-amendment-owner-decision-producer.mjs
+          node "$GITHUB_WORKSPACE/scripts/owner-amendment-owner-decision-producer.mjs"
       - name: Attest the exact ReviewRecord bytes
         id: attest
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
@@ -712,6 +713,7 @@ jobs:
           test "$(git rev-parse FETCH_HEAD)" = "$B_HEAD_SHA"
       - name: Prepare B-specific semantic eligibility prompt from exact Git and tag evidence
         id: prepare
+        working-directory: ${{ runner.temp }}
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -720,7 +722,19 @@ jobs:
           TRIGGER_PROFILE: ${{ needs.policy.outputs.owner_amendment_trigger_profile }}
           GH_TOKEN: ${{ github.token }}
           OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
-        run: node scripts/owner-amendment-semantic-eligibility-producer.mjs prepare
+        run: |
+          set -euo pipefail
+          result="$(node "$GITHUB_WORKSPACE/scripts/owner-amendment-semantic-eligibility-producer.mjs" prepare)"
+          status="$(jq -r '.status' <<<"$result")"
+          case "$status" in
+            PREPARED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY)
+              model="$(jq -r '.model' <<<"$result")"
+              effort="$(jq -r '.reasoningEffort' <<<"$result")"
+              [[ "$model" =~ ^[A-Za-z0-9._-]{1,80}$ && "$effort" =~ ^[A-Za-z0-9._-]{1,32}$ ]]
+              printf 'status=prepared\nmodel=%s\neffort=%s\n' "$model" "$effort" >> "$GITHUB_OUTPUT" ;;
+            OWNER_AMENDMENT_NOT_APPLICABLE) printf 'status=not-applicable\n' >> "$GITHUB_OUTPUT" ;;
+            *) echo 'Unexpected semantic preparation status.' >&2; exit 1 ;;
+          esac
       - name: Run B-specific semantic eligibility review
         id: codex-eligibility
         if: steps.prepare.outputs.status == 'prepared'
@@ -736,10 +750,11 @@ jobs:
           codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
       - name: Stage bounded semantic review output for the protected signer
         id: stage-review-output
+        working-directory: ${{ runner.temp }}
         if: steps.prepare.outputs.status == 'prepared' && steps.codex-eligibility.outcome == 'success'
         env:
           DECISION: ${{ steps.codex-eligibility.outputs.final-message }}
-        run: node scripts/owner-amendment-semantic-eligibility-producer.mjs stage-review-output
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-semantic-eligibility-producer.mjs" stage-review-output
       - name: Transfer bounded semantic review output to the protected signer
         id: review-artifact
         if: steps.prepare.outputs.status == 'prepared' && steps.codex-eligibility.outcome == 'success'
@@ -791,6 +806,7 @@ jobs:
           path: ${{ runner.temp }}/owner-amendment-semantic-reviewer-output
       - name: Recompute protected context and validate exact review output
         id: prepare
+        working-directory: ${{ runner.temp }}
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -799,9 +815,22 @@ jobs:
           TRIGGER_PROFILE: ${{ needs.policy.outputs.owner_amendment_trigger_profile }}
           GH_TOKEN: ${{ github.token }}
           OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
-        run: node scripts/owner-amendment-semantic-eligibility-producer.mjs prepare
+        run: |
+          set -euo pipefail
+          result="$(node "$GITHUB_WORKSPACE/scripts/owner-amendment-semantic-eligibility-producer.mjs" prepare)"
+          status="$(jq -r '.status' <<<"$result")"
+          case "$status" in
+            PREPARED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY)
+              model="$(jq -r '.model' <<<"$result")"
+              effort="$(jq -r '.reasoningEffort' <<<"$result")"
+              [[ "$model" =~ ^[A-Za-z0-9._-]{1,80}$ && "$effort" =~ ^[A-Za-z0-9._-]{1,32}$ ]]
+              printf 'status=prepared\nmodel=%s\neffort=%s\n' "$model" "$effort" >> "$GITHUB_OUTPUT" ;;
+            OWNER_AMENDMENT_NOT_APPLICABLE) printf 'status=not-applicable\n' >> "$GITHUB_OUTPUT" ;;
+            *) echo 'Unexpected semantic preparation status.' >&2; exit 1 ;;
+          esac
       - name: Produce exact semantic eligibility receipt from protected inputs
         id: complete
+        working-directory: ${{ runner.temp }}
         if: steps.prepare.outputs.status == 'prepared'
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -811,7 +840,16 @@ jobs:
           TRIGGER_PROFILE: ${{ needs.policy.outputs.owner_amendment_trigger_profile }}
           GH_TOKEN: ${{ github.token }}
           OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
-        run: node scripts/owner-amendment-semantic-eligibility-producer.mjs complete
+        run: |
+          set -euo pipefail
+          result="$(node "$GITHUB_WORKSPACE/scripts/owner-amendment-semantic-eligibility-producer.mjs" complete)"
+          eligibility="$(jq -r '.eligibility' <<<"$result")"
+          completed_at="$(jq -r '.completedAt' <<<"$result")"
+          receipt_sha256="$(jq -r '.receiptSha256' <<<"$result")"
+          [[ "$eligibility" == ELIGIBLE || "$eligibility" == INELIGIBLE ]]
+          [[ "$completed_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.+-]+Z$ ]]
+          [[ "$receipt_sha256" =~ ^[a-f0-9]{64}$ ]]
+          printf 'eligibility=%s\ncompleted_at=%s\nreceipt_sha256=%s\n' "$eligibility" "$completed_at" "$receipt_sha256" >> "$GITHUB_OUTPUT"
       - name: Attest exact B-specific eligibility receipt
         id: attest
         if: steps.prepare.outputs.status == 'prepared' && steps.complete.outputs.eligibility == 'ELIGIBLE'

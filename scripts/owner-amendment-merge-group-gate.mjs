@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readRunnerTempFile, resolveRunnerTempDirectory, ownerAmendmentTagApiUrl, validateSelfAuthorityManifest } from '../src/runner-temp-path.mjs';
+import { readRunnerTempFile, resolveRunnerTempDirectory, validateSelfAuthorityManifest } from '../src/runner-temp-path.mjs';
+import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from '../src/owner-amendment-tag-api.mjs';
 import { selectOwnerAmendmentMergeGroupBContext } from '../src/owner-amendment-merge-group-b-context.mjs';
 import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../src/owner-amendment-merge-group-acceptance.mjs';
 import { resolveOwnerAmendmentHandoffGitContext } from '../src/owner-amendment-handoff-git-context.mjs';
@@ -17,15 +18,16 @@ const repository = process.env.GITHUB_REPOSITORY;
 const token = process.env.GH_TOKEN;
 const runtimeRevision = process.env.GATEKEEPER_RUNTIME_SHA;
 const tagRulesetId = Number(process.env.OWNER_AMENDMENT_TAG_RULESET_ID);
-const api = 'https://api.github.com/repos/flair-agency/architecture-gatekeeper';
+const api = 'https://api.github.com/';
 const fail = message => { throw new Error(`Owner amendment merge-group gate: ${message}`); };
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = args => execFileSync('git', args, { encoding: 'buffer', maxBuffer: 2 * 1024 * 1024,
-  timeout: 30_000, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' } });
+  timeout: 30_000, cwd: process.env.GITHUB_WORKSPACE,
+  stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' } });
 const gh = (args, maxBuffer = 2 * 1024 * 1024) => execFileSync('gh', args, { encoding: 'utf8', maxBuffer,
   timeout: 30_000, stdio: ['ignore', 'pipe', 'pipe'] });
 
-async function getJson(url) {
+async function getJson(url, { expectedOwnerAmendmentTagUrl } = {}) {
   let parsed;
   try { parsed = new URL(url); } catch { fail('GitHub API URL is malformed.'); }
   if (parsed.origin !== 'https://api.github.com' || parsed.username || parsed.password || parsed.hash ||
@@ -34,13 +36,18 @@ async function getJson(url) {
   }
   const response = await fetch(parsed, { headers: { accept: 'application/vnd.github+json',
     authorization: `Bearer ${token}`, 'x-github-api-version': '2022-11-28' }, redirect: 'error' });
+  if (response.status === 404 && expectedOwnerAmendmentTagUrl) {
+    const classification = classifyOwnerAmendmentTagApiStatus({ status: response.status,
+      requestedUrl: parsed.href, expectedUrl: expectedOwnerAmendmentTagUrl });
+    if (classification === 'OWNER_AMENDMENT_TAG_NOT_FOUND') return null;
+  }
   if (!response.ok) fail(`GitHub API read failed (${response.status}).`);
   return response.json();
 }
 
 async function eligibilityEvidence({ selection, queueEnteredAt }) {
   if (!/^[a-f0-9]{40}$/.test(selection.bHeadSha ?? '')) fail('exact B SHA for producer lookup is invalid.');
-  const runsUrl = new URL(`${api}/actions/runs`);
+  const runsUrl = new URL('repos/flair-agency/architecture-gatekeeper/actions/runs', api);
   runsUrl.searchParams.set('head_sha', selection.bHeadSha);
   runsUrl.searchParams.set('event', 'pull_request_target');
   runsUrl.searchParams.set('per_page', '100');
@@ -57,7 +64,7 @@ async function eligibilityEvidence({ selection, queueEnteredAt }) {
     if (!Number.isSafeInteger(run.id) || run.id < 1) fail('producer run ID is invalid.');
     const attempt = String(run.run_attempt);
     if (!/^[1-9]\d*$/.test(attempt)) fail('producer run attempt is invalid.');
-    const jobsUrl = `${api}/actions/runs/${run.id}/attempts/${attempt}/jobs?per_page=100`;
+    const jobsUrl = `${api}repos/flair-agency/architecture-gatekeeper/actions/runs/${run.id}/attempts/${attempt}/jobs?per_page=100`;
     const jobs = await getJson(jobsUrl);
     if (!Array.isArray(jobs.jobs) || jobs.jobs.length > 100) fail('producer job list is malformed.');
     const matches = jobs.jobs.filter(candidate => candidate.name === 'owner-amendment-semantic-eligibility-signer');
@@ -101,7 +108,7 @@ async function main() {
       !/^[a-f0-9]{40}$/.test(runtimeRevision ?? '')) {
     fail('protected self repository, runtime revision, or token is invalid.');
   }
-  const eventDir = resolveRunnerTempDirectory(process.env.RUNNER_TEMP, 'owner-amendment-merge-group');
+  const eventDir = resolveRunnerTempDirectory('owner-amendment-merge-group');
   const event = JSON.parse(readRunnerTempFile(eventDir, 'event.json', 262_144).toString('utf8'));
   const selection = await selectOwnerAmendmentMergeGroupBContext({ event, token });
   if (selection.status !== 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT') fail(selection.reason ?? 'merge-group does not select one exact B.');
@@ -118,13 +125,11 @@ async function main() {
     fail('previous-base policy selected an unsupported trigger profile.');
   }
   const exactTagRef = `${selectedPolicy.ownerAmendmentTagNamespace}/${selection.bHeadSha}`;
-  const tagResponse = await fetch(ownerAmendmentTagApiUrl(repository, selectedPolicy.ownerAmendmentTagNamespace, selection.bHeadSha), {
-    headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`,
-      'x-github-api-version': '2022-11-28' }, redirect: 'error' });
-  if (tagResponse.status === 404) {
+  const expectedTagUrl = ownerAmendmentTagApiUrl(repository, selectedPolicy.ownerAmendmentTagNamespace, selection.bHeadSha);
+  const tagResponse = await getJson(expectedTagUrl, { expectedOwnerAmendmentTagUrl: expectedTagUrl });
+  if (tagResponse === null) {
     process.stdout.write('OWNER_AMENDMENT_NOT_APPLICABLE: exact B has no protected amendment tag.\n'); return;
   }
-  if (!tagResponse.ok) fail(`exact B tag preflight failed (${tagResponse.status}).`);
   if (!Number.isSafeInteger(tagRulesetId) || tagRulesetId < 1) fail('active tag ruleset ID is unavailable for exact B verification.');
   try { git(['fetch', '--no-tags', 'origin', selection.bHeadSha]); } catch { fail('exact B Git object could not be fetched.'); }
   const runGit = args => git(args);
@@ -134,7 +139,7 @@ async function main() {
   catch { fail('the v0.6.0 self profile supports only a non-empty protected Authority Set in this repository.'); }
   const source = createGitHubAuthoritySource({ token });
   const materialized = await materializeAuthoritySet({ manifestBytes: context.manifestBytes, limits: context.limits,
-    selfRepository: repository, selfRoot: process.cwd(), authorityRevision: selection.bBaseSha,
+    selfRepository: repository, selfRoot: process.env.GITHUB_WORKSPACE, authorityRevision: selection.bBaseSha,
     fetchExternal: source, profile: context.policy.authorityProfile ?? 'v1' });
   const resultingDescriptors = materialized.members.map(member => ({ id: member.id, repository: member.repository,
     resolvedCommit: member.resolvedCommit, path: member.path, byteLength: member.byteLength, sha256: member.sha256 }));

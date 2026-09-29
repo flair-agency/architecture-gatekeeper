@@ -12,7 +12,8 @@ test('merge_group verifier runs only protected-base code with read-only GitHub p
   assert.match(workflow, /cp "\$GITHUB_EVENT_PATH" "\$event_dir\/event\.json"/);
   assert.match(workflow, /GATEKEEPER_RUNTIME_SHA: \$\{\{ github\.workflow_sha \}\}/);
   assert.match(workflow, /OWNER_AMENDMENT_TAG_RULESET_ID: \$\{\{ vars\.OWNER_AMENDMENT_TAG_RULESET_ID \}\}/);
-  assert.match(workflow, /node scripts\/owner-amendment-merge-group-gate\.mjs/);
+  assert.match(workflow, /working-directory: \$\{\{ runner\.temp \}\}/);
+  assert.match(workflow, /node "\$GITHUB_WORKSPACE\/scripts\/owner-amendment-merge-group-gate\.mjs"/);
   assert.doesNotMatch(workflow, /OPENAI_API_KEY|secrets\./);
   assert.doesNotMatch(workflow, /ref: \$\{\{ github\.event\.merge_group\.head_sha \}\}/);
   assert.match(workflow, /contents: read[\s\S]*pull-requests: read[\s\S]*actions: read[\s\S]*attestations: read/);

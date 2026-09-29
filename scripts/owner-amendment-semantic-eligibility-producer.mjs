@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { appendRunnerGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory, writeRunnerTempFile,
+import { readRunnerTempFile, resolveRunnerTempDirectory, writeRunnerTempFile,
   validateRepositoryTreePath, validateSelfAuthorityManifest,
-  ownerAmendmentTagApiUrl } from '../src/runner-temp-path.mjs';
+  ownerAmendmentTagApiRoute } from '../src/runner-temp-path.mjs';
 import { createOwnerAmendmentSemanticEligibilityProducer, completeOwnerAmendmentSemanticEligibility } from '../src/owner-amendment-semantic-eligibility.mjs';
 import { resolveOwnerAmendmentHandoffGitContext } from '../src/owner-amendment-handoff-git-context.mjs';
 import { readOwnerAmendmentTagForMergeGroup } from '../src/owner-amendment-tag-readback.mjs';
@@ -23,7 +23,7 @@ const token = process.env.GH_TOKEN;
 const fail = message => { throw new Error(`Owner amendment semantic producer: ${message}`); };
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const runGit = args => execFileSync('git', args, { encoding: 'buffer', maxBuffer: 2 * 1024 * 1024,
-  stdio: ['ignore', 'pipe', 'pipe'] });
+  cwd: process.env.GITHUB_WORKSPACE, stdio: ['ignore', 'pipe', 'pipe'] });
 const gitBlob = (revision, path) => {
   if (!/^[a-f0-9]{40}$/.test(revision ?? '')) fail('Git blob revision is invalid.');
   validateRepositoryTreePath(path);
@@ -80,11 +80,17 @@ async function prepare() {
   if (protectedPolicy.mode !== 'enforced' || protectedPolicy.ownerAmendmentGrade !== 'G0' ||
       protectedPolicy.ownerAmendmentTriggerProfile !== triggerProfile) return null;
   const tagRef = `${protectedPolicy.ownerAmendmentTagNamespace}/${bSha}`;
-  const refUrl = ownerAmendmentTagApiUrl(repository, protectedPolicy.ownerAmendmentTagNamespace, bSha);
-  const refResponse = await fetch(refUrl, { headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`,
-    'x-github-api-version': '2022-11-28' }, redirect: 'error' });
-  if (refResponse.status === 404) return null;
-  if (!refResponse.ok) fail(`tag reference preflight returned HTTP ${refResponse.status}.`);
+  const refRoute = ownerAmendmentTagApiRoute(repository, protectedPolicy.ownerAmendmentTagNamespace, bSha);
+  let refResponse;
+  try {
+    refResponse = execFileSync('gh', ['api', '--include', refRoute], { encoding: 'utf8', maxBuffer: 65_536,
+      timeout: 10_000, stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (error) {
+    const response = Buffer.isBuffer(error.stdout) ? error.stdout.toString('utf8') : String(error.stdout ?? '');
+    if (/^HTTP\/\S+ 404(?:\s|$)/m.test(response)) return null;
+    fail('tag reference preflight failed; exact GitHub API response was unavailable.');
+  }
+  if (!/^HTTP\/\S+ 200(?:\s|$)/m.test(refResponse)) fail('tag reference preflight returned an unexpected GitHub API status.');
   const git = resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, headSha: bSha, baseBranch,
     runGit: args => runGit(args) });
   if (!policyBytes.equals(git.policyBytes)) fail('protected policy bytes changed between resolution and context validation.');
@@ -108,7 +114,7 @@ async function prepare() {
     member.id === authority.authorityId && member.path === authority.authorityPath);
   if (selectedTarget.length !== 1) fail('previous protected Authority Set must contain the selected self target exactly once.');
   const materialized = await materializeAuthoritySet({ manifestBytes: git.manifestBytes, limits: git.limits,
-    selfRepository: repository, selfRoot: process.cwd(), authorityRevision: baseSha,
+    selfRepository: repository, selfRoot: process.env.GITHUB_WORKSPACE, authorityRevision: baseSha,
     fetchExternal: createGitHubAuthoritySource({ token }) });
   const authoritySet = { digest: materialized.setDigest, members: materialized.members.map(member => ({ id: member.id,
     repository: member.repository, resolvedCommit: member.resolvedCommit, path: member.path,
@@ -172,17 +178,16 @@ async function main() {
   if (command === 'stage-review-output') {
     const decisionBytes = Buffer.from(process.env.DECISION ?? '', 'utf8');
     if (!decisionBytes.length || decisionBytes.length > 65_536) fail('semantic decision is missing or oversized.');
-    const outputDir = resolveRunnerTempDirectory(process.env.RUNNER_TEMP, 'owner-amendment-semantic-reviewer-output');
+    const outputDir = resolveRunnerTempDirectory('owner-amendment-semantic-reviewer-output');
     writeRunnerTempFile(outputDir, 'decision.json', decisionBytes);
     process.stdout.write(`${JSON.stringify({ status: 'STAGED_SEMANTIC_REVIEW_OUTPUT', bytes: decisionBytes.length })}\n`);
     return;
   }
-  const outputDir = resolveRunnerTempDirectory(process.env.RUNNER_TEMP, 'owner-amendment-eligibility');
+  const outputDir = resolveRunnerTempDirectory('owner-amendment-eligibility');
   const preparedState = await prepare();
   if (preparedState === null) {
     if (command !== 'prepare') fail('exact-B owner-amendment tag is absent.');
     process.stdout.write(`${JSON.stringify({ status: 'OWNER_AMENDMENT_NOT_APPLICABLE', triggerProfile })}\n`);
-    if (process.env.GITHUB_OUTPUT) appendRunnerGitHubOutput(process.env.RUNNER_TEMP, process.env.GITHUB_OUTPUT, 'status=not-applicable\n');
     return;
   }
   const { prepared } = preparedState;
@@ -191,8 +196,6 @@ async function main() {
     writeRunnerTempFile(outputDir, 'eligibility.schema.json', prepared.schemaBytes);
     writeRunnerTempFile(outputDir, 'prepared-context.json', `${JSON.stringify(preparedContext(prepared))}\n`);
     process.stdout.write(`${JSON.stringify({ status: prepared.status, triggerProfile, promptSha256: prepared.promptSha256, schemaSha256: prepared.schemaSha256, model: prepared.model, reasoningEffort: prepared.reasoningEffort })}\n`);
-    if (process.env.GITHUB_OUTPUT) appendRunnerGitHubOutput(process.env.RUNNER_TEMP, process.env.GITHUB_OUTPUT,
-      `status=prepared\nmodel=${prepared.model}\neffort=${prepared.reasoningEffort}\n`);
     return;
   }
   if (command !== 'complete') fail('command must be prepare or complete.');
@@ -203,15 +206,13 @@ async function main() {
   if (!contextFile.equals(expectedContext) || !promptFile.equals(prepared.promptBytes) || !schemaFile.equals(prepared.schemaBytes)) {
     fail('protected B, trigger, policy, Authority Set, prompt or schema changed after semantic review preparation.');
   }
-  const reviewerOutputDir = resolveRunnerTempDirectory(process.env.RUNNER_TEMP, 'owner-amendment-semantic-reviewer-output');
+  const reviewerOutputDir = resolveRunnerTempDirectory('owner-amendment-semantic-reviewer-output');
   const decisionBytes = readRunnerTempFile(reviewerOutputDir, 'decision.json', 65_536);
   const completed = completeOwnerAmendmentSemanticEligibility({ prepared, decisionBytes,
     producer: prepared.producer, gatekeeper: prepared.gatekeeper, reviewModel: prepared.model, reviewReasoningEffort: prepared.reasoningEffort });
   writeRunnerTempFile(outputDir, 'eligibility-receipt.json', completed.receiptBytes);
   const completedAt = new Date().toISOString();
   process.stdout.write(`${JSON.stringify({ status: completed.status, eligibility: completed.receipt.eligibility, receiptSha256: completed.receiptSha256, completedAt })}\n`);
-  if (process.env.GITHUB_OUTPUT) appendRunnerGitHubOutput(process.env.RUNNER_TEMP, process.env.GITHUB_OUTPUT,
-    `eligibility=${completed.receipt.eligibility}\ncompleted_at=${completedAt}\nreceipt_sha256=${completed.receiptSha256}\n`);
 }
 
 main().catch(error => { process.stderr.write(`${error.message}\n`); process.exitCode = 1; });

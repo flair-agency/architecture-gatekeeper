@@ -67,7 +67,8 @@ function protectedBytes(baseSha, path) {
   if (!SHA.test(baseSha ?? '')) throw new Error('Protected Git revision is invalid.');
   validateRepositoryTreePath(path);
   return execFileSync('git', ['show', `${baseSha}:${path}`], { encoding: 'buffer', maxBuffer: MAX_BYTES,
-    timeout: 10_000, env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    timeout: 10_000, cwd: process.env.GITHUB_WORKSPACE,
+    env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
 function githubMergeParents(repository, mergeSha) {
@@ -102,7 +103,7 @@ function validateContext({ context, event, repository, workflowSha, workflowRef,
 
 /** Construct exact OWNER_DECISION evidence only under an explicitly selected previous-base profile. */
 export function produceOwnerAmendmentOwnerDecision({ decisionBytes, provenance, context, baseInputs,
-  readAuthority = (revision, path, maxBytes) => readCommittedAuthorityFile('.', revision, path, maxBytes) }) {
+  readAuthority = (revision, path, maxBytes) => readCommittedAuthorityFile(process.env.GITHUB_WORKSPACE, revision, path, maxBytes) }) {
   const policy = parseCiPolicyJson(decoder.decode(baseInputs.policy));
   const selected = resolveCiPolicy(policy, 'main');
   if (selected.mode !== 'enforced' || selected.ownerAmendmentTriggerProfile !== 'completed-owner-decision-self-v1' ||
@@ -118,7 +119,7 @@ export function produceOwnerAmendmentOwnerDecision({ decisionBytes, provenance, 
 }
 
 export function main() {
-  const inputDir = resolveRunnerTempDirectory(process.env.RUNNER_TEMP, INPUT_DIRECTORY);
+  const inputDir = resolveRunnerTempDirectory(INPUT_DIRECTORY);
   const inputFile = (name, limit) => checkedBytes(readRunnerTempFile(inputDir, name, limit), name, limit);
   const decisionBytes = inputFile('decision.json', 65_536);
   const provenanceBytes = inputFile('authority-provenance.json', 65_536);
@@ -130,7 +131,7 @@ export function main() {
     workflowSha: process.env.GITHUB_WORKFLOW_SHA, workflowRef: process.env.GITHUB_WORKFLOW_REF,
     parents: githubMergeParents(repository, recorded.context?.mergeSha) });
   if (process.env.GITHUB_RUN_ID !== context.runId || process.env.GITHUB_RUN_ATTEMPT !== context.runAttempt ||
-      execFileSync('git', ['ls-remote', 'origin', `refs/pull/${context.prNumber}/merge`], { encoding: 'utf8' }).trim().split('\t')[0] !== context.mergeSha) {
+      execFileSync('git', ['ls-remote', 'origin', `refs/pull/${context.prNumber}/merge`], { encoding: 'utf8', cwd: process.env.GITHUB_WORKSPACE }).trim().split('\t')[0] !== context.mergeSha) {
     throw new Error('Recorded run identity or current PR merge ref differs.');
   }
   const policyPath = '.codex/gatekeeper/ci-policy.json';
