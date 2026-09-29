@@ -70,6 +70,9 @@ function validateAuthority(authority, context) {
     }
     sha(member.resolvedCommit, SHA1, 'authority member revision');
     sha(member.sha256, SHA256, 'authority member digest');
+    if (member.repository === context.repository && member.resolvedCommit !== context.baseSha) {
+      fail('same-repository authority member is not from the protected review base.');
+    }
     ids.add(member.id);
     descriptors.push({ id: member.id, repository: member.repository, resolvedCommit: member.resolvedCommit,
       path: member.path, byteLength: member.byteLength, sha256: member.sha256 });
