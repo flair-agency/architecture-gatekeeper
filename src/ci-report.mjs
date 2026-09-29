@@ -231,17 +231,47 @@ export async function postInlineReview({ fetchImpl = fetch, apiUrl, repository, 
   return { status: 'created', count: pending.length, checked: linked, ...(linkWarning ? { linkWarning } : {}) };
 }
 
-function renderFindings(findings, delivery) {
+function renderFindings(findings, delivery, maxLength = MAX_REPORT_LENGTH) {
   if (!Array.isArray(findings) || !findings.length) return '';
   const checked = new Map((delivery?.checked || []).map(item => [item.index, item]));
   const status = delivery?.status ? `${delivery.status}${delivery.reason ? `: ${delivery.reason}` : ''}${delivery.linkWarning ? `; ${delivery.linkWarning}` : ''}` : 'not attempted';
-  return `\n**Reviewer findings**\n\nInline delivery: **${cleanText(status, 300)}**\n\n${findings.slice(0, MAX_INLINE_FINDINGS).map((finding, index) => {
+  const entries = findings.slice(0, MAX_INLINE_FINDINGS).map((finding, index) => {
     const location = finding?.location && normalizeFindingPath(finding.location.path) && Number.isInteger(finding.location.line) && ['LEFT', 'RIGHT'].includes(finding.location.side)
       ? `\`${cleanText(finding.location.path, 240)}:${finding.location.line} ${finding.location.side}\`` : 'no inline location';
     const check = checked.get(index);
     const outcome = check ? check.valid ? `posted or already present${check.commentUrl ? ` · [inline comment](${check.commentUrl})` : ' · direct link unavailable'}` : `deferred: ${check.reason}` : delivery?.status === 'created' || delivery?.status === 'unchanged' ? 'included in inline review' : delivery?.status === 'fallback' || delivery?.status === 'unavailable' || delivery?.status === 'skipped' ? `deferred: ${delivery.reason || 'delivery unavailable'}` : 'not eligible for inline delivery';
-    return `${index + 1}. **${cleanText(finding?.title || 'Finding', 200)}** (${location}; ${outcome}) — ${cleanText(finding?.body || '')}`;
-  }).join('\n')}\n`;
+    return { title: cleanText(finding?.title || 'Finding', 200), location, outcome: cleanText(outcome, 500),
+      body: cleanText(finding?.body || '') };
+  });
+  const footer = `\n\n_Inline review status: ${cleanText(status, 300)}_\n`;
+  const heading = '\n### Findings\n\n';
+  const fullItems = entries.map((item, index) => `${index + 1}. **${item.title}** — ${item.location}\n\n   ${item.body}\n\n   _Inline delivery: ${item.outcome}_`).join('\n\n');
+  const full = `${heading}${fullItems}${footer}`;
+  if (full.length <= maxLength) return full;
+
+  // In the compact form, titles, normalized locations, dispositions, and
+  // GitHub-returned direct links are the actionable essentials. Keep those
+  // intact; optional delivery diagnostics and reviewer explanations yield first.
+  const coreItems = entries.map((item, index) => `${index + 1}. **${item.title}** — ${item.location} · _Inline delivery: ${item.outcome}_`);
+  const compactFooter = `\n\n_Inline review status: ${cleanText(delivery?.status || 'not attempted', 80)}_\n`;
+  const core = `${heading}${coreItems.join('\n\n')}${compactFooter}`;
+  if (core.length > maxLength) throw new Error('Finding titles, locations, and inline delivery links exceed the report length budget.');
+  const bodyEntries = entries.map(item => cleanText(item.body, MAX_ITEM_LENGTH));
+  const bodyCount = bodyEntries.filter(Boolean).length;
+  const explanationLabel = '\n   _Explanation:_ ';
+  const wrapperBudget = bodyCount * (explanationLabel.length + 1);
+  let remaining = Math.max(0, maxLength - core.length - wrapperBudget);
+  let remainingBodies = bodyCount;
+  const compactItems = coreItems.map((line, index) => {
+    const body = bodyEntries[index];
+    if (!body) return line;
+    const allowance = Math.min(body.length, Math.floor(remaining / remainingBodies));
+    remaining -= allowance;
+    remainingBodies -= 1;
+    const shortened = allowance < body.length;
+    return `${line}${explanationLabel}${body.slice(0, allowance)}${shortened ? '…' : ''}`;
+  });
+  return `${heading}${compactItems.join('\n\n')}${compactFooter}`;
 }
 
 export function parseAuthorityProvenance(encoded, required = false) {
@@ -368,6 +398,8 @@ function labelFor(decision) {
     OWNER_ADDITION_G0_PENDING: ['✅', 'OWNER_ADDITION / G0 ELIGIBLE — ADOPTION PENDING'],
     WAIVED: ['➖', 'ACCEPTED WITHOUT CI AI REVIEW'],
     ERROR: ['❌', 'REVIEW FAILED'],
+    NOT_APPLICABLE: ['➖', 'NOT APPLICABLE'],
+    UNKNOWN: ['❓', 'UNKNOWN'],
   }[decision];
 }
 
@@ -413,19 +445,21 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision,
 
 function renderList(title, values) {
   if (!Array.isArray(values) || values.length === 0) return '';
-  return `\n**${title}**\n\n${values.map((value) => `- ${cleanText(value)}`).join('\n')}\n`;
+  return `\n#### ${cleanText(title, 200)}\n\n${values.map((value) => `- ${cleanText(value)}`).join('\n')}\n`;
 }
 
 function renderGates(gates) {
   if (!gates || typeof gates !== 'object' || Array.isArray(gates)) return '';
   const rows = Object.entries(gates).map(([name, gate]) => {
     if (!gate || typeof gate !== 'object' || Array.isArray(gate)) return null;
-    const decision = cleanText(gate.decision || (gate.applicable === false ? 'NOT_APPLICABLE' : 'UNKNOWN'), 100);
+    const rawDecision = gate.decision || (gate.applicable === false ? 'NOT_APPLICABLE' : 'UNKNOWN');
+    const [icon, label] = labelFor(rawDecision) || labelFor('UNKNOWN');
+    const decision = `${icon} ${label}`;
     const summary = cleanText(gate.summary || 'No summary supplied.');
     return `| ${cleanText(name, 200).replaceAll('|', '\\|')} | ${decision.replaceAll('|', '\\|')} | ${summary.replaceAll('|', '\\|')} |`;
   }).filter(Boolean);
   if (rows.length === 0) return '';
-  return `\n| Gate | Result | Summary |\n|---|---:|---|\n${rows.join('\n')}\n`;
+  return `\n### Gate results\n\n| Gate | Result | Summary |\n|---|---|---|\n${rows.join('\n')}\n`;
 }
 
 function renderGateDetails(gates) {
@@ -436,51 +470,41 @@ function renderGateDetails(gates) {
       .filter(([key]) => !['decision', 'summary', 'applicable'].includes(key))
       .map(([key, value]) => `- **${cleanText(key, 200)}:** ${cleanText(value)}`)
       .join('\n');
-    return details ? `\n**${cleanText(name, 200)}**\n\n${details}\n` : '';
+    return details ? `\n#### ${cleanText(name, 200)}\n\n${details}\n` : '';
   }).join('');
-  return sections ? `\n<details>\n<summary>All evaluation details</summary>\n${sections}\n</details>\n` : '';
+  return sections ? `\n#### Per-gate evaluation details\n${sections}` : '';
 }
 
-export function renderReport(classified, metadata = {}) {
-  const [icon, label] = labelFor(classified.conclusion);
-  const decision = classified.decision;
-  const decisionDigest = metadata.decisionDigest || digestDecision(decision);
-  let body = `## ${icon} Architecture Gate — ${label}\n\n> ${cleanText(classified.summary)}\n`;
-  if (classified.conclusion === 'OWNER_DECISION') {
-    body += `\nThis result is not accepted by the current run. The accountable owner must make the unresolved architecture decision, record it in canonical consumer-owned authority, and rerun the gate against that updated authority. [How to handle OWNER_DECISION](${OWNER_INTERVENTION_URL}#owner_decision).\n`;
-  } else if (classified.conclusion === 'ERROR') {
-    const runReference = metadata.runUrl ? `[Actions run](${cleanText(metadata.runUrl, 1_000)})` : 'Actions run';
-    body += `\nInspect the ${runReference} to identify the cause. If the CI reviewer is unavailable because of API, billing, model, credential, or service failure, follow [CI review unavailable](${OWNER_INTERVENTION_URL}#ci-review-unavailable). This result is not a PASS.\n`;
-  }
-  body += renderFindings(decision?.findings, metadata.inlineDelivery);
-  if (classified.conclusion === 'OWNER_ADDITION_G0') {
-    const p = metadata.ownerAdditionProcedure;
-    body += '\nThis is a procedural acceptance result for authority-only B, not semantic PASS for B or A. Tag actor or owner identity was not authenticated. A requires a fresh review after B becomes canonical. A later tag-ref change is not covered by this check.\n';
-    if (p) body += `\nProtected policy/base: \`${cleanText(p.policyRevision, 64)}\` · B head: \`${cleanText(p.headSha, 64)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag ref observed: \`${cleanText(p.tagRef, 150)}\` → object OID \`${cleanText(p.tagObjectOid, 64)}\` · Principal authentication: \`not_verified\`\n`;
-    if (p?.version === 2) body += `\nOwner-addition procedure/report version: \`2\` · Policy SHA-256: \`${cleanText(p.policySha256, 64)}\` · AdditionRecord SHA-256: \`${cleanText(p.additionRecordSha256, 64)}\` · Bound Authority Set SHA-256: \`${cleanText(p.authoritySet.setDigest, 64)}\`\n`;
-  }
-  if (classified.conclusion === 'OWNER_ADDITION_G0_PENDING') {
-    const p = metadata.ownerAdditionProcedure;
-    body += '\nThis is an eligible candidate result, not completed adoption or canonical placement. The annotated G0 tag binds exact B, but Gatekeeper did not authenticate its actor. Host merge enforcement is unavailable or not verified; this green result does not prove GitHub required the check. A separate post-merge record must verify this exact result existed before merge, its producer and completion time, the PR merge commit, and canonical readback.\n';
-    if (p) body += `\nRecorded base: \`${cleanText(p.policyRevision, 64)}\` · B head: \`${cleanText(p.headSha, 64)}\` · Tag object: \`${cleanText(p.tagObjectOid, 64)}\` · Authority Set SHA-256: \`${cleanText(p.authoritySet?.setDigest, 64)}\` · Eligibility: \`eligible\` · Adoption: \`pending\` · Canonical: \`pending\` · Principal authentication: \`not_verified\` · Host enforcement: \`not_verified\`\n`;
-  }
+function renderCommit(sha, repository) {
+  const full = cleanText(sha, 64);
+  if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(full)) return `\`${full}\``;
+  const short = full.slice(0, 12);
+  return typeof repository === 'string' && REPOSITORY.test(repository)
+    ? '[' + '`' + short + '`' + '](https://github.com/' + repository + '/commit/' + full + ')'
+    : `\`${short}\``;
+}
+
+function renderEvidence(metadata, decision) {
+  let required = '';
+  let optional = '';
   if (metadata.authorityProvenance) {
     const selected = metadata.authorityProvenance;
-    body += `\n**Selected Authority Set**\n\nManifest SHA-256: \`${cleanText(selected.manifestSha256, 64)}\` · Set SHA-256: \`${cleanText(selected.setDigest, 64)}\`\n`;
-    body += renderList('Resolved members', selected.members.map(member => `${member.id}: ${member.repository}@${member.resolvedCommit}:${member.path} (SHA-256 ${member.sha256})`));
+    required += `\n#### Selected Authority Set\n\nManifest SHA-256: \`${cleanText(selected.manifestSha256, 64)}\` · Set SHA-256: \`${cleanText(selected.setDigest, 64)}\`\n`;
+    required += renderList('Resolved members', selected.members.map(member => `${member.id}: ${member.repository}@${renderCommit(member.resolvedCommit, member.repository)}:${member.path} (full commit \`${member.resolvedCommit}\`; SHA-256 ${member.sha256})`));
   }
   if (metadata.legacyAuthorityProvenance) {
     const selected = metadata.legacyAuthorityProvenance;
-    body += `\n**Recorded-base legacy review inputs**\n\nBase: \`${cleanText(selected.baseSha, 64)}\` · Candidate head: \`${cleanText(selected.headSha, 64)}\` · Reviewed merge: \`${cleanText(selected.reviewedSha, 64)}\`\n`;
-    body += renderList('Policy, prompt, schema, and validation snapshots', [
+    const repository = metadata.repository || process.env.GITHUB_REPOSITORY;
+    required += `\n#### Recorded-base legacy review inputs\n\nBase: ${renderCommit(selected.baseSha, repository)} · Candidate head: ${renderCommit(selected.headSha, repository)} · Reviewed merge: ${renderCommit(selected.reviewedSha, repository)}\n`;
+    required += `\n##### Full commit IDs\n\nBase: \`${cleanText(selected.baseSha, 64)}\` · Candidate head: \`${cleanText(selected.headSha, 64)}\` · Reviewed merge: \`${cleanText(selected.reviewedSha, 64)}\`\n`;
+    required += renderList('Policy, prompt, schema, and validation snapshots', [
       `${selected.policy.path} (SHA-256 ${selected.policy.sha256})`,
       `${selected.prompt.path} (SHA-256 ${selected.prompt.sha256})`,
       `${selected.schema.path} (SHA-256 ${selected.schema.sha256})`,
       selected.validation ? `${selected.validation.path} (SHA-256 ${selected.validation.sha256})` : 'validationPath: null (no validation file selected)',
     ]);
-    body += renderList('Selected authority files', selected.members.map(member => `${member.path} (SHA-256 ${member.sha256})`));
+    required += renderList('Selected authority files', selected.members.map(member => `${member.path} (SHA-256 ${member.sha256})`));
   }
-  body += renderGates(decision?.gates);
   if (decision) {
     const context = [
       renderList('Reviewed scope', decision.reviewedScope),
@@ -492,21 +516,74 @@ export function renderReport(classified, metadata = {}) {
       renderList('Capability surface', decision.capabilitySurface),
       renderList('Quality guarantees', decision.qualityGuarantees),
     ].join('');
-    if (context) body += `\n<details>\n<summary>Reviewed scope and authority</summary>\n${context}\n</details>\n`;
-    body += renderGateDetails(decision.gates);
+    if (context) optional += context;
+    optional += renderGateDetails(decision.gates);
   }
+  const p = metadata.ownerAdditionProcedure;
+  if (p) {
+    required += `\n#### Owner-addition procedure record\n\nPolicy/base: ${renderCommit(p.policyRevision, p.repository)} · B head: ${renderCommit(p.headSha, p.repository)} · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag ref observed: \`${cleanText(p.tagRef, 150)}\` → object OID \`${cleanText(p.tagObjectOid, 64)}\` · Principal authentication: \`not_verified\`\n`;
+    required += `\n##### Full commit IDs\n\nPolicy/base: \`${cleanText(p.policyRevision, 64)}\` · B head: \`${cleanText(p.headSha, 64)}\`\n`;
+    if (p.version === 2) required += `\nOwner-addition procedure/report version: \`2\` · Policy SHA-256: \`${cleanText(p.policySha256, 64)}\` · AdditionRecord SHA-256: \`${cleanText(p.additionRecordSha256, 64)}\` · Bound Authority Set SHA-256: \`${cleanText(p.authoritySet.setDigest, 64)}\`\n`;
+  }
+  return { required, optional };
+}
+
+function fitSection(section, maxLength) {
+  if (section.length <= maxLength) return { text: section, truncated: false };
+  if (maxLength <= 0) return { text: '', truncated: true };
+  const prefix = section.slice(0, maxLength);
+  const lineBreak = prefix.lastIndexOf('\n');
+  return { text: lineBreak > 0 ? prefix.slice(0, lineBreak + 1) : '', truncated: true };
+}
+
+export function renderReport(classified, metadata = {}) {
+  const [icon, label] = labelFor(classified.conclusion) || labelFor('UNKNOWN');
+  const decision = classified.decision;
+  const decisionDigest = metadata.decisionDigest || digestDecision(decision);
+  let prelude = `## ${icon} Architecture Gate — ${label}\n\n> ${cleanText(classified.summary)}\n`;
+  if (classified.conclusion === 'OWNER_DECISION') {
+    prelude += `\nThis result is not accepted by the current run. The accountable owner must make the unresolved architecture decision, record it in canonical consumer-owned authority, and rerun the gate against that updated authority. [How to handle OWNER_DECISION](${OWNER_INTERVENTION_URL}#owner_decision).\n`;
+  } else if (classified.conclusion === 'ERROR') {
+    const runReference = metadata.runUrl ? `[Actions run](${cleanText(metadata.runUrl, 1_000)})` : 'Actions run';
+    prelude += `\nInspect the ${runReference} to identify the cause. If the CI reviewer is unavailable because of API, billing, model, credential, or service failure, follow [CI review unavailable](${OWNER_INTERVENTION_URL}#ci-review-unavailable). This result is not a PASS.\n`;
+  }
+  if (classified.conclusion === 'OWNER_ADDITION_G0') {
+    prelude += '\nThis is a procedural acceptance result for authority-only B, not semantic PASS for B or A. Tag actor or owner identity was not authenticated. A requires a fresh review after B becomes canonical. A later tag-ref change is not covered by this check.\n';
+  }
+  if (classified.conclusion === 'OWNER_ADDITION_G0_PENDING') {
+    prelude += '\nThis is an eligible candidate result, not completed adoption or canonical placement. The annotated G0 tag binds exact B, but Gatekeeper did not authenticate its actor. Host merge enforcement is unavailable or not verified; this green result does not prove GitHub required the check. A separate post-merge record must verify this exact result existed before merge, its producer and completion time, the PR merge commit, and canonical readback. Eligibility: `eligible`; adoption and canonical placement: `pending`; principal authentication and host enforcement: `not_verified`.\n';
+  }
+  const fullFindings = renderFindings(decision?.findings, metadata.inlineDelivery);
+  const gateTable = renderGates(decision?.gates);
+  const { required: requiredEvidence, optional: optionalEvidence } = renderEvidence(metadata, decision);
+  const evidenceHeader = requiredEvidence || optionalEvidence ? '\n### Evidence and review details\n\n' : '';
+  const evidenceOpen = requiredEvidence || optionalEvidence
+    ? '<details>\n<summary>Authority provenance and evaluation details</summary>\n' : '';
+  const evidenceClose = requiredEvidence || optionalEvidence ? '\n</details>\n' : '';
   const links = [];
-  if (metadata.reviewedSha) links.push(`Reviewed commit: \`${cleanText(metadata.reviewedSha, 64)}\``);
-  if (metadata.headSha) links.push(`PR head: \`${cleanText(metadata.headSha, 64)}\``);
+  const repository = metadata.repository || process.env.GITHUB_REPOSITORY;
+  if (metadata.reviewedSha) links.push(`Reviewed commit: ${renderCommit(metadata.reviewedSha, repository)}`);
+  if (metadata.headSha) links.push(`PR head: ${renderCommit(metadata.headSha, repository)}`);
   if (decisionDigest) links.push(`Decision SHA-256: \`${cleanText(decisionDigest, 64)}\``);
   if (metadata.runUrl) links.push(`[Actions run](${cleanText(metadata.runUrl, 1_000)})`);
   if (metadata.workflowRef) links.push(`Workflow: \`${cleanText(metadata.workflowRef, 300)}\``);
-  const provenance = links.length ? `\n${links.join(' · ')}\n` : '';
-  const ending = `${provenance}\n${COMMENT_MARKER}\n`;
+  let runMetadata = links.length ? `\n### Run metadata\n\n${links.join(' · ')}\n` : '';
+  const fullCommitDetails = [metadata.reviewedSha && `Reviewed commit: \`${cleanText(metadata.reviewedSha, 64)}\``,
+    metadata.headSha && `PR head: \`${cleanText(metadata.headSha, 64)}\``].filter(Boolean);
+  if (fullCommitDetails.length) runMetadata += `\n<details>\n<summary>Full commit IDs</summary>\n\n${fullCommitDetails.join(' · ')}\n</details>\n`;
+  const ending = `\n${COMMENT_MARKER}\n`;
   const truncation = '\n\n_Report truncated._\n';
-  if (body.length + ending.length > MAX_REPORT_LENGTH) {
-    body = `${body.slice(0, Math.max(0, MAX_REPORT_LENGTH - ending.length - truncation.length))}${truncation}`;
-  }
+  const fullEvidence = evidenceHeader + evidenceOpen + requiredEvidence + optionalEvidence + evidenceClose;
+  const fullBody = prelude + fullFindings + gateTable + fullEvidence + runMetadata;
+  if (fullBody.length + ending.length <= MAX_REPORT_LENGTH) return `${fullBody}${ending}`;
+
+  const mandatory = prelude + gateTable + evidenceHeader + evidenceOpen + requiredEvidence + evidenceClose + runMetadata + ending + truncation;
+  if (mandatory.length > MAX_REPORT_LENGTH) throw new Error('Required report evidence exceeds the maximum report length.');
+  let remaining = MAX_REPORT_LENGTH - mandatory.length;
+  const fittedFindings = renderFindings(decision?.findings, metadata.inlineDelivery, remaining);
+  remaining -= fittedFindings.length;
+  const fittedOptional = fitSection(optionalEvidence, remaining);
+  const body = prelude + fittedFindings + gateTable + evidenceHeader + evidenceOpen + requiredEvidence + fittedOptional.text + evidenceClose + truncation + runMetadata;
   return `${body}${ending}`;
 }
 
