@@ -392,6 +392,85 @@ the identified conflict. Only previous-base policy opts in and scopes a route;
 B cannot self-authorize. If prior policy cannot authorize first opt-in, use
 owner-controlled bootstrap. Contract entry alone enables no route.
 
+#### Self-v1 semantic eligibility input and receipt (owner decision)
+
+The closed `owner-amendment-semantic-eligibility-v1` format reports semantic
+eligibility for exact B only; it is not `PASS` or `OWNER_AMENDMENT`, does not
+rewrite the trigger result, and does not authenticate an owner or authorize an
+exact claim. Those assurances remain `not_verified`; this decision enables no
+route.
+
+The previous-base policy selects the trigger profile, authority scope, trusted
+producer, and required `ownerAmendment.maxPromptBytes` (no default; positive
+safe integer, at most the 1,048,576-byte runtime ceiling). B cannot set or
+raise it. The complete prompt must fit. The protected producer supplies the
+exact raw UTF-8 policy, full Authority Set and member bytes, repository/base/B,
+all changed authority paths' before/after bytes and complete diff, trigger
+ReviewRecord bytes and AmendmentRecord bytes, and annotated-tag identity. It
+materializes the exact completed trigger ReviewRecord, verifies its selected
+profile, digest, predecessor bindings, and trusted producer provenance before
+constructing the prompt, then includes its decoded content as untrusted data.
+The record supplies escalation/revision context only; it neither states owner
+choice nor replaces canonical authority. The producer verifies all input
+bindings before review. It also validates the AmendmentRecord's profile schema,
+exact-byte digest, and applicable repository/base/B, trigger, target authority,
+and before/after bindings before prompt construction. The prompt includes both
+decoded records as separately identified untrusted data; the AmendmentRecord's
+target and purpose are proposed claims, not owner choice or approval. Policy,
+authority, and record content are data, not instructions. No one-file limit
+applies. IDs follow protected manifest order.
+`authoritySetDigest` is SHA-256 of compact UTF-8 JSON for the ordered member
+descriptors `{id,repository,resolvedCommit,path,byteLength,sha256}`.
+
+The closed decision object has exactly `version`, `kind`, `eligibility`,
+`triggerProfile`, `authorityIds`, `authoritySetDigest`, and `checks`;
+`version=1`, `kind=owner-amendment-semantic-eligibility-decision`, and
+`eligibility` is `ELIGIBLE` or `INELIGIBLE`. Profile, complete ordered IDs,
+and set digest equal the input. `checks` has exactly these boolean fields:
+`materiallyAddressesTrigger`, `amendsOnlyTargetDecision`,
+`excludesUnrelatedChanges`,
+`excludesImplementationWorkflowAndExecutablePolicyEdits`,
+`excludesUnsupportedCompletionClaims`, `resultingAuthorityIsCoherent`, and
+`assessesResultingRulesWithoutRequiringAgreementWithSupersededRules`.
+`ELIGIBLE` requires all checks true; `INELIGIBLE` records at least one false
+check and cannot produce eligible evidence. Duplicate, extra, missing,
+malformed, or mismatched fields leave review incomplete. The receipt records
+the semantic determination; deterministic validation does not prove its
+semantic correctness.
+
+A completed decision has a version-1 `owner-amendment-semantic-eligibility-receipt`
+in canonical UTF-8 JSON: recursively Unicode-code-point-sorted object keys,
+array order preserved, compact separators, one final LF. Reject duplicate
+keys and unknown, missing, noncanonical, or invalid fields at every level.
+The exact top-level field set is `version,kind,eligibility,repository,baseSha,
+bSha,triggerProfile,triggerReviewRecordSha256,amendmentRecordSha256,
+policyRevision,policySha256,authoritySetDigest,authorityIds,changes,diffSha256,
+promptSha256,schemaSha256,decisionSha256,model,reasoningEffort,gatekeeper,
+tag,producer`;
+`policyRevision=baseSha`. All `*Sha256` fields hash the named exact raw bytes
+(decision bytes use the canonical decision encoding); `authoritySetDigest`
+uses the member-descriptor algorithm above. `changes` is an ordered array of exact
+`{path,beforeSha256,afterSha256}` objects. `tag` is exactly
+`{tagRef,tagObjectOid,observedTagRefOid}`, binding the protected ref, exact
+annotated object and observed ref mapping; it makes no claim the mutable ref
+cannot later move or disappear. `producer` is exactly
+`{workflowPath,workflowSha,workflowRef,runId,runAttempt,jobId}`, identifying
+the selected protected workflow and exact job execution. `gatekeeper` is
+exactly `{repository,revision,package}`: the canonical Gatekeeper repository,
+full immutable Git commit SHA of the runtime source, and either `null` for
+direct Git execution or an exact `{name,version,integrity}` package identity.
+For package execution, these values identify the selected package and its
+registry-read version and integrity, as required by the package distribution
+contract. This is distinct from producer workflow/job identity. `model` and
+`reasoningEffort` record the exact values selected by the previous-base
+policy. The verifier matches runtime identity, producer, model, and effort to
+their protected selections. Producer provenance must authenticate separately
+before acceptance; fields alone do not authenticate the producer. It requires
+every receipt identity/digest to match the protected selection and review
+input. Only a validated `ELIGIBLE` receipt can serve as input to a separately
+implemented acceptance route; it never reports `OWNER_AMENDMENT` or
+authorizes B.
+
 For BLOCK-triggered amendments, the exact completed `BLOCK` must identify the
 conflict that B's semantic eligibility assesses. Preserve that historical
 result; B never changes it to `PASS`. The first BLOCK-triggered implementation
