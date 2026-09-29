@@ -58,6 +58,7 @@ function validateAuthority(authority, context) {
   sha(authority.manifestSha256, SHA256, 'authority manifest digest');
   sha(authority.setDigest, SHA256, 'authority set digest');
   const ids = new Set();
+  const descriptors = [];
   for (const member of authority.members) {
     exact(member, ['id', 'repository', 'resolvedCommit', 'path', 'byteLength', 'sha256'], 'authority member');
     if (typeof member.id !== 'string' || !ID.test(member.id) || ids.has(member.id) ||
@@ -70,6 +71,11 @@ function validateAuthority(authority, context) {
     sha(member.resolvedCommit, SHA1, 'authority member revision');
     sha(member.sha256, SHA256, 'authority member digest');
     ids.add(member.id);
+    descriptors.push({ id: member.id, repository: member.repository, resolvedCommit: member.resolvedCommit,
+      path: member.path, byteLength: member.byteLength, sha256: member.sha256 });
+  }
+  if (digest(Buffer.from(JSON.stringify(descriptors), 'utf8')) !== authority.setDigest) {
+    fail('authority set digest does not match the ordered member descriptors.');
   }
 }
 

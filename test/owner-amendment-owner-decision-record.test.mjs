@@ -9,11 +9,12 @@ const schema = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/ci-decision
 const validation = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/decision.validation.json', import.meta.url)));
 const context = { repository: 'flair-agency/example', prNumber: 17, baseSha: base, headSha: head, mergeSha: merge,
   workflowSha: base, workflowPath: '.github/workflows/architecture-gate.yml', runId: '123', runAttempt: '1' };
+const members = [
+  { id: 'architecture', repository: context.repository, resolvedCommit: base, path: 'docs/architecture.md', byteLength: 1200, sha256: '1'.repeat(64) },
+  { id: 'policy', repository: context.repository, resolvedCommit: base, path: '.codex/policy.md', byteLength: 600, sha256: '2'.repeat(64) },
+];
 const authority = { version: 1, selfRepository: context.repository, authorityRevision: base,
-  manifestSha256: 'e'.repeat(64), setDigest: 'f'.repeat(64), members: [
-    { id: 'architecture', repository: context.repository, resolvedCommit: base, path: 'docs/architecture.md', byteLength: 1200, sha256: '1'.repeat(64) },
-    { id: 'policy', repository: context.repository, resolvedCommit: base, path: '.codex/policy.md', byteLength: 600, sha256: '2'.repeat(64) },
-  ] };
+  manifestSha256: 'e'.repeat(64), setDigest: createHash('sha256').update(JSON.stringify(members)).digest('hex'), members };
 const inputDigests = Object.fromEntries(['manifest', 'policy', 'prompt', 'schema', 'validation'].map(key => [key, digest]));
 const decision = { decision: 'OWNER_DECISION', findings: [], summary: 'An existing decision needs owner review.',
   authority: ['architecture', 'policy'], authorityFiles: ['docs/architecture.md', '.codex/policy.md'],
@@ -60,6 +61,12 @@ test('rejects stale or changed review context, authority provenance, and protect
     const x = args(); change(x);
     assert.throws(() => buildOwnerAmendmentOwnerDecisionRecord(x));
   }
+});
+
+test('rejects an Authority Set digest that does not match its ordered member descriptors', () => {
+  const x = args();
+  x.authority.setDigest = 'f'.repeat(64);
+  assert.throws(() => buildOwnerAmendmentOwnerDecisionRecord(x), /set digest does not match the ordered member descriptors/);
 });
 
 test('validator requires the distinct record kind and byte-for-byte rebuilt record', () => {
