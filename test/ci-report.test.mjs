@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COMMENT_MARKER, classifyReview, digestDecision, parseLegacyAuthorityProvenance, postInlineReview, renderReport, sanitizeReportApiContext, upsertPullRequestComment, validateInlineFindings } from '../src/ci-report.mjs';
+import { COMMENT_MARKER, classifyReview, digestDecision, formatInlineFindingHeading, parseLegacyAuthorityProvenance, postInlineReview, renderReport, sanitizeReportApiContext, upsertPullRequestComment, validateInlineFindings } from '../src/ci-report.mjs';
 
 test('sanitizes report API context to GitHub.com and canonical PR identity', () => {
   assert.deepEqual(sanitizeReportApiContext({ apiUrl: 'https://api.github.com/', repository: 'flair-agency/architecture-gatekeeper',
@@ -229,6 +229,13 @@ test('skips comments without write context and reports API failures to the calle
 const inlinePatch = '@@ -3,0 +4,2 @@\n+const added = true;\n+return added;';
 const deletedPatch = '@@ -3,2 +3,0 @@\n-old value;\n-obsolete();';
 
+test('formats inline comment headings by decision with a branded safe fallback', () => {
+  assert.equal(formatInlineFindingHeading('BLOCK', 'Issue'), '🛑 BLOCK — Architecture Gatekeeper — Issue');
+  assert.equal(formatInlineFindingHeading('OWNER_DECISION', 'Issue'), '⚠️ OWNER_DECISION — Architecture Gatekeeper — Issue');
+  assert.equal(formatInlineFindingHeading('PASS', 'Issue'), 'Architecture Gatekeeper — Issue');
+  assert.equal(formatInlineFindingHeading(undefined, 'Issue'), 'Architecture Gatekeeper — Issue');
+});
+
 test('validates inline locations only on added diff lines and bounds findings', () => {
   const findings = [
     { title: 'Added-line issue', body: 'Fix this.', location: { path: 'src/a.mjs', line: 5, side: 'RIGHT' } },
@@ -293,7 +300,7 @@ test('posts one COMMENT review and skips already posted same-head findings', asy
   const result = await postInlineReview({ fetchImpl, apiUrl: 'https://api.test', repository: 'o/r', pullRequest: '7',
     token: 'token', expectedHead: 'a'.repeat(40), findings });
   assert.equal(result.status, 'created');
-  const submission = calls.at(-1);
+  const submission = calls.findLast(call => call.options.method === 'POST');
   assert.match(submission.url, /pulls\/7\/reviews$/);
   const payload = JSON.parse(submission.options.body);
   assert.equal(payload.event, 'COMMENT');
@@ -302,6 +309,7 @@ test('posts one COMMENT review and skips already posted same-head findings', asy
   assert.equal(payload.comments[0].side, 'RIGHT');
   assert.equal(payload.comments[1].side, 'LEFT');
   assert.equal(payload.comments[1].line, 4);
+  assert.match(payload.comments[0].body, /Architecture Gatekeeper/);
   assert.match(payload.comments[0].body, /architecture-gatekeeper:inline:v1:/);
 });
 
@@ -313,13 +321,71 @@ test('falls back on stale head and deduplicates matching review comments', async
   const fetchImpl = async (url) => {
     if (url.endsWith('/pulls/7')) return { ok: true, json: async () => ({ head: { sha: stale ? 'b'.repeat(40) : 'a'.repeat(40) } }) };
     if (url.includes('/files?')) return { ok: true, json: async () => [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] };
-    if (url.includes('/comments?')) return { ok: true, json: async () => [{ user: { login: 'github-actions[bot]' }, commit_id: 'a'.repeat(40), body: `comment ${'<!-- architecture-gatekeeper:inline:v1:' + digest + ' -->'}` }] };
+    if (url.includes('/comments?')) return { ok: true, json: async () => [{ user: { login: 'github-actions[bot]' }, commit_id: 'a'.repeat(40), html_url: 'https://github.com/o/r/pull/7#discussion_r81', body: `comment ${'<!-- architecture-gatekeeper:inline:v1:' + digest + ' -->'}` }] };
     throw new Error('unexpected write');
   };
   const args = { fetchImpl, apiUrl: 'https://api.test', repository: 'o/r', pullRequest: '7', token: 'token', expectedHead: 'a'.repeat(40), findings: [finding] };
   assert.equal((await postInlineReview(args)).status, 'fallback');
   stale = false;
-  assert.equal((await postInlineReview(args)).status, 'unchanged');
+  const unchanged = await postInlineReview(args);
+  assert.equal(unchanged.status, 'unchanged');
+  assert.equal(unchanged.checked[0].commentUrl, 'https://github.com/o/r/pull/7#discussion_r81');
+});
+
+test('created inline comments identify the product and render GitHub-returned direct links', async () => {
+  const head = 'a'.repeat(40);
+  const finding = { title: 'Issue', body: 'Explanation', location: { path: 'src/a.mjs', line: 4, side: 'RIGHT' } };
+  let findingKey;
+  let commentsReads = 0;
+  const fetchImpl = async (url, options = {}) => {
+    if (options.method === 'POST') {
+      const payload = JSON.parse(options.body);
+      assert.ok(payload.comments[0].body.startsWith('**🛑 BLOCK — Architecture Gatekeeper — Issue**'));
+      findingKey = payload.comments[0].body.match(/architecture-gatekeeper:inline:v1:([a-f0-9]{64})/)[1];
+      return { ok: true };
+    }
+    if (url.endsWith('/pulls/7')) return { ok: true, json: async () => ({ head: { sha: head } }) };
+    if (url.includes('/files?')) return { ok: true, json: async () => [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] };
+    if (url.includes('/comments?')) {
+      commentsReads += 1;
+      if (commentsReads === 1) return { ok: true, json: async () => [] };
+      return { ok: true, json: async () => [{ user: { login: 'github-actions[bot]' }, commit_id: head,
+        html_url: 'https://github.com/o/r/pull/7#discussion_r82', body: `**Architecture Gatekeeper** <!-- architecture-gatekeeper:inline:v1:${findingKey} -->` }] };
+    }
+    throw new Error(`unexpected URL ${url}`);
+  };
+  const delivery = await postInlineReview({ fetchImpl, apiUrl: 'https://api.test', repository: 'o/r', pullRequest: '7',
+    token: 'token', expectedHead: head, decision: 'BLOCK', findings: [finding] });
+  assert.equal(delivery.status, 'created');
+  assert.equal(delivery.checked[0].commentUrl, 'https://github.com/o/r/pull/7#discussion_r82');
+  const report = renderReport({ conclusion: 'BLOCK', summary: 'review', decision: { decision: 'BLOCK', findings: [finding] } },
+    { inlineDelivery: delivery });
+  assert.match(report, /\*\*Issue\*\* \(`src\/a\.mjs:4 RIGHT`;/);
+  assert.match(report, /\[inline comment\]\(https:\/\/github\.com\/o\/r\/pull\/7#discussion_r82\)/);
+});
+
+test('retains successful inline post status when the follow-up URL lookup fails', async () => {
+  let postCount = 0;
+  let commentsReads = 0;
+  const finding = { title: 'Issue', body: 'Explanation', location: { path: 'src/a.mjs', line: 4, side: 'RIGHT' } };
+  const delivery = await postInlineReview({ apiUrl: 'https://api.test', repository: 'o/r', pullRequest: '7', token: 'token',
+    expectedHead: 'a'.repeat(40), findings: [finding], fetchImpl: async (url, options = {}) => {
+      if (options.method === 'POST') { postCount += 1; return { ok: true }; }
+      if (url.endsWith('/pulls/7')) return { ok: true, json: async () => ({ head: { sha: 'a'.repeat(40) } }) };
+      if (url.includes('/files?')) return { ok: true, json: async () => [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] };
+      if (url.includes('/comments?')) {
+        commentsReads += 1;
+        return commentsReads === 1 ? { ok: true, json: async () => [] } : { ok: false, status: 503 };
+      }
+      throw new Error(`unexpected URL ${url}`);
+    } });
+  assert.equal(postCount, 1);
+  assert.equal(delivery.status, 'created');
+  assert.match(delivery.linkWarning, /links could not be retrieved/);
+  const report = renderReport({ conclusion: 'BLOCK', summary: 'review', decision: { decision: 'BLOCK', findings: [finding] } },
+    { inlineDelivery: delivery });
+  assert.match(report, /Inline delivery: \*\*created; review posted, but inline comment links could not be retrieved/);
+  assert.match(report, /direct link unavailable/);
 });
 
 test('forged or stale-head markers from non-Actions comments do not suppress a review', async () => {
@@ -351,6 +417,42 @@ test('finding markers ignore location property insertion order across reruns', (
   const reordered = { title: 'Issue', body: 'Explanation', location: { side: 'RIGHT', line: 4, path: 'src/a.mjs' } };
   const options = { expectedHead, currentHead: expectedHead, files: [{ filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch }] };
   assert.equal(validateInlineFindings([first], options)[0].key, validateInlineFindings([reordered], options)[0].key);
+});
+
+test('finding identity changes with decision while same-decision reruns remain idempotent', async () => {
+  const head = 'a'.repeat(40);
+  const finding = { title: 'Issue', body: 'Explanation', location: { path: 'src/a.mjs', line: 4, side: 'RIGHT' } };
+  const comments = [];
+  const submissions = [];
+  let nextCommentId = 1;
+  const fetchImpl = async (url, options = {}) => {
+    if (options.method === 'POST') {
+      const payload = JSON.parse(options.body);
+      submissions.push(payload);
+      for (const comment of payload.comments) comments.push({ user: { login: 'github-actions[bot]' }, commit_id: head,
+        html_url: `https://github.com/o/r/pull/7#discussion_r${nextCommentId++}`, body: comment.body });
+      return { ok: true };
+    }
+    if (url.endsWith('/pulls/7')) return { ok: true, json: async () => ({ head: { sha: head } }) };
+    if (url.includes('/files?')) return { ok: true, json: async () => [
+      { filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch },
+    ] };
+    if (url.includes('/comments?')) return { ok: true, json: async () => comments };
+    throw new Error(`unexpected URL ${url}`);
+  };
+  const args = { fetchImpl, apiUrl: 'https://api.test', repository: 'o/r', pullRequest: '7', token: 'token',
+    expectedHead: head, findings: [finding] };
+
+  const block = await postInlineReview({ ...args, decision: 'BLOCK' });
+  const repeatedBlock = await postInlineReview({ ...args, decision: 'BLOCK' });
+  const ownerDecision = await postInlineReview({ ...args, decision: 'OWNER_DECISION' });
+
+  assert.equal(block.status, 'created');
+  assert.equal(repeatedBlock.status, 'unchanged');
+  assert.equal(ownerDecision.status, 'created');
+  assert.equal(submissions.length, 2);
+  assert.match(submissions[0].comments[0].body, /🛑 BLOCK —/);
+  assert.match(submissions[1].comments[0].body, /⚠️ OWNER_DECISION —/);
 });
 
 test('rechecks PR head immediately before POST and renders delivery plus deferral in report', async () => {

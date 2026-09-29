@@ -94,9 +94,11 @@ unavailable for cost attribution.
 
 Consumers can optionally declare structured `findings` in their decision
 schema to receive verified added/deleted-line feedback in one non-accepting
-GitHub `COMMENT` review. The existing job summary and sticky report remain the
-fallback. See the [CI integration reference](docs/integration-reference.md)
-for location validation, bounds and rerun behavior.
+GitHub `COMMENT` review. Each inline comment identifies Architecture
+Gatekeeper, and the job summary/sticky report link to GitHub-returned inline
+comment URLs when available. The existing report remains the fallback. See the
+[CI integration reference](docs/integration-reference.md) for location
+validation, bounds and rerun behavior.
 
 ## Assurance boundary
 
