@@ -397,6 +397,13 @@ test('selects and materializes the protected self Authority Set for CI and local
   const localConfig = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/config.json'), 'utf8'));
   assert.equal(localConfig.version, 2);
   assert.equal(localConfig.schemaPath, '.codex/gatekeeper/ci-decision.schema.json');
+  assert.equal(localConfig.authorityLimits.maxFileBytes, 73728);
+  assert.deepEqual(localConfig.authorityLimits, selectedLimits);
+  const localManifest = parseAuthorityManifest(manifestBytes, localConfig.authorityLimits);
+  const localMaterialized = await materializeAuthoritySet({ manifestBytes, limits: localConfig.authorityLimits,
+    selfRepository: localConfig.selfRepository, selfRoot: root, authorityRevision });
+  assert.deepEqual(localManifest.authorities, manifest.authorities);
+  assert.deepEqual(localMaterialized.members.map(member => member.id), ['architecture-contract']);
   assert.equal(schema.required.includes('authorityIds'), true);
   const validation = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.validation.json'), 'utf8'));
   assert.equal(validation.version, 1);
