@@ -69,6 +69,40 @@ test('classifies model decisions and renders a bounded sanitized report', () => 
   assert.ok(report.length <= 60_000);
 });
 
+test('uses reviewer-first headings and the shared icon-plus-label vocabulary in gate results', () => {
+  const report = renderReport({ conclusion: 'BLOCK', summary: 'review', decision: {
+    decision: 'BLOCK', findings: [{ title: 'Fix boundary', body: 'Details', location: { path: 'src/a.mjs', line: 4, side: 'RIGHT' } }],
+    gates: {
+      accepted: { decision: 'PASS', summary: 'ok' },
+      blocked: { decision: 'BLOCK', summary: 'needs work' },
+      owner: { decision: 'OWNER_DECISION', summary: 'choose' },
+      failed: { decision: 'ERROR', summary: 'review failed' },
+      skipped: { applicable: false, summary: 'not needed' },
+      malformed: { summary: 'diagnostic is incomplete' },
+    },
+  } });
+  assert.ok(report.indexOf('### Findings') < report.indexOf('### Gate results'));
+  assert.match(report, /\| accepted \| ✅ PASS \|/);
+  assert.match(report, /\| blocked \| 🛑 BLOCK \|/);
+  assert.match(report, /\| owner \| ⚠️ OWNER DECISION REQUIRED \|/);
+  assert.match(report, /\| failed \| ❌ REVIEW FAILED \|/);
+  assert.match(report, /\| skipped \| ➖ NOT APPLICABLE \|/);
+  assert.match(report, /\| malformed \| ❓ UNKNOWN \|/);
+});
+
+test('links short Git commit IDs and keeps full IDs recoverable in run metadata', () => {
+  const reviewedSha = 'a'.repeat(40);
+  const headSha = 'b'.repeat(40);
+  const report = renderReport({ conclusion: 'PASS', summary: 'ok', decision: { decision: 'PASS' } }, {
+    repository: 'flair-agency/architecture-gatekeeper', reviewedSha, headSha,
+  });
+  assert.match(report, /Reviewed commit: \[`a{12}`\]\(https:\/\/github\.com\/flair-agency\/architecture-gatekeeper\/commit\/a{40}\)/);
+  assert.match(report, /PR head: \[`b{12}`\]\(https:\/\/github\.com\/flair-agency\/architecture-gatekeeper\/commit\/b{40}\)/);
+  assert.match(report, /<summary>Full commit IDs<\/summary>[\s\S]*Reviewed commit: `a{40}`[\s\S]*PR head: `b{40}`/);
+  assert.ok(report.indexOf('### Gate results') === -1);
+  assert.match(report, /### Run metadata/);
+});
+
 test('distinguishes waiver, policy failure, review failure, and malformed output', () => {
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: '{"decision":"PASS","summary":"ok"}' }).conclusion, 'PASS');
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: '{"decision":"OWNER_DECISION","summary":"choose"}' }).conclusion, 'OWNER_DECISION');
@@ -88,9 +122,8 @@ test('procedural G0 eligibility remains pending until merge and canonical readba
   assert.equal(classified.conclusion, 'OWNER_ADDITION_G0_PENDING');
   const report = renderReport(classified, { ownerAdditionProcedure: procedure });
   assert.match(report, /Eligibility: `eligible`/);
-  assert.match(report, /Adoption: `pending`/);
-  assert.match(report, /Canonical: `pending`/);
-  assert.match(report, /Host enforcement: `not_verified`/);
+  assert.match(report, /adoption and canonical placement: `pending`/);
+  assert.match(report, /principal authentication and host enforcement: `not_verified`/);
   assert.doesNotMatch(report, /procedural acceptance result/);
   assert.equal(classifyReview({ mode: 'procedural', policyResult: 'success', reviewResult: 'success',
     rawDecision: JSON.stringify(ownerDecision), ownerAdditionSelected: true, ownerAdditionResult: 'failure' }).conclusion,
@@ -142,6 +175,7 @@ test('truncates oversized reports while retaining the ownership marker', () => {
   assert.match(report, /Reviewed commit: `abc123`/);
   assert.match(report, /\[Actions run\]\(https:\/\/example\.test\/run\/1\)/);
   assert.match(report, /Workflow: `o\/r\/\.github\/workflows\/gate\.yml@\u200babc123`/);
+  assert.match(report, /<\/details>\n\n_Report truncated\./);
   assert.ok(report.endsWith(`${COMMENT_MARKER}\n`));
 });
 
@@ -360,7 +394,7 @@ test('created inline comments identify the product and render GitHub-returned di
   assert.equal(delivery.checked[0].commentUrl, 'https://github.com/o/r/pull/7#discussion_r82');
   const report = renderReport({ conclusion: 'BLOCK', summary: 'review', decision: { decision: 'BLOCK', findings: [finding] } },
     { inlineDelivery: delivery });
-  assert.match(report, /\*\*Issue\*\* \(`src\/a\.mjs:4 RIGHT`;/);
+  assert.match(report, /### Findings[\s\S]*\*\*Issue\*\* — `src\/a\.mjs:4 RIGHT`/);
   assert.match(report, /\[inline comment\]\(https:\/\/github\.com\/o\/r\/pull\/7#discussion_r82\)/);
 });
 
@@ -384,7 +418,7 @@ test('retains successful inline post status when the follow-up URL lookup fails'
   assert.match(delivery.linkWarning, /links could not be retrieved/);
   const report = renderReport({ conclusion: 'BLOCK', summary: 'review', decision: { decision: 'BLOCK', findings: [finding] } },
     { inlineDelivery: delivery });
-  assert.match(report, /Inline delivery: \*\*created; review posted, but inline comment links could not be retrieved/);
+  assert.match(report, /Inline review status: created; review posted, but inline comment links could not be retrieved/);
   assert.match(report, /direct link unavailable/);
 });
 
@@ -478,8 +512,8 @@ test('rechecks PR head immediately before POST and renders delivery plus deferra
   assert.match(result.checked[0].reason, /immediately before/);
   const report = renderReport({ conclusion: 'BLOCK', summary: 'review', decision: { decision: 'BLOCK', findings: [finding] } },
     { inlineDelivery: result });
-  assert.match(report, /Reviewer findings/);
+  assert.match(report, /### Findings/);
   assert.doesNotMatch(report, /Verified findings/);
-  assert.match(report, /Inline delivery: \*\*fallback:/);
+  assert.match(report, /Inline review status: fallback:/);
   assert.match(report, /deferred: pull request head changed immediately before inline review creation/);
 });
