@@ -21,7 +21,7 @@ const authorityBytes = git('show', `${baseSha}:docs/architecture.md`);
 const authorityMembers = [{ id: 'architecture-contract', repository, resolvedCommit: baseSha, path: 'docs/architecture.md', byteLength: authorityBytes.length, sha256: sha(authorityBytes) }];
 const provenance = { version: 1, selfRepository: repository, authorityRevision: baseSha,
   manifestSha256: sha(baseInputs.manifest), setDigest: sha(Buffer.from(JSON.stringify(authorityMembers))), members: authorityMembers };
-const decision = { decision: 'BLOCK', summary: 'A protected boundary is weakened.', authority: ['protected architecture'],
+const decision = { decision: 'BLOCK', findings: [], summary: 'A protected boundary is weakened.', authority: ['protected architecture'],
   authorityFiles: ['docs/architecture.md'], authorityIds: ['architecture-contract'], responsibility: ['acceptance'],
   capabilitySurface: ['CI'], qualityGuarantees: ['fail closed'], reviewedScope: ['change A'], prohibitedChanges: ['weaken gate'],
   gates: { sharedMechanism: { decision: 'BLOCK', summary: 'weakens validation', consumerOwnership: '', failClosedBehavior: '', compatibility: '', minimality: '' },
