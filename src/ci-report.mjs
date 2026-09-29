@@ -464,7 +464,9 @@ function renderEvidence(metadata, decision) {
   }
   if (metadata.legacyAuthorityProvenance) {
     const selected = metadata.legacyAuthorityProvenance;
-    evidence += `\n#### Recorded-base legacy review inputs\n\nBase: \`${cleanText(selected.baseSha, 64)}\` · Candidate head: \`${cleanText(selected.headSha, 64)}\` · Reviewed merge: \`${cleanText(selected.reviewedSha, 64)}\`\n`;
+    const repository = metadata.repository || process.env.GITHUB_REPOSITORY;
+    evidence += `\n#### Recorded-base legacy review inputs\n\nBase: ${renderCommit(selected.baseSha, repository)} · Candidate head: ${renderCommit(selected.headSha, repository)} · Reviewed merge: ${renderCommit(selected.reviewedSha, repository)}\n`;
+    evidence += `\n##### Full commit IDs\n\nBase: \`${cleanText(selected.baseSha, 64)}\` · Candidate head: \`${cleanText(selected.headSha, 64)}\` · Reviewed merge: \`${cleanText(selected.reviewedSha, 64)}\`\n`;
     evidence += renderList('Policy, prompt, schema, and validation snapshots', [
       `${selected.policy.path} (SHA-256 ${selected.policy.sha256})`,
       `${selected.prompt.path} (SHA-256 ${selected.prompt.sha256})`,
@@ -489,7 +491,8 @@ function renderEvidence(metadata, decision) {
   }
   const p = metadata.ownerAdditionProcedure;
   if (p) {
-    evidence += `\n#### Owner-addition procedure record\n\nPolicy/base: \`${cleanText(p.policyRevision, 64)}\` · B head: \`${cleanText(p.headSha, 64)}\` · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag ref observed: \`${cleanText(p.tagRef, 150)}\` → object OID \`${cleanText(p.tagObjectOid, 64)}\` · Principal authentication: \`not_verified\`\n`;
+    evidence += `\n#### Owner-addition procedure record\n\nPolicy/base: ${renderCommit(p.policyRevision, p.repository)} · B head: ${renderCommit(p.headSha, p.repository)} · Authority: \`${cleanText(p.authorityId, 64)}\` (\`${cleanText(p.authorityPath, 240)}\`) · Authority SHA-256: \`${cleanText(p.previousAuthoritySha256, 64)}\` → \`${cleanText(p.newAuthoritySha256, 64)}\` · Missing decision: \`${cleanText(p.missingDecisionId, 100)}\` · Tag ref observed: \`${cleanText(p.tagRef, 150)}\` → object OID \`${cleanText(p.tagObjectOid, 64)}\` · Principal authentication: \`not_verified\`\n`;
+    evidence += `\n##### Full commit IDs\n\nPolicy/base: \`${cleanText(p.policyRevision, 64)}\` · B head: \`${cleanText(p.headSha, 64)}\`\n`;
     if (p.version === 2) evidence += `\nOwner-addition procedure/report version: \`2\` · Policy SHA-256: \`${cleanText(p.policySha256, 64)}\` · AdditionRecord SHA-256: \`${cleanText(p.additionRecordSha256, 64)}\` · Bound Authority Set SHA-256: \`${cleanText(p.authoritySet.setDigest, 64)}\`\n`;
   }
   return evidence;

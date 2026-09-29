@@ -122,6 +122,10 @@ test('real Git CLI path includes the complete base set and reports bound v2 proc
   assert.equal(classified.conclusion, 'OWNER_ADDITION_G0');
   const report = renderReport(classified, { ownerAdditionProcedure: procedure, authorityProvenance: f.provenance });
   assert.match(report, /procedure\/report version: `2`/); assert.ok(report.includes(hash(f.policyBytes)));
+  assert.ok(report.includes(`Policy/base: [\`${f.base.slice(0, 12)}\`](https://github.com/example/project/commit/${f.base})`));
+  assert.ok(report.includes(`B head: [\`${f.head.slice(0, 12)}\`](https://github.com/example/project/commit/${f.head})`));
+  assert.ok(report.includes(`Policy/base: \`${f.base}\` · B head: \`${f.head}\``));
+  assert.ok(report.includes(`object OID \`${procedure.tagObjectOid}\``));
   for (const member of f.provenance.members) assert.ok(report.includes(member.sha256));
   assert.match(report, /not semantic PASS/);
 });

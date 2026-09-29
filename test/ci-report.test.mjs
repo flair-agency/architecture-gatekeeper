@@ -29,8 +29,12 @@ test('legacy provenance binds base/head, policy and selected authority in report
   assert.deepEqual(parsed, provenance);
   const report = renderReport({ conclusion: 'PASS', summary: 'Existing authority permits the change.', decision: {
     decision: 'PASS', summary: 'Existing authority permits the change.', authorityFiles: ['docs/architecture'],
-  } }, { legacyAuthorityProvenance: parsed });
+  } }, { legacyAuthorityProvenance: parsed, repository: 'flair-agency/architecture-gatekeeper' });
   assert.match(report, /Recorded-base legacy review inputs/);
+  assert.match(report, /Base: \[`a{12}`\]\(https:\/\/github\.com\/flair-agency\/architecture-gatekeeper\/commit\/a{40}\)/);
+  assert.match(report, /Candidate head: \[`b{12}`\]\(https:\/\/github\.com\/flair-agency\/architecture-gatekeeper\/commit\/b{40}\)/);
+  assert.match(report, /Reviewed merge: \[`2{12}`\]\(https:\/\/github\.com\/flair-agency\/architecture-gatekeeper\/commit\/2{40}\)/);
+  assert.match(report, /##### Full commit IDs[\s\S]*Base: `a{40}` · Candidate head: `b{40}` · Reviewed merge: `2{40}`/);
   assert.match(report, /Reviewed merge: `2{40}`/);
   assert.match(report, /\.codex\/gatekeeper\/review\.prompt \(SHA-256 e{64}\)/);
   assert.match(report, /\.codex\/gatekeeper\/decision\.schema\.json \(SHA-256 f{64}\)/);
