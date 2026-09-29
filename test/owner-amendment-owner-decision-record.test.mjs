@@ -28,6 +28,9 @@ test('builds a versioned OWNER_DECISION record from exact protected inputs and t
   const record = buildOwnerAmendmentOwnerDecisionRecord(args());
   assert.equal(record.kind, 'owner-amendment-owner-decision-review-record');
   assert.equal(record.version, 1);
+  assert.equal(record.decision.decision, 'OWNER_DECISION');
+  assert.equal(Object.hasOwn(record, 'eligibility'), false);
+  assert.equal(Object.hasOwn(record, 'ownerApproval'), false);
   assert.deepEqual(record.authority.members.map(member => member.id), ['architecture', 'policy']);
   assert.equal(record.decisionBytesBase64, decisionBytes.toString('base64'));
   assert.equal(record.decisionSha256, createHash('sha256').update(decisionBytes).digest('hex'));

@@ -78,9 +78,11 @@ function validateInputDigests(inputDigests) {
   for (const key of INPUT_KEYS) sha(inputDigests[key], SHA256, `protected ${key} digest`);
 }
 
-/** Build an exact, versioned record for one completed OWNER_DECISION review.
- * This validates review inputs and bytes; callers must separately authenticate
- * the producer and bind the record to current protected host/Git evidence.
+/** Build exact, versioned evidence for one completed OWNER_DECISION trigger.
+ * This captures the historical escalation; it does not assess B's semantic
+ * eligibility, authenticate owner choice, or authorize amendment adoption.
+ * Callers must separately authenticate the producer and bind the record to
+ * current protected host/Git evidence.
  */
 export function buildOwnerAmendmentOwnerDecisionRecord({ decisionBytes, schema, validation, authority, context, inputDigests }) {
   context = validateContext(context);
