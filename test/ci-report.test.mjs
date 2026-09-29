@@ -199,6 +199,47 @@ test('complete selected Authority Set provenance precedes truncated optional rev
   assert.ok(report.length <= 60_000);
 });
 
+test('truncation retains max finding essentials, full gate table, and long required provenance', () => {
+  const members = Array.from({ length: 32 }, (_, index) => ({
+    id: `source-${String(index).padStart(2, '0')}`, repository: `flair-agency/authority-${String(index).padStart(2, '0')}`,
+    resolvedCommit: index.toString(16).padStart(40, 'a'), path: `docs/${'d'.repeat(180)}-${index}.md`, sha256: index.toString(16).padStart(64, 'b'),
+  }));
+  const selected = { manifestSha256: 'c'.repeat(64), setDigest: 'e'.repeat(64), members };
+  const findings = Array.from({ length: 20 }, (_, index) => ({
+    title: `Finding ${String(index).padStart(2, '0')} ${'title '.repeat(25)}`,
+    body: 'reviewer explanation '.repeat(150),
+    location: { path: `src/reviewed-${index}.mjs`, line: index + 3, side: 'RIGHT' },
+  }));
+  const inlineDelivery = { status: 'created', checked: findings.map((_, index) => ({ index, valid: true,
+    commentUrl: `https://github.com/flair-agency/architecture-gatekeeper/pull/208#discussion_r${9000 + index}` })) };
+  const decision = { decision: 'BLOCK', summary: 'review', findings,
+    reviewedScope: Array.from({ length: 80 }, (_, index) => `${index}: ${'reviewed scope '.repeat(120)}`),
+    gates: {
+      sharedMechanism: { decision: 'BLOCK', summary: 'shared mechanism is blocked' },
+      trustBoundary: { decision: 'OWNER_DECISION', summary: 'owner must decide' },
+    } };
+  const report = renderReport({ conclusion: 'BLOCK', summary: 'review', decision }, {
+    authorityProvenance: selected, inlineDelivery, reviewedSha: 'f'.repeat(40),
+    repository: 'flair-agency/architecture-gatekeeper', runUrl: 'https://github.com/flair-agency/architecture-gatekeeper/actions/runs/208',
+  });
+  assert.ok(report.length <= 60_000);
+  assert.match(report, /Report truncated/);
+  assert.match(report, /### Findings/);
+  assert.match(report, /### Gate results[\s\S]*\| sharedMechanism \| 🛑 BLOCK \| shared mechanism is blocked \|[\s\S]*\| trustBoundary \| ⚠️ OWNER DECISION REQUIRED \| owner must decide \|/);
+  for (let index = 0; index < findings.length; index += 1) {
+    assert.ok(report.includes(`Finding ${String(index).padStart(2, '0')}`));
+    assert.ok(report.includes(`src/reviewed-${index}.mjs:${index + 3} RIGHT`));
+    assert.ok(report.includes(`#discussion_r${9000 + index}`));
+  }
+  assert.ok(report.includes(selected.manifestSha256));
+  assert.ok(report.includes(selected.setDigest));
+  for (const member of members) assert.ok(report.includes(member.sha256));
+  assert.match(report, /Reviewed commit: `f{40}`/);
+  assert.match(report, /actions\/runs\/208/);
+  assert.match(report, /<\/details>\n+_Report truncated\./);
+  assert.ok(report.endsWith(`${COMMENT_MARKER}\n`));
+});
+
 test('creates a marker-owned pull request comment', async () => {
   const calls = [];
   const fetchImpl = async (url, options) => {

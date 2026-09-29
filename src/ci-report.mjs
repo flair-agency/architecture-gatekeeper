@@ -231,18 +231,43 @@ export async function postInlineReview({ fetchImpl = fetch, apiUrl, repository, 
   return { status: 'created', count: pending.length, checked: linked, ...(linkWarning ? { linkWarning } : {}) };
 }
 
-function renderFindings(findings, delivery) {
+function renderFindings(findings, delivery, maxLength = MAX_REPORT_LENGTH) {
   if (!Array.isArray(findings) || !findings.length) return '';
   const checked = new Map((delivery?.checked || []).map(item => [item.index, item]));
   const status = delivery?.status ? `${delivery.status}${delivery.reason ? `: ${delivery.reason}` : ''}${delivery.linkWarning ? `; ${delivery.linkWarning}` : ''}` : 'not attempted';
-  const items = findings.slice(0, MAX_INLINE_FINDINGS).map((finding, index) => {
+  const entries = findings.slice(0, MAX_INLINE_FINDINGS).map((finding, index) => {
     const location = finding?.location && normalizeFindingPath(finding.location.path) && Number.isInteger(finding.location.line) && ['LEFT', 'RIGHT'].includes(finding.location.side)
       ? `\`${cleanText(finding.location.path, 240)}:${finding.location.line} ${finding.location.side}\`` : 'no inline location';
     const check = checked.get(index);
     const outcome = check ? check.valid ? `posted or already present${check.commentUrl ? ` · [inline comment](${check.commentUrl})` : ' · direct link unavailable'}` : `deferred: ${check.reason}` : delivery?.status === 'created' || delivery?.status === 'unchanged' ? 'included in inline review' : delivery?.status === 'fallback' || delivery?.status === 'unavailable' || delivery?.status === 'skipped' ? `deferred: ${delivery.reason || 'delivery unavailable'}` : 'not eligible for inline delivery';
-    return `${index + 1}. **${cleanText(finding?.title || 'Finding', 200)}** — ${location}\n\n   ${cleanText(finding?.body || '')}\n\n   _Inline delivery: ${cleanText(outcome, 500)}_`;
-  }).join('\n\n');
-  return `\n### Findings\n\n${items}\n\n_Inline review status: ${cleanText(status, 300)}_\n`;
+    return { title: cleanText(finding?.title || 'Finding', 200), location, outcome: cleanText(outcome, 500),
+      body: cleanText(finding?.body || '') };
+  });
+  const footer = `\n\n_Inline review status: ${cleanText(status, 300)}_\n`;
+  const heading = '\n### Findings\n\n';
+  const fullItems = entries.map((item, index) => `${index + 1}. **${item.title}** — ${item.location}\n\n   ${item.body}\n\n   _Inline delivery: ${item.outcome}_`).join('\n\n');
+  const full = `${heading}${fullItems}${footer}`;
+  if (full.length <= maxLength) return full;
+
+  const coreItems = entries.map((item, index) => `${index + 1}. **${cleanText(item.title, 160)}** — ${cleanText(item.location, 200)} · _Inline delivery: ${cleanText(item.outcome, 300)}_`);
+  const core = `${heading}${coreItems.join('\n\n')}${footer}`;
+  if (core.length > maxLength) throw new Error('Finding titles, locations, and inline delivery links exceed the report length budget.');
+  const bodyEntries = entries.map(item => cleanText(item.body, MAX_ITEM_LENGTH));
+  const bodyCount = bodyEntries.filter(Boolean).length;
+  const explanationLabel = '\n   _Explanation:_ ';
+  const wrapperBudget = bodyCount * (explanationLabel.length + 1);
+  let remaining = Math.max(0, maxLength - core.length - wrapperBudget);
+  let remainingBodies = bodyCount;
+  const compactItems = coreItems.map((line, index) => {
+    const body = bodyEntries[index];
+    if (!body) return line;
+    const allowance = Math.min(body.length, Math.floor(remaining / remainingBodies));
+    remaining -= allowance;
+    remainingBodies -= 1;
+    const shortened = allowance < body.length;
+    return `${line}${explanationLabel}${body.slice(0, allowance)}${shortened ? '…' : ''}`;
+  });
+  return `${heading}${compactItems.join('\n\n')}${footer}`;
 }
 
 export function parseAuthorityProvenance(encoded, required = false) {
@@ -524,7 +549,8 @@ export function renderReport(classified, metadata = {}) {
   if (classified.conclusion === 'OWNER_ADDITION_G0_PENDING') {
     prelude += '\nThis is an eligible candidate result, not completed adoption or canonical placement. The annotated G0 tag binds exact B, but Gatekeeper did not authenticate its actor. Host merge enforcement is unavailable or not verified; this green result does not prove GitHub required the check. A separate post-merge record must verify this exact result existed before merge, its producer and completion time, the PR merge commit, and canonical readback. Eligibility: `eligible`; adoption and canonical placement: `pending`; principal authentication and host enforcement: `not_verified`.\n';
   }
-  const reviewerContent = renderFindings(decision?.findings, metadata.inlineDelivery) + renderGates(decision?.gates);
+  const fullFindings = renderFindings(decision?.findings, metadata.inlineDelivery);
+  const gateTable = renderGates(decision?.gates);
   const { required: requiredEvidence, optional: optionalEvidence } = renderEvidence(metadata, decision);
   const evidenceHeader = requiredEvidence || optionalEvidence ? '\n### Evidence and review details\n\n' : '';
   const evidenceOpen = requiredEvidence || optionalEvidence
@@ -544,16 +570,16 @@ export function renderReport(classified, metadata = {}) {
   const ending = `\n${COMMENT_MARKER}\n`;
   const truncation = '\n\n_Report truncated._\n';
   const fullEvidence = evidenceHeader + evidenceOpen + requiredEvidence + optionalEvidence + evidenceClose;
-  const fullBody = prelude + reviewerContent + fullEvidence + runMetadata;
+  const fullBody = prelude + fullFindings + gateTable + fullEvidence + runMetadata;
   if (fullBody.length + ending.length <= MAX_REPORT_LENGTH) return `${fullBody}${ending}`;
 
-  const mandatory = prelude + evidenceHeader + evidenceOpen + requiredEvidence + evidenceClose + runMetadata + ending + truncation;
+  const mandatory = prelude + gateTable + evidenceHeader + evidenceOpen + requiredEvidence + evidenceClose + runMetadata + ending + truncation;
   if (mandatory.length > MAX_REPORT_LENGTH) throw new Error('Required report evidence exceeds the maximum report length.');
   let remaining = MAX_REPORT_LENGTH - mandatory.length;
-  const fittedReviewer = fitSection(reviewerContent, remaining);
-  remaining -= fittedReviewer.text.length;
+  const fittedFindings = renderFindings(decision?.findings, metadata.inlineDelivery, remaining);
+  remaining -= fittedFindings.length;
   const fittedOptional = fitSection(optionalEvidence, remaining);
-  const body = prelude + fittedReviewer.text + evidenceHeader + evidenceOpen + requiredEvidence + fittedOptional.text + evidenceClose + truncation + runMetadata;
+  const body = prelude + fittedFindings + gateTable + evidenceHeader + evidenceOpen + requiredEvidence + fittedOptional.text + evidenceClose + truncation + runMetadata;
   return `${body}${ending}`;
 }
 
