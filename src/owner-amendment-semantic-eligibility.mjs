@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
 import { rejectDuplicateJsonKeys } from './authority-set.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
 
 const SHA1 = /^[a-f0-9]{40}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -88,28 +89,39 @@ function parseBase64(value, label, maximum) {
 
 function validatePolicy({ policyBytes, policyRevision, baseSha, triggerProfile }) {
   if (policyRevision !== baseSha) fail('policy revision is not the exact previous protected base.');
-  const parsed = parseJson(policyBytes, 'previous protected policy', MAX_POLICY_BYTES).value;
-  const branch = parsed?.branches?.main;
-  const selection = branch?.ownerAmendment;
-  if (!isRecord(parsed) || parsed.version !== 2 || !isRecord(branch) || branch.mode !== 'enforced' || !isRecord(selection) ||
-      selection.version !== 1 ||
-      selection.triggerProfile !== triggerProfile || selection.grade !== 'G0' || selection.scope !== 'authority-only' ||
-      selection.evidenceProducer !== 'github-actions-attestation' ||
-      typeof selection.tagNamespace !== 'string' || !/^refs\/tags\/[A-Za-z0-9._/-]+$/.test(selection.tagNamespace) ||
-      selection.tagNamespace.endsWith('/') || !Number.isSafeInteger(selection.maxPromptBytes) ||
-      selection.maxPromptBytes < 1 || selection.maxPromptBytes > MAX_PROMPT_BYTES ||
-      typeof branch.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(branch.model) ||
-      !['minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'].includes(branch.reasoningEffort)) {
+  const { source } = parseJson(policyBytes, 'previous protected policy', MAX_POLICY_BYTES);
+  let parsed;
+  let selected;
+  try {
+    parsed = parseCiPolicyJson(source);
+    selected = resolveCiPolicy(parsed, 'main');
+  } catch (error) { fail(`previous protected policy cannot be resolved: ${error.message}`); }
+  if (parsed.version !== 2 || selected.mode !== 'enforced' ||
+      selected.ownerAmendmentVersion !== 1 || selected.ownerAmendmentGrade !== 'G0' ||
+      selected.ownerAmendmentScope !== 'authority-only' || selected.ownerAmendmentTriggerProfile !== triggerProfile ||
+      selected.ownerAmendmentEvidenceProducer !== 'github-actions-attestation' ||
+      typeof selected.ownerAmendmentTagNamespace !== 'string' || !/^refs\/tags\/[A-Za-z0-9._/-]+$/.test(selected.ownerAmendmentTagNamespace) ||
+      selected.ownerAmendmentTagNamespace.endsWith('/') || !Number.isSafeInteger(selected.ownerAmendmentMaxPromptBytes) ||
+      selected.ownerAmendmentMaxPromptBytes < 1 || selected.ownerAmendmentMaxPromptBytes > MAX_PROMPT_BYTES ||
+      typeof selected.ownerAmendmentAuthorityId !== 'string' || !ID.test(selected.ownerAmendmentAuthorityId) ||
+      typeof selected.ownerAmendmentAuthorityPath !== 'string' || !/^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/.test(selected.ownerAmendmentAuthorityPath) ||
+      typeof selected.authorityManifestPath !== 'string' ||
+      typeof selected.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(selected.model) ||
+      !['minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'].includes(selected.reasoningEffort)) {
     fail('previous protected policy does not select this G0 trigger profile, producer, prompt limit, model, and effort.');
   }
-  return Object.freeze({ sha256: digest(policyBytes), maxPromptBytes: selection.maxPromptBytes,
-    tagNamespace: selection.tagNamespace, evidenceProducer: selection.evidenceProducer,
-    model: branch.model, reasoningEffort: branch.reasoningEffort });
+  return Object.freeze({ sha256: digest(policyBytes), maxPromptBytes: selected.ownerAmendmentMaxPromptBytes,
+    tagNamespace: selected.ownerAmendmentTagNamespace, evidenceProducer: selected.ownerAmendmentEvidenceProducer,
+    model: selected.model, reasoningEffort: selected.reasoningEffort,
+    authorityId: selected.ownerAmendmentAuthorityId, authorityPath: selected.ownerAmendmentAuthorityPath,
+    authorityManifestPath: selected.authorityManifestPath,
+    authorityLimits: JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString('utf8')) });
 }
 
-function validateAuthoritySet(authoritySet, repository, baseSha) {
+function validateAuthoritySet(authoritySet, repository, baseSha, selectedPolicy) {
   exact(authoritySet, ['digest', 'members'], 'Authority Set');
-  if (!Array.isArray(authoritySet.members) || authoritySet.members.length < 1 || authoritySet.members.length > 32) {
+  if (!Array.isArray(authoritySet.members) || authoritySet.members.length < 1 ||
+      authoritySet.members.length > Math.min(32, selectedPolicy.authorityLimits.maxMembers)) {
     fail('complete Authority Set is missing or exceeds its member limit.');
   }
   const ids = new Set();
@@ -120,7 +132,7 @@ function validateAuthoritySet(authoritySet, repository, baseSha) {
     exact(member, ['id', 'repository', 'resolvedCommit', 'path', 'byteLength', 'sha256', 'bytes'], 'Authority Set member');
     if (typeof member.id !== 'string' || !ID.test(member.id) || ids.has(member.id) ||
         typeof member.repository !== 'string' || !REPOSITORY.test(member.repository) ||
-        !Buffer.isBuffer(member.bytes) || !member.bytes.length || member.bytes.length > 131_072) {
+        !Buffer.isBuffer(member.bytes) || !member.bytes.length || member.bytes.length > Math.min(131_072, selectedPolicy.authorityLimits.maxFileBytes)) {
       fail('Authority Set member is invalid, duplicated, missing its bytes, or oversized.');
     }
     validateSha(member.resolvedCommit, SHA1, 'Authority Set member revision');
@@ -133,7 +145,7 @@ function validateAuthoritySet(authoritySet, repository, baseSha) {
       fail(`same-repository Authority Set member ${member.id} is not from the previous protected base.`);
     }
     total += member.bytes.length;
-    if (total > MAX_AUTHORITY_BYTES) fail('complete Authority Set exceeds the runtime byte limit.');
+    if (total > Math.min(MAX_AUTHORITY_BYTES, selectedPolicy.authorityLimits.maxTotalBytes)) fail('complete Authority Set exceeds the selected protected or runtime byte limit.');
     ids.add(member.id);
     const descriptor = { id: member.id, repository: member.repository, resolvedCommit: member.resolvedCommit,
       path: member.path, byteLength: member.bytes.length, sha256: digest(member.bytes) };
@@ -145,6 +157,11 @@ function validateAuthoritySet(authoritySet, repository, baseSha) {
   const computed = digest(Buffer.from(JSON.stringify(descriptors), 'utf8'));
   validateSha(authoritySet.digest, SHA256, 'Authority Set digest');
   if (computed !== authoritySet.digest) fail('Authority Set digest differs from its ordered descriptors and exact member bytes.');
+  const target = descriptors.filter(member => member.id === selectedPolicy.authorityId && member.path === selectedPolicy.authorityPath &&
+    member.repository.toLowerCase() === repository.toLowerCase() && member.resolvedCommit === baseSha);
+  if (target.length !== 1) {
+    fail('complete Authority Set does not contain the exact selected self-authority id/path at the protected base.');
+  }
   return Object.freeze({ descriptors, ids: descriptors.map(member => member.id), paths, digest: computed });
 }
 
@@ -382,7 +399,7 @@ function prepareOwnerAmendmentSemanticEligibilityInternal({ repository, baseSha,
   validateSha(bSha, SHA1, 'exact B revision');
   if (baseSha === bSha) fail('B is not distinct from its previous protected base.');
   const policy = validatePolicy({ policyBytes, policyRevision, baseSha, triggerProfile });
-  const selectedAuthority = validateAuthoritySet(authoritySet, repository, baseSha);
+  const selectedAuthority = validateAuthoritySet(authoritySet, repository, baseSha, policy);
   const changeResult = validateDiff(diffBytes, changes, selectedAuthority, repository);
   const records = changeResult.records;
   const triggerProducerIdentity = validateProducer(triggerProducer, baseSha);

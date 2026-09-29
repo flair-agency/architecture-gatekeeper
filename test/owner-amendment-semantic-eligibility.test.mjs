@@ -30,8 +30,13 @@ const canonicalBytes = value => Buffer.from(`${JSON.stringify(canonical(value))}
 function fixture(triggerProfile, { multiAuthority = false } = {}) {
   const policy = {
     version: 2,
+    default: { mode: 'local-only' },
     branches: { main: { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
+      authorityManifestPath: '.codex/gatekeeper/authorities.json',
+      authorityLimits: { maxManifestBytes: 16_384, maxMembers: 16, maxFileBytes: 131_072,
+        maxTotalBytes: 524_288, maxPromptBytes: 524_288 },
       ownerAmendment: { version: 1, grade: 'G0', scope: 'authority-only', triggerProfile,
+        authorityId: 'architecture', authorityPath: path,
         evidenceProducer: 'github-actions-attestation', tagNamespace: 'refs/tags/architecture-gatekeeper/amendments',
         maxPromptBytes: 300_000 } } },
   };
@@ -150,6 +155,11 @@ function eligibilityDecision(prepared, result = 'ELIGIBLE') {
 test('one shared producer prepares and validates both self trigger profiles with exact receipt bindings', () => {
   for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
     const f = fixture(profile);
+    const resolvedPolicy = resolveCiPolicy(parseCiPolicyJson(f.args.policyBytes.toString('utf8')), 'main');
+    assert.equal(resolvedPolicy.ownerAmendmentTriggerProfile, profile);
+    assert.equal(resolvedPolicy.ownerAmendmentAuthorityId, 'architecture');
+    assert.equal(resolvedPolicy.ownerAmendmentAuthorityPath, path);
+    assert.equal(resolvedPolicy.ownerAmendmentMaxPromptBytes, 300_000);
     const prepared = f.producer.prepare(f.args);
     assert.equal(prepared.status, 'PREPARED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY');
     assert.equal(prepared.triggerProfile, profile);
@@ -223,7 +233,7 @@ test('fails closed for missing or wrong-profile trigger evidence and stale base 
     branches: { main: { ...block.policy.branches.main, ownerAmendment: {
       ...block.policy.branches.main.ownerAmendment, triggerProfile: 'completed-owner-decision-self-v1' } } } }));
   assert.throws(() => block.producer.prepare({ ...block.args,
-    triggerProfile: 'completed-owner-decision-self-v1', policyBytes: policyForOwner }), /different profile/);
+    triggerProfile: 'completed-owner-decision-self-v1', policyBytes: policyForOwner }), /trigger ReviewRecord/);
   assert.throws(() => block.producer.prepare({ ...block.args, policyRevision: 'f'.repeat(40) }), /policy revision/);
   assert.throws(() => block.producer.prepare({ ...block.args, bSha: triggerHeadSha }), /trigger ReviewRecord is stale/);
 });
