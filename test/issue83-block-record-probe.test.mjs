@@ -20,7 +20,7 @@ const context = {
 
 function decision() {
   return {
-    decision: 'BLOCK', summary: 'Synthetic violation', authority: ['protected architecture'],
+    decision: 'BLOCK', findings: [], summary: 'Synthetic violation', authority: ['protected architecture'],
     authorityFiles: ['docs/architecture.md'], authorityIds: ['architecture-contract'],
     responsibility: ['acceptance'], capabilitySurface: ['CI'], qualityGuarantees: ['fail closed'],
     reviewedScope: ['synthetic fixture'], prohibitedChanges: ['pass on service failure'],

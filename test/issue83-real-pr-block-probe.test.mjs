@@ -27,7 +27,7 @@ test('real PR producer records only a validated complete BLOCK', () => {
   const schema = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/ci-decision.schema.json', import.meta.url)));
   const validation = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/decision.validation.json', import.meta.url)));
   const decision = {
-    decision: 'BLOCK', summary: 'Weakens fail-closed behavior', authority: ['protected architecture'],
+    decision: 'BLOCK', findings: [], summary: 'Weakens fail-closed behavior', authority: ['protected architecture'],
     authorityFiles: ['docs/architecture.md'], authorityIds: ['architecture-contract'],
     responsibility: ['acceptance'], capabilitySurface: ['CI'], qualityGuarantees: ['fail closed'],
     reviewedScope: ['fixture'], prohibitedChanges: ['accept timeout'],

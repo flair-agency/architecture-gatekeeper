@@ -36,11 +36,11 @@ Describe the reviewed scope, governing files, prohibited changes and both gate
 results using the supplied output schema. Keep every explanation concise and
 actionable. Do not modify files, post comments or perform network writes.
 
-When the diff contains a concrete defect, optionally include it in `findings`
-with a short `title` and actionable `body`. Add `location` only when you can
-identify the exact changed line in the pull-request diff, using its
-repository-relative `path`, `line` number and `side`. For an added line use the
-new-file line number and `side: "RIGHT"`; for a removed line use the old-file
-line number and `side: "LEFT"`. Omit `location` when uncertain; the report
-will retain the finding as summary context. Do not emit more than 20 findings,
+Always include `findings`; use an empty array when there is no concrete defect.
+For each finding, provide a short `title` and actionable `body`. Set `location`
+to `null` unless you can identify the exact changed line in the pull-request
+diff, using its repository-relative `path`, `line` number and `side`. For an
+added line use the new-file line number and `side: "RIGHT"`; for a removed line
+use the old-file line number and `side: "LEFT"`. Use `null` when uncertain;
+the report retains the finding as summary context. Do not emit more than 20 findings,
 speculative concerns, or findings that merely restate the overall decision.

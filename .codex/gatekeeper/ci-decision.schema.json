@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["decision", "summary", "authority", "authorityFiles", "authorityIds", "responsibility", "capabilitySurface", "qualityGuarantees", "reviewedScope", "prohibitedChanges", "gates"],
+  "required": ["decision", "findings", "summary", "authority", "authorityFiles", "authorityIds", "responsibility", "capabilitySurface", "qualityGuarantees", "reviewedScope", "prohibitedChanges", "gates"],
   "properties": {
     "decision": { "enum": ["PASS", "BLOCK", "OWNER_DECISION"] },
     "findings": {
@@ -10,12 +10,12 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["title", "body"],
+        "required": ["title", "body", "location"],
         "properties": {
           "title": { "type": "string", "minLength": 1 },
           "body": { "type": "string", "minLength": 1 },
           "location": {
-            "type": "object",
+            "type": ["object", "null"],
             "additionalProperties": false,
             "required": ["path", "line", "side"],
             "properties": {
