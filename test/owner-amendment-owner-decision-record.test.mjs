@@ -1,0 +1,80 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { buildOwnerAmendmentOwnerDecisionRecord, validateOwnerAmendmentOwnerDecisionRecord } from '../src/owner-amendment-owner-decision-record.mjs';
+
+const base = 'a'.repeat(40), head = 'b'.repeat(40), merge = 'c'.repeat(40), digest = 'd'.repeat(64);
+const schema = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/ci-decision.schema.json', import.meta.url)));
+const validation = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/decision.validation.json', import.meta.url)));
+const context = { repository: 'flair-agency/example', prNumber: 17, baseSha: base, headSha: head, mergeSha: merge,
+  workflowSha: base, workflowPath: '.github/workflows/architecture-gate.yml', runId: '123', runAttempt: '1' };
+const authority = { version: 1, selfRepository: context.repository, authorityRevision: base,
+  manifestSha256: 'e'.repeat(64), setDigest: 'f'.repeat(64), members: [
+    { id: 'architecture', repository: context.repository, resolvedCommit: base, path: 'docs/architecture.md', byteLength: 1200, sha256: '1'.repeat(64) },
+    { id: 'policy', repository: context.repository, resolvedCommit: base, path: '.codex/policy.md', byteLength: 600, sha256: '2'.repeat(64) },
+  ] };
+const inputDigests = Object.fromEntries(['manifest', 'policy', 'prompt', 'schema', 'validation'].map(key => [key, digest]));
+const decision = { decision: 'OWNER_DECISION', findings: [], summary: 'An existing decision needs owner review.',
+  authority: ['architecture', 'policy'], authorityFiles: ['docs/architecture.md', '.codex/policy.md'],
+  authorityIds: ['architecture', 'policy'], responsibility: ['owner decision'], capabilitySurface: ['review'],
+  qualityGuarantees: ['preserve protected policy'], reviewedScope: ['change A'], prohibitedChanges: ['self acceptance'],
+  gates: { sharedMechanism: { decision: 'OWNER_DECISION', summary: 'Existing rule needs a choice.', consumerOwnership: '', failClosedBehavior: '', compatibility: '', minimality: '' },
+    trustBoundary: { decision: 'PASS', summary: 'No trust change.', tokenPermissions: '', untrustedInputs: '', credentialHandling: '', reportingIsolation: '' } } };
+const decisionBytes = Buffer.from(`${JSON.stringify(decision)}\n`);
+const args = () => ({ decisionBytes, schema, validation, authority: structuredClone(authority), context: { ...context }, inputDigests: { ...inputDigests } });
+
+test('builds a versioned OWNER_DECISION record from exact protected inputs and the complete Authority Set', () => {
+  const record = buildOwnerAmendmentOwnerDecisionRecord(args());
+  assert.equal(record.kind, 'owner-amendment-owner-decision-review-record');
+  assert.equal(record.version, 1);
+  assert.deepEqual(record.authority.members.map(member => member.id), ['architecture', 'policy']);
+  assert.equal(record.decisionBytesBase64, decisionBytes.toString('base64'));
+  assert.equal(record.decisionSha256, createHash('sha256').update(decisionBytes).digest('hex'));
+  assert.deepEqual(validateOwnerAmendmentOwnerDecisionRecord({ ...args(), record,
+    recordBytes: Buffer.from(`${JSON.stringify(record)}\n`) }), record);
+});
+
+test('rejects BLOCK, PASS, and missing-decision confusion or incomplete Authority Set results', () => {
+  for (const wrongDecision of ['BLOCK', 'PASS']) {
+    const x = args();
+    x.decisionBytes = Buffer.from(JSON.stringify({ ...decision, decision: wrongDecision }));
+    assert.throws(() => buildOwnerAmendmentOwnerDecisionRecord(x), /only a completed OWNER_DECISION/);
+  }
+  const incomplete = args();
+  incomplete.decisionBytes = Buffer.from(JSON.stringify({ ...decision, authorityIds: ['architecture'] }));
+  assert.throws(() => buildOwnerAmendmentOwnerDecisionRecord(incomplete), /complete Authority ID set/);
+});
+
+test('rejects stale or changed review context, authority provenance, and protected input digests', () => {
+  for (const change of [
+    x => { x.context.workflowSha = head; },
+    x => { x.context.baseSha = head; },
+    x => { x.authority.authorityRevision = head; },
+    x => { x.authority.members.pop(); },
+    x => { x.inputDigests.policy = '0'.repeat(64); x.inputDigests.extra = digest; },
+  ]) {
+    const x = args(); change(x);
+    assert.throws(() => buildOwnerAmendmentOwnerDecisionRecord(x));
+  }
+});
+
+test('validator requires the distinct record kind and byte-for-byte rebuilt record', () => {
+  const record = buildOwnerAmendmentOwnerDecisionRecord(args());
+  const recordBytes = Buffer.from(`${JSON.stringify(record)}\n`);
+  assert.throws(() => validateOwnerAmendmentOwnerDecisionRecord({ ...args(), record: { ...record, kind: 'owner-amendment-block-review-record' }, recordBytes }), /kind is invalid/);
+  assert.throws(() => validateOwnerAmendmentOwnerDecisionRecord({ ...args(), record, recordBytes: Buffer.from(`${JSON.stringify(record)} `) }), /exact validated producer inputs/);
+  const wrongRecord = { ...record, decision: { ...decision, decision: 'BLOCK' } };
+  assert.throws(() => validateOwnerAmendmentOwnerDecisionRecord({ ...args(), record: wrongRecord, recordBytes }), /ReviewRecord bytes differ/);
+});
+
+test('rejects duplicate keys and tampered decision bytes', () => {
+  const duplicate = args();
+  duplicate.decisionBytes = Buffer.from('{"decision":"OWNER_DECISION","decision":"BLOCK"}');
+  assert.throws(() => buildOwnerAmendmentOwnerDecisionRecord(duplicate), /duplicate/i);
+  const tampered = args();
+  tampered.decisionBytes = Buffer.from(JSON.stringify({ ...decision, summary: 'Different decision bytes.' }));
+  const rebuilt = buildOwnerAmendmentOwnerDecisionRecord(tampered);
+  assert.equal(rebuilt.decisionSha256, createHash('sha256').update(tampered.decisionBytes).digest('hex'));
+  assert.notEqual(rebuilt.decisionSha256, createHash('sha256').update(decisionBytes).digest('hex'));
+});
