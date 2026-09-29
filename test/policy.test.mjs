@@ -416,6 +416,22 @@ test('OWNER_AMENDMENT semantic producer never checks out or executes pull-reques
   assert.match(workflow, /OWNER_AMENDMENT_ELIGIBILITY: \$\{\{ needs\['owner-amendment-semantic-eligibility-signer'\]\.outputs\.eligibility \}\}/);
 });
 
+test('protected amendment Git commands pass the checkout through argv instead of child-process cwd', () => {
+  for (const path of [
+    '../scripts/owner-amendment-merge-group-gate.mjs',
+    '../scripts/owner-amendment-semantic-eligibility-producer.mjs',
+  ]) {
+    const source = readFileSync(new URL(path, import.meta.url), 'utf8');
+    assert.match(source, /execFileSync\('git', \['-C', process\.env\.GITHUB_WORKSPACE, \.\.\.args\]/);
+    assert.doesNotMatch(source, /cwd:\s*process\.env\.GITHUB_WORKSPACE/);
+  }
+  const ownerDecision = readFileSync(new URL('../scripts/owner-amendment-owner-decision-producer.mjs', import.meta.url), 'utf8');
+  assert.match(ownerDecision, /const workspace = process\.env\.GITHUB_WORKSPACE;[\s\S]*execFileSync\('git', \['-C', workspace, \.\.\.args\]/);
+  assert.doesNotMatch(ownerDecision, /cwd:\s*process\.env\.GITHUB_WORKSPACE/);
+  assert.match(ownerDecision, /git\(\['show', `\$\{baseSha\}:\$\{path\}`\]/);
+  assert.match(ownerDecision, /git\(\['ls-remote', 'origin', `refs\/pull\/\$\{context\.prNumber\}\/merge`\]/);
+});
+
 test('selects and materializes the protected self Authority Set for CI and local review', async () => {
   const selfPolicy = parseCiPolicyJson(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'), 'utf8'));
   const selected = resolveCiPolicy(selfPolicy, 'main');

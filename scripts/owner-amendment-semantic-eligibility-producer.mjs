@@ -22,8 +22,8 @@ const baseBranch = process.env.BASE_BRANCH;
 const token = process.env.GH_TOKEN;
 const fail = message => { throw new Error(`Owner amendment semantic producer: ${message}`); };
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-const runGit = args => execFileSync('git', args, { encoding: 'buffer', maxBuffer: 2 * 1024 * 1024,
-  cwd: process.env.GITHUB_WORKSPACE, stdio: ['ignore', 'pipe', 'pipe'] });
+const runGit = args => execFileSync('git', ['-C', process.env.GITHUB_WORKSPACE, ...args], { encoding: 'buffer', maxBuffer: 2 * 1024 * 1024,
+  stdio: ['ignore', 'pipe', 'pipe'] });
 const gitBlob = (revision, path) => {
   if (!/^[a-f0-9]{40}$/.test(revision ?? '')) fail('Git blob revision is invalid.');
   validateRepositoryTreePath(path);

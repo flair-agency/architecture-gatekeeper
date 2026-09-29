@@ -30,6 +30,12 @@ function jsonBytes(raw, label) {
   return JSON.parse(source);
 }
 
+function git(args, options = {}) {
+  const workspace = process.env.GITHUB_WORKSPACE;
+  if (typeof workspace !== 'string' || !workspace.startsWith('/')) throw new Error('Protected Git workspace is unavailable.');
+  return execFileSync('git', ['-C', workspace, ...args], options);
+}
+
 function validateAuthorityProvenance(provenance, manifestRaw, manifest, context, limits, readAuthority) {
   if (!provenance || provenance.version !== 1 || provenance.selfRepository !== context.repository ||
       provenance.authorityRevision !== context.baseSha || provenance.manifestSha256 !== digest(manifestRaw) ||
@@ -66,8 +72,8 @@ function validateAuthorityProvenance(provenance, manifestRaw, manifest, context,
 function protectedBytes(baseSha, path) {
   if (!SHA.test(baseSha ?? '')) throw new Error('Protected Git revision is invalid.');
   validateRepositoryTreePath(path);
-  return execFileSync('git', ['show', `${baseSha}:${path}`], { encoding: 'buffer', maxBuffer: MAX_BYTES,
-    timeout: 10_000, cwd: process.env.GITHUB_WORKSPACE,
+  return git(['show', `${baseSha}:${path}`], { encoding: 'buffer', maxBuffer: MAX_BYTES,
+    timeout: 10_000,
     env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
@@ -131,7 +137,7 @@ export function main() {
     workflowSha: process.env.GITHUB_WORKFLOW_SHA, workflowRef: process.env.GITHUB_WORKFLOW_REF,
     parents: githubMergeParents(repository, recorded.context?.mergeSha) });
   if (process.env.GITHUB_RUN_ID !== context.runId || process.env.GITHUB_RUN_ATTEMPT !== context.runAttempt ||
-      execFileSync('git', ['ls-remote', 'origin', `refs/pull/${context.prNumber}/merge`], { encoding: 'utf8', cwd: process.env.GITHUB_WORKSPACE }).trim().split('\t')[0] !== context.mergeSha) {
+      git(['ls-remote', 'origin', `refs/pull/${context.prNumber}/merge`], { encoding: 'utf8' }).trim().split('\t')[0] !== context.mergeSha) {
     throw new Error('Recorded run identity or current PR merge ref differs.');
   }
   const policyPath = '.codex/gatekeeper/ci-policy.json';
