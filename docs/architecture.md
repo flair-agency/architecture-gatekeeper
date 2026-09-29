@@ -356,7 +356,9 @@ belongs to `OWNER_ADDITION`. The originally reviewed Change A remains rejected
 until B becomes canonical and A receives a fresh review where A exists.
 
 The procedures below are versioned trigger profiles: BLOCK evidence is
-specific to its profile and is not required for all amendments. Each profile
+specific to its profile and is not required for all amendments. The supported
+v0.6.0 self profiles are `completed-block-v1` for a completed BLOCK and
+`completed-owner-decision-self-v1` for a completed OWNER_DECISION. Each profile
 must specify exact completed review evidence, predecessor binding, owner
 procedure, protected producer and transition checks. A tag or candidate claim
 cannot infer or enable a profile; B cannot select its route or authorize its
