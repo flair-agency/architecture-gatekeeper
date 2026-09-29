@@ -51,6 +51,9 @@ test('selects one exact open same-repository B bound by merge commit and queue e
     queueEnteredAt: '2026-09-29T11:00:00Z' });
   assert.equal(f.calls.length, 4);
   for (const call of f.calls) {
+    const url = String(call.url);
+    assert.ok(url === 'https://api.github.com/graphql' || url === 'https://api.github.com/repos/flair-agency/architecture-gatekeeper' ||
+      url.startsWith('https://api.github.com/repos/flair-agency/architecture-gatekeeper/'), url);
     assert.equal(call.options.headers.authorization, 'Bearer fixture-token');
     assert.equal(call.options.redirect, 'error');
   }
@@ -67,7 +70,7 @@ test('rejects malformed or non-main merge-group event before API access', async 
     const f = fixture(), changed = structuredClone(event); edit(changed);
     const result = await f.select(changed);
     assert.equal(result.status, 'INCOMPLETE');
-    if (name !== 'wrong repository') assert.equal(f.calls.length, 0);
+    assert.equal(f.calls.length, 0);
   });
 });
 

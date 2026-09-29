@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readRunnerTempFile, resolveRunnerTempDirectory, ownerAmendmentTagApiUrl, validateSelfAuthorityManifest } from '../src/runner-temp-path.mjs';
 import { selectOwnerAmendmentMergeGroupBContext } from '../src/owner-amendment-merge-group-b-context.mjs';
 import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../src/owner-amendment-merge-group-acceptance.mjs';
 import { resolveOwnerAmendmentHandoffGitContext } from '../src/owner-amendment-handoff-git-context.mjs';
@@ -15,10 +15,9 @@ import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs
 
 const repository = process.env.GITHUB_REPOSITORY;
 const token = process.env.GH_TOKEN;
-const eventPath = process.env.GITHUB_EVENT_PATH;
 const runtimeRevision = process.env.GATEKEEPER_RUNTIME_SHA;
 const tagRulesetId = Number(process.env.OWNER_AMENDMENT_TAG_RULESET_ID);
-const api = 'https://api.github.com';
+const api = 'https://api.github.com/repos/flair-agency/architecture-gatekeeper';
 const fail = message => { throw new Error(`Owner amendment merge-group gate: ${message}`); };
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = args => execFileSync('git', args, { encoding: 'buffer', maxBuffer: 2 * 1024 * 1024,
@@ -26,29 +25,42 @@ const git = args => execFileSync('git', args, { encoding: 'buffer', maxBuffer: 2
 const gh = (args, maxBuffer = 2 * 1024 * 1024) => execFileSync('gh', args, { encoding: 'utf8', maxBuffer,
   timeout: 30_000, stdio: ['ignore', 'pipe', 'pipe'] });
 
-async function getJson(path) {
-  const response = await fetch(`${api}${path}`, { headers: { accept: 'application/vnd.github+json',
+async function getJson(url) {
+  let parsed;
+  try { parsed = new URL(url); } catch { fail('GitHub API URL is malformed.'); }
+  if (parsed.origin !== 'https://api.github.com' || parsed.username || parsed.password || parsed.hash ||
+      (parsed.pathname !== '/graphql' && !parsed.pathname.startsWith('/repos/flair-agency/architecture-gatekeeper/'))) {
+    fail('GitHub API request is outside the fixed self repository.');
+  }
+  const response = await fetch(parsed, { headers: { accept: 'application/vnd.github+json',
     authorization: `Bearer ${token}`, 'x-github-api-version': '2022-11-28' }, redirect: 'error' });
-  if (!response.ok) fail(`GitHub API read failed (${response.status}) for ${path}.`);
+  if (!response.ok) fail(`GitHub API read failed (${response.status}).`);
   return response.json();
 }
 
 async function eligibilityEvidence({ selection, queueEnteredAt }) {
-  const runs = await getJson(`/repos/${encodeURIComponent(repository)}/actions/runs?head_sha=${selection.bHeadSha}&event=pull_request_target&per_page=100`);
+  if (!/^[a-f0-9]{40}$/.test(selection.bHeadSha ?? '')) fail('exact B SHA for producer lookup is invalid.');
+  const runsUrl = new URL(`${api}/actions/runs`);
+  runsUrl.searchParams.set('head_sha', selection.bHeadSha);
+  runsUrl.searchParams.set('event', 'pull_request_target');
+  runsUrl.searchParams.set('per_page', '100');
+  const runs = await getJson(runsUrl);
   if (!Array.isArray(runs.workflow_runs) || runs.workflow_runs.length > 100) fail('producer workflow run listing is malformed.');
   const candidates = runs.workflow_runs.filter(run => run.repository?.full_name === repository &&
     run.head_repository?.full_name === repository && run.event === 'pull_request_target' &&
-    run.head_sha === selection.bHeadSha && run.path?.startsWith('.github/workflows/self-architecture-gate.yml@') &&
+    run.head_sha === selection.bHeadSha && /^\.github\/workflows\/self-architecture-gate\.yml@(?:refs\/heads\/main|main)$/.test(run.path ?? '') &&
     run.status === 'completed').sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   if (!candidates.length) fail('no completed protected-base B workflow run exists for semantic eligibility.');
   let chosen;
   let job;
   for (const run of candidates) {
+    if (!Number.isSafeInteger(run.id) || run.id < 1) fail('producer run ID is invalid.');
     const attempt = String(run.run_attempt);
     if (!/^[1-9]\d*$/.test(attempt)) fail('producer run attempt is invalid.');
-    const jobs = await getJson(`/repos/${encodeURIComponent(repository)}/actions/runs/${run.id}/attempts/${attempt}/jobs?per_page=100`);
+    const jobsUrl = `${api}/actions/runs/${run.id}/attempts/${attempt}/jobs?per_page=100`;
+    const jobs = await getJson(jobsUrl);
     if (!Array.isArray(jobs.jobs) || jobs.jobs.length > 100) fail('producer job list is malformed.');
-    const matches = jobs.jobs.filter(candidate => candidate.name === 'owner-amendment-semantic-eligibility');
+    const matches = jobs.jobs.filter(candidate => candidate.name === 'owner-amendment-semantic-eligibility-signer');
     if (matches.length > 1) fail('producer run has duplicate semantic eligibility jobs.');
     if (matches.length === 1) { chosen = run; job = matches[0]; break; }
   }
@@ -79,17 +91,18 @@ async function eligibilityEvidence({ selection, queueEnteredAt }) {
     checkConclusion: 'success', completedAt: job.completed_at,
     producerWorkflowPath: '.github/workflows/self-architecture-gate.yml', producerWorkflowSha: selection.bBaseSha,
     producerWorkflowRef: 'refs/heads/main', producerRunId: String(chosen.id), producerRunAttempt: String(chosen.run_attempt),
-    producerJobId: 'owner-amendment-semantic-eligibility', gatekeeperRepository: receipt.gatekeeper?.repository,
+    producerJobId: 'owner-amendment-semantic-eligibility-signer', gatekeeperRepository: receipt.gatekeeper?.repository,
     gatekeeperRevision: receipt.gatekeeper?.revision, principalAuthentication: 'not_verified',
     exactClaimAuthorization: 'not_verified' };
 }
 
 async function main() {
-  if (repository !== 'flair-agency/architecture-gatekeeper' || !token || !eventPath ||
+  if (repository !== 'flair-agency/architecture-gatekeeper' || !token || !process.env.RUNNER_TEMP ||
       !/^[a-f0-9]{40}$/.test(runtimeRevision ?? '')) {
     fail('protected self repository, runtime revision, or token is invalid.');
   }
-  const event = JSON.parse(readFileSync(eventPath, 'utf8'));
+  const eventDir = resolveRunnerTempDirectory(process.env.RUNNER_TEMP, 'owner-amendment-merge-group');
+  const event = JSON.parse(readRunnerTempFile(eventDir, 'event.json', 262_144).toString('utf8'));
   const selection = await selectOwnerAmendmentMergeGroupBContext({ event, token });
   if (selection.status !== 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT') fail(selection.reason ?? 'merge-group does not select one exact B.');
   if (runtimeRevision !== selection.bBaseSha) fail('checked-out protected verifier revision differs from the exact merge-group base.');
@@ -105,9 +118,7 @@ async function main() {
     fail('previous-base policy selected an unsupported trigger profile.');
   }
   const exactTagRef = `${selectedPolicy.ownerAmendmentTagNamespace}/${selection.bHeadSha}`;
-  const exactTagPath = exactTagRef.slice('refs/tags/'.length).split('/').map(encodeURIComponent).join('/');
-  const [tagOwner, tagRepo] = repository.split('/');
-  const tagResponse = await fetch(`${api}/repos/${encodeURIComponent(tagOwner)}/${encodeURIComponent(tagRepo)}/git/ref/tags/${exactTagPath}`, {
+  const tagResponse = await fetch(ownerAmendmentTagApiUrl(repository, selectedPolicy.ownerAmendmentTagNamespace, selection.bHeadSha), {
     headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`,
       'x-github-api-version': '2022-11-28' }, redirect: 'error' });
   if (tagResponse.status === 404) {
@@ -119,6 +130,8 @@ async function main() {
   const runGit = args => git(args);
   const context = resolveOwnerAmendmentHandoffGitContext({ repository, baseSha: selection.bBaseSha,
     headSha: selection.bHeadSha, baseBranch: 'main', runGit });
+  try { validateSelfAuthorityManifest(context.manifest); }
+  catch { fail('the v0.6.0 self profile supports only a non-empty protected Authority Set in this repository.'); }
   const source = createGitHubAuthoritySource({ token });
   const materialized = await materializeAuthoritySet({ manifestBytes: context.manifestBytes, limits: context.limits,
     selfRepository: repository, selfRoot: process.cwd(), authorityRevision: selection.bBaseSha,

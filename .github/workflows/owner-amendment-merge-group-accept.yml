@@ -14,6 +14,7 @@ permissions:
 jobs:
   accept:
     name: accept
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event.merge_group.base_ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -29,6 +30,14 @@ jobs:
           ref: ${{ github.event.merge_group.base_sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Copy the event payload to a fixed runner-temp path
+        run: |
+          set -euo pipefail
+          event_dir="$RUNNER_TEMP/owner-amendment-merge-group"
+          mkdir -m 700 -p "$event_dir"
+          test ! -e "$event_dir/event.json"
+          cp "$GITHUB_EVENT_PATH" "$event_dir/event.json"
+          chmod 600 "$event_dir/event.json"
       - name: Verify the merge-group OWNER_AMENDMENT evidence chain
         env:
           GATEKEEPER_RUNTIME_SHA: ${{ github.workflow_sha }}
