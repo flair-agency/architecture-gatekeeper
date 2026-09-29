@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { validateJsonSchema } from '../src/json-schema.mjs';
 import { MULTI_AUTHORITY_PROFILE, validateAuthorityLimits } from '../src/authority-set.mjs';
 import { prepareAuthoritySet } from '../src/prepare-authority-set.mjs';
 import { resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
@@ -128,6 +129,44 @@ test('real Git CLI path includes the complete base set and reports bound v2 proc
   assert.ok(report.includes(`object OID \`${procedure.tagObjectOid}\``));
   for (const member of f.provenance.members) assert.ok(report.includes(member.sha256));
   assert.match(report, /not semantic PASS/);
+});
+
+test('report truncation preserves complete G0 and Authority Set evidence ahead of long schema-valid review detail', async t => {
+  const f = await fixture(t);
+  const procedure = await f.prepare();
+  const long = 'review detail '.repeat(160);
+  const decision = {
+    decision: 'OWNER_DECISION', summary: 'The reporting owner is unselected.',
+    authority: [long], authorityFiles: ['docs/architecture.md'], responsibility: [long],
+    capabilitySurface: [long], qualityGuarantees: [long], reviewedScope: Array.from({ length: 35 }, (_, index) => `${index}: ${long}`),
+    prohibitedChanges: [long], gates: {
+      sharedMechanism: { decision: 'OWNER_DECISION', summary: long, consumerOwnership: long, failClosedBehavior: long,
+        compatibility: long, minimality: long },
+      trustBoundary: { decision: 'OWNER_DECISION', summary: long, tokenPermissions: long, untrustedInputs: long,
+        credentialHandling: long, reportingIsolation: long },
+    },
+  };
+  const decisionSchema = JSON.parse(readFileSync(join(sourceRoot, '.codex/gatekeeper/decision.schema.json'), 'utf8'));
+  assert.doesNotThrow(() => validateJsonSchema(decision, decisionSchema));
+  const report = renderReport({ conclusion: 'OWNER_ADDITION_G0', summary: 'Eligible authority-only addition.', decision }, {
+    repository: 'example/project', authorityProvenance: f.provenance, ownerAdditionProcedure: procedure,
+    reviewedSha: f.head, runUrl: 'https://github.com/example/project/actions/runs/123',
+  });
+  assert.ok(report.length <= 60_000);
+  assert.match(report, /Report truncated/);
+  assert.ok(report.includes(procedure.policySha256));
+  assert.ok(report.includes(procedure.tagObjectOid));
+  assert.ok(report.includes(procedure.authoritySet.setDigest));
+  assert.ok(report.includes(f.provenance.manifestSha256));
+  for (const member of f.provenance.members) {
+    assert.ok(report.includes(member.sha256));
+    assert.ok(report.includes(member.resolvedCommit));
+  }
+  assert.ok(report.includes(procedure.policyRevision));
+  assert.ok(report.includes(procedure.headSha));
+  assert.match(report, /<\/details>\n+_Report truncated\./);
+  assert.match(report, /### Run metadata[\s\S]*actions\/runs\/123/);
+  assert.ok(report.endsWith('<!-- architecture-gatekeeper:result:v1 -->\n'));
 });
 
 test('procedural v5 emits exact raw pre-merge evidence for the selected producer', async t => {

@@ -179,7 +179,7 @@ test('truncates oversized reports while retaining the ownership marker', () => {
   assert.match(report, /Reviewed commit: `abc123`/);
   assert.match(report, /\[Actions run\]\(https:\/\/example\.test\/run\/1\)/);
   assert.match(report, /Workflow: `o\/r\/\.github\/workflows\/gate\.yml@\u200babc123`/);
-  assert.match(report, /<\/details>\n\n_Report truncated\./);
+  assert.match(report, /<\/details>\n+_Report truncated\./);
   assert.ok(report.endsWith(`${COMMENT_MARKER}\n`));
 });
 
