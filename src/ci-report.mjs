@@ -140,8 +140,43 @@ async function githubList(fetchPage, pageSize = 100, maxItems = 3_000) {
   return values;
 }
 
+function inlineMarkerKeys(comment) {
+  return [...String(comment?.body || '').matchAll(/<!-- architecture-gatekeeper:inline:v1:([a-f0-9]{64}) -->/g)]
+    .map(match => match[1]);
+}
+
+function commentHtmlUrl(comment, repository, pullRequest) {
+  const value = comment?.html_url;
+  if (typeof value !== 'string') return '';
+  try {
+    const url = new URL(value);
+    return url.origin === 'https://github.com' && url.pathname === `/${repository}/pull/${pullRequest}` &&
+      /^#discussion_r\d+$/.test(url.hash) ? value : '';
+  } catch {
+    return '';
+  }
+}
+
+function attachInlineCommentUrls(checked, comments, repository, pullRequest) {
+  const urls = new Map();
+  for (const comment of comments) {
+    if (comment?.user?.login !== 'github-actions[bot]') continue;
+    const url = commentHtmlUrl(comment, repository, pullRequest);
+    if (!url) continue;
+    for (const key of inlineMarkerKeys(comment)) urls.set(key, url);
+  }
+  return checked.map(item => ({ ...item, commentUrl: urls.get(item.key) || '' }));
+}
+
+export function formatInlineFindingHeading(decision, title) {
+  const name = `Architecture Gatekeeper — ${cleanText(title, 200)}`;
+  if (decision === 'BLOCK') return `🛑 BLOCK — ${name}`;
+  if (decision === 'OWNER_DECISION') return `⚠️ OWNER_DECISION — ${name}`;
+  return name;
+}
+
 export async function postInlineReview({ fetchImpl = fetch, apiUrl, repository, pullRequest, token,
-  expectedHead, findings }) {
+  expectedHead, decision, findings }) {
   if (!Array.isArray(findings) || findings.length === 0) return { status: 'skipped', reason: 'no structured findings were supplied' };
   if (!token || !repository || !pullRequest) return { status: 'skipped', reason: 'comment credentials or pull request context unavailable' };
   const headers = { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`,
@@ -164,31 +199,45 @@ export async function postInlineReview({ fetchImpl = fetch, apiUrl, repository, 
     if (!response.ok) throw new Error(`list pull request review comments returned HTTP ${response.status}`);
     return response.json();
   });
-  const existing = new Set(existingComments.filter(item => item?.user?.login === 'github-actions[bot]' && item?.commit_id === expectedHead)
-    .flatMap(item => [...String(item.body || '').matchAll(/<!-- architecture-gatekeeper:inline:v1:([a-f0-9]{64}) -->/g)].map(match => match[1])));
+  const matchingExistingComments = existingComments.filter(item => item?.user?.login === 'github-actions[bot]' && item?.commit_id === expectedHead);
+  const existing = new Set(matchingExistingComments.flatMap(inlineMarkerKeys));
   const pending = valid.filter(item => !existing.has(item.key));
-  if (!pending.length) return { status: 'unchanged', checked };
+  if (!pending.length) return { status: 'unchanged', checked: attachInlineCommentUrls(checked, matchingExistingComments, repository, pullRequest) };
   const latest = await githubJson(fetchImpl, `${root}/pulls/${pullRequest}`, headers);
   if (latest?.head?.sha !== expectedHead) return { status: 'fallback', reason: 'pull request head changed immediately before inline review creation',
     checked: checked.map(item => ({ ...item, valid: false, reason: 'pull request head changed immediately before inline review creation' })) };
   const comments = pending.map(item => ({ path: item.location.path, line: item.location.line, side: item.location.side,
-    body: `**${cleanText(item.title, 200)}**\n\n${cleanText(item.body)}\n\n${INLINE_MARKER}${item.key} -->` }));
+    body: `**${formatInlineFindingHeading(decision, item.title)}**\n\n${cleanText(item.body)}\n\n${INLINE_MARKER}${item.key} -->` }));
   const response = await fetchImpl(`${root}/pulls/${pullRequest}/reviews`, { method: 'POST', headers,
     body: JSON.stringify({ commit_id: expectedHead, event: 'COMMENT', comments }) });
   if (!response.ok) throw new Error(`create inline review returned HTTP ${response.status}`);
-  return { status: 'created', count: pending.length, checked };
+  let refreshedComments = [];
+  let linkWarning = '';
+  try {
+    refreshedComments = await githubList(async pageNumber => {
+      const listResponse = await fetchImpl(`${root}/pulls/${pullRequest}/comments?per_page=100&page=${pageNumber}`, { headers });
+      if (!listResponse.ok) throw new Error(`list pull request review comments returned HTTP ${listResponse.status}`);
+      return listResponse.json();
+    });
+  } catch (error) {
+    linkWarning = `review posted, but inline comment links could not be retrieved: ${cleanText(error.message, 300)}`;
+  }
+  const commentsByHead = refreshedComments.filter(item => item?.user?.login === 'github-actions[bot]' && item?.commit_id === expectedHead);
+  const linked = attachInlineCommentUrls(checked, [...matchingExistingComments, ...commentsByHead], repository, pullRequest);
+  if (!linkWarning && linked.some(item => item.valid && !item.commentUrl)) linkWarning = 'GitHub did not return a direct URL for every matching inline comment';
+  return { status: 'created', count: pending.length, checked: linked, ...(linkWarning ? { linkWarning } : {}) };
 }
 
 function renderFindings(findings, delivery) {
   if (!Array.isArray(findings) || !findings.length) return '';
   const checked = new Map((delivery?.checked || []).map(item => [item.index, item]));
-  const status = delivery?.status ? `${delivery.status}${delivery.reason ? `: ${delivery.reason}` : ''}` : 'not attempted';
+  const status = delivery?.status ? `${delivery.status}${delivery.reason ? `: ${delivery.reason}` : ''}${delivery.linkWarning ? `; ${delivery.linkWarning}` : ''}` : 'not attempted';
   return `\n**Reviewer findings**\n\nInline delivery: **${cleanText(status, 300)}**\n\n${findings.slice(0, MAX_INLINE_FINDINGS).map((finding, index) => {
     const location = finding?.location && normalizeFindingPath(finding.location.path) && Number.isInteger(finding.location.line) && ['LEFT', 'RIGHT'].includes(finding.location.side)
       ? `\`${cleanText(finding.location.path, 240)}:${finding.location.line} ${finding.location.side}\`` : 'no inline location';
     const check = checked.get(index);
-    const outcome = check ? check.valid ? 'posted or already present' : `deferred: ${check.reason}` : delivery?.status === 'created' || delivery?.status === 'unchanged' ? 'included in inline review' : delivery?.status === 'fallback' || delivery?.status === 'unavailable' || delivery?.status === 'skipped' ? `deferred: ${delivery.reason || 'delivery unavailable'}` : 'not eligible for inline delivery';
-    return `${index + 1}. **${cleanText(finding?.title || 'Finding', 200)}** (${location}; ${cleanText(outcome, 300)}) — ${cleanText(finding?.body || '')}`;
+    const outcome = check ? check.valid ? `posted or already present${check.commentUrl ? ` · [inline comment](${check.commentUrl})` : ' · direct link unavailable'}` : `deferred: ${check.reason}` : delivery?.status === 'created' || delivery?.status === 'unchanged' ? 'included in inline review' : delivery?.status === 'fallback' || delivery?.status === 'unavailable' || delivery?.status === 'skipped' ? `deferred: ${delivery.reason || 'delivery unavailable'}` : 'not eligible for inline delivery';
+    return `${index + 1}. **${cleanText(finding?.title || 'Finding', 200)}** (${location}; ${outcome}) — ${cleanText(finding?.body || '')}`;
   }).join('\n')}\n`;
 }
 
@@ -531,6 +580,7 @@ async function main() {
       inlineDelivery = await postInlineReview({
         ...reportApiContext,
         token: process.env.GITHUB_TOKEN,
+        decision: classified.decision?.decision,
         findings: classified.decision?.findings,
       });
       for (const item of inlineDelivery.checked || []) {
@@ -546,6 +596,7 @@ async function main() {
   if (inlineDelivery?.status && inlineDelivery.status !== 'skipped') {
     console.log(`Architecture Gate inline review: ${inlineDelivery.status}${inlineDelivery.count ? ` (${inlineDelivery.count} finding(s))` : ''}${inlineDelivery.reason ? ` (${inlineDelivery.reason})` : ''}`);
   }
+  if (inlineDelivery?.linkWarning) console.warn(`::warning title=Architecture Gate inline comment links unavailable::${cleanText(inlineDelivery.linkWarning, 500)}`);
   const report = renderReport(classified, {
     reviewedSha: process.env.REVIEWED_SHA,
     headSha: process.env.HEAD_SHA,

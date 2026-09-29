@@ -307,6 +307,13 @@ the PR files API, then posts all new valid findings in one GitHub review with
 event `COMMENT`. Renamed, binary, missing, and truncated patches are deferred
 to the summary. The review is feedback only; it does not affect
 `Architecture Gate / accept`.
+Every inline comment body identifies Architecture Gatekeeper, independently
+of the GitHub actor display name; `BLOCK` and `OWNER_DECISION` comments also
+carry the same status icon as the report heading. The sticky report and
+Actions job summary link each posted or already-present finding to its direct
+GitHub inline comment URL, using the URL returned by GitHub. If GitHub accepts
+a review but does not return comment URLs, the finding remains reported as
+delivered and the missing links are called out as a non-authoritative warning.
 Unlocated, invalid, stale-head, or unpostable findings remain in the job
 summary/sticky report, and delivery/API errors produce a warning. A stable
 per-head finding marker and a report-job-only PR concurrency group prevent
