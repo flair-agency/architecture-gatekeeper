@@ -114,7 +114,7 @@ function validateBranch(branch, label, version) {
     const amendment = branch.ownerAmendment;
     requireOnlyKeys(amendment, new Set(['version', 'grade', 'scope', 'triggerProfile', 'authorityId', 'authorityPath', 'evidenceProducer', 'tagNamespace', 'maxPromptBytes']), `${label} owner amendment`);
     if (version !== 2 || branch.mode !== 'enforced' || !Object.hasOwn(branch, 'authorityManifestPath') || amendment.version !== 1 || amendment.grade !== 'G0' ||
-        amendment.scope !== 'authority-only' || !['completed-block-v1', 'completed-owner-decision-self-v1'].includes(amendment.triggerProfile) ||
+        amendment.scope !== 'authority-only' || amendment.triggerProfile !== 'completed-block-v1' ||
         !/^[a-z][a-z0-9-]{0,63}$/.test(amendment.authorityId || '') ||
         typeof amendment.authorityPath !== 'string' || amendment.authorityPath.length > 240 ||
         !OWNER_AUTHORITY_PATH.test(amendment.authorityPath) || amendment.authorityPath.split('/').some(part => part === '.' || part === '..') ||

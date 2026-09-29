@@ -174,8 +174,8 @@ function eligibilityDecision(prepared, result = 'ELIGIBLE') {
     authoritySetDigest: prepared.authoritySetDigest, checks });
 }
 
-test('one shared producer prepares and validates both self trigger profiles with exact receipt bindings', () => {
-  for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
+test('shared producer prepares and validates the enabled BLOCK self trigger profile with exact receipt bindings', () => {
+  for (const profile of ['completed-block-v1']) {
     const f = fixture(profile);
     const resolvedPolicy = resolveCiPolicy(parseCiPolicyJson(f.args.policyBytes.toString('utf8')), 'main');
     assert.equal(resolvedPolicy.ownerAmendmentTriggerProfile, profile);
@@ -215,8 +215,13 @@ test('one shared producer prepares and validates both self trigger profiles with
   }
 });
 
+test('owner-decision profile remains fail-closed until protected transition acceptance is implemented', () => {
+  const ownerDecision = fixture('completed-owner-decision-self-v1');
+  assert.throws(() => ownerDecision.producer.prepare(ownerDecision.args), /previous protected policy cannot be resolved/);
+});
+
 test('supports multiple selected authority paths and binds the complete resulting Authority Set', () => {
-  const f = fixture('completed-owner-decision-self-v1', { multiAuthority: true });
+  const f = fixture('completed-block-v1', { multiAuthority: true });
   const prepared = f.producer.prepare(f.args);
   assert.deepEqual(prepared.authorityIds, ['architecture', 'ownership']);
   assert.equal(prepared.changes.length, 2);
@@ -360,6 +365,17 @@ test('binds complete Authority Set, manifest and trigger identities to protected
     resolveProtectedInputs: () => duplicateInputs, resolveExactGitDiff: () => ({ diffBytes: completeDuplicateDiff })
   }).prepare(duplicateLines.args), /differ from the independently derived complete base-to-B Git diff/);
 
+  const omittedWorkflow = fixture('completed-block-v1');
+  const omittedInputs = omittedWorkflow.validators.resolveProtectedInputs();
+  const workflowPath = '.github/workflows/self-architecture-gate.yml';
+  const completeBaseToB = Buffer.concat([omittedInputs.diffBytes, Buffer.from(
+    `diff --git a/${workflowPath} b/${workflowPath}\nindex 1111111..2222222 100644\n--- a/${workflowPath}\n+++ b/${workflowPath}\n@@ -1 +1 @@\n-old\n+new\n`)]);
+  let exactDiffRequest;
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...omittedWorkflow.validators,
+    resolveExactGitDiff: request => { exactDiffRequest = request; return { diffBytes: completeBaseToB }; }
+  }).prepare(omittedWorkflow.args), /differ from the independently derived complete base-to-B Git diff/);
+  assert.deepEqual(Object.keys(exactDiffRequest).sort(), ['bSha', 'baseSha', 'repository']);
+
   for (const field of ['manifestSha256', 'policy']) {
     const bad = structuredCloneProtectedInputs(full);
     if (field === 'manifestSha256') bad.manifestBytes = Buffer.from('different manifest');
@@ -380,7 +396,7 @@ test('binds complete Authority Set, manifest and trigger identities to protected
 });
 
 test('fails closed for trigger producer, semantic producer, model, effort, and Gatekeeper identity mismatches', () => {
-  const f = fixture('completed-owner-decision-self-v1');
+  const f = fixture('completed-block-v1');
   assert.throws(() => f.producer.prepare({ ...f.args,
     producer: { ...f.semanticProducer, runId: '2003' } }), /differs from its protected selection/);
   assert.throws(() => f.producer.prepare({ ...f.args,
@@ -392,7 +408,7 @@ test('fails closed for trigger producer, semantic producer, model, effort, and G
 });
 
 test('resolves the protected base branch and binds trigger and eligibility workflows to it', () => {
-  const f = fixture('completed-owner-decision-self-v1', { baseBranch: 'release/0.6' });
+  const f = fixture('completed-block-v1', { baseBranch: 'release/0.6' });
   const selected = resolveCiPolicy(parseCiPolicyJson(f.args.policyBytes.toString('utf8')), 'release/0.6');
   assert.equal(selected.ownerAmendmentTriggerProfile, f.args.triggerProfile);
   assert.doesNotThrow(() => f.producer.prepare(f.args));
@@ -438,7 +454,7 @@ test('candidate cannot select its own profile or replace the protected Amendment
 });
 
 test('INELIGIBLE is a completed decision with a false check and cannot be rewritten in receipt bytes', () => {
-  const f = fixture('completed-owner-decision-self-v1');
+  const f = fixture('completed-block-v1');
   const prepared = f.producer.prepare(f.args);
   const completed = completeOwnerAmendmentSemanticEligibility({ prepared,
     decisionBytes: eligibilityDecision(prepared, 'INELIGIBLE'), producer: f.semanticProducer, gatekeeper: f.gatekeeper,

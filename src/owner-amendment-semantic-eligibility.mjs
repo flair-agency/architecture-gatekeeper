@@ -541,8 +541,7 @@ export function createOwnerAmendmentSemanticEligibilityProducer({ resolveProtect
       }
       let exactGitDiff;
       try {
-        exactGitDiff = resolveExactGitDiff({ repository, baseSha, bSha,
-          paths: Object.freeze(protectedInputs.changes.map(change => change?.path)) });
+        exactGitDiff = resolveExactGitDiff({ repository, baseSha, bSha });
       } catch { fail('protected Git adapter could not independently derive the complete base-to-B diff from bound Git objects.'); }
       exact(exactGitDiff, ['diffBytes'], 'independently derived exact Git diff');
       if (!Buffer.isBuffer(exactGitDiff.diffBytes) || !exactGitDiff.diffBytes.length ||
