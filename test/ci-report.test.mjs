@@ -419,6 +419,42 @@ test('finding markers ignore location property insertion order across reruns', (
   assert.equal(validateInlineFindings([first], options)[0].key, validateInlineFindings([reordered], options)[0].key);
 });
 
+test('finding identity changes with decision while same-decision reruns remain idempotent', async () => {
+  const head = 'a'.repeat(40);
+  const finding = { title: 'Issue', body: 'Explanation', location: { path: 'src/a.mjs', line: 4, side: 'RIGHT' } };
+  const comments = [];
+  const submissions = [];
+  let nextCommentId = 1;
+  const fetchImpl = async (url, options = {}) => {
+    if (options.method === 'POST') {
+      const payload = JSON.parse(options.body);
+      submissions.push(payload);
+      for (const comment of payload.comments) comments.push({ user: { login: 'github-actions[bot]' }, commit_id: head,
+        html_url: `https://github.com/o/r/pull/7#discussion_r${nextCommentId++}`, body: comment.body });
+      return { ok: true };
+    }
+    if (url.endsWith('/pulls/7')) return { ok: true, json: async () => ({ head: { sha: head } }) };
+    if (url.includes('/files?')) return { ok: true, json: async () => [
+      { filename: 'src/a.mjs', additions: 2, deletions: 0, patch: inlinePatch },
+    ] };
+    if (url.includes('/comments?')) return { ok: true, json: async () => comments };
+    throw new Error(`unexpected URL ${url}`);
+  };
+  const args = { fetchImpl, apiUrl: 'https://api.test', repository: 'o/r', pullRequest: '7', token: 'token',
+    expectedHead: head, findings: [finding] };
+
+  const block = await postInlineReview({ ...args, decision: 'BLOCK' });
+  const repeatedBlock = await postInlineReview({ ...args, decision: 'BLOCK' });
+  const ownerDecision = await postInlineReview({ ...args, decision: 'OWNER_DECISION' });
+
+  assert.equal(block.status, 'created');
+  assert.equal(repeatedBlock.status, 'unchanged');
+  assert.equal(ownerDecision.status, 'created');
+  assert.equal(submissions.length, 2);
+  assert.match(submissions[0].comments[0].body, /🛑 BLOCK —/);
+  assert.match(submissions[1].comments[0].body, /⚠️ OWNER_DECISION —/);
+});
+
 test('rechecks PR head immediately before POST and renders delivery plus deferral in report', async () => {
   let reads = 0;
   let writes = 0;

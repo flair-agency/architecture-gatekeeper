@@ -97,7 +97,7 @@ function changedLines(file) {
   return { added, deleted, reason: '' };
 }
 
-export function validateInlineFindings(findings, { expectedHead, currentHead, files }) {
+export function validateInlineFindings(findings, { expectedHead, currentHead, files, decision }) {
   if (!Array.isArray(findings)) return [];
   const byPath = new Map((Array.isArray(files) ? files : []).map(file => [file.filename, changedLines(file)]));
   const seen = new Set();
@@ -114,7 +114,10 @@ export function validateInlineFindings(findings, { expectedHead, currentHead, fi
     else if (!byPath.get(location.path)?.[location.side === 'RIGHT' ? 'added' : 'deleted'].has(location.line)) reason = `location is not a ${location.side === 'RIGHT' ? 'added' : 'deleted'} line in the pull request diff`;
     const canonicalLocation = location && typeof location === 'object'
       ? { path: location.path, line: location.line, side: location.side } : null;
-    const key = createHash('sha256').update(JSON.stringify({ head: expectedHead, title, body, location: canonicalLocation })).digest('hex');
+    // The decision changes the rendered heading (for example, BLOCK vs
+    // OWNER_DECISION), so it is part of the comment's identity as well.
+    const key = createHash('sha256').update(JSON.stringify({ decision: DECISIONS.has(decision) ? decision : null,
+      head: expectedHead, title, body, location: canonicalLocation })).digest('hex');
     if (seen.has(key)) reason = 'duplicate finding in this result';
     seen.add(key);
     return { index, title, body, location, key, valid: !reason, reason };
@@ -185,13 +188,13 @@ export async function postInlineReview({ fetchImpl = fetch, apiUrl, repository, 
   const pr = await githubJson(fetchImpl, `${root}/pulls/${pullRequest}`, headers);
   const currentHead = pr?.head?.sha;
   if (currentHead !== expectedHead) return { status: 'fallback', reason: 'pull request head changed during reporting',
-    checked: validateInlineFindings(findings, { expectedHead, currentHead, files: [] }) };
+    checked: validateInlineFindings(findings, { expectedHead, currentHead, files: [], decision }) };
   const files = await githubList(async pageNumber => {
     const response = await fetchImpl(`${root}/pulls/${pullRequest}/files?per_page=100&page=${pageNumber}`, { headers });
     if (!response.ok) throw new Error(`list pull request files returned HTTP ${response.status}`);
     return response.json();
   }, 100, 3_000);
-  const checked = validateInlineFindings(findings, { expectedHead, currentHead, files });
+  const checked = validateInlineFindings(findings, { expectedHead, currentHead, files, decision });
   const valid = checked.filter(item => item.valid);
   if (!valid.length) return { status: 'fallback', reason: 'no findings have a valid changed-line location', checked };
   const existingComments = await githubList(async pageNumber => {
