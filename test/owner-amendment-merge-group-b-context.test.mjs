@@ -14,7 +14,8 @@ function fixture(overrides = {}) {
   const repo = { id: repoId, full_name: repository };
   const mergeCommit = { sha: groupHeadSha, parents: [{ sha: baseSha }, { sha: bHeadSha }] };
   const pr = { number: 204, state: 'open', draft: false,
-    base: { ref: 'main', sha: baseSha, repo }, head: { sha: bHeadSha, repo } };
+    base: { ref: 'main', sha: baseSha, repo: { ...repo } },
+    head: { sha: bHeadSha, repo: { ...repo } } };
   const graph = { data: { repository: { id: graphRepoId, nameWithOwner: repository,
     pullRequest: { number: 204, state: 'OPEN', isDraft: false, baseRefName: 'main',
       baseRefOid: baseSha, headRefOid: bHeadSha,
@@ -123,6 +124,7 @@ test('fails closed for fork, stale or ineligible B PRs', async t => {
     const f = fixture(); mutate(f.state.pr);
     const result = await f.select();
     assert.equal(result.status, 'INCOMPLETE');
+    assert.match(result.reason, /no unique exact open, non-draft, same-repository main pull request/);
   });
 });
 
