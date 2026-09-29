@@ -392,6 +392,99 @@ the identified conflict. Only previous-base policy opts in and scopes a route;
 B cannot self-authorize. If prior policy cannot authorize first opt-in, use
 owner-controlled bootstrap. Contract entry alone enables no route.
 
+#### Self-v1 semantic eligibility input and receipt (owner decision)
+
+The initial shared semantic-eligibility contract uses the closed
+`owner-amendment-semantic-eligibility-v1` format. It defines a semantic
+eligibility result for exact B only. It is not `PASS`, does not change the
+historical trigger result, and is not `OWNER_AMENDMENT` acceptance. The format
+does not establish owner identity or exact-claim authorization; both remain
+`not_verified` unless a separately selected and verified assurance supplies
+them. This contract entry alone enables no route.
+
+The previous protected-base policy must select the trigger profile, eligible
+authority scope, trusted semantic-review producer, and
+`ownerAmendment.maxPromptBytes` for
+this route. `maxPromptBytes` is required, has no default, and must be a
+positive safe integer no greater than the runtime ceiling of 1,048,576 bytes.
+B cannot supply or raise it. The complete prompt, including all context,
+policy and Authority Set bytes, proposed changes, diff, schema, and
+instructions, must fit this selected limit. A missing, invalid, or exceeded
+limit leaves eligibility incomplete.
+
+The protected producer prepares the review input from exact raw UTF-8 bytes
+selected at the previous protected base: the complete policy, the complete
+Authority Set and every authority member's bytes, the exact B identity and
+authority changes, trigger profile, completed ReviewRecord digest,
+AmendmentRecord digest, and annotated-tag identity. The change input includes
+the before and after bytes for every changed authority path and the complete
+diff bytes. It does not impose a universal one-file limit. The producer
+validates that those bytes belong to the supplied repository/base/B and
+protected tag before review. The prompt presents policy and authority content
+as data, not instructions. The selected Authority IDs are the complete
+required set in protected manifest order. `authoritySetDigest` is SHA-256 of
+the UTF-8 compact JSON encoding of the ordered member descriptors, each with
+`id`, `repository`, `resolvedCommit`, `path`, `byteLength`, and `sha256`.
+
+The prompt also supplies a closed decision schema. A decision has exactly
+`version`, `kind`, `eligibility`, `triggerProfile`, `authorityIds`,
+`authoritySetDigest`, and `checks`. `version` is `1`, `kind` is
+`owner-amendment-semantic-eligibility-decision`, `eligibility` is exactly
+`ELIGIBLE` or `INELIGIBLE`, and the trigger profile, ordered complete IDs,
+and set digest must equal the supplied review input. `checks` has exactly
+these boolean fields:
+
+- `materiallyAddressesTrigger`
+- `amendsOnlyTargetDecision`
+- `excludesUnrelatedChanges`
+- `excludesImplementationWorkflowAndExecutablePolicyEdits`
+- `excludesUnsupportedCompletionClaims`
+- `resultingAuthorityIsCoherent`
+- `assessesResultingRulesWithoutRequiringAgreementWithSupersededRules`
+
+An `ELIGIBLE` decision requires every check to be `true`. An `INELIGIBLE`
+decision records the failed check or checks and cannot produce eligible
+evidence. Missing, duplicate, extra, unknown, malformed, or mismatched fields
+leave review incomplete. This structured result records the semantic
+reviewer's determination; deterministic validation does not independently
+prove that the semantic conclusions are correct.
+
+The producer emits a version-1
+`owner-amendment-semantic-eligibility-receipt` for a completed decision. The
+receipt is canonical UTF-8 JSON: recursively sort object keys by Unicode code
+point, preserve array order, use compact JSON separators, and append exactly
+one LF. Duplicate keys, unknown or missing fields at any object level,
+noncanonical bytes, or invalid values are rejected. Its closed top-level
+fields are `version`, `kind`, `eligibility`, `repository`, `baseSha`, `bSha`,
+`triggerProfile`, `triggerReviewRecordSha256`, `amendmentRecordSha256`,
+`policyRevision`, `policySha256`, `authoritySetSha256`, `authoritySetDigest`,
+`authorityIds`, `changes`, `diffSha256`, `promptSha256`, `schemaSha256`,
+`decisionSha256`, `tag`, and `producer`. `policyRevision` equals `baseSha`.
+Each raw-byte digest is SHA-256 of the exact named bytes passed to review;
+the prompt and schema digests cover their exact UTF-8 bytes, and the decision
+digest covers the exact canonical decision bytes. `changes` is an ordered
+array of exact objects with only `path`, `beforeSha256`, and `afterSha256`;
+each entry binds one changed authority path to the SHA-256 digests of its
+before and after bytes. `diffSha256` binds the exact complete diff bytes.
+`tag` contains exactly `tagRef`, `tagObjectOid`, and `observedTagRefOid`;
+the first identifies the selected protected tag ref, the second identifies
+the exact annotated tag object, and the third records the observed ref
+mapping. The receipt binds all three and does not claim the mutable ref cannot
+later move or disappear.
+
+`producer` contains exactly `workflowPath`, `workflowSha`, `workflowRef`,
+`runId`, `runAttempt`, and `jobId`. These identify the selected protected
+semantic-review workflow and exact job execution. Producer provenance
+authentication is a separate deterministic verification requirement and must
+pass before any protected acceptance can rely on the receipt. A receipt's
+producer fields alone do not authenticate its producer. The verifier also
+requires exact equality with the protected producer selection and rejects a
+receipt whose repository, base, B, trigger, ReviewRecord, AmendmentRecord,
+policy, Authority Set, tag, prompt, schema, decision, or producer identity is
+stale or differs from the selected review input. Only a validated `ELIGIBLE`
+receipt is an eligibility input to a separately implemented acceptance
+route; the receipt itself never reports `OWNER_AMENDMENT` or authorizes B.
+
 For BLOCK-triggered amendments, the exact completed `BLOCK` must identify the
 conflict that B's semantic eligibility assesses. Preserve that historical
 result; B never changes it to `PASS`. The first BLOCK-triggered implementation
