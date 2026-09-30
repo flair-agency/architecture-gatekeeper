@@ -9,10 +9,10 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const bytes = (path) => readFileSync(resolve(root, path));
 const baseline = {
   workflow: bytes('.github/workflows/architecture-gate.yml').toString(),
-  manifest: JSON.parse(bytes('provenance/codex-action-v1.12-linux-test-fix.json')),
-  record: JSON.parse(bytes('provenance/fixtures/codex-action-integrity-candidate-v1.json')),
-  procedure: JSON.parse(bytes('provenance/codex-action-integrity-procedure-v1.json')),
-  procedureBytes: bytes('provenance/codex-action-integrity-procedure-v1.json'),
+  manifest: JSON.parse(bytes('provenance/codex-action-v1.12-runtime-cancellation.json')),
+  record: JSON.parse(bytes('provenance/fixtures/codex-action-runtime-candidate-v1.json')),
+  procedure: JSON.parse(bytes('provenance/codex-action-runtime-integrity-procedure-v1.json')),
+  procedureBytes: bytes('provenance/codex-action-runtime-integrity-procedure-v1.json'),
   verifierBytes: bytes('src/verify-codex-action.mjs'),
 };
 
@@ -43,8 +43,8 @@ test('changed Action repository with the same SHA does not match checkout', () =
 
 test('changed Action SHA, checkout SHA, tree, entrypoint, or executable digest is rejected', () => {
   const cases = [
-    (args) => { args.workflow = args.workflow.replace('codex-action@8d35ab', 'codex-action@ad35ab'); },
-    (args) => { args.workflow = args.workflow.replace('ref: 8d35ab', 'ref: ad35ab'); },
+    (args) => { args.workflow = args.workflow.replace('codex-action@643fb3', 'codex-action@ad35ab'); },
+    (args) => { args.workflow = args.workflow.replace('ref: 643fb3', 'ref: ad35ab'); },
     (args) => { args.record.action.tree = `c${args.record.action.tree.slice(1)}`; },
     (args) => { args.record.action.entrypoint = 'dist/other.js'; },
     (args) => { args.record.action.entrypointSha256 = `a${args.record.action.entrypointSha256.slice(1)}`; },
@@ -54,10 +54,10 @@ test('changed Action SHA, checkout SHA, tree, entrypoint, or executable digest i
 
 test('expressions, tags, duplicate review Action, and duplicate uses are rejected', () => {
   const cases = [
-    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@8d35ab0e294c9ca3603f738c9cdf74d53081852f', 'uses: flair-agency/codex-action@${{ github.sha }}'); },
-    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@8d35ab0e294c9ca3603f738c9cdf74d53081852f', 'uses: flair-agency/codex-action@v1'); },
+    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0', 'uses: flair-agency/codex-action@${{ github.sha }}'); },
+    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0', 'uses: flair-agency/codex-action@v1'); },
     (args) => { args.workflow = args.workflow.replace('      - name: Run read-only architecture review', '      - name: Run read-only architecture review\n      - name: Run read-only architecture review'); },
-    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@8d35ab0e294c9ca3603f738c9cdf74d53081852f', 'uses: flair-agency/codex-action@8d35ab0e294c9ca3603f738c9cdf74d53081852f\n        uses: flair-agency/codex-action@8d35ab0e294c9ca3603f738c9cdf74d53081852f'); },
+    (args) => { args.workflow = args.workflow.replace('uses: flair-agency/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0', 'uses: flair-agency/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0\n        uses: flair-agency/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0'); },
   ];
   for (const change of cases) assert.throws(candidate(change));
 });

@@ -187,16 +187,18 @@ test('protected policy rejects duplicate JSON keys before resolving effective li
 
 test('keeps protected codex-action arguments compatible', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
-  assert.match(workflow, /uses: flair-agency\/codex-action@8d35ab0e294c9ca3603f738c9cdf74d53081852f/);
+  assert.match(workflow, /uses: flair-agency\/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0/);
   assert.doesNotMatch(workflow, /uses: openai\/codex-action@/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?repository: flair-agency\/codex-action/);
   assert.match(workflow, /codex-action-integrity:\n    if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\)\n    needs: policy/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?timeout-minutes: 5/);
   assert.match(workflow, /review:\n[\s\S]*?timeout-minutes: 20/);
   assert.match(workflow, /src\/verify-codex-action\.mjs/);
-  assert.match(workflow, /provenance\/codex-action-v1\.12-linux-test-fix\.json/);
+  assert.match(workflow, /provenance\/codex-action-v1\.12-runtime-cancellation\.json/);
+  assert.match(workflow, /provenance\/codex-action-runtime-integrity-procedure-v1\.json/);
+  assert.match(workflow, /provenance\/fixtures\/codex-action-runtime-candidate-v1\.json/);
   assert.match(workflow, /fetch-depth: 0/);
-  assert.match(workflow, /ref: 8d35ab0e294c9ca3603f738c9cdf74d53081852f/);
+  assert.match(workflow, /ref: 643fb31fa44e961453125534c4c7182a5a0a6ba0/);
   assert.match(workflow, /Verify the pinned action before exposing review credentials/);
   assert.match(workflow, /name: Setup pnpm\n[\s\S]*?version: 10\.33\.0/);
   assert.match(workflow, /pnpm run check/);
@@ -210,6 +212,22 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /Codex final message file: (?:present|absent)/);
   assert.match(workflow, /Codex final message JSON: parseable/);
   assert.doesNotMatch(workflow, /--ignore-user-config/);
+});
+
+test('bounds every Codex Action call to 300 seconds', () => {
+  const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
+  const pin = '643fb31fa44e961453125534c4c7182a5a0a6ba0';
+  const actionSteps = workflow
+    .split(/^      - name: /m)
+    .slice(1)
+    .map((step) => `      - name: ${step}`)
+    .filter((step) => /^        uses: flair-agency\/codex-action@/m.test(step));
+
+  assert.ok(actionSteps.length >= 2);
+  for (const step of actionSteps) {
+    assert.match(step, new RegExp(`uses: flair-agency/codex-action@${pin}`));
+    assert.match(step, /timeout-seconds: "300"/);
+  }
 });
 
 test('uses the immutable called-workflow runtime and keeps review jobs read-only', () => {

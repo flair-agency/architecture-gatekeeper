@@ -147,16 +147,22 @@ jobs:
 The caller keeps `.codex/gatekeeper/ci-policy.json`, its prompt and schema. CI
 policy is read from the protected base revision, so a pull request cannot waive
 its own review. `enforced` runs the exact-SHA-pinned
-`flair-agency/codex-action` fork of upstream v1.12. The fork contains only the
-bounded descendant-stdio drain fix from upstream PR #151 and retains v1.12's
+`flair-agency/codex-action` fork of upstream v1.12. The fork contains the
+bounded descendant-stdio drain fix from upstream PR #151, numeric-only JSONL
+telemetry, cache-write token reporting, and the runtime deadline and
+cancellation cleanup merged in Codex Action PR #10. On POSIX, cancellation
+signals the spawned process group with `SIGTERM` and then `SIGKILL` after a
+one-second grace period; Windows uses `taskkill.exe /T /F`. It retains v1.12's
 credential isolation and protected argument checks. This is a temporary
 workaround: replace the fork pin only after reviewing an upstream release that
-contains the equivalent fix. `local-only` records an explicit waiver and makes
-no OpenAI API call.
+contains the equivalent fixes. `local-only` records an explicit waiver and
+makes no OpenAI API call.
 
-The enforced Codex Action step has a five-minute timeout. The review job has
-a separate twenty-minute outer limit so checkout, authority materialization,
-and the one-minute diagnostic have room around that action deadline. If the
+The normal reviewer and `OWNER_ADDITION` eligibility Action calls both set the
+Action's `timeout-seconds` input to 300. Each GitHub Action step retains its
+separate five-minute outer timeout, while the review job has a twenty-minute
+limit for checkout, authority materialization, and the one-minute diagnostic.
+If the
 Action step fails or times out, the next diagnostic
 step records the Action outcome, whether its final-message file was written,
 the file size and JSON parseability, and the installed Codex CLI/proxy versions
@@ -258,11 +264,12 @@ manual review can opt in separately through version 2 of
 
 Before the review job receives `OPENAI_API_KEY`, a separate credential-free
 integrity job checks out that same exact fork commit, verifies its revision,
-base/head trees, complete three-commit sequence, changed-file allowlist and
-SHA-256 content manifest owned by this repository. It then installs only its
-lockfile-pinned dependencies, runs its typecheck and complete
-test suite (including credential-isolation and descendant-stdio regressions),
-rebuilds the bundled action, and rejects a changed `dist`. The review job needs
+base/head trees, complete commit sequence, changed-file allowlist and SHA-256
+content manifest owned by this repository. It then installs only its
+lockfile-pinned dependencies, runs its typecheck and complete test suite
+(including credential-isolation, descendant-stdio, runtime-cancellation, and
+Linux drop-sudo descendant-cleanup regressions), rebuilds the bundled action,
+and rejects a changed `dist`. The review job needs
 both policy resolution and this integrity job, so failed validation prevents the
 fork from receiving review credentials. The integrity job has only
 `contents: read`, receives no caller secrets, uses exact-SHA setup actions, and

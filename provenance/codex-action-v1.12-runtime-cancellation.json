@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "repository": "flair-agency/codex-action",
+  "baseCommit": "fa9d23b20e0ebcae09901de79690f099cda237be",
+  "baseTree": "379ee13d7c22c882770cd5ce35e964af74435f0f",
+  "headCommit": "643fb31fa44e961453125534c4c7182a5a0a6ba0",
+  "headTree": "ea68a0e7f2fc39f9c6f8fd9cda26b362aaf6ded8",
+  "commits": [
+    "eeb37cd2ec0bdb91463587536b1747b2174a1833",
+    "cdaa440160b54721b765327d7786846a0a591184",
+    "b51c93d93776027fe51d8470727b5dc7ecaee18e",
+    "e47781445af6df3039f835c86ee5bbf4a61d80fe",
+    "aa3cbe5639ea00b6dd0e9519189632185e2901a1",
+    "a08d8428145bbbe903d46d6b41c9585690c13d16",
+    "2cb2e1e7d2e452b83d7a024f12678b470c4f256e",
+    "8d35ab0e294c9ca3603f738c9cdf74d53081852f",
+    "a5f056f0bdf6994e12f4e830e9afec0bb5e5b91d",
+    "3282431576d2634acbd165cc951cfad6e7a232c6",
+    "ae8040b26890e655542317c3dad6ade14b7065cd",
+    "643fb31fa44e961453125534c4c7182a5a0a6ba0"
+  ],
+  "files": {
+    "README.md": "3053cb8a4523e6e1f74c7cedc2f3a3a9bc130691190a16c039527ced7853771a",
+    "action.yml": "c209a27483173110218b509bc46332b5e4ccac273cb6e2163113f652311d3d48",
+    "dist/main.js": "caaf2bb17824bd9aa2383d8c5359896b3ec51b2338e177c60027020e85b95631",
+    "src/main.ts": "5d54aa4f89ee62fca0069e7a0f5e837787c1798ceec41ba346d50decb5abd875",
+    "src/runCodexExec.ts": "bc46d0c0c0b638d30f964a7153fd97636dfb3e7aacbb78dcd911665ca51e1af0",
+    "test/dropSudo.test.mjs": "ef22807550fed5d09488a2018b3d2f723bcae380fd1df4f95d676f0d163ae4e5",
+    "test/runCodexExec.test.mjs": "82cfab35350f94e1e1878b8fe69fc917c73d304a5dbf15ac3c86bbed8aeae3f6"
+  }
+}
