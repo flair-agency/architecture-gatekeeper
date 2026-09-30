@@ -7,6 +7,7 @@ import { appendGitHubOutput, resolveRunnerTempDirectory, readRunnerTempFile, wri
 import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs';
 import { prepareOwnerAmendmentMergeGroupOrdinaryReview,
   validateOwnerAmendmentMergeGroupOrdinaryDecision } from '../src/owner-amendment-merge-group-ordinary-review.mjs';
+import { adaptVerifiedWorkflowRunContext } from '../src/owner-amendment-workflow-run-receiver.mjs';
 
 const fail = message => { throw new Error(`Owner amendment merge-group ordinary review: ${message}`); };
 const tempDir = () => resolveRunnerTempDirectory('owner-amendment-merge-group');
@@ -22,11 +23,11 @@ async function prepare() {
     fail('protected self repository, exact base/B, workspace, token, or output path is invalid.');
   }
   const eventDir = tempDir();
-  const event = JSON.parse(readRunnerTempFile(eventDir, 'event.json', 262_144).toString('utf8'));
-  if (event?.action !== 'checks_requested' || event?.merge_group?.base_ref !== 'refs/heads/main' ||
-      event?.merge_group?.base_sha !== process.env.BASE_SHA) {
-    fail('verified output tuple differs from the protected merge-group event.');
-  }
+  let selection;
+  try { selection = adaptVerifiedWorkflowRunContext(JSON.parse(readRunnerTempFile(eventDir, 'verified-context.json', 16_384).toString('utf8'))); }
+  catch { fail('protected workflow-run context is unavailable or malformed.'); }
+  if (selection.repository !== process.env.GITHUB_REPOSITORY || selection.bBaseSha !== process.env.BASE_SHA ||
+      selection.bHeadSha !== process.env.B_SHA) fail('verified output tuple differs from protected live context.');
   const prepared = await prepareOwnerAmendmentMergeGroupOrdinaryReview({ repository: process.env.GITHUB_REPOSITORY,
     baseSha: process.env.BASE_SHA, headSha: process.env.B_SHA, selfRoot: process.env.GITHUB_WORKSPACE,
     runGit: git, fetchExternal: createGitHubAuthoritySource({ token: process.env.GH_TOKEN }) });

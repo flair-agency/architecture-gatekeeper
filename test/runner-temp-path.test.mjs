@@ -22,6 +22,8 @@ test('confines temporary directories and files to fixed direct children', () => 
   const dir = resolveRunnerTempDirectory('owner-amendment-eligibility');
   assert.equal(realpathSync(dir), join(runnerTemp, 'owner-amendment-eligibility'));
   assert.equal(resolveRunnerTempFile(dir, 'eligibility-prompt.md'), 'owner-amendment-eligibility/eligibility-prompt.md');
+  const receiverDir = resolveRunnerTempDirectory('owner-amendment-merge-group');
+  assert.equal(resolveRunnerTempFile(receiverDir, 'verified-context.json'), 'owner-amendment-merge-group/verified-context.json');
   assert.throws(() => resolveRunnerTempDirectory('../outside'), /fixed runner temp child name/);
   assert.throws(() => resolveRunnerTempFile(dir, '../outside'), /fixed runner temp path/);
   const outside = join(root, 'outside'); mkdirSync(outside);

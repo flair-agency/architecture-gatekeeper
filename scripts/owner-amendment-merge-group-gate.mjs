@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { appendGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory, validateSelfAuthorityManifest } from '../src/runner-temp-path.mjs';
 import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from '../src/owner-amendment-tag-api.mjs';
-import { selectOwnerAmendmentMergeGroupBContext } from '../src/owner-amendment-merge-group-b-context.mjs';
+import { adaptVerifiedWorkflowRunContext, syntheticVerifiedMergeGroupEvent } from '../src/owner-amendment-workflow-run-receiver.mjs';
 import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../src/owner-amendment-merge-group-acceptance.mjs';
 import { resolveOwnerAmendmentHandoffGitContext } from '../src/owner-amendment-handoff-git-context.mjs';
 import { composeOwnerAmendmentMergeGroupEvidence } from '../src/owner-amendment-merge-group-evidence.mjs';
@@ -181,9 +181,15 @@ async function main() {
     fail('protected self repository, workspace, or token is invalid.');
   }
   const eventDir = resolveRunnerTempDirectory('owner-amendment-merge-group');
-  const event = JSON.parse(readRunnerTempFile(eventDir, 'event.json', 262_144).toString('utf8'));
-  const selection = await selectOwnerAmendmentMergeGroupBContext({ event, token });
-  if (selection.status !== 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT') fail(selection.reason ?? 'merge-group does not select one exact B.');
+  let verifiedContext;
+  try { verifiedContext = JSON.parse(readRunnerTempFile(eventDir, 'verified-context.json', 16_384).toString('utf8')); }
+  catch { fail('protected workflow-run context is unavailable.'); }
+  let selection;
+  let event;
+  try {
+    selection = adaptVerifiedWorkflowRunContext(verifiedContext);
+    event = syntheticVerifiedMergeGroupEvent(verifiedContext);
+  } catch { fail('protected workflow-run context is malformed.'); }
   let runtimeRevision;
   try { runtimeRevision = git(['rev-parse', 'HEAD']).toString('utf8').trim(); }
   catch { fail('checked-out protected verifier revision is unavailable.'); }
