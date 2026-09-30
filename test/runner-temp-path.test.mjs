@@ -1,19 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ownerAmendmentTagApiRoute, readRunnerTempFile,
-  resolveRunnerTempDirectory, resolveRunnerTempFile, validateRepositoryTreePath, validateSelfAuthorityManifest,
+  appendGitHubOutput, resolveRunnerTempDirectory, resolveRunnerTempFile, validateRepositoryTreePath, validateSelfAuthorityManifest,
   writeRunnerTempFile } from '../src/runner-temp-path.mjs';
 import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from '../src/owner-amendment-tag-api.mjs';
 
 function fixture(fn) {
   const root = mkdtempSync(join(tmpdir(), 'agk-runner-temp-'));
   const runnerTemp = join(root, 'runner-temp'); mkdirSync(runnerTemp);
-  const oldCwd = process.cwd(), oldRunnerTemp = process.env.RUNNER_TEMP;
+  const oldCwd = process.cwd(), oldRunnerTemp = process.env.RUNNER_TEMP, oldGitHubOutput = process.env.GITHUB_OUTPUT;
   try { process.chdir(runnerTemp); process.env.RUNNER_TEMP = realpathSync(runnerTemp); fn(root, process.env.RUNNER_TEMP); }
-  finally { process.chdir(oldCwd); if (oldRunnerTemp === undefined) delete process.env.RUNNER_TEMP; else process.env.RUNNER_TEMP = oldRunnerTemp; rmSync(root, { recursive: true, force: true }); }
+  finally { process.chdir(oldCwd); if (oldRunnerTemp === undefined) delete process.env.RUNNER_TEMP; else process.env.RUNNER_TEMP = oldRunnerTemp;
+    if (oldGitHubOutput === undefined) delete process.env.GITHUB_OUTPUT; else process.env.GITHUB_OUTPUT = oldGitHubOutput;
+    rmSync(root, { recursive: true, force: true }); }
 }
 
 test('confines temporary directories and files to fixed direct children', () => fixture((root, runnerTemp) => {
@@ -39,6 +41,25 @@ test('uses no-follow bounded regular-file I/O beneath the fixed runner directory
   assert.throws(() => resolveRunnerTempDirectory('not-allowlisted'), /fixed runner temp child name/);
   process.chdir(root);
   assert.throws(() => resolveRunnerTempDirectory('owner-amendment-eligibility'), /runner temp directory/);
+}));
+
+test('appends workflow outputs only to a direct runner-created command file', () => fixture((root, runnerTemp) => {
+  const commandDir = join(runnerTemp, '_runner_file_commands'); mkdirSync(commandDir);
+  const outputPath = join(commandDir, 'set_output_12345678-abcd'); writeFileSync(outputPath, '');
+  process.env.GITHUB_OUTPUT = outputPath;
+  appendGitHubOutput('route=ordinary\n');
+  assert.equal(readFileSync(outputPath, 'utf8'), 'route=ordinary\n');
+  process.env.GITHUB_OUTPUT = join(root, 'outside-output');
+  writeFileSync(process.env.GITHUB_OUTPUT, 'untouched');
+  assert.throws(() => appendGitHubOutput('route=amendment\n'), /outside the runner-created command-file directory/);
+  assert.equal(readFileSync(join(root, 'outside-output'), 'utf8'), 'untouched');
+  const outside = join(root, 'outside'); writeFileSync(outside, 'untouched');
+  const linkedPath = join(commandDir, 'set_output_link'); symlinkSync(outside, linkedPath);
+  process.env.GITHUB_OUTPUT = linkedPath;
+  assert.throws(() => appendGitHubOutput('route=amendment\n'), /direct regular file/);
+  assert.equal(readFileSync(outside, 'utf8'), 'untouched');
+  process.env.GITHUB_OUTPUT = outputPath;
+  assert.throws(() => appendGitHubOutput('x'.repeat(16_385)), /bounded text/);
 }));
 
 test('fixes the GitHub API origin, repository and owner-amendment tag namespace', () => {

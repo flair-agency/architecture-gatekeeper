@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-import { appendFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveRunnerTempDirectory, readRunnerTempFile, writeRunnerTempFile } from '../src/runner-temp-path.mjs';
+import { appendGitHubOutput, resolveRunnerTempDirectory, readRunnerTempFile, writeRunnerTempFile } from '../src/runner-temp-path.mjs';
 import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs';
 import { prepareOwnerAmendmentMergeGroupOrdinaryReview,
   validateOwnerAmendmentMergeGroupOrdinaryDecision } from '../src/owner-amendment-merge-group-ordinary-review.mjs';
@@ -44,7 +43,7 @@ async function prepare() {
     schemaSha256: createHash('sha256').update(prepared.schemaBytes).digest('hex'),
     validationSha256: createHash('sha256').update(prepared.validationBytes).digest('hex'),
     authoritySha256: createHash('sha256').update(JSON.stringify(prepared.authority)).digest('hex') }));
-  appendFileSync(process.env.GITHUB_OUTPUT, `model=${prepared.model}\neffort=${prepared.reasoningEffort}\n`);
+  appendGitHubOutput(`model=${prepared.model}\neffort=${prepared.reasoningEffort}\n`);
   process.stdout.write(`Prepared fresh ordinary review for exact current queue tuple ${prepared.baseSha}/${prepared.headSha}.\n`);
 }
 

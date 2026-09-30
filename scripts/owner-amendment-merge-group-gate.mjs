@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { appendFileSync } from 'node:fs';
-import { readRunnerTempFile, resolveRunnerTempDirectory, validateSelfAuthorityManifest } from '../src/runner-temp-path.mjs';
+import { appendGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory, validateSelfAuthorityManifest } from '../src/runner-temp-path.mjs';
 import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from '../src/owner-amendment-tag-api.mjs';
 import { selectOwnerAmendmentMergeGroupBContext } from '../src/owner-amendment-merge-group-b-context.mjs';
 import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../src/owner-amendment-merge-group-acceptance.mjs';
@@ -29,7 +28,7 @@ function selectRoute(route, selection) {
   for (const [key, value] of Object.entries(values)) {
     if (typeof value !== 'string' || /[\r\n]/.test(value) || (key !== 'route' && !/^[a-f0-9]{40}$/.test(value))) fail(`selected ${key} output is invalid.`);
   }
-  appendFileSync(process.env.GITHUB_OUTPUT, `${Object.entries(values).map(([key, value]) => `${key}=${value}`).join('\n')}\n`);
+  appendGitHubOutput(`${Object.entries(values).map(([key, value]) => `${key}=${value}`).join('\n')}\n`);
 }
 const git = args => execFileSync('git', ['-C', process.env.GITHUB_WORKSPACE, ...args], { encoding: 'buffer', maxBuffer: 2 * 1024 * 1024,
   timeout: 30_000,

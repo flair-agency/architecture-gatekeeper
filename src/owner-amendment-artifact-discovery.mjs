@@ -27,13 +27,16 @@ function validateExpected(expected) {
 }
 
 function validateRun(run, expected) {
+  const pullRequests = run?.pull_requests;
   const associations = Array.isArray(run?.pull_requests) ? run.pull_requests.filter(pr =>
     pr?.base?.ref === 'main' && pr?.base?.sha === expected.baseSha && pr?.base?.repo?.full_name === expected.repository &&
     pr?.head?.sha === expected.headSha && pr?.head?.repo?.full_name === expected.repository) : [];
   if (String(run?.id) !== String(expected.runId) || run.status !== 'completed' ||
       run.event !== 'pull_request_target' ||
       run.repository?.full_name !== expected.repository || run.head_repository?.full_name !== expected.repository ||
-      !SHA.test(run.head_sha ?? '') || associations.length !== 1 || String(run.run_attempt) !== String(expected.runAttempt) ||
+      !SHA.test(run.head_sha ?? '') || !Array.isArray(pullRequests) ||
+      (pullRequests.length === 0 ? false : pullRequests.length !== 1 || associations.length !== 1) ||
+      String(run.run_attempt) !== String(expected.runAttempt) ||
       !numericId(run.repository?.id) || !numericId(run.head_repository?.id)) {
     fail('workflow run event, repository, head, attempt, or run ID differs from trusted expectation.');
   }

@@ -1,6 +1,6 @@
 import { constants } from 'node:fs';
 import { closeSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { basename, dirname, isAbsolute, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 
 const fail = message => { throw new Error(`Runner temporary path: ${message}`); };
 const CHILD_PATHS = Object.freeze({
@@ -85,6 +85,40 @@ export function writeRunnerTempFile(directory, fileName, contents, { overwrite =
     writeFileSync(fd, contents);
   } finally { if (fd !== undefined) closeSync(fd); }
   return target;
+}
+
+/** Append bounded step outputs only to the runner-created command file under RUNNER_TEMP. */
+export function appendGitHubOutput(contents) {
+  if (typeof contents !== 'string' || contents.length === 0 || Buffer.byteLength(contents, 'utf8') > 16_384 ||
+      contents.includes('\0')) fail('workflow output must be non-empty bounded text.');
+  let runnerTemp;
+  try { runnerTemp = realpathSync(process.cwd()); } catch { fail('runner temp directory is unavailable.'); }
+  if (!process.env.RUNNER_TEMP || process.env.RUNNER_TEMP !== process.cwd()) fail('working directory is not the runner temp directory.');
+  const commandDirectory = join(runnerTemp, '_runner_file_commands');
+  let commandDirectoryStat;
+  try { commandDirectoryStat = lstatSync(commandDirectory); } catch { fail('runner command-file directory is unavailable.'); }
+  if (!commandDirectoryStat.isDirectory() || commandDirectoryStat.isSymbolicLink() || realpathSync(commandDirectory) !== commandDirectory) {
+    fail('runner command-file directory is not a direct real directory under RUNNER_TEMP.');
+  }
+  const outputPath = process.env.GITHUB_OUTPUT;
+  if (typeof outputPath !== 'string' || !isAbsolute(outputPath) || dirname(outputPath) !== commandDirectory ||
+      !/^set_output_[A-Za-z0-9_-]{1,128}$/.test(basename(outputPath)) || resolve(outputPath) !== outputPath) {
+    fail('GitHub output path is outside the runner-created command-file directory.');
+  }
+  let before;
+  try { before = lstatSync(outputPath); } catch { fail('runner-created output file is unavailable.'); }
+  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || realpathSync(outputPath) !== outputPath) {
+    fail('runner-created output is not a direct regular file.');
+  }
+  let fd;
+  try {
+    fd = openSync(outputPath, constants.O_WRONLY | constants.O_APPEND | (constants.O_NOFOLLOW ?? 0));
+    const opened = fstatSync(fd);
+    if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== before.dev || opened.ino !== before.ino) {
+      fail('runner-created output file changed during validation.');
+    }
+    writeFileSync(fd, contents);
+  } finally { if (fd !== undefined) closeSync(fd); }
 }
 
 /** Validate a Git tree path before embedding it in a revision:path argument. */

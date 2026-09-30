@@ -43,6 +43,17 @@ test('discovers the unique artifact from an exact trusted run attempt', async ()
   assert.deepEqual(OWNER_AMENDMENT_ARTIFACT_DISCOVERY_LIMITS, { pageSize: 100, maxPages: 100 });
 });
 
+test('supports captured empty PR associations while naming the exact trusted base/B/run artifact', async () => {
+  const exactArtifact = artifact();
+  exactArtifact.workflow_run.head_sha = expected.baseSha;
+  const { fetchImpl } = fetchFor({ pages: [[exactArtifact]], runValue: { ...run, head_sha: expected.baseSha, pull_requests: [] } });
+  const result = await discoverOwnerAmendmentBlockArtifact({ expected, token: 'fixture-token', fetchImpl });
+  assert.equal(result.status, 'DISCOVERED_OWNER_AMENDMENT_BLOCK_ARTIFACT', result.reason);
+  assert.equal(result.artifactName, name);
+  assert.equal(result.baseSha, expected.baseSha);
+  assert.equal(result.headSha, expected.headSha);
+});
+
 test('walks every page before returning the uniquely matching artifact', async () => {
   const unrelated = Array.from({ length: 100 }, (_, index) => ({ id: index + 100, name: 'unrelated', expired: false }));
   const { fetchImpl, requests } = fetchFor({ pages: [unrelated, [artifact(501)]] });
@@ -76,6 +87,7 @@ test('rejects mismatched run identity, artifact association, and expired metadat
     ['expired flag', f => { f.pages[0][0].expired = true; }],
     ['expired timestamp', f => { f.pages[0][0].expires_at = new Date(Date.now() - 60_000).toISOString(); }],
     ['missing timestamp', f => { delete f.pages[0][0].expires_at; }],
+    ['missing PR association field', f => { f.runValue = { ...f.runValue }; delete f.runValue.pull_requests; }],
   ]) await t.test(title, async () => {
     const f = { pages: [[artifact()]], runValue: run };
     mutate(f);

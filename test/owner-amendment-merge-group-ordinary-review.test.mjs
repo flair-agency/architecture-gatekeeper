@@ -47,14 +47,16 @@ function runCli(script, args, { cwd, env }) {
 
 test('CLI prepares private exact-tuple inputs and validates the model output in a subprocess', async () => {
   const f = fixture();
-  const runnerTemp = mkdtempSync(join(tmpdir(), 'merge-group-ordinary-runner-'));
+  const runnerTemp = realpathSync(mkdtempSync(join(tmpdir(), 'merge-group-ordinary-runner-')));
   try {
     const eventDir = join(runnerTemp, 'owner-amendment-merge-group');
     mkdirSync(eventDir, { mode: 0o700 });
     mkdirSync(join(runnerTemp, 'owner-amendment-merge-group-runner-root'));
     writeFileSync(join(eventDir, 'event.json'), JSON.stringify({ action: 'checks_requested', merge_group: {
       base_ref: 'refs/heads/main', base_sha: f.baseSha, head_sha: 'a'.repeat(40) } }), { mode: 0o600 });
-    const output = join(runnerTemp, 'github-output');
+    const commandDir = join(runnerTemp, '_runner_file_commands');
+    mkdirSync(commandDir);
+    const output = join(commandDir, 'set_output_12345678-abcd');
     writeFileSync(output, '');
     const script = new URL('../scripts/owner-amendment-merge-group-ordinary-review.mjs', import.meta.url).pathname;
     const env = { ...process.env, GITHUB_REPOSITORY: repo, GITHUB_WORKSPACE: f.root, RUNNER_TEMP: realpathSync(runnerTemp),

@@ -56,9 +56,9 @@ function capturedSelfBlockFixture() {
     repository: { id: 1379218762, full_name: captured.repository },
     head_repository: { id: 1379218762, full_name: captured.repository },
     head_sha: captured.headSha,
-    pull_requests: [{ number: 12,
-      base: { ref: 'main', sha: captured.baseSha, repo: { full_name: captured.repository } },
-      head: { sha: captured.headSha, repo: { full_name: captured.repository } } }],
+    // The captured protected-base Actions response legitimately omitted PR associations.
+    // The exact artifact name and later authenticated ReviewRecord bind expected B.
+    pull_requests: [],
   };
   const artifact = {
     id: 10930004669,
@@ -99,7 +99,7 @@ test('retrieves bounded zip bytes from the expected artifact and run', async () 
   assert.equal(requests.find(request => request.url.endsWith('/actions/artifacts/88/zip')).options.redirect, 'follow');
 });
 
-test('binds captured GitHub self BLOCK run through exact PR tuple and accepts protected trigger metadata', async () => {
+test('supports captured empty PR associations and protected trigger metadata for later exact-record binding', async () => {
   const f = capturedSelfBlockFixture();
   const result = await retrieve(f, { expected: f.captured });
   assert.equal(result.status, 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
@@ -114,6 +114,9 @@ test('binds captured GitHub self BLOCK run through exact PR tuple and accepts pr
   assert.equal(triggerBound.status, 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
 
   const wrongAssociation = capturedSelfBlockFixture();
+  wrongAssociation.run.pull_requests = [{ number: 12,
+    base: { ref: 'main', sha: wrongAssociation.captured.baseSha, repo: { full_name: wrongAssociation.captured.repository } },
+    head: { sha: wrongAssociation.captured.headSha, repo: { full_name: wrongAssociation.captured.repository } } }];
   wrongAssociation.run.pull_requests[0].head.sha = 'c'.repeat(40);
   const wrongHead = await retrieve(wrongAssociation, { expected: wrongAssociation.captured });
   assert.equal(wrongHead.status, 'INCOMPLETE');
