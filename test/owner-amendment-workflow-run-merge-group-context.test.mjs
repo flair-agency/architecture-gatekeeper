@@ -52,7 +52,13 @@ function fixture(overrides = {}) {
     if (url === `${root}/git/ref/heads/main`) return response(state.mainRef);
     if (url === `${root}/git/commits/${groupSha}`) return response(state.groupCommit);
     if (url === `${root}/git/commits/${bSha}`) return response(state.bCommit);
-    if (url === `${root}/commits/${bSha}/pulls?per_page=100&page=1`) return response(state.associated ?? [state.pr]);
+    const pullListPrefix = `${root}/commits/${bSha}/pulls?per_page=100&page=`;
+    if (url.startsWith(pullListPrefix)) {
+      const page = Number(url.slice(pullListPrefix.length));
+      if (Array.isArray(state.associatedPages)) return response(state.associatedPages[page - 1] ?? []);
+      if (page === 1) return response(state.associated ?? [state.pr]);
+      return response([]);
+    }
     if (url === 'https://api.github.com/graphql') {
       const payload = JSON.parse(options.body);
       const projected = structuredClone(state.graph);
@@ -124,6 +130,31 @@ test('rejects stale completed run after the same base, B, and queue entry rebuil
   assert.equal(result.status, 'INCOMPLETE');
   assert.match(result.reason, /live queue ref/);
   assert.equal(f.calls.length, 2);
+});
+
+test('continues associated-PR pagination and selects the exact B found only on page 2', async () => {
+  const f = fixture();
+  const unrelatedPage = Array.from({ length: 100 }, (_, index) => ({
+    ...structuredClone(f.state.pr), number: 300 + index, head: { ...f.state.pr.head, sha: 'd'.repeat(40) },
+  }));
+  f.state.associatedPages = [unrelatedPage, [f.state.pr]];
+  const result = await f.resolve();
+  assert.equal(result.status, 'SELECTED_OWNER_AMENDMENT_WORKFLOW_RUN_MERGE_GROUP_CONTEXT');
+  assert.equal(result.bPrNumber, '216');
+  assert.ok(f.calls.some(call => call.url.endsWith('/pulls?per_page=100&page=2')));
+});
+
+test('fails closed when associated-PR pagination remains full through its 100-page limit', async () => {
+  const f = fixture();
+  const fullPage = Array.from({ length: 100 }, (_, index) => ({
+    ...structuredClone(f.state.pr), number: 400 + index, head: { ...f.state.pr.head, sha: 'd'.repeat(40) },
+  }));
+  f.state.associatedPages = Array.from({ length: 100 }, () => fullPage);
+  const result = await f.resolve();
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /exceeds the page limit/);
+  assert.equal(f.calls.filter(call => call.url.includes('/pulls?per_page=100&page=')).length, 100);
+  assert.equal(f.calls.some(call => call.url === 'https://api.github.com/graphql'), false);
 });
 
 test('requires exact live queue ref name, commit object type, and head SHA', async t => {
