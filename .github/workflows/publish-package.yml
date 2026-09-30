@@ -8,6 +8,12 @@ permissions:
   contents: read
   packages: write
 
+# Stable and preview releases share registry dist-tags; never cancel an in-progress publish.
+concurrency:
+  group: architecture-gatekeeper-package-publication
+  cancel-in-progress: false
+  queue: max
+
 jobs:
   publish:
     runs-on: ubuntu-latest

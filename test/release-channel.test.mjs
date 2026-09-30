@@ -101,3 +101,8 @@ test('publish workflow validates tag identity and always passes the derived chan
   assert.match(workflow, /Capture stable latest before preview publish[\s\S]*?if: steps\.release\.outputs\.channel == 'preview'/);
   assert.match(workflow, /node scripts\/release-channel\.mjs verify-registry/);
 });
+
+test('serializes publication and queues pending tags without canceling in-progress work', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/publish-package.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /^concurrency:\n  group: architecture-gatekeeper-package-publication\n  cancel-in-progress: false\n  queue: max\n/m);
+});
