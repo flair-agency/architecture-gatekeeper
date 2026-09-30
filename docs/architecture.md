@@ -1075,8 +1075,8 @@ protected-base policy. Both preserve historical semantic results and establish
 exact B, protected evidence, canonical readback, and fresh review where
 applicable. A numbered preview may distribute improvements to existing
 supported paths for feedback with new `OWNER_AMENDMENT` and App routes inactive;
-it claims no rollout, enforcement, or completion. Final v0.6.0 still requires
-both cases. The first BLOCK-triggered deployment selects the
+it makes no rollout, enforcement, or completion claims for those new targets.
+Final v0.6.0 still requires both cases. The first BLOCK-triggered deployment selects the
 following existing host primitives, subject to the validation requirements
 above and an explicit previous-base policy opt-in:
 
