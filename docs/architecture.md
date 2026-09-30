@@ -179,8 +179,8 @@ canonical decision. A historical semantic result is never rewritten as `PASS`.
 | Publish report | Prior-policy/host-selected producer; candidate YAML cannot select/authorize/replace it |
 | Protect producer; enforce check/target transition | Host/admins, per route config |
 
-Protected-base inputs/pinned actions alone prove neither caller nor producer
-protection. Provenance routes identify/verify the producer per evidence
+Protected-base inputs/pinned actions/workflows alone prove neither caller nor
+producer protection. Provenance routes identify/verify the producer per evidence
 contract. The semantic reviewer cannot select/authorize it; its ReviewRecord
 grants no acceptance. Review and acceptance verification remain distinct.
 
