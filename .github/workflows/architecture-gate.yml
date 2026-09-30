@@ -774,13 +774,15 @@ jobs:
       - name: Run B-specific semantic eligibility review
         id: codex-eligibility
         if: steps.prepare.outputs.status == 'prepared'
-        uses: flair-agency/codex-action@8d35ab0e294c9ca3603f738c9cdf74d53081852f
+        timeout-minutes: 5
+        uses: flair-agency/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           prompt-file: ${{ runner.temp }}/owner-amendment-eligibility/eligibility-prompt.md
           output-schema-file: ${{ runner.temp }}/owner-amendment-eligibility/eligibility.schema.json
           model: ${{ steps.prepare.outputs.model }}
           effort: ${{ steps.prepare.outputs.effort }}
+          timeout-seconds: "240"
           sandbox: read-only
           safety-strategy: drop-sudo
           codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
