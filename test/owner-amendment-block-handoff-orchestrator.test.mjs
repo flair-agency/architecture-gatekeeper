@@ -59,11 +59,13 @@ function fixture({ decision = 'BLOCK', discoveryChanges = {}, failTagCreate = fa
   const bundleBytes = Buffer.from('{"fixture":"verified attestation bundle"}\n');
   const zipBytes = makeZip([{ name: 'review-record.json', bytes: recordBytes }, { name: 'attestation-bundle.json', bytes: bundleBytes }]);
   const run = { id: Number(runId), status: 'completed', event: 'pull_request_target', run_attempt: Number(runAttempt),
-    repository: { full_name: repository, id: 10 }, head_repository: { full_name: repository, id: 10 }, head_sha: aSha };
+    repository: { full_name: repository, id: 10 }, head_repository: { full_name: repository, id: 10 }, head_sha: baseSha,
+    pull_requests: [{ base: { ref: 'main', sha: baseSha, repo: { full_name: repository } },
+      head: { sha: aSha, repo: { full_name: repository } } }] };
   const artifactName = `owner-amendment-block-${baseSha}-${aSha}-${runId}-${runAttempt}`;
   const artifact = { id: artifactId, name: artifactName, expired: false, size_in_bytes: zipBytes.length,
     digest: `sha256:${sha(zipBytes)}`, expires_at: new Date(Date.now() + 60_000).toISOString(), workflow_run: { id: Number(runId), repository_id: 10,
-      head_repository_id: 10, head_sha: aSha } };
+      head_repository_id: 10, head_sha: baseSha } };
   Object.assign(artifact, discoveryChanges);
   const signer = `https://github.com/${repository}/.github/workflows/architecture-gate.yml@${workflowRef}`;
   const caller = `https://github.com/${repository}/${workflowPath}@${workflowRef}`;

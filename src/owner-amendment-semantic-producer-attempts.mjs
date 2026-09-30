@@ -1,5 +1,5 @@
 const SELF_REPOSITORY = 'flair-agency/architecture-gatekeeper';
-const WORKFLOW_PATH = /^\.github\/workflows\/self-architecture-gate\.yml@(?:refs\/heads\/main|main)$/;
+const WORKFLOW_PATH = /^\.github\/workflows\/self-architecture-gate\.yml(?:@(?:refs\/heads\/main|main))?$/;
 const SHA1 = /^[a-f0-9]{40}$/;
 const PAGE_SIZE = 100;
 const MAX_RUN_PAGES = 10;
@@ -23,9 +23,9 @@ function compareSignerAttempts(left, right) {
  * classification and eligibility artifact selection. Only successful signer
  * jobs completed before queue entry establish that an amendment attempt exists.
  */
-export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository, bHeadSha,
+export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha,
   queueEnteredAt, listRuns, listJobs } = {}) {
-  if (repository !== SELF_REPOSITORY || !SHA1.test(bHeadSha ?? '') ||
+  if (repository !== SELF_REPOSITORY || !SHA1.test(bBaseSha ?? '') || !SHA1.test(bHeadSha ?? '') || bBaseSha === bHeadSha ||
       typeof listRuns !== 'function' || typeof listJobs !== 'function') {
     fail('protected repository, exact B SHA, and trusted run/job readers are required.');
   }
@@ -55,9 +55,15 @@ export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository
     if (page === MAX_RUN_PAGES) fail('protected producer workflow run listing exceeds the bounded pagination limit.');
   }
   if (runs.length !== totalCount) fail('protected producer workflow run listing is incomplete.');
-  const candidates = runs.filter(run => run?.repository?.full_name === SELF_REPOSITORY &&
-    run?.head_repository?.full_name === SELF_REPOSITORY && run?.event === 'pull_request_target' &&
-    run?.head_sha === bHeadSha && WORKFLOW_PATH.test(run?.path ?? ''))
+  const candidates = runs.filter(run => {
+    if (run?.repository?.full_name !== SELF_REPOSITORY || run?.head_repository?.full_name !== SELF_REPOSITORY ||
+        run?.event !== 'pull_request_target' || !WORKFLOW_PATH.test(run?.path ?? '') || !SHA1.test(run?.head_sha ?? '') ||
+        !Array.isArray(run?.pull_requests)) return false;
+    const exactPullRequests = run.pull_requests.filter(pr => pr?.base?.ref === 'main' && pr?.base?.sha === bBaseSha &&
+      pr?.base?.repo?.full_name === SELF_REPOSITORY && pr?.head?.sha === bHeadSha &&
+      pr?.head?.repo?.full_name === SELF_REPOSITORY);
+    return exactPullRequests.length === 1;
+  })
     .map(run => {
       const runAttemptCount = Number(run.run_attempt);
       if (!Number.isSafeInteger(run.id) || run.id < 1 || !Number.isSafeInteger(runAttemptCount) || runAttemptCount < 1) {
@@ -89,7 +95,7 @@ export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository
         for (const job of jobsResponse.jobs) {
           if (!Number.isSafeInteger(job?.id) || job.id < 1 || seenJobIds.has(job.id) ||
               job.run_id !== run.id || (job.run_attempt !== undefined && Number(job.run_attempt) !== runAttempt) ||
-              job.head_sha !== bHeadSha) {
+              !SHA1.test(job.head_sha ?? '') || job.head_sha !== run.head_sha) {
             fail('protected producer job pagination contains an invalid, duplicate, or mismatched job identity.');
           }
           seenJobIds.add(job.id);
@@ -102,7 +108,7 @@ export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository
         if (page === MAX_JOB_PAGES) fail('protected producer job listing exceeds the bounded pagination limit.');
       }
       if (jobs.length !== jobTotalCount) fail('protected producer job listing is incomplete.');
-      const matches = jobs.filter(job => job.name === 'owner-amendment-semantic-eligibility-signer');
+      const matches = jobs.filter(job => job.name === 'architecture-gate / owner-amendment-semantic-eligibility-signer');
       if (matches.length > 1) fail('protected producer run attempt has duplicate semantic eligibility signer jobs.');
       if (!matches.length) continue;
       const job = matches[0];

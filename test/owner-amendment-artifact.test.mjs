@@ -11,7 +11,9 @@ function fixture({ attempt = 2, latestAttempt = attempt } = {}) {
   const repo = { id: 7, full_name: expected.repository };
   const headRepo = { id: 7, full_name: expected.repository };
   const run = { id: 42, event: 'pull_request_target', run_attempt: attempt, repository: repo, head_repository: headRepo,
-    head_sha: expected.headSha, pull_requests: [] };
+    head_sha: expected.headSha, pull_requests: [{ number: 12,
+      base: { ref: 'main', sha: expected.baseSha, repo: { full_name: expected.repository } },
+      head: { sha: expected.headSha, repo: { full_name: expected.repository } } }] };
   const latestRun = { ...run, run_attempt: latestAttempt };
   const artifact = { id: 88, name: `owner-amendment-block-${expected.baseSha}-${expected.headSha}-42-${attempt}`, expired: false,
     size_in_bytes: zip.length, digest: digest(zip), workflow_run: { id: 42, repository_id: 7, head_repository_id: 7, head_sha: expected.headSha } };
@@ -54,7 +56,9 @@ function capturedSelfBlockFixture() {
     repository: { id: 1379218762, full_name: captured.repository },
     head_repository: { id: 1379218762, full_name: captured.repository },
     head_sha: captured.headSha,
-    pull_requests: [],
+    pull_requests: [{ number: 12,
+      base: { ref: 'main', sha: captured.baseSha, repo: { full_name: captured.repository } },
+      head: { sha: captured.headSha, repo: { full_name: captured.repository } } }],
   };
   const artifact = {
     id: 10930004669,
@@ -95,7 +99,7 @@ test('retrieves bounded zip bytes from the expected artifact and run', async () 
   assert.equal(requests.find(request => request.url.endsWith('/actions/artifacts/88/zip')).options.redirect, 'follow');
 });
 
-test('accepts captured GitHub self BLOCK metadata with PR head SHA and rejects base SHA as the head', async () => {
+test('binds captured GitHub self BLOCK run through exact PR tuple and accepts protected trigger metadata', async () => {
   const f = capturedSelfBlockFixture();
   const result = await retrieve(f, { expected: f.captured });
   assert.equal(result.status, 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
@@ -103,7 +107,15 @@ test('accepts captured GitHub self BLOCK metadata with PR head SHA and rejects b
   assert.equal(result.headSha, f.captured.headSha);
   assert.deepEqual(result.zipBytes, f.zip);
 
-  const wrongHead = await retrieve(f, { expected: { ...f.captured, headSha: f.captured.baseSha } });
+  const triggerRevision = capturedSelfBlockFixture();
+  triggerRevision.run.head_sha = triggerRevision.captured.baseSha;
+  triggerRevision.artifact.workflow_run.head_sha = triggerRevision.captured.baseSha;
+  const triggerBound = await retrieve(triggerRevision, { expected: triggerRevision.captured });
+  assert.equal(triggerBound.status, 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
+
+  const wrongAssociation = capturedSelfBlockFixture();
+  wrongAssociation.run.pull_requests[0].head.sha = 'c'.repeat(40);
+  const wrongHead = await retrieve(wrongAssociation, { expected: wrongAssociation.captured });
   assert.equal(wrongHead.status, 'INCOMPLETE');
   assert.match(wrongHead.reason, /head, attempt, or run ID differs/);
 });

@@ -27,10 +27,13 @@ function validateExpected(expected) {
 }
 
 function validateRun(run, expected) {
+  const associations = Array.isArray(run?.pull_requests) ? run.pull_requests.filter(pr =>
+    pr?.base?.ref === 'main' && pr?.base?.sha === expected.baseSha && pr?.base?.repo?.full_name === expected.repository &&
+    pr?.head?.sha === expected.headSha && pr?.head?.repo?.full_name === expected.repository) : [];
   if (String(run?.id) !== String(expected.runId) || run.status !== 'completed' ||
       run.event !== 'pull_request_target' ||
       run.repository?.full_name !== expected.repository || run.head_repository?.full_name !== expected.repository ||
-      run.head_sha !== expected.headSha || String(run.run_attempt) !== String(expected.runAttempt) ||
+      !SHA.test(run.head_sha ?? '') || associations.length !== 1 || String(run.run_attempt) !== String(expected.runAttempt) ||
       !numericId(run.repository?.id) || !numericId(run.head_repository?.id)) {
     fail('workflow run event, repository, head, attempt, or run ID differs from trusted expectation.');
   }
@@ -45,7 +48,7 @@ function validateArtifact(artifact, expected, run, expectedName) {
       !numericId(artifact.workflow_run?.repository_id) || !numericId(artifact.workflow_run?.head_repository_id) ||
       artifact.workflow_run.repository_id !== run.repository.id ||
       artifact.workflow_run.head_repository_id !== run.head_repository.id ||
-      artifact.workflow_run.head_sha !== expected.headSha) {
+      artifact.workflow_run.head_sha !== run.head_sha) {
     fail('matching artifact has invalid identity, run association, or expiry metadata.');
   }
   return artifact;

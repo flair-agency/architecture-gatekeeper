@@ -322,7 +322,7 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.match(caller, /pull_request_target:/);
   assert.match(caller, /uses: \.\/\.github\/workflows\/architecture-gate\.yml/);
   assert.match(pullRequestCaller, /contents: read/);
-  assert.doesNotMatch(pullRequestCaller, /actions: read/);
+  assert.match(pullRequestCaller, /actions: read/);
   assert.match(pullRequestCaller, /pull-requests: write/);
   assert.match(pullRequestCaller, /protected-review-instructions: true/);
   assert.match(pullRequestCaller, /schema-path: \.codex\/gatekeeper\/ci-decision\.schema\.json/);

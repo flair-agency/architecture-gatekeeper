@@ -46,9 +46,8 @@ async function getJson(url, { expectedOwnerAmendmentTagUrl } = {}) {
 }
 
 async function inspectProducerAttempts(selection) {
-  const readRuns = async ({ bHeadSha, page, perPage }) => {
-    const runsUrl = new URL('repos/flair-agency/architecture-gatekeeper/actions/runs', api);
-    runsUrl.searchParams.set('head_sha', bHeadSha);
+  const readRuns = async ({ page, perPage }) => {
+    const runsUrl = new URL('repos/flair-agency/architecture-gatekeeper/actions/workflows/self-architecture-gate.yml/runs', api);
     runsUrl.searchParams.set('event', 'pull_request_target');
     runsUrl.searchParams.set('per_page', String(perPage));
     runsUrl.searchParams.set('page', String(page));
@@ -64,7 +63,7 @@ async function inspectProducerAttempts(selection) {
     if (!Number.isSafeInteger(result.total_count) || !Array.isArray(result.jobs)) fail('producer job listing is malformed.');
     return { total_count: result.total_count, jobs: result.jobs };
   };
-  return inspectOwnerAmendmentSemanticProducerAttempts({ repository, bHeadSha: selection.bHeadSha,
+  return inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha: selection.bBaseSha, bHeadSha: selection.bHeadSha,
     queueEnteredAt: selection.queueEnteredAt, listRuns: readRuns, listJobs: readJobs });
 }
 
@@ -124,9 +123,11 @@ async function main() {
   catch { fail('previous protected CI policy is absent.'); }
   const parsedPolicy = parseCiPolicyJson(new TextDecoder('utf-8', { fatal: true }).decode(policyBytes));
   const selectedPolicy = resolveCiPolicy(parsedPolicy, 'main');
-  if (selectedPolicy.mode !== 'enforced' || selectedPolicy.ownerAmendmentGrade !== 'G0') {
+  if (selectedPolicy.mode === 'local-only' ||
+      (selectedPolicy.mode === 'enforced' && selectedPolicy.ownerAmendmentGrade !== 'G0')) {
     process.stdout.write('OWNER_AMENDMENT_NOT_APPLICABLE: previous-base policy has no active G0 route.\n'); return;
   }
+  if (selectedPolicy.mode !== 'enforced') fail('merge-group ordinary review currently supports only the protected enforced self policy.');
   if (!['completed-block-v1', 'completed-owner-decision-self-v1'].includes(selectedPolicy.ownerAmendmentTriggerProfile)) {
     fail('previous-base policy selected an unsupported trigger profile.');
   }

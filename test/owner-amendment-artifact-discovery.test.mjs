@@ -8,7 +8,9 @@ const name = `owner-amendment-block-${expected.baseSha}-${expected.headSha}-${ex
 const expiresAt = new Date(Date.now() + 60_000).toISOString();
 const run = Object.freeze({ id: 42, status: 'completed', event: 'pull_request_target', run_attempt: 2,
   repository: { id: 7, full_name: expected.repository }, head_repository: { id: 7, full_name: expected.repository },
-  head_sha: expected.headSha });
+  head_sha: expected.headSha, pull_requests: [{ number: 12,
+    base: { ref: 'main', sha: expected.baseSha, repo: { full_name: expected.repository } },
+    head: { sha: expected.headSha, repo: { full_name: expected.repository } } }] });
 const artifact = (id = 88) => ({ id, name, expired: false, expires_at: expiresAt,
   workflow_run: { id: 42, repository_id: 7, head_repository_id: 7, head_sha: expected.headSha } });
 
@@ -77,6 +79,20 @@ test('rejects mismatched run identity, artifact association, and expired metadat
   ]) await t.test(title, async () => {
     const f = { pages: [[artifact()]], runValue: run };
     mutate(f);
+    const { fetchImpl } = fetchFor(f);
+    const result = await discoverOwnerAmendmentBlockArtifact({ expected, token: 'x', fetchImpl });
+    assert.equal(result.status, 'INCOMPLETE');
+  });
+  await t.test('uses exact pull-request tuple when workflow head metadata names protected trigger revision', async () => {
+    const f = { pages: [[artifact()]], runValue: { ...run, head_sha: expected.baseSha } };
+    f.pages[0][0].workflow_run.head_sha = expected.baseSha;
+    const { fetchImpl } = fetchFor(f);
+    const result = await discoverOwnerAmendmentBlockArtifact({ expected, token: 'x', fetchImpl });
+    assert.equal(result.status, 'DISCOVERED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
+  });
+  await t.test('rejects a run associated with a stale base even when head SHA matches', async () => {
+    const f = { pages: [[artifact()]], runValue: { ...run, pull_requests: [{ ...run.pull_requests[0],
+      base: { ...run.pull_requests[0].base, sha: 'c'.repeat(40) } }] } };
     const { fetchImpl } = fetchFor(f);
     const result = await discoverOwnerAmendmentBlockArtifact({ expected, token: 'x', fetchImpl });
     assert.equal(result.status, 'INCOMPLETE');

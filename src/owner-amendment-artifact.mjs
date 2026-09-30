@@ -87,12 +87,16 @@ export async function fetchOwnerAmendmentBlockArtifact({ expected, token, fetchI
     // The unqualified endpoint describes the latest attempt. A retried run can
     // therefore hide the metadata for the exact producer attempt being checked.
     const run = await getJson(`${api}/repos/${repo}/actions/runs/${runId}/attempts/${runAttempt}`);
-    // REST run.head_sha and artifact.workflow_run.head_sha identify the PR head
-    // for our observed pull_request_target producer. They are distinct from the
-    // event's GITHUB_SHA, which identifies the protected base workflow revision.
+    // GitHub Actions run metadata can expose the protected trigger revision in
+    // head_sha; the pull_requests tuple binds the candidate. The verified
+    // receipt and attestation later bind exact B and the protected workflow.
+    const associations = Array.isArray(run?.pull_requests) ? run.pull_requests.filter(pr =>
+      pr?.base?.ref === 'main' && pr?.base?.sha === expected.baseSha && pr?.base?.repo?.full_name === expected.repository &&
+      pr?.head?.sha === expected.headSha && pr?.head?.repo?.full_name === expected.repository) : [];
     if (String(run.id) !== String(expected.runId) || run.event !== 'pull_request_target' ||
         run.repository?.full_name !== expected.repository ||
-        run.head_repository?.full_name !== expected.repository || run.head_sha !== expected.headSha ||
+        run.head_repository?.full_name !== expected.repository || !/^[a-f0-9]{40}$/.test(run.head_sha ?? '') ||
+        associations.length !== 1 ||
         String(run.run_attempt) !== String(expected.runAttempt) ||
         !validGitHubNumericId(run.repository?.id) || !validGitHubNumericId(run.head_repository?.id)) {
       fail('workflow run event, repository, head, attempt, or run ID differs from trusted expectation.');
@@ -105,7 +109,7 @@ export async function fetchOwnerAmendmentBlockArtifact({ expected, token, fetchI
         !validGitHubNumericId(artifact.workflow_run?.head_repository_id) ||
         artifact.workflow_run?.repository_id !== run.repository?.id ||
         artifact.workflow_run?.head_repository_id !== run.head_repository?.id ||
-        artifact.workflow_run?.head_sha !== expected.headSha ||
+        artifact.workflow_run?.head_sha !== run.head_sha ||
         !Number.isSafeInteger(artifact.size_in_bytes) || artifact.size_in_bytes < 1 || artifact.size_in_bytes > MAX_ZIP_BYTES ||
         typeof artifact.digest !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(artifact.digest)) {
       fail('artifact metadata is expired, oversized, or does not match the trusted run identity.');
