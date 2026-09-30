@@ -172,41 +172,34 @@ canonical decision. A historical semantic result is never rewritten as `PASS`.
 
 ### Acceptance authority and host enforcement boundary
 
-Acceptance authority is divided among the consumer owner, Gatekeeper, the
-producer and the hosting service or its administrators:
-
 | Responsibility | Authority |
 | --- | --- |
-| Define architecture, protected policy, required evidence and permitted procedure | Consumer owner; canonical authority and protected policy |
-| Resolve exact selected inputs, validate evidence and report result | Gatekeeper |
-| Publish report | Producer selected by prior policy/host config; candidate YAML cannot authorize or replace it |
-| Protect producer and enforce check/target transition | Hosting service and administrators, as configured for the route |
+| Define architecture, protected policy, required evidence/permitted procedure | Consumer owner; canonical authority/protected policy |
+| Resolve exact selected inputs, validate evidence and report | Gatekeeper |
+| Publish report | Prior-policy/host-selected producer; candidate YAML cannot select/authorize/replace it |
+| Protect producer; enforce check/target transition | Host/admins, per route config |
 
-Protected-base inputs or pinned actions/workflows alone do not establish
-caller or producer protection. Producer-provenance routes identify and verify
-the producer under their evidence contract. The semantic reviewer cannot
-select or authorize it; its ReviewRecord grants no acceptance. Review and
-acceptance verification remain distinct, even within one workflow.
+Protected-base inputs/pinned actions alone prove neither caller nor producer
+protection. Provenance routes identify/verify the producer per evidence
+contract. The semantic reviewer cannot select/authorize it; its ReviewRecord
+grants no acceptance. Review and acceptance verification remain distinct.
 
-Host enforcement is independent of authentication, semantic eligibility,
-procedural adoption and canonical readback. Claim it only with evidence of the
-host rule for the exact producer, check and target transition. Without
-evidence, no enforcement claim is allowed; block adoption only when prior
-policy requires enforcement. This preserves procedural routes and fail-closed
-behavior for enforced routes.
+Host enforcement is independent of auth, semantic eligibility,
+procedural adoption and canonical readback. Claim only with evidence of the
+configured rule for exact producer, required check and target transition.
+Without evidence, no claim; block adoption only if prior policy requires enforcement.
+Procedural routes remain distinct; enforced routes fail closed.
 
-Each profile or adapter specifies producer/actor identities, execution and
-credential boundaries, exact revision selection, host capabilities/limits and property
-verification. Application, workflow and hosted-service examples describe
-mechanisms; they activate none. This adds no evidence grade, backend, universal
-application or stronger identity rule, and enables no route or architecture.
+Profiles/adapters specify producer/actor IDs, execution/credential boundaries,
+exact revision selection, host capabilities/limits and property verification.
+Examples describe mechanisms, not consumer routes. No new evidence grade/backend,
+universal application requirement or stronger identity requirement. This
+activates no route and decides no consumer architecture.
 
-The [OWNER_ADDITION assurance dimensions](#owner_addition-adoption-and-assurance-dimensions-issue-121-owner-decision)
-and [target evidence and acceptance contract](#target-evidence-and-acceptance-contract)
-define route-specific rules.
+See the OWNER_ADDITION and target evidence/acceptance sections for route rules.
 
-The diagram shows an enforced profile; procedural profiles retain their
-separately adopted assurance.
+Enforced-profile diagram; procedural profiles retain separately adopted
+assurance.
 
 ```mermaid
 flowchart LR
@@ -930,25 +923,17 @@ repository's self-review does.
 
 #### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)
 
-For GitHub Actions CI model review, OpenAI API Workload Identity Federation
-(WIF) may be implemented as an authentication-only alternative to the current
-API-key path. This target concerns API Platform credentials for OpenAI API
-requests; it is distinct from managed-workspace Codex WIF using ChatGPT
-authentication. The GitHub Actions OIDC token-request capability, issued
-identity assertion, and exchanged API access token belong to the trusted CI
-execution boundary and must remain separated from the semantic reviewer and
-its tools, pull-request code, and package lifecycle scripts. Only the
-protected base policy may select WIF; a candidate change cannot select or
-enable it for its own review.
+GitHub Actions CI may use OpenAI API WIF for auth only, instead of API keys.
+This API Platform auth differs from managed-workspace Codex WIF (ChatGPT auth).
+Keep OIDC request capability, assertion and exchanged API token in trusted CI,
+isolated from semantic reviewer/tools, PR code and package lifecycle scripts.
+Only prior protected base policy may select WIF; candidates cannot select or
+enable it for their own review.
 
-When protected policy selects WIF, any missing, invalid, or unavailable WIF
-authentication leaves the model review incomplete. The route must not fall
-back automatically to an API key or weaken the required acceptance policy.
-This authentication target does not change the reviewer, review inputs,
-structured decision contract, evidence requirements, or acceptance semantics.
-Until WIF is implemented and verified and protected policy selects it, the
-existing API-key path remains in use. This target does not activate WIF or
-change the v0.6.0 rollout.
+Missing/invalid/unavailable selected WIF leaves review incomplete; no API-key
+fallback or weaker acceptance. API keys remain until WIF is implemented,
+verified and selected by protected policy. No reviewer, input, decision,
+evidence, acceptance or v0.6.0 rollout changes; WIF remains inactive.
 
 #### Target: legacy v1 CI authority repair (Issue #120 owner decision)
 
