@@ -16,7 +16,7 @@ const amendment = {
 
 function policy(ownerAmendment) {
   const branch = {
-    mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
+    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
     authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: limits,
   };
   if (ownerAmendment !== undefined) branch.ownerAmendment = ownerAmendment;
@@ -69,7 +69,7 @@ test('owner amendment selection rejects malformed scope, authority, producer, na
 });
 
 test('owner amendment selection is limited to v2 enforced branches with a selected Authority Set', () => {
-  const unsupportedBranch = { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', ownerAmendment: amendment };
+  const unsupportedBranch = { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', ownerAmendment: amendment };
   assert.throws(() => resolveCiPolicy({ version: 4, default: { mode: 'local-only' }, branches: { main: unsupportedBranch } }, 'main'));
   assert.throws(() => resolveCiPolicy({ version: 5, default: { mode: 'local-only' }, branches: { main: unsupportedBranch } }, 'main'));
   assert.throws(() => resolveCiPolicy({ version: 5, default: { mode: 'local-only' }, branches: { main: { mode: 'local-only', ownerAmendment: amendment } } }, 'main'));

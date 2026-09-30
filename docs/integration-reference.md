@@ -179,7 +179,7 @@ branch use one of these shapes:
   "branches": {
     "main": {
       "mode": "enforced",
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "reasoningEffort": "medium",
       "authorityFiles": ["docs/architecture.md"],
       "promptPath": ".codex/gatekeeper/ci-prompt.md",
@@ -224,7 +224,7 @@ branch. The protected-base branch entry must declare both
   "branches": {
     "main": {
       "mode": "enforced",
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "reasoningEffort": "medium",
       "authorityManifestPath": ".codex/gatekeeper/authorities.json",
       "authorityLimits": {
@@ -357,7 +357,7 @@ base-selected set; candidate B bytes and its diff are additional evidence.
   "branches": {
     "main": {
       "mode": "enforced",
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "reasoningEffort": "medium",
       "authorityManifestPath": ".codex/gatekeeper/authorities.json",
       "authorityLimits": {

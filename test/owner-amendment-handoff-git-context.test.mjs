@@ -15,7 +15,7 @@ const limits = { maxManifestBytes: 16_384, maxMembers: 16, maxFileBytes: 65_536,
 const policy = {
   version: 2,
   default: { mode: 'local-only' },
-  branches: { main: { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
+  branches: { main: { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
     authorityManifestPath: manifestPath, authorityLimits: limits,
     ownerAmendment: { version: 1, grade: 'G0', scope: 'authority-only',
       triggerProfile: 'completed-block-v1', authorityId: 'architecture-contract',

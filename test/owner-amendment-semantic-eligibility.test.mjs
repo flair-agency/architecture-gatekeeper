@@ -38,7 +38,7 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
   const policy = {
     version: 2,
     default: { mode: 'local-only' },
-    branches: { [baseBranch]: { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
+    branches: { [baseBranch]: { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
       authorityManifestPath: '.codex/gatekeeper/authorities.json',
       authorityLimits: { maxManifestBytes: 16_384, maxMembers: 16, maxFileBytes,
         maxTotalBytes, maxPromptBytes: 524_288 },

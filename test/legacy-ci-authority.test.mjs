@@ -46,7 +46,7 @@ test('legacy v1 uses recorded-base arbitrary authority paths and binds every rev
   const schemaPath = '.codex/gatekeeper/decision.schema.json';
   const validationPath = '.codex/gatekeeper/decision.validation.json';
   const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: {
-    mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authorityFiles: [authorityPath],
+    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authorityFiles: [authorityPath],
     promptPath, schemaPath, validationPath,
   } } };
   write(root, policyPath, JSON.stringify(policy));
@@ -98,7 +98,7 @@ test('legacy v1 does not attribute a base-only authority update to the candidate
   const promptPath = '.codex/gatekeeper/ci-prompt.md';
   const schemaPath = '.codex/gatekeeper/decision.schema.json';
   write(root, policyPath, JSON.stringify({ version: 1, default: { mode: 'local-only' }, branches: { main: {
-    mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'low', authorityFiles: [authorityPath],
+    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'low', authorityFiles: [authorityPath],
     promptPath, schemaPath, validationPath: null,
   } } }));
   write(root, promptPath, 'Review the selected authority.');
@@ -136,7 +136,7 @@ for (const [kind, badPath] of Object.entries(selectedPaths)) {
     t.after(() => rmSync(root, { recursive: true, force: true }));
     git(root, 'init', '-q');
     const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: {
-      mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authorityFiles: [selectedPaths.authority],
+      mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authorityFiles: [selectedPaths.authority],
       promptPath: selectedPaths.prompt, schemaPath: selectedPaths.schema, validationPath: selectedPaths.validation,
     } } };
     write(root, selectedPaths.policy, JSON.stringify(policy));

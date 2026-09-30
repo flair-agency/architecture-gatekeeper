@@ -218,7 +218,7 @@ jobs:
         run: |
           test "$REPOSITORY" = flair-agency/architecture-gatekeeper
           test "$WORKFLOW_REF" = flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main
-          test "$MODEL" = gpt-6-sol
+          test "$MODEL" = gpt-6.1-sol
           test "$EFFORT" = medium
       - name: Check enforced credentials
         env:

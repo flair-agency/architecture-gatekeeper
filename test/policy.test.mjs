@@ -10,8 +10,8 @@ import { MAX_AUTHORITY_LIMITS, MULTI_AUTHORITY_PROFILE, materializeAuthoritySet,
 import { validateAuthorityReviewSchema } from '../src/preflight-authority-set-review.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium', authorityFiles: ['docs/architecture.md'], promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json', validationPath: null } } };
-test('resolves exact base-branch policy', () => assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-5.6-sol', reasoningEffort: 'medium', policyVersion: 1, legacyAuthorityFilesBase64: Buffer.from('["docs/architecture.md"]').toString('base64'), legacyPromptPath: '.codex/gatekeeper/ci-prompt.md', legacySchemaPath: '.codex/gatekeeper/decision.schema.json', legacyValidationPath: '' }));
+const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authorityFiles: ['docs/architecture.md'], promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json', validationPath: null } } };
+test('resolves exact base-branch policy', () => assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', policyVersion: 1, legacyAuthorityFilesBase64: Buffer.from('["docs/architecture.md"]').toString('base64'), legacyPromptPath: '.codex/gatekeeper/ci-prompt.md', legacySchemaPath: '.codex/gatekeeper/decision.schema.json', legacyValidationPath: '' }));
 test('legacy v1 enforced policy requires canonical paths and an explicit validation selection', () => {
   const { validationPath: _validationPath, ...missingValidation } = policy.branches.main;
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: missingValidation } }, 'main'), /explicit base-selected validationPath or null/);
@@ -52,7 +52,7 @@ test('rejects v2-like selectors instead of silently using the legacy route', () 
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: policy.branches.main, preview: { mode: 'local-only', authoritySet: [] } } }, 'main'), /Unknown CI policy branch preview field/);
 });
 test('validates every branch entry, including unselected branches', () => {
-  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: policy.branches.main, preview: { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authoritySet: [] } } }, 'main'), /Unknown CI policy branch preview field/);
+  assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: policy.branches.main, preview: { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authoritySet: [] } } }, 'main'), /Unknown CI policy branch preview field/);
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: policy.branches.main, preview: null } }, 'main'), /Invalid CI policy branch preview/);
 });
 test('rejects extra fields on local-only policies and malformed policy objects', () => {
@@ -63,7 +63,7 @@ test('rejects extra fields on local-only policies and malformed policy objects',
 });
 
 const effectiveLimits = { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 };
-const distributed = { version: 2, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: effectiveLimits } } };
+const distributed = { version: 2, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: effectiveLimits } } };
 test('v2 selects protected-base Authority Set limits without changing v1 output', () => {
   const selected = resolveCiPolicy(distributed, 'main');
   assert.equal(selected.authorityManifestPath, '.codex/gatekeeper/authorities.json');
@@ -95,7 +95,7 @@ test('only a protected v2 enforced branch may select the exact G0 authority', ()
   assert.equal(selected.ownerAdditionPromptPath, enabled.promptPath);
   assert.equal(selected.ownerAdditionSchemaPath, enabled.schemaPath);
   assert.throws(() => resolveCiPolicy({ version: 2, default: { mode: 'local-only' }, branches: { main: {
-    mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium', ownerAddition: enabled,
+    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', ownerAddition: enabled,
   } } }, 'main'), /requires a protected Authority Set/);
   assert.equal(Object.hasOwn(resolveCiPolicy(distributed, 'main'), 'ownerAdditionGrade'), false);
   for (const ownerAddition of [
@@ -121,7 +121,7 @@ test('only a protected v2 enforced branch may select the exact G0 authority', ()
 const multiAuthorityLimits = { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 262144, maxTotalBytes: 524288, maxPromptBytes: 1048576 };
 function proceduralPolicy() {
   return { version: 5, default: { mode: 'local-only' }, branches: { main: {
-    mode: 'procedural', model: 'gpt-6-sol', reasoningEffort: 'medium',
+    mode: 'procedural', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
     authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: { ...multiAuthorityLimits },
     ownerAddition: { version: 2, grade: 'G0', authorityId: 'architecture', authorityPath: 'docs/architecture.md',
       promptPath: '.codex/gatekeeper/owner-addition-prompt.md', schemaPath: '.codex/gatekeeper/owner-addition.schema.json' },
@@ -351,7 +351,7 @@ test('selects and materializes the protected self Authority Set for CI and local
   const selected = resolveCiPolicy(selfPolicy, 'main');
   assert.equal(selfPolicy.version, 2);
   assert.equal(selected.mode, 'enforced');
-  assert.equal(selected.model, 'gpt-6-sol');
+  assert.equal(selected.model, 'gpt-6.1-sol');
   assert.equal(selected.reasoningEffort, 'medium');
   assert.equal(selected.authorityManifestPath, '.codex/gatekeeper/authorities.json');
   assert.equal(selected.ownerAmendmentTriggerProfile, 'completed-block-v1');

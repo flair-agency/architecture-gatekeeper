@@ -33,7 +33,7 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
   const oldAuthority = '# Architecture\n\nThe reporting owner is unselected.\n';
   const newAuthority = `${oldAuthority}\n## Reporting choice\n\nThe product owner owns reporting.\n`;
   const policy = { version: 2, default: { mode: 'local-only' }, branches: { main: {
-    mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
+    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
     authorityManifestPath: '.codex/gatekeeper/authorities.json',
     authorityLimits: { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 },
     ownerAddition: { grade: 'G0', authorityPath: 'docs/architecture.md',
@@ -129,7 +129,7 @@ test('G0 applies protected file and total limits to both authority snapshots', t
   const maxFileBytes = 256;
   const maxTotalBytes = 192;
   const policy = { version: 2, default: { mode: 'local-only' }, branches: { main: {
-    mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
+    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
     authorityManifestPath: '.codex/gatekeeper/authorities.json',
     authorityLimits: { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes,
       maxTotalBytes, maxPromptBytes: 524288 },
@@ -188,7 +188,7 @@ test('G0 applies the protected maxPromptBytes to the complete eligibility prompt
   const maxPromptBytes = 128;
   const authority = '# Architecture\n\nThe reporting owner is unselected.\n';
   const policy = { version: 2, default: { mode: 'local-only' }, branches: { main: {
-    mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
+    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
     authorityManifestPath: '.codex/gatekeeper/authorities.json',
     authorityLimits: { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536,
       maxTotalBytes: 262144, maxPromptBytes },
