@@ -192,7 +192,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?repository: flair-agency\/codex-action/);
   assert.match(workflow, /codex-action-integrity:\n    if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\)\n    needs: policy/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?timeout-minutes: 5/);
-  assert.match(workflow, /review:\n[\s\S]*?timeout-minutes: 20/);
+  assert.match(workflow, /review-generic:\n[\s\S]*?timeout-minutes: 20/);
   assert.match(workflow, /src\/verify-codex-action\.mjs/);
   assert.match(workflow, /provenance\/codex-action-v1\.12-runtime-cancellation\.json/);
   assert.match(workflow, /provenance\/codex-action-runtime-integrity-procedure-v1\.json/);
@@ -235,7 +235,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /repository: \$\{\{ job\.workflow_repository \}\}/);
   assert.match(workflow, /ref: \$\{\{ job\.workflow_sha \}\}/);
   assert.doesNotMatch(workflow, /ref: v0\.1\.0/);
-  assert.match(workflow, /review:\n[\s\S]*?permissions:\n      contents: read/);
+  assert.match(workflow, /review-generic:\n[\s\S]*?permissions:\n      contents: read/);
   assert.match(workflow, /src\/ci-report\.mjs/);
   assert.match(workflow, /CONCLUSION: \$\{\{ needs\.report\.outputs\.conclusion \}\}/);
   assert.doesNotMatch(workflow, /JSON\.parse\(process\.env\.DECISION\)/);
@@ -261,7 +261,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
   assert.match(workflow, /report:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
   const reportJob = workflow.match(/  report:\n([\s\S]*?)\n  accept:/)?.[1];
-  const reviewJob = workflow.match(/  review:\n([\s\S]*?)\n  block-review-record:/)?.[1];
+  const reviewJob = workflow.match(/  review-generic:\n([\s\S]*?)\n\n\n  review-self:/)?.[1];
   assert.ok(reportJob);
   assert.ok(reviewJob);
   assert.match(reportJob, /concurrency:\n      group: architecture-gate-report-\$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \}\}\n      cancel-in-progress: false/);
@@ -328,13 +328,13 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.match(pullRequestCaller, /schema-path: \.codex\/gatekeeper\/ci-decision\.schema\.json/);
   assert.match(pullRequestCaller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
   assert.doesNotMatch(pullRequestCaller, /owner-decision-environment/);
-  assert.match(pullRequestCaller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
+  assert.match(pullRequestCaller, /OPENAI_API_KEY: \$\{\{ \(github\.repository != 'flair-agency\/architecture-gatekeeper'[\s\S]*?&& secrets\.OPENAI_API_KEY \|\| '' \}\}/);
   assert.doesNotMatch(pullRequestCaller, /actions\/checkout/);
 });
 
 test('produces attested BLOCK records only in a credential-separated signer job', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
-  const reviewJob = workflow.match(/  review:\n([\s\S]*?)\n  block-review-record:/)?.[1];
+  const reviewJob = workflow.match(/  review-self:\n([\s\S]*?)\n\n\n  review:/)?.[1];
   const recordJob = workflow.match(/  block-review-record:\n([\s\S]*?)\n  owner-addition:/)?.[1];
   const acceptJob = workflow.match(/  accept:\n([\s\S]*)$/)?.[1];
   assert.ok(reviewJob);

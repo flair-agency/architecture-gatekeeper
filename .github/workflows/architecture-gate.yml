@@ -193,8 +193,8 @@ jobs:
             .architecture-gatekeeper-runtime/provenance/fixtures/codex-action-runtime-candidate-v1.json \
             .architecture-gatekeeper-runtime
 
-  review:
-    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
+  review-generic:
+    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && !(github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true')
     needs: [policy, codex-action-integrity]
     permissions:
       contents: read
@@ -410,6 +410,256 @@ jobs:
           DECISION: ${{ steps.codex.outputs.final-message }}
         run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
+
+  review-self:
+    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && (github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true')
+    needs: [policy, codex-action-integrity]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    environment:
+      name: architecture-gate-self-protected
+    # Leave room for checkout/materialization and the post-review diagnostic;
+    # the credential-bearing Codex Action itself has a separate five-minute cap.
+    timeout-minutes: 20
+    outputs:
+      final_message: ${{ steps.codex.outputs.final-message }}
+      decision_kind: ${{ steps.decision.outputs.kind }}
+      reviewed_sha: ${{ steps.revision.outputs.sha }}
+      verified_pr_base_sha: ${{ steps.self-pr-binding.outputs.base_sha }}
+      verified_pr_head_sha: ${{ steps.self-pr-binding.outputs.head_sha }}
+      authority_provenance: ${{ steps.authority.outputs.provenance }}
+      selected_authority_changed: ${{ steps.selected-authority-change.outputs.changed }}
+      legacy_authority_provenance: ${{ steps.legacy-authority.outputs.provenance }}
+    steps:
+      - name: Confine optional Flex probe to the self reviewer
+        if: inputs.self-flex-probe
+        env:
+          REPOSITORY: ${{ github.repository }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          MODEL: ${{ needs.policy.outputs.model }}
+          EFFORT: ${{ needs.policy.outputs.effort }}
+        run: |
+          test "$REPOSITORY" = flair-agency/architecture-gatekeeper
+          test "$WORKFLOW_REF" = flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main
+          test "$MODEL" = gpt-6.1-sol
+          test "$EFFORT" = medium
+      - name: Check enforced credentials
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: node -e 'if (!process.env.OPENAI_API_KEY) { console.error("Missing OPENAI_API_KEY for enforced Architecture Gate"); process.exit(1); }'
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          submodules: ${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}
+          token: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          persist-credentials: false
+      - name: Record reviewed merge revision
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Materialize protected review instructions
+        if: inputs.protected-review-instructions && needs.policy.outputs.policy_version != '1'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PROMPT_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_prompt_path || inputs.prompt-path }}
+          SCHEMA_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_schema_path || inputs.schema-path }}
+        run: |
+          git show "$BASE_SHA:$PROMPT_PATH" > "$RUNNER_TEMP/architecture-gate-prompt.md"
+          git show "$BASE_SHA:$SCHEMA_PATH" > "$RUNNER_TEMP/architecture-gate-decision.schema.json"
+      - name: Materialize protected decision validation policy
+        if: needs.policy.outputs.policy_version != '1' && inputs.validation-path != ''
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          VALIDATION_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path || inputs.validation-path }}
+        run: git show "$BASE_SHA:$VALIDATION_PATH" > "$RUNNER_TEMP/architecture-gate-decision.validation.json"
+      - name: Check out the pinned validation runtime
+        if: inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-validation-runtime
+          persist-credentials: false
+      - name: Bind the self review merge commit to the exact PR base and head
+        if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main'
+        id: self-pr-binding
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ steps.revision.outputs.sha }}
+        run: node .architecture-gatekeeper-validation-runtime/src/self-pr-app-check.mjs verify-merge
+      - name: Materialize recorded-base legacy authority before review
+        if: needs.policy.outputs.policy_version == '1'
+        id: legacy-authority
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ steps.revision.outputs.sha }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          POLICY_PATH: ${{ inputs.policy-path }}
+          POLICY_SHA256: ${{ needs.policy.outputs.policy_sha256 }}
+          AUTHORITY_FILES_BASE64: ${{ needs.policy.outputs.legacy_authority_files_base64 }}
+          PROMPT_PATH: ${{ needs.policy.outputs.legacy_prompt_path }}
+          SCHEMA_PATH: ${{ needs.policy.outputs.legacy_schema_path }}
+          VALIDATION_PATH: ${{ needs.policy.outputs.legacy_validation_path }}
+          PROMPT_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-prompt.md
+          SCHEMA_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-decision.schema.json
+          VALIDATION_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-decision.validation.json
+          OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-legacy-prompt.md
+          PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
+        run: node .architecture-gatekeeper-validation-runtime/src/prepare-legacy-ci-authority.mjs prepare
+      - name: Materialize protected Authority Set before review
+        if: needs.policy.outputs.authority_manifest_path != ''
+        id: authority
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MANIFEST_PATH: ${{ needs.policy.outputs.authority_manifest_path }}
+          SELF_REPOSITORY: ${{ github.repository }}
+          GATEKEEPER_SOURCE_TOKEN: ${{ secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
+          AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
+          OWNER_AUTHORITY_ID: ${{ needs.policy.outputs.owner_addition_authority_id }}
+          OWNER_AUTHORITY_PATH: ${{ needs.policy.outputs.owner_addition_authority_path }}
+        run: |
+          umask 077
+          git show "$BASE_SHA:$MANIFEST_PATH" > "$RUNNER_TEMP/architecture-gate-authorities.json"
+          PROFILE_ARGS=()
+          if test "$AUTHORITY_PROFILE" = owner-addition-v2; then
+            PROFILE_ARGS=(--affected-id "$OWNER_AUTHORITY_ID" --affected-path "$OWNER_AUTHORITY_PATH")
+          fi
+          node .architecture-gatekeeper-validation-runtime/src/prepare-authority-set.mjs \
+            --manifest "$RUNNER_TEMP/architecture-gate-authorities.json" \
+            --self-repository "$SELF_REPOSITORY" \
+            --self-root . \
+            --authority-sha "$BASE_SHA" \
+            --limits-base64 "$AUTHORITY_LIMITS_BASE64" \
+            --profile "$AUTHORITY_PROFILE" \
+            "${PROFILE_ARGS[@]}" \
+            --output-dir "$RUNNER_TEMP/architecture-gate-authority-set"
+          cat "$RUNNER_TEMP/architecture-gate-prompt.md" \
+            "$RUNNER_TEMP/architecture-gate-authority-set/authority-prompt.md" \
+            > "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
+          echo "provenance=$(base64 -w0 "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json")" >> "$GITHUB_OUTPUT"
+      - name: Detect candidate changes to the selected Authority Set
+        if: needs.policy.outputs.mode == 'procedural'
+        id: selected-authority-change
+        env:
+          AUTHORITY_PROVENANCE: ${{ steps.authority.outputs.provenance }}
+          SELF_REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .architecture-gatekeeper-validation-runtime/src/ci-procedural-authority-change.mjs
+      - name: Check protected Authority Set schema and complete prompt
+        if: needs.policy.outputs.authority_manifest_path != ''
+        env:
+          AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
+          AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
+        run: |
+          node .architecture-gatekeeper-validation-runtime/src/preflight-authority-set-review.mjs \
+            "$RUNNER_TEMP/architecture-gate-decision.schema.json" \
+            "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
+      - name: Run read-only architecture review
+        id: codex
+        timeout-minutes: 5
+        # Temporary Flair-reviewed v1.12 fork with bounded stdio draining,
+        # numeric-only JSONL telemetry, cache-write token reporting, and PR
+        # #10's runtime deadline and POSIX process-group cancellation cleanup.
+        uses: flair-agency/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          output-file: ${{ runner.temp }}/architecture-gate-codex-final.json
+          prompt-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-legacy-prompt.md', runner.temp) || needs.policy.outputs.authority_manifest_path != '' && format('{0}/architecture-gate-complete-prompt.md', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || inputs.prompt-path }}
+          model: ${{ needs.policy.outputs.model }}
+          effort: ${{ needs.policy.outputs.effort }}
+          sandbox: read-only
+          safety-strategy: drop-sudo
+          timeout-seconds: "240"
+          output-schema-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
+          # PR-owned AGENTS.md files are review evidence, never reviewer instructions.
+          codex-args: ${{ inputs.self-flex-probe && '["--ephemeral","-c","project_doc_max_bytes=0","-c","service_tier=''flex''","--json"]' || '["--ephemeral","-c","project_doc_max_bytes=0","--json"]' }}
+      - name: Diagnose architecture reviewer completion
+        if: always()
+        timeout-minutes: 1
+        continue-on-error: true
+        env:
+          REVIEW_OUTCOME: ${{ steps.codex.outcome }}
+          REVIEW_OUTPUT_FILE: ${{ runner.temp }}/architecture-gate-codex-final.json
+        run: |
+          echo "Codex Action outcome: $REVIEW_OUTCOME"
+          if test -f "$REVIEW_OUTPUT_FILE"; then
+            echo "Codex final message file: present ($(wc -c < "$REVIEW_OUTPUT_FILE") bytes)"
+            if node -e 'try { JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); } catch { process.exitCode = 1; }' "$REVIEW_OUTPUT_FILE"; then
+              echo "Codex final message JSON: parseable"
+            else
+              echo "Codex final message JSON: absent or invalid"
+            fi
+          else
+            echo "Codex final message file: absent"
+          fi
+          if command -v codex >/dev/null 2>&1; then
+            codex --version
+          else
+            echo "Codex CLI: unavailable"
+          fi
+          npm list -g --depth=0 @openai/codex @openai/codex-responses-api-proxy || true
+      - name: Identify the completed ordinary decision
+        if: needs.policy.outputs.mode == 'procedural' || (needs.policy.outputs.mode == 'enforced' && (needs.policy.outputs.owner_addition_grade == 'G0' || needs.policy.outputs.owner_amendment_grade == 'G0'))
+        id: decision
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+        run: node .architecture-gatekeeper-validation-runtime/src/ci-decision-kind.mjs
+      - name: Apply consumer-owned decision validation
+        if: (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '')
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-decision.mjs "$RUNNER_TEMP/architecture-gate-decision.validation.json"
+      - name: Require exact reported legacy authority files
+        if: needs.policy.outputs.policy_version == '1'
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+          PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
+        run: node .architecture-gatekeeper-validation-runtime/src/prepare-legacy-ci-authority.mjs validate
+      - name: Require exact reported Authority IDs
+        if: needs.policy.outputs.authority_manifest_path != ''
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
+
+
+  review:
+    if: always() && (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
+    needs: [policy, review-generic, review-self]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    outputs:
+      final_message: ${{ (github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true') && needs['review-self'].outputs.final_message || needs['review-generic'].outputs.final_message }}
+      decision_kind: ${{ (github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true') && needs['review-self'].outputs.decision_kind || needs['review-generic'].outputs.decision_kind }}
+      reviewed_sha: ${{ (github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true') && needs['review-self'].outputs.reviewed_sha || needs['review-generic'].outputs.reviewed_sha }}
+      verified_pr_base_sha: ${{ (github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true') && needs['review-self'].outputs.verified_pr_base_sha || needs['review-generic'].outputs.verified_pr_base_sha }}
+      verified_pr_head_sha: ${{ (github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true') && needs['review-self'].outputs.verified_pr_head_sha || needs['review-generic'].outputs.verified_pr_head_sha }}
+      authority_provenance: ${{ (github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true') && needs['review-self'].outputs.authority_provenance || needs['review-generic'].outputs.authority_provenance }}
+      selected_authority_changed: ${{ (github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true') && needs['review-self'].outputs.selected_authority_changed || needs['review-generic'].outputs.selected_authority_changed }}
+      legacy_authority_provenance: ${{ (github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true') && needs['review-self'].outputs.legacy_authority_provenance || needs['review-generic'].outputs.legacy_authority_provenance }}
+    steps:
+      - name: Require exactly the selected protected review route to complete
+        env:
+          SELF_REVIEW_SELECTED: ${{ (github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true') }}
+          SELF_REVIEW_RESULT: ${{ needs['review-self'].result }}
+          GENERIC_REVIEW_RESULT: ${{ needs['review-generic'].result }}
+        run: |
+          if test "$SELF_REVIEW_SELECTED" = true; then
+            test "$SELF_REVIEW_RESULT" = success
+            test "$GENERIC_REVIEW_RESULT" = skipped
+          else
+            test "$GENERIC_REVIEW_RESULT" = success
+            test "$SELF_REVIEW_RESULT" = skipped
+          fi
   block-review-record:
     if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && needs.policy.result == 'success' && needs.review.result == 'success' && needs.policy.outputs.owner_amendment_grade == 'G0' && needs.policy.outputs.owner_amendment_evidence_producer == 'github-actions-attestation' && needs.review.outputs.decision_kind == 'BLOCK'
     needs: [policy, review]

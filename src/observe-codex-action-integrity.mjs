@@ -89,25 +89,41 @@ function runLines(step) {
 }
 
 export function observeWorkflowIdentity(workflow, procedure) {
-  const review = parseSteps(parseJob(workflow, 'review'));
+  const genericJob = parseJob(workflow, 'review-generic');
+  const selfJob = parseJob(workflow, 'review-self');
+  const genericReview = parseSteps(genericJob);
+  const selfReview = parseSteps(selfJob);
   const integrity = parseSteps(parseJob(workflow, 'codex-action-integrity'));
-  const reviewer = namedStep(review, 'Run read-only architecture review');
-  // The observer accepts only the known policy condition for the protected
-  // jobs. Candidate condition changes must not hide execution or weaken the
-  // independent full verification boundary.
+  const genericReviewer = namedStep(genericReview, 'Run read-only architecture review');
+  const selfReviewer = namedStep(selfReview, 'Run read-only architecture review');
+  // Both fixed review routes must remain behind the full integrity check.
+  // These literal guards keep the optional self Environment route limited to
+  // the exact first-party caller while the generic contract remains intact.
   const protectedReviewCondition = "if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')";
-  requireJobControls(workflow, 'review', protectedReviewCondition);
+  const selfCaller = "github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.SELF_PROTECTED_MODEL_ENABLED == 'true'";
+  requireJobControls(workflow, 'review-generic', `${protectedReviewCondition} && !(${selfCaller})`);
+  requireJobControls(workflow, 'review-self', `${protectedReviewCondition} && (${selfCaller})`);
   requireJobControls(workflow, 'codex-action-integrity', protectedReviewCondition);
+  for (const [name, lines] of [['review-generic', genericJob], ['review-self', selfJob]]) {
+    const dependencies = lines.filter((line) => /^    needs:/.test(line));
+    if (dependencies.length !== 1 || dependencies[0] !== '    needs: [policy, codex-action-integrity]') {
+      throw new Error(`${name} job is not blocked on full Action integrity verification`);
+    }
+  }
   const verifyJob = parseJob(workflow, 'codex-action-integrity');
   if (verifyJob.some((line) => /^    continue-on-error:/.test(line))) {
     throw new Error('Full verification job must not continue on error');
   }
-  const actionUses = scalar(reviewer.lines, 8, 'uses');
-  const otherCodexUses = review.filter((step) => step !== reviewer).filter((step) => {
-    try { return /\/codex-action@/.test(scalar(step.lines, 8, 'uses')); }
-    catch { return false; }
-  });
-  if (otherCodexUses.length > 0) throw new Error('Ambiguous duplicate Codex Action uses');
+  const actionUses = scalar(genericReviewer.lines, 8, 'uses');
+  const selfActionUses = scalar(selfReviewer.lines, 8, 'uses');
+  if (selfActionUses !== actionUses) throw new Error('Review Action and integrity checkout differ between routes');
+  for (const [steps, reviewer] of [[genericReview, genericReviewer], [selfReview, selfReviewer]]) {
+    const otherCodexUses = steps.filter((step) => step !== reviewer).filter((step) => {
+      try { return /\/codex-action@/.test(scalar(step.lines, 8, 'uses')); }
+      catch { return false; }
+    });
+    if (otherCodexUses.length > 0) throw new Error('Ambiguous duplicate Codex Action uses');
+  }
   const match = /^([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)@([0-9a-f]{40})$/.exec(actionUses);
   if (!match) throw new Error('Review Action must use a literal repository and full SHA');
   const checkout = namedStep(integrity, 'Check out the pinned Codex Action without credentials');

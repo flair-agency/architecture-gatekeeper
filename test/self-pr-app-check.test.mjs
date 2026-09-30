@@ -149,7 +149,40 @@ test('self App job is default-off, caller-fixed, read-only, environment-bound an
   assert.doesNotMatch(workflow.split('\n  self-app-report:')[0], /OWNER_AMENDMENT_APP_(?:ID|INSTALLATION_ID|PRIVATE_KEY)/);
   assert.doesNotMatch(appJob, /download-artifact|head_repo\.full_name|head\.repo\.full_name ==/);
   assert.doesNotMatch(workflow.slice(0, workflow.indexOf('concurrency:')), /environment:|self-app-report/);
-  assert.match(selfCaller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
+  assert.match(selfCaller, /OPENAI_API_KEY: \$\{\{ \(github\.repository != 'flair-agency\/architecture-gatekeeper'[\s\S]*?vars\.SELF_PROTECTED_MODEL_ENABLED != 'true'\) && secrets\.OPENAI_API_KEY \|\| '' \}\}/);
   assert.match(workflow, /Require model-backed PASS or verified G0 owner addition\/amendment/);
   assert.doesNotMatch(workflow, /expected-check-source|required-status-checks|OWNER_AMENDMENT_SELF_APP_REPORT_ENABLED: \$\{\{ inputs\./);
+});
+
+test('fixed-self model Environment route is default-off and aggregates without fallback', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
+  const selfCaller = readFileSync(new URL('../.github/workflows/self-architecture-gate.yml', import.meta.url), 'utf8');
+  const generic = workflow.match(/  review-generic:\n([\s\S]*?)\n\n\n  review-self:/)?.[1];
+  const self = workflow.match(/  review-self:\n([\s\S]*?)\n\n\n  review:/)?.[1];
+  const aggregate = workflow.match(/  review:\n([\s\S]*?)\n  block-review-record:/)?.[1];
+  assert.ok(generic);
+  assert.ok(self);
+  assert.ok(aggregate);
+  assert.match(generic, /vars\.SELF_PROTECTED_MODEL_ENABLED == 'true'/);
+  assert.match(generic, /needs: \[policy, codex-action-integrity\]/);
+  assert.doesNotMatch(generic, /environment:/);
+  assert.match(self, /github\.workflow_ref == 'flair-agency\/architecture-gatekeeper\/\.github\/workflows\/self-architecture-gate\.yml@refs\/heads\/main'[\s\S]*?vars\.SELF_PROTECTED_MODEL_ENABLED == 'true'/);
+  assert.match(self, /environment:\n      name: architecture-gate-self-protected/);
+  assert.match(self, /openai-api-key: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
+  assert.match(self, /needs: \[policy, codex-action-integrity\]/);
+  assert.match(aggregate, /needs: \[policy, review-generic, review-self\]/);
+  const outputBlock = aggregate.match(/outputs:\n([\s\S]*?)\n    steps:/)?.[1];
+  assert.ok(outputBlock);
+  assert.deepEqual([...outputBlock.matchAll(/^      ([a-z_]+):/gm)].map((match) => match[1]), [
+    'final_message', 'decision_kind', 'reviewed_sha', 'verified_pr_base_sha',
+    'verified_pr_head_sha', 'authority_provenance', 'selected_authority_changed',
+    'legacy_authority_provenance',
+  ]);
+  assert.match(aggregate, /test "\$SELF_REVIEW_RESULT" = success/);
+  assert.match(aggregate, /test "\$GENERIC_REVIEW_RESULT" = skipped/);
+  assert.match(aggregate, /test "\$GENERIC_REVIEW_RESULT" = success/);
+  assert.match(aggregate, /test "\$SELF_REVIEW_RESULT" = skipped/);
+  assert.match(selfCaller, /vars\.SELF_PROTECTED_MODEL_ENABLED != 'true'\) && secrets\.OPENAI_API_KEY \|\| ''/);
+  assert.doesNotMatch(selfCaller, /&& '' \|\| secrets\.OPENAI_API_KEY/);
+  assert.doesNotMatch(selfCaller, /SELF_PROTECTED_MODEL_ENABLED:\s*true/);
 });

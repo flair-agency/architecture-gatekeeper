@@ -30,7 +30,9 @@ jobs:
       schema-path: .codex/gatekeeper/ci-decision.schema.json
       validation-path: .codex/gatekeeper/decision.validation.json
     secrets:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # When fixed-self Environment isolation is enabled, the reusable
+      # reviewer reads the key directly from that job's Environment.
+      OPENAI_API_KEY: ${{ (github.repository != 'flair-agency/architecture-gatekeeper' || github.event_name != 'pull_request_target' || github.event.pull_request.base.ref != 'main' || github.event.pull_request.draft != false || github.workflow_ref != 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' || vars.SELF_PROTECTED_MODEL_ENABLED != 'true') && secrets.OPENAI_API_KEY || '' }}
 
   merge-group-wakeup:
     name: merge-group-wakeup
