@@ -5,7 +5,7 @@ import { resolveOwnerAmendmentWorkflowRunMergeGroupContext } from '../src/owner-
 const repository = 'flair-agency/architecture-gatekeeper';
 const repositoryId = 1379218762;
 const workflowId = 123456789;
-const workflowPath = '.github/workflows/candidate-amendment.yml@refs/heads/main';
+const workflowPath = '.github/workflows/candidate-amendment.yml';
 const runId = 99887766, attempt = 2;
 const mainSha = 'a'.repeat(40), bSha = 'b'.repeat(40), groupSha = 'c'.repeat(40);
 const queueBranch = 'gh-readonly-queue/main/pr-216-abcdef0123456789';
@@ -53,7 +53,14 @@ function fixture(overrides = {}) {
     if (url === `${root}/git/commits/${groupSha}`) return response(state.groupCommit);
     if (url === `${root}/git/commits/${bSha}`) return response(state.bCommit);
     if (url === `${root}/commits/${bSha}/pulls?per_page=100&page=1`) return response(state.associated ?? [state.pr]);
-    if (url === 'https://api.github.com/graphql') return response(state.graph);
+    if (url === 'https://api.github.com/graphql') {
+      const payload = JSON.parse(options.body);
+      const projected = structuredClone(state.graph);
+      if (!payload.query.includes('enqueuedAt')) {
+        delete projected.data?.repository?.pullRequest?.mergeQueueEntry?.enqueuedAt;
+      }
+      return response(projected);
+    }
     throw new Error('unexpected test request');
   };
   return { state, calls, fetchImpl,
@@ -80,7 +87,8 @@ test('binds exact attempt, live queue ref, current main, exact B, and active que
     assert.equal(call.options.redirect, 'error');
   }
   assert.equal(f.calls.at(-1).options.method, 'POST');
-  assert.match(f.calls.at(-1).options.body, /mergeQueueEntry/);
+  const graphQuery = JSON.parse(f.calls.at(-1).options.body).query;
+  assert.match(graphQuery, /mergeQueueEntry \{ state baseCommit \{ oid \} headCommit \{ oid \} pullRequest \{ number \} enqueuedAt \}/);
 });
 
 test('uses only wake-up ID/attempt selectors and exact API-attempt identity', async t => {
@@ -91,6 +99,7 @@ test('uses only wake-up ID/attempt selectors and exact API-attempt identity', as
     ['wrong repository ID', run => { run.repository.id += 1; }],
     ['wrong workflow ID', run => { run.workflow_id += 1; }],
     ['wrong workflow path', run => { run.path = '.github/workflows/untrusted.yml@refs/heads/main'; }],
+    ['annotated workflow path is not the REST metadata form', run => { run.path = `${workflowPath}@refs/heads/main`; }],
     ['wrong event', run => { run.event = 'pull_request'; }],
     ['not completed', run => { run.status = 'in_progress'; }],
     ['malformed run head', run => { run.head_sha = 'bad'; }],
@@ -160,10 +169,16 @@ test('requires one exact open same-repository main PR and active live queue entr
     ['inactive queue state', f => { f.state.graph.data.repository.pullRequest.mergeQueueEntry.state = 'UNMERGEABLE'; }],
     ['null repository queue readback', f => { f.state.graph.data.repository = null; }],
     ['GraphQL error', f => { f.state.graph.errors = [{ message: 'sensitive API text is not returned' }]; }],
+    ['malformed GraphQL errors object', f => { f.state.graph.errors = { message: 'malformed' }; }],
+    ['malformed GraphQL errors string', f => { f.state.graph.errors = 'malformed'; }],
+    ['malformed GraphQL errors null', f => { f.state.graph.errors = null; }],
   ]) await t.test(name, async () => {
     const f = fixture(); edit(f);
     assert.equal((await f.resolve()).status, 'INCOMPLETE');
   });
+  const noErrors = fixture();
+  noErrors.state.graph.errors = [];
+  assert.equal((await noErrors.resolve()).status, 'SELECTED_OWNER_AMENDMENT_WORKFLOW_RUN_MERGE_GROUP_CONTEXT');
 });
 
 test('fails closed on API, JSON, token, and fixed-identity failures without leaking details', async () => {
@@ -179,4 +194,8 @@ test('fails closed on API, JSON, token, and fixed-identity failures without leak
   assert.match(malformedJson.reason, /invalid JSON/);
   const wrongExpected = { ...expected, workflowId: 0 };
   assert.equal((await f.resolve(wakeup, wrongExpected)).status, 'INCOMPLETE');
+  const annotatedExpectedPath = { ...expected, workflowPath: `${workflowPath}@refs/heads/main` };
+  const wrongPath = fixture();
+  assert.equal((await wrongPath.resolve(wakeup, annotatedExpectedPath)).status, 'INCOMPLETE');
+  assert.equal(wrongPath.calls.length, 0);
 });

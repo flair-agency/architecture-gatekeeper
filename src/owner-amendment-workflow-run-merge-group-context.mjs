@@ -40,7 +40,7 @@ async function request(fetchImpl, token, url, options = {}) {
 function validateExpected(expected) {
   if (!expected || !REPOSITORY.test(expected.repository ?? '') || !validNumericId(expected.repositoryId) ||
       !validNumericId(expected.workflowId) || typeof expected.workflowPath !== 'string' ||
-      !/^\.github\/workflows\/[A-Za-z0-9._-]+\.ya?ml@refs\/heads\/main$/.test(expected.workflowPath) ||
+      !/^\.github\/workflows\/[A-Za-z0-9._-]+\.ya?ml$/.test(expected.workflowPath) ||
       expected.targetBranch !== 'main') {
     fail('fixed repository, workflow, or protected-branch identity is invalid.');
   }
@@ -79,7 +79,7 @@ const MERGE_QUEUE_QUERY = `query($owner: String!, $name: String!, $number: Int!)
       number state isDraft baseRefName baseRefOid headRefOid
       baseRepository { id nameWithOwner }
       headRepository { id nameWithOwner }
-      mergeQueueEntry { state baseCommit { oid } headCommit { oid } pullRequest { number } }
+      mergeQueueEntry { state baseCommit { oid } headCommit { oid } pullRequest { number } enqueuedAt }
     }
   }
 }`;
@@ -154,6 +154,9 @@ export async function resolveOwnerAmendmentWorkflowRunMergeGroupContext({
     const graph = await request(fetchImpl, token, `${API}/graphql`, { method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ query: MERGE_QUEUE_QUERY, variables: { owner, name, number: candidate.number } }) });
+    if (graph !== null && typeof graph === 'object' && Object.hasOwn(graph, 'errors') && !Array.isArray(graph.errors)) {
+      fail('merge-queue API returned a malformed GraphQL errors field.');
+    }
     if (Array.isArray(graph?.errors) && graph.errors.length) fail('merge-queue API returned GraphQL errors.');
     const graphRepo = graph?.data?.repository;
     const queued = graphRepo?.pullRequest;
