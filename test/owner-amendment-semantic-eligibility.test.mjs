@@ -8,6 +8,9 @@ import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs
 import { produceOwnerAmendmentOwnerDecision } from '../scripts/owner-amendment-owner-decision-producer.mjs';
 import { buildOwnerAmendmentOwnerDecisionAmendmentRecord,
   validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../src/owner-amendment-owner-decision-amendment-record.mjs';
+import { buildOwnerAmendmentRecord } from '../src/owner-amendment-record-builder.mjs';
+import { prepareOwnerAmendmentBlockHandoff } from '../src/owner-amendment-block-handoff.mjs';
+import { handoffOwnerAmendmentOwnerDecision } from '../src/owner-amendment-owner-decision-handoff.mjs';
 import { parseOwnerAmendmentSemanticTagObject } from '../src/owner-amendment-semantic-tag-object.mjs';
 import {
   completeOwnerAmendmentSemanticEligibility,
@@ -137,7 +140,10 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
       attestationBundleBytes, repository, baseSha, bSha, authorityId: 'architecture', authorityPath: path,
       previousAuthorityBytes: authorityBytes, amendedAuthorityBytes: proposedAuthorityBytes,
       purpose: amendment.purpose }).bytes
-    : Buffer.from(JSON.stringify(amendment));
+    : multiAuthority ? Buffer.from(JSON.stringify(amendment))
+      : buildOwnerAmendmentRecord({ scope: { baseSha, headSha: bSha, authorityId: 'architecture', authorityPath: path,
+      previousSha256: sha256(authorityBytes), newSha256: sha256(proposedAuthorityBytes) },
+      reviewRecordBytes: triggerReviewRecordBytes, attestationBundleBytes, repository, purpose: amendment.purpose }).bytes;
   const semanticProducer = { workflowPath, workflowSha: baseSha, workflowRef: `refs/heads/${baseBranch}`,
     runId: '2002', runAttempt: '1', jobId: 'owner-amendment-eligibility' };
   const gatekeeper = { repository, revision: 'e'.repeat(40), package: null };
@@ -148,14 +154,15 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     attestationBundleBase64: attestationBundleBytes.toString('base64'), attestationBundleSha256: sha256(attestationBundleBytes),
     amendmentRecordBase64: amendmentRecordBytes.toString('base64'), amendmentRecordSha256: sha256(amendmentRecordBytes) };
   const tagAnnotation = Buffer.from(`${JSON.stringify(canonical(tagEnvelope))}\n`);
-  const tagObjectBytes = Buffer.from(`object ${bSha}\ntype commit\ntag ${tagRef.slice('refs/tags/'.length)}\n` +
-    'tagger Fixture <fixture@example.invalid> 1780000000 +0000\n\n' + tagAnnotation.toString('utf8'));
-  const transported = parseOwnerAmendmentSemanticTagObject(tagObjectBytes, { bSha, triggerProfile, tagRef });
+  const tagObject = tagMessage => Buffer.from(`object ${bSha}\ntype commit\ntag ${tagRef.slice('refs/tags/'.length)}\n` +
+    'tagger Fixture <fixture@example.invalid> 1780000000 +0000\n\n' + tagMessage);
+  let tagObjectBytes = tagObject(tagAnnotation.toString('utf8'));
+  let transported = parseOwnerAmendmentSemanticTagObject(tagObjectBytes, { bSha, triggerProfile, tagRef });
   assert.deepEqual(transported.reviewRecordBytes, triggerReviewRecordBytes);
   assert.deepEqual(transported.attestationBundleBytes, attestationBundleBytes);
   assert.deepEqual(transported.amendmentRecordBytes, amendmentRecordBytes);
   const tagObjectOid = gitTagOid(tagObjectBytes);
-  const tag = { tagRef, tagObjectOid, observedTagRefOid: tagObjectOid };
+  let tag = { tagRef, tagObjectOid, observedTagRefOid: tagObjectOid };
   const verifyTrigger = ({ bytes, expected }) => {
     assert.deepEqual(bytes, triggerReviewRecordBytes);
     return { status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER', repository: expected.repository,
@@ -166,18 +173,33 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
   };
   const verifyAmendment = ({ bytes, expected }) => {
     const value = JSON.parse(bytes.toString('utf8'));
-    assert.equal(value.fixtureSchema, `amendment-${expected.triggerProfile}`);
-    for (const key of ['repository', 'baseSha', 'bSha', 'policyRevision', 'triggerProfile',
-      'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest',
-      ]) {
-      assert.equal(value[key], key === 'priorAuthoritySetDigest' ? expected.authoritySetDigest : expected[key]);
+    if (value.fixtureSchema === `amendment-${expected.triggerProfile}`) {
+      for (const key of ['repository', 'baseSha', 'bSha', 'policyRevision', 'triggerProfile',
+        'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest']) {
+        assert.equal(value[key], key === 'priorAuthoritySetDigest' ? expected.authoritySetDigest : expected[key]);
+      }
+      assert.ok(value.target);
+      return { status: 'VERIFIED_OWNER_AMENDMENT_RECORD', repository: value.repository,
+        baseSha: value.baseSha, bSha: value.bSha, policyRevision: value.policyRevision,
+        triggerProfile: value.triggerProfile, triggerReviewRecordSha256: value.triggerReviewRecordSha256,
+        priorAuthoritySetDigest: value.priorAuthoritySetDigest,
+        resultingAuthoritySetDigest: value.resultingAuthoritySetDigest, targetValidated: true, purpose: value.purpose };
     }
-    assert.ok(value.target);
+    assert.equal(value.version, 2);
+    assert.equal(value.repository, expected.repository);
+    assert.equal(value.baseSha, expected.baseSha);
+    assert.equal(value.headSha, expected.bSha);
+    assert.equal(value.policyRevision, expected.policyRevision);
+    assert.equal(value.triggeringReviewSha256, expected.triggerReviewRecordSha256);
+    assert.equal(value.authority.id, 'architecture');
+    assert.equal(value.authority.path, path);
+    assert.equal(value.authority.previousSha256, sha256(authorityBytes));
+    assert.equal(value.authority.newSha256, sha256(proposedAuthorityBytes));
     return { status: 'VERIFIED_OWNER_AMENDMENT_RECORD', repository: value.repository,
-      baseSha: value.baseSha, bSha: value.bSha, policyRevision: value.policyRevision,
-      triggerProfile: value.triggerProfile, triggerReviewRecordSha256: value.triggerReviewRecordSha256,
-      priorAuthoritySetDigest: value.priorAuthoritySetDigest,
-      resultingAuthoritySetDigest: value.resultingAuthoritySetDigest, targetValidated: true, purpose: value.purpose };
+      baseSha: value.baseSha, bSha: value.headSha, policyRevision: value.policyRevision,
+      triggerProfile: expected.triggerProfile, triggerReviewRecordSha256: expected.triggerReviewRecordSha256,
+      priorAuthoritySetDigest: expected.authoritySetDigest,
+      resultingAuthoritySetDigest: expected.resultingAuthoritySetDigest, targetValidated: true, purpose: value.purpose };
   };
   const verifyTag = ({ tag: tagInput, expected }) => {
     assert.deepEqual(tagInput, tag);
@@ -206,8 +228,18 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     tag, tagObjectBytes, producer: semanticProducer, selectedProducer: semanticProducer,
     gatekeeper, selectedGatekeeper: gatekeeper, reviewModel: policy.branches[baseBranch].model,
     reviewReasoningEffort: policy.branches[baseBranch].reasoningEffort };
+  const installTagMessage = tagMessage => {
+    tagObjectBytes = tagObject(tagMessage);
+    transported = parseOwnerAmendmentSemanticTagObject(tagObjectBytes, { bSha, triggerProfile, tagRef });
+    tag = { tagRef, tagObjectOid: gitTagOid(tagObjectBytes), observedTagRefOid: gitTagOid(tagObjectBytes) };
+    args.tagObjectBytes = tagObjectBytes;
+    args.tag = tag;
+    args.triggerReviewRecordBytes = transported.reviewRecordBytes;
+    args.amendmentRecordBytes = transported.amendmentRecordBytes;
+  };
   return { args, producer, validators, policy, authoritySet, triggerRecord, triggerReviewRecordBytes, amendmentRecordBytes,
-    semanticProducer, gatekeeper, tag, tagObjectBytes, transported, resultingAuthoritySetDigest };
+    semanticProducer, gatekeeper, get tag() { return tag; }, get tagObjectBytes() { return tagObjectBytes; },
+    get transported() { return transported; }, installTagMessage, attestationBundleBytes, resultingAuthoritySetDigest };
 }
 
 function eligibilityDecision(prepared, result = 'ELIGIBLE') {
@@ -222,12 +254,57 @@ function eligibilityDecision(prepared, result = 'ELIGIBLE') {
     authoritySetDigest: prepared.authoritySetDigest, checks });
 }
 
-test('handoff tag-object bytes reach eligibility for both exact trigger profiles', () => {
-  for (const triggerProfile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
-    const f = fixture(triggerProfile);
-    assert.equal(f.transported.envelope.version, triggerProfile === 'completed-block-v1' ? 2 : 3);
-    assert.equal(f.transported.envelope.triggerProfile, triggerProfile === 'completed-block-v1' ? undefined : triggerProfile);
-    assert.equal(f.producer.prepare(f.args).triggerProfile, triggerProfile);
+test('handoff-produced tag-object bytes reach eligibility for both exact trigger profiles', async () => {
+  const block = fixture('completed-block-v1');
+  const blockMessage = prepareOwnerAmendmentBlockHandoff({
+    recordBytes: block.triggerReviewRecordBytes,
+    bundleBytes: block.attestationBundleBytes,
+    amendmentRecordBytes: block.amendmentRecordBytes,
+    expected: { repository, workflowPath: '.github/workflows/self-architecture-gate.yml',
+      workflowSha: baseSha, workflowRef: 'refs/heads/main', runId: '1001', runAttempt: '1' },
+    bSha,
+    provenanceResult: { status: 'VERIFIED_PRODUCER_ATTESTATION', recordSha256: sha256(block.triggerReviewRecordBytes) },
+  });
+  assert.equal(blockMessage.status, 'PREPARED_BLOCK_HANDOFF_TAG_MESSAGE');
+  block.installTagMessage(blockMessage.tagMessage);
+  assert.equal(block.transported.envelope.version, 2);
+  assert.equal(block.producer.prepare(block.args).triggerProfile, 'completed-block-v1');
+
+  const ownerDecision = fixture('completed-owner-decision-self-v1');
+  let ownerDecisionMessage;
+  const handoff = await handoffOwnerAmendmentOwnerDecision({
+    repository,
+    policy: { ownerAmendmentVersion: 1, ownerAmendmentGrade: 'G0', ownerAmendmentScope: 'authority-only',
+      ownerAmendmentTriggerProfile: 'completed-owner-decision-self-v1', ownerAmendmentAuthorityId: 'architecture',
+      ownerAmendmentAuthorityPath: path, ownerAmendmentTagNamespace: 'refs/tags/architecture-gatekeeper/amendments' },
+    manifest: { version: 1, authorities: [{ id: 'architecture', repository: 'self', revision: 'authority-revision', path }] },
+    baseSha, bSha, changedFiles: [{ path, status: 'modified' }],
+    baseAuthorityBytes: authorityBytes, headAuthorityBytes: proposedAuthorityBytes,
+    triggerRun: { runId: '1001', runAttempt: '1', prNumber: 77, headSha: triggerHeadSha,
+      workflowPath: '.github/workflows/self-architecture-gate.yml', workflowRef: 'refs/heads/main',
+      workflowSha: baseSha, event: 'pull_request_target', artifactId: '9001' },
+    authorityId: 'architecture', authorityPath: path, purpose: 'Resolve the existing canonical rule escalation.',
+    tagNamespace: 'refs/tags/architecture-gatekeeper/amendments', rulesetId: 11, token: 'fixture-token',
+    tagger: { name: 'Fixture', email: 'fixture@example.invalid', date: '2026-09-30T00:00:00.000Z' },
+    runGh: () => '',
+    fetchArtifact: async () => ({ status: 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT', zipBytes: Buffer.from('fixture zip') }),
+    extractArtifact: () => ({ status: 'EXTRACTED_OWNER_AMENDMENT_BLOCK_ARTIFACT',
+      reviewRecordBytes: ownerDecision.triggerReviewRecordBytes,
+      attestationBundleBytes: ownerDecision.attestationBundleBytes }),
+    verifyEvidence: ({ recordBytes }) => ({ status: 'VERIFIED_PRODUCER_ATTESTATION', recordSha256: sha256(recordBytes) }),
+    createTag: async ({ tagMessage }) => {
+      ownerDecisionMessage = tagMessage;
+      return { tagReadback: { sha: 'f'.repeat(40) } };
+    },
+  });
+  assert.equal(handoff.status, 'OWNER_DECISION_TAG_TRANSPORTED_AND_READ_BACK');
+  ownerDecision.installTagMessage(ownerDecisionMessage);
+  assert.equal(ownerDecision.transported.envelope.version, 3);
+  assert.equal(ownerDecision.transported.envelope.triggerProfile, 'completed-owner-decision-self-v1');
+  assert.equal(ownerDecision.producer.prepare(ownerDecision.args).triggerProfile, 'completed-owner-decision-self-v1');
+
+  for (const [f, triggerProfile] of [[block, 'completed-block-v1'],
+    [ownerDecision, 'completed-owner-decision-self-v1']]) {
     const wrongHeader = Buffer.from(f.tagObjectBytes.toString('utf8').replace(
       'tag architecture-gatekeeper/amendments/', 'tag refs/tags/architecture-gatekeeper/amendments/'));
     assert.throws(() => parseOwnerAmendmentSemanticTagObject(wrongHeader, {
