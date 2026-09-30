@@ -14,6 +14,7 @@ import { materializeAuthoritySet } from '../src/authority-set.mjs';
 import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
 import { inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
+import { createGitHubCliRunner } from '../src/github-cli-runner.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;
 const token = process.env.GH_TOKEN;
@@ -25,8 +26,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = args => execFileSync('git', ['-C', process.env.GITHUB_WORKSPACE, ...args], { encoding: 'buffer', maxBuffer: 2 * 1024 * 1024,
   timeout: 30_000,
   stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' } });
-const gh = (args, maxBuffer = 2 * 1024 * 1024) => execFileSync('gh', args, { encoding: 'utf8', maxBuffer,
-  timeout: 30_000, stdio: ['ignore', 'pipe', 'pipe'] });
+const gh = createGitHubCliRunner(execFileSync);
 
 async function getJson(url, { expectedOwnerAmendmentTagUrl } = {}) {
   let parsed;
