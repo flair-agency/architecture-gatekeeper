@@ -159,9 +159,10 @@ temporary workaround: replace the fork pin only after reviewing an upstream
 release that contains the equivalent fixes. `local-only` records an explicit
 waiver and makes no OpenAI API call.
 
-The normal reviewer and `OWNER_ADDITION` eligibility Action calls both set the
-Action's `timeout-seconds` input to 240. Each GitHub Action step retains its
-separate five-minute outer timeout, leaving up to 60 seconds for Action
+The normal reviewer, `OWNER_ADDITION` eligibility, and `OWNER_AMENDMENT`
+semantic eligibility Action calls all set the Action's `timeout-seconds` input
+to 240. Each GitHub Action step retains its separate five-minute outer timeout,
+leaving up to 60 seconds for Action
 initialization and process-group cancellation cleanup after the runtime
 deadline (including its one-second TERM-to-KILL grace period). The step remains
 the hard ceiling if initialization consumes that headroom. The review job has
