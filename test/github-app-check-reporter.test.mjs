@@ -116,7 +116,7 @@ test('publishes a protected failure as failure and does not expose supplied deta
   assert.equal(JSON.stringify(published).includes('secret diagnostic detail'), false);
 });
 
-test('rejects malformed-SHA or unsupported results before network access', async (t) => {
+test('rejects missing, malformed-SHA, or unsupported results before network access', async (t) => {
   for (const result of [
     null,
     { headSha: 'not-a-sha', conclusion: 'success' },
