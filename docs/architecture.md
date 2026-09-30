@@ -173,60 +173,49 @@ canonical decision. A historical semantic result is never rewritten as `PASS`.
 ### Acceptance authority and host enforcement boundary
 
 Acceptance authority is divided among the consumer owner, Gatekeeper, the
-selected acceptance producer, and the hosting service or its administrators:
+producer and the hosting service or its administrators:
 
 | Responsibility | Authority |
 | --- | --- |
-| Define canonical architecture, protected policy, required evidence and permitted acceptance procedure | Consumer owner, recorded in canonical authority and protected policy |
-| Resolve the exact selected inputs, validate evidence against that policy, and report the governed result | Gatekeeper |
-| Publish the verified acceptance report | The producer selected by prior policy and, where applicable, host configuration; candidate YAML cannot replace or authorize it |
-| Protect the producer and enforce any required check or target transition | Hosting service and repository administrators, as configured and verified for the selected route |
+| Define architecture, protected policy, required evidence and permitted procedure | Consumer owner; canonical authority and protected policy |
+| Resolve exact selected inputs, validate evidence and report result | Gatekeeper |
+| Publish report | Producer selected by prior policy/host config; candidate YAML cannot authorize or replace it |
+| Protect producer and enforce check/target transition | Hosting service and administrators, as configured for the route |
 
-Protected input selection and producer protection are separate requirements.
-Reading policy, instructions and authority from a protected base, or pinning
-an action or reusable workflow revision, does not by itself establish that the
-caller invoking it or the acceptance evidence producer is protected from
-candidate control. Routes that rely on producer provenance must identify the
-producer and verify that provenance under their selected evidence contract.
-The semantic reviewer cannot select or authorize that acceptance source and
-may still produce its ordinary ReviewRecord; that record alone does not grant
-acceptance. Review execution and acceptance verification are distinct
-responsibilities even when one workflow implements both.
+Protected-base inputs or pinned actions/workflows alone do not establish
+caller or producer protection. Producer-provenance routes identify and verify
+the producer under their evidence contract. The semantic reviewer cannot
+select or authorize it; its ReviewRecord grants no acceptance. Review and
+acceptance verification remain distinct, even within one workflow.
 
-Host enforcement is independent of principal authentication, semantic
-eligibility, procedure-specific adoption and canonical readback. A report may
-claim verified host enforcement only when evidence establishes the selected
-host rule for the exact producer, required check and target transition. If
-that evidence is unavailable, the report cannot claim enforcement. Its
-absence does not universally invalidate every adoption: it prevents an
-enforcement claim and blocks only procedures whose prior-authorized policy
-requires that enforcement. This preserves separately authorized procedural
-adoption routes and the fail-closed behavior of routes selected as enforced.
+Host enforcement is independent of authentication, semantic eligibility,
+procedural adoption and canonical readback. Claim it only with evidence of the
+host rule for the exact producer, check and target transition. Without
+evidence, no enforcement claim is allowed; block adoption only when prior
+policy requires enforcement. This preserves procedural routes and fail-closed
+behavior for enforced routes.
 
-Each profile or adapter must state its producer and relevant actor identities,
-execution and credential boundary, exact revision selection, host capabilities
-and limitations, and how each required property is verified. Conceptual
-examples such as an application, required workflow or hosted service explain
-possible mechanisms; they do not select or activate one for a consumer. This
-boundary adds no evidence grade, evidence backend, universal application
-requirement or stronger identity requirement, and it does not enable an
-acceptance route or decide consumer architecture.
+Each profile or adapter specifies producer/actor identities, execution and
+credential boundaries, exact revision selection, host capabilities/limits and property
+verification. Application, workflow and hosted-service examples describe
+mechanisms; they activate none. This adds no evidence grade, backend, universal
+application or stronger identity rule, and enables no route or architecture.
 
 The [OWNER_ADDITION assurance dimensions](#owner_addition-adoption-and-assurance-dimensions-issue-121-owner-decision)
 and [target evidence and acceptance contract](#target-evidence-and-acceptance-contract)
-define the corresponding route-specific rules.
+define route-specific rules.
 
 The diagram shows an enforced profile; procedural profiles retain their
 separately adopted assurance.
 
 ```mermaid
 flowchart LR
-    P[Protected policy selects inputs, route and producer] --> R[Review execution produces decision and evidence]
-    R --> V[Gatekeeper validates evidence against selected policy]
-    P --> V
-    V --> T[Selected producer publishes Gatekeeper result]
-    C[Host configuration selects required check and target] --> H[Host enforces configured target transition]
-    T --> H
+P[Prior policy selects route and producer] --> R[Review]
+P --> V
+R --> V[Gatekeeper validates evidence]
+V --> T[Producer reports result]
+C[Host config selects check and target] --> H[Enforce transition]
+T --> H
 ```
 
 ### OWNER_ADDITION / G0 route for missing decisions (Issue #111)
