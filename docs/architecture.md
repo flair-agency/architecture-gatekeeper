@@ -1067,8 +1067,8 @@ speculative OSS use. This sequence neither weakens existing consumer policy nor
 turns self-only results into general support claims.
 
 This repository (public GitHub Free) is the v0.6.0 reference: its previous-base
-policy selects v0.5.x `OWNER_ADDITION` for missing decisions and protected
-adoption of `OWNER_AMENDMENT / G0` for changing existing ones, without routine
+policy may select v0.5.x `OWNER_ADDITION` for missing decisions or protected
+`OWNER_AMENDMENT / G0` adoption for changing existing ones, without routine
 admin bypass. Final v0.6.0 must prove completed `BLOCK` and `OWNER_DECISION`
 amendment cases, including the Issue #137 self contract change under prior
 protected-base policy. Both preserve historical semantic results and establish
