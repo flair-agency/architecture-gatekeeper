@@ -3,21 +3,24 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 test('merge_group verifier runs only protected-base code with read-only GitHub permissions', () => {
-  const workflow = readFileSync(new URL('../.github/workflows/owner-amendment-merge-group-accept.yml', import.meta.url), 'utf8');
-  assert.match(workflow, /^name: Architecture Gate \/ OWNER_AMENDMENT merge_group/m);
-  assert.match(workflow, /merge_group:\n    types: \[checks_requested\]/);
-  assert.match(workflow, /if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.event\.merge_group\.base_ref == 'refs\/heads\/main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.merge_group\.base_sha \}\}/);
-  assert.match(workflow, /event_dir="\$RUNNER_TEMP\/owner-amendment-merge-group"/);
-  assert.match(workflow, /cp "\$GITHUB_EVENT_PATH" "\$event_dir\/event\.json"/);
-  assert.match(workflow, /GATEKEEPER_RUNTIME_SHA: \$\{\{ github\.workflow_sha \}\}/);
-  assert.match(workflow, /OWNER_AMENDMENT_TAG_RULESET_ID: \$\{\{ vars\.OWNER_AMENDMENT_TAG_RULESET_ID \}\}/);
-  assert.match(workflow, /working-directory: \$\{\{ runner\.temp \}\}/);
-  assert.match(workflow, /node "\$GITHUB_WORKSPACE\/scripts\/owner-amendment-merge-group-gate\.mjs"/);
-  assert.doesNotMatch(workflow, /OPENAI_API_KEY|secrets\./);
-  assert.doesNotMatch(workflow, /ref: \$\{\{ github\.event\.merge_group\.head_sha \}\}/);
-  assert.match(workflow, /contents: read[\s\S]*pull-requests: read[\s\S]*actions: read[\s\S]*attestations: read/);
-  assert.doesNotMatch(workflow, /contents: write|pull-requests: write|id-token: write/);
+  const workflow = readFileSync(new URL('../.github/workflows/self-architecture-gate.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /^name: Self Architecture Gate/m);
+  assert.match(workflow, /merge_group:\n    types: \[checks_requested\]\n    branches: \[main\]/);
+  assert.match(workflow, /architecture-gate:\n    name: \$\{\{ github\.event_name == 'pull_request_target' && 'architecture-gate' \|\| 'architecture-gate \(not applicable\)' \}\}\n    if: github\.event_name == 'pull_request_target' && github\.event\.pull_request\.draft == false/);
+  assert.match(workflow, /merge-group-accept:\n    name: \$\{\{ github\.event_name == 'merge_group' && 'architecture-gate \/ accept' \|\| 'merge-group-accept \(not applicable\)' \}\}\n    if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.event_name == 'merge_group' && github\.event\.merge_group\.base_ref == 'refs\/heads\/main'/);
+  const mergeJob = workflow.split('\n  merge-group-accept:')[1];
+  assert.match(mergeJob, /ref: \$\{\{ github\.event\.merge_group\.base_sha \}\}/);
+  assert.match(mergeJob, /event_dir="\$RUNNER_TEMP\/owner-amendment-merge-group"/);
+  assert.match(mergeJob, /cp "\$GITHUB_EVENT_PATH" "\$event_dir\/event\.json"/);
+  assert.match(mergeJob, /GATEKEEPER_RUNTIME_SHA: \$\{\{ github\.workflow_sha \}\}/);
+  assert.match(mergeJob, /OWNER_AMENDMENT_TAG_RULESET_ID: \$\{\{ vars\.OWNER_AMENDMENT_TAG_RULESET_ID \}\}/);
+  assert.match(mergeJob, /working-directory: \$\{\{ runner\.temp \}\}/);
+  assert.match(mergeJob, /node "\$GITHUB_WORKSPACE\/scripts\/owner-amendment-merge-group-gate\.mjs"/);
+  assert.doesNotMatch(mergeJob, /OPENAI_API_KEY|secrets\./);
+  assert.doesNotMatch(mergeJob, /ref: \$\{\{ github\.event\.merge_group\.head_sha \}\}/);
+  assert.match(mergeJob, /contents: read[\s\S]*pull-requests: read[\s\S]*actions: read[\s\S]*attestations: read/);
+  assert.doesNotMatch(mergeJob, /contents: write|pull-requests: write|id-token: write/);
+  assert.doesNotMatch(workflow, /\.github\/workflows\/owner-amendment-merge-group-accept\.yml/);
 });
 
 test('merge_group success is pre-transition verification and keeps adoption/canonical placement pending', () => {

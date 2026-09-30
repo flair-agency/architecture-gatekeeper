@@ -312,17 +312,18 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
 
 test('dogfoods only the protected reusable workflow with separated permissions', () => {
   const caller = readFileSync(join(root, '.github/workflows/self-architecture-gate.yml'), 'utf8');
+  const pullRequestCaller = caller.split('\n  merge-group-accept:')[0];
   assert.match(caller, /pull_request_target:/);
   assert.match(caller, /uses: \.\/\.github\/workflows\/architecture-gate\.yml/);
-  assert.match(caller, /contents: read/);
-  assert.doesNotMatch(caller, /actions: read/);
-  assert.match(caller, /pull-requests: write/);
-  assert.match(caller, /protected-review-instructions: true/);
-  assert.match(caller, /schema-path: \.codex\/gatekeeper\/ci-decision\.schema\.json/);
-  assert.match(caller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
-  assert.doesNotMatch(caller, /owner-decision-environment/);
-  assert.match(caller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
-  assert.doesNotMatch(caller, /actions\/checkout/);
+  assert.match(pullRequestCaller, /contents: read/);
+  assert.doesNotMatch(pullRequestCaller, /actions: read/);
+  assert.match(pullRequestCaller, /pull-requests: write/);
+  assert.match(pullRequestCaller, /protected-review-instructions: true/);
+  assert.match(pullRequestCaller, /schema-path: \.codex\/gatekeeper\/ci-decision\.schema\.json/);
+  assert.match(pullRequestCaller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
+  assert.doesNotMatch(pullRequestCaller, /owner-decision-environment/);
+  assert.match(pullRequestCaller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
+  assert.doesNotMatch(pullRequestCaller, /actions\/checkout/);
 });
 
 test('produces attested BLOCK records only in a credential-separated signer job', () => {

@@ -4,10 +4,14 @@ on:
   pull_request_target:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+    types: [checks_requested]
+    branches: [main]
 
 jobs:
   architecture-gate:
-    if: github.event.pull_request.draft == false
+    name: ${{ github.event_name == 'pull_request_target' && 'architecture-gate' || 'architecture-gate (not applicable)' }}
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.draft == false
     permissions:
       contents: read
       pull-requests: write
@@ -24,3 +28,37 @@ jobs:
       validation-path: .codex/gatekeeper/decision.validation.json
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  merge-group-accept:
+    name: ${{ github.event_name == 'merge_group' && 'architecture-gate / accept' || 'merge-group-accept (not applicable)' }}
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+      checks: read
+      attestations: read
+    steps:
+      - name: Check out the protected merge-group base
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.merge_group.base_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Copy the event payload to a fixed runner-temp path
+        run: |
+          set -euo pipefail
+          event_dir="$RUNNER_TEMP/owner-amendment-merge-group"
+          mkdir -m 700 -p "$event_dir"
+          test ! -e "$event_dir/event.json"
+          cp "$GITHUB_EVENT_PATH" "$event_dir/event.json"
+          chmod 600 "$event_dir/event.json"
+      - name: Verify the merge-group OWNER_AMENDMENT evidence chain
+        working-directory: ${{ runner.temp }}
+        env:
+          GATEKEEPER_RUNTIME_SHA: ${{ github.workflow_sha }}
+          GH_TOKEN: ${{ github.token }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-gate.mjs"
