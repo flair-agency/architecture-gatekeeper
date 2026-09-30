@@ -18,7 +18,6 @@ import { createGitHubCliRunner } from '../src/github-cli-runner.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;
 const token = process.env.GH_TOKEN;
-const runtimeRevision = process.env.GATEKEEPER_RUNTIME_SHA;
 const tagRulesetId = Number(process.env.OWNER_AMENDMENT_TAG_RULESET_ID);
 const api = 'https://api.github.com/';
 const fail = message => { throw new Error(`Owner amendment merge-group gate: ${message}`); };
@@ -108,13 +107,17 @@ async function eligibilityEvidence({ selection, attempts }) {
 
 async function main() {
   if (repository !== 'flair-agency/architecture-gatekeeper' || !token || !process.env.RUNNER_TEMP ||
-      !/^[a-f0-9]{40}$/.test(runtimeRevision ?? '')) {
-    fail('protected self repository, runtime revision, or token is invalid.');
+      !process.env.GITHUB_WORKSPACE) {
+    fail('protected self repository, workspace, or token is invalid.');
   }
   const eventDir = resolveRunnerTempDirectory('owner-amendment-merge-group');
   const event = JSON.parse(readRunnerTempFile(eventDir, 'event.json', 262_144).toString('utf8'));
   const selection = await selectOwnerAmendmentMergeGroupBContext({ event, token });
   if (selection.status !== 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT') fail(selection.reason ?? 'merge-group does not select one exact B.');
+  let runtimeRevision;
+  try { runtimeRevision = git(['rev-parse', 'HEAD']).toString('utf8').trim(); }
+  catch { fail('checked-out protected verifier revision is unavailable.'); }
+  if (!/^[a-f0-9]{40}$/.test(runtimeRevision)) fail('checked-out protected verifier revision is invalid.');
   if (runtimeRevision !== selection.bBaseSha) fail('checked-out protected verifier revision differs from the exact merge-group base.');
   let policyBytes;
   try { policyBytes = git(['show', `${selection.bBaseSha}:.codex/gatekeeper/ci-policy.json`]); }

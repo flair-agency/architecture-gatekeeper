@@ -58,7 +58,6 @@ jobs:
       - name: Verify the merge-group OWNER_AMENDMENT evidence chain
         working-directory: ${{ runner.temp }}
         env:
-          GATEKEEPER_RUNTIME_SHA: ${{ github.workflow_sha }}
           GH_TOKEN: ${{ github.token }}
           OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
         run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-gate.mjs"

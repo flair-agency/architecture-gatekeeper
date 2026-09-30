@@ -10,9 +10,9 @@ test('merge_group verifier runs only protected-base code with read-only GitHub p
   assert.match(workflow, /merge-group-accept:\n    name: \$\{\{ github\.event_name == 'merge_group' && 'architecture-gate \/ accept' \|\| 'merge-group-accept \(not applicable\)' \}\}\n    if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.event_name == 'merge_group' && github\.event\.merge_group\.base_ref == 'refs\/heads\/main'/);
   const mergeJob = workflow.split('\n  merge-group-accept:')[1];
   assert.match(mergeJob, /ref: \$\{\{ github\.event\.merge_group\.base_sha \}\}/);
+  assert.doesNotMatch(mergeJob, /GATEKEEPER_RUNTIME_SHA|github\.workflow_sha/);
   assert.match(mergeJob, /event_dir="\$RUNNER_TEMP\/owner-amendment-merge-group"/);
   assert.match(mergeJob, /cp "\$GITHUB_EVENT_PATH" "\$event_dir\/event\.json"/);
-  assert.match(mergeJob, /GATEKEEPER_RUNTIME_SHA: \$\{\{ github\.workflow_sha \}\}/);
   assert.match(mergeJob, /OWNER_AMENDMENT_TAG_RULESET_ID: \$\{\{ vars\.OWNER_AMENDMENT_TAG_RULESET_ID \}\}/);
   assert.match(mergeJob, /working-directory: \$\{\{ runner\.temp \}\}/);
   assert.match(mergeJob, /node "\$GITHUB_WORKSPACE\/scripts\/owner-amendment-merge-group-gate\.mjs"/);
@@ -21,6 +21,9 @@ test('merge_group verifier runs only protected-base code with read-only GitHub p
   assert.match(mergeJob, /contents: read[\s\S]*pull-requests: read[\s\S]*actions: read[\s\S]*attestations: read/);
   assert.doesNotMatch(mergeJob, /contents: write|pull-requests: write|id-token: write/);
   assert.doesNotMatch(workflow, /\.github\/workflows\/owner-amendment-merge-group-accept\.yml/);
+  const script = readFileSync(new URL('../scripts/owner-amendment-merge-group-gate.mjs', import.meta.url), 'utf8');
+  assert.match(script, /git\(\['rev-parse', 'HEAD'\]\)/);
+  assert.match(script, /runtimeRevision !== selection\.bBaseSha/);
 });
 
 test('merge_group success is pre-transition verification and keeps adoption/canonical placement pending', () => {
