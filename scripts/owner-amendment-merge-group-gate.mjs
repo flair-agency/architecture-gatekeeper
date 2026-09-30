@@ -112,6 +112,69 @@ async function eligibilityEvidence({ selection, attempts }) {
     exactClaimAuthorization: 'not_verified' };
 }
 
+function eligibilityReviewInputs({ selection, policy, trigger, tag, context }) {
+  const workspace = process.env.GITHUB_WORKSPACE;
+  if (typeof workspace !== 'string' || !workspace) fail('protected workspace is unavailable for exact eligibility input reconstruction.');
+  let output;
+  try {
+    output = execFileSync(process.execPath, [`${workspace}/scripts/owner-amendment-semantic-eligibility-producer.mjs`, 'prepare'], {
+      encoding: 'utf8', maxBuffer: 131_072, timeout: 30_000, stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, GITHUB_REPOSITORY: selection.repository, BASE_SHA: selection.bBaseSha,
+        B_SHA: selection.bHeadSha, BASE_BRANCH: 'main', TRIGGER_PROFILE: policy.triggerProfile, GH_TOKEN: token,
+        OWNER_AMENDMENT_TAG_RULESET_ID: String(tagRulesetId) },
+    });
+  } catch { fail('protected semantic preparation could not reconstruct exact B review inputs.'); }
+  let summary;
+  try { summary = JSON.parse(output); } catch { fail('protected semantic preparation summary is invalid.'); }
+  const inputDir = resolveRunnerTempDirectory('owner-amendment-eligibility');
+  let preparedBytes, promptBytes, schemaBytes;
+  try {
+    preparedBytes = readRunnerTempFile(inputDir, 'prepared-context.json', 131_072);
+    promptBytes = readRunnerTempFile(inputDir, 'eligibility-prompt.md', 1_048_576);
+    schemaBytes = readRunnerTempFile(inputDir, 'eligibility.schema.json', 1_048_576);
+  } catch { fail('protected semantic preparation did not produce bounded exact input files.'); }
+  let prepared;
+  try {
+    prepared = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(preparedBytes));
+  } catch { fail('protected semantic preparation context is invalid.'); }
+  const preparedKeys = ['repository', 'baseSha', 'bSha', 'triggerProfile', 'triggerReviewRecordSha256',
+    'amendmentRecordSha256', 'policyRevision', 'policySha256', 'authoritySetDigest', 'resultingAuthoritySetDigest',
+    'authorityIds', 'changes', 'diffSha256', 'promptSha256', 'schemaSha256', 'model', 'reasoningEffort',
+    'gatekeeper', 'tag', 'producer'];
+  if (!prepared || typeof prepared !== 'object' || Array.isArray(prepared) ||
+      Object.keys(prepared).length !== preparedKeys.length || preparedKeys.some(key => !Object.hasOwn(prepared, key)) ||
+      !preparedBytes.equals(Buffer.from(`${JSON.stringify(prepared)}\n`, 'utf8')) ||
+      summary.status !== 'PREPARED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY' ||
+      summary.triggerProfile !== policy.triggerProfile || summary.promptSha256 !== prepared.promptSha256 ||
+      summary.schemaSha256 !== prepared.schemaSha256 || summary.model !== prepared.model ||
+      summary.reasoningEffort !== prepared.reasoningEffort || prepared.repository !== selection.repository ||
+      prepared.baseSha !== selection.bBaseSha || prepared.bSha !== selection.bHeadSha ||
+      prepared.triggerProfile !== policy.triggerProfile || prepared.triggerReviewRecordSha256 !== trigger.reviewRecordSha256 ||
+      prepared.amendmentRecordSha256 !== tag.amendmentRecordSha256 || prepared.policyRevision !== selection.bBaseSha ||
+      prepared.policySha256 !== policy.policySha256 || prepared.authoritySetDigest !== policy.authoritySetDigest ||
+      !Array.isArray(prepared.authorityIds) || prepared.authorityIds.length !== policy.authorityIds.length ||
+      prepared.authorityIds.some((id, index) => id !== policy.authorityIds[index]) ||
+      prepared.resultingAuthoritySetDigest !== tag.resultingAuthoritySetDigest ||
+      prepared.model !== policy.model || prepared.reasoningEffort !== policy.reasoningEffort ||
+      !prepared.tag || prepared.tag.tagRef !== tag.tagRef || prepared.tag.tagObjectOid !== tag.tagObjectOid ||
+      prepared.tag.observedTagRefOid !== tag.observedTagRefOid) {
+    fail('protected semantic preparation differs from selected previous policy, exact B, trigger or tag.');
+  }
+  const diffBytes = git(['--no-replace-objects', 'diff', '--binary', '--no-ext-diff', '--no-renames',
+    selection.bBaseSha, selection.bHeadSha, '--', context.scope.authorityPath]);
+  if (hash(promptBytes) !== prepared.promptSha256 || hash(schemaBytes) !== prepared.schemaSha256 ||
+      hash(diffBytes) !== prepared.diffSha256) {
+    fail('reconstructed exact prompt, schema or B diff differs from protected preparation.');
+  }
+  return { status: 'RESOLVED_PROTECTED_OWNER_AMENDMENT_REVIEW_INPUTS', repository: prepared.repository,
+    baseSha: prepared.baseSha, bSha: prepared.bSha, triggerProfile: prepared.triggerProfile,
+    triggerReviewRecordSha256: prepared.triggerReviewRecordSha256, amendmentRecordSha256: prepared.amendmentRecordSha256,
+    policySha256: prepared.policySha256, authoritySetDigest: prepared.authoritySetDigest,
+    authorityIds: prepared.authorityIds, changes: prepared.changes, diffSha256: prepared.diffSha256,
+    promptSha256: prepared.promptSha256, schemaSha256: prepared.schemaSha256, model: prepared.model,
+    reasoningEffort: prepared.reasoningEffort, diffBytes, promptBytes, schemaBytes };
+}
+
 async function main() {
   if (repository !== 'flair-agency/architecture-gatekeeper' || !token || !process.env.RUNNER_TEMP ||
       !process.env.GITHUB_WORKSPACE) {
@@ -191,7 +254,9 @@ async function main() {
       triggerProfile: context.policy.ownerAmendmentTriggerProfile, authorityId: context.scope.authorityId,
       authorityPath: context.scope.authorityPath, authoritySha256: context.scope.previousSha256,
       tagNamespace: context.policy.ownerAmendmentTagNamespace, policySha256: hash(context.policyBytes),
-      authoritySetDigest: materialized.setDigest, authorityIds: materialized.members.map(member => member.id) }),
+      authoritySetDigest: materialized.setDigest, authorityIds: materialized.members.map(member => member.id),
+      model: context.policy.model, reasoningEffort: context.policy.reasoningEffort,
+      maxPromptBytes: context.policy.ownerAmendmentMaxPromptBytes }),
     verifyTrigger: async () => { const value = await verify(); return { status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER',
       repository, baseSha: selection.bBaseSha, triggerProfile: value.triggerProfile,
       decision: value.triggerDecision,
@@ -208,6 +273,8 @@ async function main() {
       tagRef: `${context.policy.ownerAmendmentTagNamespace}/${selection.bHeadSha}`,
       tagObjectOid: value.tagObjectOid, observedTagRefOid: value.observedTagRefOid,
       protectedAgainstUpdateAndDeletion: true }; },
+    resolveEligibilityReviewInputs: async ({ policy, trigger, tag }) =>
+      eligibilityReviewInputs({ selection, policy, trigger, tag, context }),
     verifyEligibility: async () => eligibilityEvidence({ selection, attempts: producerAttempts }),
   });
   const result = await verifier.verify(event);

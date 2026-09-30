@@ -20,13 +20,17 @@ const event = { action: 'checks_requested', repository: { full_name: repository 
 function fixture(profile = 'completed-block-v1', edits = {}) {
   const decision = profile === 'completed-block-v1' ? 'BLOCK' : 'OWNER_DECISION';
   const ids = ['architecture-contract'];
+  const diffBytes = Buffer.from('exact protected-base-to-B authority diff\n');
+  const promptBytes = Buffer.from('exact protected semantic eligibility prompt\n');
+  const schemaBytes = Buffer.from('{"type":"object","additionalProperties":false}\n');
   const selection = { status: 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT', repository, repositoryId: 17,
     mergeGroupBaseSha: baseSha, mergeGroupHeadSha: groupSha, bPrNumber: '8', bBaseSha: baseSha,
     bHeadSha: bSha, queueEntryState: 'AWAITING_CHECKS', queueEnteredAt: '2026-09-29T12:00:00Z' };
   const policy = { status: 'RESOLVED_PREVIOUS_OWNER_AMENDMENT_POLICY', repository, baseSha,
     grade: 'G0', scope: 'authority-only', triggerProfile: profile,
     authorityId: ids[0], authorityPath: 'docs/architecture.md', tagNamespace,
-    authoritySha256: '8'.repeat(64), policySha256: policySha, authoritySetDigest, authorityIds: ids };
+    authoritySha256: '8'.repeat(64), policySha256: policySha, authoritySetDigest, authorityIds: ids,
+    model: 'gpt-6-sol', reasoningEffort: 'medium', maxPromptBytes: 4096 };
   const trigger = { status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER', repository, baseSha,
     triggerProfile: profile, decision,
     reviewRecordSha256: triggerSha, producerWorkflowPath: '.github/workflows/self-architecture-gate.yml',
@@ -46,7 +50,7 @@ function fixture(profile = 'completed-block-v1', edits = {}) {
     amendmentRecordSha256: amendmentSha, policyRevision: baseSha, policySha256: policySha,
     authoritySetDigest, authorityIds: ids,
     changes: [{ path: 'docs/architecture.md', beforeSha256: '8'.repeat(64), afterSha256: '9'.repeat(64) }],
-    diffSha256: 'a'.repeat(64), promptSha256: 'b'.repeat(64), schemaSha256: 'c'.repeat(64),
+    diffSha256: hash(diffBytes), promptSha256: hash(promptBytes), schemaSha256: hash(schemaBytes),
     decisionSha256: 'e'.repeat(64), model: 'gpt-6-sol', reasoningEffort: 'medium',
     tag: { tagRef: tag.tagRef, tagObjectOid: tagOid, observedTagRefOid: tagOid },
     producer, gatekeeper: { repository, revision: baseSha, package: null } };
@@ -59,7 +63,13 @@ function fixture(profile = 'completed-block-v1', edits = {}) {
     producerRunAttempt: producer.runAttempt, producerJobId: producer.jobId,
     gatekeeperRepository: repository, gatekeeperRevision: baseSha,
     principalAuthentication: 'not_verified', exactClaimAuthorization: 'not_verified' };
-  const values = { selection, policy, trigger, tag, eligibility, ...edits };
+  const reviewInputs = { status: 'RESOLVED_PROTECTED_OWNER_AMENDMENT_REVIEW_INPUTS', repository,
+    baseSha, bSha, triggerProfile: profile, triggerReviewRecordSha256: triggerSha,
+    amendmentRecordSha256: amendmentSha, policySha256: policySha, authoritySetDigest,
+    authorityIds: ids, changes: receipt.changes, diffSha256: hash(diffBytes), promptSha256: hash(promptBytes),
+    schemaSha256: hash(schemaBytes), model: policy.model, reasoningEffort: policy.reasoningEffort,
+    diffBytes, promptBytes, schemaBytes };
+  const values = { selection, policy, trigger, tag, eligibility, reviewInputs, ...edits };
   const calls = [];
   const verifier = createOwnerAmendmentMergeGroupAcceptanceVerifier({ runtime,
     selectBContext: async () => { calls.push('select'); return values.selection; },
@@ -68,6 +78,7 @@ function fixture(profile = 'completed-block-v1', edits = {}) {
     },
     verifyTrigger: async () => { calls.push('trigger'); return values.trigger; },
     verifyTag: async () => { calls.push('tag'); return values.tag; },
+    resolveEligibilityReviewInputs: async () => { calls.push('inputs'); return values.reviewInputs; },
     verifyEligibility: async () => { calls.push('eligibility'); return values.eligibility; },
   });
   return { verifier, calls, values };
@@ -84,7 +95,7 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
     assert.equal(result.triggerProfile, profile);
     assert.equal(result.triggerDecision, profile === 'completed-block-v1' ? 'BLOCK' : 'OWNER_DECISION');
     assert.deepEqual(result.assurance, { principalAuthentication: 'not_verified', exactClaimAuthorization: 'not_verified' });
-    assert.deepEqual(f.calls, ['select', 'policy', 'trigger', 'tag', 'eligibility']);
+    assert.deepEqual(f.calls, ['select', 'policy', 'trigger', 'tag', 'inputs', 'eligibility']);
     assert.equal(Object.hasOwn(result, 'semanticPass'), false);
   });
 }
@@ -95,6 +106,15 @@ test('fails closed on absent prior opt-in and leaves profile selection disabled 
   const result = await f.verifier.verify(event);
   assert.equal(result.status, 'INCOMPLETE');
   assert.match(result.reason, /previous protected-base policy/);
+  assert.deepEqual(f.calls, ['select', 'policy']);
+});
+
+test('fails closed when the previous policy omits its selected semantic prompt limit', async () => {
+  const f = fixture();
+  delete f.values.policy.maxPromptBytes;
+  const result = await f.verifier.verify(event);
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /previous-base amendment selection has missing or unknown fields/);
   assert.deepEqual(f.calls, ['select', 'policy']);
 });
 
@@ -139,7 +159,44 @@ test('requires trusted verifiers and valid runtime identity at construction', ()
     resolveProtectedPolicy: async () => f.values.policy,
     verifyTrigger: async () => f.values.trigger,
     verifyTag: async () => f.values.tag,
+    resolveEligibilityReviewInputs: async () => f.values.reviewInputs,
     verifyEligibility: async () => f.values.eligibility,
     runtime: { repository, revision: 'invalid' },
   }), /runtime identity is invalid/);
+});
+
+test('rejects receipt model, effort and review-input digests that differ from protected selections', async t => {
+  const mutations = [
+    ['model', receipt => ({ ...receipt, model: 'other-model' })],
+    ['reasoning effort', receipt => ({ ...receipt, reasoningEffort: 'low' })],
+    ['diff digest', receipt => ({ ...receipt, diffSha256: 'f'.repeat(64) })],
+    ['prompt digest', receipt => ({ ...receipt, promptSha256: 'f'.repeat(64) })],
+    ['schema digest', receipt => ({ ...receipt, schemaSha256: 'f'.repeat(64) })],
+  ];
+  for (const [name, mutate] of mutations) await t.test(name, async () => {
+    const f = fixture();
+    const receipt = JSON.parse(f.values.eligibility.receiptBytes.toString('utf8'));
+    const receiptBytes = canonicalBytes(mutate(receipt));
+    f.values.eligibility = { ...f.values.eligibility, receiptBytes, receiptSha256: hash(receiptBytes) };
+    const result = await f.verifier.verify(event);
+    assert.equal(result.status, 'INCOMPLETE');
+    assert.match(result.reason, /receipt identity or digests differ/);
+  });
+});
+
+test('rejects absent, mismatched or invalid exact prepared review inputs', async t => {
+  const cases = [
+    ['missing prompt bytes', inputs => ({ ...inputs, promptBytes: undefined })],
+    ['prompt bytes do not match prepared digest', inputs => ({ ...inputs, promptBytes: Buffer.from('mutated prompt') })],
+    ['input model differs from protected policy', inputs => ({ ...inputs, model: 'other-model' })],
+    ['input selection differs from exact B', inputs => ({ ...inputs, bSha: 'e'.repeat(40) })],
+    ['prepared changes omit selected target', inputs => ({ ...inputs,
+      changes: inputs.changes.map(change => ({ ...change, path: 'docs/other.md' })) })],
+  ];
+  for (const [name, mutate] of cases) await t.test(name, async () => {
+    const f = fixture(); f.values.reviewInputs = mutate(f.values.reviewInputs);
+    const result = await f.verifier.verify(event);
+    assert.equal(result.status, 'INCOMPLETE');
+    assert.match(result.reason, /exact protected eligibility review inputs|prepared exact B authority changes omit/);
+  });
 });

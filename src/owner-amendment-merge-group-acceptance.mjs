@@ -4,6 +4,9 @@ import { validateOwnerAmendmentSemanticEligibilityReceipt } from './owner-amendm
 
 const SHA1 = /^[a-f0-9]{40}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
+const MAX_REVIEW_INPUT_BYTES = 1_048_576;
+const MAX_OWNER_PROMPT_BYTES = 1_048_576;
+const EFFORTS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
 const PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1']);
 const DECISION_BY_PROFILE = Object.freeze({
   'completed-block-v1': 'BLOCK',
@@ -38,7 +41,8 @@ function validateSelection(value, event) {
 
 function validatePolicy(value, selection) {
   exact(value, ['status', 'repository', 'baseSha', 'grade', 'scope', 'triggerProfile', 'authorityId',
-    'authorityPath', 'authoritySha256', 'tagNamespace', 'policySha256', 'authoritySetDigest', 'authorityIds'], 'previous-base amendment selection');
+    'authorityPath', 'authoritySha256', 'tagNamespace', 'policySha256', 'authoritySetDigest', 'authorityIds',
+    'model', 'reasoningEffort', 'maxPromptBytes'], 'previous-base amendment selection');
   if (value.status !== 'RESOLVED_PREVIOUS_OWNER_AMENDMENT_POLICY' || value.repository !== selection.repository ||
       value.baseSha !== selection.bBaseSha || value.grade !== 'G0' || value.scope !== 'authority-only' ||
       !PROFILES.has(value.triggerProfile) || typeof value.authorityId !== 'string' ||
@@ -47,12 +51,51 @@ function validatePolicy(value, selection) {
       value.authorityPath.split('/').some(part => part === '.' || part === '..') ||
       !SHA256.test(value.authoritySha256 ?? '') || value.tagNamespace !== 'refs/tags/architecture-gatekeeper/amendments' ||
       !SHA256.test(value.policySha256 ?? '') || !SHA256.test(value.authoritySetDigest ?? '') ||
+      typeof value.model !== 'string' || !/^[A-Za-z0-9._-]{1,80}$/.test(value.model) ||
+      !EFFORTS.has(value.reasoningEffort) || !Number.isSafeInteger(value.maxPromptBytes) ||
+      value.maxPromptBytes < 1 || value.maxPromptBytes > MAX_OWNER_PROMPT_BYTES ||
       !Array.isArray(value.authorityIds) || !value.authorityIds.length || value.authorityIds.length > 32 ||
       value.authorityIds.some(id => typeof id !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(id)) ||
       !value.authorityIds.includes(value.authorityId) || new Set(value.authorityIds).size !== value.authorityIds.length) {
     fail('previous protected-base policy does not explicitly select a supported G0 route and complete Authority Set.');
   }
   return Object.freeze({ ...value, authorityIds: Object.freeze([...value.authorityIds]) });
+}
+
+function validateReviewInputs(value, policy, selection, trigger, tag) {
+  exact(value, ['status', 'repository', 'baseSha', 'bSha', 'triggerProfile', 'triggerReviewRecordSha256',
+    'amendmentRecordSha256', 'policySha256', 'authoritySetDigest', 'authorityIds', 'changes', 'diffSha256',
+    'promptSha256', 'schemaSha256', 'model', 'reasoningEffort', 'diffBytes', 'promptBytes', 'schemaBytes'],
+  'exact protected eligibility review inputs');
+  if (value.status !== 'RESOLVED_PROTECTED_OWNER_AMENDMENT_REVIEW_INPUTS' ||
+      value.repository !== selection.repository || value.baseSha !== selection.bBaseSha || value.bSha !== selection.bHeadSha ||
+      value.triggerProfile !== policy.triggerProfile || value.triggerReviewRecordSha256 !== trigger.reviewRecordSha256 ||
+      value.amendmentRecordSha256 !== tag.amendmentRecordSha256 || value.policySha256 !== policy.policySha256 ||
+      value.authoritySetDigest !== policy.authoritySetDigest || !Array.isArray(value.authorityIds) ||
+      value.authorityIds.length !== policy.authorityIds.length || value.authorityIds.some((id, index) => id !== policy.authorityIds[index]) ||
+      value.model !== policy.model || value.reasoningEffort !== policy.reasoningEffort ||
+      !Buffer.isBuffer(value.diffBytes) || !value.diffBytes.length || value.diffBytes.length > MAX_REVIEW_INPUT_BYTES ||
+      !Buffer.isBuffer(value.promptBytes) || !value.promptBytes.length || value.promptBytes.length > policy.maxPromptBytes ||
+      !Buffer.isBuffer(value.schemaBytes) || !value.schemaBytes.length || value.schemaBytes.length > MAX_REVIEW_INPUT_BYTES ||
+      !SHA256.test(value.diffSha256 ?? '') || value.diffSha256 !== digest(value.diffBytes) ||
+      !SHA256.test(value.promptSha256 ?? '') || value.promptSha256 !== digest(value.promptBytes) ||
+      !SHA256.test(value.schemaSha256 ?? '') || value.schemaSha256 !== digest(value.schemaBytes)) {
+    fail('exact protected eligibility review inputs do not match selected B, policy, trigger, tag, model and effort.');
+  }
+  if (!Array.isArray(value.changes) || value.changes.length < 1 || value.changes.length > 32 ||
+      value.changes.some(change => !change || typeof change !== 'object' || Array.isArray(change) ||
+        Object.keys(change).length !== 3 || !Object.hasOwn(change, 'path') ||
+        !Object.hasOwn(change, 'beforeSha256') || !Object.hasOwn(change, 'afterSha256') ||
+        typeof change.path !== 'string' || !SHA256.test(change.beforeSha256 ?? '') ||
+        !SHA256.test(change.afterSha256 ?? '') || change.beforeSha256 === change.afterSha256)) {
+    fail('prepared exact B authority changes are malformed.');
+  }
+  if (!value.changes.some(change => change.path === policy.authorityPath &&
+      change.beforeSha256 === policy.authoritySha256 && change.afterSha256 === tag.amendedAuthoritySha256)) {
+    fail('prepared exact B authority changes omit the selected amendment target.');
+  }
+  return Object.freeze({ ...value, authorityIds: Object.freeze([...value.authorityIds]),
+    changes: Object.freeze(value.changes.map(change => Object.freeze({ ...change }))) });
 }
 
 function validateTrigger(value, policy, selection) {
@@ -90,7 +133,7 @@ function validateTag(value, policy, selection, trigger) {
   return Object.freeze({ ...value });
 }
 
-function validateEligibility(value, policy, selection, trigger, tag, runtime) {
+function validateEligibility(value, policy, selection, trigger, tag, runtime, reviewInputs) {
   exact(value, ['status', 'receiptBytes', 'receiptSha256', 'artifactId', 'artifactSha256',
     'provenanceVerified', 'checkConclusion', 'completedAt', 'producerWorkflowPath', 'producerWorkflowSha',
     'producerWorkflowRef', 'producerRunId', 'producerRunAttempt', 'producerJobId', 'gatekeeperRepository',
@@ -102,7 +145,10 @@ function validateEligibility(value, policy, selection, trigger, tag, runtime) {
   let receipt;
   try { receipt = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(value.receiptBytes)); }
   catch { fail('semantic eligibility receipt bytes are invalid JSON.'); }
-  const receiptValidation = validateOwnerAmendmentSemanticEligibilityReceipt({ receiptBytes: value.receiptBytes, expected: receipt });
+  const expectedReceipt = { ...receipt, changes: reviewInputs.changes, diffSha256: reviewInputs.diffSha256,
+    promptSha256: reviewInputs.promptSha256, schemaSha256: reviewInputs.schemaSha256,
+    model: policy.model, reasoningEffort: policy.reasoningEffort };
+  const receiptValidation = validateOwnerAmendmentSemanticEligibilityReceipt({ receiptBytes: value.receiptBytes, expected: expectedReceipt });
   if (value.status !== 'VERIFIED_OWNER_AMENDMENT_ELIGIBILITY_EVIDENCE' ||
       receiptValidation.status !== 'VERIFIED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY_RECEIPT' ||
       receiptValidation.eligibility !== 'ELIGIBLE' ||
@@ -142,8 +188,9 @@ function validateEligibility(value, policy, selection, trigger, tag, runtime) {
  * are untrusted until those adapters return their closed verified result.
  */
 export function createOwnerAmendmentMergeGroupAcceptanceVerifier({ selectBContext, resolveProtectedPolicy,
-  verifyTrigger, verifyTag, verifyEligibility, runtime } = {}) {
-  for (const [name, fn] of Object.entries({ selectBContext, resolveProtectedPolicy, verifyTrigger, verifyTag, verifyEligibility })) {
+  verifyTrigger, verifyTag, resolveEligibilityReviewInputs, verifyEligibility, runtime } = {}) {
+  for (const [name, fn] of Object.entries({ selectBContext, resolveProtectedPolicy, verifyTrigger, verifyTag,
+    resolveEligibilityReviewInputs, verifyEligibility })) {
     if (typeof fn !== 'function') fail(`trusted ${name} adapter is required.`);
   }
   exact(runtime, ['repository', 'revision'], 'selected Gatekeeper runtime');
@@ -161,8 +208,10 @@ export function createOwnerAmendmentMergeGroupAcceptanceVerifier({ selectBContex
         const policy = validatePolicy(await resolveProtectedPolicy({ selection, baseSha: selection.bBaseSha }), selection);
         const trigger = validateTrigger(await verifyTrigger({ selection, policy }), policy, selection);
         const tag = validateTag(await verifyTag({ selection, policy, trigger }), policy, selection, trigger);
+        const reviewInputs = validateReviewInputs(await resolveEligibilityReviewInputs({ selection, policy, trigger, tag }),
+          policy, selection, trigger, tag);
         const eligibility = validateEligibility(await verifyEligibility({ selection, policy, trigger, tag }),
-          policy, selection, trigger, tag, selectedRuntime);
+          policy, selection, trigger, tag, selectedRuntime, reviewInputs);
         return Object.freeze({ status: 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION', repository: selection.repository,
           eligibility: 'eligible', adoption: 'pending', canonical: 'pending',
           baseSha: selection.bBaseSha, bSha: selection.bHeadSha, mergeGroupHeadSha: selection.mergeGroupHeadSha,

@@ -35,6 +35,10 @@ test('merge_group verifier runs only protected-base code with read-only GitHub p
   const script = readFileSync(new URL('../scripts/owner-amendment-merge-group-gate.mjs', import.meta.url), 'utf8');
   assert.match(script, /git\(\['rev-parse', 'HEAD'\]\)/);
   assert.match(script, /runtimeRevision !== selection\.bBaseSha/);
+  assert.match(script, /eligibilityReviewInputs\(/);
+  assert.match(script, /prepared-context\.json/);
+  assert.match(script, /git\(\['--no-replace-objects', 'diff', '--binary', '--no-ext-diff', '--no-renames'/);
+  assert.match(script, /hash\(promptBytes\) !== prepared\.promptSha256 \|\| hash\(schemaBytes\) !== prepared\.schemaSha256 \|\|\s*hash\(diffBytes\) !== prepared\.diffSha256/);
 });
 
 test('merge_group success is pre-transition verification and keeps adoption/canonical placement pending', () => {
