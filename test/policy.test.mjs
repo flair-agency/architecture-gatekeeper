@@ -318,8 +318,10 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
 
 test('dogfoods only the protected reusable workflow with separated permissions', () => {
   const caller = readFileSync(join(root, '.github/workflows/self-architecture-gate.yml'), 'utf8');
-  const pullRequestCaller = caller.split('\n  merge-group-codex-action-integrity:')[0];
+  const pullRequestCaller = caller;
   assert.match(caller, /pull_request_target:/);
+  assert.doesNotMatch(caller, /^  merge_group:/m);
+  assert.doesNotMatch(caller, /merge-group-(?:accept|codex-action-integrity):/);
   assert.match(caller, /uses: \.\/\.github\/workflows\/architecture-gate\.yml/);
   assert.match(pullRequestCaller, /contents: read/);
   assert.match(pullRequestCaller, /actions: read/);
