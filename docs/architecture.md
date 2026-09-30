@@ -151,55 +151,28 @@ that have not selected this route keep the legacy `authorityFiles` behavior.
 
 ### Shared mechanism
 
-The shared package owns reusable mechanics:
+The package selects declared inputs from a recorded revision, invokes a review-only reviewer, validates structured decisions and consumer invariants, produces/verifies evidence only under an implemented and selected contract, and reports acceptance under protected policy.
 
-- selecting repository-declared inputs from a recorded revision;
-- invoking a separate semantic reviewer whose role is limited to review and
-  does not include changing the reviewed repository;
-- validating structured decisions and consumer-declared invariants;
-- producing or verifying architecture evidence when an explicit evidence
-  contract is implemented and selected;
-- reporting an authoritative acceptance result according to protected policy.
-
-Semantic review may return `PASS`, `BLOCK`, or `OWNER_DECISION`. The latter is
-an escalation requiring a decision in canonical consumer authority. Review
-decisions are not the complete set of acceptance outcomes; `OWNER_DECISION`
-is not an alternate form of acceptance.
-`OWNER_ADDITION` and `OWNER_AMENDMENT` are separate authority-governance
-results. Their distinction is the authority change: addition supplies a
-missing decision; amendment changes, replaces, removes, or refines an existing
-canonical decision. A historical semantic result is never rewritten as `PASS`.
+`PASS`, `BLOCK` and `OWNER_DECISION` are semantic results; the latter escalates to canonical consumer authority, not acceptance. `OWNER_ADDITION` adds a missing decision; `OWNER_AMENDMENT` changes, replaces, removes or refines an existing one. History is never rewritten as `PASS`.
 
 ### Acceptance authority and host enforcement boundary
 
 | Responsibility | Authority |
 | --- | --- |
-| Define architecture, protected policy, required evidence/permitted procedure | Consumer owner; canonical authority/protected policy |
-| Resolve exact selected inputs, validate evidence and report | Gatekeeper |
-| Publish report | Prior-policy/host-selected producer; candidate YAML cannot select/authorize/replace it |
-| Protect producer; enforce check/target transition | Host/admins, per route config |
+| Define architecture, policy, required evidence/permitted procedure | Consumer owner; canonical authority/protected policy |
+| Select exact inputs, validate evidence, report result | Gatekeeper |
+| Publish report | Prior-policy/host-selected producer; candidate YAML cannot select, authorize or replace |
+| Protect producer; enforce check/target transition | Host/admins per route config |
 
-Protected-base inputs/pinned actions/workflows alone prove neither caller nor
-producer protection. Provenance routes identify/verify the producer per evidence
-contract. The semantic reviewer cannot select/authorize it; its ReviewRecord
-grants no acceptance. Review and acceptance verification remain distinct.
+Protected-base bytes/pinned actions or workflows alone prove neither caller nor producer protection; provenance verifies producers per contract. Reviewer cannot select/authorize one; its ReviewRecord grants no acceptance. Review and acceptance are distinct.
 
-Host enforcement is independent of auth, semantic eligibility,
-procedural adoption and canonical readback. Claim only with evidence of the
-configured rule for exact producer, required check and target transition.
-Without evidence, no claim; block adoption only if prior policy requires enforcement.
-Procedural routes remain distinct; enforced routes fail closed.
+Host enforcement is independent of authentication, semantic eligibility, procedural adoption and canonical readback. Claim only with evidence of the configured rule for exact producer, required check and target transition. No evidence, no claim; block adoption only when prior policy requires enforcement. Procedural assurance differs; enforced routes fail closed.
 
-Profiles/adapters specify producer/actor IDs, execution/credential boundaries,
-exact revision selection, host capabilities/limits and property verification.
-Examples describe mechanisms, not consumer routes. No new evidence grade/backend,
-universal application requirement or stronger identity requirement. This
-activates no route and decides no consumer architecture.
+Profiles/adapters specify producer/actor IDs, execution/credential boundaries, exact revision selection, host capabilities/limits and property verification. Examples describe mechanisms, not routes. No new evidence grade/backend, universal-application or stronger-identity requirement; no route activates or consumer architecture is decided here.
 
-See the OWNER_ADDITION and target evidence/acceptance sections for route rules.
+See OWNER_ADDITION and target evidence/acceptance sections for route rules.
 
-Enforced-profile diagram; procedural profiles retain separately adopted
-assurance.
+Enforced-profile diagram; procedural profiles retain separate assurance.
 
 ```mermaid
 flowchart LR
@@ -813,38 +786,25 @@ resolve either issue or authorize a consumer-specific architecture.
 
 ### Three separate concepts and target contracts
 
-The architecture separates three concerns, even though the current CI path
-does not yet implement them as independent artifact contracts:
-
-1. **Review execution** evaluates a change and produces a structured decision.
-2. **Architecture evidence** binds that decision to the reviewed repository,
-   revision, mechanism and policy inputs.
-3. **Acceptance verification** decides whether the current change has evidence
-   permitted by protected-base policy.
-
-An implementation may combine these concerns in one workflow, but must not
-collapse their meanings. In particular, executing a review does not itself
-grant merge acceptance, and CI is not the definition of architecture review.
+Three concerns remain distinct: review execution yields a structured decision; architecture evidence binds it to repository/revision/mechanism/policy; acceptance applies prior protected-base evidence policy. One workflow may combine them, but execution grants no merge acceptance and CI does not define review.
 
 ## Conceptual operation
 
 ```mermaid
 flowchart TD
-    C[Proposed change] --> R{Review execution}
-    R --> L[Local or manual review]
-    R --> CI[CI model review]
-    L --> E[Validated decision and evidence]
-    CI --> E
-    E --> P{Selected policy and evidence valid?}
-    P -->|PASS under an allowed route| A[Accept the reviewed change]
-    P -->|Eligible separate B under an enabled route| B[Accept B through its own procedure]
-    P -->|No, incomplete, BLOCK, or unresolved OWNER_DECISION| X[Do not accept]
-    B --> F[Review original change A afresh after B is canonical]
+C[Change] --> R{Review}
+R --> L[Local/manual]
+R --> CI[CI]
+L --> E[Validated decision/evidence]
+CI --> E
+E --> P{Policy and evidence valid?}
+P -->|PASS, allowed route| A[Accept change]
+P -->|Eligible B, enabled route| B[Separate B procedure]
+P -->|No/incomplete/BLOCK/unresolved OWNER_DECISION| X[Do not accept]
+B --> F[Fresh A review after B canonical]
 ```
 
-Local feedback is not automatically merge evidence. `OWNER_ADDITION / G0` and
-`OWNER_AMENDMENT` are separate acceptance procedures for B; neither converts
-A's earlier decision into `PASS`.
+Local feedback is not automatically merge evidence. `OWNER_ADDITION / G0` and `OWNER_AMENDMENT` are separate B acceptance procedures; neither converts A's earlier result to `PASS`.
 
 ### Local and manual review
 
@@ -923,17 +883,13 @@ repository's self-review does.
 
 #### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)
 
-GitHub Actions CI may use OpenAI API WIF for auth only, instead of API keys.
-This API Platform auth differs from managed-workspace Codex WIF (ChatGPT auth).
-Keep OIDC request capability, assertion and exchanged API token in trusted CI,
-isolated from semantic reviewer/tools, PR code and package lifecycle scripts.
-Only prior protected base policy may select WIF; candidates cannot select or
-enable it for their own review.
+GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed-workspace Codex WIF (ChatGPT auth). OIDC request capability, assertion and exchanged API token stay in trusted CI, isolated from reviewer/tools, PR code and package lifecycle scripts. Only prior protected policy may select WIF; candidates cannot select or enable it. Missing/invalid/unavailable selection leaves review incomplete: no API-key fallback or weaker acceptance. Keys remain until WIF is implemented, verified and policy-selected. No reviewer/input/decision/evidence/acceptance/v0.6.0 change; inactive.
 
-Missing/invalid/unavailable selected WIF leaves review incomplete; no API-key
-fallback or weaker acceptance. API keys remain until WIF is implemented,
-verified and selected by protected policy. No reviewer, input, decision,
-evidence, acceptance or v0.6.0 rollout changes; WIF remains inactive.
+#### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
+
+Owner-adopted target A is for this public GitHub Free self-repository; it is not implemented/enforced and needs no hosted server, ChatGPT Cloud or WIF. Only an unprivileged candidate `merge_group` job relays/wakes the protected-default-branch `workflow_run` receiver. It independently resolves live queue SHA/state, current protected base, exact queued PR/B, prior-base policy, full Authority Set and exact evidence, runs existing ordinary semantic, B/G0 and deterministic validators. Candidate workflows, success, artifacts and policy confer no authority. Only protected producer receives the review API and GitHub App private keys via a `main`-only Environment; the self-repository App has only `checks:write`. Reports bind verified results to exact queue SHA and App identity; host config expects that App as check source.
+
+This document activates no route. Reviewed profile/policy adoption precedes staged activation. Before rollout-completion, verified-host-enforcement or release claims, require exact-context spoof rejection and both protected BLOCK/OWNER_DECISION E2Es: exact B, evidence/tag handoff, queue transition, canonical readback, fresh A review. Current `pull_request_target`-only route remains until reviewed adoption.
 
 #### Target: legacy v1 CI authority repair (Issue #120 owner decision)
 
