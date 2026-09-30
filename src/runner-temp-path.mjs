@@ -53,6 +53,11 @@ function fixedRelativePath(directory, fileName) {
     case 'owner-amendment-eligibility/prepared-context.json': return 'owner-amendment-eligibility/prepared-context.json';
     case 'owner-amendment-eligibility/eligibility-receipt.json': return 'owner-amendment-eligibility/eligibility-receipt.json';
     case 'owner-amendment-merge-group/event.json': return 'owner-amendment-merge-group/event.json';
+    case 'owner-amendment-merge-group/ordinary-prompt.md': return 'owner-amendment-merge-group/ordinary-prompt.md';
+    case 'owner-amendment-merge-group/ordinary-schema.json': return 'owner-amendment-merge-group/ordinary-schema.json';
+    case 'owner-amendment-merge-group/ordinary-validation.json': return 'owner-amendment-merge-group/ordinary-validation.json';
+    case 'owner-amendment-merge-group/ordinary-authority.json': return 'owner-amendment-merge-group/ordinary-authority.json';
+    case 'owner-amendment-merge-group/ordinary-context.json': return 'owner-amendment-merge-group/ordinary-context.json';
     default: fail('file is not an approved fixed runner temp path.');
   }
 }

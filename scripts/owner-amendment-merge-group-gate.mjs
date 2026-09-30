@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { appendFileSync } from 'node:fs';
 import { readRunnerTempFile, resolveRunnerTempDirectory, validateSelfAuthorityManifest } from '../src/runner-temp-path.mjs';
 import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from '../src/owner-amendment-tag-api.mjs';
 import { selectOwnerAmendmentMergeGroupBContext } from '../src/owner-amendment-merge-group-b-context.mjs';
@@ -22,6 +23,14 @@ const tagRulesetId = Number(process.env.OWNER_AMENDMENT_TAG_RULESET_ID);
 const api = 'https://api.github.com/';
 const fail = message => { throw new Error(`Owner amendment merge-group gate: ${message}`); };
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+function selectRoute(route, selection) {
+  if (!process.env.GITHUB_OUTPUT) fail('GitHub workflow output path is unavailable.');
+  const values = { route, base_sha: selection.bBaseSha, b_sha: selection.bHeadSha };
+  for (const [key, value] of Object.entries(values)) {
+    if (typeof value !== 'string' || /[\r\n]/.test(value) || (key !== 'route' && !/^[a-f0-9]{40}$/.test(value))) fail(`selected ${key} output is invalid.`);
+  }
+  appendFileSync(process.env.GITHUB_OUTPUT, `${Object.entries(values).map(([key, value]) => `${key}=${value}`).join('\n')}\n`);
+}
 const git = args => execFileSync('git', ['-C', process.env.GITHUB_WORKSPACE, ...args], { encoding: 'buffer', maxBuffer: 2 * 1024 * 1024,
   timeout: 30_000,
   stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' } });
@@ -123,26 +132,34 @@ async function main() {
   catch { fail('previous protected CI policy is absent.'); }
   const parsedPolicy = parseCiPolicyJson(new TextDecoder('utf-8', { fatal: true }).decode(policyBytes));
   const selectedPolicy = resolveCiPolicy(parsedPolicy, 'main');
-  if (selectedPolicy.mode === 'local-only' ||
-      (selectedPolicy.mode === 'enforced' && selectedPolicy.ownerAmendmentGrade !== 'G0')) {
-    process.stdout.write('OWNER_AMENDMENT_NOT_APPLICABLE: previous-base policy has no active G0 route.\n'); return;
+  if (selectedPolicy.mode === 'local-only') {
+    selectRoute('not-applicable', selection);
+    process.stdout.write('Protected current-base policy explicitly selects local-only review.\n'); return;
   }
   if (selectedPolicy.mode !== 'enforced') fail('merge-group ordinary review currently supports only the protected enforced self policy.');
-  if (!['completed-block-v1', 'completed-owner-decision-self-v1'].includes(selectedPolicy.ownerAmendmentTriggerProfile)) {
-    fail('previous-base policy selected an unsupported trigger profile.');
-  }
-  const producerAttempts = await inspectProducerAttempts(selection);
-  const exactTagRef = `${selectedPolicy.ownerAmendmentTagNamespace}/${selection.bHeadSha}`;
-  const expectedTagUrl = ownerAmendmentTagApiUrl(repository, selectedPolicy.ownerAmendmentTagNamespace, selection.bHeadSha);
-  const tagResponse = await getJson(expectedTagUrl, { expectedOwnerAmendmentTagUrl: expectedTagUrl });
-  if (tagResponse === null) {
-    if (producerAttempts.hasSuccessfulSignerBeforeQueue) {
+
+  try { git(['fetch', '--no-tags', 'origin', selection.bHeadSha]); }
+  catch { fail('exact B Git object could not be fetched.'); }
+
+  let producerAttempts = null;
+  let tagResponse = null;
+  if (selectedPolicy.ownerAmendmentGrade === 'G0') {
+    if (!['completed-block-v1', 'completed-owner-decision-self-v1'].includes(selectedPolicy.ownerAmendmentTriggerProfile)) {
+      fail('previous-base policy selected an unsupported trigger profile.');
+    }
+    producerAttempts = await inspectProducerAttempts(selection);
+    const expectedTagUrl = ownerAmendmentTagApiUrl(repository, selectedPolicy.ownerAmendmentTagNamespace, selection.bHeadSha);
+    tagResponse = await getJson(expectedTagUrl, { expectedOwnerAmendmentTagUrl: expectedTagUrl });
+    if (tagResponse === null && producerAttempts.hasSuccessfulSignerBeforeQueue) {
       fail('exact B has a successful pre-queue semantic eligibility signer result but no protected amendment tag.');
     }
-    process.stdout.write('OWNER_AMENDMENT_NOT_APPLICABLE: exact B has no protected amendment tag.\n'); return;
+  }
+  if (!tagResponse) {
+    selectRoute('ordinary', selection);
+    process.stdout.write('No protected amendment tag selects a fresh ordinary review of the exact current base/B tuple.\n');
+    return;
   }
   if (!Number.isSafeInteger(tagRulesetId) || tagRulesetId < 1) fail('active tag ruleset ID is unavailable for exact B verification.');
-  try { git(['fetch', '--no-tags', 'origin', selection.bHeadSha]); } catch { fail('exact B Git object could not be fetched.'); }
   const runGit = args => git(args);
   const context = resolveOwnerAmendmentHandoffGitContext({ repository, baseSha: selection.bBaseSha,
     headSha: selection.bHeadSha, baseBranch: 'main', runGit });
@@ -196,6 +213,7 @@ async function main() {
   });
   const result = await verifier.verify(event);
   if (result.status !== 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION') fail(result.reason ?? 'merge-group OWNER_AMENDMENT verification failed.');
+  selectRoute('amendment', selection);
   process.stdout.write(`OWNER_AMENDMENT / G0 pre-transition eligibility verified; adoption and canonical placement remain pending: ${JSON.stringify(result)}\n`);
 }
 

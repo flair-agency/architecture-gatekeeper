@@ -7,8 +7,13 @@ test('merge_group verifier runs only protected-base code with read-only GitHub p
   assert.match(workflow, /^name: Self Architecture Gate/m);
   assert.match(workflow, /merge_group:\n    types: \[checks_requested\]\n    branches: \[main\]/);
   assert.match(workflow, /architecture-gate:\n    name: \$\{\{ github\.event_name == 'pull_request_target' && 'architecture-gate' \|\| 'architecture-gate \(not applicable\)' \}\}\n    if: github\.event_name == 'pull_request_target' && github\.event\.pull_request\.draft == false/);
-  assert.match(workflow, /merge-group-accept:\n    name: \$\{\{ github\.event_name == 'merge_group' && 'architecture-gate \/ accept' \|\| 'merge-group-accept \(not applicable\)' \}\}\n    if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.event_name == 'merge_group' && github\.event\.merge_group\.base_ref == 'refs\/heads\/main'/);
+  assert.match(workflow, /merge-group-accept:\n    name: \$\{\{ github\.event_name == 'merge_group' && 'architecture-gate \/ accept' \|\| 'merge-group-accept \(not applicable\)' \}\}\n    if: always\(\) && github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.event_name == 'merge_group' && github\.event\.merge_group\.base_ref == 'refs\/heads\/main'/);
   const mergeJob = workflow.split('\n  merge-group-accept:')[1];
+  assert.match(workflow, /merge-group-codex-action-integrity:[\s\S]*?Verify the pinned action before exposing review credentials/);
+  assert.match(mergeJob, /needs: \[merge-group-codex-action-integrity\]/);
+  assert.match(mergeJob, /Require successful pinned Action integrity verification\n        env:\n          INTEGRITY_RESULT: \$\{\{ needs\.merge-group-codex-action-integrity\.result \}\}\n        run: test "\$INTEGRITY_RESULT" = success/);
+  assert.match(mergeJob, /permissions:\n      contents: read\n      pull-requests: read\n      actions: read\n      checks: read\n      attestations: read/);
+  assert.match(mergeJob, /Set up Node\.js\n        uses: actions\/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f[\s\S]*?node-version: 22/);
   assert.match(mergeJob, /ref: \$\{\{ github\.event\.merge_group\.base_sha \}\}/);
   assert.doesNotMatch(mergeJob, /GATEKEEPER_RUNTIME_SHA|github\.workflow_sha/);
   assert.match(mergeJob, /event_dir="\$RUNNER_TEMP\/owner-amendment-merge-group"/);
@@ -16,7 +21,13 @@ test('merge_group verifier runs only protected-base code with read-only GitHub p
   assert.match(mergeJob, /OWNER_AMENDMENT_TAG_RULESET_ID: \$\{\{ vars\.OWNER_AMENDMENT_TAG_RULESET_ID \}\}/);
   assert.match(mergeJob, /working-directory: \$\{\{ runner\.temp \}\}/);
   assert.match(mergeJob, /node "\$GITHUB_WORKSPACE\/scripts\/owner-amendment-merge-group-gate\.mjs"/);
-  assert.doesNotMatch(mergeJob, /OPENAI_API_KEY|secrets\./);
+  assert.match(mergeJob, /openai-api-key: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
+  assert.match(mergeJob, /steps\.gate\.outputs\.route == 'ordinary'/);
+  assert.match(mergeJob, /uses: flair-agency\/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0/);
+  assert.match(mergeJob, /timeout-seconds: "240"/);
+  assert.match(mergeJob, /safety-strategy: drop-sudo/);
+  assert.match(mergeJob, /Require exact-tuple deterministic ordinary PASS/);
+  assert.doesNotMatch(mergeJob, /CI_SOURCE_READ_TOKEN|contents: write|pull-requests: write|id-token: write/);
   assert.doesNotMatch(mergeJob, /ref: \$\{\{ github\.event\.merge_group\.head_sha \}\}/);
   assert.match(mergeJob, /contents: read[\s\S]*pull-requests: read[\s\S]*actions: read[\s\S]*attestations: read/);
   assert.doesNotMatch(mergeJob, /contents: write|pull-requests: write|id-token: write/);
@@ -35,7 +46,7 @@ test('merge_group success is pre-transition verification and keeps adoption/cano
   assert.doesNotMatch(script, /OWNER_AMENDMENT \/ G0 accepted:/);
 });
 
-test('missing-tag no-op checks for successful exact-B semantic signer evidence first', () => {
+test('missing-tag merge-group route selects fresh exact-tuple ordinary PASS verification', () => {
   const script = readFileSync(new URL('../scripts/owner-amendment-merge-group-gate.mjs', import.meta.url), 'utf8');
   const attempts = readFileSync(new URL('../src/owner-amendment-semantic-producer-attempts.mjs', import.meta.url), 'utf8');
   assert.match(script, /inspectOwnerAmendmentSemanticProducerAttempts/);
@@ -47,5 +58,10 @@ test('missing-tag no-op checks for successful exact-B semantic signer evidence f
   assert.match(attempts, /runAttempt: String\(runAttempt\)/);
   assert.match(script, /hasSuccessfulSignerBeforeQueue/);
   assert.match(script, /successful pre-queue semantic eligibility signer result but no protected amendment tag/);
-  assert.match(script, /OWNER_AMENDMENT_NOT_APPLICABLE: exact B has no protected amendment tag/);
+  assert.match(script, /selectRoute\('ordinary', selection\)/);
+  assert.match(script, /fresh ordinary review of the exact current base\/B tuple/);
+  const ordinary = readFileSync(new URL('../src/owner-amendment-merge-group-ordinary-review.mjs', import.meta.url), 'utf8');
+  assert.match(ordinary, /prepareOwnerAmendmentMergeGroupOrdinaryReview/);
+  assert.match(ordinary, /validateOwnerAmendmentMergeGroupOrdinaryDecision/);
+  assert.match(ordinary, /decision\.decision !== 'PASS'/);
 });
