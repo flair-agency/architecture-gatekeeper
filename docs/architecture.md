@@ -804,7 +804,7 @@ P -->|No/incomplete/BLOCK/unresolved OWNER_DECISION| X[Do not accept]
 B --> F[Fresh A review after B canonical]
 ```
 
-Local feedback is not automatically merge evidence. `OWNER_ADDITION`/`OWNER_AMENDMENT` are separate B procedures; neither converts A's earlier result to `PASS`.
+Local feedback is not automatically merge evidence. `OWNER_ADDITION / G0` and `OWNER_AMENDMENT` are separate B acceptance procedures; neither converts A's earlier result to `PASS`.
 
 ### Local and manual review
 
@@ -887,9 +887,9 @@ GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed
 
 #### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
 
-Owner-adopted target A is for this public GitHub Free self-repository; it is not implemented/enforced and needs no hosted server, ChatGPT Cloud or WIF. Only an unprivileged candidate `merge_group` job relays/wakes the protected-default-branch `workflow_run` receiver. It independently resolves live queue SHA/state, current protected base, exact queued PR/B, prior-base policy, full Authority Set and exact evidence, then applies existing B semantic/G0 and deterministic validators. Candidate workflows, success, artifacts and policy confer no authority. Only protected producer receives the review API and GitHub App private keys via a `main`-only Environment; the self-repository App has only `checks:write`. Reports bind verified results to exact queue SHA and App identity; host config expects that App as check source.
+Owner-adopted target A is for this public GitHub Free self-repository; it is not implemented/enforced and needs no hosted server, ChatGPT Cloud or WIF. Only an unprivileged candidate `merge_group` job relays/wakes the protected-default-branch `workflow_run` receiver. It independently resolves live queue SHA/state, current protected base, exact queued PR/B, prior-base policy, full Authority Set and exact evidence, runs existing ordinary semantic, B/G0 and deterministic validators. Candidate workflows, success, artifacts and policy confer no authority. Only protected producer receives the review API and GitHub App private keys via a `main`-only Environment; the self-repository App has only `checks:write`. Reports bind verified results to exact queue SHA and App identity; host config expects that App as check source.
 
-This document activates no route. Reviewed profile/policy adoption and negative exact-context-spoof tests precede staged activation. Require both protected BLOCK and OWNER_DECISION E2Es, with exact evidence/tag, canonical readback then fresh A review, before rollout-completion, verified-host-enforcement or release claims. Current `pull_request_target`-only route remains until reviewed adoption.
+This document activates no route. Reviewed profile/policy adoption precedes staged activation. Before rollout-completion, verified-host-enforcement or release claims, require exact-context spoof rejection and both protected BLOCK/OWNER_DECISION E2Es: exact B, evidence/tag handoff, queue transition, canonical readback, fresh A review. Current `pull_request_target`-only route remains until reviewed adoption.
 
 #### Target: legacy v1 CI authority repair (Issue #120 owner decision)
 
