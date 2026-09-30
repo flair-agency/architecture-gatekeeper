@@ -172,41 +172,34 @@ canonical decision. A historical semantic result is never rewritten as `PASS`.
 
 ### Acceptance authority and host enforcement boundary
 
-Acceptance authority is divided among the consumer owner, Gatekeeper, the
-producer and the hosting service or its administrators:
-
 | Responsibility | Authority |
 | --- | --- |
-| Define architecture, protected policy, required evidence and permitted procedure | Consumer owner; canonical authority and protected policy |
-| Resolve exact selected inputs, validate evidence and report result | Gatekeeper |
-| Publish report | Producer selected by prior policy/host config; candidate YAML cannot authorize or replace it |
-| Protect producer and enforce check/target transition | Hosting service and administrators, as configured for the route |
+| Define architecture, protected policy, required evidence/permitted procedure | Consumer owner; canonical authority/protected policy |
+| Resolve exact selected inputs, validate evidence and report | Gatekeeper |
+| Publish report | Prior-policy/host-selected producer; candidate YAML cannot select/authorize/replace it |
+| Protect producer; enforce check/target transition | Host/admins, per route config |
 
-Protected-base inputs or pinned actions/workflows alone do not establish
-caller or producer protection. Producer-provenance routes identify and verify
-the producer under their evidence contract. The semantic reviewer cannot
-select or authorize it; its ReviewRecord grants no acceptance. Review and
-acceptance verification remain distinct, even within one workflow.
+Protected-base inputs/pinned actions/workflows alone prove neither caller nor
+producer protection. Provenance routes identify/verify the producer per evidence
+contract. The semantic reviewer cannot select/authorize it; its ReviewRecord
+grants no acceptance. Review and acceptance verification remain distinct.
 
-Host enforcement is independent of authentication, semantic eligibility,
-procedural adoption and canonical readback. Claim it only with evidence of the
-host rule for the exact producer, check and target transition. Without
-evidence, no enforcement claim is allowed; block adoption only when prior
-policy requires enforcement. This preserves procedural routes and fail-closed
-behavior for enforced routes.
+Host enforcement is independent of auth, semantic eligibility,
+procedural adoption and canonical readback. Claim only with evidence of the
+configured rule for exact producer, required check and target transition.
+Without evidence, no claim; block adoption only if prior policy requires enforcement.
+Procedural routes remain distinct; enforced routes fail closed.
 
-Each profile or adapter specifies producer/actor identities, execution and
-credential boundaries, exact revision selection, host capabilities/limits and property
-verification. Application, workflow and hosted-service examples describe
-mechanisms; they activate none. This adds no evidence grade, backend, universal
-application or stronger identity rule, and enables no route or architecture.
+Profiles/adapters specify producer/actor IDs, execution/credential boundaries,
+exact revision selection, host capabilities/limits and property verification.
+Examples describe mechanisms, not consumer routes. No new evidence grade/backend,
+universal application requirement or stronger identity requirement. This
+activates no route and decides no consumer architecture.
 
-The [OWNER_ADDITION assurance dimensions](#owner_addition-adoption-and-assurance-dimensions-issue-121-owner-decision)
-and [target evidence and acceptance contract](#target-evidence-and-acceptance-contract)
-define route-specific rules.
+See the OWNER_ADDITION and target evidence/acceptance sections for route rules.
 
-The diagram shows an enforced profile; procedural profiles retain their
-separately adopted assurance.
+Enforced-profile diagram; procedural profiles retain separately adopted
+assurance.
 
 ```mermaid
 flowchart LR
@@ -927,6 +920,20 @@ first base-owned instructions. That route provides model review but does not
 claim protected-instruction assurance. A privileged caller that requires
 protected acceptance must select protected review instructions, as this
 repository's self-review does.
+
+#### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)
+
+GitHub Actions CI may use OpenAI API WIF for auth only, instead of API keys.
+This API Platform auth differs from managed-workspace Codex WIF (ChatGPT auth).
+Keep OIDC request capability, assertion and exchanged API token in trusted CI,
+isolated from semantic reviewer/tools, PR code and package lifecycle scripts.
+Only prior protected base policy may select WIF; candidates cannot select or
+enable it for their own review.
+
+Missing/invalid/unavailable selected WIF leaves review incomplete; no API-key
+fallback or weaker acceptance. API keys remain until WIF is implemented,
+verified and selected by protected policy. No reviewer, input, decision,
+evidence, acceptance or v0.6.0 rollout changes; WIF remains inactive.
 
 #### Target: legacy v1 CI authority repair (Issue #120 owner decision)
 
