@@ -172,6 +172,17 @@ export async function resolveOwnerAmendmentWorkflowRunMergeGroupContext({
       fail('live merge-queue entry does not bind this exact main base, B head, and PR.');
     }
 
+    const [finalQueueRef, finalMainRef] = await Promise.all([
+      request(fetchImpl, token, `${root}/git/ref/heads/${queueBranchPath(headBranch)}`),
+      request(fetchImpl, token, `${root}/git/ref/heads/${encodeURIComponent(expected.targetBranch)}`),
+    ]);
+    if (validateRef(finalQueueRef, queueRefName) !== headSha) {
+      fail('live queue ref changed or disappeared during context resolution.');
+    }
+    if (validateRef(finalMainRef, 'refs/heads/main') !== currentMainSha) {
+      fail('protected main ref changed during context resolution.');
+    }
+
     return Object.freeze({ status: 'SELECTED_OWNER_AMENDMENT_WORKFLOW_RUN_MERGE_GROUP_CONTEXT',
       repository: expected.repository, repositoryId: expected.repositoryId,
       workflowId: expected.workflowId, workflowPath: expected.workflowPath,
