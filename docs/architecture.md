@@ -170,6 +170,54 @@ results. Their distinction is the authority change: addition supplies a
 missing decision; amendment changes, replaces, removes, or refines an existing
 canonical decision. A historical semantic result is never rewritten as `PASS`.
 
+### Acceptance authority and host enforcement boundary
+
+Acceptance authority is divided among the consumer owner, Gatekeeper, the
+producer and the hosting service or its administrators:
+
+| Responsibility | Authority |
+| --- | --- |
+| Define architecture, protected policy, required evidence and permitted procedure | Consumer owner; canonical authority and protected policy |
+| Resolve exact selected inputs, validate evidence and report result | Gatekeeper |
+| Publish report | Producer selected by prior policy/host config; candidate YAML cannot authorize or replace it |
+| Protect producer and enforce check/target transition | Hosting service and administrators, as configured for the route |
+
+Protected-base inputs or pinned actions/workflows alone do not establish
+caller or producer protection. Producer-provenance routes identify and verify
+the producer under their evidence contract. The semantic reviewer cannot
+select or authorize it; its ReviewRecord grants no acceptance. Review and
+acceptance verification remain distinct, even within one workflow.
+
+Host enforcement is independent of authentication, semantic eligibility,
+procedural adoption and canonical readback. Claim it only with evidence of the
+host rule for the exact producer, check and target transition. Without
+evidence, no enforcement claim is allowed; block adoption only when prior
+policy requires enforcement. This preserves procedural routes and fail-closed
+behavior for enforced routes.
+
+Each profile or adapter specifies producer/actor identities, execution and
+credential boundaries, exact revision selection, host capabilities/limits and property
+verification. Application, workflow and hosted-service examples describe
+mechanisms; they activate none. This adds no evidence grade, backend, universal
+application or stronger identity rule, and enables no route or architecture.
+
+The [OWNER_ADDITION assurance dimensions](#owner_addition-adoption-and-assurance-dimensions-issue-121-owner-decision)
+and [target evidence and acceptance contract](#target-evidence-and-acceptance-contract)
+define route-specific rules.
+
+The diagram shows an enforced profile; procedural profiles retain their
+separately adopted assurance.
+
+```mermaid
+flowchart LR
+P[Prior policy selects route and producer] --> R[Review]
+P --> V
+R --> V[Gatekeeper validates evidence]
+V --> T[Producer reports result]
+C[Host config selects check and target] --> H[Enforce transition]
+T --> H
+```
+
 ### OWNER_ADDITION / G0 route for missing decisions (Issue #111)
 
 When `OWNER_DECISION` identifies a missing architecture decision, it rejects
