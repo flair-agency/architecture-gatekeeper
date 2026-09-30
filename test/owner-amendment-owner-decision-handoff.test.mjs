@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { handoffOwnerAmendmentOwnerDecision } from '../src/owner-amendment-owner-decision-handoff.mjs';
+import { verifyOwnerAmendmentOwnerDecisionContext } from '../src/owner-amendment-owner-decision-context-verifier.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const repository = 'flair-agency/architecture-gatekeeper';
@@ -45,11 +46,33 @@ const input = overrides => ({ repository, policy: { ownerAmendmentVersion: 1, ow
     return { tagReadback: { sha: 'e'.repeat(40) } };
   }, ...overrides });
 
-test('transports a profile-bound OWNER_DECISION tag only after provenance and exact-byte checks', async () => {
-  const result = await handoffOwnerAmendmentOwnerDecision(input());
+test('transports a canonical v3 tag that passes the OWNER_DECISION context verifier', async () => {
+  let tagMessage;
+  const options = input({ createTag: async value => {
+    tagMessage = value.tagMessage;
+    return { tagReadback: { sha: 'e'.repeat(40) } };
+  } });
+  const result = await handoffOwnerAmendmentOwnerDecision(options);
   assert.equal(result.status, 'OWNER_DECISION_TAG_TRANSPORTED_AND_READ_BACK');
   assert.equal(result.ownerDecisionId, 'owner-choice-7');
   assert.equal(result.principalAuthentication, 'not_verified');
+  const envelope = JSON.parse(tagMessage);
+  const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
+    ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
+  assert.equal(tagMessage, `${JSON.stringify(canonical(envelope))}\n`);
+  const tagObjectOid = 'e'.repeat(40);
+  const verified = verifyOwnerAmendmentOwnerDecisionContext({ trustedContext: {
+    repository, baseSha, bSha, policyRevision: baseSha,
+    policy: { grade: 'G0', scope: 'authority-only', triggerProfile: 'completed-owner-decision-self-v1',
+      authorities: [{ id: 'architecture', path }] },
+    authority: { id: 'architecture', path, previousSha256: sha(before), newSha256: sha(after) },
+  }, tagEnvelope: { headSha: bSha, tag: { objectOid: tagObjectOid },
+    tagRef: `refs/tags/architecture-gatekeeper/amendments/${bSha}`, observedTagRefOid: tagObjectOid,
+    reviewRecordBytes: Buffer.from(envelope.reviewRecordBase64, 'base64'),
+    attestationBundleBytes: Buffer.from(envelope.attestationBundleBase64, 'base64'),
+    amendmentRecordBytes: Buffer.from(envelope.amendmentRecordBase64, 'base64'), triggerProfile: envelope.triggerProfile,
+  } });
+  assert.equal(verified.status, 'VERIFIED_OWNER_DECISION_AMENDMENT_CONTEXT', verified.reason);
 });
 
 test('fails closed if predecessor policy does not select the OWNER_DECISION profile or producer provenance fails', async () => {

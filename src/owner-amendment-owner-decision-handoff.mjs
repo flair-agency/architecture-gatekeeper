@@ -8,6 +8,8 @@ import { createAndReadOwnerAmendmentTag } from './owner-amendment-tag-adapter.mj
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = message => { throw new Error(`Owner amendment OWNER_DECISION handoff: ${message}`); };
+const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
+  ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
 
 /**
  * Verify an exact completed OWNER_DECISION run, bind it into a distinct
@@ -67,7 +69,7 @@ export async function handoffOwnerAmendmentOwnerDecision({ repository, policy, m
       reviewRecordBase64: extracted.reviewRecordBytes.toString('base64'), reviewRecordSha256: sha(extracted.reviewRecordBytes),
       attestationBundleBase64: extracted.attestationBundleBytes.toString('base64'), attestationBundleSha256: sha(extracted.attestationBundleBytes),
       amendmentRecordBase64: built.bytes.toString('base64'), amendmentRecordSha256: sha(built.bytes) };
-    const tagMessage = `${JSON.stringify(envelope)}\n`;
+    const tagMessage = `${JSON.stringify(canonical(envelope))}\n`;
     if (Buffer.byteLength(tagMessage) > 262_144) fail('profiled tag envelope exceeds its byte limit.');
     const tagRef = `${tagNamespace}/${bSha}`;
     const tag = await createTag({ repository, tagRef, bSha, tagMessage,

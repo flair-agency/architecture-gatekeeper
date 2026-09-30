@@ -75,6 +75,12 @@ export async function selectOwnerAmendmentMergeGroupBContext({ event, token, fet
       fail('merge-group commit does not have the exact protected base and one exact B parent.');
     }
     const bHeadSha = mergeCommit.parents[1].sha;
+    const bCommit = await request(fetchImpl, token, `${SELF_API}/commits/${bHeadSha}`);
+    const mergeTreeSha = mergeCommit.commit?.tree?.sha;
+    const bTreeSha = bCommit?.commit?.tree?.sha;
+    if (bCommit?.sha !== bHeadSha || !SHA.test(mergeTreeSha ?? '') || !SHA.test(bTreeSha ?? '') || mergeTreeSha !== bTreeSha) {
+      fail('merge-group commit tree does not match the exact B tree.');
+    }
     const associated = await associatedPullRequests(fetchImpl, token, parsed.repository, bHeadSha);
     const exactCandidates = associated.filter(candidate =>
       matchesExactBPullRequest(candidate, parsed.repository, repo.id, parsed.baseSha, bHeadSha));
