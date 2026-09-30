@@ -342,7 +342,7 @@ jobs:
           effort: ${{ needs.policy.outputs.effort }}
           sandbox: read-only
           safety-strategy: drop-sudo
-          timeout-seconds: "300"
+          timeout-seconds: "240"
           output-schema-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
           # PR-owned AGENTS.md files are review evidence, never reviewer instructions.
           codex-args: ${{ inputs.self-flex-probe && '["--ephemeral","-c","project_doc_max_bytes=0","-c","service_tier=''flex''","--json"]' || '["--ephemeral","-c","project_doc_max_bytes=0","--json"]' }}
@@ -564,7 +564,7 @@ jobs:
           effort: ${{ needs.policy.outputs.effort }}
           sandbox: read-only
           safety-strategy: drop-sudo
-          timeout-seconds: "300"
+          timeout-seconds: "240"
           codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
       - name: Require completed B-specific eligibility review
         id: eligibility

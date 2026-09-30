@@ -160,9 +160,13 @@ release that contains the equivalent fixes. `local-only` records an explicit
 waiver and makes no OpenAI API call.
 
 The normal reviewer and `OWNER_ADDITION` eligibility Action calls both set the
-Action's `timeout-seconds` input to 300. Each GitHub Action step retains its
-separate five-minute outer timeout, while the review job has a twenty-minute
-limit for checkout, authority materialization, and the one-minute diagnostic.
+Action's `timeout-seconds` input to 240. Each GitHub Action step retains its
+separate five-minute outer timeout, leaving up to 60 seconds for Action
+initialization and process-group cancellation cleanup after the runtime
+deadline (including its one-second TERM-to-KILL grace period). The step remains
+the hard ceiling if initialization consumes that headroom. The review job has
+a twenty-minute limit for checkout, authority materialization, and the
+one-minute diagnostic.
 If the Action step fails or times out, the next diagnostic step records the
 Action outcome, whether its final-message file was written, the file size and
 JSON parseability, and the installed Codex CLI/proxy versions without printing

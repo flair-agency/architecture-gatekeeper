@@ -214,7 +214,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.doesNotMatch(workflow, /--ignore-user-config/);
 });
 
-test('bounds every Codex Action call to 300 seconds', () => {
+test('bounds every Codex Action call to 240 seconds with outer cleanup headroom', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
   const pin = '643fb31fa44e961453125534c4c7182a5a0a6ba0';
   const actionSteps = workflow
@@ -226,7 +226,7 @@ test('bounds every Codex Action call to 300 seconds', () => {
   assert.ok(actionSteps.length >= 2);
   for (const step of actionSteps) {
     assert.match(step, new RegExp(`uses: flair-agency/codex-action@${pin}`));
-    assert.match(step, /timeout-seconds: "300"/);
+    assert.match(step, /timeout-seconds: "240"/);
   }
 });
 
