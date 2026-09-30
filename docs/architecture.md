@@ -880,6 +880,28 @@ claim protected-instruction assurance. A privileged caller that requires
 protected acceptance must select protected review instructions, as this
 repository's self-review does.
 
+#### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)
+
+For GitHub Actions CI model review, OpenAI API Workload Identity Federation
+(WIF) may be implemented as an authentication-only alternative to the current
+API-key path. This target concerns API Platform credentials for OpenAI API
+requests; it is distinct from managed-workspace Codex WIF using ChatGPT
+authentication. The GitHub Actions OIDC token-request capability, issued
+identity assertion, and exchanged API access token belong to the trusted CI
+execution boundary and must remain separated from the semantic reviewer and
+its tools, pull-request code, and package lifecycle scripts. Only the
+protected base policy may select WIF; a candidate change cannot select or
+enable it for its own review.
+
+When protected policy selects WIF, any missing, invalid, or unavailable WIF
+authentication leaves the model review incomplete. The route must not fall
+back automatically to an API key or weaken the required acceptance policy.
+This authentication target does not change the reviewer, review inputs,
+structured decision contract, evidence requirements, or acceptance semantics.
+Until WIF is implemented and verified and protected policy selects it, the
+existing API-key path remains in use. This target does not activate WIF or
+change the v0.6.0 rollout.
+
 #### Target: legacy v1 CI authority repair (Issue #120 owner decision)
 
 The LIVE Agency #106 trial exposed a false acceptance: an enforced legacy v1
