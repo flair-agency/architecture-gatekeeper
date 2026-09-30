@@ -26,6 +26,11 @@ async function fixture(t) {
     const target = join(root, path);
     mkdirSync(dirname(target), { recursive: true });
     cpSync(new URL(`../${path}`, import.meta.url), target);
+    if (path === paths.policy) {
+      const historicalPolicy = JSON.parse(readFileSync(target, 'utf8'));
+      historicalPolicy.branches.main.model = 'gpt-6-sol';
+      writeFileSync(target, `${JSON.stringify(historicalPolicy, null, 2)}\n`);
+    }
   }
   git(root, 'add', '.'); git(root, 'commit', '-qm', 'protected base');
   const baseSha = git(root, 'rev-parse', 'HEAD');
