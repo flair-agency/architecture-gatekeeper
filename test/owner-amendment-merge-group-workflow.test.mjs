@@ -17,6 +17,12 @@ test('candidate wake-up is unprivileged and delegates all verification to the gu
   assert.doesNotMatch(workflow, /architecture-gate \/ accept/);
   const receiver = readFileSync(new URL('../.github/workflows/self-architecture-gate-receiver.yml', import.meta.url), 'utf8');
   assert.match(receiver, /workflow_run:\n    workflows: \[Self Architecture Gate\]\n    types: \[completed\]/);
+  const integrity = receiver.split('\n  protected-queue-receiver:')[0];
+  assert.match(integrity, /  codex-action-integrity:\n[\s\S]*?permissions:\n      contents: read/);
+  assert.match(integrity, /repository: flair-agency\/codex-action\n          ref: 643fb31fa44e961453125534c4c7182a5a0a6ba0[\s\S]*?persist-credentials: false/);
+  assert.match(integrity, /verify-codex-action\.mjs[\s\S]*?codex-action-v1\.12-runtime-cancellation\.json[\s\S]*?pnpm install --frozen-lockfile[\s\S]*?pnpm run check[\s\S]*?pnpm test[\s\S]*?git status --short -- dist/);
+  assert.doesNotMatch(integrity, /secrets\.|OPENAI_API_KEY|OWNER_AMENDMENT_APP_/);
+  assert.match(receiver, /protected-queue-receiver:\n    needs: codex-action-integrity\n    if: needs\.codex-action-integrity\.result == 'success'/);
   assert.match(receiver, /if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.ref == 'refs\/heads\/main' && github\.event\.workflow_run\.event == 'merge_group' && vars\.OWNER_AMENDMENT_RECEIVER_ENABLED == 'true'/);
   assert.match(receiver, /environment:\n      name: architecture-gate-self-protected/);
   assert.match(receiver, /permissions:\n      actions: read\n      attestations: read\n      contents: read\n      pull-requests: read/);
@@ -25,6 +31,7 @@ test('candidate wake-up is unprivileged and delegates all verification to the gu
   assert.match(receiver, /owner-amendment-workflow-run-receiver\.mjs" resolve/);
   assert.match(receiver, /owner-amendment-merge-group-gate\.mjs/);
   assert.match(receiver, /uses: flair-agency\/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0/);
+  assert.match(receiver, /Run the fresh read-only ordinary review\n        id: ordinary-review\n        if: needs\.codex-action-integrity\.result == 'success' && steps\.prepare-ordinary\.outcome == 'success'/);
   assert.match(receiver, /sandbox: read-only[\s\S]*?safety-strategy: drop-sudo[\s\S]*?timeout-seconds: "240"/);
   assert.match(receiver, /owner-amendment-workflow-run-receiver\.mjs" publish/);
   const publishStep = receiver.split('\n      - name: Publish only the independently verified result')[1];
