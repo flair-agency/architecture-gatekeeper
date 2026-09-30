@@ -152,25 +152,25 @@ bounded descendant-stdio drain fix from upstream PR #151, numeric-only JSONL
 telemetry, cache-write token reporting, and the runtime deadline and
 cancellation cleanup merged in Codex Action PR #10. On POSIX, cancellation
 signals the spawned process group with `SIGTERM` and then `SIGKILL` after a
-one-second grace period; Windows uses `taskkill.exe /T /F`. It retains v1.12's
-credential isolation and protected argument checks. This is a temporary
-workaround: replace the fork pin only after reviewing an upstream release that
-contains the equivalent fixes. `local-only` records an explicit waiver and
-makes no OpenAI API call.
+one-second grace period. Descendants that create a separate POSIX session are
+outside this process-group bound. Windows uses `taskkill.exe /T /F`. The fork
+retains v1.12's credential isolation and protected argument checks. This is a
+temporary workaround: replace the fork pin only after reviewing an upstream
+release that contains the equivalent fixes. `local-only` records an explicit
+waiver and makes no OpenAI API call.
 
 The normal reviewer and `OWNER_ADDITION` eligibility Action calls both set the
 Action's `timeout-seconds` input to 300. Each GitHub Action step retains its
 separate five-minute outer timeout, while the review job has a twenty-minute
 limit for checkout, authority materialization, and the one-minute diagnostic.
-If the
-Action step fails or times out, the next diagnostic
-step records the Action outcome, whether its final-message file was written,
-the file size and JSON parseability, and the installed Codex CLI/proxy versions
-without printing the decision or credentials. A parseable final-message file
-after a timeout points to a post-output Action/CLI lifecycle problem; an
-absent or invalid file leaves the model/API execution path in question. The
-distinction is diagnostic only:
-either failure remains incomplete and cannot satisfy `Architecture Gate / accept`.
+If the Action step fails or times out, the next diagnostic step records the
+Action outcome, whether its final-message file was written, the file size and
+JSON parseability, and the installed Codex CLI/proxy versions without printing
+the decision or credentials. A parseable final-message file after a timeout
+points to a post-output Action/CLI lifecycle problem; an absent or invalid file
+leaves the model/API execution path in question. The distinction is diagnostic
+only: either failure remains incomplete and cannot satisfy
+`Architecture Gate / accept`.
 GitHub's **Re-run jobs → Enable debug logging** can add runner and step traces
 for an individual attempt when more detail is needed.
 
