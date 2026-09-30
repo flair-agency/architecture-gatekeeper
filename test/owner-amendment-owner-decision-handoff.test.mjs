@@ -9,7 +9,7 @@ const repository = 'flair-agency/architecture-gatekeeper';
 const baseSha = 'a'.repeat(40), bSha = 'b'.repeat(40), aSha = 'c'.repeat(40), mergeSha = 'd'.repeat(40);
 const path = 'docs/architecture.md';
 const before = Buffer.from('previous rule\n'), after = Buffer.from('amended rule\n'), bundle = Buffer.from('bundle');
-const decision = { decision: 'OWNER_DECISION', ownerDecisionId: 'owner-choice-7', authorityIds: ['architecture'] };
+const decision = { decision: 'OWNER_DECISION', authorityIds: ['architecture'] };
 const decisionBytes = Buffer.from(JSON.stringify(decision));
 const review = { version: 1, kind: 'owner-amendment-owner-decision-review-record', repository,
   prNumber: 3, baseSha, headSha: aSha, mergeSha, workflowSha: baseSha,
@@ -54,7 +54,7 @@ test('transports a canonical v3 tag that passes the OWNER_DECISION context verif
   } });
   const result = await handoffOwnerAmendmentOwnerDecision(options);
   assert.equal(result.status, 'OWNER_DECISION_TAG_TRANSPORTED_AND_READ_BACK');
-  assert.equal(result.ownerDecisionId, 'owner-choice-7');
+  assert.equal(Object.hasOwn(result, 'ownerDecisionId'), false);
   assert.equal(result.principalAuthentication, 'not_verified');
   const envelope = JSON.parse(tagMessage);
   const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'

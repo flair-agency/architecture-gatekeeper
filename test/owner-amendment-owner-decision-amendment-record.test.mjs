@@ -6,7 +6,7 @@ import { buildOwnerAmendmentOwnerDecisionAmendmentRecord, validateOwnerAmendment
 const sha = value => createHash('sha256').update(value).digest('hex');
 const base = 'a'.repeat(40); const bSha = 'b'.repeat(40); const aHead = 'c'.repeat(40); const merge = 'd'.repeat(40);
 const before = Buffer.from('# Prior\n'); const after = Buffer.from('# Amended\n'); const bundle = Buffer.from('{"bundle":true}');
-const decision = { decision: 'OWNER_DECISION', ownerDecisionId: 'decision-existing-42', authorityIds: ['architecture'] };
+const decision = { decision: 'OWNER_DECISION', authorityIds: ['architecture'] };
 const decisionBytes = Buffer.from(JSON.stringify(decision));
 const review = { version: 1, kind: 'owner-amendment-owner-decision-review-record', repository: 'flair-agency/architecture-gatekeeper',
   prNumber: 17, baseSha: base, headSha: aHead, mergeSha: merge, workflowSha: base,
@@ -24,37 +24,30 @@ const call = () => buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecor
 
 test('builds a closed OWNER_DECISION AmendmentRecord bound to exact trigger and authority bytes', () => {
   const built = call();
-  assert.equal(built.record.ownerDecisionId, 'decision-existing-42');
+  assert.equal(Object.hasOwn(built.record, 'ownerDecisionId'), false);
   const result = validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes: built.bytes, expected: {
     repository: review.repository, baseSha: base, bSha, policyRevision: base,
     triggerProfile: 'completed-owner-decision-self-v1', triggerReviewRecordSha256: sha(reviewBytes),
     authoritySetDigest: review.authority.setDigest, resultingAuthoritySetDigest: sha('result-set'),
-    ownerDecisionId: decision.ownerDecisionId,
     changes: [{ path: 'docs/architecture.md', beforeSha256: sha(before), afterSha256: sha(after) }],
   } });
   assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_RECORD');
-  assert.equal(result.ownerDecisionId, 'decision-existing-42');
   assert.deepEqual(Object.keys(result).sort(), ['status', 'repository', 'baseSha', 'bSha', 'policyRevision',
     'triggerProfile', 'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest',
-    'targetValidated', 'purpose', 'ownerDecisionId'].sort());
+    'targetValidated', 'purpose'].sort());
 });
 
-test('rejects a different trigger digest, decision ID, or changed authority bytes', () => {
+test('rejects a different trigger digest, extra decision ID claim, or changed authority bytes', () => {
   const built = call();
   const expected = { repository: review.repository, baseSha: base, bSha, policyRevision: base,
     triggerProfile: 'completed-owner-decision-self-v1', triggerReviewRecordSha256: sha(reviewBytes),
     authoritySetDigest: review.authority.setDigest, resultingAuthoritySetDigest: sha('result-set'),
-    ownerDecisionId: decision.ownerDecisionId,
     changes: [{ path: 'docs/architecture.md', beforeSha256: sha(before), afterSha256: sha(after) }] };
   assert.equal(validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes: built.bytes,
     expected: { ...expected, triggerReviewRecordSha256: sha('other') } }).status, 'INCOMPLETE');
-  assert.equal(validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes: built.bytes,
-    expected: { ...expected, ownerDecisionId: 'different-owner-choice' } }).status, 'INCOMPLETE');
-  const changedReview = Buffer.from(JSON.stringify({ ...review, decision: { ...decision, ownerDecisionId: 'other-id' } }));
-  assert.throws(() => buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecordBytes: changedReview,
-    attestationBundleBytes: bundle, repository: review.repository, baseSha: base, bSha,
-    authorityId: 'architecture', authorityPath: 'docs/architecture.md', previousAuthorityBytes: before,
-    amendedAuthorityBytes: after, purpose: 'Resolve the selected existing architecture decision.' }), /exact decision bytes and decision digest/);
+  const amendmentWithId = { ...JSON.parse(built.bytes.toString('utf8')), ownerDecisionId: 'unadopted-id' };
+  assert.equal(validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes: Buffer.from(`${JSON.stringify(amendmentWithId)}\n`),
+    expected }).status, 'INCOMPLETE');
   assert.throws(() => buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecordBytes: reviewBytes,
     attestationBundleBytes: bundle, repository: review.repository, baseSha: base, bSha,
     authorityId: 'architecture', authorityPath: 'docs/architecture.md', previousAuthorityBytes: after,

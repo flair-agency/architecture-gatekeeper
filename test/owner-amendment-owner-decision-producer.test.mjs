@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { produceOwnerAmendmentOwnerDecision } from '../scripts/owner-amendment-owner-decision-producer.mjs';
+import { handoffOwnerAmendmentOwnerDecision } from '../src/owner-amendment-owner-decision-handoff.mjs';
+import { verifyOwnerAmendmentOwnerDecisionContext } from '../src/owner-amendment-owner-decision-context-verifier.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const baseSha = 'a'.repeat(40), headSha = 'b'.repeat(40), mergeSha = 'c'.repeat(40);
@@ -51,6 +53,53 @@ test('produces exact OWNER_DECISION ReviewRecord only under the explicit previou
   assert.equal(record.decision.ownerDecisionId, undefined);
   assert.equal(record.decisionBytesBase64, decisionBytes.toString('base64'));
   assert.deepEqual(record.authority.members, [descriptor]);
+});
+
+test('closed-schema producer output without ownerDecisionId passes through amendment handoff', async () => {
+  const record = produceOwnerAmendmentOwnerDecision({ decisionBytes, provenance, context, baseInputs, readAuthority });
+  const recordBytes = Buffer.from(`${JSON.stringify(record)}\n`);
+  const bundleBytes = Buffer.from('{"attestation":"fixture"}\n');
+  const amendedAuthorityBytes = Buffer.from('# Architecture\nAmended rule.\n');
+  let tagMessage;
+  const result = await handoffOwnerAmendmentOwnerDecision({
+    repository, policy: { ownerAmendmentVersion: 1, ownerAmendmentGrade: 'G0', ownerAmendmentScope: 'authority-only',
+      ownerAmendmentTriggerProfile: 'completed-owner-decision-self-v1', ownerAmendmentAuthorityId: 'architecture-contract',
+      ownerAmendmentAuthorityPath: 'docs/architecture.md' },
+    manifest, baseSha, bSha: 'f'.repeat(40), changedFiles: [{ path: 'docs/architecture.md', status: 'modified' }],
+    baseAuthorityBytes: authorityBytes, headAuthorityBytes: amendedAuthorityBytes,
+    triggerRun: { runId: context.runId, runAttempt: context.runAttempt, prNumber: context.prNumber,
+      headSha: context.headSha, workflowPath: context.workflowPath, workflowRef: 'refs/heads/main',
+      workflowSha: context.workflowSha, event: 'pull_request_target', artifactId: '123' },
+    authorityId: 'architecture-contract', authorityPath: 'docs/architecture.md',
+    purpose: 'Resolve the existing architecture decision.',
+    tagNamespace: 'refs/tags/architecture-gatekeeper/amendments', rulesetId: 12, token: 'fixture-token',
+    tagger: { name: 'Fixture', email: 'fixture@example.invalid', date: '2026-09-29T00:00:00.000Z' },
+    runGh: () => '', fetchArtifact: async () => ({ status: 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT', zipBytes: Buffer.from('zip') }),
+    extractArtifact: () => ({ status: 'EXTRACTED_OWNER_AMENDMENT_BLOCK_ARTIFACT', reviewRecordBytes: recordBytes, attestationBundleBytes: bundleBytes }),
+    verifyEvidence: ({ recordBytes: supplied }) => ({ status: 'VERIFIED_PRODUCER_ATTESTATION', recordSha256: sha(supplied) }),
+    createTag: async ({ tagMessage: message }) => { tagMessage = message; return { tagReadback: { sha: 'e'.repeat(40) } }; },
+  });
+  assert.equal(result.status, 'OWNER_DECISION_TAG_TRANSPORTED_AND_READ_BACK', result.reason);
+  assert.equal(Object.hasOwn(result, 'ownerDecisionId'), false);
+  const envelope = JSON.parse(tagMessage);
+  const amendmentRecord = JSON.parse(Buffer.from(envelope.amendmentRecordBase64, 'base64').toString('utf8'));
+  assert.equal(amendmentRecord.triggeringReviewSha256, sha(recordBytes));
+  assert.equal(Object.hasOwn(amendmentRecord, 'ownerDecisionId'), false);
+  const tagObjectOid = 'e'.repeat(40);
+  const verified = verifyOwnerAmendmentOwnerDecisionContext({ trustedContext: {
+    repository, baseSha, bSha: 'f'.repeat(40), policyRevision: baseSha,
+    policy: { grade: 'G0', scope: 'authority-only', triggerProfile: 'completed-owner-decision-self-v1',
+      authorities: [{ id: 'architecture-contract', path: 'docs/architecture.md' }] },
+    authority: { id: 'architecture-contract', path: 'docs/architecture.md',
+      previousSha256: sha(authorityBytes), newSha256: sha(amendedAuthorityBytes) },
+  }, tagEnvelope: { headSha: 'f'.repeat(40), tag: { objectOid: tagObjectOid },
+    tagRef: `refs/tags/architecture-gatekeeper/amendments/${'f'.repeat(40)}`, observedTagRefOid: tagObjectOid,
+    reviewRecordBytes: recordBytes, attestationBundleBytes: bundleBytes,
+    amendmentRecordBytes: Buffer.from(envelope.amendmentRecordBase64, 'base64'),
+    triggerProfile: envelope.triggerProfile } });
+  assert.equal(verified.status, 'VERIFIED_OWNER_DECISION_AMENDMENT_CONTEXT', verified.reason);
+  assert.equal(verified.reviewRecordSha256, sha(recordBytes));
+  assert.equal(Object.hasOwn(verified, 'ownerDecisionId'), false);
 });
 
 test('does not produce OWNER_DECISION evidence when the prior policy has no matching opt-in', () => {

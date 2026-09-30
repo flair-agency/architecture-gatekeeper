@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { produceOwnerAmendmentOwnerDecision } from '../scripts/owner-amendment-owner-decision-producer.mjs';
 import { buildOwnerAmendmentOwnerDecisionAmendmentRecord,
   validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../src/owner-amendment-owner-decision-amendment-record.mjs';
 import {
@@ -63,14 +64,13 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     id: member.id, repository: 'self', revision: 'authority-revision', path: member.path,
   })) }));
   const descriptors = authoritySet.members.map(({ bytes, ...member }) => member);
-  const decision = { decision: triggerProfile === 'completed-block-v1' ? 'BLOCK' : 'OWNER_DECISION',
-    ...(triggerProfile === 'completed-owner-decision-self-v1' ? { ownerDecisionId: 'existing-rule-17' } : {}),
+  let decision = { decision: triggerProfile === 'completed-block-v1' ? 'BLOCK' : 'OWNER_DECISION',
     authorityIds: members.map(member => member.id), summary: 'The existing rule requires an owner choice.' };
-  const decisionBytes = Buffer.from(`${JSON.stringify(decision)}\n`);
   const workflowPath = '.github/workflows/self-architecture-gate.yml';
   const triggerProducer = { workflowPath, workflowSha: baseSha, workflowRef: `refs/heads/${baseBranch}`,
     runId: '1001', runAttempt: '1', jobId: 'architecture-gate' };
-  const triggerRecord = {
+  let decisionBytes = Buffer.from(`${JSON.stringify(decision)}\n`);
+  let triggerRecord = {
     version: 1,
     kind: triggerProfile === 'completed-block-v1'
       ? 'owner-amendment-block-review-record'
@@ -83,6 +83,27 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
       [key, key === 'manifest' ? sha256(manifestBytes) : key === 'policy' ? sha256(policyBytes) : digest(key)])),
     decisionSha256: sha256(decisionBytes), decisionBytesBase64: decisionBytes.toString('base64'), decision,
   };
+  if (triggerProfile === 'completed-owner-decision-self-v1') {
+    decision = { decision: 'OWNER_DECISION', findings: [], summary: 'The existing rule requires an owner choice.',
+      authority: members.map(member => member.id), authorityFiles: members.map(member => member.path),
+      authorityIds: members.map(member => member.id), responsibility: ['owner decision'],
+      capabilitySurface: ['review'], qualityGuarantees: ['preserve protected policy'], reviewedScope: ['change A'],
+      prohibitedChanges: ['self acceptance'],
+      gates: { sharedMechanism: { decision: 'OWNER_DECISION', summary: 'Existing rule needs a choice.',
+        consumerOwnership: '', failClosedBehavior: '', compatibility: '', minimality: '' },
+      trustBoundary: { decision: 'PASS', summary: 'No trust change.', tokenPermissions: '', untrustedInputs: '',
+        credentialHandling: '', reportingIsolation: '' } } };
+    decisionBytes = Buffer.from(`${JSON.stringify(decision)}\n`);
+    const authorityProvenance = { version: 1, selfRepository: repository, authorityRevision: baseSha,
+      manifestSha256: sha256(manifestBytes), setDigest: authoritySet.digest, members: descriptors };
+    const baseInputs = { policy: policyBytes, manifest: manifestBytes, prompt: Buffer.from('review prompt'),
+      schema: readFileSync(join(root, '.codex/gatekeeper/ci-decision.schema.json')),
+      validation: readFileSync(join(root, '.codex/gatekeeper/decision.validation.json')) };
+    triggerRecord = produceOwnerAmendmentOwnerDecision({ decisionBytes, provenance: authorityProvenance,
+      context: { repository, prNumber: 77, baseSha, headSha: triggerHeadSha, mergeSha, workflowSha: baseSha,
+        workflowPath, runId: triggerProducer.runId, runAttempt: triggerProducer.runAttempt },
+      baseInputs, readAuthority: () => authorityBytes });
+  }
   const triggerReviewRecordBytes = Buffer.from(`${JSON.stringify(triggerRecord)}\n`);
   const changes = [{ path, beforeBytes: authorityBytes, afterBytes: proposedAuthorityBytes }];
   if (multiAuthority) changes.push({ path: 'docs/ownership.md', beforeBytes: authoritySet.members[1].bytes,
@@ -106,7 +127,6 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
   const amendment = {
     fixtureSchema: `amendment-${triggerProfile}`,
     repository, baseSha, bSha, policyRevision: baseSha, triggerProfile,
-    ...(triggerProfile === 'completed-owner-decision-self-v1' ? { ownerDecisionId: decision.ownerDecisionId } : {}),
     triggerReviewRecordSha256: sha256(triggerReviewRecordBytes), priorAuthoritySetDigest: authoritySet.digest,
     resultingAuthoritySetDigest, target: 'architecture#existing-rule-17', purpose: 'Resolve the existing canonical rule escalation.',
   };
@@ -140,7 +160,7 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     assert.equal(value.fixtureSchema, `amendment-${expected.triggerProfile}`);
     for (const key of ['repository', 'baseSha', 'bSha', 'policyRevision', 'triggerProfile',
       'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest',
-      ...(expected.ownerDecisionId === undefined ? [] : ['ownerDecisionId'])]) {
+      ]) {
       assert.equal(value[key], key === 'priorAuthoritySetDigest' ? expected.authoritySetDigest : expected[key]);
     }
     assert.ok(value.target);
@@ -148,8 +168,7 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
       baseSha: value.baseSha, bSha: value.bSha, policyRevision: value.policyRevision,
       triggerProfile: value.triggerProfile, triggerReviewRecordSha256: value.triggerReviewRecordSha256,
       priorAuthoritySetDigest: value.priorAuthoritySetDigest,
-      resultingAuthoritySetDigest: value.resultingAuthoritySetDigest, targetValidated: true, purpose: value.purpose,
-      ...(expected.ownerDecisionId === undefined ? {} : { ownerDecisionId: value.ownerDecisionId }) };
+      resultingAuthoritySetDigest: value.resultingAuthoritySetDigest, targetValidated: true, purpose: value.purpose };
   };
   const verifyTag = ({ tag: tagInput, expected }) => {
     assert.deepEqual(tagInput, tag);
@@ -234,17 +253,24 @@ test('shared producer prepares and validates the enabled BLOCK self trigger prof
   }
 });
 
-test('owner-decision profile prepares the same bounded semantic review under explicit base opt-in', () => {
+test('closed-schema producer output without an ID reaches amendment eligibility under explicit base opt-in', () => {
   const ownerDecision = fixture('completed-owner-decision-self-v1');
+  assert.equal(ownerDecision.triggerRecord.decision.decision, 'OWNER_DECISION');
+  assert.equal(Object.hasOwn(ownerDecision.triggerRecord.decision, 'ownerDecisionId'), false);
   const prepared = ownerDecision.producer.prepare(ownerDecision.args);
   assert.equal(prepared.triggerProfile, 'completed-owner-decision-self-v1');
   assert.match(prepared.promptBytes.toString('utf8'), /preserve the completed historical OWNER_DECISION/);
+  const completed = completeOwnerAmendmentSemanticEligibility({ prepared,
+    decisionBytes: eligibilityDecision(prepared), producer: ownerDecision.semanticProducer,
+    gatekeeper: ownerDecision.gatekeeper, reviewModel: prepared.model, reviewReasoningEffort: prepared.reasoningEffort });
+  assert.equal(completed.status, 'COMPLETED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY');
+  assert.equal(completed.receipt.triggerReviewRecordSha256, sha256(ownerDecision.triggerReviewRecordBytes));
 });
 
-test('owner-decision semantic eligibility rejects an AmendmentRecord naming a different decision', () => {
+test('owner-decision semantic eligibility rejects an unadopted decision ID claim in the AmendmentRecord', () => {
   const f = fixture('completed-owner-decision-self-v1');
   const amendment = JSON.parse(f.amendmentRecordBytes.toString('utf8'));
-  amendment.ownerDecisionId = 'unrelated-existing-decision';
+  amendment.ownerDecisionId = 'unadopted-decision-id';
   f.args.amendmentRecordBytes = Buffer.from(JSON.stringify(amendment));
   assert.throws(() => f.producer.prepare(f.args));
 });

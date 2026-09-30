@@ -120,7 +120,6 @@ export async function composeOwnerAmendmentMergeGroupEvidence({ repository, base
     return Object.freeze({ status: 'VERIFIED_OWNER_AMENDMENT_MERGE_GROUP_EVIDENCE', repository, baseSha, bSha,
       policyRevision: baseSha, policySha256: hash(gitContext.policyBytes),
       triggerProfile: trustedContext.policy.triggerProfile, triggerDecision: trustedContext.policy.triggerProfile === 'completed-owner-decision-self-v1' ? 'OWNER_DECISION' : 'BLOCK',
-      ownerDecisionId: evidence.ownerDecisionId ?? null,
       authorityId: evidence.authorityId ?? trustedContext.authority.id, previousAuthoritySha256: evidence.previousAuthoritySha256 ?? trustedContext.authority.previousSha256,
       proposedAuthoritySha256: evidence.proposedAuthoritySha256 ?? trustedContext.authority.newSha256,
       purpose: evidence.purpose ?? amendmentRecord.purpose, targetValidated: true,

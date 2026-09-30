@@ -28,7 +28,7 @@ function fixture(profile = 'completed-block-v1', edits = {}) {
     authorityId: ids[0], authorityPath: 'docs/architecture.md', tagNamespace,
     authoritySha256: '8'.repeat(64), policySha256: policySha, authoritySetDigest, authorityIds: ids };
   const trigger = { status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER', repository, baseSha,
-    triggerProfile: profile, decision, ownerDecisionId: profile === 'completed-block-v1' ? null : 'decision-27',
+    triggerProfile: profile, decision,
     reviewRecordSha256: triggerSha, producerWorkflowPath: '.github/workflows/self-architecture-gate.yml',
     producerWorkflowSha: baseSha, producerWorkflowRef: 'refs/heads/main', producerRunId: '101',
     producerRunAttempt: '1', provenanceVerified: true };
@@ -102,7 +102,7 @@ test('fails closed for profile, trigger decision, target B, tag or receipt misma
   const cases = [
     ['wrong policy profile', 'completed-block-v1', 'policy', value => ({ ...value, triggerProfile: 'completed-owner-decision-self-v1' })],
     ['wrong trigger result', 'completed-block-v1', 'trigger', value => ({ ...value, decision: 'PASS' })],
-    ['missing OWNER_DECISION identity', 'completed-owner-decision-self-v1', 'trigger', value => ({ ...value, ownerDecisionId: null })],
+    ['unselected OWNER_DECISION identity field', 'completed-owner-decision-self-v1', 'trigger', value => ({ ...value, ownerDecisionId: 'unadopted-id' })],
     ['wrong trigger digest', 'completed-block-v1', 'tag', value => ({ ...value, triggerReviewRecordSha256: '8'.repeat(64) })],
     ['wrong tag ref', 'completed-block-v1', 'tag', value => ({ ...value, tagRef: `${tagNamespace}/e${bSha.slice(1)}` })],
     ['wrong receipt profile', 'completed-block-v1', 'eligibility', value => {

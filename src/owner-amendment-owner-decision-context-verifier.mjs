@@ -38,7 +38,6 @@ export function verifyOwnerAmendmentOwnerDecisionContext({ tagEnvelope, trustedC
         trigger.repository !== trustedContext.repository || trigger.baseSha !== trustedContext.baseSha || trigger.workflowSha !== trustedContext.baseSha ||
         trigger.headSha === trustedContext.bSha || !SHA1.test(trigger.headSha ?? '') || !SHA1.test(trigger.mergeSha ?? '') ||
         !Number.isSafeInteger(trigger.prNumber) || trigger.prNumber < 1 || trigger.decision?.decision !== 'OWNER_DECISION' ||
-        typeof trigger.decision.ownerDecisionId !== 'string' || !trigger.decision.ownerDecisionId.trim() || trigger.decision.ownerDecisionId.length > 160 ||
         ![trigger.runId, trigger.runAttempt].every(x => typeof x === 'string' && /^[1-9]\d*$/.test(x))) fail('trigger is not exact completed OWNER_DECISION evidence.');
     if (typeof trigger.decisionBytesBase64 !== 'string') fail('trigger decision bytes are absent.');
     const decisionBytes = Buffer.from(trigger.decisionBytesBase64, 'base64');
@@ -52,7 +51,7 @@ export function verifyOwnerAmendmentOwnerDecisionContext({ tagEnvelope, trustedC
     const reviewDigest = hash(tagEnvelope.reviewRecordBytes); const bundleDigest = hash(tagEnvelope.attestationBundleBytes);
     const { text: amendmentText, value: amendment } = parse(tagEnvelope.amendmentRecordBytes, 'OWNER_DECISION AmendmentRecord', 8_192);
     exact(amendment, ['version','kind','triggerProfile','repository','baseSha','headSha','policyRevision','authority',
-      'ownerDecisionId','triggeringReviewSha256','attestationBundleSha256','purpose'], 'AmendmentRecord');
+      'triggeringReviewSha256','attestationBundleSha256','purpose'], 'AmendmentRecord');
     exact(amendment.authority, ['id','path','previousSha256','newSha256'], 'AmendmentRecord authority');
     if (amendmentText !== `${JSON.stringify(amendment)}\n` || amendment.version !== 1 ||
         amendment.kind !== 'owner-amendment-owner-decision-amendment-record' || amendment.triggerProfile !== trustedContext.policy.triggerProfile ||
@@ -60,13 +59,13 @@ export function verifyOwnerAmendmentOwnerDecisionContext({ tagEnvelope, trustedC
         amendment.headSha !== trustedContext.bSha || amendment.policyRevision !== trustedContext.policyRevision ||
         amendment.authority.id !== trustedContext.authority.id || amendment.authority.path !== trustedContext.authority.path ||
         amendment.authority.previousSha256 !== trustedContext.authority.previousSha256 || amendment.authority.newSha256 !== trustedContext.authority.newSha256 ||
-        amendment.ownerDecisionId !== trigger.decision.ownerDecisionId || amendment.triggeringReviewSha256 !== reviewDigest ||
+        amendment.triggeringReviewSha256 !== reviewDigest ||
         amendment.attestationBundleSha256 !== bundleDigest || typeof amendment.purpose !== 'string' || !amendment.purpose.trim() || amendment.purpose.length > 500) {
       fail('AmendmentRecord does not bind exact OWNER_DECISION, B and previous authority bytes.');
     }
     return Object.freeze({ status: 'VERIFIED_OWNER_DECISION_AMENDMENT_CONTEXT', repository: trustedContext.repository,
       baseSha: trustedContext.baseSha, bSha: trustedContext.bSha, policyRevision: trustedContext.policyRevision,
-      triggerProfile: trustedContext.policy.triggerProfile, ownerDecisionId: amendment.ownerDecisionId,
+      triggerProfile: trustedContext.policy.triggerProfile,
       reviewRecordSha256: reviewDigest, attestationBundleSha256: bundleDigest,
       amendmentRecordSha256: hash(tagEnvelope.amendmentRecordBytes), tagObjectOid: tagEnvelope.tag.objectOid,
       authorityId: amendment.authority.id, authorityPath: amendment.authority.path,

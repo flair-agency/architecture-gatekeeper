@@ -194,7 +194,7 @@ async function main() {
       authoritySetDigest: materialized.setDigest, authorityIds: materialized.members.map(member => member.id) }),
     verifyTrigger: async () => { const value = await verify(); return { status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER',
       repository, baseSha: selection.bBaseSha, triggerProfile: value.triggerProfile,
-      decision: value.triggerDecision, ownerDecisionId: value.ownerDecisionId,
+      decision: value.triggerDecision,
       reviewRecordSha256: value.reviewRecordSha256, producerWorkflowPath: '.github/workflows/self-architecture-gate.yml',
       producerWorkflowSha: selection.bBaseSha, producerWorkflowRef: 'refs/heads/main',
       producerRunId: value.producerRunId, producerRunAttempt: value.producerRunAttempt, provenanceVerified: true }; },

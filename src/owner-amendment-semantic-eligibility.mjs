@@ -291,8 +291,6 @@ function validateTriggerRecord({ bytes, triggerProfile, repository, baseSha, bSh
       !Array.isArray(record.decision.authorityIds)) {
     fail(`trigger ReviewRecord is not a completed ${decisionName}.`);
   }
-  if (!isBlock && (typeof record.decision.ownerDecisionId !== 'string' || !record.decision.ownerDecisionId.trim() ||
-      record.decision.ownerDecisionId.length > 160)) fail('OWNER_DECISION trigger lacks its protected structured ownerDecisionId.');
   validateSha(record.decisionSha256, SHA256, 'trigger decision digest');
   const decisionBytes = parseBase64(record.decisionBytesBase64, 'trigger decision', 65_536);
   if (digest(decisionBytes) !== record.decisionSha256) fail('trigger decision bytes do not match their digest.');
@@ -363,15 +361,13 @@ function validateAmendmentRecord({ bytes, validator, expected }) {
   if (typeof validator !== 'function') fail('protected trigger-profile AmendmentRecord validator is required.');
   const result = validator({ bytes: Buffer.from(bytes), expected: Object.freeze({ ...expected }) });
   const keys = ['status', 'repository', 'baseSha', 'bSha', 'policyRevision', 'triggerProfile',
-    'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest', 'targetValidated', 'purpose',
-    ...(expected.ownerDecisionId === undefined ? [] : ['ownerDecisionId'])];
+    'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest', 'targetValidated', 'purpose'];
   exact(result, keys, 'validated AmendmentRecord bindings');
   if (result.status !== 'VERIFIED_OWNER_AMENDMENT_RECORD' || result.repository !== expected.repository ||
       result.baseSha !== expected.baseSha || result.bSha !== expected.bSha || result.policyRevision !== expected.policyRevision ||
       result.triggerProfile !== expected.triggerProfile || result.triggerReviewRecordSha256 !== expected.triggerReviewRecordSha256 ||
       result.priorAuthoritySetDigest !== expected.authoritySetDigest ||
       result.resultingAuthoritySetDigest !== expected.resultingAuthoritySetDigest || result.targetValidated !== true ||
-      (expected.ownerDecisionId !== undefined && result.ownerDecisionId !== expected.ownerDecisionId) ||
       typeof result.purpose !== 'string' || !result.purpose.trim() || result.purpose.length > 500) {
     fail('AmendmentRecord profile validation does not bind exact B, trigger, target, prior/resulting Authority Sets and purpose.');
   }
@@ -484,7 +480,6 @@ function prepareOwnerAmendmentSemanticEligibilityInternal({ repository, baseSha,
     expected: { repository, baseSha, bSha, policyRevision, triggerProfile,
       triggerReviewRecordSha256: trigger.sha256, authoritySetDigest: selectedAuthority.digest,
       resultingAuthoritySetDigest: changeResult.resultingAuthoritySetDigest,
-      ...(triggerProfile === 'completed-owner-decision-self-v1' ? { ownerDecisionId: trigger.decision.ownerDecisionId } : {}),
       changes: records } });
   const checkedTag = validateTagEvidence({ tag, tagObjectBytes, validator: validateTagForProfile,
     expected: { repository, baseSha, bSha, triggerProfile, triggerReviewRecordSha256: trigger.sha256,

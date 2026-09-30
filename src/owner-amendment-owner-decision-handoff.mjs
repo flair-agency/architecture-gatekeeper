@@ -50,8 +50,7 @@ export async function handoffOwnerAmendmentOwnerDecision({ repository, policy, m
         review.repository !== repository || review.prNumber !== triggerRun.prNumber || review.baseSha !== baseSha ||
         review.headSha !== triggerRun.headSha || review.workflowSha !== triggerRun.workflowSha ||
         review.workflowPath !== triggerRun.workflowPath || String(review.runId) !== String(triggerRun.runId) ||
-        String(review.runAttempt) !== String(triggerRun.runAttempt) || typeof review.decision.ownerDecisionId !== 'string' ||
-        !review.decision.ownerDecisionId.trim() || review.decision.ownerDecisionId.length > 160) {
+        String(review.runAttempt) !== String(triggerRun.runAttempt)) {
       fail('ReviewRecord is not the exact completed OWNER_DECISION selected by the protected run context.');
     }
     const producer = { repository, workflowPath: triggerRun.workflowPath, workflowSha: baseSha,
@@ -75,7 +74,7 @@ export async function handoffOwnerAmendmentOwnerDecision({ repository, policy, m
     const tag = await createTag({ repository, tagRef, bSha, tagMessage,
       tagNamespace, rulesetId, token, tagger, fetchImpl });
     return Object.freeze({ status: 'OWNER_DECISION_TAG_TRANSPORTED_AND_READ_BACK', repository, baseSha, bSha,
-      triggerProfile: envelope.triggerProfile, ownerDecisionId: built.record.ownerDecisionId, tagRef,
+      triggerProfile: envelope.triggerProfile, tagRef,
       tagObjectSha: tag.tagReadback.sha, reviewRecordSha256: envelope.reviewRecordSha256,
       attestationBundleSha256: envelope.attestationBundleSha256, amendmentRecordSha256: envelope.amendmentRecordSha256,
       principalAuthentication: 'not_verified', exactClaimAuthorization: 'not_verified' });

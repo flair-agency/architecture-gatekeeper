@@ -24,8 +24,8 @@ function json(bytes, label, max = 131_072) {
 
 /**
  * Build a closed AmendmentRecord for the completed-owner-decision-self-v1
- * trigger. The record binds the historical escalation and exact ownerDecisionId
- * without claiming it authenticates the owner's choice or identity.
+ * trigger. The record binds the historical escalation by its exact ReviewRecord
+ * digest without claiming it authenticates the owner's choice or identity.
  */
 export function buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecordBytes,
   attestationBundleBytes, repository, baseSha, bSha, authorityId, authorityPath,
@@ -52,9 +52,8 @@ export function buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecordBy
       trigger.headSha === baseSha || trigger.headSha === bSha || !SHA1.test(trigger.mergeSha ?? '') ||
       !/^\.github\/workflows\/[A-Za-z0-9._-]+\.yml$/.test(trigger.workflowPath ?? '') ||
       ![trigger.runId, trigger.runAttempt].every(value => typeof value === 'string' && /^[1-9]\d*$/.test(value)) ||
-      trigger.decision?.decision !== 'OWNER_DECISION' || typeof trigger.decision.ownerDecisionId !== 'string' ||
-      !trigger.decision.ownerDecisionId.trim() || trigger.decision.ownerDecisionId.length > 160) {
-    fail('trigger is not a completed protected OWNER_DECISION or lacks its structured decision ID.');
+      trigger.decision?.decision !== 'OWNER_DECISION') {
+    fail('trigger is not a completed protected OWNER_DECISION.');
   }
   const decisionBytes = Buffer.from(trigger.decisionBytesBase64 ?? '', 'base64');
   if (!decisionBytes.length || decisionBytes.toString('base64') !== trigger.decisionBytesBase64 ||
@@ -72,7 +71,6 @@ export function buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecordBy
     triggerProfile: 'completed-owner-decision-self-v1', repository, baseSha, headSha: bSha,
     policyRevision: baseSha, authority: Object.freeze({ id: authorityId, path: authorityPath,
       previousSha256: digest(previousAuthorityBytes), newSha256: digest(amendedAuthorityBytes) }),
-    ownerDecisionId: trigger.decision.ownerDecisionId,
     triggeringReviewSha256: digest(reviewRecordBytes), attestationBundleSha256: digest(attestationBundleBytes), purpose });
   const bytes = Buffer.from(`${JSON.stringify(record)}\n`, 'utf8');
   if (bytes.length > 8_192) fail('AmendmentRecord exceeds its byte limit.');
@@ -84,19 +82,16 @@ export function validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes, expe
   try {
     const value = json(bytes, 'AmendmentRecord', 8_192);
     exact(value, ['version', 'kind', 'triggerProfile', 'repository', 'baseSha', 'headSha', 'policyRevision',
-      'authority', 'ownerDecisionId', 'triggeringReviewSha256', 'attestationBundleSha256', 'purpose'], 'AmendmentRecord');
+      'authority', 'triggeringReviewSha256', 'attestationBundleSha256', 'purpose'], 'AmendmentRecord');
     exact(expected, ['repository', 'baseSha', 'bSha', 'policyRevision', 'triggerProfile', 'triggerReviewRecordSha256',
-      'authoritySetDigest', 'resultingAuthoritySetDigest', 'changes', 'ownerDecisionId'], 'expected protected AmendmentRecord bindings');
+      'authoritySetDigest', 'resultingAuthoritySetDigest', 'changes'], 'expected protected AmendmentRecord bindings');
     exact(value.authority, ['id', 'path', 'previousSha256', 'newSha256'], 'AmendmentRecord authority');
     if (value.version !== 1 || value.kind !== 'owner-amendment-owner-decision-amendment-record' ||
         value.triggerProfile !== 'completed-owner-decision-self-v1' || value.repository !== expected.repository ||
         value.baseSha !== expected.baseSha || value.headSha !== expected.bSha || value.policyRevision !== expected.policyRevision ||
         expected.triggerProfile !== value.triggerProfile || value.triggeringReviewSha256 !== expected.triggerReviewRecordSha256 ||
-        typeof expected.ownerDecisionId !== 'string' || !expected.ownerDecisionId.trim() ||
-        value.ownerDecisionId !== expected.ownerDecisionId ||
         !SHA256.test(value.authority.previousSha256 ?? '') || !SHA256.test(value.authority.newSha256 ?? '') ||
-        value.authority.previousSha256 === value.authority.newSha256 || typeof value.ownerDecisionId !== 'string' ||
-        !value.ownerDecisionId.trim() || value.ownerDecisionId.length > 160 || !SHA256.test(value.attestationBundleSha256 ?? '') ||
+        value.authority.previousSha256 === value.authority.newSha256 || !SHA256.test(value.attestationBundleSha256 ?? '') ||
         typeof value.purpose !== 'string' || !value.purpose.trim() || value.purpose.length > 500) fail('AmendmentRecord does not bind protected OWNER_DECISION inputs.');
     if (!Array.isArray(expected.changes) || expected.changes.length !== 1 || expected.changes[0].path !== value.authority.path ||
         expected.changes[0].beforeSha256 !== value.authority.previousSha256 || expected.changes[0].afterSha256 !== value.authority.newSha256) {
@@ -108,6 +103,6 @@ export function validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes, expe
       baseSha: value.baseSha, bSha: value.headSha, policyRevision: value.policyRevision,
       triggerProfile: value.triggerProfile, triggerReviewRecordSha256: value.triggeringReviewSha256,
       priorAuthoritySetDigest: expected.authoritySetDigest, resultingAuthoritySetDigest: expected.resultingAuthoritySetDigest,
-      targetValidated: true, purpose: value.purpose, ownerDecisionId: value.ownerDecisionId });
+      targetValidated: true, purpose: value.purpose });
   } catch (error) { return Object.freeze({ status: 'INCOMPLETE', reason: error.message }); }
 }

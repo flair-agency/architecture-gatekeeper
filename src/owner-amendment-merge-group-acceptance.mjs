@@ -56,15 +56,12 @@ function validatePolicy(value, selection) {
 }
 
 function validateTrigger(value, policy, selection) {
-  exact(value, ['status', 'repository', 'baseSha', 'triggerProfile', 'decision', 'ownerDecisionId', 'reviewRecordSha256',
+  exact(value, ['status', 'repository', 'baseSha', 'triggerProfile', 'decision', 'reviewRecordSha256',
     'producerWorkflowPath', 'producerWorkflowSha', 'producerWorkflowRef', 'producerRunId', 'producerRunAttempt', 'provenanceVerified'], 'verified trigger evidence');
   const expectedDecision = DECISION_BY_PROFILE[policy.triggerProfile];
-  const ownerDecisionIdValid = policy.triggerProfile === 'completed-owner-decision-self-v1'
-    ? typeof value.ownerDecisionId === 'string' && value.ownerDecisionId.trim().length > 0 && value.ownerDecisionId.length <= 160
-    : value.ownerDecisionId === null;
   if (value.status !== 'VERIFIED_OWNER_AMENDMENT_TRIGGER' || value.repository !== selection.repository ||
       value.baseSha !== selection.bBaseSha || value.triggerProfile !== policy.triggerProfile ||
-      value.decision !== expectedDecision || !ownerDecisionIdValid || !SHA256.test(value.reviewRecordSha256 ?? '') ||
+      value.decision !== expectedDecision || !SHA256.test(value.reviewRecordSha256 ?? '') ||
       value.producerWorkflowPath !== '.github/workflows/self-architecture-gate.yml' ||
       value.producerWorkflowSha !== selection.bBaseSha || value.producerWorkflowRef !== 'refs/heads/main' ||
       !/^[1-9]\d*$/.test(value.producerRunId ?? '') || !/^[1-9]\d*$/.test(value.producerRunAttempt ?? '') ||
