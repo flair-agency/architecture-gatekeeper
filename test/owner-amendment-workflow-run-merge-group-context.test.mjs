@@ -26,7 +26,9 @@ function fixture(overrides = {}) {
       workflow_id: workflowId, path: workflowPath, event: 'merge_group', status: 'completed',
       conclusion: 'failure', head_sha: groupSha, head_branch: queueBranch },
     queueRef: { ref: `refs/heads/${queueBranch}`, object: { type: 'commit', sha: groupSha } },
+    queueRefReadResponses: [], queueRefReadCount: 0,
     mainRef: { ref: 'refs/heads/main', object: { type: 'commit', sha: mainSha } },
+    mainRefReadResponses: [], mainRefReadCount: 0,
     groupCommit: { sha: groupSha, tree: { sha: 'e'.repeat(40) },
       parents: [{ sha: mainSha }, { sha: bSha }] },
     bCommit: { sha: bSha, tree: { sha: 'e'.repeat(40) } },
@@ -47,9 +49,15 @@ function fixture(overrides = {}) {
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url, options });
     if (url === `${root}/actions/runs/${runId}/attempts/${attempt}`) return response(state.attempt);
-    if (url === `${root}/git/ref/heads/${queueBranch}`) return response(state.queueRef);
+    if (url === `${root}/git/ref/heads/${queueBranch}`) {
+      const index = state.queueRefReadCount++;
+      return response(index < state.queueRefReadResponses.length ? state.queueRefReadResponses[index] : state.queueRef);
+    }
     if (url === root) return response(state.repo);
-    if (url === `${root}/git/ref/heads/main`) return response(state.mainRef);
+    if (url === `${root}/git/ref/heads/main`) {
+      const index = state.mainRefReadCount++;
+      return response(index < state.mainRefReadResponses.length ? state.mainRefReadResponses[index] : state.mainRef);
+    }
     if (url === `${root}/git/commits/${groupSha}`) return response(state.groupCommit);
     if (url === `${root}/git/commits/${bSha}`) return response(state.bCommit);
     const pullListPrefix = `${root}/commits/${bSha}/pulls?per_page=100&page=`;
@@ -85,15 +93,17 @@ test('binds exact attempt, live queue ref, current main, exact B, and active que
     queueEntryState: 'AWAITING_CHECKS', queueEntryEnqueuedAt: '2026-09-30T01:00:00Z',
     assurance: 'context selection only; no policy, evidence, eligibility, or acceptance claim',
   });
-  assert.equal(f.calls.length, 8);
+  assert.equal(f.calls.length, 10);
   assert.equal(f.calls[0].url, `${root}/actions/runs/${runId}/attempts/${attempt}`);
   assert.equal(f.calls[1].url, `${root}/git/ref/heads/${queueBranch}`);
+  assert.equal(f.calls.at(-2).url, `${root}/git/ref/heads/${queueBranch}`);
+  assert.equal(f.calls.at(-1).url, `${root}/git/ref/heads/main`);
   for (const call of f.calls) {
     assert.equal(call.options.headers.authorization, 'Bearer fixture-token');
     assert.equal(call.options.redirect, 'error');
   }
-  assert.equal(f.calls.at(-1).options.method, 'POST');
-  const graphQuery = JSON.parse(f.calls.at(-1).options.body).query;
+  assert.equal(f.calls.at(-3).options.method, 'POST');
+  const graphQuery = JSON.parse(f.calls.at(-3).options.body).query;
   assert.match(graphQuery, /mergeQueueEntry \{ state baseCommit \{ oid \} headCommit \{ oid \} pullRequest \{ number \} enqueuedAt \}/);
 });
 
@@ -130,6 +140,36 @@ test('rejects stale completed run after the same base, B, and queue entry rebuil
   assert.equal(result.status, 'INCOMPLETE');
   assert.match(result.reason, /live queue ref/);
   assert.equal(f.calls.length, 2);
+});
+
+test('rechecks live refs at the return boundary after queue-entry validation', async t => {
+  const changedQueue = { ref: `refs/heads/${queueBranch}`, object: { type: 'commit', sha: 'f'.repeat(40) } };
+  const changedMain = { ref: 'refs/heads/main', object: { type: 'commit', sha: 'd'.repeat(40) } };
+  const malformedMain = { ref: 'refs/heads/main', object: { type: 'tag', sha: mainSha } };
+  for (const [name, setLateRead] of [
+    ['queue ref changed after initial match', f => {
+      f.state.queueRefReadResponses = [structuredClone(f.state.queueRef), changedQueue];
+    }],
+    ['queue ref missing after initial match', f => {
+      f.state.queueRefReadResponses = [structuredClone(f.state.queueRef), null];
+    }],
+    ['main ref changed after initial match', f => {
+      f.state.mainRefReadResponses = [structuredClone(f.state.mainRef), changedMain];
+    }],
+    ['main ref malformed after initial match', f => {
+      f.state.mainRefReadResponses = [structuredClone(f.state.mainRef), malformedMain];
+    }],
+  ]) await t.test(name, async () => {
+    const f = fixture(); setLateRead(f);
+    const result = await f.resolve();
+    assert.equal(result.status, 'INCOMPLETE');
+    assert.equal(f.state.queueRefReadCount, 2);
+    assert.equal(f.state.mainRefReadCount, 2);
+  });
+  const stable = fixture();
+  assert.equal((await stable.resolve()).status, 'SELECTED_OWNER_AMENDMENT_WORKFLOW_RUN_MERGE_GROUP_CONTEXT');
+  assert.equal(stable.state.queueRefReadCount, 2);
+  assert.equal(stable.state.mainRefReadCount, 2);
 });
 
 test('continues associated-PR pagination and selects the exact B found only on page 2', async () => {
