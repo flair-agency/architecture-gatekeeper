@@ -13,6 +13,7 @@ import { validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../src/owner
 import { materializeAuthoritySet } from '../src/authority-set.mjs';
 import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { parseOwnerAmendmentSemanticTagObject } from '../src/owner-amendment-semantic-tag-object.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;
 const baseSha = process.env.BASE_SHA;
@@ -29,34 +30,6 @@ const gitBlob = (revision, path) => {
   validateRepositoryTreePath(path);
   return runGit(['--no-replace-objects', 'show', `${revision}:${path}`]);
 };
-
-function parseTagObject(objectBytes) {
-  const text = new TextDecoder('utf-8', { fatal: true }).decode(objectBytes);
-  const split = text.indexOf('\n\n');
-  if (split < 0) fail('annotated tag object is malformed.');
-  const [object, type, tag] = text.slice(0, split).split('\n');
-  if (object !== `object ${bSha}` || type !== 'type commit' || !tag?.startsWith('tag refs/tags/')) fail('annotated tag header does not bind exact B.');
-  const message = text.slice(split + 2);
-  if (!message.endsWith('\n') || message.slice(0, -1).includes('\n')) fail('tag message is not a single JSON line.');
-  const envelope = JSON.parse(message.slice(0, -1));
-  const expectedKeys = ['version','profile','bSha','reviewRecordBase64','reviewRecordSha256','attestationBundleBase64','attestationBundleSha256','amendmentRecordBase64','amendmentRecordSha256'];
-  const odKeys = [...expectedKeys.slice(0, 2), 'triggerProfile', ...expectedKeys.slice(2)];
-  const keys = envelope.version === 2 ? expectedKeys : odKeys;
-  if (Object.keys(envelope).length !== keys.length || keys.some(key => !Object.hasOwn(envelope, key)) ||
-      envelope.profile !== 'self-g0' || envelope.bSha !== bSha ||
-      envelope.version !== (triggerProfile === 'completed-block-v1' ? 2 : 3) ||
-      (triggerProfile !== 'completed-block-v1' && envelope.triggerProfile !== triggerProfile)) fail('tag envelope does not select the previous-base trigger profile.');
-  const decode = (field, digestField, label, max) => {
-    const value = envelope[field];
-    if (typeof value !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) fail(`${label} base64 is malformed.`);
-    const bytes = Buffer.from(value, 'base64');
-    if (!bytes.length || bytes.length > max || bytes.toString('base64') !== value || sha256(bytes) !== envelope[digestField]) fail(`${label} bytes/digest do not match.`);
-    return bytes;
-  };
-  return { envelope, reviewRecordBytes: decode('reviewRecordBase64','reviewRecordSha256','ReviewRecord',131_072),
-    attestationBundleBytes: decode('attestationBundleBase64','attestationBundleSha256','attestation bundle',65_536),
-    amendmentRecordBytes: decode('amendmentRecordBase64','amendmentRecordSha256','AmendmentRecord',8_192) };
-}
 
 function preparedContext(prepared) {
   return { repository: prepared.repository, baseSha: prepared.baseSha, bSha: prepared.bSha,
@@ -101,7 +74,7 @@ async function prepare() {
     tagNamespace: git.policy.ownerAmendmentTagNamespace, tagRef,
     rulesetId: Number(process.env.OWNER_AMENDMENT_TAG_RULESET_ID), token });
   if (tag.status !== 'READ_BACK_OWNER_AMENDMENT_TAG') fail('exact protected tag could not be read back.');
-  const embedded = parseTagObject(tag.tag.objectBytes);
+  const embedded = parseOwnerAmendmentSemanticTagObject(tag.tag.objectBytes, { bSha, triggerProfile, tagRef });
   const trigger = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(embedded.reviewRecordBytes));
   const triggerProducer = { workflowPath: trigger.workflowPath, workflowSha: trigger.workflowSha,
     workflowRef: 'refs/heads/main', runId: String(trigger.runId), runAttempt: String(trigger.runAttempt), jobId: 'owner-amendment-owner-decision-record' };

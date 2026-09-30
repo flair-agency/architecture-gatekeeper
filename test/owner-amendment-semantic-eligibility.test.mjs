@@ -8,6 +8,7 @@ import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs
 import { produceOwnerAmendmentOwnerDecision } from '../scripts/owner-amendment-owner-decision-producer.mjs';
 import { buildOwnerAmendmentOwnerDecisionAmendmentRecord,
   validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../src/owner-amendment-owner-decision-amendment-record.mjs';
+import { parseOwnerAmendmentSemanticTagObject } from '../src/owner-amendment-semantic-tag-object.mjs';
 import {
   completeOwnerAmendmentSemanticEligibility,
   createOwnerAmendmentSemanticEligibilityProducer,
@@ -141,10 +142,18 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     runId: '2002', runAttempt: '1', jobId: 'owner-amendment-eligibility' };
   const gatekeeper = { repository, revision: 'e'.repeat(40), package: null };
   const tagRef = `refs/tags/architecture-gatekeeper/amendments/${bSha}`;
-  const tagAnnotation = Buffer.from(`${JSON.stringify({ triggerProfile,
-    triggerReviewRecordSha256: sha256(triggerReviewRecordBytes), amendmentRecordSha256: sha256(amendmentRecordBytes) })}\n`);
+  const tagEnvelope = { version: triggerProfile === 'completed-block-v1' ? 2 : 3, profile: 'self-g0',
+    ...(triggerProfile === 'completed-block-v1' ? {} : { triggerProfile }), bSha,
+    reviewRecordBase64: triggerReviewRecordBytes.toString('base64'), reviewRecordSha256: sha256(triggerReviewRecordBytes),
+    attestationBundleBase64: attestationBundleBytes.toString('base64'), attestationBundleSha256: sha256(attestationBundleBytes),
+    amendmentRecordBase64: amendmentRecordBytes.toString('base64'), amendmentRecordSha256: sha256(amendmentRecordBytes) };
+  const tagAnnotation = Buffer.from(`${JSON.stringify(canonical(tagEnvelope))}\n`);
   const tagObjectBytes = Buffer.from(`object ${bSha}\ntype commit\ntag ${tagRef.slice('refs/tags/'.length)}\n` +
     'tagger Fixture <fixture@example.invalid> 1780000000 +0000\n\n' + tagAnnotation.toString('utf8'));
+  const transported = parseOwnerAmendmentSemanticTagObject(tagObjectBytes, { bSha, triggerProfile, tagRef });
+  assert.deepEqual(transported.reviewRecordBytes, triggerReviewRecordBytes);
+  assert.deepEqual(transported.attestationBundleBytes, attestationBundleBytes);
+  assert.deepEqual(transported.amendmentRecordBytes, amendmentRecordBytes);
   const tagObjectOid = gitTagOid(tagObjectBytes);
   const tag = { tagRef, tagObjectOid, observedTagRefOid: tagObjectOid };
   const verifyTrigger = ({ bytes, expected }) => {
@@ -192,12 +201,13 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     validateTag: verifyTag };
   const producer = createOwnerAmendmentSemanticEligibilityProducer(validators);
   const args = { repository, baseSha, bSha, triggerProfile, policyRevision: baseSha, policyBytes,
-    authoritySet, manifestBytes, changes, diffBytes, triggerReviewRecordBytes, triggerProducer, amendmentRecordBytes,
+    authoritySet, manifestBytes, changes, diffBytes, triggerReviewRecordBytes: transported.reviewRecordBytes,
+    triggerProducer, amendmentRecordBytes: transported.amendmentRecordBytes,
     tag, tagObjectBytes, producer: semanticProducer, selectedProducer: semanticProducer,
     gatekeeper, selectedGatekeeper: gatekeeper, reviewModel: policy.branches[baseBranch].model,
     reviewReasoningEffort: policy.branches[baseBranch].reasoningEffort };
   return { args, producer, validators, policy, authoritySet, triggerRecord, triggerReviewRecordBytes, amendmentRecordBytes,
-    semanticProducer, gatekeeper, tag, tagObjectBytes, resultingAuthoritySetDigest };
+    semanticProducer, gatekeeper, tag, tagObjectBytes, transported, resultingAuthoritySetDigest };
 }
 
 function eligibilityDecision(prepared, result = 'ELIGIBLE') {
@@ -211,6 +221,20 @@ function eligibilityDecision(prepared, result = 'ELIGIBLE') {
     eligibility: result, triggerProfile: prepared.triggerProfile, authorityIds: [...prepared.authorityIds],
     authoritySetDigest: prepared.authoritySetDigest, checks });
 }
+
+test('handoff tag-object bytes reach eligibility for both exact trigger profiles', () => {
+  for (const triggerProfile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
+    const f = fixture(triggerProfile);
+    assert.equal(f.transported.envelope.version, triggerProfile === 'completed-block-v1' ? 2 : 3);
+    assert.equal(f.transported.envelope.triggerProfile, triggerProfile === 'completed-block-v1' ? undefined : triggerProfile);
+    assert.equal(f.producer.prepare(f.args).triggerProfile, triggerProfile);
+    const wrongHeader = Buffer.from(f.tagObjectBytes.toString('utf8').replace(
+      'tag architecture-gatekeeper/amendments/', 'tag refs/tags/architecture-gatekeeper/amendments/'));
+    assert.throws(() => parseOwnerAmendmentSemanticTagObject(wrongHeader, {
+      bSha, triggerProfile, tagRef: f.tag.tagRef,
+    }), /header does not bind exact B and protected ref/);
+  }
+});
 
 test('shared producer prepares and validates the enabled BLOCK self trigger profile with exact receipt bindings', () => {
   for (const profile of ['completed-block-v1']) {
