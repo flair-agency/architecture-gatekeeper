@@ -105,14 +105,18 @@ export function appendGitHubOutput(contents) {
       !/^set_output_[A-Za-z0-9_-]{1,128}$/.test(basename(outputPath)) || resolve(outputPath) !== outputPath) {
     fail('GitHub output path is outside the runner-created command-file directory.');
   }
+  // Rebuild the sink path from the verified directory and the constrained
+  // runner-generated leaf instead of passing the environment value to fs.
+  const validatedOutputPath = join(commandDirectory, basename(outputPath));
+  if (validatedOutputPath !== outputPath) fail('GitHub output path is not a canonical direct child.');
   let before;
-  try { before = lstatSync(outputPath); } catch { fail('runner-created output file is unavailable.'); }
-  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || realpathSync(outputPath) !== outputPath) {
+  try { before = lstatSync(validatedOutputPath); } catch { fail('runner-created output file is unavailable.'); }
+  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || realpathSync(validatedOutputPath) !== validatedOutputPath) {
     fail('runner-created output is not a direct regular file.');
   }
   let fd;
   try {
-    fd = openSync(outputPath, constants.O_WRONLY | constants.O_APPEND | (constants.O_NOFOLLOW ?? 0));
+    fd = openSync(validatedOutputPath, constants.O_WRONLY | constants.O_APPEND | (constants.O_NOFOLLOW ?? 0));
     const opened = fstatSync(fd);
     if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== before.dev || opened.ino !== before.ino) {
       fail('runner-created output file changed during validation.');
