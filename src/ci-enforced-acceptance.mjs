@@ -12,18 +12,19 @@ export function assertEnforcedAcceptance({ reviewResult, conclusion, ownerAdditi
       (ownerAmendmentAttemptResult !== 'success' || !['true', 'false'].includes(ownerAmendmentAttempted))) {
     fail('the protected exact-B amendment-attempt classification is unavailable.');
   }
-  if (conclusion === 'PASS') {
-    if (ownerAmendmentSelected === 'G0' && ownerAmendmentAttempted === 'true' &&
-        (ownerAmendmentSignerResult !== 'success' || ownerAmendmentSignerStatus !== 'prepared' ||
-         ownerAmendmentEligibility !== 'ELIGIBLE')) {
-      fail('a tagged OWNER_AMENDMENT attempt requires successful exact-B G0 eligibility before ordinary PASS can be accepted.');
+  const amendmentEligible = ownerAmendmentSignerResult === 'success' &&
+    ownerAmendmentSignerStatus === 'prepared' && ownerAmendmentEligibility === 'ELIGIBLE';
+  if (ownerAmendmentSelected === 'G0' && ownerAmendmentAttempted === 'true') {
+    if (!amendmentEligible) {
+      fail('a tagged OWNER_AMENDMENT attempt requires successful exact-B G0 eligibility before ordinary acceptance.');
     }
-    return Object.freeze({ route: ownerAmendmentSelected === 'G0' && ownerAmendmentAttempted === 'true'
-      ? 'owner-amendment-pending' : 'ordinary-pass' });
-  }
-  if (ownerAmendmentSelected === 'G0' && ownerAmendmentSignerResult === 'success' &&
-      ownerAmendmentSignerStatus === 'prepared' && ownerAmendmentEligibility === 'ELIGIBLE') {
     return Object.freeze({ route: 'owner-amendment-pending' });
+  }
+  if (ownerAmendmentSelected === 'G0' && ownerAmendmentSignerResult === 'success') {
+    fail('semantic eligibility signer success conflicts with the protected no-tag classification.');
+  }
+  if (conclusion === 'PASS') {
+    return Object.freeze({ route: 'ordinary-pass' });
   }
   if (conclusion === 'OWNER_ADDITION_G0' && ownerAdditionSelected === 'G0' &&
       ownerAdditionResult === 'success' && ownerAdditionEligibility === 'ELIGIBLE') {

@@ -60,6 +60,17 @@ test('tagged out-of-scope workflow amendment cannot fall through to ordinary PAS
     ownerAmendmentSelected: 'G0', ownerAmendmentAttemptResult: 'success',
     ownerAmendmentAttempted: String(attempt.attempted), ownerAmendmentSignerResult: 'failure',
     ownerAmendmentSignerStatus: '', ownerAmendmentEligibility: '' }), /tagged OWNER_AMENDMENT attempt requires/);
+  assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'OWNER_ADDITION_G0',
+    ownerAdditionSelected: 'G0', ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE',
+    ownerAmendmentSelected: 'G0', ownerAmendmentAttemptResult: 'success',
+    ownerAmendmentAttempted: String(attempt.attempted), ownerAmendmentSignerResult: 'failure' }),
+  /tagged OWNER_AMENDMENT attempt requires/);
+  assert.deepEqual(assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'OWNER_ADDITION_G0',
+    ownerAdditionSelected: 'G0', ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE',
+    ownerAmendmentSelected: 'G0', ownerAmendmentAttemptResult: 'success',
+    ownerAmendmentAttempted: String(attempt.attempted), ownerAmendmentSignerResult: 'success',
+    ownerAmendmentSignerStatus: 'prepared', ownerAmendmentEligibility: 'ELIGIBLE' }),
+  { route: 'owner-amendment-pending' });
 });
 
 test('ordinary PASS remains available when protected exact-B classification confirms no tag', async () => {
@@ -71,4 +82,10 @@ test('ordinary PASS remains available when protected exact-B classification conf
   assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'PASS',
     ownerAmendmentSelected: 'G0', ownerAmendmentAttemptResult: 'failure', ownerAmendmentAttempted: '' }),
   /attempt classification is unavailable/);
+  assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'OWNER_ADDITION_G0',
+    ownerAdditionSelected: 'G0', ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE',
+    ownerAmendmentSelected: 'G0', ownerAmendmentAttemptResult: 'success',
+    ownerAmendmentAttempted: String(attempt.attempted), ownerAmendmentSignerResult: 'success',
+    ownerAmendmentSignerStatus: 'prepared', ownerAmendmentEligibility: 'ELIGIBLE' }),
+  /conflicts with the protected no-tag classification/);
 });
