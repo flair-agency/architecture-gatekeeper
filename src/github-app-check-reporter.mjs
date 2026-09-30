@@ -1,4 +1,4 @@
-import { createSign } from 'node:crypto';
+import { createPrivateKey, createSign } from 'node:crypto';
 
 const API_BASE = 'https://api.github.com';
 const API_VERSION = '2022-11-28';
@@ -30,10 +30,14 @@ function makeAppJwt(appId, privateKeyPem, now) {
   })).toString('base64url');
   const unsigned = `${header}.${claims}`;
   try {
+    const privateKey = createPrivateKey(privateKeyPem);
+    if (privateKey.asymmetricKeyType !== 'rsa') {
+      fail('GitHub App reporter configuration is invalid');
+    }
     const signer = createSign('RSA-SHA256');
     signer.update(unsigned);
     signer.end();
-    return `${unsigned}.${signer.sign(privateKeyPem).toString('base64url')}`;
+    return `${unsigned}.${signer.sign(privateKey).toString('base64url')}`;
   } catch {
     fail('GitHub App reporter configuration is invalid');
   }
@@ -156,7 +160,8 @@ export async function publishSelfArchitectureCheck({
   if (
     !isPositiveSafeInteger(checkPayload?.id)
     || checkPayload?.name !== CHECK_NAME
-    || checkPayload?.head_sha?.toLowerCase() !== result.headSha.toLowerCase()
+    || typeof checkPayload?.head_sha !== 'string'
+    || checkPayload.head_sha.toLowerCase() !== result.headSha.toLowerCase()
     || checkPayload?.status !== 'completed'
     || checkPayload?.conclusion !== result.conclusion
     || checkPayload?.app?.id !== app.appId

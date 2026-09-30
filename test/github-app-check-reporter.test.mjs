@@ -116,7 +116,7 @@ test('publishes a protected failure as failure and does not expose supplied deta
   assert.equal(JSON.stringify(published).includes('secret diagnostic detail'), false);
 });
 
-test('rejects non-verified, malformed-SHA, or unsupported results before network access', async (t) => {
+test('rejects malformed-SHA or unsupported results before network access', async (t) => {
   for (const result of [
     null,
     { headSha: 'not-a-sha', conclusion: 'success' },
@@ -131,6 +131,21 @@ test('rejects non-verified, malformed-SHA, or unsupported results before network
       assert.equal(called, false);
     });
   }
+});
+
+test('rejects an EC App key before making any network request', async () => {
+  const { privateKey: ecPrivateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  let called = false;
+  await assert.rejects(
+    publishSelfArchitectureCheck({
+      app: { ...app, privateKeyPem: ecPrivateKey.export({ type: 'pkcs8', format: 'pem' }) },
+      result: { headSha, conclusion: 'success' },
+      fetchImpl: async () => { called = true; },
+      now,
+    }),
+    (error) => error.message === 'GitHub App reporter configuration is invalid',
+  );
+  assert.equal(called, false);
 });
 
 test('rejects token grants broader than the requested self-repository checks permission', async (t) => {
@@ -160,6 +175,8 @@ test('rejects check responses that do not attest the requested check, SHA, concl
   const cases = [
     ['wrong check name', checkRun({ name: 'different check' })],
     ['wrong SHA', checkRun({ head_sha: 'b'.repeat(40) })],
+    ['numeric SHA', checkRun({ head_sha: 42 })],
+    ['object SHA', checkRun({ head_sha: { value: headSha } })],
     ['wrong conclusion', checkRun({ conclusion: 'failure' })],
     ['wrong App', checkRun({ app: { id: appId + 1 } })],
   ];
