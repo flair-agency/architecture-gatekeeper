@@ -8,6 +8,12 @@ permissions:
   contents: read
   packages: write
 
+# Stable and preview releases share registry dist-tags; never cancel an in-progress publish.
+concurrency:
+  group: architecture-gatekeeper-package-publication
+  cancel-in-progress: false
+  queue: max
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -24,12 +30,14 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: '@flair-agency'
       - name: Verify release identity and tests
+        id: release
         env:
           RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REF: ${{ github.ref }}
           RELEASE_SHA: ${{ github.sha }}
         run: |
           test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
-          test "v$(node -p "require('./package.json').version")" = "$RELEASE_TAG"
+          node scripts/release-channel.mjs validate >> "$GITHUB_OUTPUT"
           npm test
       - name: Pack, inspect, install and smoke the package archive
         id: archive
@@ -56,17 +64,32 @@ jobs:
           node "$GITHUB_WORKSPACE/test/installed-smoke.mjs" "$PWD/node_modules/.bin"
           echo "path=$ARCHIVE_PATH" >> "$GITHUB_OUTPUT"
           echo "integrity=$INTEGRITY" >> "$GITHUB_OUTPUT"
-      - name: Publish exact fixed version
+      - name: Capture stable latest before preview publish
+        id: baseline
+        if: steps.release.outputs.channel == 'preview'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REGISTRY_DIST_TAGS="$(npm view @flair-agency/architecture-gatekeeper dist-tags --json --registry=https://npm.pkg.github.com)"
+          REGISTRY_DIST_TAGS="$REGISTRY_DIST_TAGS" node scripts/release-channel.mjs capture-stable-latest >> "$GITHUB_OUTPUT"
+      - name: Publish archive to its explicit release channel
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARCHIVE_PATH: ${{ steps.archive.outputs.path }}
-        run: npm publish "$ARCHIVE_PATH" --ignore-scripts
-      - name: Read package identity back from the registry
+          RELEASE_CHANNEL: ${{ steps.release.outputs.channel }}
+        run: npm publish "$ARCHIVE_PATH" --ignore-scripts --tag "$RELEASE_CHANNEL"
+      - name: Read package identity and channel back from the registry
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EXPECTED_INTEGRITY: ${{ steps.archive.outputs.integrity }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_CHANNEL: ${{ steps.release.outputs.channel }}
+          STABLE_LATEST_BEFORE: ${{ steps.baseline.outputs.stable_latest }}
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
-          test "$(npm view "@flair-agency/architecture-gatekeeper@$VERSION" version --registry=https://npm.pkg.github.com)" = "$VERSION"
-          ACTUAL_INTEGRITY="$(npm view "@flair-agency/architecture-gatekeeper@$VERSION" dist.integrity --registry=https://npm.pkg.github.com)"
+          REGISTRY_VERSION="$(npm view "@flair-agency/architecture-gatekeeper@$RELEASE_VERSION" version --registry=https://npm.pkg.github.com)"
+          ACTUAL_INTEGRITY="$(npm view "@flair-agency/architecture-gatekeeper@$RELEASE_VERSION" dist.integrity --registry=https://npm.pkg.github.com)"
+          REGISTRY_INTEGRITY="$ACTUAL_INTEGRITY"
+          REGISTRY_DIST_TAGS="$(npm view @flair-agency/architecture-gatekeeper dist-tags --json --registry=https://npm.pkg.github.com)"
+          export REGISTRY_VERSION REGISTRY_INTEGRITY REGISTRY_DIST_TAGS
           test "$ACTUAL_INTEGRITY" = "$EXPECTED_INTEGRITY"
+          node scripts/release-channel.mjs verify-registry
