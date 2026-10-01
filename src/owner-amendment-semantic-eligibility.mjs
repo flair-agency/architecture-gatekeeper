@@ -291,8 +291,6 @@ function validateTriggerRecord({ bytes, triggerProfile, repository, baseSha, bSh
       !Array.isArray(record.decision.authorityIds)) {
     fail(`trigger ReviewRecord is not a completed ${decisionName}.`);
   }
-  if (!isBlock && (typeof record.decision.ownerDecisionId !== 'string' || !record.decision.ownerDecisionId.trim() ||
-      record.decision.ownerDecisionId.length > 160)) fail('OWNER_DECISION trigger lacks its protected structured ownerDecisionId.');
   validateSha(record.decisionSha256, SHA256, 'trigger decision digest');
   const decisionBytes = parseBase64(record.decisionBytesBase64, 'trigger decision', 65_536);
   if (digest(decisionBytes) !== record.decisionSha256) fail('trigger decision bytes do not match their digest.');

@@ -85,7 +85,7 @@ function decodeLimits(encoded, profile) {
  * stdout bytes. This prepares eligibility inputs only; it does not accept B or
  * create/read a tag.
  */
-export function resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, headSha, runGit }) {
+export function resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, headSha, baseBranch = 'main', runGit }) {
   if (typeof repository !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(repository) || repository.includes('..')) {
     fail('a canonical owner/repository identity is required.');
   }
@@ -102,12 +102,14 @@ export function resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, he
   try { parsedPolicy = parseCiPolicyJson(text(policyBytes, 'protected CI policy')); }
   catch { fail('previous-base CI policy is invalid.'); }
   let policy;
-  try { policy = resolveCiPolicy(parsedPolicy, 'main'); }
-  catch { fail('previous-base main policy cannot be resolved.'); }
+  try { policy = resolveCiPolicy(parsedPolicy, baseBranch); }
+  catch { fail('previous-base policy cannot be resolved.'); }
+  if (baseBranch !== 'main') fail('v0.6.0 self amendment profile supports only protected main.');
   if (policy.mode !== 'enforced' || policy.ownerAmendmentVersion !== 1 || policy.ownerAmendmentGrade !== 'G0' ||
-      policy.ownerAmendmentScope !== 'authority-only' || policy.ownerAmendmentTriggerProfile !== 'completed-block-v1' ||
+      policy.ownerAmendmentScope !== 'authority-only' ||
+      !['completed-block-v1', 'completed-owner-decision-self-v1'].includes(policy.ownerAmendmentTriggerProfile) ||
       !policy.authorityManifestPath || !policy.authorityLimitsBase64 || !policy.ownerAmendmentAuthorityId || !policy.ownerAmendmentAuthorityPath) {
-    fail('previous protected main policy does not select self G0 completed-block-v1.');
+    fail('previous protected main policy does not select a supported self G0 amendment trigger profile.');
   }
 
   const profile = policy.authorityProfile ?? 'v1';

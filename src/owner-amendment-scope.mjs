@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 const SHA = /^[a-f0-9]{40}$/;
 const ID = /^[a-z][a-z0-9-]{0,63}$/;
 const PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
+const TRIGGER_PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1']);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 
 /**
@@ -17,7 +18,7 @@ export function inspectOwnerAmendmentSelfScope({ policy, manifest, baseSha, head
   }
   if (!policy || policy.ownerAmendmentVersion !== 1 || policy.ownerAmendmentGrade !== 'G0' ||
       policy.ownerAmendmentScope !== 'authority-only' ||
-      policy.ownerAmendmentTriggerProfile !== 'completed-block-v1') {
+      !TRIGGER_PROFILES.has(policy.ownerAmendmentTriggerProfile)) {
     throw new Error('Previous protected policy did not select a supported self G0 amendment profile.');
   }
   const id = policy.ownerAmendmentAuthorityId;

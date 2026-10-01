@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { prepareOwnerAmendmentBlockHandoff } from '../src/owner-amendment-block-handoff.mjs';
 import { verifyOwnerAmendmentBlockEvidence } from '../src/owner-amendment-attestation.mjs';
+import { createGitHubCliRunner } from '../src/github-cli-runner.mjs';
 
 const expected = { repository: 'flair-agency/example', workflowPath: '.github/workflows/owner-amendment.yml',
   workflowSha: 'a'.repeat(40), workflowRef: 'refs/heads/main', runId: '42', runAttempt: '2' };
@@ -43,7 +44,7 @@ function fixture(t) {
     sourceRepositoryRef: expected.workflowRef, githubWorkflowTrigger: 'pull_request_target',
     runInvocationURI: `https://github.com/${expected.repository}/actions/runs/${expected.runId}/attempts/${expected.runAttempt}`,
   } }, statement: { predicateType: 'https://slsa.dev/provenance/v1', subject: [{ name: 'review-record.json', digest: { sha256: sha(recordBytes) } }] } } }];
-  const runGh = (command, args, options) => {
+  const runGh = createGitHubCliRunner((command, args, options) => {
     assert.equal(command, 'gh');
     assert.deepEqual(args, ['attestation', 'verify', args[2], '--bundle', args[4], '--format', 'json', '--repo', expected.repository,
       '--signer-repo', expected.repository]);
@@ -53,7 +54,7 @@ function fixture(t) {
     assert.deepEqual(readFileSync(args[4]), bundleBytes);
     assert.equal(options.timeout, 30_000);
     return JSON.stringify(verified);
-  };
+  });
   return { dir, record, recordBytes, bundleBytes, amendmentBytes, recordPath, bundlePath, amendmentPath, verified, runGh };
 }
 

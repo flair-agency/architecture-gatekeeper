@@ -3,7 +3,8 @@ import { parseGithubMergeGroupEvent } from './github-merge-group-event.mjs';
 const API = 'https://api.github.com';
 const SHA = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
 const fail = message => { throw new Error(`Owner amendment merge-group B context: ${message}`); };
-const repoIdentity = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value);
+const SELF_REPOSITORY = 'flair-agency/architecture-gatekeeper';
+const SELF_API = 'https://api.github.com/repos/flair-agency/architecture-gatekeeper';
 
 async function request(fetchImpl, token, url, options = {}) {
   const response = await fetchImpl(url, {
@@ -19,11 +20,11 @@ async function request(fetchImpl, token, url, options = {}) {
 }
 
 async function associatedPullRequests(fetchImpl, token, repository, commitSha) {
-  const [owner, name] = repository.split('/');
+  if (repository !== SELF_REPOSITORY || !SHA.test(commitSha ?? '')) fail('associated PR lookup must be scoped to an exact self commit.');
   const matches = [];
   for (let page = 1; page <= 100; page += 1) {
     const result = await request(fetchImpl, token,
-      `${API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/commits/${commitSha}/pulls?per_page=100&page=${page}`);
+      `${SELF_API}/commits/${commitSha}/pulls?per_page=100&page=${page}`);
     if (!Array.isArray(result) || result.length > 100) fail('associated pull-request response is malformed.');
     matches.push(...result);
     if (result.length < 100) return matches;
@@ -45,7 +46,7 @@ const MERGE_QUEUE_QUERY = `query($owner: String!, $name: String!, $number: Int!)
       number state isDraft baseRefName baseRefOid headRefOid
       baseRepository { id nameWithOwner }
       headRepository { id nameWithOwner }
-      mergeQueueEntry { state baseCommit { oid } headCommit { oid } pullRequest { number } }
+      mergeQueueEntry { state enqueuedAt baseCommit { oid } headCommit { oid } pullRequest { number } }
     }
   }
 }`;
@@ -61,14 +62,12 @@ export async function selectOwnerAmendmentMergeGroupBContext({ event, token, fet
     if (typeof token !== 'string' || !token.trim() || typeof fetchImpl !== 'function') fail('authenticated API access is required.');
     const parsed = parseGithubMergeGroupEvent(event);
     if (parsed.status !== 'PARSED_MERGE_GROUP_EVENT') fail(parsed.reason ?? 'merge-group event is invalid.');
-    if (!repoIdentity(parsed.repository) || parsed.baseRef !== 'refs/heads/main' ||
+    if (parsed.repository !== SELF_REPOSITORY || parsed.baseRef !== 'refs/heads/main' ||
         !SHA.test(parsed.baseSha) || !SHA.test(parsed.headSha)) fail('event must identify a valid main merge group.');
 
-    const [owner, name] = parsed.repository.split('/');
-    const repoPath = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
     const [repo, mergeCommit] = await Promise.all([
-      request(fetchImpl, token, `${API}${repoPath}`),
-      request(fetchImpl, token, `${API}${repoPath}/commits/${parsed.headSha}`),
+      request(fetchImpl, token, SELF_API),
+      request(fetchImpl, token, `${SELF_API}/commits/${parsed.headSha}`),
     ]);
     if (!Number.isSafeInteger(repo?.id) || repo.id < 1 || repo.full_name !== parsed.repository ||
         mergeCommit?.sha !== parsed.headSha || !Array.isArray(mergeCommit.parents) || mergeCommit.parents.length !== 2 ||
@@ -76,6 +75,12 @@ export async function selectOwnerAmendmentMergeGroupBContext({ event, token, fet
       fail('merge-group commit does not have the exact protected base and one exact B parent.');
     }
     const bHeadSha = mergeCommit.parents[1].sha;
+    const bCommit = await request(fetchImpl, token, `${SELF_API}/commits/${bHeadSha}`);
+    const mergeTreeSha = mergeCommit.commit?.tree?.sha;
+    const bTreeSha = bCommit?.commit?.tree?.sha;
+    if (bCommit?.sha !== bHeadSha || !SHA.test(mergeTreeSha ?? '') || !SHA.test(bTreeSha ?? '') || mergeTreeSha !== bTreeSha) {
+      fail('merge-group commit tree does not match the exact B tree.');
+    }
     const associated = await associatedPullRequests(fetchImpl, token, parsed.repository, bHeadSha);
     const exactCandidates = associated.filter(candidate =>
       matchesExactBPullRequest(candidate, parsed.repository, repo.id, parsed.baseSha, bHeadSha));
@@ -84,7 +89,7 @@ export async function selectOwnerAmendmentMergeGroupBContext({ event, token, fet
 
     const graph = await request(fetchImpl, token, `${API}/graphql`, { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: MERGE_QUEUE_QUERY,
-        variables: { owner, name, number: candidate.number } }) });
+        variables: { owner: 'flair-agency', name: 'architecture-gatekeeper', number: candidate.number } }) });
     if (Array.isArray(graph?.errors) && graph.errors.length) fail('merge queue API returned GraphQL errors.');
     const graphRepo = graph?.data?.repository;
     const queued = graphRepo?.pullRequest;
@@ -95,6 +100,7 @@ export async function selectOwnerAmendmentMergeGroupBContext({ event, token, fet
         queued?.baseRepository?.id !== graphRepo.id || queued?.baseRepository?.nameWithOwner !== parsed.repository ||
         queued?.headRepository?.id !== graphRepo.id || queued?.headRepository?.nameWithOwner !== parsed.repository ||
         !entry || !['AWAITING_CHECKS', 'LOCKED', 'MERGEABLE', 'QUEUED'].includes(entry.state) ||
+        typeof entry.enqueuedAt !== 'string' || !Number.isFinite(Date.parse(entry.enqueuedAt)) ||
         entry.baseCommit?.oid !== parsed.baseSha || entry.headCommit?.oid !== bHeadSha ||
         String(entry.pullRequest?.number) !== String(candidate.number)) {
       fail('authenticated merge queue entry does not bind this open PR to the exact event base and B head.');
@@ -103,7 +109,7 @@ export async function selectOwnerAmendmentMergeGroupBContext({ event, token, fet
     return Object.freeze({ status: 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT',
       repository: parsed.repository, repositoryId: repo.id, mergeGroupBaseSha: parsed.baseSha,
       mergeGroupHeadSha: parsed.headSha, bPrNumber: String(candidate.number), bBaseSha: parsed.baseSha,
-      bHeadSha, queueEntryState: entry.state });
+      bHeadSha, queueEntryState: entry.state, queueEnteredAt: entry.enqueuedAt });
   } catch (error) {
     return Object.freeze({ status: 'INCOMPLETE', reason: error.message });
   }

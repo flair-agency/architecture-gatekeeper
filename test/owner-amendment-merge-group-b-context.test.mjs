@@ -4,6 +4,7 @@ import { selectOwnerAmendmentMergeGroupBContext } from '../src/owner-amendment-m
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const baseSha = 'a'.repeat(40), bHeadSha = 'b'.repeat(40), groupHeadSha = 'c'.repeat(40);
+const treeSha = 'd'.repeat(40);
 const repoId = 1379218762, graphRepoId = 'R_kgDOChD4VA';
 const event = { action: 'checks_requested', repository: { full_name: repository }, merge_group: {
   base_ref: 'refs/heads/main', base_sha: baseSha, head_sha: groupHeadSha,
@@ -12,7 +13,8 @@ const event = { action: 'checks_requested', repository: { full_name: repository 
 function fixture(overrides = {}) {
   const calls = [];
   const repo = { id: repoId, full_name: repository };
-  const mergeCommit = { sha: groupHeadSha, parents: [{ sha: baseSha }, { sha: bHeadSha }] };
+  const mergeCommit = { sha: groupHeadSha, parents: [{ sha: baseSha }, { sha: bHeadSha }], commit: { tree: { sha: treeSha } } };
+  const bCommit = { sha: bHeadSha, commit: { tree: { sha: treeSha } } };
   const pr = { number: 204, state: 'open', draft: false,
     base: { ref: 'main', sha: baseSha, repo: { ...repo } },
     head: { sha: bHeadSha, repo: { ...repo } } };
@@ -21,14 +23,15 @@ function fixture(overrides = {}) {
       baseRefOid: baseSha, headRefOid: bHeadSha,
       baseRepository: { id: graphRepoId, nameWithOwner: repository },
       headRepository: { id: graphRepoId, nameWithOwner: repository },
-      mergeQueueEntry: { state: 'AWAITING_CHECKS', baseCommit: { oid: baseSha },
+      mergeQueueEntry: { state: 'AWAITING_CHECKS', enqueuedAt: '2026-09-29T11:00:00Z', baseCommit: { oid: baseSha },
         headCommit: { oid: bHeadSha }, pullRequest: { number: 204 } },
     } } } };
-  const state = { repo, mergeCommit, pr, graph, associated: [pr], ...overrides };
+  const state = { repo, mergeCommit, bCommit, pr, graph, associated: [pr], ...overrides };
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url, options });
     if (url === 'https://api.github.com/repos/flair-agency/architecture-gatekeeper') return response(state.repo);
     if (url.endsWith(`/commits/${groupHeadSha}`)) return response(state.mergeCommit);
+    if (url.endsWith(`/commits/${bHeadSha}`)) return response(state.bCommit);
     if (url.endsWith(`/commits/${bHeadSha}/pulls?per_page=100&page=1`)) return response(state.associated);
     if (url === 'https://api.github.com/graphql') return response(state.graph);
     if (url.includes('/commits/') && url.includes('/pulls?')) return response([]);
@@ -47,9 +50,13 @@ test('selects one exact open same-repository B bound by merge commit and queue e
   const result = await f.select();
   assert.deepEqual(result, { status: 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT',
     repository, repositoryId: repoId, mergeGroupBaseSha: baseSha, mergeGroupHeadSha: groupHeadSha,
-    bPrNumber: '204', bBaseSha: baseSha, bHeadSha, queueEntryState: 'AWAITING_CHECKS' });
-  assert.equal(f.calls.length, 4);
+    bPrNumber: '204', bBaseSha: baseSha, bHeadSha, queueEntryState: 'AWAITING_CHECKS',
+    queueEnteredAt: '2026-09-29T11:00:00Z' });
+  assert.equal(f.calls.length, 5);
   for (const call of f.calls) {
+    const url = String(call.url);
+    assert.ok(url === 'https://api.github.com/graphql' || url === 'https://api.github.com/repos/flair-agency/architecture-gatekeeper' ||
+      url.startsWith('https://api.github.com/repos/flair-agency/architecture-gatekeeper/'), url);
     assert.equal(call.options.headers.authorization, 'Bearer fixture-token');
     assert.equal(call.options.redirect, 'error');
   }
@@ -66,7 +73,7 @@ test('rejects malformed or non-main merge-group event before API access', async 
     const f = fixture(), changed = structuredClone(event); edit(changed);
     const result = await f.select(changed);
     assert.equal(result.status, 'INCOMPLETE');
-    if (name !== 'wrong repository') assert.equal(f.calls.length, 0);
+    assert.equal(f.calls.length, 0);
   });
 });
 
@@ -80,6 +87,19 @@ test('requires merge-group commit to bind exact event base and one B parent', as
     const f = fixture(); edit(f);
     const result = await f.select();
     assert.equal(result.status, 'INCOMPLETE');
+  });
+});
+
+test('rejects a merge-group commit whose tree differs from the exact B tree', async t => {
+  for (const [name, edit] of [
+    ['different B tree', value => { value.state.bCommit.commit.tree.sha = 'e'.repeat(40); }],
+    ['missing merge-group tree', value => { delete value.state.mergeCommit.commit.tree; }],
+    ['invalid B commit identity', value => { value.state.bCommit.sha = 'e'.repeat(40); }],
+  ]) await t.test(name, async () => {
+    const f = fixture(); edit(f);
+    const result = await f.select();
+    assert.equal(result.status, 'INCOMPLETE');
+    assert.match(result.reason, /tree|B commit/i);
   });
 });
 
@@ -134,6 +154,7 @@ test('requires authenticated GraphQL merge-queue entry for the same base, head, 
     ['entry wrong base', graph => { graph.data.repository.pullRequest.mergeQueueEntry.baseCommit.oid = 'd'.repeat(40); }],
     ['entry wrong head', graph => { graph.data.repository.pullRequest.mergeQueueEntry.headCommit.oid = 'd'.repeat(40); }],
     ['entry wrong PR', graph => { graph.data.repository.pullRequest.mergeQueueEntry.pullRequest.number = 999; }],
+    ['entry missing enqueue time', graph => { graph.data.repository.pullRequest.mergeQueueEntry.enqueuedAt = null; }],
     ['GraphQL error', graph => { graph.errors = [{ message: 'unavailable' }]; }],
   ];
   for (const [name, mutate] of cases) await t.test(name, async () => {
