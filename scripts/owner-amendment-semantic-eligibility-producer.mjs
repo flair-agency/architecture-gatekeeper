@@ -16,6 +16,7 @@ import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs
 import { parseOwnerAmendmentSemanticTagObject } from '../src/owner-amendment-semantic-tag-object.mjs';
 import { computeOwnerAmendmentResultingAuthoritySet, deriveOwnerAmendmentGitChanges } from '../src/owner-amendment-git-changes.mjs';
 import { validateOwnerAmendmentBlockSemanticRecord } from '../src/owner-amendment-block-semantic-record.mjs';
+import { selectSelfSemanticTrigger } from './owner-amendment-semantic-trigger-selection.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;
 const baseSha = process.env.BASE_SHA;
@@ -79,10 +80,9 @@ async function prepare() {
   if (tag.status !== 'READ_BACK_OWNER_AMENDMENT_TAG') fail('exact protected tag could not be read back.');
   const embedded = parseOwnerAmendmentSemanticTagObject(tag.tag.objectBytes, { bSha, triggerProfile, tagRef });
   const trigger = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(embedded.reviewRecordBytes));
-  const triggerProducer = { workflowPath: trigger.workflowPath, workflowSha: trigger.workflowSha,
-    workflowRef: 'refs/heads/main', runId: String(trigger.runId), runAttempt: String(trigger.runAttempt), jobId: 'owner-amendment-owner-decision-record' };
-  const expectedProvenance = { repository, workflowPath: trigger.workflowPath, workflowSha: trigger.workflowSha,
-    workflowRef: 'refs/heads/main', runId: String(trigger.runId), runAttempt: String(trigger.runAttempt) };
+  const { producer: triggerProducer, expected: expectedProvenance } = selectSelfSemanticTrigger({
+    record: trigger, repository, baseSha, triggerProfile,
+  });
   const provenance = verifyOwnerAmendmentBlockEvidence({ recordBytes: embedded.reviewRecordBytes,
     bundleBytes: embedded.attestationBundleBytes, expected: expectedProvenance });
   if (provenance.status !== 'VERIFIED_PRODUCER_ATTESTATION') fail(provenance.reason ?? 'trigger attestation is unverified.');
