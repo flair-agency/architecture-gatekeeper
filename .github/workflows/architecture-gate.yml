@@ -788,7 +788,7 @@ jobs:
         id: codex-eligibility
         if: steps.prepare.outputs.status == 'prepared'
         timeout-minutes: 5
-        uses: flair-agency/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0
+        uses: flair-agency/codex-action@308ab1c8ce784cd5f46b98a1c0801c5c040918d9
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           prompt-file: ${{ runner.temp }}/owner-amendment-eligibility/eligibility-prompt.md
