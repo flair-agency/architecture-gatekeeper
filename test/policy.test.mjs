@@ -206,7 +206,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /needs: \[policy, codex-action-integrity\]/);
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /safety-strategy: drop-sudo/);
-  assert.match(workflow, /name: Run read-only architecture review\n        id: codex\n        timeout-minutes: 5/);
+  assert.match(workflow, /name: Run read-only architecture review\n        id: codex\n        timeout-minutes: \$\{\{ fromJSON\(needs\.policy\.outputs\.review_step_timeout_minutes\) \}\}/);
   assert.match(workflow, /output-file: \$\{\{ runner\.temp \}\}\/architecture-gate-codex-final\.json/);
   assert.match(workflow, /name: Diagnose architecture reviewer completion\n        if: always\(\)\n        timeout-minutes: 1\n        continue-on-error: true/);
   assert.match(workflow, /Codex final message file: (?:present|absent)/);
@@ -214,7 +214,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.doesNotMatch(workflow, /--ignore-user-config/);
 });
 
-test('bounds the primary Codex Action from protected settings and preserves amendment deadlines', () => {
+test('preserves fixed Codex Action deadlines while varying only the primary review job', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
   const pin = '643fb31fa44e961453125534c4c7182a5a0a6ba0';
   const actionSteps = workflow
@@ -225,7 +225,7 @@ test('bounds the primary Codex Action from protected settings and preserves amen
 
   assert.ok(actionSteps.length >= 2);
   assert.match(actionSteps[0], new RegExp(`uses: flair-agency/codex-action@${pin}`));
-  assert.match(actionSteps[0], /timeout-seconds: \$\{\{ needs\.policy\.outputs\.codex_timeout_seconds \}\}/);
+  assert.match(actionSteps[0], /timeout-seconds: "240"/);
   for (const step of actionSteps.slice(1)) {
     assert.match(step, new RegExp(`uses: flair-agency/codex-action@${pin}`));
     assert.match(step, /timeout-seconds: "240"/);

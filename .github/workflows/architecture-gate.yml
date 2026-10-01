@@ -24,9 +24,9 @@ on:
       review-job-timeout-minutes:
         type: number
         default: 7
-      codex-timeout-seconds:
+      review-step-timeout-minutes:
         type: number
-        default: 240
+        default: 5
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -68,7 +68,7 @@ jobs:
       adoption_evidence_workflow_path: ${{ steps.resolve.outputs.adoptionEvidenceWorkflowPath }}
       adoption_evidence_job_name: ${{ steps.resolve.outputs.adoptionEvidenceJobName }}
       review_job_timeout_minutes: ${{ steps.review-timeouts.outputs.jobTimeoutMinutes }}
-      codex_timeout_seconds: ${{ steps.review-timeouts.outputs.codexTimeoutSeconds }}
+      review_step_timeout_minutes: ${{ steps.review-timeouts.outputs.stepTimeoutMinutes }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -85,7 +85,7 @@ jobs:
         id: review-timeouts
         env:
           REVIEW_JOB_TIMEOUT_MINUTES: ${{ inputs.review-job-timeout-minutes }}
-          CODEX_TIMEOUT_SECONDS: ${{ inputs.codex-timeout-seconds }}
+          REVIEW_STEP_TIMEOUT_MINUTES: ${{ inputs.review-step-timeout-minutes }}
         run: node .architecture-gatekeeper-runtime/scripts/validate-review-timeouts.mjs >> "$GITHUB_OUTPUT"
       - name: Resolve policy from protected base revision
         id: resolve
@@ -342,7 +342,7 @@ jobs:
             "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
       - name: Run read-only architecture review
         id: codex
-        timeout-minutes: 5
+        timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_step_timeout_minutes) }}
         # Temporary Flair-reviewed v1.12 fork with bounded stdio draining,
         # numeric-only JSONL telemetry, cache-write token reporting, and PR
         # #10's runtime deadline and POSIX process-group cancellation cleanup.
@@ -355,7 +355,7 @@ jobs:
           effort: ${{ needs.policy.outputs.effort }}
           sandbox: read-only
           safety-strategy: drop-sudo
-          timeout-seconds: ${{ needs.policy.outputs.codex_timeout_seconds }}
+          timeout-seconds: "240"
           output-schema-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
           # PR-owned AGENTS.md files are review evidence, never reviewer instructions.
           codex-args: ${{ inputs.self-flex-probe && '["--ephemeral","-c","project_doc_max_bytes=0","-c","service_tier=''flex''","--json"]' || '["--ephemeral","-c","project_doc_max_bytes=0","--json"]' }}

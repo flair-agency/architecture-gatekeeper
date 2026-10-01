@@ -2,11 +2,8 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export const REVIEW_ACTION_STEP_TIMEOUT_MINUTES = 5;
-export const MIN_REVIEW_JOB_TIMEOUT_MINUTES = REVIEW_ACTION_STEP_TIMEOUT_MINUTES + 1;
 const JOB_MAX = 360;
-const CODEX_MIN = 60;
-const CODEX_MAX = 240;
+const STEP_MAX = 359;
 
 function parseInteger(value, label) {
   if (typeof value !== 'string' || !/^[1-9][0-9]*$/.test(value)) {
@@ -17,23 +14,23 @@ function parseInteger(value, label) {
   return number;
 }
 
-export function validateReviewTimeouts(jobTimeoutMinutes, codexTimeoutSeconds) {
+export function validateReviewTimeouts(jobTimeoutMinutes, stepTimeoutMinutes) {
   const requestedJob = parseInteger(String(jobTimeoutMinutes), 'Review job timeout');
-  const codex = parseInteger(String(codexTimeoutSeconds), 'Codex Action timeout');
+  const step = parseInteger(String(stepTimeoutMinutes), 'Review step timeout');
   if (requestedJob > JOB_MAX) throw new Error(`Review job timeout must not exceed ${JOB_MAX} minutes`);
-  if (codex < CODEX_MIN || codex > CODEX_MAX) throw new Error(`Codex Action timeout must be ${CODEX_MIN}-${CODEX_MAX} seconds`);
-  const job = Math.max(requestedJob, MIN_REVIEW_JOB_TIMEOUT_MINUTES);
-  return { jobTimeoutMinutes: job, codexTimeoutSeconds: codex };
+  if (step > STEP_MAX) throw new Error(`Review step timeout must not exceed ${STEP_MAX} minutes`);
+  const job = Math.max(requestedJob, step + 1);
+  return { jobTimeoutMinutes: job, stepTimeoutMinutes: step };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
     const validated = validateReviewTimeouts(
       process.env.REVIEW_JOB_TIMEOUT_MINUTES,
-      process.env.CODEX_TIMEOUT_SECONDS,
+      process.env.REVIEW_STEP_TIMEOUT_MINUTES,
     );
     process.stdout.write(`jobTimeoutMinutes=${validated.jobTimeoutMinutes}\n`);
-    process.stdout.write(`codexTimeoutSeconds=${validated.codexTimeoutSeconds}\n`);
+    process.stdout.write(`stepTimeoutMinutes=${validated.stepTimeoutMinutes}\n`);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

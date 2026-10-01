@@ -21,7 +21,6 @@ jobs:
       # Off by default. Enable only for a bounded self-review cost experiment.
       self-flex-probe: ${{ vars.ARCHITECTURE_GATE_SELF_FLEX == 'true' && vars.ARCHITECTURE_GATE_SELF_FLEX_PR == format('{0}', github.event.pull_request.number) && vars.ARCHITECTURE_GATE_SELF_FLEX_HEAD == github.event.pull_request.head.sha }}
       review-job-timeout-minutes: ${{ fromJSON(vars.ARCHITECTURE_GATE_REVIEW_JOB_TIMEOUT_MINUTES || '7') }}
-      codex-timeout-seconds: ${{ fromJSON(vars.ARCHITECTURE_GATE_CODEX_TIMEOUT_SECONDS || '240') }}
       schema-path: .codex/gatekeeper/ci-decision.schema.json
       validation-path: .codex/gatekeeper/decision.validation.json
     secrets:

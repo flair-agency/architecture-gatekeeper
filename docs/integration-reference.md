@@ -160,20 +160,23 @@ release that contains the equivalent fixes. `local-only` records an explicit
 waiver and makes no OpenAI API call.
 
 The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)
-and a `codex-timeout-seconds` input (default 240). This repository's protected
-self-review caller reads optional Actions repository variables
-`ARCHITECTURE_GATE_REVIEW_JOB_TIMEOUT_MINUTES` and
-`ARCHITECTURE_GATE_CODEX_TIMEOUT_SECONDS`, with those same defaults. The
-reusable workflow raises valid job limits below 6 minutes to 6 (the fixed
-five-minute Action step cap plus one minute) and rejects limits above GitHub's
-360-minute maximum. The Action limit must be 60–240 seconds. Malformed values
-fail before the primary review job starts. Other review jobs, including
-`OWNER_ADDITION`, keep their separately defined limits.
+and a `review-step-timeout-minutes` input (default 5). This repository's
+protected self-review caller reads the optional Actions repository variable
+`ARCHITECTURE_GATE_REVIEW_JOB_TIMEOUT_MINUTES`, with the same 7-minute default;
+the step input remains at its reusable-workflow default. The reusable workflow
+raises valid job limits below the selected step limit plus one minute and
+rejects limits above GitHub's 360-minute maximum. The step limit must be a
+positive integer no greater than 359. Malformed values fail before the primary
+review job starts. The Codex Action deadline remains fixed at 240 seconds, and
+other review jobs, including `OWNER_ADDITION`, keep their separately defined
+limits.
 
-The primary Codex Action step retains its separate five-minute outer timeout.
-At the default 240-second Action deadline, that leaves up to 60 seconds for
-initialization and process-group cancellation cleanup (including its
-one-second TERM-to-KILL grace period). The step is a second timeout boundary;
+The protected self caller uses the reusable workflow's default five-minute
+outer Action-step timeout. At the fixed 240-second Action deadline, that leaves
+up to 60 seconds for initialization and process-group cancellation cleanup
+(including its one-second TERM-to-KILL grace period). Other reusable-workflow
+callers may set the outer step input; if it is shorter than the Action deadline,
+the step can end the review first. The step is a second timeout boundary;
 GitHub cancellation and process cleanup remain best-effort, not a guarantee
 that every descendant has stopped. The shorter job limit bounds the time
 allocated to checkout, authority materialization, and the one-minute
