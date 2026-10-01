@@ -6,7 +6,11 @@ import { inflateRawSync } from 'node:zlib';
 const MAX_ARCHIVE_BYTES = 2 * 1024 * 1024;
 const MAX_FILE_BYTES = 1024 * 1024;
 const MAX_TOTAL_BYTES = 2 * MAX_FILE_BYTES;
-const FILES = Object.freeze(['review-record.json', 'attestation-bundle.json']);
+const FILES = Object.freeze({
+  block: Object.freeze(['review-record.json', 'attestation-bundle.json']),
+  ownerDecision: Object.freeze(['review-record.json', 'attestation-bundle.json']),
+  eligibility: Object.freeze(['eligibility-receipt.json', 'attestation-bundle.json']),
+});
 const EOCD = 0x06054b50;
 const CENTRAL = 0x02014b50;
 const LOCAL = 0x04034b50;
@@ -33,7 +37,7 @@ function findEndRecord(zip) {
   fail('end-of-central-directory record is missing or malformed.');
 }
 
-function parseEntries(zip) {
+function parseEntries(zip, files) {
   if (!Buffer.isBuffer(zip) || zip.length < 22 || zip.length > MAX_ARCHIVE_BYTES) {
     fail('archive is invalid or exceeds the compressed-size limit.');
   }
@@ -44,7 +48,7 @@ function parseEntries(zip) {
   const entryCount = zip.readUInt16LE(end + 10);
   const centralSize = zip.readUInt32LE(end + 12);
   const centralOffset = zip.readUInt32LE(end + 16);
-  if (disk !== 0 || centralDisk !== 0 || diskEntries !== entryCount || entryCount !== FILES.length ||
+  if (disk !== 0 || centralDisk !== 0 || diskEntries !== entryCount || entryCount !== files.length ||
       centralOffset + centralSize !== end || centralOffset > zip.length || centralSize > zip.length) {
     fail('multi-disk, ZIP64, unexpected-entry-count, or malformed directory is unsupported.');
   }
@@ -72,11 +76,11 @@ function parseEntries(zip) {
     }
     const nameBytes = zip.subarray(offset + 46, offset + 46 + nameLength);
     const name = nameBytes.toString('utf8');
-    if (!Buffer.from(name, 'utf8').equals(nameBytes) || !FILES.includes(name)) fail('archive contains an unexpected or unsafe path.');
+    if (!Buffer.from(name, 'utf8').equals(nameBytes) || !files.includes(name)) fail('archive contains an unexpected or unsafe path.');
     entries.push({ name, flags, method, crc, compressedSize, uncompressedSize, localOffset });
     offset = next;
   }
-  if (offset !== end || entries.map(entry => entry.name).sort().join('\0') !== [...FILES].sort().join('\0')) {
+  if (offset !== end || entries.map(entry => entry.name).sort().join('\0') !== [...files].sort().join('\0')) {
     fail('archive contains duplicate, missing, or unindexed entries.');
   }
   if (entries.reduce((sum, entry) => sum + entry.uncompressedSize, 0) > MAX_TOTAL_BYTES) {
@@ -129,12 +133,14 @@ function extractEntry(zip, entry, centralOffset) {
   return { bytes, rangeStart: offset, rangeEnd };
 }
 
-/** Return the exact two raw payload byte strings, with no semantic claims. */
-export function extractOwnerAmendmentBlockArtifactZip(zipInput) {
+/** Return exact profile-specific raw payload byte strings, with no semantic claims. */
+export function extractOwnerAmendmentArtifactZip(zipInput, { profile = 'block' } = {}) {
   try {
+    const files = FILES[profile];
+    if (!files) fail('artifact profile is unsupported.');
     const zip = Buffer.isBuffer(zipInput) ? zipInput : zipInput instanceof Uint8Array
       ? Buffer.from(zipInput.buffer, zipInput.byteOffset, zipInput.byteLength) : null;
-    const { entries, centralOffset } = parseEntries(zip);
+    const { entries, centralOffset } = parseEntries(zip, files);
     const extracted = Object.create(null);
     const ranges = [];
     for (const entry of entries) {
@@ -149,6 +155,9 @@ export function extractOwnerAmendmentBlockArtifactZip(zipInput) {
       coveredUntil = end;
     }
     if (coveredUntil !== centralOffset) fail('unindexed bytes precede the central directory.');
+    if (profile === 'eligibility') return Object.freeze({ status: 'EXTRACTED_OWNER_AMENDMENT_ELIGIBILITY_ARTIFACT',
+      eligibilityReceiptBytes: Buffer.from(extracted['eligibility-receipt.json']),
+      attestationBundleBytes: Buffer.from(extracted['attestation-bundle.json']) });
     return Object.freeze({ status: 'EXTRACTED_OWNER_AMENDMENT_BLOCK_ARTIFACT',
       reviewRecordBytes: Buffer.from(extracted['review-record.json']),
       attestationBundleBytes: Buffer.from(extracted['attestation-bundle.json']) });
@@ -157,7 +166,12 @@ export function extractOwnerAmendmentBlockArtifactZip(zipInput) {
   }
 }
 
+export function extractOwnerAmendmentBlockArtifactZip(zipInput) {
+  return extractOwnerAmendmentArtifactZip(zipInput, { profile: 'block' });
+}
+
 export const OWNER_AMENDMENT_ARTIFACT_ZIP_LIMITS = Object.freeze({
   maxArchiveBytes: MAX_ARCHIVE_BYTES, maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TOTAL_BYTES,
-  requiredFiles: FILES,
+  requiredFiles: FILES.block,
+  profiles: FILES,
 });

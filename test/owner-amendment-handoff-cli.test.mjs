@@ -147,3 +147,44 @@ test('fails closed when the fetched PR ref differs from the selected exact B', a
   assert.match(result.reason, /fetched B PR ref no longer matches/);
   assert.equal(f.calls.some(call => call.orchestrate), false);
 });
+
+test('default BLOCK handoff selector composes protected-base run metadata through exact B fetch', async () => {
+  const repository = env.GITHUB_REPOSITORY;
+  const repo = { id: 1379218762, full_name: repository };
+  const bPr = { number: 201, state: 'open', draft: false,
+    base: { ref: 'main', sha: baseSha, repo }, head: { sha: bHeadSha, repo } };
+  const aPr = { number: 199, state: 'closed', draft: false, merged: false, merged_at: null,
+    base: { ref: 'main', sha: baseSha, repo }, head: { sha: aHeadSha, repo } };
+  const run = { id: 55, run_attempt: 2, status: 'completed', event: 'pull_request_target',
+    path: '.github/workflows/self-architecture-gate.yml@refs/heads/main',
+    repository: repo, head_repository: repo, head_sha: baseSha, pull_requests: [] };
+  const calls = [];
+  const fetchImpl = async url => {
+    calls.push(String(url));
+    const body = String(url).endsWith('/pulls/201') ? bPr
+      : String(url).endsWith('/pulls/199') ? aPr : run;
+    return { ok: true, json: async () => body };
+  };
+  const gitCalls = [];
+  const runGit = (_binary, args) => {
+    gitCalls.push(args.join(' '));
+    if (args[0] === 'rev-parse' && args[1] === 'HEAD') return `${baseSha}\n`;
+    if (args[0] === 'fetch') return Buffer.alloc(0);
+    if (args[0] === 'rev-parse' && args[1] === 'FETCH_HEAD') return `${bHeadSha}\n`;
+    throw new Error(`unexpected git request ${args.join(' ')}`);
+  };
+  const result = await runOwnerAmendmentHandoff({ env, fetchImpl, runGit,
+    resolveGitContext: ({ baseSha: selectedBase, headSha: selectedB }) => {
+      assert.equal(selectedBase, baseSha);
+      assert.equal(selectedB, bHeadSha);
+      throw new Error('stop at unconfigured protected Git-context boundary');
+    } });
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /stop at unconfigured protected Git-context boundary/);
+  assert.deepEqual(calls, [
+    `https://api.github.com/repos/${repository}/pulls/201`,
+    `https://api.github.com/repos/${repository}/pulls/199`,
+    `https://api.github.com/repos/${repository}/actions/runs/55/attempts/2`,
+  ]);
+  assert.deepEqual(gitCalls, ['rev-parse HEAD', 'fetch --no-tags origin refs/pull/201/head', 'rev-parse FETCH_HEAD']);
+});

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -45,7 +46,7 @@ function commit(root, message) {
 }
 
 function fixture({ basePolicy = policy, baseManifest = manifest, baseAuthority = 'old architecture\n',
-  headAuthority = 'amended architecture\n', extraHeadFiles = {}, basePolicySymlink = false,
+  headAuthority = 'amended architecture\n', baseExtraFiles = {}, extraHeadFiles = {}, basePolicySymlink = false,
   baseManifestSymlink = false, headAuthoritySymlink = false, unrelatedHead = false,
   removeHeadAuthority = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'agk-handoff-git-context-'));
@@ -53,6 +54,7 @@ function fixture({ basePolicy = policy, baseManifest = manifest, baseAuthority =
   put(root, policyPath, basePolicySymlink ? { symlink: 'missing-policy-target' } : JSON.stringify(basePolicy));
   put(root, manifestPath, baseManifestSymlink ? { symlink: 'missing-manifest-target' } : JSON.stringify(baseManifest));
   put(root, authorityPath, baseAuthority);
+  for (const [path, value] of Object.entries(baseExtraFiles)) put(root, path, value);
   const baseSha = commit(root, 'base');
   if (removeHeadAuthority) {
     rmSync(join(root, authorityPath));
@@ -167,5 +169,38 @@ test('does not expose mutable protected bytes or parsed context', () => {
     assert.equal(result.manifestBytes[0], 0x7b);
     assert.throws(() => { result.policy.ownerAmendmentGrade = 'G1'; }, TypeError);
     assert.throws(() => { result.manifest.authorities[0].path = 'other.md'; }, TypeError);
+  } finally { f.cleanup(); }
+});
+
+test('OWNER_DECISION handoff context binds every changed self authority and both complete set digests', () => {
+  const profilePolicy = structuredClone(policy);
+  profilePolicy.branches.main.ownerAmendment.triggerProfile = 'completed-owner-decision-self-v1';
+  profilePolicy.branches.main.ownerAmendment.maxPromptBytes = 262_144;
+  const profileManifest = { version: 1, authorities: [...manifest.authorities,
+    { id: 'security-contract', repository: 'self', revision: 'authority-revision', path: 'docs/security.md' }] };
+  const oldSecurity = 'old security rule\n';
+  const newSecurity = 'amended security rule\n';
+  const f = fixture({ basePolicy: profilePolicy, baseManifest: profileManifest,
+    baseExtraFiles: { 'docs/security.md': oldSecurity }, extraHeadFiles: { 'docs/security.md': newSecurity } });
+  try {
+    const result = resolve(f);
+    assert.deepEqual(result.changedFiles, [
+      { path: authorityPath, status: 'modified' }, { path: 'docs/security.md', status: 'modified' },
+    ]);
+    assert.deepEqual(result.authorityChanges.map(change => change.path), [authorityPath, 'docs/security.md']);
+    assert.deepEqual(result.authorityChanges.map(change => [change.beforeBytes.toString(), change.afterBytes.toString()]), [
+      ['old architecture\n', 'amended architecture\n'], [oldSecurity, newSecurity],
+    ]);
+    const descriptor = (id, path, bytes) => ({ id, repository, resolvedCommit: f.baseSha,
+      path, byteLength: Buffer.byteLength(bytes), sha256: createHash('sha256').update(bytes).digest('hex') });
+    const prior = [descriptor('architecture-contract', authorityPath, 'old architecture\n'),
+      descriptor('security-contract', 'docs/security.md', oldSecurity)];
+    const resulting = [descriptor('architecture-contract', authorityPath, 'amended architecture\n'),
+      descriptor('security-contract', 'docs/security.md', newSecurity)];
+    const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+    assert.equal(result.priorAuthoritySetDigest, digest(prior));
+    assert.equal(result.resultingAuthoritySetDigest, digest(resulting));
+    result.authorityChanges[1].afterBytes[0] = 0x58;
+    assert.equal(resolve(f).authorityChanges[1].afterBytes.toString(), newSecurity);
   } finally { f.cleanup(); }
 });

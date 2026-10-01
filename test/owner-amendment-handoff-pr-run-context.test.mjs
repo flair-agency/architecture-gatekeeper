@@ -87,7 +87,15 @@ test('fails closed for invalid PR and run identities', async t => {
     ['wrong run event', f => { f.run.event = 'workflow_dispatch'; }],
     ['wrong exact attempt', f => { f.run.run_attempt = 2; }],
     ['wrong workflow path', f => { f.run.path = '.github/workflows/architecture-gate.yml@refs/heads/main'; }],
-    ['wrong run head', f => { f.run.head_sha = baseSha; }],
+    ['unrelated run head', f => { f.run.head_sha = 'd'.repeat(40); }],
+    ['missing run PR association list', f => { delete f.run.pull_requests; }],
+    ['mixed run PR associations', f => { f.run.pull_requests = [
+      { number: 199, base: { ref: 'main', sha: baseSha, repo: f.repo }, head: { sha: aHeadSha, repo: f.repo } },
+      { number: 198, base: { ref: 'main', sha: baseSha, repo: f.repo }, head: { sha: aHeadSha, repo: f.repo } },
+    ]; }],
+    ['duplicate exact run PR associations', f => { const exact = { number: 199,
+      base: { ref: 'main', sha: baseSha, repo: f.repo }, head: { sha: aHeadSha, repo: f.repo } };
+      f.run.pull_requests = [exact, structuredClone(exact)]; }],
     ['wrong run repository', f => { f.run.repository = { id: 1, full_name: 'someone/else' }; }],
     ['missing run repository id', f => { delete f.run.repository.id; }],
     ['wrong run head repository', f => { f.run.head_repository = { id: 1, full_name: 'fork/architecture-gatekeeper' }; }],
@@ -98,6 +106,37 @@ test('fails closed for invalid PR and run identities', async t => {
     assert.equal(result.status, 'INCOMPLETE');
     assert.match(result.reason, /Owner amendment handoff PR\/run context:/);
   });
+});
+
+test('accepts protected-base pull_request_target metadata while binding the exact A PR head', async () => {
+  const f = fixture();
+  f.run.head_sha = baseSha;
+  f.run.pull_requests = [];
+  const result = await select(f);
+  assert.equal(result.status, 'SELECTED_OWNER_AMENDMENT_HANDOFF_PR_RUN_CONTEXT', result.reason);
+  assert.equal(result.aHeadSha, aHeadSha);
+  assert.equal(result.runHeadSha, baseSha);
+});
+
+test('accepts a single exact PR association when protected-base run metadata is present', async () => {
+  const f = fixture();
+  f.run.head_sha = baseSha;
+  f.run.pull_requests = [{ number: 199,
+    base: { ref: 'main', sha: baseSha, repo: f.repo }, head: { sha: aHeadSha, repo: f.repo } }];
+  const result = await select(f);
+  assert.equal(result.status, 'SELECTED_OWNER_AMENDMENT_HANDOFF_PR_RUN_CONTEXT', result.reason);
+  assert.equal(result.aHeadSha, aHeadSha);
+  assert.equal(result.runHeadSha, baseSha);
+});
+
+test('rejects a non-empty run PR association that does not match exact A', async () => {
+  const f = fixture();
+  f.run.head_sha = baseSha;
+  f.run.pull_requests = [{ number: 198, base: { ref: 'main', sha: baseSha,
+    repo: f.repo }, head: { sha: aHeadSha, repo: f.repo } }];
+  const result = await select(f);
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /PR association/);
 });
 
 test('reports API failures as incomplete without acceptance claims', async () => {
