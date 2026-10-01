@@ -112,24 +112,36 @@ export function resolveGcloudAccessToken(timeoutMs = 4000) {
 /**
  * Resolves available authentication credentials with explicit fallback precedence:
  * 1. Explicit API key (options.apiKey or GEMINI_API_KEY)
- * 2. Explicit OAuth Bearer token (options.accessToken or GOOGLE_OAUTH_ACCESS_TOKEN)
- * 3. Local gcloud access token via `gcloud auth print-access-token`
+/**
+ * Resolves available authentication credentials with explicit precedence:
+ * 1. Explicit option apiKey (options.apiKey)
+ * 2. Explicit option accessToken (options.accessToken)
+ * 3. Short-lived WIF / OAuth Bearer token from environment (CLOUDSDK_AUTH_ACCESS_TOKEN or GOOGLE_OAUTH_ACCESS_TOKEN)
+ * 4. Static environment API key (GEMINI_API_KEY)
+ * 5. Local gcloud CLI access token via `gcloud auth print-access-token`
  *
  * @param {object} [options]
  * @returns {{ type: 'apiKey' | 'bearer', value: string }}
  */
 export function resolveAuthCredentials(options = {}) {
-  const apiKey = options.apiKey || process.env.GEMINI_API_KEY;
-  if (apiKey && typeof apiKey === 'string' && apiKey.trim()) {
-    return { type: 'apiKey', value: apiKey.trim() };
+  if (options.apiKey && typeof options.apiKey === 'string' && options.apiKey.trim()) {
+    return { type: 'apiKey', value: options.apiKey.trim() };
   }
 
-  const explicitToken =
-    options.accessToken ||
-    process.env.GOOGLE_OAUTH_ACCESS_TOKEN ||
-    process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
-  if (explicitToken && typeof explicitToken === 'string' && explicitToken.trim()) {
-    return { type: 'bearer', value: explicitToken.trim() };
+  if (options.accessToken && typeof options.accessToken === 'string' && options.accessToken.trim()) {
+    return { type: 'bearer', value: options.accessToken.trim() };
+  }
+
+  const envToken =
+    process.env.CLOUDSDK_AUTH_ACCESS_TOKEN ||
+    process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
+  if (envToken && typeof envToken === 'string' && envToken.trim()) {
+    return { type: 'bearer', value: envToken.trim() };
+  }
+
+  const envApiKey = process.env.GEMINI_API_KEY;
+  if (envApiKey && typeof envApiKey === 'string' && envApiKey.trim()) {
+    return { type: 'apiKey', value: envApiKey.trim() };
   }
 
   const gcloudTimeoutMs = options.gcloudTimeoutMs ?? 4000;
@@ -145,6 +157,41 @@ export function resolveAuthCredentials(options = {}) {
 }
 
 /**
+ * Resolves the appropriate base URL based on credentials and options.
+ * Routes Bearer tokens to Vertex AI when a Google Cloud project is available,
+ * and routes API keys to Google AI Studio.
+ *
+ * @param {{ type: 'apiKey' | 'bearer', value: string }} credentials
+ * @param {object} [options]
+ * @returns {string}
+ */
+export function resolveBaseUrl(credentials, options = {}) {
+  if (options.baseUrl) {
+    return options.baseUrl;
+  }
+
+  if (credentials.type === 'bearer') {
+    const projectId =
+      options.projectId ||
+      process.env.GOOGLE_CLOUD_PROJECT ||
+      process.env.CLOUDSDK_CORE_PROJECT ||
+      process.env.CLOUDSDK_PROJECT ||
+      process.env.GCP_PROJECT;
+
+    if (projectId && typeof projectId === 'string' && projectId.trim()) {
+      const region =
+        options.region ||
+        process.env.GOOGLE_CLOUD_REGION ||
+        process.env.CLOUDSDK_COMPUTE_REGION ||
+        'us-central1';
+      return `https://${region}-aiplatform.googleapis.com/v1/projects/${encodeURIComponent(projectId.trim())}/locations/${encodeURIComponent(region)}/publishers/google`;
+    }
+  }
+
+  return 'https://generativelanguage.googleapis.com/v1beta';
+}
+
+/**
  * Executes an architecture review using the Gemini API.
  * Fails closed on any HTTP, network, timeout, or schema error.
  *
@@ -152,8 +199,10 @@ export function resolveAuthCredentials(options = {}) {
  * @param {object} [options]
  * @param {string} [options.apiKey] Gemini API Key (defaults to process.env.GEMINI_API_KEY)
  * @param {string} [options.accessToken] Google OAuth Bearer token
- * @param {string} [options.model] Model name (defaults to request.reviewer.model or "gemini-2.5-flash")
- * @param {string} [options.baseUrl] Base API URL (defaults to Google Generative Language API)
+ * @param {string} [options.projectId] Google Cloud project ID for Vertex AI
+ * @param {string} [options.region] Google Cloud region for Vertex AI
+ * @param {string} [options.model] Model name (defaults to request.reviewer.model or "gemini-3.8-flash")
+ * @param {string} [options.baseUrl] Base API URL (defaults to Vertex AI for bearer or Generative Language API for apiKey)
  * @param {number} [options.timeoutMs] Review timeout in milliseconds
  * @param {typeof fetch} [options.fetch] Custom fetch implementation (useful for testing)
  * @returns {Promise<object>} Parsed decision JSON conforming to the requested schema
@@ -188,8 +237,12 @@ export async function runGeminiReviewer(request, options = {}) {
   const startTime = Date.now();
   const signal = AbortSignal.timeout(timeoutMs);
 
-  // Validate endpoint and require HTTPS before resolving or transmitting credentials
-  const baseUrl = options.baseUrl || 'https://generativelanguage.googleapis.com/v1beta';
+  const remainingMs = Math.max(0, timeoutMs - (Date.now() - startTime));
+  const gcloudTimeoutMs = Math.min(4000, remainingMs);
+  const credentials = resolveAuthCredentials({ ...options, gcloudTimeoutMs });
+
+  // Validate endpoint and require HTTPS before transmitting credentials
+  const baseUrl = resolveBaseUrl(credentials, options);
   let parsedUrl;
   try {
     parsedUrl = new URL(baseUrl);
@@ -199,10 +252,6 @@ export async function runGeminiReviewer(request, options = {}) {
   if (parsedUrl.protocol !== 'https:') {
     throw new Error(`Architecture gate reviewer failed: insecure endpoint protocol ${parsedUrl.protocol}. HTTPS is required to protect credentials.`);
   }
-
-  const remainingMs = Math.max(0, timeoutMs - (Date.now() - startTime));
-  const gcloudTimeoutMs = Math.min(4000, remainingMs);
-  const credentials = resolveAuthCredentials({ ...options, gcloudTimeoutMs });
 
   const url = `${baseUrl.replace(/\/+$/, '')}/models/${encodeURIComponent(model)}:generateContent`;
 

@@ -6,6 +6,7 @@ import {
   prepareGeminiRequestBody,
   runGeminiReviewer,
   resolveAuthCredentials,
+  resolveBaseUrl,
   resolveGcloudAccessToken,
 } from '../src/gemini-transport.mjs';
 
@@ -637,3 +638,114 @@ test('runGeminiReviewer bounds credential discovery by review deadline', async (
   assert.ok(observedGcloudTimeout !== null);
   assert.ok(observedGcloudTimeout <= 1500, `Expected <= 1500, got ${observedGcloudTimeout}`);
 });
+
+test('resolveAuthCredentials prioritizes environment short-lived WIF token over environment static API key', () => {
+  const prevEnvToken = process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+  const prevEnvKey = process.env.GEMINI_API_KEY;
+  try {
+    process.env.CLOUDSDK_AUTH_ACCESS_TOKEN = 'short-lived-wif-token';
+    process.env.GEMINI_API_KEY = 'static-api-key';
+
+    const creds = resolveAuthCredentials();
+    assert.deepEqual(creds, { type: 'bearer', value: 'short-lived-wif-token' });
+  } finally {
+    if (prevEnvToken !== undefined) process.env.CLOUDSDK_AUTH_ACCESS_TOKEN = prevEnvToken;
+    else delete process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+    if (prevEnvKey !== undefined) process.env.GEMINI_API_KEY = prevEnvKey;
+    else delete process.env.GEMINI_API_KEY;
+  }
+});
+
+test('resolveBaseUrl routes Bearer token to Vertex AI URL when project ID is present', () => {
+  const creds = { type: 'bearer', value: 'token' };
+
+  // Explicit options
+  const urlWithOptions = resolveBaseUrl(creds, { projectId: 'my-gcp-project', region: 'asia-northeast1' });
+  assert.equal(
+    urlWithOptions,
+    'https://asia-northeast1-aiplatform.googleapis.com/v1/projects/my-gcp-project/locations/asia-northeast1/publishers/google'
+  );
+
+  // Environment variables with default region us-central1
+  const prevProject = process.env.GOOGLE_CLOUD_PROJECT;
+  const prevRegion = process.env.GOOGLE_CLOUD_REGION;
+  try {
+    process.env.GOOGLE_CLOUD_PROJECT = 'env-gcp-project';
+    delete process.env.GOOGLE_CLOUD_REGION;
+
+    const envUrl = resolveBaseUrl(creds);
+    assert.equal(
+      envUrl,
+      'https://us-central1-aiplatform.googleapis.com/v1/projects/env-gcp-project/locations/us-central1/publishers/google'
+    );
+  } finally {
+    if (prevProject !== undefined) process.env.GOOGLE_CLOUD_PROJECT = prevProject;
+    else delete process.env.GOOGLE_CLOUD_PROJECT;
+    if (prevRegion !== undefined) process.env.GOOGLE_CLOUD_REGION = prevRegion;
+    else delete process.env.GOOGLE_CLOUD_REGION;
+  }
+});
+
+test('resolveBaseUrl routes apiKey credentials to Generative Language API', () => {
+  const creds = { type: 'apiKey', value: 'api-key-123' };
+  const prevProject = process.env.GOOGLE_CLOUD_PROJECT;
+  try {
+    process.env.GOOGLE_CLOUD_PROJECT = 'some-project';
+    const url = resolveBaseUrl(creds);
+    assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta');
+  } finally {
+    if (prevProject !== undefined) process.env.GOOGLE_CLOUD_PROJECT = prevProject;
+    else delete process.env.GOOGLE_CLOUD_PROJECT;
+  }
+});
+
+test('runGeminiReviewer automatically invokes Vertex AI endpoint when Bearer token and project ID are configured', async () => {
+  let requestedUrl = null;
+  let authorizationHeader = null;
+
+  const mockFetch = async (url, options) => {
+    requestedUrl = url;
+    authorizationHeader = options.headers['Authorization'];
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [
+          {
+            finishReason: 'STOP',
+            content: {
+              parts: [{ text: JSON.stringify({ decision: 'PASS', summary: 'Vertex AI review completed' }) }],
+            },
+          },
+        ],
+      }),
+    };
+  };
+
+  const prevToken = process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+  const prevProject = process.env.GOOGLE_CLOUD_PROJECT;
+  try {
+    process.env.CLOUDSDK_AUTH_ACCESS_TOKEN = 'wif-bearer-token';
+    process.env.GOOGLE_CLOUD_PROJECT = 'wif-ci-project';
+
+    const request = {
+      prompt: 'Verify architecture compliance on Vertex AI',
+      schema: { type: 'object' },
+      reviewer: { model: 'gemini-3.8-flash', reasoningEffort: 'low' },
+    };
+
+    const decision = await runGeminiReviewer(request, { fetch: mockFetch });
+    assert.equal(decision.decision, 'PASS');
+    assert.equal(
+      requestedUrl,
+      'https://us-central1-aiplatform.googleapis.com/v1/projects/wif-ci-project/locations/us-central1/publishers/google/models/gemini-3.8-flash:generateContent'
+    );
+    assert.equal(authorizationHeader, 'Bearer wif-bearer-token');
+  } finally {
+    if (prevToken !== undefined) process.env.CLOUDSDK_AUTH_ACCESS_TOKEN = prevToken;
+    else delete process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+    if (prevProject !== undefined) process.env.GOOGLE_CLOUD_PROJECT = prevProject;
+    else delete process.env.GOOGLE_CLOUD_PROJECT;
+  }
+});
+
