@@ -144,6 +144,23 @@ has not been verified. Keep this route opt-in and treat
 `BLOCK`, `OWNER_DECISION`, and `incomplete` as informational warnings after the
 tool has completed.
 
+### First CLI trial in Architecture Gatekeeper
+
+Use the exact installed package version with the consumer-owned launcher and
+project-local `.codex/hooks.json` shown above. Start the normal CLI in the
+project, trust the project and exact hook definition through the usual prompts,
+then check `/hooks` for the intended handler with `Installed=1` and `Active=1`.
+Make one tracked edit and continue ordinary verification while the screen
+runs. The result reviews its captured candidate; untracked or unsupported
+content returns `incomplete`, and `queued-latest` leaves the latest candidate
+for consideration on a later eligible event; an unchanged candidate may be
+deduplicated. Read Hook context in the active turn or a later user turn; an
+idle session does not wake to deliver it. Treat all results as after-the-fact
+development feedback and check the revision, request, and snapshot identities
+before relating them to a candidate. The actual ordinary-checkout CLI loop is
+recorded in the [dogfood investigation](investigations/2026-10-01-local-screening-adapter-dogfood.md).
+Linked-worktree discovery remains unresolved in [Issue #250](https://github.com/flair-agency/architecture-gatekeeper/issues/250); it does not block an ordinary-checkout trial.
+
 ## Manual review
 
 After installing a fixed package version, invoke the package-owned entrypoint
