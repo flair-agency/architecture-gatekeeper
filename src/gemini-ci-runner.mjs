@@ -4,7 +4,7 @@
  * Standalone review runner for Gemini provider in CI and local workflows.
  * Zero external npm dependencies: uses Node.js standard library and native fetch.
  */
-import { appendFileSync, existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runGeminiReviewer } from './gemini-transport.mjs';
@@ -107,19 +107,22 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
   validateJsonSchema(rawDecision, request.schema);
 
   // Persist result to output file
+  const targetOut = resolve(outputPath);
   const serialized = JSON.stringify(rawDecision, null, 2);
-  writeFileSync(outputPath, `${serialized}\n`, { mode: 0o600 });
+  writeFileSync(targetOut, `${serialized}\n`, { mode: 0o600 });
   process.stderr.write(`[gemini-ci-runner] Review completed: decision=${rawDecision.decision}, summary=${rawDecision.summary}\n`);
-  process.stderr.write(`[gemini-ci-runner] Decision persisted to: ${outputPath}\n`);
+  process.stderr.write(`[gemini-ci-runner] Decision persisted to: ${targetOut}\n`);
 
   // If running inside GitHub Actions, export output variables
-  const githubOutput = process.env.GITHUB_OUTPUT;
-  if (githubOutput && existsSync(githubOutput)) {
-    // Single-line JSON or formatted output for steps.gemini.outputs.final-message
-    const singleLine = JSON.stringify(rawDecision);
-    appendFileSync(githubOutput, `final-message=${singleLine}\n`, 'utf8');
-    appendFileSync(githubOutput, `decision-file=${outputPath}\n`, 'utf8');
-    appendFileSync(githubOutput, `decision-kind=${rawDecision.decision}\n`, 'utf8');
+  const rawGithubOutput = process.env.GITHUB_OUTPUT;
+  if (rawGithubOutput && typeof rawGithubOutput === 'string') {
+    const safeGithubOutput = resolve(rawGithubOutput);
+    if (existsSync(safeGithubOutput) && statSync(safeGithubOutput).isFile()) {
+      const singleLine = JSON.stringify(rawDecision);
+      appendFileSync(safeGithubOutput, `final-message=${singleLine}\n`, 'utf8');
+      appendFileSync(safeGithubOutput, `decision-file=${targetOut}\n`, 'utf8');
+      appendFileSync(safeGithubOutput, `decision-kind=${rawDecision.decision}\n`, 'utf8');
+    }
   }
 
   return rawDecision;
