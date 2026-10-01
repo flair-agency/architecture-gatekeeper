@@ -14,6 +14,7 @@ import { materializeAuthoritySet } from '../src/authority-set.mjs';
 import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
 import { parseOwnerAmendmentSemanticTagObject } from '../src/owner-amendment-semantic-tag-object.mjs';
+import { computeOwnerAmendmentResultingAuthoritySet, deriveOwnerAmendmentGitChanges } from '../src/owner-amendment-git-changes.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;
 const baseSha = process.env.BASE_SHA;
@@ -36,7 +37,8 @@ function preparedContext(prepared) {
     triggerProfile: prepared.triggerProfile, triggerReviewRecordSha256: prepared.triggerReviewRecordSha256,
     amendmentRecordSha256: prepared.amendmentRecordSha256, policyRevision: prepared.policyRevision,
     policySha256: prepared.policySha256, authoritySetDigest: prepared.authoritySetDigest,
-    resultingAuthoritySetDigest: prepared.resultingAuthoritySetDigest, authorityIds: [...prepared.authorityIds],
+    priorAuthoritySetDigest: prepared.authoritySetDigest, resultingAuthoritySetDigest: prepared.resultingAuthoritySetDigest,
+    authorityIds: [...prepared.authorityIds],
     changes: prepared.changes.map(change => ({ ...change })), diffSha256: prepared.diffSha256,
     promptSha256: prepared.promptSha256, schemaSha256: prepared.schemaSha256, model: prepared.model,
     reasoningEffort: prepared.reasoningEffort, gatekeeper: prepared.gatekeeper,
@@ -89,12 +91,23 @@ async function prepare() {
   const materialized = await materializeAuthoritySet({ manifestBytes: git.manifestBytes, limits: git.limits,
     selfRepository: repository, selfRoot: process.env.GITHUB_WORKSPACE, authorityRevision: baseSha,
     fetchExternal: createGitHubAuthoritySource({ token }) });
+  const gitChanges = deriveOwnerAmendmentGitChanges({ profile: triggerProfile, repository, baseSha, bSha,
+    targetPath: authority.authorityPath, selectedAuthorityBytes: git.authorityBytes,
+    changedFiles: git.changedFiles, authorityChanges: git.authorityChanges,
+    runGit, readBlob: gitBlob });
+  const resultingSet = computeOwnerAmendmentResultingAuthoritySet({ members: materialized.members,
+    changes: gitChanges.changes, repository, baseSha,
+    expectedPriorDigest: triggerProfile === 'completed-owner-decision-self-v1' ? git.priorAuthoritySetDigest : undefined,
+    expectedResultingDigest: triggerProfile === 'completed-owner-decision-self-v1' ? git.resultingAuthoritySetDigest : undefined });
+  if (triggerProfile === 'completed-owner-decision-self-v1' &&
+      (git.priorAuthoritySetDigest !== resultingSet.priorDigest || git.resultingAuthoritySetDigest !== resultingSet.resultingDigest)) {
+    fail('protected OWNER_DECISION Git context lacks full Authority Set digests.');
+  }
   const authoritySet = { digest: materialized.setDigest, members: materialized.members.map(member => ({ id: member.id,
     repository: member.repository, resolvedCommit: member.resolvedCommit, path: member.path,
     byteLength: member.byteLength, sha256: member.sha256, bytes: Buffer.from(member.content, 'utf8') })) };
   validateRepositoryTreePath(authority.authorityPath);
-  const diffBytes = runGit(['--no-replace-objects','diff','--binary','--no-ext-diff','--no-renames',baseSha,bSha,'--',authority.authorityPath]);
-  const changes = [{ path: authority.authorityPath, beforeBytes: git.authorityBytes.base, afterBytes: git.authorityBytes.head }];
+  const { changes, diffBytes } = gitChanges;
   const tagRefOid = tag.tag.objectOid;
   const tagIdentity = { tagRef, tagObjectOid: tagRefOid, observedTagRefOid: tag.observedTagRefOid };
   const validateTriggerProvenance = ({ bytes, expected }) => {
@@ -110,11 +123,7 @@ async function prepare() {
       return result;
     }
     const amendment = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-    const resulting = materialized.members.map(member => ({ id: member.id, repository: member.repository,
-      resolvedCommit: member.resolvedCommit, path: member.path,
-      byteLength: member.path === authority.authorityPath && member.repository === repository ? git.authorityBytes.head.length : member.byteLength,
-      sha256: member.path === authority.authorityPath && member.repository === repository ? authority.newSha256 : member.sha256 }));
-    const resultingDigest = sha256(Buffer.from(JSON.stringify(resulting)));
+    const resultingDigest = resultingSet.resultingDigest;
     if (amendment.version !== 2 || amendment.repository !== repository || amendment.baseSha !== baseSha || amendment.headSha !== bSha ||
         amendment.policyRevision !== baseSha || amendment.triggeringReviewSha256 !== expected.triggerReviewRecordSha256 ||
         amendment.attestationBundleSha256 !== sha256(embedded.attestationBundleBytes) || amendment.authority?.id !== authority.authorityId ||

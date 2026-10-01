@@ -40,7 +40,8 @@ function fixture(profile = 'completed-block-v1', edits = {}) {
     triggerProfile: profile, triggerReviewRecordSha256: triggerSha, amendmentRecordSha256: amendmentSha,
     authorityId: ids[0], authorityPath: 'docs/architecture.md', previousAuthoritySha256: '8'.repeat(64),
     amendedAuthoritySha256: '9'.repeat(64), priorAuthoritySetDigest: authoritySetDigest,
-    resultingAuthoritySetDigest: '7'.repeat(64), purpose: 'Resolve the selected authority trigger', targetValidated: true,
+    resultingAuthoritySetDigest: '7'.repeat(64), changes: [{ path: 'docs/architecture.md',
+      beforeSha256: '8'.repeat(64), afterSha256: '9'.repeat(64) }], purpose: 'Resolve the selected authority trigger', targetValidated: true,
     tagRef: `${tagNamespace}/${bSha}`, tagObjectOid: tagOid, observedTagRefOid: tagOid,
     protectedAgainstUpdateAndDeletion: true };
   const producer = { workflowPath: '.github/workflows/self-architecture-gate.yml', workflowSha: baseSha,
@@ -66,6 +67,7 @@ function fixture(profile = 'completed-block-v1', edits = {}) {
   const reviewInputs = { status: 'RESOLVED_PROTECTED_OWNER_AMENDMENT_REVIEW_INPUTS', repository,
     baseSha, bSha, triggerProfile: profile, triggerReviewRecordSha256: triggerSha,
     amendmentRecordSha256: amendmentSha, policySha256: policySha, authoritySetDigest,
+    priorAuthoritySetDigest: authoritySetDigest, resultingAuthoritySetDigest: tag.resultingAuthoritySetDigest,
     authorityIds: ids, changes: receipt.changes, diffSha256: hash(diffBytes), promptSha256: hash(promptBytes),
     schemaSha256: hash(schemaBytes), model: policy.model, reasoningEffort: policy.reasoningEffort,
     diffBytes, promptBytes, schemaBytes };
@@ -88,7 +90,7 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
   test(`accepts a fully verified ${profile} merge-group chain without a queue model call`, async () => {
     const f = fixture(profile);
     const result = await f.verifier.verify(event);
-    assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION');
+    assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION', result.reason);
     assert.equal(result.eligibility, 'eligible');
     assert.equal(result.adoption, 'pending');
     assert.equal(result.canonical, 'pending');
@@ -140,6 +142,46 @@ test('fails closed for profile, trigger decision, target B, tag or receipt misma
     const f = fixture(profile); f.values[key] = edit(f.values[key]);
     const result = await f.verifier.verify(event);
     assert.equal(result.status, 'INCOMPLETE');
+  });
+});
+
+test('OWNER_DECISION requires complete ordered multi-path hashes and Authority Set digests through acceptance', async t => {
+  const createTwoPath = () => {
+    const f = fixture('completed-owner-decision-self-v1');
+    const second = { path: 'docs/ownership.md', beforeSha256: 'a'.repeat(64), afterSha256: 'b'.repeat(64) };
+    const first = f.values.tag.changes[0];
+    const changes = [first, second];
+    const ids = ['architecture-contract', 'ownership-charter'];
+    f.values.policy = { ...f.values.policy, authorityIds: ids };
+    f.values.tag = { ...f.values.tag, changes };
+    const diffBytes = Buffer.from('exact two-authority protected-base-to-B diff\n');
+    const promptBytes = Buffer.from('two-authority semantic prompt\n');
+    const receipt = JSON.parse(f.values.eligibility.receiptBytes.toString('utf8'));
+    const receiptBytes = canonicalBytes({ ...receipt, authorityIds: ids, changes, diffSha256: hash(diffBytes), promptSha256: hash(promptBytes) });
+    f.values.eligibility = { ...f.values.eligibility, receiptBytes, receiptSha256: hash(receiptBytes) };
+    f.values.reviewInputs = { ...f.values.reviewInputs, authorityIds: ids, changes, diffBytes,
+      diffSha256: hash(diffBytes), promptBytes, promptSha256: hash(promptBytes) };
+    return f;
+  };
+  const valid = createTwoPath();
+  const result = await valid.verifier.verify(event);
+  assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION', result.reason);
+  assert.deepEqual(valid.values.reviewInputs.changes.map(change => change.path), ['docs/architecture.md', 'docs/ownership.md']);
+  await t.test('omitted second change fails against signed AmendmentRecord', async () => {
+    const f = createTwoPath(); f.values.reviewInputs = { ...f.values.reviewInputs, changes: f.values.reviewInputs.changes.slice(0, 1) };
+    const checked = await f.verifier.verify(event); assert.equal(checked.status, 'INCOMPLETE');
+    assert.match(checked.reason, /signed amendment record/);
+  });
+  await t.test('changed second hash fails against signed AmendmentRecord', async () => {
+    const f = createTwoPath(); f.values.reviewInputs = { ...f.values.reviewInputs,
+      changes: f.values.reviewInputs.changes.map((change, index) => index ? { ...change, afterSha256: 'c'.repeat(64) } : change) };
+    const checked = await f.verifier.verify(event); assert.equal(checked.status, 'INCOMPLETE');
+    assert.match(checked.reason, /signed amendment record/);
+  });
+  await t.test('mismatched resulting set digest fails against protected tag', async () => {
+    const f = createTwoPath(); f.values.reviewInputs = { ...f.values.reviewInputs, resultingAuthoritySetDigest: 'c'.repeat(64) };
+    const checked = await f.verifier.verify(event); assert.equal(checked.status, 'INCOMPLETE');
+    assert.match(checked.reason, /review inputs/);
   });
 });
 
@@ -197,6 +239,6 @@ test('rejects absent, mismatched or invalid exact prepared review inputs', async
     const f = fixture(); f.values.reviewInputs = mutate(f.values.reviewInputs);
     const result = await f.verifier.verify(event);
     assert.equal(result.status, 'INCOMPLETE');
-    assert.match(result.reason, /exact protected eligibility review inputs|prepared exact B authority changes omit/);
+    assert.match(result.reason, /exact protected eligibility review inputs|prepared exact B authority changes omit|full Authority Set changes differ/);
   });
 });

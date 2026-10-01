@@ -6,6 +6,7 @@ import { readOwnerAmendmentTagForMergeGroup } from './owner-amendment-tag-readba
 import { verifyOwnerAmendmentBlockEvidenceBundle } from './owner-amendment-block-evidence-composer.mjs';
 import { verifyOwnerAmendmentOwnerDecisionContext } from './owner-amendment-owner-decision-context-verifier.mjs';
 import { verifyOwnerAmendmentBlockEvidence } from './owner-amendment-attestation.mjs';
+import { deriveOwnerAmendmentGitChanges } from './owner-amendment-git-changes.mjs';
 
 const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const SHA1 = /^[a-f0-9]{40}$/;
@@ -54,16 +55,21 @@ function parseTagEnvelope(tag, bSha) {
     amendmentRecordBytes: decode(envelope.amendmentRecordBase64, envelope.amendmentRecordSha256, 'AmendmentRecord', 8_192) };
 }
 
-function trustedContextFromGit(context) {
+function trustedContextFromGit(context, verifiedChanges) {
   const bytes = context?.authorityBytes;
   if (!Buffer.isBuffer(context?.policyBytes) || !Buffer.isBuffer(bytes?.base) || !Buffer.isBuffer(bytes?.head)) fail('resolved Git context lacks exact policy or authority bytes.');
+  const decision = context.policy.ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1';
+  const changes = decision ? verifiedChanges?.map(change => Object.freeze({ path: change.path,
+    beforeSha256: hash(change.beforeBytes), afterSha256: hash(change.afterBytes) })) : undefined;
   return Object.freeze({ repository: context.repository, baseSha: context.baseSha, bSha: context.headSha,
     policyRevision: context.baseSha,
     policy: Object.freeze({ grade: context.policy.ownerAmendmentGrade, scope: context.policy.ownerAmendmentScope,
       triggerProfile: context.policy.ownerAmendmentTriggerProfile,
       authorities: Object.freeze([{ id: context.scope.authorityId, path: context.scope.authorityPath }]) }),
     authority: Object.freeze({ id: context.scope.authorityId, path: context.scope.authorityPath,
-      previousSha256: hash(bytes.base), newSha256: hash(bytes.head) }) });
+      previousSha256: hash(bytes.base), newSha256: hash(bytes.head) }),
+    ...(decision ? { changes, priorAuthoritySetDigest: context.priorAuthoritySetDigest,
+      resultingAuthoritySetDigest: context.resultingAuthoritySetDigest } : {}) });
 }
 
 function producerFromRecord(recordBytes, trusted) {
@@ -93,7 +99,13 @@ export async function composeOwnerAmendmentMergeGroupEvidence({ repository, base
     if (!SHA1.test(baseSha ?? '') || !SHA1.test(bSha ?? '') || baseSha === bSha) fail('exact protected base and B commits are required.');
     if (tagRef !== `${tagNamespace}/${bSha}`) fail('tag ref does not identify exact B.');
     const gitContext = resolveGitContext({ repository, baseSha, headSha: bSha, runGit });
-    const trustedContext = trustedContextFromGit(gitContext);
+    const verifiedGitChanges = gitContext.policy?.ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1'
+      ? deriveOwnerAmendmentGitChanges({ profile: gitContext.policy.ownerAmendmentTriggerProfile, repository, baseSha, bSha,
+        targetPath: gitContext.scope?.authorityPath, selectedAuthorityBytes: gitContext.authorityBytes,
+        changedFiles: gitContext.changedFiles, authorityChanges: gitContext.authorityChanges, runGit,
+        readBlob: (revision, path) => runGit(['--no-replace-objects', 'show', `${revision}:${path}`]) }).changes
+      : undefined;
+    const trustedContext = trustedContextFromGit(gitContext, verifiedGitChanges);
     const tag = await readTag({ repository, bSha, tagNamespace, tagRef, rulesetId, token, fetchImpl, readTagObject });
     if (tag.status !== 'READ_BACK_OWNER_AMENDMENT_TAG' || tag.repository !== repository || tag.bSha !== bSha || tag.tagRef !== tagRef) fail('protected tag readback does not bind this repository and exact B.');
     const tagEnvelope = { headSha: bSha, tag: tag.tag, tagRef, observedTagRefOid: tag.observedTagRefOid,
@@ -123,7 +135,8 @@ export async function composeOwnerAmendmentMergeGroupEvidence({ repository, base
       authorityId: evidence.authorityId ?? trustedContext.authority.id, previousAuthoritySha256: evidence.previousAuthoritySha256 ?? trustedContext.authority.previousSha256,
       proposedAuthoritySha256: evidence.proposedAuthoritySha256 ?? trustedContext.authority.newSha256,
       purpose: evidence.purpose ?? amendmentRecord.purpose, targetValidated: true,
-      priorAuthoritySetDigest: triggerRecord.authority?.setDigest,
+      priorAuthoritySetDigest: evidence.priorAuthoritySetDigest ?? triggerRecord.authority?.setDigest,
+      resultingAuthoritySetDigest: evidence.resultingAuthoritySetDigest, changes: evidence.changes,
       reviewRecordSha256: evidence.reviewRecordSha256, amendmentRecordSha256: evidence.amendmentRecordSha256,
       attestationBundleSha256: evidence.attestationBundleSha256, tagObjectOid: evidence.tagObjectOid,
       observedTagRefOid: tag.observedTagRefOid, producerRunId: producerContext.runId,

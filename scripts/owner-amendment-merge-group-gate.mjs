@@ -16,6 +16,7 @@ import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs
 import { assertMissingOwnerAmendmentTagHasNoSuccessfulSigner,
   inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
 import { createGitHubCliRunner } from '../src/github-cli-runner.mjs';
+import { computeOwnerAmendmentResultingAuthoritySet, deriveOwnerAmendmentGitChanges } from '../src/owner-amendment-git-changes.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;
 const token = process.env.GH_TOKEN;
@@ -142,7 +143,7 @@ function eligibilityReviewInputs({ selection, policy, trigger, tag, context }) {
     prepared = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(preparedBytes));
   } catch { fail('protected semantic preparation context is invalid.'); }
   const preparedKeys = ['repository', 'baseSha', 'bSha', 'triggerProfile', 'triggerReviewRecordSha256',
-    'amendmentRecordSha256', 'policyRevision', 'policySha256', 'authoritySetDigest', 'resultingAuthoritySetDigest',
+    'amendmentRecordSha256', 'policyRevision', 'policySha256', 'authoritySetDigest', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest',
     'authorityIds', 'changes', 'diffSha256', 'promptSha256', 'schemaSha256', 'model', 'reasoningEffort',
     'gatekeeper', 'tag', 'producer'];
   if (!prepared || typeof prepared !== 'object' || Array.isArray(prepared) ||
@@ -156,6 +157,7 @@ function eligibilityReviewInputs({ selection, policy, trigger, tag, context }) {
       prepared.triggerProfile !== policy.triggerProfile || prepared.triggerReviewRecordSha256 !== trigger.reviewRecordSha256 ||
       prepared.amendmentRecordSha256 !== tag.amendmentRecordSha256 || prepared.policyRevision !== selection.bBaseSha ||
       prepared.policySha256 !== policy.policySha256 || prepared.authoritySetDigest !== policy.authoritySetDigest ||
+      prepared.priorAuthoritySetDigest !== policy.authoritySetDigest ||
       !Array.isArray(prepared.authorityIds) || prepared.authorityIds.length !== policy.authorityIds.length ||
       prepared.authorityIds.some((id, index) => id !== policy.authorityIds[index]) ||
       prepared.resultingAuthoritySetDigest !== tag.resultingAuthoritySetDigest ||
@@ -165,7 +167,7 @@ function eligibilityReviewInputs({ selection, policy, trigger, tag, context }) {
     fail('protected semantic preparation differs from selected previous policy, exact B, trigger or tag.');
   }
   const diffBytes = git(['--no-replace-objects', 'diff', '--binary', '--no-ext-diff', '--no-renames',
-    selection.bBaseSha, selection.bHeadSha, '--', context.scope.authorityPath]);
+    selection.bBaseSha, selection.bHeadSha]);
   if (hash(promptBytes) !== prepared.promptSha256 || hash(schemaBytes) !== prepared.schemaSha256 ||
       hash(diffBytes) !== prepared.diffSha256) {
     fail('reconstructed exact prompt, schema or B diff differs from protected preparation.');
@@ -174,6 +176,7 @@ function eligibilityReviewInputs({ selection, policy, trigger, tag, context }) {
     baseSha: prepared.baseSha, bSha: prepared.bSha, triggerProfile: prepared.triggerProfile,
     triggerReviewRecordSha256: prepared.triggerReviewRecordSha256, amendmentRecordSha256: prepared.amendmentRecordSha256,
     policySha256: prepared.policySha256, authoritySetDigest: prepared.authoritySetDigest,
+    priorAuthoritySetDigest: prepared.authoritySetDigest, resultingAuthoritySetDigest: prepared.resultingAuthoritySetDigest,
     authorityIds: prepared.authorityIds, changes: prepared.changes, diffSha256: prepared.diffSha256,
     promptSha256: prepared.promptSha256, schemaSha256: prepared.schemaSha256, model: prepared.model,
     reasoningEffort: prepared.reasoningEffort, diffBytes, promptBytes, schemaBytes };
@@ -233,13 +236,20 @@ async function main() {
   const materialized = await materializeAuthoritySet({ manifestBytes: context.manifestBytes, limits: context.limits,
     selfRepository: repository, selfRoot: process.env.GITHUB_WORKSPACE, authorityRevision: selection.bBaseSha,
     fetchExternal: source, profile: context.policy.authorityProfile ?? 'v1' });
-  const resultingDescriptors = materialized.members.map(member => ({ id: member.id, repository: member.repository,
-    resolvedCommit: member.resolvedCommit, path: member.path, byteLength: member.byteLength, sha256: member.sha256 }));
-  const targetIndex = resultingDescriptors.findIndex(member => member.id === context.scope.authorityId && member.path === context.scope.authorityPath && member.repository === repository);
-  if (targetIndex < 0) fail('complete previous Authority Set omits the selected target.');
-  resultingDescriptors[targetIndex] = { ...resultingDescriptors[targetIndex], byteLength: context.authorityBytes.head.length,
-    sha256: hash(context.authorityBytes.head) };
-  const resultingDigest = hash(Buffer.from(JSON.stringify(resultingDescriptors), 'utf8'));
+  const exactChanges = deriveOwnerAmendmentGitChanges({ profile: context.policy.ownerAmendmentTriggerProfile,
+    repository, baseSha: selection.bBaseSha, bSha: selection.bHeadSha, targetPath: context.scope.authorityPath,
+    selectedAuthorityBytes: context.authorityBytes, changedFiles: context.changedFiles,
+    authorityChanges: context.authorityChanges, runGit: args => git(args),
+    readBlob: (revision, path) => git(['--no-replace-objects', 'show', `${revision}:${path}`]) });
+  const resultingSet = computeOwnerAmendmentResultingAuthoritySet({ members: materialized.members,
+    changes: exactChanges.changes, repository, baseSha: selection.bBaseSha,
+    expectedPriorDigest: context.policy.ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1' ? context.priorAuthoritySetDigest : undefined,
+    expectedResultingDigest: context.policy.ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1' ? context.resultingAuthoritySetDigest : undefined });
+  if (context.policy.ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1' &&
+      (context.priorAuthoritySetDigest !== resultingSet.priorDigest || context.resultingAuthoritySetDigest !== resultingSet.resultingDigest)) {
+    fail('protected OWNER_DECISION full Authority Set digests differ from exact B changes.');
+  }
+  const resultingDigest = resultingSet.resultingDigest;
   let evidence;
   const verify = async () => {
     evidence ??= await composeOwnerAmendmentMergeGroupEvidence({ repository, baseSha: selection.bBaseSha,
@@ -270,7 +280,9 @@ async function main() {
       triggerReviewRecordSha256: value.reviewRecordSha256, amendmentRecordSha256: value.amendmentRecordSha256,
       authorityId: value.authorityId, authorityPath: context.scope.authorityPath,
       previousAuthoritySha256: value.previousAuthoritySha256, amendedAuthoritySha256: value.proposedAuthoritySha256,
-      priorAuthoritySetDigest: value.priorAuthoritySetDigest, resultingAuthoritySetDigest: resultingDigest,
+      priorAuthoritySetDigest: value.priorAuthoritySetDigest ?? resultingSet.priorDigest,
+      resultingAuthoritySetDigest: resultingDigest, changes: exactChanges.changes.map(change => ({ path: change.path,
+        beforeSha256: hash(change.beforeBytes), afterSha256: hash(change.afterBytes) })),
       purpose: value.purpose, targetValidated: value.targetValidated,
       tagRef: `${context.policy.ownerAmendmentTagNamespace}/${selection.bHeadSha}`,
       tagObjectOid: value.tagObjectOid, observedTagRefOid: value.observedTagRefOid,

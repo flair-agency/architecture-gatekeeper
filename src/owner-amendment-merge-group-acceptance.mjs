@@ -64,14 +64,16 @@ function validatePolicy(value, selection) {
 
 function validateReviewInputs(value, policy, selection, trigger, tag) {
   exact(value, ['status', 'repository', 'baseSha', 'bSha', 'triggerProfile', 'triggerReviewRecordSha256',
-    'amendmentRecordSha256', 'policySha256', 'authoritySetDigest', 'authorityIds', 'changes', 'diffSha256',
+    'amendmentRecordSha256', 'policySha256', 'authoritySetDigest', 'priorAuthoritySetDigest',
+    'resultingAuthoritySetDigest', 'authorityIds', 'changes', 'diffSha256',
     'promptSha256', 'schemaSha256', 'model', 'reasoningEffort', 'diffBytes', 'promptBytes', 'schemaBytes'],
   'exact protected eligibility review inputs');
   if (value.status !== 'RESOLVED_PROTECTED_OWNER_AMENDMENT_REVIEW_INPUTS' ||
       value.repository !== selection.repository || value.baseSha !== selection.bBaseSha || value.bSha !== selection.bHeadSha ||
       value.triggerProfile !== policy.triggerProfile || value.triggerReviewRecordSha256 !== trigger.reviewRecordSha256 ||
       value.amendmentRecordSha256 !== tag.amendmentRecordSha256 || value.policySha256 !== policy.policySha256 ||
-      value.authoritySetDigest !== policy.authoritySetDigest || !Array.isArray(value.authorityIds) ||
+      value.authoritySetDigest !== policy.authoritySetDigest || value.priorAuthoritySetDigest !== policy.authoritySetDigest ||
+      value.resultingAuthoritySetDigest !== tag.resultingAuthoritySetDigest || !Array.isArray(value.authorityIds) ||
       value.authorityIds.length !== policy.authorityIds.length || value.authorityIds.some((id, index) => id !== policy.authorityIds[index]) ||
       value.model !== policy.model || value.reasoningEffort !== policy.reasoningEffort ||
       !Buffer.isBuffer(value.diffBytes) || !value.diffBytes.length || value.diffBytes.length > MAX_REVIEW_INPUT_BYTES ||
@@ -89,6 +91,14 @@ function validateReviewInputs(value, policy, selection, trigger, tag) {
         typeof change.path !== 'string' || !SHA256.test(change.beforeSha256 ?? '') ||
         !SHA256.test(change.afterSha256 ?? '') || change.beforeSha256 === change.afterSha256)) {
     fail('prepared exact B authority changes are malformed.');
+  }
+  if (value.changes.some((change, index) => index > 0 && value.changes[index - 1].path >= change.path) ||
+      (policy.triggerProfile === 'completed-block-v1' && value.changes.length !== 1) ||
+      !Array.isArray(tag.changes) || tag.changes.length !== value.changes.length ||
+      value.changes.some((change, index) => Object.keys(tag.changes[index] ?? {}).length !== 3 ||
+        tag.changes[index].path !== change.path || tag.changes[index].beforeSha256 !== change.beforeSha256 ||
+        tag.changes[index].afterSha256 !== change.afterSha256)) {
+    fail('prepared full Authority Set changes differ from the signed amendment record.');
   }
   if (!value.changes.some(change => change.path === policy.authorityPath &&
       change.beforeSha256 === policy.authoritySha256 && change.afterSha256 === tag.amendedAuthoritySha256)) {
@@ -117,7 +127,7 @@ function validateTrigger(value, policy, selection) {
 function validateTag(value, policy, selection, trigger) {
   exact(value, ['status', 'repository', 'baseSha', 'bSha', 'triggerProfile', 'triggerReviewRecordSha256',
     'amendmentRecordSha256', 'authorityId', 'authorityPath', 'previousAuthoritySha256', 'amendedAuthoritySha256',
-    'priorAuthoritySetDigest', 'resultingAuthoritySetDigest', 'purpose', 'targetValidated', 'tagRef', 'tagObjectOid',
+    'priorAuthoritySetDigest', 'resultingAuthoritySetDigest', 'changes', 'purpose', 'targetValidated', 'tagRef', 'tagObjectOid',
     'observedTagRefOid', 'protectedAgainstUpdateAndDeletion'], 'verified protected tag');
   if (value.status !== 'VERIFIED_OWNER_AMENDMENT_TAG' || value.repository !== selection.repository ||
       value.baseSha !== selection.bBaseSha || value.bSha !== selection.bHeadSha || value.triggerProfile !== policy.triggerProfile ||
@@ -125,6 +135,11 @@ function validateTag(value, policy, selection, trigger) {
       value.authorityId !== policy.authorityId || value.authorityPath !== policy.authorityPath ||
       value.previousAuthoritySha256 !== policy.authoritySha256 || !SHA256.test(value.amendedAuthoritySha256 ?? '') ||
       value.priorAuthoritySetDigest !== policy.authoritySetDigest || !SHA256.test(value.resultingAuthoritySetDigest ?? '') ||
+      !Array.isArray(value.changes) || value.changes.length < 1 || value.changes.length > 32 ||
+      value.changes.some((change, index) => !change || Object.keys(change).length !== 3 ||
+        typeof change.path !== 'string' || !SHA256.test(change.beforeSha256 ?? '') || !SHA256.test(change.afterSha256 ?? '') ||
+        change.beforeSha256 === change.afterSha256 || (index > 0 && value.changes[index - 1].path >= change.path)) ||
+      (policy.triggerProfile === 'completed-block-v1' && value.changes.length !== 1) ||
       typeof value.purpose !== 'string' || !value.purpose.trim() || value.purpose.length > 500 || value.targetValidated !== true ||
       value.tagRef !== `${policy.tagNamespace}/${selection.bHeadSha}` || !SHA1.test(value.tagObjectOid ?? '') ||
       value.observedTagRefOid !== value.tagObjectOid || value.protectedAgainstUpdateAndDeletion !== true) {
@@ -218,6 +233,7 @@ export function createOwnerAmendmentMergeGroupAcceptanceVerifier({ selectBContex
           bPrNumber: selection.bPrNumber, triggerProfile: policy.triggerProfile,
           triggerDecision: trigger.decision, triggerReviewRecordSha256: trigger.reviewRecordSha256,
           amendmentRecordSha256: tag.amendmentRecordSha256, authoritySetDigest: policy.authoritySetDigest,
+          resultingAuthoritySetDigest: tag.resultingAuthoritySetDigest, changes: reviewInputs.changes,
           eligibilityReceiptSha256: eligibility.receiptSha256, eligibilityArtifactId: eligibility.artifactId,
           eligibilityProducerRunId: eligibility.producerRunId, eligibilityProducerRunAttempt: eligibility.producerRunAttempt,
           eligibilityProducerJobId: eligibility.producerJobId, eligibilityCompletedAt: eligibility.completedAt,
