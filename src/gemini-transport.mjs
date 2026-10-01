@@ -60,7 +60,10 @@ export function prepareGeminiRequestBody(request, options = {}) {
     responseSchema: schema,
   };
 
-  const effort = options.reasoningEffort || request.reviewer?.reasoningEffort;
+  if (options.reasoningEffort && options.reasoningEffort !== request.reviewer?.reasoningEffort) {
+    throw new Error('Architecture gate reviewer failed: reasoningEffort mismatch.');
+  }
+  const effort = request.reviewer?.reasoningEffort;
   const budget = options.thinkingBudget ?? mapEffortToThinkingBudget(effort);
   if (typeof budget === 'number') {
     generationConfig.thinkingConfig = {
@@ -152,7 +155,10 @@ export function resolveAuthCredentials(options = {}) {
 export async function runGeminiReviewer(request, options = {}) {
   const credentials = resolveAuthCredentials(options);
 
-  const model = options.model || request.reviewer?.model || 'gemini-2.5-flash';
+  if (options.model && options.model !== request.reviewer?.model) {
+    throw new Error('Architecture gate reviewer failed: model mismatch.');
+  }
+  const model = request.reviewer?.model || 'gemini-2.5-flash';
   const baseUrl = options.baseUrl || 'https://generativelanguage.googleapis.com/v1beta';
   const url = `${baseUrl.replace(/\/+$/, '')}/models/${encodeURIComponent(model)}:generateContent`;
 
