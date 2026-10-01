@@ -159,15 +159,30 @@ temporary workaround: replace the fork pin only after reviewing an upstream
 release that contains the equivalent fixes. `local-only` records an explicit
 waiver and makes no OpenAI API call.
 
-The normal reviewer, `OWNER_ADDITION` eligibility, and `OWNER_AMENDMENT`
-semantic eligibility Action calls all set the Action's `timeout-seconds` input
-to 240. Each GitHub Action step retains its separate five-minute outer timeout,
-leaving up to 60 seconds for Action
-initialization and process-group cancellation cleanup after the runtime
-deadline (including its one-second TERM-to-KILL grace period). The step remains
-the hard ceiling if initialization consumes that headroom. The review job has
-a twenty-minute limit for checkout, authority materialization, and the
-one-minute diagnostic.
+The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)
+and a `review-step-timeout-minutes` input (default 5). This repository's
+protected self-review caller reads the optional Actions repository variable
+`ARCHITECTURE_GATE_REVIEW_JOB_TIMEOUT_MINUTES`, with the same 7-minute default;
+the step input remains at its reusable-workflow default. The reusable workflow
+raises valid job limits below the selected step limit plus one minute and
+rejects limits above GitHub's 360-minute maximum. The step limit must be a
+positive integer no greater than 359. Malformed values fail before the primary
+review job starts. The Codex Action deadline remains fixed at 240 seconds, and
+other review jobs, including `OWNER_ADDITION` and `OWNER_AMENDMENT`, keep their
+separately defined limits.
+
+The protected self caller uses the reusable workflow's default five-minute
+outer Action-step timeout. At the fixed 240-second Action deadline, that leaves
+up to 60 seconds for initialization and process-group cancellation cleanup
+(including its one-second TERM-to-KILL grace period). Other reusable-workflow
+callers may set the outer step input; if it is shorter than the Action deadline,
+the step can end the review first. `OWNER_ADDITION` and `OWNER_AMENDMENT`
+Action calls retain their existing fixed 240-second Action deadline and
+five-minute outer step caps. The step is a second timeout boundary; GitHub
+cancellation and process cleanup remain best-effort, not a guarantee that every
+descendant has stopped. The shorter job limit bounds the time allocated to
+checkout, authority materialization, and the one-minute diagnostic, subject to
+GitHub's runner cancellation behavior.
 If the Action step fails or times out, the next diagnostic step records the
 Action outcome, whether its final-message file was written, the file size and
 JSON parseability, and the installed Codex CLI/proxy versions without printing

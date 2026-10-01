@@ -21,6 +21,12 @@ on:
       self-flex-probe:
         type: boolean
         default: false
+      review-job-timeout-minutes:
+        type: number
+        default: 7
+      review-step-timeout-minutes:
+        type: number
+        default: 5
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -63,6 +69,8 @@ jobs:
       adoption_evidence_producer: ${{ steps.resolve.outputs.adoptionEvidenceProducer }}
       adoption_evidence_workflow_path: ${{ steps.resolve.outputs.adoptionEvidenceWorkflowPath }}
       adoption_evidence_job_name: ${{ steps.resolve.outputs.adoptionEvidenceJobName }}
+      review_job_timeout_minutes: ${{ steps.review-timeouts.outputs.jobTimeoutMinutes }}
+      review_step_timeout_minutes: ${{ steps.review-timeouts.outputs.stepTimeoutMinutes }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -75,6 +83,12 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - name: Validate bounded reviewer timeouts
+        id: review-timeouts
+        env:
+          REVIEW_JOB_TIMEOUT_MINUTES: ${{ inputs.review-job-timeout-minutes }}
+          REVIEW_STEP_TIMEOUT_MINUTES: ${{ inputs.review-step-timeout-minutes }}
+        run: node .architecture-gatekeeper-runtime/scripts/validate-review-timeouts.mjs >> "$GITHUB_OUTPUT"
       - name: Resolve policy from protected base revision
         id: resolve
         env:
@@ -199,9 +213,8 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
-    # Leave room for checkout/materialization and the post-review diagnostic;
-    # the credential-bearing Codex Action itself has a separate five-minute cap.
-    timeout-minutes: 20
+    # Values are range-checked in the protected policy job before this job starts.
+    timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_job_timeout_minutes) }}
     outputs:
       final_message: ${{ steps.codex.outputs.final-message }}
       decision_kind: ${{ steps.decision.outputs.kind }}
@@ -331,7 +344,7 @@ jobs:
             "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
       - name: Run read-only architecture review
         id: codex
-        timeout-minutes: 5
+        timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_step_timeout_minutes) }}
         # Temporary Flair-reviewed v1.12 fork with bounded stdio draining,
         # numeric-only JSONL telemetry, cache-write token reporting, and PR
         # #10's runtime deadline and POSIX process-group cancellation cleanup.
