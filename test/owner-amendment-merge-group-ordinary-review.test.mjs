@@ -45,7 +45,7 @@ function runCli(script, args, { cwd, env }) {
   return execFileSync(process.execPath, [script, ...args], { cwd, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
-test('CLI prepares private exact-tuple inputs and validates the model output in a subprocess', async () => {
+test('CLI prepares private exact-tuple inputs from protected verified context, ignoring raw event claims', async () => {
   const f = fixture();
   const runnerTemp = realpathSync(mkdtempSync(join(tmpdir(), 'merge-group-ordinary-runner-')));
   try {
@@ -53,7 +53,16 @@ test('CLI prepares private exact-tuple inputs and validates the model output in 
     mkdirSync(eventDir, { mode: 0o700 });
     mkdirSync(join(runnerTemp, 'owner-amendment-merge-group-runner-root'));
     writeFileSync(join(eventDir, 'event.json'), JSON.stringify({ action: 'checks_requested', merge_group: {
-      base_ref: 'refs/heads/main', base_sha: f.baseSha, head_sha: 'a'.repeat(40) } }), { mode: 0o600 });
+      base_ref: 'refs/heads/main', base_sha: 'd'.repeat(40), head_sha: 'a'.repeat(40) } }), { mode: 0o600 });
+    writeFileSync(join(eventDir, 'verified-context.json'), JSON.stringify({
+      status: 'SELECTED_OWNER_AMENDMENT_WORKFLOW_RUN_MERGE_GROUP_CONTEXT', repository: repo,
+      repositoryId: 1379218762, workflowId: 123456789, workflowPath: '.github/workflows/self-architecture-gate.yml',
+      runId: 99887766, runAttempt: 2, workflowRunHeadSha: 'c'.repeat(40),
+      observedQueueBranch: 'gh-readonly-queue/main/pr-216-abcdef0123456789', observedQueueRefSha: 'c'.repeat(40),
+      currentMainSha: f.baseSha, bPrNumber: '216', bHeadSha: f.headSha,
+      queueEntryState: 'AWAITING_CHECKS', queueEntryEnqueuedAt: '2026-09-30T01:00:00Z',
+      assurance: 'context selection only; no policy, evidence, eligibility, or acceptance claim',
+    }), { mode: 0o600 });
     const commandDir = join(runnerTemp, '_runner_file_commands');
     mkdirSync(commandDir);
     const output = join(commandDir, 'set_output_12345678-abcd');
