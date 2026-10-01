@@ -22,7 +22,7 @@ const limits = { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536,
 const amendment = { version: 1, grade: 'G0', scope: 'authority-only',
   triggerProfile: 'completed-owner-decision-self-v1', authorityId: 'architecture-contract',
   authorityPath: 'docs/architecture.md', evidenceProducer: 'github-actions-attestation',
-  tagNamespace: 'refs/tags/architecture-gatekeeper/amendments' };
+  tagNamespace: 'refs/tags/architecture-gatekeeper/amendments', maxPromptBytes: 512 };
 const selectedPolicy = { version: 2, default: { mode: 'local-only' }, branches: { main: {
   mode: 'enforced', model: 'gpt-6-sol', reasoningEffort: 'medium',
   authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: limits,
