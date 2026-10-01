@@ -136,80 +136,9 @@ jobs:
           BASE_VALIDATION_PATH: ${{ steps.resolve.outputs.legacyValidationPath }}
         run: node .architecture-gatekeeper-runtime/src/verify-legacy-validation-selection.mjs "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"
 
-  codex-action-integrity:
-    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
-    needs: policy
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Check out the protected provenance verifier
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          repository: ${{ job.workflow_repository }}
-          ref: ${{ job.workflow_sha }}
-          path: .architecture-gatekeeper-runtime
-          persist-credentials: false
-      - name: Check out the pinned Codex Action without credentials
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          repository: flair-agency/codex-action
-          ref: 308ab1c8ce784cd5f46b98a1c0801c5c040918d9
-          fetch-depth: 0
-          path: .codex-action-source
-          persist-credentials: false
-      - name: Setup pnpm
-        uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
-        with:
-          version: 10.33.0
-          run_install: false
-      - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: .codex-action-source/pnpm-lock.yaml
-      - name: Verify the pinned action before exposing review credentials
-        run: |
-          node .architecture-gatekeeper-runtime/src/verify-codex-action.mjs \
-            .architecture-gatekeeper-runtime/provenance/codex-action-v1.12-runtime-cancellation.json \
-            .codex-action-source
-          cd .codex-action-source
-          pnpm install --frozen-lockfile
-          pnpm run check
-          pnpm test
-          test -z "$(git status --short -- dist)"
-
-  codex-action-integrity-observe:
-    # Issue #45: observation only. This job has no secrets, no outputs used by
-    # review or accept, and no authority to replace the full integrity job.
-    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
-    needs: policy
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - name: Check out the protected observation runtime
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          repository: ${{ job.workflow_repository }}
-          ref: ${{ job.workflow_sha }}
-          path: .architecture-gatekeeper-runtime
-          persist-credentials: false
-      - name: Compare proposed Action identity without granting authority
-        run: |
-          node .architecture-gatekeeper-runtime/src/observe-codex-action-integrity.mjs \
-            .architecture-gatekeeper-runtime/.github/workflows/architecture-gate.yml \
-            .architecture-gatekeeper-runtime/provenance/codex-action-v1.12-runtime-cancellation.json \
-            .architecture-gatekeeper-runtime/provenance/codex-action-runtime-integrity-procedure-v1.json \
-            .architecture-gatekeeper-runtime/provenance/fixtures/codex-action-runtime-candidate-v1.json \
-            .architecture-gatekeeper-runtime
-
   review:
     if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
-    needs: [policy, codex-action-integrity]
+    needs: [policy]
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -345,10 +274,7 @@ jobs:
       - name: Run read-only architecture review
         id: codex
         timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_step_timeout_minutes) }}
-        # Temporary Flair-reviewed v1.12 fork with bounded stdio draining,
-        # numeric-only JSONL telemetry, cache-write token reporting, and PR
-        # #10's runtime deadline and POSIX process-group cancellation cleanup.
-        uses: flair-agency/codex-action@308ab1c8ce784cd5f46b98a1c0801c5c040918d9
+        uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           output-file: ${{ runner.temp }}/architecture-gate-codex-final.json
@@ -357,7 +283,6 @@ jobs:
           effort: ${{ needs.policy.outputs.effort }}
           sandbox: read-only
           safety-strategy: drop-sudo
-          timeout-seconds: "240"
           output-schema-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
           # PR-owned AGENTS.md files are review evidence, never reviewer instructions.
           codex-args: ${{ inputs.self-flex-probe && '["--ephemeral","-c","project_doc_max_bytes=0","-c","service_tier=''flex''","--json"]' || '["--ephemeral","-c","project_doc_max_bytes=0","--json"]' }}
@@ -504,7 +429,7 @@ jobs:
 
   owner-addition:
     if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.owner_addition_grade == 'G0' && needs.review.outputs.decision_kind == 'OWNER_DECISION'
-    needs: [policy, codex-action-integrity, review]
+    needs: [policy, review]
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -569,7 +494,7 @@ jobs:
       - name: Review B-specific missing-decision eligibility
         id: codex-addition
         timeout-minutes: 5
-        uses: flair-agency/codex-action@308ab1c8ce784cd5f46b98a1c0801c5c040918d9
+        uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           output-file: ${{ runner.temp }}/architecture-gate-owner-addition-final.json
@@ -579,7 +504,6 @@ jobs:
           effort: ${{ needs.policy.outputs.effort }}
           sandbox: read-only
           safety-strategy: drop-sudo
-          timeout-seconds: "240"
           codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
       - name: Require completed B-specific eligibility review
         id: eligibility
@@ -611,7 +535,7 @@ jobs:
 
   owner-amendment-owner-decision-record:
     if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_amendment_grade == 'G0' && needs.policy.outputs.owner_amendment_trigger_profile == 'completed-owner-decision-self-v1' && needs.review.outputs.decision_kind == 'OWNER_DECISION'
-    needs: [policy, codex-action-integrity, review]
+    needs: [policy, review]
     permissions:
       contents: read
       id-token: write
@@ -734,7 +658,7 @@ jobs:
 
   owner-amendment-semantic-eligibility:
     if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_amendment_grade == 'G0'
-    needs: [policy, codex-action-integrity, owner-amendment-attempt-classifier]
+    needs: [policy, owner-amendment-attempt-classifier]
     permissions:
       contents: read
       actions: read
@@ -788,14 +712,13 @@ jobs:
         id: codex-eligibility
         if: steps.prepare.outputs.status == 'prepared'
         timeout-minutes: 5
-        uses: flair-agency/codex-action@308ab1c8ce784cd5f46b98a1c0801c5c040918d9
+        uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           prompt-file: ${{ runner.temp }}/owner-amendment-eligibility/eligibility-prompt.md
           output-schema-file: ${{ runner.temp }}/owner-amendment-eligibility/eligibility.schema.json
           model: ${{ steps.prepare.outputs.model }}
           effort: ${{ steps.prepare.outputs.effort }}
-          timeout-seconds: "240"
           sandbox: read-only
           safety-strategy: drop-sudo
           codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'

@@ -29,10 +29,10 @@ test('wires only the primary review deadline from validated protected inputs', (
   assert.match(reusable, /Validate bounded reviewer timeouts[\s\S]*?scripts\/validate-review-timeouts\.mjs/);
   assert.match(reusable, /review:\n[\s\S]*?timeout-minutes: \$\{\{ fromJSON\(needs\.policy\.outputs\.review_job_timeout_minutes\) \}\}/);
   assert.match(reusable, /name: Run read-only architecture review[\s\S]*?timeout-minutes: \$\{\{ fromJSON\(needs\.policy\.outputs\.review_step_timeout_minutes\) \}\}/);
-  assert.match(reusable, /name: Run read-only architecture review[\s\S]*?timeout-seconds: "240"/);
+  assert.doesNotMatch(reusable, /timeout-seconds:/);
   assert.match(caller, /review-job-timeout-minutes: \$\{\{ fromJSON\(vars\.ARCHITECTURE_GATE_REVIEW_JOB_TIMEOUT_MINUTES \|\| '7'\) \}\}/);
   assert.doesNotMatch(caller, /CODEX_TIMEOUT_SECONDS|codex-timeout-seconds/);
   assert.match(reusable, /owner-addition:\n[\s\S]*?timeout-minutes: 20/);
   assert.match(integration, /ARCHITECTURE_GATE_REVIEW_JOB_TIMEOUT_MINUTES/);
-  assert.match(integration, /GitHub\s+cancellation and process cleanup remain best-effort/);
+  assert.match(integration, /cancellation and process cleanup remain\s+best effort/);
 });
