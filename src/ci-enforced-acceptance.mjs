@@ -18,7 +18,7 @@ export function assertEnforcedAcceptance({ reviewResult, conclusion, ownerAdditi
     if (!amendmentEligible) {
       fail('a tagged OWNER_AMENDMENT attempt requires successful exact-B G0 eligibility before ordinary acceptance.');
     }
-    return Object.freeze({ route: 'owner-amendment-pending' });
+    fail('eligible tagged OWNER_AMENDMENT requires a separately implemented protected transition route; no accepting route is available.');
   }
   if (ownerAmendmentSelected === 'G0' && ownerAmendmentSignerResult === 'success') {
     fail('semantic eligibility signer success conflicts with the protected no-tag classification.');

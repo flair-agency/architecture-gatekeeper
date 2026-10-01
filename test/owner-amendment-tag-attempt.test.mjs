@@ -43,7 +43,7 @@ test('protected exact-B tag classification distinguishes only the exact absent r
     ({ status: 404, requestedUrl: 'https://attacker.invalid/ref' }) }), /does not match the exact protected self ref/);
 });
 
-test('tagged out-of-scope workflow amendment cannot fall through to ordinary PASS', async () => {
+test('tagged amendment eligibility cannot fall through to an unimplemented acceptance route', async () => {
   const attempt = await classifyOwnerAmendmentTagAttempt({ ...context,
     readTagRef: async request => ({ status: 200, requestedUrl: request.expectedUrl }) });
   const amendmentPolicy = { ownerAmendmentVersion: 1, ownerAmendmentGrade: 'G0',
@@ -65,12 +65,14 @@ test('tagged out-of-scope workflow amendment cannot fall through to ordinary PAS
     ownerAmendmentSelected: 'G0', ownerAmendmentAttemptResult: 'success',
     ownerAmendmentAttempted: String(attempt.attempted), ownerAmendmentSignerResult: 'failure' }),
   /tagged OWNER_AMENDMENT attempt requires/);
-  assert.deepEqual(assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'OWNER_ADDITION_G0',
-    ownerAdditionSelected: 'G0', ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE',
-    ownerAmendmentSelected: 'G0', ownerAmendmentAttemptResult: 'success',
-    ownerAmendmentAttempted: String(attempt.attempted), ownerAmendmentSignerResult: 'success',
-    ownerAmendmentSignerStatus: 'prepared', ownerAmendmentEligibility: 'ELIGIBLE' }),
-  { route: 'owner-amendment-pending' });
+  for (const conclusion of ['PASS', 'BLOCK', 'OWNER_DECISION', 'OWNER_ADDITION_G0']) {
+    assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'success', conclusion,
+      ownerAdditionSelected: 'G0', ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE',
+      ownerAmendmentSelected: 'G0', ownerAmendmentAttemptResult: 'success',
+      ownerAmendmentAttempted: String(attempt.attempted), ownerAmendmentSignerResult: 'success',
+      ownerAmendmentSignerStatus: 'prepared', ownerAmendmentEligibility: 'ELIGIBLE' }),
+    /eligible tagged OWNER_AMENDMENT requires a separately implemented protected transition route/);
+  }
 });
 
 test('ordinary PASS remains available when protected exact-B classification confirms no tag', async () => {
@@ -88,4 +90,10 @@ test('ordinary PASS remains available when protected exact-B classification conf
     ownerAmendmentAttempted: String(attempt.attempted), ownerAmendmentSignerResult: 'success',
     ownerAmendmentSignerStatus: 'prepared', ownerAmendmentEligibility: 'ELIGIBLE' }),
   /conflicts with the protected no-tag classification/);
+});
+
+test('legacy OWNER_ADDITION_G0 acceptance remains unchanged', () => {
+  assert.deepEqual(assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'OWNER_ADDITION_G0',
+    ownerAdditionSelected: 'G0', ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE' }),
+  { route: 'owner-addition-pending' });
 });
