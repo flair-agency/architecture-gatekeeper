@@ -59,6 +59,85 @@ The adapter's completed semantic result and full Hook JSON output were captured 
 
 The final runtime source SHA-256 was `cf7b5a64927b8fb15df6d9cae5c59963cb2cb96fbba1b5570d29d1a230738d1e`, matching the prepared native implementation-review snapshot; the fresh installed package tarball SHA-256 was `3f397e353fd2a2ff7187a34ac2416b8a2db355253182cdcd85f8b95d3568d0b3`. The native review covered the implementation and preceding documentation snapshot; this host-delivery observation was added afterward and is diagnostic evidence, not a new authority or acceptance claim. Desktop hook loading/delivery and actual-project behavior remain outside this probe.
 
+## Additional CLI dogfood and lifecycle evidence (#244)
+
+The following later observations are recorded from the #244 evidence comments [5925013415](https://github.com/flair-agency/architecture-gatekeeper/issues/244#issuecomment-5925013415), [5925318479](https://github.com/flair-agency/architecture-gatekeeper/issues/244#issuecomment-5925318479), the correction [5925336420](https://github.com/flair-agency/architecture-gatekeeper/issues/244#issuecomment-5925336420), and the feedback-consumption probe [5925695936](https://github.com/flair-agency/architecture-gatekeeper/issues/244#issuecomment-5925695936). They concern disposable synthetic fixtures and local CLI behavior. They do not establish a real consumer's architecture, acceptance policy, or a general desktop delivery guarantee.
+
+### Two actual semantic reviews in new CLI sessions
+
+On CLI `0.159.2` with Node `22.22.0`, source revision `effd5e2`, and runtime source digest `cf7b5a64927b8fb15df6d9cae5c59963cb2cb96fbba1b5570d29d1a230738d1e`, the source API `runPostToolScreenHook` invoked actual semantic reviews against the synthetic fixture. The fixed hook definition digest was `e661014ce3fa24cdc30ac01c8d9132e90e806ad4a7c63744cdd4e2717e338335` and the runner digest was `692efd6f95de20837989e8a42af69694f8cf74639369f07333ff6c0c579bec76`. The reviewer was `gpt-6.1-sol` at `medium` effort with a 60-second timeout; the child request used read-only sandboxing, approval policy `never`, ignored user configuration, disabled hooks, and ephemeral execution. The two decisions came from the actual CLI reviewer child, not fixture-generated reviewer output, and were delivered as feedback in the next tool-free turn.
+
+The exact hook definition was reviewed and trusted once during setup. The same unchanged definition then ran in a fresh CLI session without asking for trust again. Five repeated Bash events comprised three `unchanged` results with no reviewer child and one reviewer invocation for each changed synthetic candidate. The normalization case returned a validated `PASS` in 13.495 seconds; the cache-ownership case returned a validated `OWNER_DECISION` in 14.607 seconds. Both results appeared as context in the next tool-free turn. No additional visible approval prompt appeared. These observations establish neither host enforcement attestation nor model usage or exact child PID accounting: usage was unavailable, the wrapper PID had exited, and child exit status was zero, but the actual child PID was not captured. Trust persistence across this tested fresh session is an observation for this definition and setup, not a promise that every future desktop or CLI session will behave identically.
+
+The reviewer returned `OWNER_DECISION` for cache ownership because the synthetic authority left the intended owner unresolved. That result is an escalation to canonical owner authority; it is not a `PASS`, an acceptance, or permission to make the ownership choice in this package.
+
+### Asynchronous lifecycle and parent context
+
+A separate model-free lifecycle fixture used a case-dependent delay: 12 seconds for ACTIVE and IDLE, and 30 seconds for END, under a 45-second Hook timeout. The fixed hook definition had digest `9305eb95784204a3b50d33a191811b3085497f2b6cda59992f33d395e4c6a405` and the runner digest was `e95ad7fe4acfff749dffb5975da695a7ea2a5e0d098cc0609a0c084755813685`. In the active-turn case, later Bash actions started while the hook was pending and completed normally; the hook completed afterward and its output was available as pending context. In the idle case, the hook completed after the turn ended and waited for a later user turn. In both cases the hook run itself made no model call. The parent turn returned `None` when asked to report the nonce. That is a non-reporting observation: it does not establish transport failure because saved rollout records show the hook context was injected before the parent was asked in both active and idle cases. The parent question was necessarily a model turn and ran as `gpt-6-luna` at low effort.
+
+For the active case, the hook entered at `05:15:44.630Z`; two Bash actions started at `05:15:46.576Z` and `05:15:48.837Z` and both completed while the hook remained pending; the hook completed at `05:15:56.638Z`. For the idle case, the hook entered at `05:18:19.290Z` and completed at `05:18:31.296Z` after turn end. The saved rollout record `01a0f5e2-b2aa-7be2-8293-546d59adef1d` shows the injected active context at `05:17:05.294Z` and idle context at `05:19:08.184Z`; both preceded their respective user questions, whose parent responses contained `None`.
+
+In a separate END case, the runner entered at `05:22:39.574Z`; the session exited about six seconds later. No completion or signal was observed for over 30 seconds, and a subsequent process check returned `NoSuchProcess`. This supports that the runner was gone without a completion record. It does not prove the exact cancellation mechanism, whether Codex cancelled it, or whether output was discarded. The initial `None` result likewise does not prove failure. The fixture was removed; global configuration was not changed. The normal disable step was not confirmed after the END case.
+
+These lifecycle results show that async screening can overlap later work and that feedback may arrive through later context after a turn. They do not promise that all future desktop sessions load hooks, deliver results at a particular point, or report a result through the parent model. Host lifecycle, context delivery, model reporting, and semantic review remain separate observations.
+
+### Feedback-consumption probe with a deterministic reviewer stub
+
+A separate archived temporary run exercised source revision `c400aee` and
+`runPostToolScreenHook` through the actual installed CLI Hook path. It used the
+deterministic reviewer stub already supplied to the archived runner, so its
+synthetic `BLOCK` and `OWNER_DECISION` outputs are adapter/context-delivery
+observations, not semantic model reviews. No actual semantic reviewer ran. An
+untracked file was added for the final trigger, which produced `incomplete`
+and no semantic decision.
+
+The installed CLI was `0.159.2`; normal project trust and an active
+asynchronous `^Bash$` handler with a 90-second timeout were used. The runner
+digest was `1150122dc7106fa5554cd34a48dd76d0f702b439d6a08602a1092e0f38976fca`
+and the Hook definition digest was
+`7830d55dcef707b2f34136665cad09430f787249bfafc79a766f139524ac4732`. Across
+four user turns, the first turn triggered two Bash events. The first synthetic
+review returned `BLOCK` after about 10 seconds while the second, later change
+was queued. The queued event returned no Hook output at `05:47:43.274Z`; the
+first result completed at `05:47:47.224Z` with 1,013 bytes of output and
+`newerCandidatePending: true`. Its reviewed revision was
+`e7b9f4161e80e964ee3cd503ff1289030b0e0993`, request ID
+`31254687c6ab68762473760d18a67f3136c7ddffcc1a1b1b4bbe4aac4b2b73a9`, and
+snapshot digest
+`c9c34a150bdcb3c8a5aa4df01474cac2cd6dbcb17f8736a9e4faa0392700849c`. The
+first turn ended before review completion, so no result was present in
+that turn's final response. In turn two, the exact context was present. The
+final response accurately described the synthetic `BLOCK` and snapshot and
+stated `newerCandidatePending: true`, then correctly limited that finding to
+the captured revision and affected synthetic change; it did not claim coverage
+of the later synthetic change.
+
+Turn three produced a synthetic `OWNER_DECISION` result at `05:51:39.061Z`
+with 1,012 bytes of output, request ID
+`790b965fedaa4e44355726fc0ccf47f548d2c6c36c8f083c731036d2b6ddcaad`, and
+snapshot digest
+`cb7286d62d6a8d862965120d703f823fbb1a9073a2ffecf65e9862e77619172e`. That
+turn ended before completion. In turn four's initial
+final response, the owner-decision summary remained unresolved. The untracked
+candidate then triggered the Hook; 12 ms after that initial reply, context
+reported `incomplete`, and the same turn's final response correctly reported
+`incomplete` with no semantic decision. Thus the run recorded three statuses
+across four parent turns and four Hook events, including the queued event. No
+fifth turn was run.
+
+During that run an interim model response claimed there was no Bash tool and
+ended without a tool call. A distinct later task did execute a real host Bash
+event that ran the Hook. This discrepancy does not prove host tool
+unavailability or establish autonomous correction.
+The record shows prompted recognition of delivered context in later turns;
+it does not establish autonomous feedback consumption, an actual fix, or
+guaranteed delivery to every future session. The runtime reported aggregate
+parent-turn usage labels `total=19517`, `input=18890`, `cached input=175872`,
+and `output=627`; these raw labels are preserved without normalization.
+Status-specific usage and actual semantic-review cost were unavailable. This
+probe used the CLI TUI, not the desktop app. The Hook was shown disabled with
+Active 0 before the session closed, and the fixture was deleted.
+
 ## Model-free child transport failure and timeout check
 
 A separate private synthetic v2 consumer fixture exercised the current source adapter and `runCodexReviewer` with a fake executable named `codex` at the head of a private `PATH`. The fixture used one committed self-only `architecture` Authority Set, synthetic `AGENTS.md`, prompt, schema and reviewer settings, plus tracked candidate edits. Its committed `reviewTimeoutMs` was the contract minimum of 1,000 ms. The fake child never contacted a provider: in `nonzero` mode it exited 23 without structured output; in `timeout` mode the child blocked beyond the configured bound; in `valid` mode it wrote a fixed synthetic JSON decision to the transport's output path. The adapter ran through `runPostToolScreenHook`'s actual source API and shared transport and validator. This was not a Codex-host-triggered Hook event, a real CLI launch, a real host-permission refusal, or semantic model review.
