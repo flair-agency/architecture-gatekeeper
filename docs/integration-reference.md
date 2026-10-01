@@ -243,18 +243,12 @@ jobs:
 The caller keeps `.codex/gatekeeper/ci-policy.json`, its prompt and schema. CI
 policy is read from the protected base revision, so a pull request cannot waive
 its own review. `enforced` runs the exact-SHA-pinned
-`flair-agency/codex-action` fork of upstream v1.12. The fork contains the
-bounded descendant-stdio drain fix from upstream PR #151, numeric-only JSONL
-telemetry, cache-write token reporting, and the runtime deadline and
-cancellation cleanup merged in Codex Action PR #10. On POSIX, cancellation
-signals the spawned process group with `SIGTERM` and then `SIGKILL` after a
-one-second grace period. Descendants that create a separate POSIX session are
-outside this process-group bound. Windows uses `taskkill.exe /T /F`. The fork
-retains v1.12's credential isolation and protected argument checks. The
-selected commit also emits fixed-shape lifecycle diagnostics to workflow
-stderr; records are best-effort, and child stderr is drained if the workflow
-log sink fails. This is a temporary workaround: replace the fork pin only after
-reviewing an upstream release that contains equivalent fixes. `local-only`
+`openai/codex-action` v1.12 at commit
+`86365089eb2b84e0a8fb0717b304f8bdcb13b20e`. The upstream Action is a trusted
+credential-bearing dependency under the
+[selected trust contract](architecture.md#ci-model-review).
+The migration retires the temporary Flair fork and its additional lifecycle
+controls; it does not establish that hosted hangs are fixed. `local-only`
 records an explicit waiver and makes no OpenAI API call.
 
 The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)
@@ -265,22 +259,16 @@ the step input remains at its reusable-workflow default. The reusable workflow
 raises valid job limits below the selected step limit plus one minute and
 rejects limits above GitHub's 360-minute maximum. The step limit must be a
 positive integer no greater than 359. Malformed values fail before the primary
-review job starts. The Codex Action deadline remains fixed at 240 seconds, and
-other review jobs, including `OWNER_ADDITION` and `OWNER_AMENDMENT`, keep their
-separately defined limits.
+review job starts. Other review jobs, including `OWNER_ADDITION` and
+`OWNER_AMENDMENT`, keep their separately defined limits.
 
-The protected self caller uses the reusable workflow's default five-minute
-outer Action-step timeout. At the fixed 240-second Action deadline, that leaves
-up to 60 seconds for initialization and process-group cancellation cleanup
-(including its one-second TERM-to-KILL grace period). Other reusable-workflow
-callers may set the outer step input; if it is shorter than the Action deadline,
-the step can end the review first. `OWNER_ADDITION` and `OWNER_AMENDMENT`
-Action calls retain their existing fixed 240-second Action deadline and
-five-minute outer step caps. The step is a second timeout boundary; GitHub
-cancellation and process cleanup remain best-effort, not a guarantee that every
-descendant has stopped. The shorter job limit bounds the time allocated to
-checkout, authority materialization, and the one-minute diagnostic, subject to
-GitHub's runner cancellation behavior.
+Upstream v1.12 has no fork-specific 240-second inner deadline input. The
+primary Action step keeps its configured outer timeout; OWNER_ADDITION and
+OWNER_AMENDMENT Action calls retain five-minute outer step caps. These limits
+allocate time through GitHub Actions; cancellation and process cleanup remain
+best effort, without a guarantee that every descendant stops. The job limit
+also covers checkout, authority materialization and diagnostics, subject to
+runner cancellation behavior.
 If the Action step fails or times out, the next diagnostic step records the
 Action outcome, whether its final-message file was written, the file size and
 JSON parseability, and the installed Codex CLI/proxy versions without printing
@@ -380,33 +368,15 @@ the new selection applies to subsequent pull requests after merge. Local and
 manual review can opt in separately through version 2 of
 `.codex/gatekeeper/config.json`.
 
-Before the review job receives `OPENAI_API_KEY`, a separate credential-free
-integrity job checks out that same exact fork commit, verifies its revision,
-base/head trees, complete commit sequence, changed-file allowlist and SHA-256
-content manifest owned by this repository. It then installs only its
-lockfile-pinned dependencies, runs its typecheck and complete test suite
-(including credential-isolation, descendant-stdio, runtime-cancellation, and
-Linux drop-sudo descendant-cleanup regressions), rebuilds the bundled action,
-and rejects a changed `dist`. The review job needs
-both policy resolution and this integrity job, so failed validation prevents the
-fork from receiving review credentials. The integrity job has only
-`contents: read`, receives no caller secrets, uses exact-SHA setup actions, and
-has a five-minute timeout. Updating the fork requires reviewing and changing the
-repository-owned manifest as part of the Gatekeeper diff.
-
-The `codex-action-integrity-observe` job compares the declared Action pin and
-verification command text in the protected workflow with the provenance
-manifest and an explicitly unpromoted fixture record. Its narrow parser does
-check the expected enforced-mode job conditions and rejects `continue-on-error`
-on the full integrity job, plus `if`, `continue-on-error`, `shell`, or
-`working-directory` overrides on its verification step. It still does not
-prove the commands actually ran or interpret full YAML semantics, and cannot
-be reused for authorization. The job has no secrets and is outside the review
-and acceptance dependencies. Its output is diagnostic only; the full integrity
-job above still runs on every enforced review. The fixture does not claim that
-a protected verification run or owner approval occurred. See the
-[Issue #45 trust design](investigations/2026-09-23-codex-action-integrity-trust-design.md)
-for the promotion and governance requirements before a fast path can exist.
+The selected upstream Action is pinned to an immutable commit. The workflow
+no longer runs the fork-specific source/provenance verification, dependency
+installation, full Action tests, rebuilt-dist comparison or integrity-observation
+jobs on each review. This reduces repeated work and adopts upstream dependency
+trust; it does not preserve the previous source/bundle verification claim.
+Review jobs retain policy dependencies and credential isolation. A revision
+update remains a reviewed workflow change. Git history retains the retired fork manifests. The
+[Issue #45 trust investigation](investigations/2026-09-23-codex-action-integrity-trust-design.md)
+documents the retired mechanism, not active authorization.
 
 To enforce consumer-owned cross-field invariants in CI, pass
 `validation-path` to the reusable workflow. The file is always read from the
