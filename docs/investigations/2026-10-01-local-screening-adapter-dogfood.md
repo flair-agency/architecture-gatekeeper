@@ -59,6 +59,39 @@ The adapter's completed semantic result and full Hook JSON output were captured 
 
 The final runtime source SHA-256 was `cf7b5a64927b8fb15df6d9cae5c59963cb2cb96fbba1b5570d29d1a230738d1e`, matching the prepared native implementation-review snapshot; the fresh installed package tarball SHA-256 was `3f397e353fd2a2ff7187a34ac2416b8a2db355253182cdcd85f8b95d3568d0b3`. The native review covered the implementation and preceding documentation snapshot; this host-delivery observation was added afterward and is diagnostic evidence, not a new authority or acceptance claim. Desktop hook loading/delivery and actual-project behavior remain outside this probe.
 
+## Actual Architecture Gatekeeper consumer loop
+
+The first actual-consumer automatic review ran in an ordinary checkout using
+the existing committed Authority Set, prompt, schema, validation and reviewer
+settings. The owner explicitly authorized sending the AGK diff and existing
+review inputs to the configured OpenAI reviewer. The reviewed change was one
+wording replacement in this investigation; the run used source commit
+`c00f1d3091a398b8c1c25ab8f2247a6936a39992` plus a local unpublished Hook/setup
+commit `81f08d0b4e8b0d76dd289d376e78b9576848e9c2`. The setup commit is not part
+of this package change. See the [Issue #244 run record](https://github.com/flair-agency/architecture-gatekeeper/issues/244#issuecomment-5926730201).
+
+CLI `0.159.2` showed the exact project hook installed and active after normal
+project-trust review. Three eligible Bash events returned `unchanged`, started
+one review, and returned `queued-latest`; only one actual reviewer child ran.
+The reviewer used `gpt-6.1-sol` at medium effort with read-only sandboxing,
+approval policy `never`, hooks disabled, and a 180-second bound. Validation
+returned `PASS`. Review ran from `07:20:21.436` to `07:20:48.540` UTC, while
+later Bash verification continued. The queued event returned in about 23 ms;
+the parent turn ended before review completion.
+
+On the next no-tool user turn, informational context arrived at `07:22:19.517`
+UTC. The parent reported the result, summary, revision, request and snapshot
+identities, and `newerCandidatePending: true` at `07:22:24.515`. This confirms
+next-turn delivery for this run; it did not wake an idle session. The request
+ID was `3c996b4318c4d5f3cca19b7e70c673b37d294b0a6f9b1747afc03e557f082367`
+and the snapshot digest was
+`089dc68333ee4cbcc71dc6f2927a6fc833c9f660532549dfb04a4bbec542bf34`.
+
+This is one usable actual-consumer loop, not exhaustive stability evidence,
+protected acceptance, or a cost measurement. The parent model's reasoning
+effort and per-review token use were unavailable. The result remains
+development feedback under the local-review contract.
+
 ## Additional CLI dogfood and lifecycle evidence (#244)
 
 The following later observations are recorded from the #244 evidence comments [5925013415](https://github.com/flair-agency/architecture-gatekeeper/issues/244#issuecomment-5925013415), [5925318479](https://github.com/flair-agency/architecture-gatekeeper/issues/244#issuecomment-5925318479), the correction [5925336420](https://github.com/flair-agency/architecture-gatekeeper/issues/244#issuecomment-5925336420), and the feedback-consumption probe [5925695936](https://github.com/flair-agency/architecture-gatekeeper/issues/244#issuecomment-5925695936). They concern disposable synthetic fixtures and local CLI behavior. They do not establish a real consumer's architecture, acceptance policy, or a general desktop delivery guarantee.
