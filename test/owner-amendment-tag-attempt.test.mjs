@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { classifyOwnerAmendmentTagAttempt } from '../src/owner-amendment-tag-attempt.mjs';
+import { assertOwnerAmendmentTagAbsentAtAcceptance, classifyOwnerAmendmentTagAttempt } from '../src/owner-amendment-tag-attempt.mjs';
 import { assertEnforcedAcceptance } from '../src/ci-enforced-acceptance.mjs';
 import { inspectOwnerAmendmentSelfScope } from '../src/owner-amendment-scope.mjs';
 
@@ -90,6 +90,21 @@ test('ordinary PASS remains available when protected exact-B classification conf
     ownerAmendmentAttempted: String(attempt.attempted), ownerAmendmentSignerResult: 'success',
     ownerAmendmentSignerStatus: 'prepared', ownerAmendmentEligibility: 'ELIGIBLE' }),
   /conflicts with the protected no-tag classification/);
+});
+
+test('final acceptance re-reads the exact B tag and rejects a tag created after the initial 404', async () => {
+  const responses = [404, 200];
+  const readTagRef = async request => ({ status: responses.shift(), requestedUrl: request.expectedUrl });
+  const initial = await classifyOwnerAmendmentTagAttempt({ ...context, readTagRef });
+  assert.equal(initial.attempted, false);
+  await assert.rejects(assertOwnerAmendmentTagAbsentAtAcceptance({ ...context, readTagRef }),
+    /tag is present at final acceptance/);
+  assert.deepEqual(responses, []);
+});
+
+test('final acceptance fails closed when the exact B tag re-read is unavailable', async () => {
+  await assert.rejects(assertOwnerAmendmentTagAbsentAtAcceptance({ ...context, readTagRef: async request =>
+    ({ status: 503, requestedUrl: request.expectedUrl }) }), /unexpected HTTP status 503/);
 });
 
 test('legacy OWNER_ADDITION_G0 acceptance remains unchanged', () => {

@@ -234,6 +234,8 @@ test('preserves fixed Codex Action deadlines while varying only the primary revi
 
 test('uses the immutable called-workflow runtime and keeps review jobs read-only', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
+  const acceptJob = workflow.match(/  accept:\n([\s\S]*)$/)?.[1];
+  assert.ok(acceptJob);
   assert.match(workflow, /repository: \$\{\{ job\.workflow_repository \}\}/);
   assert.match(workflow, /ref: \$\{\{ job\.workflow_sha \}\}/);
   assert.doesNotMatch(workflow, /ref: v0\.1\.0/);
@@ -274,6 +276,13 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /name: Require successful reporting\n[\s\S]*?REPORT_RESULT: \$\{\{ needs\.report\.result \}\}\n[\s\S]*?test "\$REPORT_RESULT" = success/);
   assert.match(workflow, /name: Require model-backed PASS or verified G0 owner addition\/amendment\n        if: needs\.policy\.outputs\.mode == 'enforced'/);
   assert.match(workflow, /run: node \.architecture-gatekeeper-runtime\/src\/ci-enforced-acceptance\.mjs/);
+  const finalTagGuard = acceptJob.match(/      - name: Recheck exact B amendment tag at final acceptance boundary\n([\s\S]*?)\n      - name: Require model-backed PASS/)?.[1];
+  assert.ok(finalTagGuard);
+  assert.match(finalTagGuard, /if: needs\.policy\.outputs\.mode == 'enforced' && needs\.policy\.outputs\.owner_amendment_grade == 'G0'/);
+  assert.match(finalTagGuard, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(finalTagGuard, /B_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
+  assert.match(finalTagGuard, /node \.architecture-gatekeeper-runtime\/scripts\/owner-amendment-attempt-classifier\.mjs acceptance-guard/);
+  assert.ok(acceptJob.indexOf('Recheck exact B amendment tag at final acceptance boundary') < acceptJob.indexOf('Require model-backed PASS or verified G0 owner addition/amendment'));
   assert.match(workflow, /name: Require PASS or pre-merge G0 eligibility\n        if: needs\.policy\.outputs\.mode == 'procedural'/);
   assert.match(workflow, /decision_kind: \$\{\{ steps\.decision\.outputs\.kind \}\}/);
   assert.match(workflow, /name: Identify the completed ordinary decision\n        if: needs\.policy\.outputs\.mode == 'procedural' \|\| \(needs\.policy\.outputs\.mode == 'enforced' && \(needs\.policy\.outputs\.owner_addition_grade == 'G0' \|\| needs\.policy\.outputs\.owner_amendment_grade == 'G0'\)\)\n        id: decision/);

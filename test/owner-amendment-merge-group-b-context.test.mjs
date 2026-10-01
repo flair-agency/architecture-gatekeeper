@@ -16,6 +16,7 @@ function fixture(overrides = {}) {
   const mergeCommit = { sha: groupHeadSha, parents: [{ sha: baseSha }, { sha: bHeadSha }], commit: { tree: { sha: treeSha } } };
   const bCommit = { sha: bHeadSha, commit: { tree: { sha: treeSha } } };
   const pr = { number: 204, state: 'open', draft: false,
+    created_at: '2026-09-29T10:00:00Z',
     base: { ref: 'main', sha: baseSha, repo: { ...repo } },
     head: { sha: bHeadSha, repo: { ...repo } } };
   const graph = { data: { repository: { id: graphRepoId, nameWithOwner: repository,
@@ -50,7 +51,8 @@ test('selects one exact open same-repository B bound by merge commit and queue e
   const result = await f.select();
   assert.deepEqual(result, { status: 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT',
     repository, repositoryId: repoId, mergeGroupBaseSha: baseSha, mergeGroupHeadSha: groupHeadSha,
-    bPrNumber: '204', bBaseSha: baseSha, bHeadSha, queueEntryState: 'AWAITING_CHECKS',
+    bPrNumber: '204', bBaseSha: baseSha, bHeadSha, bPullRequestCreatedAt: '2026-09-29T10:00:00Z',
+    queueEntryState: 'AWAITING_CHECKS',
     queueEnteredAt: '2026-09-29T11:00:00Z' });
   assert.equal(f.calls.length, 5);
   for (const call of f.calls) {
@@ -139,6 +141,8 @@ test('fails closed for fork, stale or ineligible B PRs', async t => {
     ['head SHA mismatch', pr => { pr.head.sha = 'd'.repeat(40); }],
     ['base fork', pr => { pr.base.repo.full_name = 'fork/architecture-gatekeeper'; }],
     ['head fork', pr => { pr.head.repo.full_name = 'fork/architecture-gatekeeper'; pr.head.repo.id = 999; }],
+    ['missing PR creation time', pr => { delete pr.created_at; }],
+    ['invalid PR creation time', pr => { pr.created_at = 'invalid'; }],
   ];
   for (const [name, mutate] of cases) await t.test(name, async () => {
     const f = fixture(); mutate(f.state.pr);
@@ -162,6 +166,14 @@ test('requires authenticated GraphQL merge-queue entry for the same base, head, 
     const result = await f.select();
     assert.equal(result.status, 'INCOMPLETE');
   });
+});
+
+test('requires exact PR creation to precede protected merge-queue entry', async () => {
+  const f = fixture();
+  f.state.pr.created_at = '2026-09-29T11:00:01Z';
+  const result = await f.select();
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /creation time is later than merge queue entry/);
 });
 
 test('requires a token and fails closed on API errors', async () => {

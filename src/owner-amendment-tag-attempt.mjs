@@ -29,3 +29,12 @@ export async function classifyOwnerAmendmentTagAttempt({ repository, baseSha, bS
   return Object.freeze({ status: 'OWNER_AMENDMENT_ATTEMPT', attempted: true,
     tagRef: `${policy.ownerAmendmentTagNamespace}/${bSha}` });
 }
+
+/** Re-read the protected exact-B ref at final acceptance; an earlier 404 is not reusable. */
+export async function assertOwnerAmendmentTagAbsentAtAcceptance(input) {
+  const result = await classifyOwnerAmendmentTagAttempt(input);
+  if (result.attempted) {
+    throw new Error('OWNER_AMENDMENT exact-B tag is present at final acceptance; stale no-tag classification cannot authorize ordinary PASS.');
+  }
+  return result;
+}

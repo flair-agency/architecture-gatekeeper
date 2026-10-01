@@ -36,7 +36,8 @@ function matchesExactBPullRequest(candidate, repository, repositoryId, baseSha, 
   return Number.isSafeInteger(candidate?.number) && candidate.number > 0 && candidate.state === 'open' && candidate.draft === false &&
     candidate.base?.ref === 'main' && candidate.base?.sha === baseSha && candidate.head?.sha === bHeadSha &&
     candidate.base?.repo?.full_name === repository && candidate.head?.repo?.full_name === repository &&
-    candidate.base?.repo?.id === repositoryId && candidate.head?.repo?.id === repositoryId;
+    candidate.base?.repo?.id === repositoryId && candidate.head?.repo?.id === repositoryId &&
+    typeof candidate.created_at === 'string' && Number.isFinite(Date.parse(candidate.created_at));
 }
 
 const MERGE_QUEUE_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
@@ -86,6 +87,7 @@ export async function selectOwnerAmendmentMergeGroupBContext({ event, token, fet
       matchesExactBPullRequest(candidate, parsed.repository, repo.id, parsed.baseSha, bHeadSha));
     if (exactCandidates.length !== 1) fail('merge-group B parent has no unique exact open, non-draft, same-repository main pull request.');
     const candidate = exactCandidates[0];
+    const pullRequestCreatedAt = candidate.created_at;
 
     const graph = await request(fetchImpl, token, `${API}/graphql`, { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: MERGE_QUEUE_QUERY,
@@ -105,11 +107,14 @@ export async function selectOwnerAmendmentMergeGroupBContext({ event, token, fet
         String(entry.pullRequest?.number) !== String(candidate.number)) {
       fail('authenticated merge queue entry does not bind this open PR to the exact event base and B head.');
     }
+    if (Date.parse(pullRequestCreatedAt) > Date.parse(entry.enqueuedAt)) {
+      fail('exact B pull request creation time is later than merge queue entry.');
+    }
 
     return Object.freeze({ status: 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT',
       repository: parsed.repository, repositoryId: repo.id, mergeGroupBaseSha: parsed.baseSha,
       mergeGroupHeadSha: parsed.headSha, bPrNumber: String(candidate.number), bBaseSha: parsed.baseSha,
-      bHeadSha, queueEntryState: entry.state, queueEnteredAt: entry.enqueuedAt });
+      bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEntryState: entry.state, queueEnteredAt: entry.enqueuedAt });
   } catch (error) {
     return Object.freeze({ status: 'INCOMPLETE', reason: error.message });
   }

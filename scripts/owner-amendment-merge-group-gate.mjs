@@ -55,9 +55,11 @@ async function getJson(url, { expectedOwnerAmendmentTagUrl } = {}) {
 }
 
 async function inspectProducerAttempts(selection) {
-  const readRuns = async ({ page, perPage }) => {
+  const readRuns = async ({ bBaseSha, createdFrom, createdTo, page, perPage }) => {
     const runsUrl = new URL('repos/flair-agency/architecture-gatekeeper/actions/workflows/self-architecture-gate.yml/runs', api);
     runsUrl.searchParams.set('event', 'pull_request_target');
+    runsUrl.searchParams.set('head_sha', bBaseSha);
+    runsUrl.searchParams.set('created', `${createdFrom}..${createdTo}`);
     runsUrl.searchParams.set('per_page', String(perPage));
     runsUrl.searchParams.set('page', String(page));
     const result = await getJson(runsUrl);
@@ -73,7 +75,8 @@ async function inspectProducerAttempts(selection) {
     return { total_count: result.total_count, jobs: result.jobs };
   };
   return inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha: selection.bBaseSha, bHeadSha: selection.bHeadSha,
-    queueEnteredAt: selection.queueEnteredAt, listRuns: readRuns, listJobs: readJobs });
+    bPullRequestCreatedAt: selection.bPullRequestCreatedAt, queueEnteredAt: selection.queueEnteredAt,
+    listRuns: readRuns, listJobs: readJobs });
 }
 
 async function eligibilityEvidence({ selection, attempts }) {

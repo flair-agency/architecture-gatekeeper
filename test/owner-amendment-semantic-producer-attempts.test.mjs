@@ -6,7 +6,8 @@ import { assertMissingOwnerAmendmentTagHasNoSuccessfulSigner,
 const repository = 'flair-agency/architecture-gatekeeper';
 const bHeadSha = 'a'.repeat(40);
 const bBaseSha = 'b'.repeat(40);
-const workflowHeadSha = 'c'.repeat(40);
+const workflowHeadSha = bBaseSha;
+const pullRequestCreatedAt = '2026-09-30T10:00:00Z';
 const queueEnteredAt = '2026-09-30T12:00:00Z';
 const run = (changes = {}) => ({ id: 123, run_attempt: 1, created_at: '2026-09-30T11:00:00Z',
   repository: { full_name: repository }, head_repository: { full_name: repository },
@@ -20,7 +21,7 @@ const signer = (changes = {}) => ({ id: 900, name: 'architecture-gate / owner-am
 
 async function inspect({ runs = [run()], jobs = [{ jobs: [] }], queueAt = queueEnteredAt } = {}) {
   let jobsIndex = 0;
-  return inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt: queueAt,
+  return inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt: queueAt,
     listRuns: async ({ page, perPage }) => ({ total_count: runs.length,
       workflow_runs: runs.slice((page - 1) * perPage, page * perPage) }),
     listJobs: async ({ runId, runAttempt, page, perPage }) => {
@@ -133,7 +134,7 @@ test('accepts actual API jobs without run_attempt but rejects a mismatched prese
   });
   await t.test('present run_attempt must agree with requested attempt', async () => {
     const rerun = run({ status: 'in_progress', run_attempt: 2 });
-    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
       listRuns: async () => ({ total_count: 1, workflow_runs: [rerun] }),
       listJobs: async ({ runAttempt }) => ({ total_count: 1, jobs: [identifiedJob(signer(), 930,
         { runAttempt: runAttempt === '1' ? 2 : 1 })] }),
@@ -143,7 +144,7 @@ test('accepts actual API jobs without run_attempt but rejects a mismatched prese
 
 test('completed skipped signer with null timestamps is treated as no execution and preserves earlier success', async () => {
   const rerun = run({ run_attempt: 2, status: 'in_progress' });
-  const result = await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+  const result = await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
     listRuns: async () => ({ total_count: 1, workflow_runs: [rerun] }),
     listJobs: async ({ runAttempt }) => runAttempt === '2'
       ? ({ total_count: 1, jobs: [identifiedJob(signer({ status: 'completed', conclusion: 'skipped',
@@ -159,7 +160,7 @@ test('paginates exact-B workflow runs and finds a successful signer omitted from
   const runs = Array.from({ length: 101 }, (_, index) => run({ id: index + 1,
     created_at: new Date(Date.UTC(2026, 8, 30, 11, 0, 0) - index * 1_000).toISOString() }));
   const pages = [];
-  const result = await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+  const result = await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
     listRuns: async ({ page, perPage }) => {
       pages.push(page);
       return { total_count: runs.length, workflow_runs: runs.slice((page - 1) * perPage, page * perPage) };
@@ -175,37 +176,66 @@ test('paginates exact-B workflow runs and finds a successful signer omitted from
 test('rejects truncated, drifting, duplicate, or over-limit workflow run pagination', async t => {
   const fullPage = Array.from({ length: 100 }, (_, index) => run({ id: index + 1 }));
   await t.test('missing later page', async () => {
-    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
       listRuns: async ({ page }) => ({ total_count: 101, workflow_runs: page === 1 ? fullPage : [] }),
       listJobs: async () => ({ jobs: [] }) }),
     /truncated or inconsistent/);
   });
   await t.test('total count changed between pages', async () => {
-    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
       listRuns: async ({ page }) => page === 1
         ? { total_count: 101, workflow_runs: fullPage }
         : { total_count: 102, workflow_runs: [run({ id: 101 })] },
       listJobs: async () => ({ jobs: [] }) }), /count changed during pagination/);
   });
   await t.test('duplicate run across pages', async () => {
-    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
       listRuns: async ({ page }) => page === 1
         ? { total_count: 101, workflow_runs: fullPage }
         : { total_count: 101, workflow_runs: [fullPage[0]] },
       listJobs: async () => ({ jobs: [] }) }), /duplicate run ID/);
   });
   await t.test('pagination limit', async () => {
-    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
       listRuns: async ({ page, perPage }) => ({ total_count: 1_001,
         workflow_runs: Array.from({ length: perPage }, (_, index) => run({ id: (page - 1) * perPage + index + 1 })) }),
-      listJobs: async () => ({ jobs: [] }) }), /bounded pagination limit/);
+      listJobs: async () => ({ jobs: [] }) }), /1,000-result completeness limit/);
   });
+});
+
+test('bounds workflow run search to protected base SHA and exact PR-created-through-queue window', async () => {
+  let query;
+  await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha,
+    bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
+    listRuns: async parameters => {
+      query = parameters;
+      return { total_count: 0, workflow_runs: [] };
+    },
+    listJobs: async () => ({ total_count: 0, jobs: [] }),
+  });
+  assert.deepEqual(query, { repository, bBaseSha, createdFrom: pullRequestCreatedAt,
+    createdTo: queueEnteredAt, page: 1, perPage: 100 });
+});
+
+test('does not inspect runs outside the PR-to-queue window or from a different protected head SHA', async () => {
+  const beforePr = run({ id: 124, created_at: '2026-09-30T09:59:59Z' });
+  const afterQueue = run({ id: 125, created_at: '2026-09-30T12:00:01Z' });
+  const otherProtectedHead = run({ id: 126, head_sha: 'c'.repeat(40) });
+  let jobLookups = 0;
+  const result = await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha,
+    bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
+    listRuns: async () => ({ total_count: 3, workflow_runs: [beforePr, afterQueue, otherProtectedHead] }),
+    listJobs: async () => { jobLookups += 1; return { total_count: 0, jobs: [] }; },
+  });
+  assert.equal(jobLookups, 0);
+  assert.equal(result.latestSignerAttempt, null);
+  assert.equal(result.hasAmbiguousSuccessfulSignerBeforeQueue, false);
 });
 
 test('detects a prior successful signer hidden by a later in-progress rerun attempt', async () => {
   const rerun = run({ status: 'in_progress', run_attempt: 2 });
   const queriedAttempts = [];
-  const result = await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+  const result = await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
     listRuns: async () => ({ total_count: 1, workflow_runs: [rerun] }),
     listJobs: async ({ runAttempt }) => {
       queriedAttempts.push(runAttempt);
@@ -222,7 +252,7 @@ test('selects latest signer by actual start time across runs, including an older
   const older = run({ id: 10, run_attempt: 2, created_at: '2026-09-30T10:00:00Z' });
   const newer = run({ id: 20, run_attempt: 1, created_at: '2026-09-30T11:00:00Z' });
   const queried = [];
-  const result = await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+  const result = await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
     listRuns: async () => ({ total_count: 2, workflow_runs: [newer, older] }),
     listJobs: async ({ runId, runAttempt }) => {
       queried.push(`${runId}/${runAttempt}`);
@@ -247,7 +277,7 @@ test('paginates signer jobs and fails closed on incomplete or unstable job listi
     completed_at: '2026-09-30T10:01:00Z' }));
   await t.test('finds signer on the second page', async () => {
     const pages = [];
-    const result = await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+    const result = await inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
       listRuns: async () => ({ total_count: 1, workflow_runs: [run()] }),
       listJobs: async ({ page }) => {
         pages.push(page);
@@ -260,7 +290,7 @@ test('paginates signer jobs and fails closed on incomplete or unstable job listi
     assert.equal(result.hasSuccessfulSignerBeforeQueue, true);
   });
   await t.test('rejects truncated job pagination', async () => {
-    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
       listRuns: async () => ({ total_count: 1, workflow_runs: [run()] }),
       listJobs: async ({ page }) => ({ total_count: 101,
         jobs: page === 1 ? fillers.map((job, index) => identifiedJob(job, job.id)) : [] }),
@@ -268,12 +298,12 @@ test('paginates signer jobs and fails closed on incomplete or unstable job listi
   });
   await t.test('rejects job total-count drift and duplicate identities', async () => {
     let calls = 0;
-    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
       listRuns: async () => ({ total_count: 1, workflow_runs: [run()] }),
       listJobs: async ({ page }) => ({ total_count: page === 1 ? 101 : 102,
         jobs: page === 1 ? fillers.map(job => identifiedJob(job, job.id)) : [identifiedJob(signer(), 9_999)] }),
     }), /count changed during pagination/);
-    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
       listRuns: async () => ({ total_count: 1, workflow_runs: [run()] }),
       listJobs: async ({ page }) => {
         calls++;
@@ -284,7 +314,7 @@ test('paginates signer jobs and fails closed on incomplete or unstable job listi
     assert.equal(calls, 2);
   });
   await t.test('rejects listings exceeding the page bound', async () => {
-    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, queueEnteredAt,
+    await assert.rejects(inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha, bPullRequestCreatedAt: pullRequestCreatedAt, queueEnteredAt,
       listRuns: async () => ({ total_count: 1, workflow_runs: [run()] }),
       listJobs: async ({ page, perPage }) => ({ total_count: 1_001,
         jobs: Array.from({ length: perPage }, (_, index) => ({ ...identifiedJob({ name: `job-${index}` },

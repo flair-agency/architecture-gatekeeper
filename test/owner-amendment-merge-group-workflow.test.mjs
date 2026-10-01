@@ -38,6 +38,8 @@ test('missing-tag merge-group route selects fresh exact-tuple ordinary PASS veri
   const script = readFileSync(new URL('../scripts/owner-amendment-merge-group-gate.mjs', import.meta.url), 'utf8');
   const attempts = readFileSync(new URL('../src/owner-amendment-semantic-producer-attempts.mjs', import.meta.url), 'utf8');
   assert.match(script, /inspectOwnerAmendmentSemanticProducerAttempts/);
+  assert.match(script, /searchParams\.set\('head_sha', bBaseSha\)/);
+  assert.match(script, /searchParams\.set\('created', `\$\{createdFrom\}\.\.\$\{createdTo\}`\)/);
   assert.match(script, /searchParams\.set\('page', String\(page\)\)/);
   assert.match(script, /const readJobs = async \(\{ runId, runAttempt, page, perPage \}\)/);
   assert.match(script, /jobsUrl\.searchParams\.set\('per_page', String\(perPage\)\)/);

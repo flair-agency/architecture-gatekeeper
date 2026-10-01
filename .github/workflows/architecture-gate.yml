@@ -1013,6 +1013,17 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - name: Recheck exact B amendment tag at final acceptance boundary
+        if: needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_amendment_grade == 'G0'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          B_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          TRIGGER_PROFILE: ${{ needs.policy.outputs.owner_amendment_trigger_profile }}
+          GH_TOKEN: ${{ github.token }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+        run: node .architecture-gatekeeper-runtime/scripts/owner-amendment-attempt-classifier.mjs acceptance-guard
       - name: Require model-backed PASS or verified G0 owner addition/amendment
         if: needs.policy.outputs.mode == 'enforced'
         env:

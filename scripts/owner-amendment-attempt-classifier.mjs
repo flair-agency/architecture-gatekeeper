@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { classifyOwnerAmendmentTagAttempt } from '../src/owner-amendment-tag-attempt.mjs';
+import { assertOwnerAmendmentTagAbsentAtAcceptance, classifyOwnerAmendmentTagAttempt } from '../src/owner-amendment-tag-attempt.mjs';
 import { ownerAmendmentTagApiRoute } from '../src/runner-temp-path.mjs';
 
 const fail = message => { throw new Error(`OWNER_AMENDMENT attempt classifier: ${message}`); };
@@ -33,8 +33,12 @@ function readTagRef({ expectedUrl, repository: selectedRepository, tagNamespace,
 }
 
 try {
-  const result = await classifyOwnerAmendmentTagAttempt({ repository, baseSha, bSha, baseBranch, triggerProfile,
-    policyBytes: readProtectedPolicyBytes(), readTagRef });
+  const input = { repository, baseSha, bSha, baseBranch, triggerProfile,
+    policyBytes: readProtectedPolicyBytes(), readTagRef };
+  const command = process.argv[2] ?? 'classify';
+  const result = command === 'classify' ? await classifyOwnerAmendmentTagAttempt(input)
+    : command === 'acceptance-guard' ? await assertOwnerAmendmentTagAbsentAtAcceptance(input)
+      : fail('unsupported classifier command.');
   process.stdout.write(`${JSON.stringify(result)}\n`);
 } catch (error) {
   process.stderr.write(`${error.message}\n`);

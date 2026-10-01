@@ -13,6 +13,10 @@ function time(value, label) {
   return Date.parse(value);
 }
 
+function searchDateTime(milliseconds) {
+  return new Date(milliseconds).toISOString().replace(/\.000Z$/, 'Z');
+}
+
 function compareSignerAttempts(left, right) {
   return right.startedAtMs - left.startedAtMs || right.completedAtSort - left.completedAtSort ||
     right.run.id - left.run.id || Number(right.runAttempt) - Number(left.runAttempt);
@@ -42,20 +46,30 @@ export function assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(attempts) {
  * unavailable PR association are tracked separately and never select evidence.
  */
 export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha,
-  queueEnteredAt, listRuns, listJobs } = {}) {
+  bPullRequestCreatedAt, queueEnteredAt, listRuns, listJobs } = {}) {
   if (repository !== SELF_REPOSITORY || !SHA1.test(bBaseSha ?? '') || !SHA1.test(bHeadSha ?? '') || bBaseSha === bHeadSha ||
       typeof listRuns !== 'function' || typeof listJobs !== 'function') {
     fail('protected repository, exact B SHA, and trusted run/job readers are required.');
   }
+  const pullRequestCreatedAtMs = time(bPullRequestCreatedAt, 'exact B pull-request creation time');
   const queueEnteredAtMs = time(queueEnteredAt, 'merge queue entry time');
+  if (pullRequestCreatedAtMs > queueEnteredAtMs) fail('exact B pull request was created after merge queue entry.');
+  // GitHub's workflow-runs endpoint caps filtered searches at 1,000. Treat a
+  // count at that boundary as potentially truncated rather than complete.
+  const maxRunResults = MAX_RUN_PAGES * PAGE_SIZE;
+  const createdFrom = searchDateTime(Math.floor(pullRequestCreatedAtMs / 1_000) * 1_000);
+  const createdTo = searchDateTime(Math.ceil(queueEnteredAtMs / 1_000) * 1_000);
   const runs = [];
   const seenRunIds = new Set();
   let totalCount;
   for (let page = 1; page <= MAX_RUN_PAGES; page++) {
-    const response = await listRuns({ repository, bHeadSha, page, perPage: PAGE_SIZE });
+    const response = await listRuns({ repository, bBaseSha, createdFrom, createdTo, page, perPage: PAGE_SIZE });
     if (!response || !Number.isSafeInteger(response.total_count) || response.total_count < 0 ||
         !Array.isArray(response.workflow_runs) || response.workflow_runs.length > PAGE_SIZE) {
       fail('protected producer workflow run listing is malformed or oversized.');
+    }
+    if (response.total_count >= maxRunResults) {
+      fail('protected producer workflow run search reaches the 1,000-result completeness limit.');
     }
     if (totalCount === undefined) totalCount = response.total_count;
     else if (response.total_count !== totalCount) fail('protected producer workflow run count changed during pagination.');
@@ -76,7 +90,10 @@ export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository
   const candidates = [];
   for (const run of runs) {
     if (run?.repository?.full_name !== SELF_REPOSITORY || run?.head_repository?.full_name !== SELF_REPOSITORY ||
-        run?.event !== 'pull_request_target' || !WORKFLOW_PATH.test(run?.path ?? '') || !SHA1.test(run?.head_sha ?? '')) continue;
+        run?.event !== 'pull_request_target' || !WORKFLOW_PATH.test(run?.path ?? '') ||
+        run?.head_sha !== bBaseSha) continue;
+    const runCreatedAtMs = time(run.created_at, 'producer workflow creation time');
+    if (runCreatedAtMs < pullRequestCreatedAtMs || runCreatedAtMs > queueEnteredAtMs) continue;
     const associations = run.pull_requests;
     if (associations != null && !Array.isArray(associations)) {
       fail('protected producer pull-request association is malformed.');
@@ -93,8 +110,7 @@ export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository
     if (!Number.isSafeInteger(run.id) || run.id < 1 || !Number.isSafeInteger(runAttemptCount) || runAttemptCount < 1) {
       fail('protected producer workflow run identity is malformed.');
     }
-    candidates.push({ run, runAttemptCount, associationAmbiguous: ambiguous,
-      createdAtMs: time(run.created_at, 'producer workflow creation time') });
+    candidates.push({ run, runAttemptCount, associationAmbiguous: ambiguous, createdAtMs: runCreatedAtMs });
   }
   candidates.sort((left, right) => right.createdAtMs - left.createdAtMs || right.run.id - left.run.id);
   const attemptLookupCount = candidates.reduce((sum, candidate) => sum + candidate.runAttemptCount, 0);
