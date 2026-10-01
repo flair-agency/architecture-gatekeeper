@@ -57,6 +57,7 @@ export function prepareGeminiRequestBody(request, options = {}) {
 
   const generationConfig = {
     responseMimeType: 'application/json',
+    responseJsonSchema: schema,
     responseSchema: schema,
   };
 
