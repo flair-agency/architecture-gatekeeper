@@ -65,6 +65,85 @@ When `validationPath` is configured, the local and manual review paths apply
 that committed policy after structured generation and fail closed on a rule
 violation or malformed policy.
 
+### Optional asynchronous PostToolUse screen
+
+A consumer may opt into a separate change screen after a supported file-capable
+tool completes. This pilot reviews the bounded tracked working-tree diff and
+returns informational Hook context; it does not block the completed tool,
+change its result, or establish repository acceptance. No consumer is enabled
+by default. Keep the launcher and hook configuration in the consumer's trusted
+project, and use the exact installed package version. The normal Codex
+project-trust decision still applies to the hook code and its command.
+
+Create a consumer-owned launcher such as
+`.codex/hooks/architecture-screen.mjs`:
+
+```js
+#!/usr/bin/env node
+import { runPostToolScreenHookCli } from '@flair-agency/architecture-gatekeeper';
+runPostToolScreenHookCli();
+```
+
+Then add this entry to the consumer's project-local `.codex/hooks.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash|exec_command|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .codex/hooks/architecture-screen.mjs",
+            "async": true,
+            "timeout": 240
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The adapter accepts only `PostToolUse` events from `Bash`, `exec_command`,
+`apply_patch`, `Edit`, and `Write`. It screens staged and unstaged tracked
+changes up to 64 KiB. Untracked paths, dirty submodules, a changed `HEAD` during
+capture, and other snapshot failures produce `incomplete`; they do not produce
+a semantic decision. It waits a fixed two seconds from the first event in a
+batch; later events do not extend that delay. It permits one reviewer at a time
+per worktree and retries the latest changed candidate on a later eligible
+event. It does not start a daemon or drain pending work after a review.
+Identical candidates are deduplicated. The serialized Hook
+context is capped at 4,000 UTF-8 bytes and reports status, summary, revision,
+and request/snapshot identity.
+
+This pilot is currently unsupported on native Windows because the current
+single-flight lock implementation excludes `win32` and assumes atomic hard-link
+support. On Windows the adapter returns informational `incomplete` before
+screening. This limitation applies only to the opt-in PostToolUse screen; it
+does not change the existing local review, manual, Skill, or CI paths.
+
+The screen resolves the repository from the hook process's invocation working
+directory and requires the event's `cwd` to match it. The CLI launcher must run
+from the consumer session's working directory. A programmatic caller that
+deliberately invokes the API from another process directory must pass the
+trusted consumer directory as the `cwd` option and provide the same path in the
+event.
+
+The Hook timeout is measured in seconds and must exceed the consumer's
+`reviewTimeoutMs` plus local request preparation and cleanup. For example, a
+180,000 ms reviewer deadline can use a 240-second Hook timeout to leave about a
+minute of headroom. Tune this to the consumer's actual timeout and host startup
+cost.
+
+This is best-effort feedback. Codex may discard an asynchronous hook's output
+when a session ends; delivery can occur during the active turn or on a later
+turn, and the idle host does not start a turn to deliver it. Desktop delivery
+has not been verified. Keep this route opt-in and treat
+`BLOCK`, `OWNER_DECISION`, and `incomplete` as informational warnings after the
+tool has completed.
+
 ## Manual review
 
 After installing a fixed package version, invoke the package-owned entrypoint
@@ -154,10 +233,12 @@ cancellation cleanup merged in Codex Action PR #10. On POSIX, cancellation
 signals the spawned process group with `SIGTERM` and then `SIGKILL` after a
 one-second grace period. Descendants that create a separate POSIX session are
 outside this process-group bound. Windows uses `taskkill.exe /T /F`. The fork
-retains v1.12's credential isolation and protected argument checks. This is a
-temporary workaround: replace the fork pin only after reviewing an upstream
-release that contains the equivalent fixes. `local-only` records an explicit
-waiver and makes no OpenAI API call.
+retains v1.12's credential isolation and protected argument checks. The
+selected commit also emits fixed-shape lifecycle diagnostics to workflow
+stderr; records are best-effort, and child stderr is drained if the workflow
+log sink fails. This is a temporary workaround: replace the fork pin only after
+reviewing an upstream release that contains equivalent fixes. `local-only`
+records an explicit waiver and makes no OpenAI API call.
 
 The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)
 and a `review-step-timeout-minutes` input (default 5). This repository's

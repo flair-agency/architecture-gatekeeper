@@ -11,6 +11,7 @@ const parent = mkdtempSync(join(tmpdir(), 'architecture-gate-installed-'));
 try {
   const root = join(parent, 'consumer'); const gate = join(root, '.codex', 'gatekeeper'); const mockBin = join(parent, 'mock-bin');
   mkdirSync(gate, { recursive: true }); mkdirSync(mockBin);
+  const consumerCwd = realpathSync(root);
   writeFileSync(join(root, 'AGENTS.md'), '# Installed smoke authority\n');
   writeFileSync(join(gate, 'prompt.md'), 'Review the supplied authority.\n');
   writeFileSync(join(gate, 'schema.json'), JSON.stringify({ type: 'object', additionalProperties: false, required: ['decision', 'summary', 'authorityFiles', 'reviewedScope'], properties: { decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] }, summary: { type: 'string', minLength: 1 }, authorityFiles: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } }, reviewedScope: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } } } }));
@@ -52,6 +53,19 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   writeFileSync(v2DecisionPath, JSON.stringify(v2Decision));
   const v2Native = JSON.parse(run('architecture-review-native', ['validate', v2RequestPath, v2DecisionPath]));
   if (v2Native.decision !== 'PASS' || v2Native.authoritySet?.members[0]?.id !== 'architecture') throw new Error('native Authority Set adapter did not pass');
+  const installedSrc = dirname(realpathSync(join(installedBin, 'architecture-review-native')));
+  writeFileSync(join(root, 'AGENTS.md'), '# Installed smoke authority\n\nTracked candidate change.\n');
+  const postToolModule = `import { runPostToolScreenHookCli } from '@flair-agency/architecture-gatekeeper';\nprocess.chdir(${JSON.stringify(consumerCwd)});\nrunPostToolScreenHookCli();`;
+  const postTool = spawnSync(process.execPath, ['--input-type=module', '-e', postToolModule], {
+    env, input: JSON.stringify({ hook_event_name: 'PostToolUse', session_id: 'installed-post-tool-smoke', cwd: consumerCwd, tool_name: 'Edit', tool_use_id: 'installed-use', turn_id: 'installed-turn' }),
+    encoding: 'utf8', timeout: 30000,
+  });
+  if (postTool.status !== 0) throw new Error(`installed PostToolUse module entry failed: ${postTool.stderr}`);
+  const postToolOutput = JSON.parse(postTool.stdout);
+  if (postToolOutput.hookSpecificOutput?.hookEventName !== 'PostToolUse' || !postToolOutput.hookSpecificOutput.additionalContext.includes('"status":"PASS"') || !postToolOutput.hookSpecificOutput.additionalContext.includes('snapshotSha256')) {
+    throw new Error('installed PostToolUse module entry did not return informational PASS context');
+  }
+  if ('decision' in postToolOutput.hookSpecificOutput || postToolOutput.continue === false) throw new Error('PostToolUse screen exposed a blocking Hook decision');
   const policyPath = join(parent, 'policy.json'); writeFileSync(policyPath, JSON.stringify({ version: 1, default: { mode: 'local-only' }, branches: {} }));
   if (!run('architecture-gate-policy', [policyPath, 'main']).includes('mode=local-only')) throw new Error('policy adapter did not pass');
   const multiLimits = { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 262144, maxTotalBytes: 524288, maxPromptBytes: 1048576 };
@@ -83,7 +97,6 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   ] }));
   execFileSync('git', ['add', '.'], { cwd: root }); execFileSync('git', ['commit', '-m', 'CI multi-document smoke'], { cwd: root });
   const base = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
-  const installedSrc = dirname(realpathSync(join(installedBin, 'architecture-review-native')));
   const multiOutput = join(parent, 'multi-authority');
   execFileSync(process.execPath, [join(installedSrc, 'prepare-authority-set.mjs'), '--manifest', join(gate, 'authorities.json'),
     '--self-repository', 'example/consumer', '--self-root', root, '--authority-sha', base,

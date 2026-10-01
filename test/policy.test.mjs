@@ -187,7 +187,7 @@ test('protected policy rejects duplicate JSON keys before resolving effective li
 
 test('keeps protected codex-action arguments compatible', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
-  assert.match(workflow, /uses: flair-agency\/codex-action@643fb31fa44e961453125534c4c7182a5a0a6ba0/);
+  assert.match(workflow, /uses: flair-agency\/codex-action@308ab1c8ce784cd5f46b98a1c0801c5c040918d9/);
   assert.doesNotMatch(workflow, /uses: openai\/codex-action@/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?repository: flair-agency\/codex-action/);
   assert.match(workflow, /codex-action-integrity:\n    if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\)\n    needs: policy/);
@@ -198,7 +198,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /provenance\/codex-action-runtime-integrity-procedure-v1\.json/);
   assert.match(workflow, /provenance\/fixtures\/codex-action-runtime-candidate-v1\.json/);
   assert.match(workflow, /fetch-depth: 0/);
-  assert.match(workflow, /ref: 643fb31fa44e961453125534c4c7182a5a0a6ba0/);
+  assert.match(workflow, /ref: 308ab1c8ce784cd5f46b98a1c0801c5c040918d9/);
   assert.match(workflow, /Verify the pinned action before exposing review credentials/);
   assert.match(workflow, /name: Setup pnpm\n[\s\S]*?version: 10\.33\.0/);
   assert.match(workflow, /pnpm run check/);
@@ -216,7 +216,7 @@ test('keeps protected codex-action arguments compatible', () => {
 
 test('preserves fixed Codex Action deadlines while varying only the primary review job', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
-  const pin = '643fb31fa44e961453125534c4c7182a5a0a6ba0';
+  const pin = '308ab1c8ce784cd5f46b98a1c0801c5c040918d9';
   const actionSteps = workflow
     .split(/^      - name: /m)
     .slice(1)
