@@ -101,6 +101,7 @@ test('runGeminiReviewer successfully returns parsed JSON on valid API response',
       json: async () => ({
         candidates: [
           {
+            finishReason: 'STOP',
             content: {
               parts: [{ text: JSON.stringify(expectedDecision) }],
             },
@@ -165,7 +166,7 @@ test('runGeminiReviewer fails closed on empty candidates or non-JSON text', asyn
     ok: true,
     status: 200,
     json: async () => ({
-      candidates: [{ content: { parts: [{ text: 'NOT_VALID_JSON' }] } }],
+      candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'NOT_VALID_JSON' }] } }],
     }),
   });
 
@@ -175,48 +176,32 @@ test('runGeminiReviewer fails closed on empty candidates or non-JSON text', asyn
   );
 });
 
-test('runGeminiReviewer fails closed on incomplete candidate finishReason (e.g. MAX_TOKENS, SAFETY)', async () => {
-  const mockFetchMaxTokens = async () => ({
-    ok: true,
-    status: 200,
-    json: async () => ({
-      candidates: [
-        {
-          finishReason: 'MAX_TOKENS',
-          content: { parts: [{ text: '{"decision": "PASS"}' }] },
-        },
-      ],
-    }),
-  });
-
+test('runGeminiReviewer fails closed on missing, null, empty or non-STOP candidate finishReason', async () => {
   const request = {
     prompt: 'test prompt',
     schema: { type: 'object' },
     reviewer: { model: 'gemini-2.5-flash' },
   };
 
-  await assert.rejects(
-    () => runGeminiReviewer(request, { apiKey: 'test-api-key', fetch: mockFetchMaxTokens }),
-    /candidate completion failed with finishReason: MAX_TOKENS/
-  );
+  for (const invalidReason of [undefined, null, '', 'MAX_TOKENS', 'SAFETY', 'RECITATION', 'OTHER']) {
+    const mockFetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [
+          {
+            ...(invalidReason !== undefined ? { finishReason: invalidReason } : {}),
+            content: { parts: [{ text: '{"decision": "PASS"}' }] },
+          },
+        ],
+      }),
+    });
 
-  const mockFetchSafety = async () => ({
-    ok: true,
-    status: 200,
-    json: async () => ({
-      candidates: [
-        {
-          finishReason: 'SAFETY',
-          content: { parts: [{ text: '' }] },
-        },
-      ],
-    }),
-  });
-
-  await assert.rejects(
-    () => runGeminiReviewer(request, { apiKey: 'test-api-key', fetch: mockFetchSafety }),
-    /candidate completion failed with finishReason: SAFETY/
-  );
+    await assert.rejects(
+      () => runGeminiReviewer(request, { apiKey: 'test-api-key', fetch: mockFetch }),
+      /candidate completion failed with finishReason:/
+    );
+  }
 });
 
 test('runGeminiReviewer fails closed on timeout', async () => {
@@ -298,7 +283,10 @@ test('integrates with review-contract validateReviewResponse for deterministic v
     status: 200,
     json: async () => ({
       candidates: [
-        { content: { parts: [{ text: JSON.stringify(expectedDecision) }] } },
+        {
+          finishReason: 'STOP',
+          content: { parts: [{ text: JSON.stringify(expectedDecision) }] },
+        },
       ],
     }),
   });
@@ -379,6 +367,7 @@ test('runGeminiReviewer sends Authorization Bearer header when bearer token is u
       json: async () => ({
         candidates: [
           {
+            finishReason: 'STOP',
             content: {
               parts: [{ text: JSON.stringify(expectedDecision) }],
             },
