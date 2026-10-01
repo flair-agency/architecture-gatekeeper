@@ -221,13 +221,23 @@ export async function runGeminiReviewer(request, options = {}) {
     );
   }
 
-  const text = candidate.content?.parts?.[0]?.text;
-  if (!text || typeof text !== 'string') {
+  const parts = candidate.content?.parts;
+  if (!Array.isArray(parts) || parts.length === 0) {
+    throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
+  }
+
+  const answerParts = parts.filter(part => !part?.thought && typeof part?.text === 'string');
+  if (answerParts.length === 0) {
+    throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
+  }
+
+  const combinedText = answerParts.map(part => part.text).join('').trim();
+  if (!combinedText) {
     throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
   }
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(combinedText);
   } catch {
     throw new Error('Architecture gate reviewer returned non-JSON candidate content.');
   }

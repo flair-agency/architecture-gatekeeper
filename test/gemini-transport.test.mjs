@@ -205,6 +205,85 @@ test('runGeminiReviewer fails closed on missing, null, empty or non-STOP candida
   }
 });
 
+test('runGeminiReviewer correctly extracts final decision from thought-first and multipart response', async () => {
+  const expectedDecision = {
+    decision: 'BLOCK',
+    summary: 'Final decision is BLOCK despite intermediate thought.',
+  };
+
+  const mockFetchThoughtAndMultipart = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      candidates: [
+        {
+          finishReason: 'STOP',
+          content: {
+            parts: [
+              {
+                thought: true,
+                text: 'Thinking process: Initially thought about {"decision": "PASS"}...',
+              },
+              {
+                text: '{"decision": "BLOCK", ',
+              },
+              {
+                text: '"summary": "Final decision is BLOCK despite intermediate thought."}',
+              },
+            ],
+          },
+        },
+      ],
+    }),
+  });
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: { model: 'gemini-2.5-flash' },
+  };
+
+  const result = await runGeminiReviewer(request, {
+    apiKey: 'test-api-key',
+    fetch: mockFetchThoughtAndMultipart,
+  });
+
+  assert.deepEqual(result, expectedDecision);
+});
+
+test('runGeminiReviewer fails closed when response contains only thought parts', async () => {
+  const mockFetchThoughtOnly = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      candidates: [
+        {
+          finishReason: 'STOP',
+          content: {
+            parts: [
+              {
+                thought: true,
+                text: 'Only thought content here...',
+              },
+            ],
+          },
+        },
+      ],
+    }),
+  });
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: { model: 'gemini-2.5-flash' },
+  };
+
+  await assert.rejects(
+    () => runGeminiReviewer(request, { apiKey: 'test-api-key', fetch: mockFetchThoughtOnly }),
+    /empty or invalid response candidates/
+  );
+});
+
 test('runGeminiReviewer fails closed on timeout', async () => {
   const mockFetchHanging = async (_url, { signal }) => {
     return new Promise((_, reject) => {
