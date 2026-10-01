@@ -118,6 +118,12 @@ Identical candidates are deduplicated. The serialized Hook
 context is capped at 4,000 UTF-8 bytes and reports status, summary, revision,
 and request/snapshot identity.
 
+This pilot is currently unsupported on native Windows because the current
+single-flight lock implementation excludes `win32` and assumes atomic hard-link
+support. On Windows the adapter returns informational `incomplete` before
+screening. This limitation applies only to the opt-in PostToolUse screen; it
+does not change the existing local review, manual, Skill, or CI paths.
+
 The screen resolves the repository from the hook process's invocation working
 directory and requires the event's `cwd` to match it. The CLI launcher must run
 from the consumer session's working directory. A programmatic caller that
