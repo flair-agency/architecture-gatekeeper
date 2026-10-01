@@ -10,8 +10,9 @@ const baseBranch = process.env.BASE_BRANCH;
 const triggerProfile = process.env.TRIGGER_PROFILE;
 const token = process.env.GH_TOKEN;
 
-function readProtectedPolicyBytes() {
-  return execFileSync('git', ['-C', process.env.GITHUB_WORKSPACE, '--no-replace-objects', 'show',
+function readProtectedPolicyBytes(gitDirectory) {
+  if (!gitDirectory) fail('protected policy Git checkout is unavailable.');
+  return execFileSync('git', ['-C', gitDirectory, '--no-replace-objects', 'show',
     `${baseSha}:.codex/gatekeeper/ci-policy.json`], { encoding: 'buffer', maxBuffer: 65_536,
     stdio: ['ignore', 'pipe', 'pipe'] });
 }
@@ -33,9 +34,11 @@ function readTagRef({ expectedUrl, repository: selectedRepository, tagNamespace,
 }
 
 try {
-  const input = { repository, baseSha, bSha, baseBranch, triggerProfile,
-    policyBytes: readProtectedPolicyBytes(), readTagRef };
   const command = process.argv[2] ?? 'classify';
+  const policyGitDirectory = command === 'acceptance-guard'
+    ? process.env.PROTECTED_RUNTIME_PATH : process.env.GITHUB_WORKSPACE;
+  const input = { repository, baseSha, bSha, baseBranch, triggerProfile,
+    policyBytes: readProtectedPolicyBytes(policyGitDirectory), readTagRef };
   const result = command === 'classify' ? await classifyOwnerAmendmentTagAttempt(input)
     : command === 'acceptance-guard' ? await assertOwnerAmendmentTagAbsentAtAcceptance(input)
       : fail('unsupported classifier command.');
