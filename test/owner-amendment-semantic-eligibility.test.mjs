@@ -106,7 +106,11 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     triggerRecord = produceOwnerAmendmentOwnerDecision({ decisionBytes, provenance: authorityProvenance,
       context: { repository, prNumber: 77, baseSha, headSha: triggerHeadSha, mergeSha, workflowSha: baseSha,
         workflowPath, runId: triggerProducer.runId, runAttempt: triggerProducer.runAttempt },
-      baseInputs, readAuthority: () => authorityBytes });
+      baseInputs, readAuthority: (_revision, memberPath) => {
+        const member = authoritySet.members.find(item => item.path === memberPath);
+        if (!member) throw new Error('unknown authority path');
+        return Buffer.from(member.bytes);
+      } });
   }
   const triggerReviewRecordBytes = Buffer.from(`${JSON.stringify(triggerRecord)}\n`);
   const changes = [{ path, beforeBytes: authorityBytes, afterBytes: proposedAuthorityBytes }];
@@ -139,6 +143,7 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
     ? buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecordBytes: triggerReviewRecordBytes,
       attestationBundleBytes, repository, baseSha, bSha, authorityId: 'architecture', authorityPath: path,
       previousAuthorityBytes: authorityBytes, amendedAuthorityBytes: proposedAuthorityBytes,
+      authorityChanges: changes, priorAuthoritySetDigest: authoritySet.digest, resultingAuthoritySetDigest,
       purpose: amendment.purpose }).bytes
     : multiAuthority ? Buffer.from(JSON.stringify(amendment))
       : buildOwnerAmendmentRecord({ scope: { baseSha, headSha: bSha, authorityId: 'architecture', authorityPath: path,
@@ -183,7 +188,8 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
         baseSha: value.baseSha, bSha: value.bSha, policyRevision: value.policyRevision,
         triggerProfile: value.triggerProfile, triggerReviewRecordSha256: value.triggerReviewRecordSha256,
         priorAuthoritySetDigest: value.priorAuthoritySetDigest,
-        resultingAuthoritySetDigest: value.resultingAuthoritySetDigest, targetValidated: true, purpose: value.purpose };
+        resultingAuthoritySetDigest: value.resultingAuthoritySetDigest, changes: expected.changes,
+        targetValidated: true, purpose: value.purpose };
     }
     assert.equal(value.version, 2);
     assert.equal(value.repository, expected.repository);
@@ -199,7 +205,8 @@ function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_
       baseSha: value.baseSha, bSha: value.headSha, policyRevision: value.policyRevision,
       triggerProfile: expected.triggerProfile, triggerReviewRecordSha256: expected.triggerReviewRecordSha256,
       priorAuthoritySetDigest: expected.authoritySetDigest,
-      resultingAuthoritySetDigest: expected.resultingAuthoritySetDigest, targetValidated: true, purpose: value.purpose };
+      resultingAuthoritySetDigest: expected.resultingAuthoritySetDigest, changes: expected.changes,
+      targetValidated: true, purpose: value.purpose };
   };
   const verifyTag = ({ tag: tagInput, expected }) => {
     assert.deepEqual(tagInput, tag);
@@ -270,15 +277,18 @@ test('handoff-produced tag-object bytes reach eligibility for both exact trigger
   assert.equal(block.transported.envelope.version, 2);
   assert.equal(block.producer.prepare(block.args).triggerProfile, 'completed-block-v1');
 
-  const ownerDecision = fixture('completed-owner-decision-self-v1');
+  const ownerDecision = fixture('completed-owner-decision-self-v1', { multiAuthority: true });
   let ownerDecisionMessage;
   const handoff = await handoffOwnerAmendmentOwnerDecision({
     repository,
     policy: { ownerAmendmentVersion: 1, ownerAmendmentGrade: 'G0', ownerAmendmentScope: 'authority-only',
       ownerAmendmentTriggerProfile: 'completed-owner-decision-self-v1', ownerAmendmentAuthorityId: 'architecture',
       ownerAmendmentAuthorityPath: path, ownerAmendmentTagNamespace: 'refs/tags/architecture-gatekeeper/amendments' },
-    manifest: { version: 1, authorities: [{ id: 'architecture', repository: 'self', revision: 'authority-revision', path }] },
-    baseSha, bSha, changedFiles: [{ path, status: 'modified' }],
+    manifest: { version: 1, authorities: ownerDecision.authoritySet.members.map(member => ({ id: member.id,
+      repository: 'self', revision: 'authority-revision', path: member.path })) },
+    baseSha, bSha, changedFiles: ownerDecision.args.changes.map(change => ({ path: change.path, status: 'modified' })),
+    authorityChanges: ownerDecision.args.changes, priorAuthoritySetDigest: ownerDecision.authoritySet.digest,
+    resultingAuthoritySetDigest: ownerDecision.resultingAuthoritySetDigest,
     baseAuthorityBytes: authorityBytes, headAuthorityBytes: proposedAuthorityBytes,
     triggerRun: { runId: '1001', runAttempt: '1', prNumber: 77, headSha: triggerHeadSha,
       workflowPath: '.github/workflows/self-architecture-gate.yml', workflowRef: 'refs/heads/main',
@@ -366,6 +376,44 @@ test('closed-schema producer output without an ID reaches amendment eligibility 
     gatekeeper: ownerDecision.gatekeeper, reviewModel: prepared.model, reviewReasoningEffort: prepared.reasoningEffort });
   assert.equal(completed.status, 'COMPLETED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY');
   assert.equal(completed.receipt.triggerReviewRecordSha256, sha256(ownerDecision.triggerReviewRecordBytes));
+});
+
+test('OWNER_DECISION prompt, AmendmentRecord, and receipt bind every changed authority member', () => {
+  const f = fixture('completed-owner-decision-self-v1', { multiAuthority: true });
+  const prepared = f.producer.prepare(f.args);
+  const secondPath = 'docs/ownership.md';
+  const secondChange = f.args.changes.find(change => change.path === secondPath);
+  assert.ok(secondChange);
+  assert.equal(prepared.changes.length, 2);
+  assert.match(prepared.promptBytes.toString('utf8'), /# Ownership boundaries/);
+  assert.match(prepared.promptBytes.toString('utf8'), /Ownership remains with the project owner\./);
+  const amendment = JSON.parse(f.amendmentRecordBytes.toString('utf8'));
+  assert.ok(amendment.changes.some(change => change.path === secondPath &&
+    change.beforeSha256 === sha256(secondChange.beforeBytes) && change.afterSha256 === sha256(secondChange.afterBytes)));
+  assert.equal(amendment.resultingAuthoritySetDigest, f.resultingAuthoritySetDigest);
+  const completed = completeOwnerAmendmentSemanticEligibility({ prepared,
+    decisionBytes: eligibilityDecision(prepared), producer: f.semanticProducer, gatekeeper: f.gatekeeper,
+    reviewModel: prepared.model, reviewReasoningEffort: prepared.reasoningEffort });
+  assert.deepEqual(completed.receipt.changes.map(change => change.path), [path, secondPath]);
+  assert.equal(completed.receipt.authoritySetDigest, f.authoritySet.digest);
+
+  const omitted = createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
+    resolveProtectedInputs: () => {
+      const inputs = structuredCloneProtectedInputs({ policyBytes: f.args.policyBytes, manifestBytes: f.args.manifestBytes,
+        authoritySet: f.authoritySet, changes: f.args.changes, diffBytes: f.args.diffBytes, baseBranch: 'main' });
+      inputs.changes = inputs.changes.slice(0, 1);
+      return inputs;
+    } });
+  assert.throws(() => omitted.prepare(f.args), /complete diff path set/);
+
+  const mutated = createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
+    resolveProtectedInputs: () => {
+      const inputs = structuredCloneProtectedInputs({ policyBytes: f.args.policyBytes, manifestBytes: f.args.manifestBytes,
+        authoritySet: f.authoritySet, changes: f.args.changes, diffBytes: f.args.diffBytes, baseBranch: 'main' });
+      inputs.changes[1].afterBytes[0] ^= 1;
+      return inputs;
+    } });
+  assert.throws(() => mutated.prepare(f.args), /differ from its exact B Git object/);
 });
 
 test('owner-decision semantic eligibility rejects an unadopted decision ID claim in the AmendmentRecord', () => {

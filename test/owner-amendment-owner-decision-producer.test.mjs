@@ -60,6 +60,9 @@ test('closed-schema producer output without ownerDecisionId passes through amend
   const recordBytes = Buffer.from(`${JSON.stringify(record)}\n`);
   const bundleBytes = Buffer.from('{"attestation":"fixture"}\n');
   const amendedAuthorityBytes = Buffer.from('# Architecture\nAmended rule.\n');
+  const priorAuthoritySetDigest = provenance.setDigest;
+  const resultingAuthoritySetDigest = sha(Buffer.from(JSON.stringify([{ ...descriptor,
+    byteLength: amendedAuthorityBytes.length, sha256: sha(amendedAuthorityBytes) }])));
   let tagMessage;
   const result = await handoffOwnerAmendmentOwnerDecision({
     repository, policy: { ownerAmendmentVersion: 1, ownerAmendmentGrade: 'G0', ownerAmendmentScope: 'authority-only',
@@ -67,6 +70,8 @@ test('closed-schema producer output without ownerDecisionId passes through amend
       ownerAmendmentAuthorityPath: 'docs/architecture.md' },
     manifest, baseSha, bSha: 'f'.repeat(40), changedFiles: [{ path: 'docs/architecture.md', status: 'modified' }],
     baseAuthorityBytes: authorityBytes, headAuthorityBytes: amendedAuthorityBytes,
+    authorityChanges: [{ path: 'docs/architecture.md', beforeBytes: authorityBytes, afterBytes: amendedAuthorityBytes }],
+    priorAuthoritySetDigest, resultingAuthoritySetDigest,
     triggerRun: { runId: context.runId, runAttempt: context.runAttempt, prNumber: context.prNumber,
       headSha: context.headSha, workflowPath: context.workflowPath, workflowRef: 'refs/heads/main',
       workflowSha: context.workflowSha, event: 'pull_request_target', artifactId: '123' },
@@ -92,6 +97,8 @@ test('closed-schema producer output without ownerDecisionId passes through amend
       authorities: [{ id: 'architecture-contract', path: 'docs/architecture.md' }] },
     authority: { id: 'architecture-contract', path: 'docs/architecture.md',
       previousSha256: sha(authorityBytes), newSha256: sha(amendedAuthorityBytes) },
+    changes: [{ path: 'docs/architecture.md', beforeSha256: sha(authorityBytes), afterSha256: sha(amendedAuthorityBytes) }],
+    priorAuthoritySetDigest, resultingAuthoritySetDigest,
   }, tagEnvelope: { headSha: 'f'.repeat(40), tag: { objectOid: tagObjectOid },
     tagRef: `refs/tags/architecture-gatekeeper/amendments/${'f'.repeat(40)}`, observedTagRefOid: tagObjectOid,
     reviewRecordBytes: recordBytes, attestationBundleBytes: bundleBytes,

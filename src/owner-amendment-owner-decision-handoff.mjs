@@ -18,7 +18,8 @@ const canonical = value => Array.isArray(value) ? value.map(canonical) : value &
  * identity nor declares semantic eligibility or acceptance.
  */
 export async function handoffOwnerAmendmentOwnerDecision({ repository, policy, manifest, baseSha, bSha,
-  changedFiles, baseAuthorityBytes, headAuthorityBytes, triggerRun, authorityId, authorityPath, purpose,
+  changedFiles, baseAuthorityBytes, headAuthorityBytes, authorityChanges, priorAuthoritySetDigest,
+  resultingAuthoritySetDigest, triggerRun, authorityId, authorityPath, purpose,
   tagNamespace, rulesetId, token, tagger, fetchImpl = fetch, runGh,
   fetchArtifact = fetchOwnerAmendmentBlockArtifact, extractArtifact = extractOwnerAmendmentBlockArtifactZip,
   verifyEvidence = verifyOwnerAmendmentBlockEvidence, createTag = createAndReadOwnerAmendmentTag }) {
@@ -36,6 +37,13 @@ export async function handoffOwnerAmendmentOwnerDecision({ repository, policy, m
     }
     const scope = inspectOwnerAmendmentSelfScope({ policy, manifest, baseSha, headSha: bSha,
       changedFiles, baseAuthorityBytes, headAuthorityBytes });
+    if (!Array.isArray(changedFiles) || !Array.isArray(authorityChanges) ||
+        changedFiles.some(file => file?.status !== 'modified') ||
+        changedFiles.map(file => file.path).sort().join('\0') !==
+          authorityChanges.map(change => change?.path).sort().join('\0') ||
+        new Set(authorityChanges.map(change => change?.path)).size !== authorityChanges.length) {
+      fail('complete OWNER_DECISION authority bytes do not exactly cover every changed B path.');
+    }
     const expected = { repository, artifactId: triggerRun.artifactId, runId: String(triggerRun.runId),
       runAttempt: String(triggerRun.runAttempt), baseSha, headSha: triggerRun.headSha, profile: 'ownerDecision' };
     const fetched = await fetchArtifact({ expected, token, fetchImpl });
@@ -63,7 +71,8 @@ export async function handoffOwnerAmendmentOwnerDecision({ repository, policy, m
     const built = buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecordBytes: extracted.reviewRecordBytes,
       attestationBundleBytes: extracted.attestationBundleBytes, repository, baseSha, bSha,
       authorityId: scope.authorityId, authorityPath: scope.authorityPath,
-      previousAuthorityBytes: baseAuthorityBytes, amendedAuthorityBytes: headAuthorityBytes, purpose });
+      previousAuthorityBytes: baseAuthorityBytes, amendedAuthorityBytes: headAuthorityBytes,
+      authorityChanges, priorAuthoritySetDigest, resultingAuthoritySetDigest, purpose });
     const envelope = { version: 3, profile: 'self-g0', triggerProfile: 'completed-owner-decision-self-v1', bSha,
       reviewRecordBase64: extracted.reviewRecordBytes.toString('base64'), reviewRecordSha256: sha(extracted.reviewRecordBytes),
       attestationBundleBase64: extracted.attestationBundleBytes.toString('base64'), attestationBundleSha256: sha(extracted.attestationBundleBytes),

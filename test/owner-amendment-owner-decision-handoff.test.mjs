@@ -11,12 +11,16 @@ const path = 'docs/architecture.md';
 const before = Buffer.from('previous rule\n'), after = Buffer.from('amended rule\n'), bundle = Buffer.from('bundle');
 const decision = { decision: 'OWNER_DECISION', authorityIds: ['architecture'] };
 const decisionBytes = Buffer.from(JSON.stringify(decision));
+const descriptor = { id: 'architecture', repository, resolvedCommit: baseSha,
+  path, byteLength: before.length, sha256: sha(before) };
+const priorAuthoritySetDigest = sha(Buffer.from(JSON.stringify([descriptor])));
+const resultingAuthoritySetDigest = sha(Buffer.from(JSON.stringify([{ ...descriptor,
+  byteLength: after.length, sha256: sha(after) }])));
 const review = { version: 1, kind: 'owner-amendment-owner-decision-review-record', repository,
   prNumber: 3, baseSha, headSha: aSha, mergeSha, workflowSha: baseSha,
   workflowPath: '.github/workflows/self-architecture-gate.yml', runId: '31', runAttempt: '1',
   authority: { version: 1, selfRepository: repository, authorityRevision: baseSha, manifestSha256: sha('manifest'),
-    setDigest: '0'.repeat(64), members: [{ id: 'architecture', repository, resolvedCommit: baseSha,
-      path, byteLength: before.length, sha256: sha(before) }] },
+    setDigest: priorAuthoritySetDigest, members: [descriptor] },
   inputDigests: Object.fromEntries(['manifest','policy','prompt','schema','validation'].map(key => [key, sha(key)])),
   decisionSha256: sha(decisionBytes), decisionBytesBase64: decisionBytes.toString('base64'), decision };
 const reviewBytes = Buffer.from(`${JSON.stringify(review)}\n`);
@@ -26,6 +30,7 @@ const input = overrides => ({ repository, policy: { ownerAmendmentVersion: 1, ow
   ownerAmendmentTagNamespace: 'refs/tags/architecture-gatekeeper/amendments' },
   manifest: { version: 1, authorities: [{ id: 'architecture', repository: 'self', revision: 'authority-revision', path }] },
   baseSha, bSha, changedFiles: [{ path, status: 'modified' }], baseAuthorityBytes: before, headAuthorityBytes: after,
+  authorityChanges: [{ path, beforeBytes: before, afterBytes: after }], priorAuthoritySetDigest, resultingAuthoritySetDigest,
   triggerRun: { runId: '31', runAttempt: '1', prNumber: 3, headSha: aSha,
     workflowPath: review.workflowPath, workflowRef: 'refs/heads/main', workflowSha: baseSha,
     event: 'pull_request_target', artifactId: '93' }, authorityId: 'architecture', authorityPath: path,
@@ -66,6 +71,8 @@ test('transports a canonical v3 tag that passes the OWNER_DECISION context verif
     policy: { grade: 'G0', scope: 'authority-only', triggerProfile: 'completed-owner-decision-self-v1',
       authorities: [{ id: 'architecture', path }] },
     authority: { id: 'architecture', path, previousSha256: sha(before), newSha256: sha(after) },
+    changes: [{ path, beforeSha256: sha(before), afterSha256: sha(after) }],
+    priorAuthoritySetDigest, resultingAuthoritySetDigest,
   }, tagEnvelope: { headSha: bSha, tag: { objectOid: tagObjectOid },
     tagRef: `refs/tags/architecture-gatekeeper/amendments/${bSha}`, observedTagRefOid: tagObjectOid,
     reviewRecordBytes: Buffer.from(envelope.reviewRecordBase64, 'base64'),
@@ -82,4 +89,13 @@ test('fails closed if predecessor policy does not select the OWNER_DECISION prof
   const badProvenance = await handoffOwnerAmendmentOwnerDecision(input({ verifyEvidence: () => ({ status: 'INCOMPLETE', reason: 'bad signature' }) }));
   assert.equal(badProvenance.status, 'INCOMPLETE');
   assert.match(badProvenance.reason, /bad signature/);
+});
+
+test('fails closed when changed files are not completely represented by OWNER_DECISION bytes', async () => {
+  const missing = await handoffOwnerAmendmentOwnerDecision(input({ authorityChanges: [] }));
+  assert.equal(missing.status, 'INCOMPLETE');
+  assert.match(missing.reason, /do not exactly cover every changed B path/);
+  const added = await handoffOwnerAmendmentOwnerDecision(input({ changedFiles: [] }));
+  assert.equal(added.status, 'INCOMPLETE');
+  assert.match(added.reason, /selected self authority and changed authority paths are required/);
 });

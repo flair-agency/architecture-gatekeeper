@@ -361,17 +361,19 @@ function validateAmendmentRecord({ bytes, validator, expected }) {
   if (typeof validator !== 'function') fail('protected trigger-profile AmendmentRecord validator is required.');
   const result = validator({ bytes: Buffer.from(bytes), expected: Object.freeze({ ...expected }) });
   const keys = ['status', 'repository', 'baseSha', 'bSha', 'policyRevision', 'triggerProfile',
-    'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest', 'targetValidated', 'purpose'];
+    'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest', 'changes', 'targetValidated', 'purpose'];
   exact(result, keys, 'validated AmendmentRecord bindings');
   if (result.status !== 'VERIFIED_OWNER_AMENDMENT_RECORD' || result.repository !== expected.repository ||
       result.baseSha !== expected.baseSha || result.bSha !== expected.bSha || result.policyRevision !== expected.policyRevision ||
       result.triggerProfile !== expected.triggerProfile || result.triggerReviewRecordSha256 !== expected.triggerReviewRecordSha256 ||
       result.priorAuthoritySetDigest !== expected.authoritySetDigest ||
-      result.resultingAuthoritySetDigest !== expected.resultingAuthoritySetDigest || result.targetValidated !== true ||
+      result.resultingAuthoritySetDigest !== expected.resultingAuthoritySetDigest ||
+      JSON.stringify(result.changes) !== JSON.stringify(expected.changes) || result.targetValidated !== true ||
       typeof result.purpose !== 'string' || !result.purpose.trim() || result.purpose.length > 500) {
     fail('AmendmentRecord profile validation does not bind exact B, trigger, target, prior/resulting Authority Sets and purpose.');
   }
-  return Object.freeze({ sha256: digest(bytes), purpose: result.purpose });
+  return Object.freeze({ sha256: digest(bytes), purpose: result.purpose,
+    changes: Object.freeze(result.changes.map(change => Object.freeze({ ...change }))) });
 }
 
 function validateTagEvidence({ tag, tagObjectBytes, validator, expected }) {

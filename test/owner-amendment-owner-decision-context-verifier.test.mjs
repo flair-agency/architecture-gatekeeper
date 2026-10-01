@@ -9,21 +9,28 @@ const repository = 'flair-agency/architecture-gatekeeper', id = 'architecture', 
 const before = Buffer.from('before\n'), after = Buffer.from('after\n'), bundle = Buffer.from('attestation');
 const decision = { decision: 'OWNER_DECISION', authorityIds: [id] };
 const decisionBytes = Buffer.from(JSON.stringify(decision));
+const descriptor = { id, repository, resolvedCommit: baseSha, path, byteLength: before.length, sha256: hash(before) };
+const priorAuthoritySetDigest = hash(Buffer.from(JSON.stringify([descriptor])));
+const resultingAuthoritySetDigest = hash(Buffer.from(JSON.stringify([{ ...descriptor,
+  byteLength: after.length, sha256: hash(after) }])));
 const trigger = { version: 1, kind: 'owner-amendment-owner-decision-review-record', repository, prNumber: 8,
   baseSha, headSha: aSha, mergeSha, workflowSha: baseSha, workflowPath: '.github/workflows/self-architecture-gate.yml',
   runId: '42', runAttempt: '1', authority: { selfRepository: repository, authorityRevision: baseSha,
-    members: [{ id, path, repository, resolvedCommit: baseSha, sha256: hash(before) }] }, decision,
+    setDigest: priorAuthoritySetDigest, members: [descriptor] }, decision,
   inputDigests: Object.fromEntries(['manifest','policy','prompt','schema','validation'].map(key => [key, hash(key)])),
   decisionSha256: hash(decisionBytes), decisionBytesBase64: decisionBytes.toString('base64') };
 const triggerBytes = Buffer.from(JSON.stringify(trigger));
-const amendment = { version: 1, kind: 'owner-amendment-owner-decision-amendment-record',
+const changes = [{ path, beforeSha256: hash(before), afterSha256: hash(after) }];
+const amendment = { version: 2, kind: 'owner-amendment-owner-decision-amendment-record',
   triggerProfile: 'completed-owner-decision-self-v1', repository, baseSha, headSha: bSha, policyRevision: baseSha,
   authority: { id, path, previousSha256: hash(before), newSha256: hash(after) },
+  changes, priorAuthoritySetDigest, resultingAuthoritySetDigest,
   triggeringReviewSha256: hash(triggerBytes), attestationBundleSha256: hash(bundle), purpose: 'Resolve selected existing decision.' };
 const amendmentBytes = Buffer.from(`${JSON.stringify(amendment)}\n`);
 const trustedContext = { repository, baseSha, bSha, policyRevision: baseSha,
   policy: { grade: 'G0', scope: 'authority-only', triggerProfile: 'completed-owner-decision-self-v1', authorities: [{ id, path }] },
-  authority: { id, path, previousSha256: hash(before), newSha256: hash(after) } };
+  authority: { id, path, previousSha256: hash(before), newSha256: hash(after) },
+  changes, priorAuthoritySetDigest, resultingAuthoritySetDigest };
 const input = () => ({ trustedContext, tagEnvelope: { headSha: bSha,
   tag: { objectOid: 'e'.repeat(40) }, tagRef: `refs/tags/architecture-gatekeeper/amendments/${bSha}`,
   observedTagRefOid: 'e'.repeat(40), reviewRecordBytes: triggerBytes, attestationBundleBytes: bundle,
