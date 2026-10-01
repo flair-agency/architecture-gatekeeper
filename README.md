@@ -56,6 +56,18 @@ The launcher imports the already-installed exact package version and invokes a
 local `codex` binary with hooks disabled and a read-only sandbox. It never uses
 `npx` or a registry fallback.
 
+Consumers may opt into an additional asynchronous `PostToolUse` change screen
+with a separate launcher that imports `runPostToolScreenHookCli`. Configure it
+only in the consumer's project-local Codex hooks. It reviews bounded tracked
+diffs after supported `Bash`, `exec_command`, `apply_patch`, `Edit`, and `Write`
+events, and returns informational context without blocking or changing the
+completed tool result. Untracked paths, diffs over 64 KiB, dirty submodules, or
+inconsistent snapshots are reported as incomplete. Set the Hook timeout above
+the consumer's configured reviewer timeout plus local preparation and cleanup
+time. This pilot does not run by default and does not replace the explicit
+architecture-review Skill for design intent. See the
+[PostToolUse integration details](docs/integration-reference.md#optional-asynchronous-posttooluse-screen).
+
 ### Manual review
 
 Run the installed command with an architecture question or proposed change:

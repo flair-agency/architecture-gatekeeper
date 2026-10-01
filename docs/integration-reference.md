@@ -65,6 +65,72 @@ When `validationPath` is configured, the local and manual review paths apply
 that committed policy after structured generation and fail closed on a rule
 violation or malformed policy.
 
+### Optional asynchronous PostToolUse screen
+
+A consumer may opt into a separate change screen after a supported file-capable
+tool completes. This pilot reviews the bounded tracked working-tree diff and
+returns informational Hook context; it does not block the completed tool,
+change its result, or establish repository acceptance. No consumer is enabled
+by default. Keep the launcher and hook configuration in the consumer's trusted
+project, and use the exact installed package version. The normal Codex
+project-trust decision still applies to the hook code and its command.
+
+Create a consumer-owned launcher such as
+`.codex/hooks/architecture-screen.mjs`:
+
+```js
+#!/usr/bin/env node
+import { runPostToolScreenHookCli } from '@flair-agency/architecture-gatekeeper';
+runPostToolScreenHookCli();
+```
+
+Then add this entry to the consumer's project-local `.codex/hooks.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash|exec_command|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .codex/hooks/architecture-screen.mjs",
+            "async": true,
+            "timeout": 240
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The adapter accepts only `PostToolUse` events from `Bash`, `exec_command`,
+`apply_patch`, `Edit`, and `Write`. It screens staged and unstaged tracked
+changes up to 64 KiB. Untracked paths, dirty submodules, a changed `HEAD` during
+capture, and other snapshot failures produce `incomplete`; they do not produce
+a semantic decision. It waits a fixed two seconds from the first event in a
+batch; later events do not extend that delay. It permits one reviewer at a time
+per worktree and retries the latest changed candidate on a later eligible
+event. It does not start a daemon or drain pending work after a review.
+Identical candidates are deduplicated. The serialized Hook
+context is capped at 4,000 UTF-8 bytes and reports status, summary, revision,
+and request/snapshot identity.
+
+The Hook timeout is measured in seconds and must exceed the consumer's
+`reviewTimeoutMs` plus local request preparation and cleanup. For example, a
+180,000 ms reviewer deadline can use a 240-second Hook timeout to leave about a
+minute of headroom. Tune this to the consumer's actual timeout and host startup
+cost.
+
+This is best-effort feedback. Codex may discard an asynchronous hook's output
+when a session ends; delivery can occur during the active turn or on a later
+turn, and the idle host does not start a turn to deliver it. Desktop delivery
+has not been verified. Keep this route opt-in and treat
+`BLOCK`, `OWNER_DECISION`, and `incomplete` as informational warnings after the
+tool has completed.
+
 ## Manual review
 
 After installing a fixed package version, invoke the package-owned entrypoint

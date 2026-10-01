@@ -34,3 +34,4 @@ export async function runHookAsync(input, cwd = process.cwd()) {
 export function runHookCli() { let input = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', c => { input += c; }); process.stdin.on('end', () => { runHookAsync(input).then(result => process.stdout.write(JSON.stringify(result))).catch(error => fail(error.message)); }); }
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) runHookCli();
 export { validateDecision as validate };
+export { runPostToolScreenHook, runPostToolScreenHookCli } from './local-post-tool-screen.mjs';

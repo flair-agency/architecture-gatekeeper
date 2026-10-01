@@ -1,5 +1,7 @@
 # Local screening host probe (2026-10-01)
 
+This host-feasibility record supports [Issue #241](https://github.com/flair-agency/architecture-gatekeeper/issues/241) under parent [Issue #240](https://github.com/flair-agency/architecture-gatekeeper/issues/240). It is investigation evidence only; no integration route is selected or enabled.
+
 ## Question
 
 Can this Codex host start a model-free asynchronous command hook and deliver
