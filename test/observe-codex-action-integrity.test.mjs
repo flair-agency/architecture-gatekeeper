@@ -103,8 +103,8 @@ test('disabled or error-ignored full verification is rejected', () => {
     },
     (args) => {
       args.workflow = args.workflow.replace(
-        '  review:\n    if: (needs.policy.outputs.mode == \'enforced\' || needs.policy.outputs.mode == \'procedural\')\n',
-        '  review:\n    if: false\n',
+        '  review-generic:\n    if: (needs.policy.outputs.mode == \'enforced\' || needs.policy.outputs.mode == \'procedural\') && !(github.repository == \'flair-agency/architecture-gatekeeper\' && github.event_name == \'pull_request_target\' && github.event.pull_request.base.ref == \'main\' && github.event.pull_request.draft == false && github.workflow_ref == \'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main\' && vars.SELF_PROTECTED_MODEL_ENABLED == \'true\')\n',
+        '  review-generic:\n    if: false\n',
       );
     },
   ];
@@ -113,6 +113,15 @@ test('disabled or error-ignored full verification is rejected', () => {
 
 test('observation job is outside the enforced review and acceptance dependencies', () => {
   assert.match(baseline.workflow, /  codex-action-integrity-observe:\n(?:.|\n)*?    continue-on-error: true/);
-  assert.match(baseline.workflow, /  review:\n    if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\)\n    needs: \[policy, codex-action-integrity\]/);
+  assert.match(baseline.workflow, /  review-generic:\n    if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\)[\s\S]*?needs: \[policy, codex-action-integrity\]/);
   assert.doesNotMatch(baseline.workflow, /needs:.*codex-action-integrity-observe/);
+});
+
+test('observation requires both exact route guards and integrity predecessors', () => {
+  const cases = [
+    (args) => { args.workflow = args.workflow.replace("vars.SELF_PROTECTED_MODEL_ENABLED == 'true')\n    needs: [policy, codex-action-integrity]", "vars.SELF_PROTECTED_MODEL_ENABLED != 'true')\n    needs: [policy, codex-action-integrity]"); },
+    (args) => { args.workflow = args.workflow.replace('  review-self:\n    if:', '  review-self:\n    if: false\n    # if:'); },
+    (args) => { args.workflow = args.workflow.replace('  review-self:\n    if:', '  review-self:\n    needs: [policy]\n    if:'); },
+  ];
+  for (const change of cases) assert.throws(candidate(change));
 });
