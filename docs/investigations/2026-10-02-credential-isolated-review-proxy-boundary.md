@@ -78,7 +78,10 @@ roles:
    secrets from the CI platform, selects the verified proxy executable, spawns
    the proxy, and starts the reviewer with an explicitly sanitized environment.
 2. **Review Runner (Credential-free client)**: Runs in a separate child process
-   with all provider secrets removed from its environment (`env -u`). It
+   with all provider secrets and OIDC/token-renewal capabilities removed from
+   its environment and accessible resources. In GitHub Actions this includes
+   `ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN`; withholding
+   an exchanged token alone does not prevent obtaining a replacement. It
    communicates exclusively with the local loopback endpoint.
 
 ```mermaid
@@ -117,6 +120,9 @@ export interface ProxyConfig {
     projectId?: string;
     region?: string;
   };
+
+  /** Exact model authorized by launcher-selected policy; never client-selected */
+  model: string;
 
   /** Upstream target routing options */
   upstreamOptions?: {
@@ -160,7 +166,11 @@ export interface ReviewSecurityProxy {
    and unauthorized pre-binding.
 3. **No Redirects**: The proxy must set `redirect: 'error'` or `'manual'` on
    upstream requests. HTTP 3xx responses must fail closed.
-4. **Deterministic Teardown**: The proxy must terminate upon:
+4. **Selected Scope**: The launcher supplies the exact authorized model and,
+   for Vertex, project and region. Every request must match those selections;
+   missing selections, scope mismatches, query strings and extra path components
+   fail closed. Client input cannot choose or override upstream scope.
+5. **Deterministic Teardown**: The proxy must terminate upon:
    - Explicit `shutdown()` invocation by the launcher;
    - Client process termination (SIGPIPE / closed IPC);
    - Reaching `deadlineMs`.
@@ -193,7 +203,10 @@ export interface ReviewSecurityProxy {
 - **Accepted Inbound Routes**:
   - Vertex AI: `POST /v1/projects/:project/locations/:region/publishers/google/models/:model:generateContent`
   - AI Studio: `POST /v1beta/models/:model:generateContent`
-  - Strict pattern matching: rejects any request not ending in `:generateContent`.
+  - Require an exact path derived from launcher-selected project, region and
+    model (Vertex), or launcher-selected model (AI Studio). Matching only a
+    `:generateContent` suffix or syntactic pattern is insufficient. Reject scope
+    mismatches, query strings and extra components before upstream dispatch.
 - **Upstream Endpoints**:
   - Vertex AI: `https://${region}-aiplatform.googleapis.com` (pinned domain regex: `^[a-z0-9-]+-aiplatform\.googleapis\.com$`).
   - AI Studio: `https://generativelanguage.googleapis.com`.
@@ -260,7 +273,8 @@ authorization:
    - Provide a supervisor launcher that spins up the proxy, isolates
      credentials, and executes `gemini-ci-runner.mjs` against the loopback URL.
    - Comprehensive test suite in `test/gemini-security-proxy.test.mjs` covering
-     route allowlisting, credential injection, and fail-closed behavior.
+     route allowlisting, credential injection, withheld OIDC capabilities,
+     project/region/model mismatch rejection and fail-closed behavior.
 3. **Phase 3: Formal Verification & Evidence Integration**:
    - Integrate with reusable CI workflows.
    - Collect and verify execution evidence before enabling any protected
