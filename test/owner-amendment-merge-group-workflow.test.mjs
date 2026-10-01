@@ -64,6 +64,28 @@ test('candidate wake-up is unprivileged and delegates all verification to the gu
   assert.match(script, /hash\(promptBytes\) !== prepared\.promptSha256 \|\| hash\(schemaBytes\) !== prepared\.schemaSha256 \|\|\s*hash\(diffBytes\) !== prepared\.diffSha256/);
 });
 
+test('receiver hands off ordinary decision bytes only after a successful reviewer action', () => {
+  const receiver = readFileSync(new URL('../.github/workflows/self-architecture-gate-receiver.yml', import.meta.url), 'utf8');
+  const script = readFileSync(new URL('../scripts/owner-amendment-workflow-run-receiver.mjs', import.meta.url), 'utf8');
+  const handoffInput = receiver.match(/DECISION: \$\{\{ (.*?) \}\}/)?.[1];
+  assert.equal(handoffInput,
+    "steps.ordinary-review.outcome == 'success' && steps.ordinary-review.outputs.final-message || ''");
+
+  const javascriptExpression = handoffInput
+    .replaceAll('steps.ordinary-review.outcome', 'outcome')
+    .replaceAll('steps.ordinary-review.outputs.final-message', 'finalMessage');
+  const handoffDecision = new Function('outcome', 'finalMessage', `return (${javascriptExpression});`);
+  assert.equal(handoffDecision('failure', '{"decision":"PASS"}'), '',
+    'an output left behind by a failed reviewer must not enter the handoff');
+  assert.equal(handoffDecision('success', '{"decision":"PASS"}'), '{"decision":"PASS"}',
+    'a successful reviewer decision must remain available for validation');
+  assert.equal(handoffDecision('skipped', '{"decision":"PASS"}'), '',
+    'the ordinary reviewer is skipped on the amendment route');
+  assert.match(receiver, /steps\.verify\.outputs\.route == 'ordinary'/);
+  assert.match(script, /decision: raw \|\| null/);
+  assert.match(script, /process\.stdout\.write\(value\.decision \?\? ''\)/);
+});
+
 test('merge_group success is pre-transition verification and keeps adoption/canonical placement pending', () => {
   const verifier = readFileSync(new URL('../src/owner-amendment-merge-group-acceptance.mjs', import.meta.url), 'utf8');
   const script = readFileSync(new URL('../scripts/owner-amendment-merge-group-gate.mjs', import.meta.url), 'utf8');

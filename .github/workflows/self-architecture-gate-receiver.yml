@@ -90,7 +90,7 @@ jobs:
         env:
           GITHUB_WORKSPACE: ${{ github.workspace }}
           RUNNER_TEMP: ${{ runner.temp }}
-          DECISION: ${{ steps.ordinary-review.outputs.final-message }}
+          DECISION: ${{ steps.ordinary-review.outcome == 'success' && steps.ordinary-review.outputs.final-message || '' }}
         run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-workflow-run-receiver.mjs" handoff
   protected-queue-reporter:
     needs: [protected-queue-review]
