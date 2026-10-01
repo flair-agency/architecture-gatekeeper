@@ -239,18 +239,48 @@ export async function runGeminiReviewer(request, options = {}) {
 
   const remainingMs = Math.max(0, timeoutMs - (Date.now() - startTime));
   const gcloudTimeoutMs = Math.min(4000, remainingMs);
-  const credentials = resolveAuthCredentials({ ...options, gcloudTimeoutMs });
 
-  // Validate endpoint and require HTTPS before transmitting credentials
-  const baseUrl = resolveBaseUrl(credentials, options);
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(baseUrl);
-  } catch {
-    throw new Error(`Architecture gate reviewer failed: invalid baseUrl: ${baseUrl}`);
+  const proxyUrl = options.proxyUrl || process.env.REVIEW_PROXY_URL;
+  let credentials = null;
+  let parsedProxyUrl = null;
+
+  if (proxyUrl) {
+    try {
+      parsedProxyUrl = new URL(proxyUrl);
+    } catch {
+      throw new Error(`Architecture gate reviewer failed: invalid proxyUrl: ${proxyUrl}`);
+    }
+    if (parsedProxyUrl.hostname !== '127.0.0.1' && parsedProxyUrl.hostname !== 'localhost') {
+      throw new Error(`Architecture gate reviewer failed: proxyUrl must bind to loopback (127.0.0.1), received: ${parsedProxyUrl.hostname}`);
+    }
+  } else {
+    credentials = resolveAuthCredentials({ ...options, gcloudTimeoutMs });
   }
-  if (parsedUrl.protocol !== 'https:') {
-    throw new Error(`Architecture gate reviewer failed: insecure endpoint protocol ${parsedUrl.protocol}. HTTPS is required to protect credentials.`);
+
+  // Validate endpoint and require HTTPS before transmitting credentials directly
+  let baseUrl;
+  let parsedUrl;
+  if (parsedProxyUrl) {
+    // When using loopback proxy, construct relative path target according to mode
+    const isVertex = Boolean(options.projectId || process.env.GOOGLE_CLOUD_PROJECT || process.env.CLOUDSDK_CORE_PROJECT);
+    if (isVertex) {
+      const projectId = options.projectId || process.env.GOOGLE_CLOUD_PROJECT || process.env.CLOUDSDK_CORE_PROJECT || 'default';
+      const region = options.region || process.env.GOOGLE_CLOUD_REGION || 'us-central1';
+      baseUrl = `${proxyUrl.replace(/\/+$/, '')}/v1/projects/${encodeURIComponent(projectId)}/locations/${encodeURIComponent(region)}/publishers/google`;
+    } else {
+      baseUrl = `${proxyUrl.replace(/\/+$/, '')}/v1beta`;
+    }
+    parsedUrl = new URL(baseUrl);
+  } else {
+    baseUrl = resolveBaseUrl(credentials, options);
+    try {
+      parsedUrl = new URL(baseUrl);
+    } catch {
+      throw new Error(`Architecture gate reviewer failed: invalid baseUrl: ${baseUrl}`);
+    }
+    if (parsedUrl.protocol !== 'https:') {
+      throw new Error(`Architecture gate reviewer failed: insecure endpoint protocol ${parsedUrl.protocol}. HTTPS is required to protect credentials.`);
+    }
   }
 
   const url = `${baseUrl.replace(/\/+$/, '')}/models/${encodeURIComponent(model)}:generateContent`;
@@ -261,10 +291,12 @@ export async function runGeminiReviewer(request, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
   };
-  if (credentials.type === 'apiKey') {
-    headers['x-goog-api-key'] = credentials.value;
-  } else {
-    headers['Authorization'] = `Bearer ${credentials.value}`;
+  if (credentials) {
+    if (credentials.type === 'apiKey') {
+      headers['x-goog-api-key'] = credentials.value;
+    } else {
+      headers['Authorization'] = `Bearer ${credentials.value}`;
+    }
   }
 
   let response;

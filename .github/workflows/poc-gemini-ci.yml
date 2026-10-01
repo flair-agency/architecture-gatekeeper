@@ -94,13 +94,13 @@ jobs:
           }
           EOF
 
-      - name: Run Gemini CI Review
+      - name: Run Credential-Isolated Gemini CI Review
         id: gemini
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLOUDSDK_AUTH_ACCESS_TOKEN: ${{ steps.gcp-auth.outputs.access_token }}
         run: |
-          node src/gemini-ci-runner.mjs \
+          node src/gemini-launcher.mjs \
             --prompt "$RUNNER_TEMP/gemini-poc/prompt.md" \
             --schema "$RUNNER_TEMP/gemini-poc/decision.schema.json" \
             --output "$RUNNER_TEMP/gemini-poc/decision.json" \

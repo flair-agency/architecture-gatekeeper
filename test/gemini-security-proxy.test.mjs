@@ -1,0 +1,157 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { validateGeminiRoute, startGeminiSecurityProxy } from '../src/gemini-security-proxy.mjs';
+import { validateLoopbackEndpoint } from '../src/review-security-proxy.mjs';
+
+test('validateLoopbackEndpoint validates local loopback addresses', () => {
+  assert.throws(() => validateLoopbackEndpoint(''), /non-empty string/);
+  assert.throws(() => validateLoopbackEndpoint('https://127.0.0.1:8080'), /plain http/);
+  assert.throws(() => validateLoopbackEndpoint('http://0.0.0.0:8080'), /bind to loopback/);
+  assert.throws(() => validateLoopbackEndpoint('http://example.com:8080'), /bind to loopback/);
+  assert.throws(() => validateLoopbackEndpoint('http://127.0.0.1:0'), /valid port number/);
+  assert.throws(() => validateLoopbackEndpoint('http://127.0.0.1:abc'), /Invalid proxy endpoint URL/);
+
+  const parsed = validateLoopbackEndpoint('http://127.0.0.1:54321');
+  assert.equal(parsed.hostname, '127.0.0.1');
+  assert.equal(parsed.port, '54321');
+});
+
+test('validateGeminiRoute allowlists only valid generateContent endpoints', () => {
+  // Studio paths
+  assert.deepEqual(validateGeminiRoute('/v1beta/models/gemini-2.5-flash:generateContent'), {
+    mode: 'studio',
+    path: '/v1beta/models/gemini-2.5-flash:generateContent',
+  });
+  assert.deepEqual(validateGeminiRoute('/v1beta/models/gemini-3.8-flash:generateContent?key=abc'), {
+    mode: 'studio',
+    path: '/v1beta/models/gemini-3.8-flash:generateContent',
+  });
+
+  // Vertex paths
+  assert.deepEqual(
+    validateGeminiRoute('/v1/projects/my-proj/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent'),
+    {
+      mode: 'vertex',
+      path: '/v1/projects/my-proj/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent',
+    }
+  );
+
+  // Rejected paths (arbitrary / non-review routes)
+  assert.equal(validateGeminiRoute('/v1/models'), null);
+  assert.equal(validateGeminiRoute('/v1beta/models/gemini-2.5-flash:countTokens'), null);
+  assert.equal(validateGeminiRoute('/v1/projects/p/locations/l/operations/op123'), null);
+  assert.equal(validateGeminiRoute('/v1/responses'), null);
+  assert.equal(validateGeminiRoute('/arbitrary/path'), null);
+});
+
+test('GeminiSecurityProxy binds strictly to 127.0.0.1 with ephemeral port and rejects non-POST', async () => {
+  const proxy = await startGeminiSecurityProxy({
+    credentials: { type: 'apiKey', value: 'secret-test-key' },
+  });
+
+  try {
+    const endpoint = validateLoopbackEndpoint(proxy.endpointUrl);
+    assert.equal(endpoint.hostname, '127.0.0.1');
+    assert.ok(parseInt(endpoint.port, 10) > 0);
+
+    // GET should be rejected with 403
+    const getRes = await fetch(`${proxy.endpointUrl}/v1beta/models/gemini-2.5-flash:generateContent`, {
+      method: 'GET',
+    });
+    assert.equal(getRes.status, 403);
+
+    // Non-allowlisted route should be rejected with 403
+    const badPathRes = await fetch(`${proxy.endpointUrl}/v1/models`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    assert.equal(badPathRes.status, 403);
+  } finally {
+    await proxy.shutdown();
+  }
+});
+
+test('GeminiSecurityProxy injects credentials in-flight to upstream and rejects redirects', async () => {
+  let capturedHeaders = null;
+  let capturedBody = null;
+
+  // Mock upstream HTTP server
+  const mockUpstream = createServer((req, res) => {
+    capturedHeaders = req.headers;
+    const chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => {
+      capturedBody = Buffer.concat(chunks).toString('utf8');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'OK' }] } }] }));
+    });
+  });
+
+  await new Promise(resolve => mockUpstream.listen(0, '127.0.0.1', resolve));
+  const upstreamPort = mockUpstream.address().port;
+
+  const proxy = await startGeminiSecurityProxy({
+    credentials: { type: 'apiKey', value: 'test-api-secret-123' },
+    upstreamHost: '127.0.0.1',
+    upstreamPort,
+    upstreamHttp: true,
+  });
+
+  try {
+    const res = await fetch(`${proxy.endpointUrl}/v1beta/models/gemini-2.5-flash:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: 'test prompt' }] }] }),
+    });
+
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.candidates[0].content.parts[0].text, 'OK');
+
+    // Verify in-flight header injection
+    assert.equal(capturedHeaders['x-goog-api-key'], 'test-api-secret-123');
+    assert.equal(JSON.parse(capturedBody).contents[0].parts[0].text, 'test prompt');
+  } finally {
+    await proxy.shutdown();
+    await new Promise(resolve => mockUpstream.close(resolve));
+  }
+});
+
+test('GeminiSecurityProxy injects Bearer token for Vertex requests', async () => {
+  let capturedHeaders = null;
+
+  const mockUpstream = createServer((req, res) => {
+    capturedHeaders = req.headers;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'Vertex OK' }] } }] }));
+  });
+
+  await new Promise(resolve => mockUpstream.listen(0, '127.0.0.1', resolve));
+  const upstreamPort = mockUpstream.address().port;
+
+  const proxy = await startGeminiSecurityProxy({
+    credentials: { type: 'bearer', value: 'oauth-token-xyz' },
+    upstreamHost: '127.0.0.1',
+    upstreamPort,
+    upstreamHttp: true,
+  });
+
+  try {
+    const res = await fetch(
+      `${proxy.endpointUrl}/v1/projects/my-p/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [] }),
+      }
+    );
+
+    assert.equal(res.status, 200);
+    assert.equal(capturedHeaders['authorization'], 'Bearer oauth-token-xyz');
+  } finally {
+    await proxy.shutdown();
+    await new Promise(resolve => mockUpstream.close(resolve));
+  }
+});

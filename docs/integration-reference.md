@@ -254,8 +254,20 @@ records an explicit waiver and makes no OpenAI API call.
 ### Gemini CI Review Runner
 
 Architecture Gatekeeper includes a standalone, zero-external-dependency runner
-`architecture-review-gemini-ci` (`src/gemini-ci-runner.mjs`) for executing
+and credential-isolated proxy architecture (`src/gemini-launcher.mjs`,
+`src/gemini-security-proxy.mjs`, and `src/gemini-ci-runner.mjs`) for executing
 fail-closed architecture reviews with Google Gemini.
+
+In accordance with the normative architecture contract (`docs/architecture.md`),
+the execution boundary enforces strict privilege separation:
+- **Trusted Launcher (`src/gemini-launcher.mjs`)**: Privileged supervisor process that receives
+  credentials in trusted CI, starts the security proxy on local loopback, strips all sensitive
+  environment variables (`GEMINI_API_KEY`, tokens) via `env -u`, and spawns the runner.
+- **Security Proxy (`src/gemini-security-proxy.mjs`)**: Listens strictly on `127.0.0.1:<ephemeral>`,
+  enforces strict route allowlisting (`POST ...:generateContent`), injects credentials in-flight,
+  and rejects redirects and non-allowlisted routes with `403 Forbidden`.
+- **Review Runner (`src/gemini-ci-runner.mjs`)**: Credential-free client that connects to the
+  loopback proxy, parses results, deterministically validates decisions, and outputs results.
 
 It supports two authentication modes with automatic endpoint routing:
 

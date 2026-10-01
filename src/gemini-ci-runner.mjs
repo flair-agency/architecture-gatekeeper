@@ -88,6 +88,9 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
   const request = resolveReviewRequest(options, cwd);
 
   const transportOptions = {};
+  if (options['proxy-url'] || process.env.REVIEW_PROXY_URL) {
+    transportOptions.proxyUrl = options['proxy-url'] || process.env.REVIEW_PROXY_URL;
+  }
   if (options['base-url'] || process.env.GEMINI_BASE_URL) {
     transportOptions.baseUrl = options['base-url'] || process.env.GEMINI_BASE_URL;
   }
