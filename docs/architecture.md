@@ -890,35 +890,20 @@ GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed
 
 #### Target multi-provider credential-isolated review proxy boundary (Issue #252 owner decision, 2026-10-02)
 
-To satisfy Assurance Rule 9 across multiple AI execution providers without
-ad-hoc transport mechanisms, external AI model reviews in CI may utilize a
-credential-isolated local security proxy topology.
+CI may use a credential-isolated review proxy: the trusted launcher owns
+credentials and supplies them privately to the proxy; the runner does not
+inherit them. The proxy binds only to an ephemeral loopback endpoint and limits
+credential-bearing dispatch to allowed methods/model routes on selected official
+provider hosts; arbitrary destinations and redirects fail closed. The runner
+consumes responses for deterministic schema and authority validation.
 
-The execution boundary distinguishes three explicit roles:
-1. **Trusted Launcher**: Receives provider secrets (static API keys or WIF / OAuth
-   access tokens) in trusted CI, spawns the security proxy with secrets piped via
-   private standard input, and spawns the review runner with all provider secrets
-   explicitly stripped from its environment (`env -u`).
-2. **Security Proxy**: Listens strictly on `127.0.0.1` with an unassigned
-   ephemeral port. Enforces strict HTTP method and route allowlists (e.g.,
-   OpenAI `POST /v1/responses`; Gemini `POST ...:generateContent`). Disallowed
-   routes, arbitrary URLs, and HTTP redirects fail closed with `403 Forbidden`.
-   Injects provider credentials in-flight immediately before dispatching to pinned
-   official upstream provider hosts.
-3. **Review Runner**: Operates as a credential-free client. Issues plain HTTP
-   review requests over local loopback to the proxy, parses responses, and enforces
-   deterministic schema and authority validation.
-
-In accordance with normative invariant 11, this proxy topology claims only
-**credential non-inheritance** (secrets are withheld from the review runner's
-process environment) and **constrained proxy routing** (credential-bearing dispatch through the proxy
-is restricted to allowlisted model paths). It does not restrict direct runner
-network access or claim host-level isolation against
-compromised same-user OS execution, which requires container/job boundary
-isolation. Multi-provider equivalence is not inferred from matching proxy
-topology; protected acceptance routes require verified CI execution evidence
-under explicitly adopted consumer policy. Specification:
-`docs/investigations/2026-10-02-credential-isolated-review-proxy-boundary.md`.
+This target claims credential non-inheritance and constrained proxy dispatch,
+not restricted direct runner networking, same-user host isolation, or provider
+assurance equivalence. Protected acceptance requires explicitly adopted consumer
+policy and verified route-specific execution evidence; this text activates no
+route. Implementation details are in the
+[proxy specification](investigations/2026-10-02-credential-isolated-review-proxy-boundary.md);
+it cannot independently amend this contract.
 
 #### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
 
