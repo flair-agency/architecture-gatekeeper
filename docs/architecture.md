@@ -911,8 +911,9 @@ The execution boundary distinguishes three explicit roles:
 
 In accordance with normative invariant 11, this proxy topology claims only
 **credential non-inheritance** (secrets are withheld from the review runner's
-process environment) and **constrained proxy routing** (egress is restricted
-to allowlisted model paths). It does not claim host-level isolation against
+process environment) and **constrained proxy routing** (credential-bearing dispatch through the proxy
+is restricted to allowlisted model paths). It does not restrict direct runner
+network access or claim host-level isolation against
 compromised same-user OS execution, which requires container/job boundary
 isolation. Multi-provider equivalence is not inferred from matching proxy
 topology; protected acceptance routes require verified CI execution evidence

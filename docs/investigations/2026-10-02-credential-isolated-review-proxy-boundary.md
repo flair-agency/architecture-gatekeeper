@@ -81,27 +81,21 @@ roles:
    with all provider secrets removed from its environment (`env -u`). It
    communicates exclusively with the local loopback endpoint.
 
+```mermaid
+flowchart TD
+    Launcher["Trusted launcher<br/>Holds provider credentials"]
+    Proxy["Security proxy process<br/>Loopback listener and route allowlist"]
+    Runner["Review runner<br/>Provider credentials removed from environment"]
+    Provider["Official provider endpoint"]
+    Launcher -->|"Private stdin: credentials"| Proxy
+    Launcher -->|"Launch with sanitized environment and proxy URL"| Runner
+    Runner -->|"Unauthenticated HTTP over loopback"| Proxy
+    Proxy -->|"HTTPS with injected credentials"| Provider
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│ Trusted Supervisor / Launcher (Privileged)                             │
-│ 1. Spawns Proxy Process, piping credentials via private stdin          │
-│ 2. Strips secrets from child environment (env -u API_KEY)              │
-│ 3. Spawns Credential-Free Review Runner with PROXY_URL                 │
-└────────────────┬───────────────────────────────────────┬───────────────┘
-                 │ (1. stdin pipe credentials)           │ (3. spawn clean child)
-                 ▼                                       ▼
-┌─────────────────────────────────┐   plain HTTP    ┌────────────────────┐
-│ Security Proxy Process          │◄────────────────┤ Review Runner      │
-│ - Strict loopback (127.0.0.1)   │  over loopback  │ - No credentials   │
-│ - Strict allowlist (POST only)  │                 │ - Output validation│
-│ - In-flight auth injection      │                 │ - Schema check     │
-└────────────────┬────────────────┘                 └────────────────────┘
-                 │ (HTTPS + Injected Credentials)
-                 ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│ Official Upstream Provider (OpenAI / Google Cloud Vertex AI)           │
-└────────────────────────────────────────────────────────────────────────┘
-```
+
+The proxy constrains its own credential-bearing dispatch. This diagram does
+not imply that direct runner networking is blocked or that same-user processes
+are isolated.
 
 ### 3.1 Interface Specification: `ReviewSecurityProxy`
 
@@ -219,10 +213,11 @@ The table below summarizes the concrete structural mechanisms. Under
 normative invariant 11 (*"The mechanism claims only the trust guarantees
 actually supplied by its execution route"*), this proposal claims only:
 1. **Credential Non-Inheritance**: Secrets are removed from the review runner's
-   environment and launch parameters, preventing direct leakage via child
-   process inspection.
+   environment and launch parameters. This does not prevent same-user inspection
+   of other processes or credential access through other host resources.
 2. **Constrained Proxy Routing**: Requests are strictly allowlisted to verified
-   provider model endpoints, preventing arbitrary network egress or SSRF.
+   provider model endpoints, preventing proxy dispatch to arbitrary destinations. This does not constrain
+   direct network connections made by the runner.
 
 Matching proxy topology across providers does **not** by itself establish
 equivalent cross-provider assurance. Any claim of equivalence or protection
@@ -270,3 +265,14 @@ authorization:
    - Integrate with reusable CI workflows.
    - Collect and verify execution evidence before enabling any protected
      acceptance route for Gemini.
+
+## Coordination with the reviewer execution contract
+
+Issue #265 defines provider-independent local callers; Issue #252 owns CI
+provider support. The security proxy is a separate credential-handling adapter,
+not the reviewer execution interface or a prerequisite for local portability.
+Agree on request/result identity, provider-specific settings, deadlines and
+incomplete/error behavior across those issues before shared implementation.
+A proxy does not construct authority, validate semantic decisions, select a
+provider for acceptance, or activate fallback. Existing local feedback retains
+its stated same-user trust boundary unless a separate route is adopted.

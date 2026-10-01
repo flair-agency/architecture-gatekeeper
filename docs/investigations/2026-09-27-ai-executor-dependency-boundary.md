@@ -13,7 +13,14 @@ and validate a structured decision. Which parts of the current system are
 Codex-specific, which parts already form an AI-independent contract, and where
 could a future executor boundary be placed without weakening assurance?
 
-## Current dependency map
+## Historical dependency map (2026-09-27 snapshot)
+
+The following map records the earlier implementation. PR #260 subsequently
+returned CI to pinned upstream `openai/codex-action` and retired the integrity
+jobs, verifiers and provenance records. Those entries below are historical,
+not current requirements. Gemini transport delivery and ongoing #252 work do
+not themselves activate a protected Gemini route. Local caller abstraction is
+tracked in #265, coordinated with #252.
 
 | Layer | Current responsibility | Codex or OpenAI dependency | Portability assessment |
 | --- | --- | --- | --- |
@@ -181,8 +188,9 @@ The investigation does not resolve these choices:
 7. How are provider-specific model lifecycle changes reviewed without allowing
    a candidate change to weaken its own review route?
 
-Until these are recorded in `docs/architecture.md`, Codex remains the only
-implemented semantic executor and the only model-backed CI acceptance producer.
+Until these are recorded in `docs/architecture.md`, this historical snapshot does not establish adoption of another protected
+semantic executor. Current implementation and adoption status must be recorded
+in #252 and canonical authority, rather than inferred from this investigation.
 
 ## Near-term conclusion
 
