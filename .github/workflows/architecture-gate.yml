@@ -148,6 +148,8 @@ jobs:
       final_message: ${{ steps.codex.outputs.final-message }}
       decision_kind: ${{ steps.decision.outputs.kind }}
       reviewed_sha: ${{ steps.revision.outputs.sha }}
+      verified_pr_base_sha: ${{ steps.self-pr-binding.outputs.base_sha }}
+      verified_pr_head_sha: ${{ steps.self-pr-binding.outputs.head_sha }}
       authority_provenance: ${{ steps.authority.outputs.provenance }}
       selected_authority_changed: ${{ steps.selected-authority-change.outputs.changed }}
       legacy_authority_provenance: ${{ steps.legacy-authority.outputs.provenance }}
@@ -201,6 +203,18 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-validation-runtime
           persist-credentials: false
+      - name: Bind the self review merge commit to the exact PR base and head
+        if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main'
+        id: self-pr-binding
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ steps.revision.outputs.sha }}
+        run: node .architecture-gatekeeper-validation-runtime/src/self-pr-app-check.mjs verify-merge
       - name: Materialize recorded-base legacy authority before review
         if: needs.policy.outputs.policy_version == '1'
         id: legacy-authority
@@ -975,3 +989,43 @@ jobs:
           EVIDENCE_PRODUCER: ${{ needs.policy.outputs.adoption_evidence_producer }}
           SELECTED_AUTHORITY_CHANGED: ${{ needs.review.outputs.selected_authority_changed }}
         run: node .architecture-gatekeeper-runtime/src/ci-procedural-acceptance.mjs
+
+  self-app-report:
+    if: always() && github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && github.workflow_ref == 'flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main' && vars.OWNER_AMENDMENT_SELF_APP_REPORT_ENABLED == 'true' && needs.policy.result == 'success' && needs.review.result == 'success' && needs.report.result == 'success' && (needs.accept.result == 'success' || needs.accept.result == 'failure')
+    name: self-app-report
+    needs: [policy, review, report, accept]
+    permissions:
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: architecture-gate-self-protected
+    steps:
+      - name: Check out the protected self-report adapter
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Publish the non-accepting ordinary PR App diagnostic
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          VERIFIED_BASE_SHA: ${{ needs.review.outputs.verified_pr_base_sha }}
+          VERIFIED_HEAD_SHA: ${{ needs.review.outputs.verified_pr_head_sha }}
+          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          POLICY_RESULT: ${{ needs.policy.result }}
+          REVIEW_RESULT: ${{ needs.review.result }}
+          REPORT_RESULT: ${{ needs.report.result }}
+          ACCEPT_RESULT: ${{ needs.accept.result }}
+          GH_TOKEN: ${{ github.token }}
+          OWNER_AMENDMENT_APP_ID: ${{ vars.OWNER_AMENDMENT_APP_ID }}
+          OWNER_AMENDMENT_APP_INSTALLATION_ID: ${{ vars.OWNER_AMENDMENT_APP_INSTALLATION_ID }}
+          OWNER_AMENDMENT_APP_PRIVATE_KEY: ${{ secrets.OWNER_AMENDMENT_APP_PRIVATE_KEY }}
+        run: node .architecture-gatekeeper-runtime/src/self-pr-app-check.mjs publish-pr
