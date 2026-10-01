@@ -16,17 +16,12 @@ test('candidate wake-up is unprivileged and delegates all verification to the gu
   assert.doesNotMatch(wakeup, /secrets\.|OPENAI_API_KEY|actions\/checkout|codex-action@|contents: write|pull-requests: write|checks: write/);
   assert.doesNotMatch(workflow, /architecture-gate \/ accept/);
   const receiver = readFileSync(new URL('../.github/workflows/self-architecture-gate-receiver.yml', import.meta.url), 'utf8');
-  const codexActionProvenance = JSON.parse(readFileSync(new URL('../provenance/codex-action-v1.12-runtime-cancellation.json', import.meta.url), 'utf8'));
+  const reusableWorkflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
+  const upstreamActionPin = reusableWorkflow.match(/uses: openai\/codex-action@([a-f0-9]{40})/)?.[1];
   assert.match(receiver, /workflow_run:\n    workflows: \[Self Architecture Gate\]\n    types: \[completed\]/);
-  const integrity = receiver.split('\n  protected-queue-review:')[0];
-  assert.match(integrity, /  codex-action-integrity:\n[\s\S]*?permissions:\n      contents: read/);
-  const verifiedCheckoutRef = integrity.match(/repository: flair-agency\/codex-action\n\s+ref: ([a-f0-9]{40})/);
-  assert.equal(verifiedCheckoutRef?.[1], codexActionProvenance.headCommit,
-    'integrity checkout must use the provenance manifest head commit');
-  assert.match(integrity, /repository: flair-agency\/codex-action[\s\S]*?persist-credentials: false/);
-  assert.match(integrity, /verify-codex-action\.mjs[\s\S]*?codex-action-v1\.12-runtime-cancellation\.json[\s\S]*?pnpm install --frozen-lockfile[\s\S]*?pnpm run check[\s\S]*?pnpm test[\s\S]*?git status --short -- dist/);
-  assert.doesNotMatch(integrity, /secrets\.|OPENAI_API_KEY|OWNER_AMENDMENT_APP_/);
-  assert.match(receiver, /protected-queue-review:\n    needs: codex-action-integrity/);
+  assert.doesNotMatch(receiver, /codex-action-integrity|verify-codex-action|flair-agency\/codex-action/);
+  assert.match(receiver, /protected-queue-review:\n    if: github\.repository == 'flair-agency\/architecture-gatekeeper'/);
+  assert.match(receiver, /protected-queue-reporter:\n    needs: \[protected-queue-review\]/);
   assert.match(receiver, /if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.ref == 'refs\/heads\/main' && github\.event\.workflow_run\.event == 'merge_group' && vars\.OWNER_AMENDMENT_RECEIVER_ENABLED == 'true'/);
   assert.match(receiver, /environment:\n      name: architecture-gate-self-protected/);
   assert.match(receiver, /permissions:\n      actions: read\n      attestations: read\n      contents: read\n      pull-requests: read/);
@@ -34,11 +29,12 @@ test('candidate wake-up is unprivileged and delegates all verification to the gu
   assert.doesNotMatch(receiver, /github\.event\.workflow_run\.head_sha|download-artifact|actions: write|contents: write|pull-requests: write|checks: write/);
   assert.match(receiver, /owner-amendment-workflow-run-receiver\.mjs" resolve/);
   assert.match(receiver, /owner-amendment-merge-group-gate\.mjs/);
-  const reviewedActionPin = receiver.match(/uses: flair-agency\/codex-action@([a-f0-9]{40})/);
-  assert.equal(reviewedActionPin?.[1], codexActionProvenance.headCommit,
-    'ordinary review action must use the provenance manifest head commit');
-  assert.match(receiver, /Run the fresh read-only ordinary review\n        id: ordinary-review\n        if: needs\.codex-action-integrity\.result == 'success' && steps\.prepare-ordinary\.outcome == 'success'/);
-  assert.match(receiver, /sandbox: read-only[\s\S]*?safety-strategy: drop-sudo[\s\S]*?timeout-seconds: "240"/);
+  const reviewedActionPin = receiver.match(/uses: openai\/codex-action@([a-f0-9]{40})/);
+  assert.equal(reviewedActionPin?.[1], upstreamActionPin,
+    'ordinary review action must use the protected reusable workflow pin');
+  assert.match(receiver, /Run the fresh read-only ordinary review\n        id: ordinary-review\n        if: steps\.prepare-ordinary\.outcome == 'success'\n        timeout-minutes: 5/);
+  assert.match(receiver, /openai-api-key: \$\{\{ secrets\.OPENAI_API_KEY \}\}[\s\S]*?prompt-file: \$\{\{ runner\.temp \}\}\/owner-amendment-merge-group\/ordinary-prompt\.md[\s\S]*?output-schema-file: \$\{\{ runner\.temp \}\}\/owner-amendment-merge-group\/ordinary-schema\.json[\s\S]*?model: \$\{\{ steps\.prepare-ordinary\.outputs\.model \}\}[\s\S]*?effort: \$\{\{ steps\.prepare-ordinary\.outputs\.effort \}\}[\s\S]*?sandbox: read-only[\s\S]*?safety-strategy: drop-sudo/);
+  assert.doesNotMatch(receiver, /timeout-seconds:/);
   assert.match(receiver, /owner-amendment-workflow-run-receiver\.mjs" publish/);
   const reviewer = receiver.split('\n  protected-queue-reporter:')[0];
   const reporter = receiver.split('\n  protected-queue-reporter:')[1];
