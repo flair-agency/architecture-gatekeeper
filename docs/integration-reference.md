@@ -254,8 +254,31 @@ retains v1.12's credential isolation and protected argument checks. The
 selected commit also emits fixed-shape lifecycle diagnostics to workflow
 stderr; records are best-effort, and child stderr is drained if the workflow
 log sink fails. This is a temporary workaround: replace the fork pin only after
-reviewing an upstream release that contains equivalent fixes. `local-only`
-records an explicit waiver and makes no OpenAI API call.
+reviewing an upstream release that contains equivalent fixes. `local-only` records an explicit waiver and makes no external API call.
+
+### Gemini CI Review Runner
+
+Architecture Gatekeeper includes a standalone, zero-external-dependency runner
+`architecture-review-gemini-ci` (`src/gemini-ci-runner.mjs`) for executing
+fail-closed architecture reviews with Google Gemini.
+
+It supports two authentication modes with automatic endpoint routing:
+
+- **Keyless Google Cloud Workload Identity Federation (WIF) with Vertex AI (Recommended)**:
+  When a short-lived OAuth Bearer token (`CLOUDSDK_AUTH_ACCESS_TOKEN` via
+  `google-github-actions/auth@v2`) is present along with a Google Cloud project
+  (`GOOGLE_CLOUD_PROJECT`), requests automatically route to Google Cloud Vertex AI
+  (`https://${REGION}-aiplatform.googleapis.com/...`). This avoids static API keys entirely.
+  To prevent unexpected cost overruns, consumers can configure Google Cloud Billing
+  Spend Limits (budget cap) for Vertex AI.
+- **Static API Key with Google AI Studio**:
+  When `GEMINI_API_KEY` is supplied, requests automatically route to
+  Google AI Studio (`https://generativelanguage.googleapis.com/...`).
+
+In accordance with cloud security best practices, short-lived WIF tokens take
+precedence over static API keys. The runner deterministically validates the response
+against the repository's decision schema, persists `decision.json` with mode `0600`,
+and sets standard GitHub Actions outputs (`decision-kind`, `decision-file`, `final-message`).
 
 The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)
 and a `review-step-timeout-minutes` input (default 5). This repository's

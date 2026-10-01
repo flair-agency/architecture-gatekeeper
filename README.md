@@ -117,6 +117,11 @@ comment URLs when available. The existing report remains the fallback. See the
 [CI integration reference](docs/integration-reference.md) for location
 validation, bounds and rerun behavior.
 
+In addition to Codex, repositories can run automated reviews with Google Gemini
+using the standalone runner `architecture-review-gemini-ci`. It supports keyless
+authentication via Google Cloud Workload Identity Federation (WIF) and Vertex AI,
+as well as Google AI Studio API keys.
+
 ## Assurance boundary
 
 - Consumers own architecture and policy; this package only executes the
