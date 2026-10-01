@@ -5,6 +5,8 @@ import {
   mapEffortToThinkingBudget,
   prepareGeminiRequestBody,
   runGeminiReviewer,
+  resolveAuthCredentials,
+  resolveGcloudAccessToken,
 } from '../src/gemini-transport.mjs';
 
 test('cleanJsonSchema removes $schema while keeping properties and rules', () => {
@@ -57,9 +59,11 @@ test('prepareGeminiRequestBody formats prompt, schema, and thinking budget', () 
   assert.equal(body.generationConfig.thinkingConfig.thinkingBudget, 4096);
 });
 
-test('runGeminiReviewer fails closed when GEMINI_API_KEY is not set', async () => {
+test('runGeminiReviewer fails closed when no credentials are found', async () => {
   const prevKey = process.env.GEMINI_API_KEY;
+  const prevToken = process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
   delete process.env.GEMINI_API_KEY;
+  delete process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
   try {
     const request = {
       prompt: 'test prompt',
@@ -68,10 +72,11 @@ test('runGeminiReviewer fails closed when GEMINI_API_KEY is not set', async () =
     };
     await assert.rejects(
       () => runGeminiReviewer(request),
-      /GEMINI_API_KEY is not set/
+      /No credentials found/
     );
   } finally {
     if (prevKey !== undefined) process.env.GEMINI_API_KEY = prevKey;
+    if (prevToken !== undefined) process.env.GOOGLE_OAUTH_ACCESS_TOKEN = prevToken;
   }
 });
 
@@ -263,4 +268,71 @@ test('integrates with review-contract validateReviewResponse', async () => {
 
   assert.equal(decision.decision, 'PASS');
   assert.deepEqual(decision.authorityFiles, ['AGENTS.md']);
+});
+
+test('resolveAuthCredentials prioritizes explicit apiKey over bearer token', () => {
+  const creds = resolveAuthCredentials({
+    apiKey: 'explicit-key',
+    accessToken: 'explicit-token',
+  });
+  assert.deepEqual(creds, { type: 'apiKey', value: 'explicit-key' });
+});
+
+test('resolveAuthCredentials resolves explicit accessToken or environment token', () => {
+  const creds = resolveAuthCredentials({
+    accessToken: 'bearer-token-123',
+  });
+  assert.deepEqual(creds, { type: 'bearer', value: 'bearer-token-123' });
+
+  const prevEnv = process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
+  const prevKey = process.env.GEMINI_API_KEY;
+  try {
+    delete process.env.GEMINI_API_KEY;
+    process.env.GOOGLE_OAUTH_ACCESS_TOKEN = 'env-token-456';
+    const envCreds = resolveAuthCredentials();
+    assert.deepEqual(envCreds, { type: 'bearer', value: 'env-token-456' });
+  } finally {
+    if (prevEnv !== undefined) process.env.GOOGLE_OAUTH_ACCESS_TOKEN = prevEnv;
+    else delete process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
+    if (prevKey !== undefined) process.env.GEMINI_API_KEY = prevKey;
+  }
+});
+
+test('runGeminiReviewer sends Authorization Bearer header when bearer token is used', async () => {
+  const expectedDecision = {
+    decision: 'PASS',
+    summary: 'Reviewed with Bearer token authentication.',
+  };
+
+  const mockFetch = async (url, options) => {
+    assert.equal(options.headers['Authorization'], 'Bearer oauth-access-token-xyz');
+    assert.equal(options.headers['x-goog-api-key'], undefined);
+
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [{ text: JSON.stringify(expectedDecision) }],
+            },
+          },
+        ],
+      }),
+    };
+  };
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: { model: 'gemini-2.5-flash' },
+  };
+
+  const result = await runGeminiReviewer(request, {
+    accessToken: 'oauth-access-token-xyz',
+    fetch: mockFetch,
+  });
+
+  assert.deepEqual(result, expectedDecision);
 });

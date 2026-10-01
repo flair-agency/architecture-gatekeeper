@@ -3,6 +3,8 @@
  * Gemini API transport for Architecture Gatekeeper reviews.
  * Zero external npm dependencies: uses native globalThis.fetch and Node.js standard library.
  */
+import { spawnSync } from 'node:child_process';
+
 
 /**
  * Remove root-level metadata like `$schema` from a JSON Schema
@@ -78,12 +80,69 @@ export function prepareGeminiRequestBody(request, options = {}) {
 }
 
 /**
+ * Attempts to obtain an OAuth access token from the local gcloud CLI.
+ * Uses --quiet and a strict timeout to ensure it never hangs on interactive prompts.
+ * @param {number} [timeoutMs=4000]
+ * @returns {string | null}
+ */
+export function resolveGcloudAccessToken(timeoutMs = 4000) {
+  try {
+    const result = spawnSync('gcloud', ['auth', 'print-access-token', '--quiet'], {
+      encoding: 'utf8',
+      timeout: timeoutMs,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    if (result.status === 0 && result.stdout) {
+      const token = result.stdout.trim();
+      return token.length > 0 ? token : null;
+    }
+  } catch {
+    // gcloud binary not found, timed out, or permission denied
+  }
+  return null;
+}
+
+/**
+ * Resolves available authentication credentials with explicit fallback precedence:
+ * 1. Explicit API key (options.apiKey or GEMINI_API_KEY)
+ * 2. Explicit OAuth Bearer token (options.accessToken or GOOGLE_OAUTH_ACCESS_TOKEN)
+ * 3. Local gcloud access token via `gcloud auth print-access-token`
+ *
+ * @param {object} [options]
+ * @returns {{ type: 'apiKey' | 'bearer', value: string }}
+ */
+export function resolveAuthCredentials(options = {}) {
+  const apiKey = options.apiKey || process.env.GEMINI_API_KEY;
+  if (apiKey && typeof apiKey === 'string' && apiKey.trim()) {
+    return { type: 'apiKey', value: apiKey.trim() };
+  }
+
+  const explicitToken =
+    options.accessToken ||
+    process.env.GOOGLE_OAUTH_ACCESS_TOKEN ||
+    process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+  if (explicitToken && typeof explicitToken === 'string' && explicitToken.trim()) {
+    return { type: 'bearer', value: explicitToken.trim() };
+  }
+
+  const gcloudToken = resolveGcloudAccessToken();
+  if (gcloudToken) {
+    return { type: 'bearer', value: gcloudToken };
+  }
+
+  throw new Error(
+    'Architecture gate reviewer failed: No credentials found. Set GEMINI_API_KEY, GOOGLE_OAUTH_ACCESS_TOKEN, or authenticate with `gcloud auth login`.'
+  );
+}
+
+/**
  * Executes an architecture review using the Gemini API.
  * Fails closed on any HTTP, network, timeout, or schema error.
  *
  * @param {object} request Review request created by createReviewRequest or createReviewRequestAsync
  * @param {object} [options]
  * @param {string} [options.apiKey] Gemini API Key (defaults to process.env.GEMINI_API_KEY)
+ * @param {string} [options.accessToken] Google OAuth Bearer token
  * @param {string} [options.model] Model name (defaults to request.reviewer.model or "gemini-2.5-flash")
  * @param {string} [options.baseUrl] Base API URL (defaults to Google Generative Language API)
  * @param {number} [options.timeoutMs] Review timeout in milliseconds
@@ -91,10 +150,7 @@ export function prepareGeminiRequestBody(request, options = {}) {
  * @returns {Promise<object>} Parsed decision JSON conforming to the requested schema
  */
 export async function runGeminiReviewer(request, options = {}) {
-  const apiKey = options.apiKey || process.env.GEMINI_API_KEY;
-  if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
-    throw new Error('Architecture gate reviewer failed: GEMINI_API_KEY is not set.');
-  }
+  const credentials = resolveAuthCredentials(options);
 
   const model = options.model || request.reviewer?.model || 'gemini-2.5-flash';
   const baseUrl = options.baseUrl || 'https://generativelanguage.googleapis.com/v1beta';
@@ -106,14 +162,20 @@ export async function runGeminiReviewer(request, options = {}) {
   const requestBody = prepareGeminiRequestBody(request, options);
   const fetchFn = options.fetch || globalThis.fetch;
 
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (credentials.type === 'apiKey') {
+    headers['x-goog-api-key'] = credentials.value;
+  } else {
+    headers['Authorization'] = `Bearer ${credentials.value}`;
+  }
+
   let response;
   try {
     response = await fetchFn(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey.trim(),
-      },
+      headers,
       body: JSON.stringify(requestBody),
       signal,
     });
