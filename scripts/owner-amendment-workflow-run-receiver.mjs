@@ -4,8 +4,10 @@ import { closeSync, constants, fstatSync, lstatSync, openSync, readFileSync, rea
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { publishSelfArchitectureCheck } from '../src/github-app-check-reporter.mjs';
+import { assertOwnerAmendmentTagAbsentAtAcceptance } from '../src/owner-amendment-tag-attempt.mjs';
 import { adaptVerifiedWorkflowRunContext, resolveProtectedOwnerAmendmentWorkflowRunContext,
   prepareVerifiedCheckReport, sameVerifiedWorkflowRunContext } from '../src/owner-amendment-workflow-run-receiver.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
 import { appendGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory, writeRunnerTempFile } from '../src/runner-temp-path.mjs';
 
 const SELF = 'flair-agency/architecture-gatekeeper';
@@ -125,6 +127,21 @@ async function publish() {
   const route = process.env.VERIFIED_ROUTE;
   const ordinaryOutcome = process.env.ORDINARY_VALIDATION_OUTCOME;
   if (route === 'amendment' && handoff.decision !== null) FAIL('amendment route handoff contains unexpected ordinary decision bytes.');
+  if (verificationOutcome === 'success' && route === 'ordinary' && ordinaryOutcome === 'success') {
+    const policyBytes = Buffer.from(git(['show', `${finalContext.currentMainSha}:.codex/gatekeeper/ci-policy.json`]), 'utf8');
+    const policy = resolveCiPolicy(parseCiPolicyJson(policyBytes.toString('utf8')), 'main');
+    if (policy.ownerAmendmentGrade === 'G0') await assertOwnerAmendmentTagAbsentAtAcceptance({
+      repository: SELF, baseSha: finalContext.currentMainSha, bSha: finalContext.bHeadSha, baseBranch: 'main',
+      triggerProfile: policy.ownerAmendmentTriggerProfile, policyBytes,
+      readTagRef: async ({ expectedUrl }) => {
+        let response;
+        try { response = await fetch(expectedUrl, { headers: { accept: 'application/vnd.github+json',
+          authorization: `Bearer ${process.env.GH_TOKEN}`, 'x-github-api-version': '2022-11-28' }, redirect: 'error' }); }
+        catch { FAIL('protected exact-B tag lookup failed at final acceptance.'); }
+        return { status: response.status, requestedUrl: expectedUrl };
+      },
+    });
+  }
   const report = prepareVerifiedCheckReport({ initialContext: initial, finalContext, verificationOutcome,
     route, ordinaryValidationOutcome: ordinaryOutcome });
   if (report.status !== 'PREPARED_PROTECTED_QUEUE_CHECK') FAIL('live queue or base context changed before App publication.');

@@ -16,6 +16,7 @@ test('candidate wake-up is unprivileged and delegates all verification to the gu
   assert.doesNotMatch(wakeup, /secrets\.|OPENAI_API_KEY|actions\/checkout|codex-action@|contents: write|pull-requests: write|checks: write/);
   assert.doesNotMatch(workflow, /architecture-gate \/ accept/);
   const receiver = readFileSync(new URL('../.github/workflows/self-architecture-gate-receiver.yml', import.meta.url), 'utf8');
+  const receiverScript = readFileSync(new URL('../scripts/owner-amendment-workflow-run-receiver.mjs', import.meta.url), 'utf8');
   const reusableWorkflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
   const upstreamActionPin = reusableWorkflow.match(/uses: openai\/codex-action@([a-f0-9]{40})/)?.[1];
   assert.match(receiver, /workflow_run:\n    workflows: \[Self Architecture Gate\]\n    types: \[completed\]/);
@@ -29,6 +30,14 @@ test('candidate wake-up is unprivileged and delegates all verification to the gu
   assert.doesNotMatch(receiver, /github\.event\.workflow_run\.head_sha|download-artifact|actions: write|contents: write|pull-requests: write|checks: write/);
   assert.match(receiver, /owner-amendment-workflow-run-receiver\.mjs" resolve/);
   assert.match(receiver, /owner-amendment-merge-group-gate\.mjs/);
+  const finalGuardIndex = receiverScript.indexOf("if (verificationOutcome === 'success' && route === 'ordinary' && ordinaryOutcome === 'success')");
+  const tagCheckIndex = receiverScript.indexOf('assertOwnerAmendmentTagAbsentAtAcceptance({');
+  const reportIndex = receiverScript.indexOf('const report = prepareVerifiedCheckReport');
+  assert.ok(finalGuardIndex >= 0 && finalGuardIndex < tagCheckIndex && tagCheckIndex < reportIndex);
+  const finalGuard = receiverScript.slice(finalGuardIndex, reportIndex);
+  assert.match(finalGuard, /currentMainSha\}:.codex\/gatekeeper\/ci-policy\.json/);
+  assert.match(finalGuard, /baseSha: finalContext\.currentMainSha, bSha: finalContext\.bHeadSha/);
+  assert.match(finalGuard, /if \(policy\.ownerAmendmentGrade === 'G0'\) await assertOwnerAmendmentTagAbsentAtAcceptance/);
   const reviewedActionPin = receiver.match(/uses: openai\/codex-action@([a-f0-9]{40})/);
   assert.equal(reviewedActionPin?.[1], upstreamActionPin,
     'ordinary review action must use the protected reusable workflow pin');
