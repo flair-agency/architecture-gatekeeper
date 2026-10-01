@@ -54,11 +54,10 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   const v2Native = JSON.parse(run('architecture-review-native', ['validate', v2RequestPath, v2DecisionPath]));
   if (v2Native.decision !== 'PASS' || v2Native.authoritySet?.members[0]?.id !== 'architecture') throw new Error('native Authority Set adapter did not pass');
   const installedSrc = dirname(realpathSync(join(installedBin, 'architecture-review-native')));
-  const installedRoot = resolve(installedBin, '..', '..');
   writeFileSync(join(root, 'AGENTS.md'), '# Installed smoke authority\n\nTracked candidate change.\n');
   const postToolModule = `import { runPostToolScreenHookCli } from '@flair-agency/architecture-gatekeeper';\nprocess.chdir(${JSON.stringify(consumerCwd)});\nrunPostToolScreenHookCli();`;
   const postTool = spawnSync(process.execPath, ['--input-type=module', '-e', postToolModule], {
-    cwd: installedRoot, env, input: JSON.stringify({ hook_event_name: 'PostToolUse', session_id: 'installed-post-tool-smoke', cwd: consumerCwd, tool_name: 'Edit', tool_use_id: 'installed-use', turn_id: 'installed-turn' }),
+    env, input: JSON.stringify({ hook_event_name: 'PostToolUse', session_id: 'installed-post-tool-smoke', cwd: consumerCwd, tool_name: 'Edit', tool_use_id: 'installed-use', turn_id: 'installed-turn' }),
     encoding: 'utf8', timeout: 30000,
   });
   if (postTool.status !== 0) throw new Error(`installed PostToolUse module entry failed: ${postTool.stderr}`);
