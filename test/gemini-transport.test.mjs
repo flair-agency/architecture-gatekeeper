@@ -213,42 +213,40 @@ test('runGeminiReviewer fails closed on timeout', async () => {
   );
 });
 
-test('integrates with review-contract validateReviewResponse', async () => {
-  const { createReviewRequest, validateReviewResponse } = await import('../src/review-contract.mjs');
+test('integrates with review-contract validateReviewResponse for deterministic validation', async () => {
+  const { createReviewRequestAsync, validateReviewResponse } = await import('../src/review-contract.mjs');
 
-  const root = process.cwd();
-  // V1 request for unit integration testing
-  const request = {
-    version: 1,
-    repositoryRoot: root,
-    reviewedRevision: '0123456789abcdef0123456789abcdef01234567',
-    task: 'Add Gemini transport module',
-    prompt: 'Review this change',
-    schema: {
-      type: 'object',
-      properties: {
-        decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] },
-        authorityFiles: { type: 'array', items: { type: 'string' } },
-        responsibility: { type: 'array', items: { type: 'string' } },
-        reviewedScope: { type: 'array', items: { type: 'string' } },
-        prohibitedChanges: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['decision', 'authorityFiles', 'responsibility', 'reviewedScope', 'prohibitedChanges'],
-    },
-    reviewer: {
-      model: 'gemini-2.5-flash',
-      reasoningEffort: 'low',
-      reviewTimeoutMs: 5000,
-    },
-    requestId: 'test-req-id',
-  };
-
+  const request = await createReviewRequestAsync('Add Gemini transport module');
   const expectedDecision = {
     decision: 'PASS',
-    authorityFiles: ['AGENTS.md'],
+    summary: 'Architecture aligns with canonical authority.',
+    authority: ['docs/architecture.md'],
+    authorityFiles: ['docs/architecture.md'],
+    authorityIds: request.authoritySet.members.map(m => m.id),
     responsibility: ['runtime'],
+    capabilitySurface: ['Gemini transport'],
+    qualityGuarantees: ['Fail closed and credential isolation'],
     reviewedScope: ['src/gemini-transport.mjs'],
     prohibitedChanges: ['none'],
+    findings: [],
+    gates: {
+      sharedMechanism: {
+        decision: 'PASS',
+        summary: 'Adheres to configuration-bound reviewer settings.',
+        consumerOwnership: 'Model and effort selections are bound to request.',
+        failClosedBehavior: 'Fails closed on error and mismatch.',
+        compatibility: 'Maintains full compatibility.',
+        minimality: 'Minimal zero-dependency transport.',
+      },
+      trustBoundary: {
+        decision: 'PASS',
+        summary: 'Credentials are isolated.',
+        tokenPermissions: 'Standard permissions.',
+        untrustedInputs: 'Properly escaped.',
+        credentialHandling: 'Never logged or leaked.',
+        reportingIsolation: 'Clean isolation.',
+      },
+    },
   };
 
   const mockFetch = async () => ({
@@ -261,13 +259,36 @@ test('integrates with review-contract validateReviewResponse', async () => {
     }),
   });
 
-  const decision = await runGeminiReviewer(request, {
+  const rawDecision = await runGeminiReviewer(request, {
     apiKey: 'test-api-key',
     fetch: mockFetch,
   });
 
-  assert.equal(decision.decision, 'PASS');
-  assert.deepEqual(decision.authorityFiles, ['AGENTS.md']);
+  const validated = validateReviewResponse(request, rawDecision);
+  assert.equal(validated.decision, 'PASS');
+  assert.deepEqual(validated.authorityFiles, ['docs/architecture.md']);
+  assert.deepEqual(validated.responsibility, ['runtime']);
+});
+
+test('runGeminiReviewer rejects model and reasoningEffort mismatches (fail-closed)', async () => {
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: {
+      model: 'gemini-2.5-flash',
+      reasoningEffort: 'low',
+    },
+  };
+
+  await assert.rejects(
+    () => runGeminiReviewer(request, { apiKey: 'k', model: 'gemini-1.5-pro' }),
+    /model mismatch/
+  );
+
+  await assert.rejects(
+    () => runGeminiReviewer(request, { apiKey: 'k', reasoningEffort: 'high' }),
+    /reasoningEffort mismatch/
+  );
 });
 
 test('resolveAuthCredentials prioritizes explicit apiKey over bearer token', () => {

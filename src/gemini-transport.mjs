@@ -64,7 +64,7 @@ export function prepareGeminiRequestBody(request, options = {}) {
     throw new Error('Architecture gate reviewer failed: reasoningEffort mismatch.');
   }
   const effort = request.reviewer?.reasoningEffort;
-  const budget = options.thinkingBudget ?? mapEffortToThinkingBudget(effort);
+  const budget = mapEffortToThinkingBudget(effort);
   if (typeof budget === 'number') {
     generationConfig.thinkingConfig = {
       thinkingBudget: budget,
