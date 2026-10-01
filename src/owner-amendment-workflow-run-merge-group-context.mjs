@@ -1,5 +1,6 @@
 const API = 'https://api.github.com';
 const SHA1 = /^[a-f0-9]{40}$/;
+const UTC_TIMESTAMP = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?Z$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const ACTIVE_QUEUE_STATES = new Set(['AWAITING_CHECKS', 'LOCKED', 'MERGEABLE', 'QUEUED']);
 
@@ -8,6 +9,8 @@ function fail(message) { throw new Error(`Owner amendment workflow-run context: 
 function validNumericId(value) { return Number.isSafeInteger(value) && value > 0; }
 
 function validSha(value) { return typeof value === 'string' && SHA1.test(value); }
+
+function validUtcTimestamp(value) { return typeof value === 'string' && UTC_TIMESTAMP.test(value) && Number.isFinite(Date.parse(value)); }
 
 function validBranchName(value) {
   return typeof value === 'string' && value.length <= 255 && /^[A-Za-z0-9._/-]+$/.test(value) &&
@@ -147,7 +150,8 @@ export async function resolveOwnerAmendmentWorkflowRunMergeGroupContext({
       candidate.state === 'open' && candidate.draft === false && candidate.base?.ref === 'main' &&
       candidate.base?.sha === currentMainSha && candidate.head?.sha === bHeadSha &&
       candidate.base?.repo?.id === expected.repositoryId && candidate.head?.repo?.id === expected.repositoryId &&
-      candidate.base?.repo?.full_name === expected.repository && candidate.head?.repo?.full_name === expected.repository);
+      candidate.base?.repo?.full_name === expected.repository && candidate.head?.repo?.full_name === expected.repository &&
+      validUtcTimestamp(candidate.created_at));
     if (exactCandidates.length !== 1) fail('B has no unique exact open same-repository main pull request.');
     const candidate = exactCandidates[0];
 
@@ -171,6 +175,9 @@ export async function resolveOwnerAmendmentWorkflowRunMergeGroupContext({
         typeof entry.enqueuedAt !== 'string' || !Number.isFinite(Date.parse(entry.enqueuedAt))) {
       fail('live merge-queue entry does not bind this exact main base, B head, and PR.');
     }
+    if (Date.parse(candidate.created_at) > Date.parse(entry.enqueuedAt)) {
+      fail('exact B pull request was created after merge queue entry.');
+    }
 
     const [finalQueueRef, finalMainRef] = await Promise.all([
       request(fetchImpl, token, `${root}/git/ref/heads/${queueBranchPath(headBranch)}`),
@@ -188,7 +195,7 @@ export async function resolveOwnerAmendmentWorkflowRunMergeGroupContext({
       workflowId: expected.workflowId, workflowPath: expected.workflowPath,
       runId: selectors.runId, runAttempt: selectors.attempt,
       workflowRunHeadSha: headSha, observedQueueBranch: headBranch, observedQueueRefSha: queueRefSha,
-      currentMainSha, bPrNumber: String(candidate.number), bHeadSha,
+      currentMainSha, bPrNumber: String(candidate.number), bHeadSha, bPullRequestCreatedAt: candidate.created_at,
       queueEntryState: entry.state, queueEntryEnqueuedAt: entry.enqueuedAt,
       assurance: 'context selection only; no policy, evidence, eligibility, or acceptance claim' });
   } catch (error) {

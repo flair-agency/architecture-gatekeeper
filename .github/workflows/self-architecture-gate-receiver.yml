@@ -1,0 +1,188 @@
+name: Self Architecture Gate Protected Receiver
+
+on:
+  workflow_run:
+    workflows: [Self Architecture Gate]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  protected-queue-review:
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/main' && github.event.workflow_run.event == 'merge_group' && vars.OWNER_AMENDMENT_RECEIVER_ENABLED == 'true'
+    name: protected-queue-review
+    outputs:
+      handoff: ${{ steps.package.outputs.handoff }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: architecture-gate-self-protected
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out only the protected default-branch revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Resolve the wake-up to current live queue context
+        id: resolve
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          GH_TOKEN: ${{ github.token }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-workflow-run-receiver.mjs" resolve
+      - name: Verify previous-base policy and exact amendment evidence
+        id: verify
+        continue-on-error: true
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          GH_TOKEN: ${{ github.token }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-gate.mjs"
+      - name: Prepare fresh ordinary review for exact current base and B
+        id: prepare-ordinary
+        if: steps.resolve.outcome == 'success' && steps.verify.outcome == 'success' && steps.verify.outputs.route == 'ordinary'
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ steps.verify.outputs.base_sha }}
+          B_SHA: ${{ steps.verify.outputs.b_sha }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-ordinary-review.mjs" prepare
+      - name: Run the fresh read-only ordinary review
+        id: ordinary-review
+        if: steps.prepare-ordinary.outcome == 'success'
+        timeout-minutes: 5
+        uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: ${{ runner.temp }}/owner-amendment-merge-group/ordinary-prompt.md
+          output-schema-file: ${{ runner.temp }}/owner-amendment-merge-group/ordinary-schema.json
+          model: ${{ steps.prepare-ordinary.outputs.model }}
+          effort: ${{ steps.prepare-ordinary.outputs.effort }}
+          sandbox: read-only
+          safety-strategy: drop-sudo
+          codex-args: '["--ephemeral","-c","project_doc_max_bytes=0","--json"]'
+      - name: Package only original context and untrusted ordinary decision bytes
+        id: package
+        if: always() && steps.resolve.outcome == 'success'
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          DECISION: ${{ steps.ordinary-review.outcome == 'success' && steps.ordinary-review.outputs.final-message || '' }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-workflow-run-receiver.mjs" handoff
+  protected-queue-reporter:
+    needs: [protected-queue-review]
+    if: always() && github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/main' && github.event.workflow_run.event == 'merge_group' && vars.OWNER_AMENDMENT_RECEIVER_ENABLED == 'true'
+    name: protected-queue-reporter
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: architecture-gate-self-app-report
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out only the protected default-branch revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Independently resolve original live queue context
+        id: resolve
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          GH_TOKEN: ${{ github.token }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-workflow-run-receiver.mjs" resolve
+      - name: Compare reporter context with original before verification
+        id: compare-handoff
+        if: steps.resolve.outcome == 'success' && needs.protected-queue-review.outputs.handoff != ''
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          HANDOFF: ${{ needs.protected-queue-review.outputs.handoff }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-workflow-run-receiver.mjs" compare-handoff
+      - name: Independently reverify prior-base policy and exact amendment evidence
+        id: verify
+        if: steps.compare-handoff.outcome == 'success'
+        continue-on-error: true
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          GH_TOKEN: ${{ github.token }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-gate.mjs"
+      - name: Reprepare and validate ordinary decision from reporter-local inputs
+        id: ordinary-validation
+        if: steps.compare-handoff.outcome == 'success' && steps.verify.outcome == 'success' && steps.verify.outputs.route == 'ordinary'
+        continue-on-error: true
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ steps.verify.outputs.base_sha }}
+          B_SHA: ${{ steps.verify.outputs.b_sha }}
+          HANDOFF: ${{ needs.protected-queue-review.outputs.handoff }}
+        run: |
+          node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-ordinary-review.mjs" prepare
+          DECISION="$(node "$GITHUB_WORKSPACE/scripts/owner-amendment-workflow-run-receiver.mjs" print-decision)" node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-ordinary-review.mjs" validate
+      - name: Publish only reporter-local verification for the original live queue SHA
+        if: always() && steps.resolve.outcome == 'success'
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          HANDOFF: ${{ needs.protected-queue-review.outputs.handoff }}
+          GH_TOKEN: ${{ github.token }}
+          VERIFICATION_OUTCOME: ${{ steps.verify.outcome }}
+          VERIFIED_ROUTE: ${{ steps.verify.outputs.route }}
+          ORDINARY_VALIDATION_OUTCOME: ${{ steps.ordinary-validation.outcome }}
+          OWNER_AMENDMENT_APP_ID: ${{ vars.OWNER_AMENDMENT_APP_ID }}
+          OWNER_AMENDMENT_APP_INSTALLATION_ID: ${{ vars.OWNER_AMENDMENT_APP_INSTALLATION_ID }}
+          OWNER_AMENDMENT_APP_PRIVATE_KEY: ${{ secrets.OWNER_AMENDMENT_APP_PRIVATE_KEY }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-workflow-run-receiver.mjs" publish
