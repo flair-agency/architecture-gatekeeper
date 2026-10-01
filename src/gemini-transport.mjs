@@ -55,21 +55,25 @@ export function prepareGeminiRequestBody(request, options = {}) {
   const prompt = request.prompt;
   const schema = cleanJsonSchema(request.schema);
 
+  if (!request?.reviewer?.reasoningEffort || typeof request.reviewer.reasoningEffort !== 'string') {
+    throw new Error('Architecture gate reviewer failed: missing or invalid reviewer reasoningEffort.');
+  }
+  if (options.reasoningEffort && options.reasoningEffort !== request.reviewer.reasoningEffort) {
+    throw new Error('Architecture gate reviewer failed: reasoningEffort mismatch.');
+  }
+  const effort = request.reviewer.reasoningEffort;
+  const budget = mapEffortToThinkingBudget(effort);
+  if (budget === undefined) {
+    throw new Error(`Architecture gate reviewer failed: unsupported reasoningEffort: ${effort}`);
+  }
+
   const generationConfig = {
     responseMimeType: 'application/json',
     responseJsonSchema: schema,
-  };
-
-  if (options.reasoningEffort && options.reasoningEffort !== request.reviewer?.reasoningEffort) {
-    throw new Error('Architecture gate reviewer failed: reasoningEffort mismatch.');
-  }
-  const effort = request.reviewer?.reasoningEffort;
-  const budget = mapEffortToThinkingBudget(effort);
-  if (typeof budget === 'number') {
-    generationConfig.thinkingConfig = {
+    thinkingConfig: {
       thinkingBudget: budget,
-    };
-  }
+    },
+  };
 
   return {
     contents: [
@@ -153,16 +157,38 @@ export function resolveAuthCredentials(options = {}) {
  * @returns {Promise<object>} Parsed decision JSON conforming to the requested schema
  */
 export async function runGeminiReviewer(request, options = {}) {
-  const credentials = resolveAuthCredentials(options);
-
-  if (options.model && options.model !== request.reviewer?.model) {
+  if (!request?.reviewer?.model || typeof request.reviewer.model !== 'string') {
+    throw new Error('Architecture gate reviewer failed: missing or invalid reviewer model.');
+  }
+  if (options.model && options.model !== request.reviewer.model) {
     throw new Error('Architecture gate reviewer failed: model mismatch.');
   }
-  const model = request.reviewer?.model || 'gemini-2.5-flash';
+  const model = request.reviewer.model;
+
+  if (!request?.reviewer?.reasoningEffort || typeof request.reviewer.reasoningEffort !== 'string') {
+    throw new Error('Architecture gate reviewer failed: missing or invalid reviewer reasoningEffort.');
+  }
+  if (options.reasoningEffort && options.reasoningEffort !== request.reviewer.reasoningEffort) {
+    throw new Error('Architecture gate reviewer failed: reasoningEffort mismatch.');
+  }
+  const budget = mapEffortToThinkingBudget(request.reviewer.reasoningEffort);
+  if (budget === undefined) {
+    throw new Error(`Architecture gate reviewer failed: unsupported reasoningEffort: ${request.reviewer.reasoningEffort}`);
+  }
+
+  const recordedTimeoutMs = request.reviewer?.reviewTimeoutMs ?? 120000;
+  if (options.timeoutMs !== undefined) {
+    if (typeof options.timeoutMs !== 'number' || options.timeoutMs <= 0 || options.timeoutMs > recordedTimeoutMs) {
+      throw new Error('Architecture gate reviewer failed: timeoutMs cannot extend recorded reviewTimeoutMs.');
+    }
+  }
+  const timeoutMs = options.timeoutMs ?? recordedTimeoutMs;
+
+  const credentials = resolveAuthCredentials(options);
+
   const baseUrl = options.baseUrl || 'https://generativelanguage.googleapis.com/v1beta';
   const url = `${baseUrl.replace(/\/+$/, '')}/models/${encodeURIComponent(model)}:generateContent`;
 
-  const timeoutMs = options.timeoutMs || request.reviewer?.reviewTimeoutMs || 120000;
   const signal = AbortSignal.timeout(timeoutMs);
 
   const requestBody = prepareGeminiRequestBody(request, options);

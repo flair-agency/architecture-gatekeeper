@@ -69,7 +69,7 @@ test('runGeminiReviewer fails closed when no credentials are found', async () =>
     const request = {
       prompt: 'test prompt',
       schema: { type: 'object' },
-      reviewer: { model: 'gemini-2.5-flash' },
+      reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'medium' },
     };
     await assert.rejects(
       () => runGeminiReviewer(request),
@@ -79,6 +79,68 @@ test('runGeminiReviewer fails closed when no credentials are found', async () =>
     if (prevKey !== undefined) process.env.GEMINI_API_KEY = prevKey;
     if (prevToken !== undefined) process.env.GOOGLE_OAUTH_ACCESS_TOKEN = prevToken;
   }
+});
+
+test('runGeminiReviewer fails closed on missing reviewer model or reasoningEffort', async () => {
+  const mockFetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ candidates: [] }),
+  });
+
+  const requestNoModel = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: { reasoningEffort: 'medium' },
+  };
+  await assert.rejects(
+    () => runGeminiReviewer(requestNoModel, { apiKey: 'k', fetch: mockFetch }),
+    /missing or invalid reviewer model/
+  );
+
+  const requestNoEffort = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: { model: 'gemini-2.5-flash' },
+  };
+  await assert.rejects(
+    () => runGeminiReviewer(requestNoEffort, { apiKey: 'k', fetch: mockFetch }),
+    /missing or invalid reviewer reasoningEffort/
+  );
+
+  const requestInvalidEffort = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'unsupported-effort' },
+  };
+  await assert.rejects(
+    () => runGeminiReviewer(requestInvalidEffort, { apiKey: 'k', fetch: mockFetch }),
+    /unsupported reasoningEffort/
+  );
+});
+
+test('runGeminiReviewer rejects timeout extension beyond recorded reviewer timeout', async () => {
+  const mockFetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ candidates: [] }),
+  });
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: {
+      model: 'gemini-2.5-flash',
+      reasoningEffort: 'medium',
+      reviewTimeoutMs: 180000,
+    },
+  };
+
+  // Attempting to extend timeoutMs beyond recorded 180000ms must fail closed
+  await assert.rejects(
+    () => runGeminiReviewer(request, { apiKey: 'k', timeoutMs: 181000, fetch: mockFetch }),
+    /timeoutMs cannot extend recorded reviewTimeoutMs/
+  );
 });
 
 test('runGeminiReviewer successfully returns parsed JSON on valid API response', async () => {
@@ -115,7 +177,7 @@ test('runGeminiReviewer successfully returns parsed JSON on valid API response',
   const request = {
     prompt: 'test prompt',
     schema: { type: 'object' },
-    reviewer: { model: 'gemini-2.5-flash', reviewTimeoutMs: 5000 },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'medium', reviewTimeoutMs: 5000 },
   };
 
   const result = await runGeminiReviewer(request, {
@@ -136,7 +198,7 @@ test('runGeminiReviewer fails closed on HTTP error response', async () => {
   const request = {
     prompt: 'test prompt',
     schema: { type: 'object' },
-    reviewer: { model: 'gemini-2.5-flash' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' },
   };
 
   await assert.rejects(
@@ -155,7 +217,7 @@ test('runGeminiReviewer fails closed on empty candidates or non-JSON text', asyn
   const request = {
     prompt: 'test prompt',
     schema: { type: 'object' },
-    reviewer: { model: 'gemini-2.5-flash' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' },
   };
 
   await assert.rejects(
@@ -181,7 +243,7 @@ test('runGeminiReviewer fails closed on missing, null, empty or non-STOP candida
   const request = {
     prompt: 'test prompt',
     schema: { type: 'object' },
-    reviewer: { model: 'gemini-2.5-flash' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' },
   };
 
   for (const invalidReason of [undefined, null, '', 'MAX_TOKENS', 'SAFETY', 'RECITATION', 'OTHER']) {
@@ -240,7 +302,7 @@ test('runGeminiReviewer correctly extracts final decision from thought-first and
   const request = {
     prompt: 'test prompt',
     schema: { type: 'object' },
-    reviewer: { model: 'gemini-2.5-flash' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'medium' },
   };
 
   const result = await runGeminiReviewer(request, {
@@ -275,7 +337,7 @@ test('runGeminiReviewer fails closed when response contains only thought parts',
   const request = {
     prompt: 'test prompt',
     schema: { type: 'object' },
-    reviewer: { model: 'gemini-2.5-flash' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'medium' },
   };
 
   await assert.rejects(
@@ -308,7 +370,7 @@ test('runGeminiReviewer fails closed on timeout', async () => {
   const request = {
     prompt: 'test prompt',
     schema: { type: 'object' },
-    reviewer: { model: 'gemini-2.5-flash' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'medium', reviewTimeoutMs: 120000 },
   };
 
   await assert.rejects(
@@ -460,7 +522,7 @@ test('runGeminiReviewer sends Authorization Bearer header when bearer token is u
   const request = {
     prompt: 'test prompt',
     schema: { type: 'object' },
-    reviewer: { model: 'gemini-2.5-flash' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'medium' },
   };
 
   const result = await runGeminiReviewer(request, {
