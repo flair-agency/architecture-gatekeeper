@@ -26,22 +26,31 @@ const SENSITIVE_ENV_VARS = [
   'GEMINI_API_KEY',
   'CLOUDSDK_AUTH_ACCESS_TOKEN',
   'GOOGLE_OAUTH_ACCESS_TOKEN',
+  'GOOGLE_APPLICATION_CREDENTIALS',
   'OPENAI_API_KEY',
   'GITHUB_TOKEN',
   'GH_TOKEN',
+  'ACTIONS_ID_TOKEN_REQUEST_URL',
+  'ACTIONS_ID_TOKEN_REQUEST_TOKEN',
+  'ACTIONS_RUNTIME_TOKEN',
+  'ACTIONS_RESULTS_URL',
+  'ACTIONS_CACHE_URL',
 ];
 
 /**
  * Builds a clean environment dictionary for the unprivileged runner.
- * Strips all sensitive credentials.
+ * Strips all sensitive credentials, OIDC tokens, and credential-file access.
  * @param {NodeJS.ProcessEnv} env
  * @param {string} proxyUrl
  * @returns {Record<string, string>}
  */
 export function buildIsolatedRunnerEnv(env, proxyUrl) {
-  const cleanEnv = { ...env };
-  for (const varName of SENSITIVE_ENV_VARS) {
-    delete cleanEnv[varName];
+  const cleanEnv = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) continue;
+    if (SENSITIVE_ENV_VARS.includes(key)) continue;
+    if (key.startsWith('ACTIONS_ID_TOKEN_') || key.startsWith('GOOGLE_APPLICATION_CREDENTIALS')) continue;
+    cleanEnv[key] = value;
   }
   cleanEnv.REVIEW_PROXY_URL = proxyUrl;
   return cleanEnv;
@@ -59,9 +68,32 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
   // 1. Resolve credentials in the privileged supervisor context
   const credentials = resolveAuthCredentials(options.credentialsOptions || {});
 
-  // 2. Start security proxy on loopback
+  // Derive trusted scope constraints from supervisor environment and arguments
+  let allowedModel = null;
+  let allowedProject = null;
+  let allowedRegion = null;
+  for (let i = 0; i < runnerArgv.length; i++) {
+    const arg = runnerArgv[i];
+    if (arg === '--model' && i + 1 < runnerArgv.length) allowedModel = runnerArgv[i + 1];
+    if (arg.startsWith('--model=')) allowedModel = arg.slice(8);
+    if (arg === '--project' && i + 1 < runnerArgv.length) allowedProject = runnerArgv[i + 1];
+    if (arg.startsWith('--project=')) allowedProject = arg.slice(10);
+    if (arg === '--region' && i + 1 < runnerArgv.length) allowedRegion = runnerArgv[i + 1];
+    if (arg.startsWith('--region=')) allowedRegion = arg.slice(9);
+  }
+  allowedModel = allowedModel || process.env.MODEL || process.env.REVIEW_MODEL || null;
+  allowedProject = allowedProject || process.env.GOOGLE_CLOUD_PROJECT || process.env.CLOUDSDK_CORE_PROJECT || null;
+  allowedRegion = allowedRegion || process.env.GOOGLE_CLOUD_REGION || 'us-central1';
+
+  const allowedMode = credentials.type === 'bearer' ? 'vertex' : 'studio';
+
+  // 2. Start security proxy on loopback with trusted scope constraints
   const proxy = await startGeminiSecurityProxy({
     credentials,
+    allowedMode,
+    allowedModel,
+    allowedProject,
+    allowedRegion,
     ...options.proxyConfigOverride,
   });
 

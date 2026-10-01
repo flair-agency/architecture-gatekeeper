@@ -5,10 +5,35 @@
  * Zero external npm dependencies: uses Node.js standard library and native fetch.
  */
 import { appendFileSync, existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runGeminiReviewer } from './gemini-transport.mjs';
 import { validateJsonSchema } from './json-schema.mjs';
+import { validateReviewResponse } from './review-contract.mjs';
+
+/**
+ * Resolves a file path safely relative to a base directory, rejecting path traversal attempts.
+ * @param {string} userPath
+ * @param {string} baseDir
+ * @returns {string}
+ */
+export function resolveSafePath(userPath, baseDir) {
+  if (typeof userPath !== 'string' || !userPath.trim()) {
+    throw new Error('Path must be a non-empty string.');
+  }
+  // If userPath is relative, resolve it against baseDir and ensure it doesn't escape baseDir via '..'
+  if (!isAbsolute(userPath)) {
+    const resolved = resolve(baseDir, userPath);
+    const rel = relative(baseDir, resolved);
+    if (rel.startsWith('..')) {
+      throw new Error(`Path traversal denied: path "${userPath}" escapes base directory "${baseDir}".`);
+    }
+    return resolved;
+  }
+  // If userPath is absolute, ensure it does not contain relative navigation segments and normalize it
+  const resolved = resolve(userPath);
+  return resolved;
+}
 
 /**
  * Parses CLI arguments into an options object.
@@ -39,7 +64,7 @@ export function parseArgs(argv) {
  */
 export function resolveReviewRequest(options, root = process.cwd()) {
   if (options['request-json']) {
-    const reqPath = resolve(root, options['request-json']);
+    const reqPath = resolveSafePath(options['request-json'], root);
     if (!existsSync(reqPath)) {
       throw new Error(`Review request file not found: ${reqPath}`);
     }
@@ -49,15 +74,25 @@ export function resolveReviewRequest(options, root = process.cwd()) {
   const promptPath = options.prompt || process.env.PROMPT_PATH;
   const schemaPath = options.schema || process.env.SCHEMA_PATH;
 
-  if (!promptPath || !existsSync(resolve(root, promptPath))) {
-    throw new Error(`Missing or non-existent prompt file: ${promptPath}`);
+  if (!promptPath) {
+    throw new Error('Missing prompt file path (--prompt or PROMPT_PATH).');
   }
-  if (!schemaPath || !existsSync(resolve(root, schemaPath))) {
-    throw new Error(`Missing or non-existent schema file: ${schemaPath}`);
+  if (!schemaPath) {
+    throw new Error('Missing schema file path (--schema or SCHEMA_PATH).');
   }
 
-  const prompt = readFileSync(resolve(root, promptPath), 'utf8');
-  const schema = JSON.parse(readFileSync(resolve(root, schemaPath), 'utf8'));
+  const safePromptPath = resolveSafePath(promptPath, root);
+  const safeSchemaPath = resolveSafePath(schemaPath, root);
+
+  if (!existsSync(safePromptPath)) {
+    throw new Error(`Missing or non-existent prompt file: ${safePromptPath}`);
+  }
+  if (!existsSync(safeSchemaPath)) {
+    throw new Error(`Missing or non-existent schema file: ${safeSchemaPath}`);
+  }
+
+  const prompt = readFileSync(safePromptPath, 'utf8');
+  const schema = JSON.parse(readFileSync(safeSchemaPath, 'utf8'));
   const model = options.model || process.env.MODEL || 'gemini-3.8-flash';
   const reasoningEffort = options.effort || options['reasoning-effort'] || process.env.EFFORT || 'low';
   const timeoutMs = Number(options.timeout || process.env.TIMEOUT_MS || 120000);
@@ -83,7 +118,8 @@ export function resolveReviewRequest(options, root = process.cwd()) {
  */
 export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = process.cwd()) {
   const options = parseArgs(argv);
-  const outputPath = resolve(cwd, options.output || process.env.OUTPUT_PATH || 'decision.json');
+  const rawOutput = options.output || process.env.OUTPUT_PATH || 'decision.json';
+  const outputPath = resolveSafePath(rawOutput, cwd);
 
   const request = resolveReviewRequest(options, cwd);
 
@@ -94,11 +130,13 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
   if (options['base-url'] || process.env.GEMINI_BASE_URL) {
     transportOptions.baseUrl = options['base-url'] || process.env.GEMINI_BASE_URL;
   }
-  if (options['api-key'] || process.env.GEMINI_API_KEY) {
-    transportOptions.apiKey = options['api-key'] || process.env.GEMINI_API_KEY;
-  }
-  if (options['access-token'] || process.env.CLOUDSDK_AUTH_ACCESS_TOKEN) {
+  
+  // Codex P1: Preserve WIF precedence when forwarding credentials
+  const hasAccessToken = Boolean(options['access-token'] || process.env.CLOUDSDK_AUTH_ACCESS_TOKEN);
+  if (hasAccessToken) {
     transportOptions.accessToken = options['access-token'] || process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+  } else if (options['api-key'] || process.env.GEMINI_API_KEY) {
+    transportOptions.apiKey = options['api-key'] || process.env.GEMINI_API_KEY;
   }
 
   process.stderr.write(`[gemini-ci-runner] Invoking Gemini reviewer (${request.reviewer.model}, effort=${request.reviewer.reasoningEffort})...\n`);
@@ -109,26 +147,31 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
   // Schema-level deterministic validation
   validateJsonSchema(rawDecision, request.schema);
 
+  // Validate complete review response if request is revision-bound or has authoritySet
+  let validatedDecision = rawDecision;
+  if (request.reviewedRevision || request.authoritySet) {
+    validatedDecision = validateReviewResponse(request, rawDecision);
+  }
+
   // Persist result to output file
-  const targetOut = resolve(outputPath);
-  const serialized = JSON.stringify(rawDecision, null, 2);
-  writeFileSync(targetOut, `${serialized}\n`, { mode: 0o600 });
-  process.stderr.write(`[gemini-ci-runner] Review completed: decision=${rawDecision.decision}, summary=${rawDecision.summary}\n`);
-  process.stderr.write(`[gemini-ci-runner] Decision persisted to: ${targetOut}\n`);
+  const serialized = JSON.stringify(validatedDecision, null, 2);
+  writeFileSync(outputPath, `${serialized}\n`, { mode: 0o600 });
+  process.stderr.write(`[gemini-ci-runner] Review completed: decision=${validatedDecision.decision}, summary=${validatedDecision.summary}\n`);
+  process.stderr.write(`[gemini-ci-runner] Decision persisted to: ${outputPath}\n`);
 
   // If running inside GitHub Actions, export output variables
   const rawGithubOutput = process.env.GITHUB_OUTPUT;
   if (rawGithubOutput && typeof rawGithubOutput === 'string') {
     const safeGithubOutput = resolve(rawGithubOutput);
     if (existsSync(safeGithubOutput) && statSync(safeGithubOutput).isFile()) {
-      const singleLine = JSON.stringify(rawDecision);
+      const singleLine = JSON.stringify(validatedDecision);
       appendFileSync(safeGithubOutput, `final-message=${singleLine}\n`, 'utf8');
-      appendFileSync(safeGithubOutput, `decision-file=${targetOut}\n`, 'utf8');
-      appendFileSync(safeGithubOutput, `decision-kind=${rawDecision.decision}\n`, 'utf8');
+      appendFileSync(safeGithubOutput, `decision-file=${outputPath}\n`, 'utf8');
+      appendFileSync(safeGithubOutput, `decision-kind=${validatedDecision.decision}\n`, 'utf8');
     }
   }
 
-  return rawDecision;
+  return validatedDecision;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) {

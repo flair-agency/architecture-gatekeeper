@@ -261,14 +261,17 @@ export async function runGeminiReviewer(request, options = {}) {
   let baseUrl;
   let parsedUrl;
   if (parsedProxyUrl) {
-    // When using loopback proxy, construct relative path target according to mode
+    let cleanProxyUrl = proxyUrl;
+    while (cleanProxyUrl.endsWith('/')) {
+      cleanProxyUrl = cleanProxyUrl.slice(0, -1);
+    }
     const isVertex = Boolean(options.projectId || process.env.GOOGLE_CLOUD_PROJECT || process.env.CLOUDSDK_CORE_PROJECT);
     if (isVertex) {
       const projectId = options.projectId || process.env.GOOGLE_CLOUD_PROJECT || process.env.CLOUDSDK_CORE_PROJECT || 'default';
       const region = options.region || process.env.GOOGLE_CLOUD_REGION || 'us-central1';
-      baseUrl = `${proxyUrl.replace(/\/+$/, '')}/v1/projects/${encodeURIComponent(projectId)}/locations/${encodeURIComponent(region)}/publishers/google`;
+      baseUrl = `${cleanProxyUrl}/v1/projects/${encodeURIComponent(projectId)}/locations/${encodeURIComponent(region)}/publishers/google`;
     } else {
-      baseUrl = `${proxyUrl.replace(/\/+$/, '')}/v1beta`;
+      baseUrl = `${cleanProxyUrl}/v1beta`;
     }
     parsedUrl = new URL(baseUrl);
   } else {

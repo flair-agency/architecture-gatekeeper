@@ -12,9 +12,13 @@ test('buildIsolatedRunnerEnv strips sensitive variables and sets REVIEW_PROXY_UR
     GEMINI_API_KEY: 'super-secret-key',
     CLOUDSDK_AUTH_ACCESS_TOKEN: 'bearer-token-123',
     GOOGLE_OAUTH_ACCESS_TOKEN: 'bearer-token-456',
+    GOOGLE_APPLICATION_CREDENTIALS: '/path/to/key.json',
     OPENAI_API_KEY: 'openai-key',
     GITHUB_TOKEN: 'ghp_secret',
     GH_TOKEN: 'gho_secret',
+    ACTIONS_ID_TOKEN_REQUEST_URL: 'https://oidc.example.com',
+    ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'secret-oidc-renewal-token',
+    ACTIONS_RUNTIME_TOKEN: 'runtime-token',
     CUSTOM_VAR: 'keep-me',
   };
 
@@ -26,9 +30,13 @@ test('buildIsolatedRunnerEnv strips sensitive variables and sets REVIEW_PROXY_UR
   assert.equal(clean.GEMINI_API_KEY, undefined);
   assert.equal(clean.CLOUDSDK_AUTH_ACCESS_TOKEN, undefined);
   assert.equal(clean.GOOGLE_OAUTH_ACCESS_TOKEN, undefined);
+  assert.equal(clean.GOOGLE_APPLICATION_CREDENTIALS, undefined);
   assert.equal(clean.OPENAI_API_KEY, undefined);
   assert.equal(clean.GITHUB_TOKEN, undefined);
   assert.equal(clean.GH_TOKEN, undefined);
+  assert.equal(clean.ACTIONS_ID_TOKEN_REQUEST_URL, undefined);
+  assert.equal(clean.ACTIONS_ID_TOKEN_REQUEST_TOKEN, undefined);
+  assert.equal(clean.ACTIONS_RUNTIME_TOKEN, undefined);
 });
 
 test('runIsolatedGeminiSession starts proxy, runs runner in isolated environment, and shuts down proxy', async () => {
@@ -147,6 +155,7 @@ await runGeminiCiReview(process.argv.slice(2));
           upstreamHost: '127.0.0.1',
           upstreamPort,
           upstreamHttp: true,
+          allowLoopbackUpstream: true,
         },
       }
     );

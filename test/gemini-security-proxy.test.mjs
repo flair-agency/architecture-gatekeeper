@@ -97,6 +97,7 @@ test('GeminiSecurityProxy injects credentials in-flight to upstream and rejects 
     upstreamHost: '127.0.0.1',
     upstreamPort,
     upstreamHttp: true,
+    allowLoopbackUpstream: true,
   });
 
   try {
@@ -136,6 +137,7 @@ test('GeminiSecurityProxy injects Bearer token for Vertex requests', async () =>
     upstreamHost: '127.0.0.1',
     upstreamPort,
     upstreamHttp: true,
+    allowLoopbackUpstream: true,
   });
 
   try {

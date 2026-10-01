@@ -12,7 +12,7 @@
     "architecture-gatekeeper": "src/local-gate.mjs",
     "architecture-review": "src/manual-review.mjs",
     "architecture-review-native": "src/native-review.mjs",
-    "architecture-review-gemini-ci": "src/gemini-ci-runner.mjs",
+    "architecture-review-gemini-ci": "src/gemini-launcher.mjs",
     "architecture-gate-policy": "src/resolve-ci-policy.mjs",
     "architecture-owner-addition-finalize": "src/owner-addition-finalize.mjs"
   },

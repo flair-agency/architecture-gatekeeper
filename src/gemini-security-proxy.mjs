@@ -78,28 +78,63 @@ export async function startGeminiSecurityProxy(config) {
         return;
       }
 
-      // 3. Resolve and validate upstream host
+      // Enforce trusted mode
+      if (config.allowedMode && parsedRoute.mode !== config.allowedMode) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Forbidden: mode mismatch (expected ${config.allowedMode}, got ${parsedRoute.mode}).` }));
+        return;
+      }
+
+      // 3. Resolve and validate upstream host & scope parameters
       let targetHost;
       if (parsedRoute.mode === 'vertex') {
-        // Vertex regional endpoint or override
+        const match = ALLOWED_VERTEX_PATH.exec(parsedRoute.path);
+        const reqProject = match ? match[1] : null;
+        const reqRegion = match ? match[2] : null;
+        const reqModel = match ? match[3] : null;
+
+        if (config.allowedProject && reqProject !== config.allowedProject) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Forbidden: project mismatch (expected ${config.allowedProject}, got ${reqProject}).` }));
+          return;
+        }
+        if (config.allowedRegion && reqRegion !== config.allowedRegion) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Forbidden: region mismatch (expected ${config.allowedRegion}, got ${reqRegion}).` }));
+          return;
+        }
+        if (config.allowedModel && reqModel !== config.allowedModel) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Forbidden: model mismatch (expected ${config.allowedModel}, got ${reqModel}).` }));
+          return;
+        }
+
         if (upstreamHostOverride) {
           targetHost = upstreamHostOverride;
         } else {
-          // Extract location from path: /v1/projects/:project/locations/:region/...
-          const match = ALLOWED_VERTEX_PATH.exec(parsedRoute.path);
-          const region = match ? match[2] : 'us-central1';
+          const region = reqRegion || 'us-central1';
           targetHost = `${region}-aiplatform.googleapis.com`;
         }
 
-        if (!ALLOWED_VERTEX_HOST.test(targetHost) && targetHost !== '127.0.0.1' && targetHost !== 'localhost') {
+        const isLoopbackTest = Boolean(config.allowLoopbackUpstream && (targetHost === '127.0.0.1' || targetHost === 'localhost'));
+        if (!ALLOWED_VERTEX_HOST.test(targetHost) && !isLoopbackTest) {
           res.writeHead(403, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: `Forbidden: unverified Vertex host ${targetHost}` }));
           return;
         }
       } else {
         // AI Studio
+        const match = ALLOWED_AI_STUDIO_PATH.exec(parsedRoute.path);
+        const reqModel = match ? match[1] : null;
+        if (config.allowedModel && reqModel !== config.allowedModel) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Forbidden: model mismatch (expected ${config.allowedModel}, got ${reqModel}).` }));
+          return;
+        }
+
         targetHost = upstreamHostOverride || ALLOWED_AI_STUDIO_HOST;
-        if (targetHost !== ALLOWED_AI_STUDIO_HOST && targetHost !== '127.0.0.1' && targetHost !== 'localhost') {
+        const isLoopbackTest = Boolean(config.allowLoopbackUpstream && (targetHost === '127.0.0.1' || targetHost === 'localhost'));
+        if (targetHost !== ALLOWED_AI_STUDIO_HOST && !isLoopbackTest) {
           res.writeHead(403, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: `Forbidden: unverified AI Studio host ${targetHost}` }));
           return;
