@@ -71,10 +71,10 @@ test('receiver hands off ordinary decision bytes only after a successful reviewe
   assert.equal(handoffInput,
     "steps.ordinary-review.outcome == 'success' && steps.ordinary-review.outputs.final-message || ''");
 
-  const javascriptExpression = handoffInput
-    .replaceAll('steps.ordinary-review.outcome', 'outcome')
-    .replaceAll('steps.ordinary-review.outputs.final-message', 'finalMessage');
-  const handoffDecision = new Function('outcome', 'finalMessage', `return (${javascriptExpression});`);
+  const expressionParts = handoffInput.match(/^steps\.ordinary-review\.outcome == '([^']+)' && steps\.ordinary-review\.outputs\.final-message \|\| ''$/);
+  assert.ok(expressionParts, 'handoff binding must use the supported outcome-gated expression');
+  const successfulOutcome = expressionParts[1];
+  const handoffDecision = (outcome, finalMessage) => outcome === successfulOutcome ? (finalMessage || '') : '';
   assert.equal(handoffDecision('failure', '{"decision":"PASS"}'), '',
     'an output left behind by a failed reviewer must not enter the handoff');
   assert.equal(handoffDecision('success', '{"decision":"PASS"}'), '{"decision":"PASS"}',
