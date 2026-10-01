@@ -223,9 +223,20 @@ export async function runPostToolScreenHook(input, { cwd = process.cwd(), review
     const result = incomplete('Unsupported or incomplete PostToolUse event.');
     return { result, output: outputFor(result, eventMeta) };
   }
+  let invocationCwd;
+  try {
+    if (!isAbsolute(event.cwd) || resolve(event.cwd) !== resolve(cwd)) {
+      const result = incomplete('PostToolUse cwd does not match the hook invocation directory.');
+      return { result, output: outputFor(result, eventMeta) };
+    }
+    invocationCwd = resolve(cwd);
+  } catch {
+    const result = incomplete('Cannot validate the PostToolUse invocation directory.');
+    return { result, output: outputFor(result, eventMeta) };
+  }
   let root;
   let state;
-  try { root = repositoryRoot(event.cwd || cwd); state = gitPath(root); }
+  try { root = repositoryRoot(invocationCwd); state = gitPath(root); }
   catch (error) { const result = incomplete(error.message); return { result, output: outputFor(result, eventMeta) }; }
   let lease;
   try { lease = acquire(state, eventMeta); }

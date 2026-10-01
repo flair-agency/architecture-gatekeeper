@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -11,6 +11,7 @@ const parent = mkdtempSync(join(tmpdir(), 'architecture-gate-installed-'));
 try {
   const root = join(parent, 'consumer'); const gate = join(root, '.codex', 'gatekeeper'); const mockBin = join(parent, 'mock-bin');
   mkdirSync(gate, { recursive: true }); mkdirSync(mockBin);
+  const consumerCwd = realpathSync(root);
   writeFileSync(join(root, 'AGENTS.md'), '# Installed smoke authority\n');
   writeFileSync(join(gate, 'prompt.md'), 'Review the supplied authority.\n');
   writeFileSync(join(gate, 'schema.json'), JSON.stringify({ type: 'object', additionalProperties: false, required: ['decision', 'summary', 'authorityFiles', 'reviewedScope'], properties: { decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] }, summary: { type: 'string', minLength: 1 }, authorityFiles: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } }, reviewedScope: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } } } }));
@@ -53,15 +54,11 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   const v2Native = JSON.parse(run('architecture-review-native', ['validate', v2RequestPath, v2DecisionPath]));
   if (v2Native.decision !== 'PASS' || v2Native.authoritySet?.members[0]?.id !== 'architecture') throw new Error('native Authority Set adapter did not pass');
   const installedSrc = dirname(realpathSync(join(installedBin, 'architecture-review-native')));
-  const installedPackage = dirname(installedSrc);
-  const moduleDir = join(parent, 'node_modules', '@flair-agency');
-  mkdirSync(moduleDir, { recursive: true });
-  symlinkSync(installedPackage, join(moduleDir, 'architecture-gatekeeper'), 'dir');
-  const moduleHarness = join(parent, 'post-tool-screen-smoke.mjs');
-  writeFileSync(moduleHarness, `import { runPostToolScreenHookCli } from '@flair-agency/architecture-gatekeeper';\nrunPostToolScreenHookCli();\n`);
+  const installedRoot = resolve(installedBin, '..', '..');
   writeFileSync(join(root, 'AGENTS.md'), '# Installed smoke authority\n\nTracked candidate change.\n');
-  const postTool = spawnSync(process.execPath, [moduleHarness], {
-    cwd: root, env, input: JSON.stringify({ hook_event_name: 'PostToolUse', session_id: 'installed-post-tool-smoke', cwd: root, tool_name: 'Edit', tool_use_id: 'installed-use', turn_id: 'installed-turn' }),
+  const postToolModule = `import { runPostToolScreenHookCli } from '@flair-agency/architecture-gatekeeper';\nprocess.chdir(${JSON.stringify(consumerCwd)});\nrunPostToolScreenHookCli();`;
+  const postTool = spawnSync(process.execPath, ['--input-type=module', '-e', postToolModule], {
+    cwd: installedRoot, env, input: JSON.stringify({ hook_event_name: 'PostToolUse', session_id: 'installed-post-tool-smoke', cwd: consumerCwd, tool_name: 'Edit', tool_use_id: 'installed-use', turn_id: 'installed-turn' }),
     encoding: 'utf8', timeout: 30000,
   });
   if (postTool.status !== 0) throw new Error(`installed PostToolUse module entry failed: ${postTool.stderr}`);

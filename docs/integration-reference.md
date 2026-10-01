@@ -118,6 +118,13 @@ Identical candidates are deduplicated. The serialized Hook
 context is capped at 4,000 UTF-8 bytes and reports status, summary, revision,
 and request/snapshot identity.
 
+The screen resolves the repository from the hook process's invocation working
+directory and requires the event's `cwd` to match it. The CLI launcher must run
+from the consumer session's working directory. A programmatic caller that
+deliberately invokes the API from another process directory must pass the
+trusted consumer directory as the `cwd` option and provide the same path in the
+event.
+
 The Hook timeout is measured in seconds and must exceed the consumer's
 `reviewTimeoutMs` plus local request preparation and cleanup. For example, a
 180,000 ms reviewer deadline can use a 240-second Hook timeout to leave about a
