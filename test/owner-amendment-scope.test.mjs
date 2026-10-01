@@ -28,6 +28,7 @@ test('binds one modified self authority to exact B without deriving acceptance',
 test('rejects absent opt-in, wrong trigger, extra files, external authority and unchanged bytes', () => {
   const cases = [
     { policy: { ...policy, ownerAmendmentGrade: undefined } },
+    { policy: { ...policy, ownerAmendmentTriggerProfile: 'unknown-profile-v1' } },
     { policy: { ...policy, ownerAmendmentAuthorityId: undefined, ownerAmendmentAuthorityPath: undefined },
       manifest: { ...manifest, authorities: [{ repository: 'self', revision: 'authority-revision' }] },
       changedFiles: [{ status: 'modified' }] },
@@ -48,4 +49,34 @@ test('accepts the canonical completed OWNER_DECISION amendment trigger profile',
   } });
   assert.equal(result.authorityId, 'architecture-contract');
   assert.equal(Object.hasOwn(result, 'accepted'), false);
+});
+
+test('OWNER_DECISION permits multiple changed members from the previous set while requiring the selected target', () => {
+  const otherPath = 'docs/security.md';
+  const multiManifest = { version: 1, authorities: [
+    ...manifest.authorities,
+    { id: 'security-contract', repository: 'self', revision: 'authority-revision', path: otherPath },
+    { id: 'upstream-contract', repository: 'example/authority', revision: 'f'.repeat(40), path: 'docs/upstream.md' },
+  ] };
+  const ownerDecisionPolicy = { ...policy, ownerAmendmentTriggerProfile: 'completed-owner-decision-self-v1' };
+  const changedFiles = [{ path, status: 'modified' }, { path: otherPath, status: 'modified' }];
+  const result = inspectOwnerAmendmentSelfScope({ ...valid, policy: ownerDecisionPolicy,
+    manifest: multiManifest, changedFiles });
+  assert.equal(result.authorityPath, path);
+  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid, policy: ownerDecisionPolicy,
+    manifest: multiManifest, changedFiles: [{ path: otherPath, status: 'modified' }] }), /selected target/);
+  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid, policy: ownerDecisionPolicy,
+    manifest: multiManifest, changedFiles: [...changedFiles, { path: 'src/implementation.mjs', status: 'modified' }] }), /previous self authority/);
+  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid, policy: ownerDecisionPolicy,
+    manifest: multiManifest, changedFiles: [...changedFiles, { path: 'docs/upstream.md', status: 'modified' }] }), /previous self authority/);
+  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid, policy: ownerDecisionPolicy,
+    manifest: multiManifest, changedFiles: [...changedFiles, { path: otherPath, status: 'modified' }] }), /previous self authority/);
+});
+
+test('completed BLOCK keeps its one-member and one-file compatibility restriction', () => {
+  const multiManifest = { version: 1, authorities: [...manifest.authorities,
+    { id: 'security-contract', repository: 'self', revision: 'authority-revision', path: 'docs/security.md' }] };
+  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid, manifest: multiManifest }), /exactly the selected/);
+  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid,
+    changedFiles: [...valid.changedFiles, { path: 'docs/security.md', status: 'modified' }] }), /exactly the selected/);
 });

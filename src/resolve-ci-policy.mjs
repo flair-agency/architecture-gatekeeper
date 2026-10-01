@@ -120,6 +120,7 @@ function validateBranch(branch, label, version) {
         typeof amendment.authorityPath !== 'string' || amendment.authorityPath.length > 240 ||
         !OWNER_AUTHORITY_PATH.test(amendment.authorityPath) || amendment.authorityPath.split('/').some(part => part === '.' || part === '..') ||
         amendment.evidenceProducer !== 'github-actions-attestation' || amendment.tagNamespace !== AMENDMENT_TAG_NAMESPACE ||
+        (amendment.triggerProfile === 'completed-owner-decision-self-v1' && !Object.hasOwn(amendment, 'maxPromptBytes')) ||
         (Object.hasOwn(amendment, 'maxPromptBytes') && (!Number.isSafeInteger(amendment.maxPromptBytes) ||
           amendment.maxPromptBytes < 1 || amendment.maxPromptBytes > 1_048_576))) {
       throw new Error(`Invalid ${label} owner amendment selection`);

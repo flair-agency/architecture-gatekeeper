@@ -38,7 +38,7 @@ test('v2 enforced self policy exposes optional previous-policy OWNER_AMENDMENT G
   assert.equal(Object.hasOwn(resolveCiPolicy(policy(amendment), 'preview'), 'ownerAmendmentGrade'), false);
 });
 
-test('resolves both canonical self trigger profiles and optional OWNER_AMENDMENT prompt limit', () => {
+test('keeps the BLOCK prompt limit optional and requires it for OWNER_DECISION', () => {
   const selected = resolveCiPolicy(policy({ ...amendment, triggerProfile: 'completed-block-v1', maxPromptBytes: 262_144 }), 'main');
   assert.equal(selected.ownerAmendmentTriggerProfile, 'completed-block-v1');
   assert.equal(selected.ownerAmendmentMaxPromptBytes, 262_144);
@@ -47,6 +47,12 @@ test('resolves both canonical self trigger profiles and optional OWNER_AMENDMENT
     triggerProfile: 'completed-owner-decision-self-v1', maxPromptBytes: 262_144 }), 'main');
   assert.equal(ownerDecision.ownerAmendmentTriggerProfile, 'completed-owner-decision-self-v1');
   assert.equal(ownerDecision.ownerAmendmentGrade, 'G0');
+  assert.equal(ownerDecision.ownerAmendmentMaxPromptBytes, 262_144);
+  assert.throws(() => resolveCiPolicy(policy({ ...amendment,
+    triggerProfile: 'completed-owner-decision-self-v1' }), 'main'), /Invalid CI policy branch main owner amendment selection/);
+  const blockWithoutLimit = resolveCiPolicy(policy(amendment), 'main');
+  assert.equal(blockWithoutLimit.ownerAmendmentTriggerProfile, 'completed-block-v1');
+  assert.equal(Object.hasOwn(blockWithoutLimit, 'ownerAmendmentMaxPromptBytes'), false);
   for (const maxPromptBytes of [0, -1, 1.5, '262144', 1_048_577, Number.MAX_SAFE_INTEGER + 1]) {
     assert.throws(() => resolveCiPolicy(policy({ ...amendment, maxPromptBytes }), 'main'));
   }

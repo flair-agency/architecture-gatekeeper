@@ -7,9 +7,11 @@ const TRIGGER_PROFILES = new Set(['completed-block-v1', 'completed-owner-decisio
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 
 /**
- * Check the exact one-authority-file scope of the first self G0 amendment.
- * The adapter must derive every input from the previous protected base and
- * exact B Git objects. This is eligibility input, not an acceptance result.
+ * Check the authority-only scope of a self G0 amendment. BLOCK keeps its
+ * original one-member/one-file restriction; OWNER_DECISION validates changes
+ * against the complete previous Authority Set. The adapter must derive every
+ * input from the previous protected base and exact B Git objects. This is
+ * eligibility input, not an acceptance result.
  */
 export function inspectOwnerAmendmentSelfScope({ policy, manifest, baseSha, headSha,
   changedFiles, baseAuthorityBytes, headAuthorityBytes }) {
@@ -26,13 +28,31 @@ export function inspectOwnerAmendmentSelfScope({ policy, manifest, baseSha, head
   if (typeof id !== 'string' || !ID.test(id) || typeof path !== 'string' ||
       !PATH.test(path) || path.length > 240 || path.split('/').some(part => part === '.' || part === '..') ||
       !manifest || manifest.version !== 1 || !Array.isArray(manifest.authorities) ||
-      manifest.authorities.length !== 1 ||
-      manifest.authorities[0]?.id !== id || manifest.authorities[0]?.path !== path ||
-      manifest.authorities[0]?.repository !== 'self' ||
-      manifest.authorities[0]?.revision !== 'authority-revision' ||
-      !Array.isArray(changedFiles) || changedFiles.length !== 1 ||
-      changedFiles[0]?.path !== path || changedFiles[0]?.status !== 'modified') {
-    throw new Error('B must modify exactly the selected self authority member.');
+      !Array.isArray(changedFiles) || changedFiles.length === 0) {
+    throw new Error('A selected self authority and changed authority paths are required.');
+  }
+
+  const selectedMembers = manifest.authorities.filter(member => member?.id === id && member?.path === path);
+  if (selectedMembers.length !== 1 || selectedMembers[0].repository !== 'self' ||
+      selectedMembers[0].revision !== 'authority-revision') {
+    throw new Error('Selected target must be exactly one previous self authority member.');
+  }
+
+  if (policy.ownerAmendmentTriggerProfile === 'completed-block-v1') {
+    if (manifest.authorities.length !== 1 || changedFiles.length !== 1 ||
+        changedFiles[0]?.path !== path || changedFiles[0]?.status !== 'modified') {
+      throw new Error('B must modify exactly the selected self authority member.');
+    }
+  } else {
+    const previousSelfPaths = new Set(manifest.authorities
+      .filter(member => member?.repository === 'self' && member?.revision === 'authority-revision')
+      .map(member => member.path));
+    if (new Set(changedFiles.map(file => file?.path)).size !== changedFiles.length ||
+        !changedFiles.every(file => file && typeof file.path === 'string' &&
+        previousSelfPaths.has(file.path) && file.status === 'modified') ||
+        !changedFiles.some(file => file.path === path)) {
+      throw new Error('B must modify the selected target and only previous self authority members.');
+    }
   }
   if (!Buffer.isBuffer(baseAuthorityBytes) || !Buffer.isBuffer(headAuthorityBytes) ||
       !baseAuthorityBytes.length || !headAuthorityBytes.length ||
