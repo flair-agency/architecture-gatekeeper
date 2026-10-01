@@ -13,7 +13,8 @@ import { verifyOwnerAmendmentBlockEvidence } from '../src/owner-amendment-attest
 import { materializeAuthoritySet } from '../src/authority-set.mjs';
 import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
-import { inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
+import { assertMissingOwnerAmendmentTagHasNoSuccessfulSigner,
+  inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
 import { createGitHubCliRunner } from '../src/github-cli-runner.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;
@@ -212,9 +213,7 @@ async function main() {
     producerAttempts = await inspectProducerAttempts(selection);
     const expectedTagUrl = ownerAmendmentTagApiUrl(repository, selectedPolicy.ownerAmendmentTagNamespace, selection.bHeadSha);
     tagResponse = await getJson(expectedTagUrl, { expectedOwnerAmendmentTagUrl: expectedTagUrl });
-    if (tagResponse === null && producerAttempts.hasSuccessfulSignerBeforeQueue) {
-      fail('exact B has a successful pre-queue semantic eligibility signer result but no protected amendment tag.');
-    }
+    if (tagResponse === null) assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(producerAttempts);
   }
   if (!tagResponse) {
     selectRoute('ordinary', selection);

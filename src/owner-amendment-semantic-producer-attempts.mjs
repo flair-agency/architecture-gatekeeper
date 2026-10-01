@@ -18,10 +18,28 @@ function compareSignerAttempts(left, right) {
     right.run.id - left.run.id || Number(right.runAttempt) - Number(left.runAttempt);
 }
 
+function completePullRequestAssociation(pr) {
+  return Number.isSafeInteger(pr?.number) && pr.number > 0 &&
+    typeof pr?.base?.ref === 'string' && typeof pr.base.sha === 'string' && SHA1.test(pr.base.sha) &&
+    typeof pr.base.repo?.full_name === 'string' && typeof pr?.head?.sha === 'string' && SHA1.test(pr.head.sha) &&
+    typeof pr.head.repo?.full_name === 'string';
+}
+
+/** Refuse to treat a missing tag as ordinary when a protected signer ran before queue entry. */
+export function assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(attempts) {
+  if (!attempts || typeof attempts !== 'object') fail('protected producer attempts are unavailable.');
+  if (attempts.hasSuccessfulSignerBeforeQueue) {
+    fail('exact B has a successful pre-queue semantic eligibility signer result but no protected amendment tag.');
+  }
+  if (attempts.hasAmbiguousSuccessfulSignerBeforeQueue) {
+    fail('a protected-base semantic eligibility signer completed before queue entry without a unique exact pull-request association, and no protected amendment tag exists.');
+  }
+}
+
 /**
  * Inspect exact-B protected-base workflow attempts once for both tag absence
- * classification and eligibility artifact selection. Only successful signer
- * jobs completed before queue entry establish that an amendment attempt exists.
+ * classification and eligibility artifact selection. Successful signers with
+ * unavailable PR association are tracked separately and never select evidence.
  */
 export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha,
   queueEnteredAt, listRuns, listJobs } = {}) {
@@ -55,30 +73,38 @@ export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository
     if (page === MAX_RUN_PAGES) fail('protected producer workflow run listing exceeds the bounded pagination limit.');
   }
   if (runs.length !== totalCount) fail('protected producer workflow run listing is incomplete.');
-  const candidates = runs.filter(run => {
+  const candidates = [];
+  for (const run of runs) {
     if (run?.repository?.full_name !== SELF_REPOSITORY || run?.head_repository?.full_name !== SELF_REPOSITORY ||
-        run?.event !== 'pull_request_target' || !WORKFLOW_PATH.test(run?.path ?? '') || !SHA1.test(run?.head_sha ?? '') ||
-        !Array.isArray(run?.pull_requests)) return false;
-    const exactPullRequests = run.pull_requests.filter(pr => pr?.base?.ref === 'main' && pr?.base?.sha === bBaseSha &&
-      pr?.base?.repo?.full_name === SELF_REPOSITORY && pr?.head?.sha === bHeadSha &&
-      pr?.head?.repo?.full_name === SELF_REPOSITORY);
-    return exactPullRequests.length === 1;
-  })
-    .map(run => {
-      const runAttemptCount = Number(run.run_attempt);
-      if (!Number.isSafeInteger(run.id) || run.id < 1 || !Number.isSafeInteger(runAttemptCount) || runAttemptCount < 1) {
-        fail('protected producer workflow run identity is malformed.');
-      }
-      return { run, runAttemptCount, createdAtMs: time(run.created_at, 'producer workflow creation time') };
-    })
-    .sort((left, right) => right.createdAtMs - left.createdAtMs || right.run.id - left.run.id);
+        run?.event !== 'pull_request_target' || !WORKFLOW_PATH.test(run?.path ?? '') || !SHA1.test(run?.head_sha ?? '')) continue;
+    const associations = run.pull_requests;
+    if (associations != null && !Array.isArray(associations)) {
+      fail('protected producer pull-request association is malformed.');
+    }
+    const exactPullRequests = Array.isArray(associations) ? associations.filter(pr => pr?.base?.ref === 'main' &&
+      pr?.base?.sha === bBaseSha && pr?.base?.repo?.full_name === SELF_REPOSITORY && pr?.head?.sha === bHeadSha &&
+      pr?.head?.repo?.full_name === SELF_REPOSITORY) : [];
+    const exact = exactPullRequests.length === 1;
+    const unavailableAssociation = associations == null || (Array.isArray(associations) && associations.length === 0) ||
+      (Array.isArray(associations) && associations.some(pr => !completePullRequestAssociation(pr)));
+    const ambiguous = !exact && (exactPullRequests.length > 1 || (run.head_sha === bBaseSha && unavailableAssociation));
+    if (!exact && !ambiguous) continue;
+    const runAttemptCount = Number(run.run_attempt);
+    if (!Number.isSafeInteger(run.id) || run.id < 1 || !Number.isSafeInteger(runAttemptCount) || runAttemptCount < 1) {
+      fail('protected producer workflow run identity is malformed.');
+    }
+    candidates.push({ run, runAttemptCount, associationAmbiguous: ambiguous,
+      createdAtMs: time(run.created_at, 'producer workflow creation time') });
+  }
+  candidates.sort((left, right) => right.createdAtMs - left.createdAtMs || right.run.id - left.run.id);
   const attemptLookupCount = candidates.reduce((sum, candidate) => sum + candidate.runAttemptCount, 0);
   if (attemptLookupCount > MAX_ATTEMPT_LOOKUPS) fail('protected producer run attempts exceed the bounded inspection limit.');
 
   const signerAttempts = [];
   let hasSuccessfulSignerBeforeQueue = false;
+  let hasAmbiguousSuccessfulSignerBeforeQueue = false;
   let jobPageLookups = 0;
-  for (const { run, runAttemptCount } of candidates) {
+  for (const { run, runAttemptCount, associationAmbiguous } of candidates) {
     for (let runAttempt = runAttemptCount; runAttempt >= 1; runAttempt--) {
       const jobs = [];
       const seenJobIds = new Set();
@@ -125,13 +151,14 @@ export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository
       }
       const attempt = Object.freeze({ run, runAttempt: String(runAttempt), job, startedAtMs,
         completedAtMs, completedAtSort: completedAtMs ?? Number.POSITIVE_INFINITY });
-      signerAttempts.push(attempt);
       if (job.status === 'completed' && job.conclusion === 'success' && completedAtMs < queueEnteredAtMs) {
-        hasSuccessfulSignerBeforeQueue = true;
+        if (associationAmbiguous) hasAmbiguousSuccessfulSignerBeforeQueue = true;
+        else hasSuccessfulSignerBeforeQueue = true;
       }
+      if (!associationAmbiguous) signerAttempts.push(attempt);
     }
   }
   signerAttempts.sort(compareSignerAttempts);
   return Object.freeze({ attempts: Object.freeze(signerAttempts), latestSignerAttempt: signerAttempts[0] ?? null,
-    hasSuccessfulSignerBeforeQueue });
+    hasSuccessfulSignerBeforeQueue, hasAmbiguousSuccessfulSignerBeforeQueue });
 }

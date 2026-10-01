@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
+import { assertMissingOwnerAmendmentTagHasNoSuccessfulSigner,
+  inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const bHeadSha = 'a'.repeat(40);
@@ -46,6 +47,44 @@ test('caller-qualified successful exact-B signer completed before queue entry ma
   const result = await inspect({ jobs: [{ jobs: [signer()] }] });
   assert.equal(result.latestSignerAttempt.job.name, 'architecture-gate / owner-amendment-semantic-eligibility-signer');
   assert.equal(result.hasSuccessfulSignerBeforeQueue, true);
+  assert.throws(() => assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(result), /successful pre-queue semantic eligibility signer/);
+});
+
+test('empty pull-request association plus successful protected-base signer fails closed when the tag is missing', async () => {
+  const protectedTrigger = run({ head_sha: bBaseSha, pull_requests: [] });
+  const result = await inspect({ runs: [protectedTrigger], jobs: [{ jobs: [signer({ head_sha: bBaseSha })] }] });
+  assert.equal(result.latestSignerAttempt, null);
+  assert.equal(result.hasSuccessfulSignerBeforeQueue, false);
+  assert.equal(result.hasAmbiguousSuccessfulSignerBeforeQueue, true);
+  assert.throws(() => assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(result), /without a unique exact pull-request association/);
+});
+
+test('missing pull-request association plus successful protected-base signer fails closed', async () => {
+  const protectedTrigger = run({ head_sha: bBaseSha });
+  delete protectedTrigger.pull_requests;
+  const result = await inspect({ runs: [protectedTrigger], jobs: [{ jobs: [signer({ head_sha: bBaseSha })] }] });
+  assert.equal(result.hasAmbiguousSuccessfulSignerBeforeQueue, true);
+  assert.throws(() => assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(result), /without a unique exact pull-request association/);
+});
+
+test('unassociated protected-base run without a successful pre-queue signer does not block ordinary route', async () => {
+  const protectedTrigger = run({ head_sha: bBaseSha, pull_requests: [] });
+  const result = await inspect({ runs: [protectedTrigger], jobs: [{ jobs: [] }] });
+  assert.equal(result.latestSignerAttempt, null);
+  assert.equal(result.hasSuccessfulSignerBeforeQueue, false);
+  assert.equal(result.hasAmbiguousSuccessfulSignerBeforeQueue, false);
+  assert.doesNotThrow(() => assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(result));
+});
+
+test('known unrelated association and unrelated workflow shape do not create ambiguity', async () => {
+  const otherAssociation = run({ head_sha: bBaseSha, pull_requests: [{ number: 234,
+    base: { ref: 'main', sha: 'd'.repeat(40), repo: { full_name: repository } },
+    head: { sha: bHeadSha, repo: { full_name: repository } } }] });
+  const wrongWorkflow = run({ id: 124, head_sha: bBaseSha, path: '.github/workflows/other.yml', pull_requests: [] });
+  const result = await inspect({ runs: [otherAssociation, wrongWorkflow], jobs: [] });
+  assert.equal(result.latestSignerAttempt, null);
+  assert.equal(result.hasAmbiguousSuccessfulSignerBeforeQueue, false);
+  assert.doesNotThrow(() => assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(result));
 });
 
 test('candidate identity comes from the exact pull-request base/head association, not workflow head_sha', async () => {

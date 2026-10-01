@@ -44,8 +44,10 @@ test('missing-tag merge-group route selects fresh exact-tuple ordinary PASS veri
   assert.match(script, /jobsUrl\.searchParams\.set\('page', String\(page\)\)/);
   assert.match(script, /return \{ total_count: result\.total_count, jobs: result\.jobs \}/);
   assert.match(attempts, /runAttempt: String\(runAttempt\)/);
-  assert.match(script, /hasSuccessfulSignerBeforeQueue/);
-  assert.match(script, /successful pre-queue semantic eligibility signer result but no protected amendment tag/);
+  assert.match(script, /if \(tagResponse === null\) assertMissingOwnerAmendmentTagHasNoSuccessfulSigner\(producerAttempts\)/);
+  assert.match(attempts, /hasSuccessfulSignerBeforeQueue/);
+  assert.match(attempts, /hasAmbiguousSuccessfulSignerBeforeQueue/);
+  assert.match(attempts, /successful pre-queue semantic eligibility signer result but no protected amendment tag/);
   assert.match(script, /selectRoute\('ordinary', selection\)/);
   assert.match(script, /fresh ordinary review of the exact current base\/B tuple/);
   const ordinary = readFileSync(new URL('../src/owner-amendment-merge-group-ordinary-review.mjs', import.meta.url), 'utf8');
