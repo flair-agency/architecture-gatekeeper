@@ -892,9 +892,10 @@ GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed
 
 CI may use a credential-isolated review proxy: the trusted launcher owns
 credentials and supplies them privately to the proxy; the runner does not
-inherit them. The proxy binds only to an ephemeral loopback endpoint and limits
+inherit them or OIDC/token-renewal capabilities. The proxy binds only to an ephemeral loopback endpoint and limits
 credential-bearing dispatch to allowed methods/model routes on selected official
-provider hosts; arbitrary destinations and redirects fail closed. The runner
+provider hosts within launcher-selected project, region and model scope;
+arbitrary destinations, scope mismatches and redirects fail closed. The runner
 consumes responses for deterministic schema and authority validation.
 
 This target claims credential non-inheritance and constrained proxy dispatch,
