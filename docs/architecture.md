@@ -888,6 +888,37 @@ Owner trusts `openai/codex-action` at the workflow pin; retires integrity jobs
 
 GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed-workspace Codex WIF (ChatGPT auth). OIDC request capability, assertion and exchanged API token stay in trusted CI, isolated from reviewer/tools, PR code and package lifecycle scripts. Only prior protected policy may select WIF; candidates cannot select or enable it. Missing/invalid/unavailable selection leaves review incomplete: no API-key fallback or weaker acceptance. Keys remain until WIF is implemented, verified and policy-selected. No reviewer/input/decision/evidence/acceptance/v0.6.0 change; inactive.
 
+#### Target multi-provider credential-isolated review proxy boundary (Issue #252 owner decision, 2026-10-02)
+
+To satisfy Assurance Rule 9 across multiple AI execution providers without
+ad-hoc transport mechanisms, external AI model reviews in CI may utilize a
+credential-isolated local security proxy topology.
+
+The execution boundary distinguishes three explicit roles:
+1. **Trusted Launcher**: Receives provider secrets (static API keys or WIF / OAuth
+   access tokens) in trusted CI, spawns the security proxy with secrets piped via
+   private standard input, and spawns the review runner with all provider secrets
+   explicitly stripped from its environment (`env -u`).
+2. **Security Proxy**: Listens strictly on `127.0.0.1` with an unassigned
+   ephemeral port. Enforces strict HTTP method and route allowlists (e.g.,
+   OpenAI `POST /v1/responses`; Gemini `POST ...:generateContent`). Disallowed
+   routes, arbitrary URLs, and HTTP redirects fail closed with `403 Forbidden`.
+   Injects provider credentials in-flight immediately before dispatching to pinned
+   official upstream provider hosts.
+3. **Review Runner**: Operates as a credential-free client. Issues plain HTTP
+   review requests over local loopback to the proxy, parses responses, and enforces
+   deterministic schema and authority validation.
+
+In accordance with normative invariant 11, this proxy topology claims only
+**credential non-inheritance** (secrets are withheld from the review runner's
+process environment) and **constrained proxy routing** (egress is restricted
+to allowlisted model paths). It does not claim host-level isolation against
+compromised same-user OS execution, which requires container/job boundary
+isolation. Multi-provider equivalence is not inferred from matching proxy
+topology; protected acceptance routes require verified CI execution evidence
+under explicitly adopted consumer policy. Specification:
+`docs/investigations/2026-10-02-credential-isolated-review-proxy-boundary.md`.
+
 #### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
 
 Owner-adopted target A is for this public GitHub Free self-repository; it is not implemented/enforced and needs no hosted server, ChatGPT Cloud or WIF. Only an unprivileged candidate `merge_group` job relays/wakes the protected-default-branch `workflow_run` receiver. It independently resolves live queue SHA/state, current protected base, exact queued PR/B, prior-base policy, full Authority Set and exact evidence, runs existing ordinary semantic, B/G0 and deterministic validators. Candidate workflows, success, artifacts and policy confer no authority. Only protected producer receives the review API and GitHub App private keys via a `main`-only Environment; the self-repository App has only `checks:write`. Reports bind verified results to exact queue SHA and App identity; host config expects that App as check source.
