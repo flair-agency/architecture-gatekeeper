@@ -157,6 +157,7 @@ test('runGeminiReviewer successfully returns parsed JSON on valid API response',
     assert.match(url, /models\/gemini-2\.5-flash:generateContent/);
     assert.equal(options.method, 'POST');
     assert.equal(options.headers['x-goog-api-key'], 'test-api-key');
+    assert.equal(options.redirect, 'error');
 
     return {
       ok: true,
@@ -186,6 +187,37 @@ test('runGeminiReviewer successfully returns parsed JSON on valid API response',
   });
 
   assert.deepEqual(result, expectedDecision);
+});
+
+test('runGeminiReviewer rejects redirects on credential-bearing requests (fail-closed)', async () => {
+  let attemptedFetchWithFollow = false;
+  const mockFetchRedirect = async (_url, init) => {
+    // Standard fetch with redirect: 'error' throws a TypeError when encountering a redirect
+    if (init.redirect === 'error') {
+      const err = new TypeError('Failed to fetch: unexpected redirect');
+      throw err;
+    }
+    attemptedFetchWithFollow = true;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision": "PASS"}' }] } }],
+      }),
+    };
+  };
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' },
+  };
+
+  await assert.rejects(
+    () => runGeminiReviewer(request, { apiKey: 'secret-api-key', fetch: mockFetchRedirect }),
+    /Architecture gate reviewer network failure: Failed to fetch: unexpected redirect/
+  );
+  assert.equal(attemptedFetchWithFollow, false);
 });
 
 test('runGeminiReviewer fails closed on HTTP error response', async () => {

@@ -209,6 +209,7 @@ export async function runGeminiReviewer(request, options = {}) {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),
+      redirect: 'error',
       signal,
     });
   } catch (error) {
