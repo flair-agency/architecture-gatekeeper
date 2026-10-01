@@ -210,7 +210,17 @@ export async function runGeminiReviewer(request, options = {}) {
     throw new Error('Architecture gate reviewer returned invalid HTTP JSON response.');
   }
 
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = data?.candidates?.[0];
+  if (!candidate || typeof candidate !== 'object') {
+    throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
+  }
+
+  const finishReason = candidate.finishReason;
+  if (finishReason && finishReason !== 'STOP') {
+    throw new Error(`Architecture gate reviewer candidate completion failed with finishReason: ${finishReason}`);
+  }
+
+  const text = candidate.content?.parts?.[0]?.text;
   if (!text || typeof text !== 'string') {
     throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
   }
