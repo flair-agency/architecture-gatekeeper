@@ -74,6 +74,24 @@ function checkAuthority(value, label, withChange = false) {
   }
 }
 
+/** Parse the strict, canonical v2 self-BLOCK AmendmentRecord profile.
+ * This is an internal legacy transport record shared by the tag verifier and
+ * BLOCK semantic adapter; callers still bind its values to trusted context.
+ */
+export function parseOwnerAmendmentBlockRecord(bytes) {
+  const amendment = parseCanonicalJson(bytes, 'self BLOCK AmendmentRecord', AMENDMENT_RECORD_MAX_BYTES);
+  record(amendment, ['version', 'repository', 'baseSha', 'headSha', 'policyRevision', 'authority',
+    'triggeringReviewSha256', 'attestationBundleSha256', 'purpose'], 'self BLOCK AmendmentRecord');
+  if (amendment.version !== 2) fail('self BLOCK AmendmentRecord version is invalid.');
+  requireMatch(amendment.repository, REPOSITORY, 'self BLOCK AmendmentRecord repository');
+  for (const field of ['baseSha', 'headSha', 'policyRevision']) requireSha(amendment[field], `self BLOCK AmendmentRecord ${field}`);
+  checkAuthority(amendment.authority, 'self BLOCK AmendmentRecord authority', true);
+  requireMatch(amendment.triggeringReviewSha256, SHA256, 'self BLOCK AmendmentRecord triggering ReviewRecord digest');
+  requireMatch(amendment.attestationBundleSha256, SHA256, 'self BLOCK AmendmentRecord attestation bundle digest');
+  requirePurpose(amendment.purpose);
+  return amendment;
+}
+
 function validatePolicy(policy) {
   record(policy, ['version', 'repository', 'revision', 'ownerAmendment'], 'protected policy');
   if (policy.version !== 1) fail('unsupported protected policy version.');
@@ -220,10 +238,8 @@ function validateRawTagEnvelope(envelope, { headSha, tag, tagRef, observedTagRef
   }
   // The self BLOCK handoff uses AmendmentRecord v2. Legacy v1 remains scoped
   // to validateOwnerAmendmentG0Procedure and keeps its original field set.
-  const amendment = parseCanonicalJson(amendmentRecordBytes, 'self BLOCK AmendmentRecord', AMENDMENT_RECORD_MAX_BYTES);
-  record(amendment, ['version', 'repository', 'baseSha', 'headSha', 'policyRevision', 'authority',
-    'triggeringReviewSha256', 'attestationBundleSha256', 'purpose'], 'self BLOCK AmendmentRecord');
-  if (amendment.version !== 2 || amendment.headSha !== headSha ||
+  const amendment = parseOwnerAmendmentBlockRecord(amendmentRecordBytes);
+  if (amendment.headSha !== headSha ||
       amendment.triggeringReviewSha256 !== envelope.reviewRecordSha256 ||
       amendment.attestationBundleSha256 !== envelope.attestationBundleSha256) {
     fail('self BLOCK AmendmentRecord v2 does not bind exact B and evidence bytes.');

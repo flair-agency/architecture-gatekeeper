@@ -345,6 +345,54 @@ test('production BLOCK record adapter binds its legacy single-target record to c
   assert.equal(prepared.resultingAuthoritySetDigest, f.resultingAuthoritySetDigest);
 });
 
+test('production BLOCK adapter rejects non-profile AmendmentRecord bytes before semantic preparation', () => {
+  const f = fixture('completed-block-v1');
+  const targetChange = f.args.changes[0];
+  const valid = JSON.parse(f.amendmentRecordBytes.toString('utf8'));
+  const productionValidator = ({ bytes, expected }) => validateOwnerAmendmentBlockSemanticRecord({ bytes, expected,
+    repository, baseSha, bSha, triggerProfile: 'completed-block-v1',
+    authority: { authorityId: 'architecture', authorityPath: path,
+      previousSha256: sha256(targetChange.beforeBytes), newSha256: sha256(targetChange.afterBytes) },
+    attestationBundleSha256: sha256(f.attestationBundleBytes), resultingAuthoritySetDigest: f.resultingAuthoritySetDigest });
+  const producer = createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
+    validateAmendmentRecord: productionValidator });
+  assert.doesNotThrow(() => producer.prepare(f.args), 'canonical legacy v2 bytes remain accepted');
+
+  const topExtra = { ...valid, unadoptedApprovalClaim: true };
+  const nestedExtra = { ...valid, authority: { ...valid.authority, unadoptedApprovalClaim: true } };
+  const missingAuthorityField = { ...valid, authority: { ...valid.authority } };
+  delete missingAuthorityField.authority.newSha256;
+  const invalidAuthorityPath = { ...valid, authority: { ...valid.authority, path: '../authority.md' } };
+  const invalidAuthorityDigest = { ...valid, authority: { ...valid.authority, previousSha256: 'not-a-sha256' } };
+  const canonicalJson = value => JSON.stringify(canonical(value));
+  const duplicateTop = f.amendmentRecordBytes.toString('utf8').replace(
+    '"repository":"flair-agency/architecture-gatekeeper"',
+    '"repository":"attacker/repository","repository":"flair-agency/architecture-gatekeeper"');
+  const duplicateNested = f.amendmentRecordBytes.toString('utf8').replace(
+    '"id":"architecture"', '"id":"attacker","id":"architecture"');
+  const malformed = [
+    ['unknown top-level claim', Buffer.from(canonicalJson(topExtra))],
+    ['unknown nested authority claim', Buffer.from(canonicalJson(nestedExtra))],
+    ['missing nested authority field', Buffer.from(canonicalJson(missingAuthorityField))],
+    ['invalid authority path', Buffer.from(canonicalJson(invalidAuthorityPath))],
+    ['invalid authority digest', Buffer.from(canonicalJson(invalidAuthorityDigest))],
+    ['duplicate top-level key', Buffer.from(duplicateTop)],
+    ['duplicate nested authority key', Buffer.from(duplicateNested)],
+    ['oversized purpose', Buffer.from(canonicalJson({ ...valid, purpose: 'x'.repeat(501) }))],
+    ['non-ASCII purpose', Buffer.from(canonicalJson({ ...valid, purpose: 'unsafe\npurpose' }))],
+  ];
+  for (const [label, bytes] of malformed) {
+    assert.throws(() => validateOwnerAmendmentBlockSemanticRecord({ bytes, expected: f.args,
+      repository, baseSha, bSha, triggerProfile: 'completed-block-v1',
+      authority: { authorityId: 'architecture', authorityPath: path,
+        previousSha256: sha256(targetChange.beforeBytes), newSha256: sha256(targetChange.afterBytes) },
+      attestationBundleSha256: sha256(f.attestationBundleBytes), resultingAuthoritySetDigest: f.resultingAuthoritySetDigest }),
+    undefined, label);
+    const args = { ...f.args, amendmentRecordBytes: bytes };
+    assert.throws(() => producer.prepare(args), undefined, `${label} rejected before prompt preparation`);
+  }
+});
+
 test('shared producer prepares and validates the enabled BLOCK self trigger profile with exact receipt bindings', () => {
   for (const profile of ['completed-block-v1']) {
     const f = fixture(profile);
