@@ -38,20 +38,24 @@ test('accepts the complete reviewed Codex Action provenance', () => {
 test('accepts the merged, Linux-verified runtime-cancellation Action tree', () => {
   assert.equal(runtimeManifest.repository, 'flair-agency/codex-action');
   assert.equal(runtimeManifest.baseCommit, 'fa9d23b20e0ebcae09901de79690f099cda237be');
-  assert.equal(runtimeManifest.headCommit, '643fb31fa44e961453125534c4c7182a5a0a6ba0');
-  assert.equal(runtimeManifest.headTree, 'ea68a0e7f2fc39f9c6f8fd9cda26b362aaf6ded8');
-  assert.equal(runtimeManifest.commits.length, 12);
+  assert.equal(runtimeManifest.headCommit, '308ab1c8ce784cd5f46b98a1c0801c5c040918d9');
+  assert.equal(runtimeManifest.headTree, '58a320f7d919d6e5bd84c96f9d82a989173d9501');
+  assert.equal(runtimeManifest.commits.length, 18);
   assert.equal(runtimeManifest.commits.at(-1), runtimeManifest.headCommit);
   assert.deepEqual(Object.keys(runtimeManifest.files).sort(), [
     'README.md',
     'action.yml',
     'dist/main.js',
+    'docs/security.md',
+    'src/lifecycleTrace.ts',
     'src/main.ts',
     'src/runCodexExec.ts',
     'test/dropSudo.test.mjs',
+    'test/lifecycleTrace.test.mjs',
     'test/runCodexExec.test.mjs',
+    'test/runCodexExecStreams.test.mjs',
   ]);
-  assert.equal(runtimeManifest.files['dist/main.js'], 'caaf2bb17824bd9aa2383d8c5359896b3ec51b2338e177c60027020e85b95631');
+  assert.equal(runtimeManifest.files['dist/main.js'], 'b4bf276c3a9a57ddabdab84c769b2b58683cadc2a98c866a890f6814b3726ab9');
   assert.equal(verifyProvenance(runtimeManifest, runtimeObserved), true);
 });
 

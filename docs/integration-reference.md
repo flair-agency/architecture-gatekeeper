@@ -233,10 +233,12 @@ cancellation cleanup merged in Codex Action PR #10. On POSIX, cancellation
 signals the spawned process group with `SIGTERM` and then `SIGKILL` after a
 one-second grace period. Descendants that create a separate POSIX session are
 outside this process-group bound. Windows uses `taskkill.exe /T /F`. The fork
-retains v1.12's credential isolation and protected argument checks. This is a
-temporary workaround: replace the fork pin only after reviewing an upstream
-release that contains the equivalent fixes. `local-only` records an explicit
-waiver and makes no OpenAI API call.
+retains v1.12's credential isolation and protected argument checks. The
+selected commit also emits fixed-shape lifecycle diagnostics to workflow
+stderr; records are best-effort, and child stderr is drained if the workflow
+log sink fails. This is a temporary workaround: replace the fork pin only after
+reviewing an upstream release that contains equivalent fixes. `local-only`
+records an explicit waiver and makes no OpenAI API call.
 
 The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)
 and a `review-step-timeout-minutes` input (default 5). This repository's
