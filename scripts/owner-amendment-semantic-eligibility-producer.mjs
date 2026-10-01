@@ -15,6 +15,7 @@ import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs'
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
 import { parseOwnerAmendmentSemanticTagObject } from '../src/owner-amendment-semantic-tag-object.mjs';
 import { computeOwnerAmendmentResultingAuthoritySet, deriveOwnerAmendmentGitChanges } from '../src/owner-amendment-git-changes.mjs';
+import { validateOwnerAmendmentBlockSemanticRecord } from '../src/owner-amendment-block-semantic-record.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;
 const baseSha = process.env.BASE_SHA;
@@ -122,16 +123,8 @@ async function prepare() {
       if (result.status !== 'VERIFIED_OWNER_AMENDMENT_RECORD') fail(result.reason);
       return result;
     }
-    const amendment = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-    const resultingDigest = resultingSet.resultingDigest;
-    if (amendment.version !== 2 || amendment.repository !== repository || amendment.baseSha !== baseSha || amendment.headSha !== bSha ||
-        amendment.policyRevision !== baseSha || amendment.triggeringReviewSha256 !== expected.triggerReviewRecordSha256 ||
-        amendment.attestationBundleSha256 !== sha256(embedded.attestationBundleBytes) || amendment.authority?.id !== authority.authorityId ||
-        amendment.authority?.path !== authority.authorityPath || amendment.authority?.previousSha256 !== authority.previousSha256 ||
-        amendment.authority?.newSha256 !== authority.newSha256) fail('BLOCK AmendmentRecord does not bind the exact trigger and target.');
-    return { status: 'VERIFIED_OWNER_AMENDMENT_RECORD', repository, baseSha, bSha, policyRevision: baseSha, triggerProfile,
-      triggerReviewRecordSha256: expected.triggerReviewRecordSha256, priorAuthoritySetDigest: expected.authoritySetDigest,
-      resultingAuthoritySetDigest: resultingDigest, targetValidated: true, purpose: amendment.purpose };
+    return validateOwnerAmendmentBlockSemanticRecord({ bytes, expected, repository, baseSha, bSha, triggerProfile, authority,
+      attestationBundleSha256: sha256(embedded.attestationBundleBytes), resultingAuthoritySetDigest: resultingSet.resultingDigest });
   };
   const validateTag = ({ expected }) => ({ status: 'VERIFIED_OWNER_AMENDMENT_TAG', repository, baseSha, bSha,
     triggerProfile, triggerReviewRecordSha256: expected.triggerReviewRecordSha256,

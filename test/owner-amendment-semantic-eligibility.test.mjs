@@ -9,6 +9,7 @@ import { produceOwnerAmendmentOwnerDecision } from '../scripts/owner-amendment-o
 import { buildOwnerAmendmentOwnerDecisionAmendmentRecord,
   validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../src/owner-amendment-owner-decision-amendment-record.mjs';
 import { buildOwnerAmendmentRecord } from '../src/owner-amendment-record-builder.mjs';
+import { validateOwnerAmendmentBlockSemanticRecord } from '../src/owner-amendment-block-semantic-record.mjs';
 import { prepareOwnerAmendmentBlockHandoff } from '../src/owner-amendment-block-handoff.mjs';
 import { handoffOwnerAmendmentOwnerDecision } from '../src/owner-amendment-owner-decision-handoff.mjs';
 import { parseOwnerAmendmentSemanticTagObject } from '../src/owner-amendment-semantic-tag-object.mjs';
@@ -321,6 +322,27 @@ test('handoff-produced tag-object bytes reach eligibility for both exact trigger
       bSha, triggerProfile, tagRef: f.tag.tagRef,
     }), /header does not bind exact B and protected ref/);
   }
+});
+
+test('production BLOCK record adapter binds its legacy single-target record to core Git-derived changes', () => {
+  const f = fixture('completed-block-v1');
+  const targetChange = f.args.changes[0];
+  const productionValidator = ({ bytes, expected }) => validateOwnerAmendmentBlockSemanticRecord({ bytes, expected,
+    repository, baseSha, bSha, triggerProfile: 'completed-block-v1',
+    authority: { authorityId: 'architecture', authorityPath: path,
+      previousSha256: sha256(targetChange.beforeBytes), newSha256: sha256(targetChange.afterBytes) },
+    attestationBundleSha256: sha256(f.attestationBundleBytes), resultingAuthoritySetDigest: f.resultingAuthoritySetDigest });
+  const legacyResult = ({ bytes, expected }) => {
+    const { changes: _changes, ...result } = productionValidator({ bytes, expected });
+    return result;
+  };
+  assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
+    validateAmendmentRecord: legacyResult }).prepare(f.args), /validated AmendmentRecord bindings has missing or unknown fields/);
+  const producer = createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
+    validateAmendmentRecord: productionValidator });
+  const prepared = producer.prepare(f.args);
+  assert.deepEqual(prepared.changes, [{ path, beforeSha256: sha256(targetChange.beforeBytes), afterSha256: sha256(targetChange.afterBytes) }]);
+  assert.equal(prepared.resultingAuthoritySetDigest, f.resultingAuthoritySetDigest);
 });
 
 test('shared producer prepares and validates the enabled BLOCK self trigger profile with exact receipt bindings', () => {
