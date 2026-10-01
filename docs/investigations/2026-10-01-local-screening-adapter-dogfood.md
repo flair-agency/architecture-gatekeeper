@@ -2,9 +2,11 @@
 
 ## Outcome
 
-The bounded command-adapter dogfood did not produce a semantic review result. Both adapter calls returned `incomplete`; neither is treated as `PASS`, `BLOCK`, or `OWNER_DECISION`.
+The synthetic adapter dogfood produced a validator-accepted `BLOCK` for the tracked `LocalLoader` change, and an identical candidate returned `unchanged`. A separate real Codex CLI `PostToolUse` run also returned a validated `BLOCK`, which arrived in the next user turn after the task had ended. These results demonstrate the adapter and asynchronous CLI delivery path against synthetic authority only; they do not establish real-project behavior, desktop delivery, or repository acceptance. The initial two reviewer attempts returned `incomplete` and are recorded below as historical attempts.
 
 Each run used a disposable Git repository containing only synthetic authority, prompt, schema, validation policy, reviewer configuration, and a tracked candidate edit. The synthetic authority assigned local file reads to `LocalLoader` and outbound network calls to `RemoteProvider`. The candidate changed `LocalLoader` to call `fetch`. No project hooks, global Codex configuration, user files, or private project inputs were read or changed. Each fixture and its tracing files were removed after its run.
+
+## Historical initial attempts (incomplete)
 
 The first preparation attempt stopped before reviewer transport with the exact adapter result `Authority Set: member architecture-contract has unsupported revision.` Its trace wrapper recorded no Codex invocation. The fixture manifest used an unsupported synthetic revision string. The fixture was corrected to the `authority-revision` value used by the passing v2 test fixture; no reviewer call had occurred in that preparation attempt.
 
@@ -24,7 +26,7 @@ The second trace confirmed one child CLI launch with model `gpt-6.1-sol`, effort
 - First-attempt trigger was `2026-10-01T01:07:33.442Z`, snapshot `2026-10-01T01:07:35.443Z`, review start `2026-10-01T01:07:35.623Z`; harness elapsed was 2,708 ms with 53 ticks of its independent 50 ms timer.
 - Second-attempt trigger was `2026-10-01T01:33:02.036Z`, snapshot `2026-10-01T01:33:04.039Z`, review start `2026-10-01T01:33:04.213Z`, and child completion `2026-10-01T01:33:04.405Z`. Harness elapsed was 2,426 ms with 47 ticks of its independent 50 ms timer.
 - These timings show separate-process harness progress while the asynchronous adapter ran; they are not a measurement of Codex foreground-turn progress or model response latency.
-- Duplicate suppression after a completed semantic result remains unmeasured because both calls returned incomplete.
+- For these initial incomplete attempts, duplicate suppression after a completed semantic result was not measured.
 
 The temporary project was exercised by calling the adapter API with the same CLI Hook transport it uses in an asynchronous command. This was not an installed Codex Hook delivery test: no host hook configuration was activated. Prior synthetic CLI host probing established active-turn/next-turn delivery behavior separately; desktop hook loading and delivery remain unresolved. The instrumented attempt identifies a local CLI initialization failure, but does not establish command-adapter semantic completion, user-visible timing, or architecture acceptance.
 ## Corrective run under normal host execution
