@@ -82,6 +82,8 @@ function commit(repo, message) {
   return git(repo, ['rev-parse', 'HEAD']).toString('ascii').trim();
 }
 
+// Deterministic stand-in for `gh attestation verify` output. This fixture does
+// not exercise GitHub's signature verification or establish live provenance.
 function attestation(recordBytes, expected) {
   const signer = `https://github.com/${repository}/.github/workflows/architecture-gate.yml@refs/heads/main`;
   const caller = `https://github.com/${repository}/${workflowPath}@refs/heads/main`;
@@ -212,6 +214,8 @@ function apiFixture({ repoPath, baseSha, bSha, groupSha, triggerHeadSha, profile
     assert.equal(tagRef, selectedTag.tagRef); assert.equal(objectOid, selectedTag.objectOid);
     return Buffer.from(selectedTag.rawTagObject);
   };
+  // This modeled CLI result is parsed by the production verifier, but no
+  // cryptographic verification is performed in this local test.
   const runGh = (_command, args) => {
     const recordBytes = readFileSync(args[2]);
     const record = JSON.parse(recordBytes.toString('utf8'));
@@ -322,6 +326,8 @@ function triggerEvidence(fixture, resolved, api) {
 }
 
 function eligibilityDecision(prepared) {
+  // This simulated reviewer response exercises the production closed
+  // decision/receipt validation; its all-true checks are not semantic proof.
   const checks = Object.fromEntries(['materiallyAddressesTrigger', 'amendsOnlyTargetDecision', 'excludesUnrelatedChanges',
     'excludesImplementationWorkflowAndExecutablePolicyEdits', 'excludesUnsupportedCompletionClaims',
     'resultingAuthorityIsCoherent', 'assessesResultingRulesWithoutRequiringAgreementWithSupersededRules'].map(key => [key, true]));
@@ -404,7 +410,7 @@ function makeSemanticPipeline(fixture, resolved, trigger, evidence, api, gitChan
 }
 
 for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
-  test(`composes actual Git, trigger handoff, tag readback, and merge-group evidence for ${profile}`, async t => {
+  test(`exercises production route components with test adapter projections for ${profile}`, async t => {
     const fixture = makeRepo(profile);
     t.after(fixture.cleanup);
     const resolved = resolveOwnerAmendmentHandoffGitContext({ repository, baseSha: fixture.baseSha,
@@ -492,6 +498,10 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
       limits: resolved.limits, selfRepository: repository, selfRoot: fixture.repoPath,
       authorityRevision: fixture.baseSha, fetchExternal: async () => { throw new Error('no external authority expected'); },
       profile: priorPolicy.authorityProfile ?? 'v1' });
+    // These test-authored projections mirror the production script's mapping
+    // from component results, but the script itself is not invoked. Acceptance
+    // below covers the verifier with modeled adapters, not production main()
+    // wiring or a live protected route.
     const triggerAdapter = { status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER', repository, baseSha: fixture.baseSha,
       triggerProfile: profile, decision: evidence.triggerDecision, reviewRecordSha256: evidence.reviewRecordSha256,
       producerWorkflowPath: workflowPath, producerWorkflowSha: fixture.baseSha, producerWorkflowRef: 'refs/heads/main',
