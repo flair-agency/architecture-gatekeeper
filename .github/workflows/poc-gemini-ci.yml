@@ -24,6 +24,9 @@ on:
       - 'src/gemini-transport.mjs'
       - 'src/gemini-ci-runner.mjs'
       - '.github/workflows/poc-gemini-ci.yml'
+  push:
+    branches:
+      - 'feature/gemini-ci-poc'
 
 permissions:
   contents: read
@@ -34,6 +37,11 @@ jobs:
     name: Gemini CI Review PoC
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      REVIEW_MODEL: ${{ inputs.model || 'gemini-2.5-flash' }}
+      REVIEW_EFFORT: ${{ inputs.effort || 'low' }}
+      WIF_PROVIDER: ${{ inputs.wif_workload_identity_provider || secrets.GCP_WIF_PROVIDER || '' }}
+      WIF_SERVICE_ACCOUNT: ${{ inputs.wif_service_account || secrets.GCP_WIF_SERVICE_ACCOUNT || '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -49,11 +57,11 @@ jobs:
       # Authenticate via Google Cloud Workload Identity Federation if configured
       - name: Authenticate to Google Cloud (WIF)
         id: gcp-auth
-        if: ${{ (inputs.wif_workload_identity_provider != '' && inputs.wif_service_account != '') || (secrets.GCP_WIF_PROVIDER != '' && secrets.GCP_WIF_SERVICE_ACCOUNT != '') }}
+        if: env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ inputs.wif_workload_identity_provider || secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ inputs.wif_service_account || secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
           token_format: 'access_token'
           access_token_scopes: 'https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/generative-language'
 
@@ -96,8 +104,8 @@ jobs:
             --prompt "$RUNNER_TEMP/gemini-poc/prompt.md" \
             --schema "$RUNNER_TEMP/gemini-poc/decision.schema.json" \
             --output "$RUNNER_TEMP/gemini-poc/decision.json" \
-            --model "${{ inputs.model || 'gemini-2.5-flash' }}" \
-            --effort "${{ inputs.effort || 'low' }}"
+            --model "$REVIEW_MODEL" \
+            --effort "$REVIEW_EFFORT"
 
       - name: Inspect Review Decision
         if: always()
