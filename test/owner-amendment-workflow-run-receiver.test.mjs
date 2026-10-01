@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../src/owner-amendment-merge-group-acceptance.mjs';
 import { inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
 import { decodeHandoff, runnerEvent } from '../scripts/owner-amendment-workflow-run-receiver.mjs';
 import { adaptVerifiedWorkflowRunContext, protectedCheckConclusion,
   resolveProtectedOwnerAmendmentWorkflowRunContext, sameVerifiedWorkflowRunContext,
   syntheticVerifiedMergeGroupEvent, prepareVerifiedCheckReport } from '../src/owner-amendment-workflow-run-receiver.mjs';
+import { resolveRunnerTempDirectory, writeRunnerTempFile } from '../src/runner-temp-path.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const repositoryId = 1379218762, workflowId = 363378101, runId = 99887766, attempt = 2;
@@ -207,6 +210,16 @@ test('handoff accepts its exact byte ceiling and rejects oversized, malformed, o
   assert.throws(() => decodeHandoff(Buffer.from('{').toString('base64')), /invalid JSON/);
   assert.equal(sameVerifiedWorkflowRunContext(context, { ...context, bHeadSha: 'f'.repeat(40) }), false);
   assert.equal(protectedCheckConclusion({ verificationOutcome: 'success', route: 'ordinary' }), 'failure');
+});
+
+test('compare-handoff CLI accepts identical context and rejects changed context', async () => {
+  const context = await fixture().resolve(), script = fileURLToPath(new URL('../scripts/owner-amendment-workflow-run-receiver.mjs', import.meta.url));
+  for (const [live, matches] of [[context, true], [{ ...context, workflowRunHeadSha: 'f'.repeat(40) }, false]]) withRunnerEvent(() => {
+    writeRunnerTempFile(resolveRunnerTempDirectory('owner-amendment-merge-group'), 'verified-context.json', JSON.stringify(live));
+    const env = { ...process.env, HANDOFF: Buffer.from(JSON.stringify({ context, decision: null })).toString('base64') };
+    const run = () => execFileSync(process.execPath, [script, 'compare-handoff'], { cwd: process.cwd(), env });
+    if (matches) assert.doesNotThrow(run); else assert.throws(run);
+  });
 });
 
 test('publication needs identical live context reread; protected validation failure can bind only failure to that queue SHA', async () => {

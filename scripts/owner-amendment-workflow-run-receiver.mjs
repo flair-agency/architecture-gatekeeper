@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { publishSelfArchitectureCheck } from '../src/github-app-check-reporter.mjs';
 import { adaptVerifiedWorkflowRunContext, resolveProtectedOwnerAmendmentWorkflowRunContext,
-  prepareVerifiedCheckReport } from '../src/owner-amendment-workflow-run-receiver.mjs';
+  prepareVerifiedCheckReport, sameVerifiedWorkflowRunContext } from '../src/owner-amendment-workflow-run-receiver.mjs';
 import { appendGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory, writeRunnerTempFile } from '../src/runner-temp-path.mjs';
 
 const SELF = 'flair-agency/architecture-gatekeeper';
