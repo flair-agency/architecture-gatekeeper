@@ -6,7 +6,7 @@ on:
       model:
         description: 'Gemini Model'
         required: false
-        default: 'gemini-2.5-flash'
+        default: 'gemini-3.8-flash'
       effort:
         description: 'Reasoning effort (none, low, medium, high)'
         required: false
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      REVIEW_MODEL: ${{ inputs.model || 'gemini-2.5-flash' }}
+      REVIEW_MODEL: ${{ inputs.model || 'gemini-3.8-flash' }}
       REVIEW_EFFORT: ${{ inputs.effort || 'low' }}
       WIF_PROVIDER: ${{ inputs.wif_workload_identity_provider || secrets.GCP_WIF_PROVIDER || '' }}
       WIF_SERVICE_ACCOUNT: ${{ inputs.wif_service_account || secrets.GCP_WIF_SERVICE_ACCOUNT || '' }}

@@ -58,7 +58,7 @@ export function resolveReviewRequest(options, root = process.cwd()) {
 
   const prompt = readFileSync(resolve(root, promptPath), 'utf8');
   const schema = JSON.parse(readFileSync(resolve(root, schemaPath), 'utf8'));
-  const model = options.model || process.env.MODEL || 'gemini-2.5-flash';
+  const model = options.model || process.env.MODEL || 'gemini-3.8-flash';
   const reasoningEffort = options.effort || options['reasoning-effort'] || process.env.EFFORT || 'low';
   const timeoutMs = Number(options.timeout || process.env.TIMEOUT_MS || 120000);
 
