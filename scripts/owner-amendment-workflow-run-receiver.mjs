@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { closeSync, constants, fstatSync, lstatSync, openSync, readFileSync, realpathSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { publishSelfArchitectureCheck } from '../src/github-app-check-reporter.mjs';
 import { adaptVerifiedWorkflowRunContext, resolveProtectedOwnerAmendmentWorkflowRunContext,
@@ -15,12 +15,38 @@ const git = args => execFileSync('git', ['-C', process.env.GITHUB_WORKSPACE, ...
   maxBuffer: 65_536, timeout: 15_000, stdio: ['ignore', 'pipe', 'pipe'],
   env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' } }).trim();
 
-function runnerEvent() {
+export function runnerEvent() {
   if (process.env.GITHUB_EVENT_NAME !== 'workflow_run' || !process.env.GITHUB_EVENT_PATH) {
     FAIL('a protected workflow_run event is required.');
   }
+  let runnerTemp;
+  try { runnerTemp = realpathSync(process.cwd()); } catch { FAIL('runner temp directory is unavailable.'); }
+  if (!process.env.RUNNER_TEMP || process.env.RUNNER_TEMP !== process.cwd()) {
+    FAIL('working directory is not the runner temp directory.');
+  }
+  const eventDirectory = join(runnerTemp, '_github_workflow');
+  const eventFile = join(eventDirectory, 'event.json');
+  if (process.env.GITHUB_EVENT_PATH !== eventFile) FAIL('GitHub event path is not the canonical runner event file.');
+  let directoryStat;
+  try { directoryStat = lstatSync(eventDirectory); } catch { FAIL('runner event directory is unavailable.'); }
+  let realEventDirectory;
+  try { realEventDirectory = realpathSync(eventDirectory); } catch { FAIL('runner event directory is unavailable.'); }
+  if (!directoryStat.isDirectory() || directoryStat.isSymbolicLink() || realEventDirectory !== eventDirectory) {
+    FAIL('runner event directory is not a real direct child of runner temp.');
+  }
   let bytes;
-  try { bytes = readFileSync(process.env.GITHUB_EVENT_PATH); } catch { FAIL('workflow-run selector payload is unavailable.'); }
+  let fd;
+  try { fd = openSync(eventFile, constants.O_RDONLY | constants.O_NONBLOCK | (constants.O_NOFOLLOW ?? 0)); }
+  catch { FAIL('workflow-run selector payload is unavailable or outside its bounded runner path.'); }
+  let stat;
+  try { stat = fstatSync(fd); }
+  catch { closeSync(fd); FAIL('workflow-run selector payload is unavailable.'); }
+  if (!stat.isFile() || stat.nlink !== 1 || stat.size < 1 || stat.size > 262_144) {
+    closeSync(fd); FAIL('workflow-run selector payload is not a bounded regular file.');
+  }
+  try { bytes = readFileSync(fd); }
+  catch { FAIL('workflow-run selector payload is unavailable.'); }
+  finally { closeSync(fd); }
   if (bytes.length < 1 || bytes.length > 262_144) FAIL('workflow-run selector payload is outside its size limit.');
   try { return JSON.parse(bytes.toString('utf8')); } catch { FAIL('workflow-run selector payload is invalid JSON.'); }
 }

@@ -5,9 +5,10 @@ const REPOSITORY = 'flair-agency/architecture-gatekeeper';
 const WORKFLOW_PATH = '.github/workflows/self-architecture-gate.yml';
 const FAIL = message => { throw new Error(`Owner amendment workflow-run receiver: ${message}`); };
 const SHA = /^[a-f0-9]{40}$/;
+const UTC_TIMESTAMP = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?Z$/;
 const POSITIVE = value => Number.isSafeInteger(value) && value > 0;
 const CONTEXT_FIELDS = ['assurance', 'bHeadSha', 'bPrNumber', 'currentMainSha', 'observedQueueBranch',
-  'observedQueueRefSha', 'queueEntryEnqueuedAt', 'queueEntryState', 'repository', 'repositoryId',
+  'bPullRequestCreatedAt', 'observedQueueRefSha', 'queueEntryEnqueuedAt', 'queueEntryState', 'repository', 'repositoryId',
   'runAttempt', 'runId', 'status', 'workflowId', 'workflowPath', 'workflowRunHeadSha'];
 
 async function getJson(fetchImpl, token, url) {
@@ -68,6 +69,8 @@ export function adaptVerifiedWorkflowRunContext(value) {
       !SHA.test(value.observedQueueRefSha ?? '') || value.observedQueueRefSha !== value.workflowRunHeadSha ||
       !SHA.test(value.currentMainSha ?? '') || !/^[1-9]\d*$/.test(value.bPrNumber ?? '') ||
       !SHA.test(value.bHeadSha ?? '') || !ACTIVE_QUEUE_STATES.has(value.queueEntryState) ||
+      typeof value.bPullRequestCreatedAt !== 'string' || !UTC_TIMESTAMP.test(value.bPullRequestCreatedAt) ||
+      !Number.isFinite(Date.parse(value.bPullRequestCreatedAt)) ||
       typeof value.queueEntryEnqueuedAt !== 'string' || !Number.isFinite(Date.parse(value.queueEntryEnqueuedAt)) ||
       value.assurance !== 'context selection only; no policy, evidence, eligibility, or acceptance claim') {
     FAIL('verified live workflow-run context is malformed.');
@@ -76,6 +79,7 @@ export function adaptVerifiedWorkflowRunContext(value) {
     repository: value.repository, repositoryId: value.repositoryId,
     mergeGroupBaseSha: value.currentMainSha, mergeGroupHeadSha: value.workflowRunHeadSha,
     bPrNumber: value.bPrNumber, bBaseSha: value.currentMainSha, bHeadSha: value.bHeadSha,
+    bPullRequestCreatedAt: value.bPullRequestCreatedAt,
     queueEntryState: value.queueEntryState, queueEnteredAt: value.queueEntryEnqueuedAt,
   });
 }

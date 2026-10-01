@@ -60,6 +60,7 @@ test('CLI prepares private exact-tuple inputs from protected verified context, i
       runId: 99887766, runAttempt: 2, workflowRunHeadSha: 'c'.repeat(40),
       observedQueueBranch: 'gh-readonly-queue/main/pr-216-abcdef0123456789', observedQueueRefSha: 'c'.repeat(40),
       currentMainSha: f.baseSha, bPrNumber: '216', bHeadSha: f.headSha,
+      bPullRequestCreatedAt: '2026-09-30T00:30:00Z',
       queueEntryState: 'AWAITING_CHECKS', queueEntryEnqueuedAt: '2026-09-30T01:00:00Z',
       assurance: 'context selection only; no policy, evidence, eligibility, or acceptance claim',
     }), { mode: 0o600 });

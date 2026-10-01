@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../src/owner-amendment-merge-group-acceptance.mjs';
+import { inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
+import { runnerEvent } from '../scripts/owner-amendment-workflow-run-receiver.mjs';
 import { adaptVerifiedWorkflowRunContext, protectedCheckConclusion,
   resolveProtectedOwnerAmendmentWorkflowRunContext, sameVerifiedWorkflowRunContext,
   syntheticVerifiedMergeGroupEvent, prepareVerifiedCheckReport } from '../src/owner-amendment-workflow-run-receiver.mjs';
@@ -14,6 +20,30 @@ const wakeup = { action: 'completed', workflow_run: { id: runId, run_attempt: at
   // All claims other than run ID and attempt must be ignored.
   event: 'pull_request', head_sha: 'd'.repeat(40), head_branch: 'refs/heads/main', conclusion: 'success' } };
 const response = body => ({ status: 200, ok: true, json: async () => body });
+
+function withRunnerEvent(fn) {
+  const rootDir = mkdtempSync(join(tmpdir(), 'agk-workflow-run-event-'));
+  const runnerTemp = join(rootDir, 'runner-temp');
+  const eventDirectory = join(runnerTemp, '_github_workflow');
+  mkdirSync(eventDirectory, { recursive: true });
+  const eventFile = join(realpathSync(runnerTemp), '_github_workflow', 'event.json');
+  writeFileSync(eventFile, JSON.stringify(wakeup));
+  const oldCwd = process.cwd(), oldRunnerTemp = process.env.RUNNER_TEMP;
+  const oldEventPath = process.env.GITHUB_EVENT_PATH, oldEventName = process.env.GITHUB_EVENT_NAME;
+  try {
+    process.chdir(runnerTemp);
+    process.env.RUNNER_TEMP = realpathSync(runnerTemp);
+    process.env.GITHUB_EVENT_PATH = eventFile;
+    process.env.GITHUB_EVENT_NAME = 'workflow_run';
+    fn({ rootDir, eventFile });
+  } finally {
+    process.chdir(oldCwd);
+    if (oldRunnerTemp === undefined) delete process.env.RUNNER_TEMP; else process.env.RUNNER_TEMP = oldRunnerTemp;
+    if (oldEventPath === undefined) delete process.env.GITHUB_EVENT_PATH; else process.env.GITHUB_EVENT_PATH = oldEventPath;
+    if (oldEventName === undefined) delete process.env.GITHUB_EVENT_NAME; else process.env.GITHUB_EVENT_NAME = oldEventName;
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+}
 
 function fixture({ attemptOverrides = {}, workflowOverrides = {}, repoOverrides = {}, queueSha = groupSha,
   mainRefSha = mainSha } = {}) {
@@ -35,7 +65,7 @@ function fixture({ attemptOverrides = {}, workflowOverrides = {}, repoOverrides 
       parents: [{ sha: mainSha }, { sha: bSha }] });
     if (url === `${root}/git/commits/${bSha}`) return response({ sha: bSha, tree: { sha: 'e'.repeat(40) } });
     if (url === `${root}/commits/${bSha}/pulls?per_page=100&page=1`) return response([{ number: 216,
-      state: 'open', draft: false, base: { ref: 'main', sha: mainSha,
+      state: 'open', draft: false, created_at: '2026-09-30T00:30:00Z', base: { ref: 'main', sha: mainSha,
         repo: { id: repositoryId, full_name: repository } }, head: { sha: bSha,
         repo: { id: repositoryId, full_name: repository } } }]);
     if (url === `${root}/commits/${bSha}/pulls?per_page=100&page=2`) return response([]);
@@ -75,6 +105,19 @@ test('discovers fixed protected workflow identity and independently binds only w
   }
 });
 
+test('reads only the canonical bounded regular runner event file', () => withRunnerEvent(({ rootDir, eventFile }) => {
+  assert.deepEqual(runnerEvent(), wakeup);
+  process.env.GITHUB_EVENT_PATH = join(rootDir, 'outside.json');
+  writeFileSync(process.env.GITHUB_EVENT_PATH, JSON.stringify(wakeup));
+  assert.throws(() => runnerEvent(), /canonical runner event file/);
+
+  process.env.GITHUB_EVENT_PATH = eventFile;
+  rmSync(eventFile); symlinkSync(join(rootDir, 'outside.json'), eventFile);
+  assert.throws(() => runnerEvent(), /unavailable or outside its bounded runner path/);
+  rmSync(eventFile); writeFileSync(eventFile, 'x'.repeat(262_145));
+  assert.throws(() => runnerEvent(), /not a bounded regular file/);
+}));
+
 test('fails closed if fixed repository or workflow API identity is not exact', async t => {
   for (const [name, options] of [
     ['wrong repository identity', { repoOverrides: { full_name: 'other/repo' } }],
@@ -103,12 +146,39 @@ test('adapter creates only the existing exact B selection and synthetic event fr
   const selection = adaptVerifiedWorkflowRunContext(result);
   assert.deepEqual(selection, { status: 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT', repository,
     repositoryId, mergeGroupBaseSha: mainSha, mergeGroupHeadSha: groupSha, bPrNumber: '216',
-    bBaseSha: mainSha, bHeadSha: bSha, queueEntryState: 'AWAITING_CHECKS', queueEnteredAt: '2026-09-30T01:00:00Z' });
+    bBaseSha: mainSha, bHeadSha: bSha, bPullRequestCreatedAt: '2026-09-30T00:30:00Z',
+    queueEntryState: 'AWAITING_CHECKS', queueEnteredAt: '2026-09-30T01:00:00Z' });
   assert.deepEqual(syntheticVerifiedMergeGroupEvent(result), { action: 'checks_requested', repository: { full_name: repository },
     merge_group: { base_ref: 'refs/heads/main', base_sha: mainSha, head_sha: groupSha } });
   assert.equal(sameVerifiedWorkflowRunContext(result, structuredClone(result)), true);
   assert.equal(sameVerifiedWorkflowRunContext(result, { ...result, currentMainSha: 'f'.repeat(40) }), false);
+  assert.equal(sameVerifiedWorkflowRunContext(result, { ...result, bPullRequestCreatedAt: '2026-09-30T00:31:00Z' }), false);
   assert.throws(() => adaptVerifiedWorkflowRunContext({ ...result, unrecognized: true }), /malformed/);
+  const { bPullRequestCreatedAt, ...withoutCreatedAt } = result;
+  assert.throws(() => adaptVerifiedWorkflowRunContext(withoutCreatedAt), /malformed/);
+  assert.throws(() => adaptVerifiedWorkflowRunContext({ ...result, bPullRequestCreatedAt: 'invalid' }), /malformed/);
+
+  const acceptance = createOwnerAmendmentMergeGroupAcceptanceVerifier({
+    runtime: { repository, revision: mainSha }, selectBContext: async () => selection,
+    resolveProtectedPolicy: async () => { throw new Error('stop after validated exact-B selection'); },
+    verifyTrigger: async () => { throw new Error('must not reach trigger'); },
+    verifyTag: async () => { throw new Error('must not reach tag'); },
+    resolveEligibilityReviewInputs: async () => { throw new Error('must not reach review inputs'); },
+    verifyEligibility: async () => { throw new Error('must not reach eligibility'); },
+  });
+  const accepted = await acceptance.verify(syntheticVerifiedMergeGroupEvent(result));
+  assert.match(accepted.reason, /stop after validated exact-B selection/);
+
+  let runWindow;
+  const inspected = await inspectOwnerAmendmentSemanticProducerAttempts({ repository,
+    bBaseSha: selection.bBaseSha, bHeadSha: selection.bHeadSha,
+    bPullRequestCreatedAt: selection.bPullRequestCreatedAt, queueEnteredAt: selection.queueEnteredAt,
+    listRuns: async args => { runWindow = args; return { total_count: 0, workflow_runs: [] }; },
+    listJobs: async () => ({ total_count: 0, jobs: [] }),
+  });
+  assert.deepEqual(runWindow, { repository, bBaseSha: mainSha,
+    createdFrom: '2026-09-30T00:30:00Z', createdTo: '2026-09-30T01:00:00Z', page: 1, perPage: 100 });
+  assert.equal(inspected.hasSuccessfulSignerBeforeQueue, false);
 });
 
 test('only independent protected verifier outcomes can publish success; failures bind no success', () => {
