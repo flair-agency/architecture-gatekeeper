@@ -64,8 +64,10 @@ function validateRun(run, { repository, runId, runAttempt, aPrNumber, aHeadSha, 
 
 /**
  * Fetch and validate the open B PR, the A PR, and one exact Actions run
- * attempt. The run's `pull_requests` field is deliberately ignored because
- * GitHub can return it empty for pull_request_target runs.
+ * attempt. GitHub can return an empty `pull_requests` list for
+ * pull_request_target runs, so an empty list is tolerated; a non-empty list
+ * must contain exactly the selected A PR. Later artifact and ReviewRecord
+ * checks still bind the selected evidence to A's exact head and run attempt.
  *
  * The returned context is metadata only. It does not establish B eligibility,
  * evidence validity, or acceptance; callers must cross-check it against the
