@@ -801,7 +801,10 @@ resolve either issue or authorize a consumer-specific architecture.
 
 ### Three separate concepts and target contracts
 
-Three concerns remain distinct: review execution yields a structured decision; architecture evidence binds it to repository/revision/mechanism/policy; acceptance applies prior protected-base evidence policy. One workflow may combine them, but execution grants no merge acceptance and CI does not define review.
+[Review execution, evidence and acceptance](#shared-mechanism) remain distinct,
+even in one workflow. Execution grants no merge acceptance; CI does not define
+review. Evidence binding and protected-policy requirements are specified in the
+[target evidence contract](#target-evidence-and-acceptance-contract).
 
 ## Conceptual operation
 
@@ -1188,13 +1191,8 @@ Architecture-changing work follows this order:
 - Issue #20 specifies the evidence format, attestation choice, protected-policy
   routes and model-free CI verification needed to fully separate review
   execution from acceptance verification.
-- Issue #111 defines the missing-decision adoption problem. Its `OWNER_ADDITION
-  / G0` mechanism is implemented in v0.5 and available only when a previous
-  protected consumer policy selects it; this repository's self policy remains
-  unselected. The candidate is bound to B by an annotated tag object. It does
-  not require the historical `BLOCK` evidence or exact-claim authorization
-  mechanisms of `OWNER_AMENDMENT`. The mechanism is not owner-authenticated,
-  and implementation changes after B becomes canonical require a fresh review.
+- Issue #111 defines missing-decision adoption under the
+  [OWNER_ADDITION / G0 contract](#owner_addition--g0-route-for-missing-decisions-issue-111).
 - Issue #75 defines the owner-amendment governance route. Issue #78 develops
   its core and explicit `G0` policy path; Issue #79 investigates a later
   production attestation adapter for a higher grade.

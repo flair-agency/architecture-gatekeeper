@@ -83,5 +83,9 @@ and the selected limits remain adequate.
 
 Inventory and migration hazards recorded. No canonical bytes moved, no manifest,
 policy, public entrypoint or acceptance route changed. The first deliverable is
-a navigation-only PR after coordination; splitting authority is deferred until
-its migration contract is concrete.
+a navigation index and bounded deduplication of the three-concept recap and
+Issue #111 recap. The detailed addition contract retains prior-policy opt-in,
+current inactive self selection, exact-B annotated tagging, no historical BLOCK
+or amendment authorization requirement, no owner-authentication claim and fresh
+review after canonical adoption. Splitting authority is deferred until its
+migration contract is concrete.
