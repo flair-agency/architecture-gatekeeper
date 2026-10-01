@@ -8,7 +8,9 @@ const name = `owner-amendment-block-${expected.baseSha}-${expected.headSha}-${ex
 const expiresAt = new Date(Date.now() + 60_000).toISOString();
 const run = Object.freeze({ id: 42, status: 'completed', event: 'pull_request_target', run_attempt: 2,
   repository: { id: 7, full_name: expected.repository }, head_repository: { id: 7, full_name: expected.repository },
-  head_sha: expected.headSha });
+  head_sha: expected.headSha, pull_requests: [{ number: 12,
+    base: { ref: 'main', sha: expected.baseSha, repo: { full_name: expected.repository } },
+    head: { sha: expected.headSha, repo: { full_name: expected.repository } } }] });
 const artifact = (id = 88) => ({ id, name, expired: false, expires_at: expiresAt,
   workflow_run: { id: 42, repository_id: 7, head_repository_id: 7, head_sha: expected.headSha } });
 
@@ -39,6 +41,17 @@ test('discovers the unique artifact from an exact trusted run attempt', async ()
   assert.ok(requests.every(request => request.options.redirect === 'error'));
   assert.ok(requests.every(request => request.options.headers.authorization === 'Bearer fixture-token'));
   assert.deepEqual(OWNER_AMENDMENT_ARTIFACT_DISCOVERY_LIMITS, { pageSize: 100, maxPages: 100 });
+});
+
+test('supports captured empty PR associations while naming the exact trusted base/B/run artifact', async () => {
+  const exactArtifact = artifact();
+  exactArtifact.workflow_run.head_sha = expected.baseSha;
+  const { fetchImpl } = fetchFor({ pages: [[exactArtifact]], runValue: { ...run, head_sha: expected.baseSha, pull_requests: [] } });
+  const result = await discoverOwnerAmendmentBlockArtifact({ expected, token: 'fixture-token', fetchImpl });
+  assert.equal(result.status, 'DISCOVERED_OWNER_AMENDMENT_BLOCK_ARTIFACT', result.reason);
+  assert.equal(result.artifactName, name);
+  assert.equal(result.baseSha, expected.baseSha);
+  assert.equal(result.headSha, expected.headSha);
 });
 
 test('walks every page before returning the uniquely matching artifact', async () => {
@@ -74,9 +87,24 @@ test('rejects mismatched run identity, artifact association, and expired metadat
     ['expired flag', f => { f.pages[0][0].expired = true; }],
     ['expired timestamp', f => { f.pages[0][0].expires_at = new Date(Date.now() - 60_000).toISOString(); }],
     ['missing timestamp', f => { delete f.pages[0][0].expires_at; }],
+    ['missing PR association field', f => { f.runValue = { ...f.runValue }; delete f.runValue.pull_requests; }],
   ]) await t.test(title, async () => {
     const f = { pages: [[artifact()]], runValue: run };
     mutate(f);
+    const { fetchImpl } = fetchFor(f);
+    const result = await discoverOwnerAmendmentBlockArtifact({ expected, token: 'x', fetchImpl });
+    assert.equal(result.status, 'INCOMPLETE');
+  });
+  await t.test('uses exact pull-request tuple when workflow head metadata names protected trigger revision', async () => {
+    const f = { pages: [[artifact()]], runValue: { ...run, head_sha: expected.baseSha } };
+    f.pages[0][0].workflow_run.head_sha = expected.baseSha;
+    const { fetchImpl } = fetchFor(f);
+    const result = await discoverOwnerAmendmentBlockArtifact({ expected, token: 'x', fetchImpl });
+    assert.equal(result.status, 'DISCOVERED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
+  });
+  await t.test('rejects a run associated with a stale base even when head SHA matches', async () => {
+    const f = { pages: [[artifact()]], runValue: { ...run, pull_requests: [{ ...run.pull_requests[0],
+      base: { ...run.pull_requests[0].base, sha: 'c'.repeat(40) } }] } };
     const { fetchImpl } = fetchFor(f);
     const result = await discoverOwnerAmendmentBlockArtifact({ expected, token: 'x', fetchImpl });
     assert.equal(result.status, 'INCOMPLETE');

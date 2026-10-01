@@ -234,6 +234,8 @@ test('preserves fixed Codex Action deadlines while varying only the primary revi
 
 test('uses the immutable called-workflow runtime and keeps review jobs read-only', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
+  const acceptJob = workflow.match(/  accept:\n([\s\S]*)$/)?.[1];
+  assert.ok(acceptJob);
   assert.match(workflow, /repository: \$\{\{ job\.workflow_repository \}\}/);
   assert.match(workflow, /ref: \$\{\{ job\.workflow_sha \}\}/);
   assert.doesNotMatch(workflow, /ref: v0\.1\.0/);
@@ -272,13 +274,26 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.doesNotMatch(workflow, /owner-decision-preflight/);
   assert.doesNotMatch(workflow, /Require protected owner approval/);
   assert.match(workflow, /name: Require successful reporting\n[\s\S]*?REPORT_RESULT: \$\{\{ needs\.report\.result \}\}\n[\s\S]*?test "\$REPORT_RESULT" = success/);
-  assert.match(workflow, /name: Require model-backed PASS or verified G0 owner addition\n        if: needs\.policy\.outputs\.mode == 'enforced'/);
+  assert.match(workflow, /name: Require model-backed PASS or verified G0 owner addition\/amendment\n        if: needs\.policy\.outputs\.mode == 'enforced'/);
+  assert.match(workflow, /run: node \.architecture-gatekeeper-runtime\/src\/ci-enforced-acceptance\.mjs/);
+  const finalTagGuard = acceptJob.match(/      - name: Recheck exact B amendment tag at final acceptance boundary\n([\s\S]*?)\n      - name: Require model-backed PASS/)?.[1];
+  assert.ok(finalTagGuard);
+  assert.match(finalTagGuard, /if: needs\.policy\.outputs\.mode == 'enforced' && needs\.policy\.outputs\.owner_amendment_grade == 'G0'/);
+  assert.match(finalTagGuard, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(finalTagGuard, /B_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
+  assert.match(finalTagGuard, /node \.architecture-gatekeeper-runtime\/scripts\/owner-amendment-attempt-classifier\.mjs acceptance-guard/);
+  assert.ok(acceptJob.indexOf('Recheck exact B amendment tag at final acceptance boundary') < acceptJob.indexOf('Require model-backed PASS or verified G0 owner addition/amendment'));
   assert.match(workflow, /name: Require PASS or pre-merge G0 eligibility\n        if: needs\.policy\.outputs\.mode == 'procedural'/);
   assert.match(workflow, /decision_kind: \$\{\{ steps\.decision\.outputs\.kind \}\}/);
   assert.match(workflow, /name: Identify the completed ordinary decision\n        if: needs\.policy\.outputs\.mode == 'procedural' \|\| \(needs\.policy\.outputs\.mode == 'enforced' && \(needs\.policy\.outputs\.owner_addition_grade == 'G0' \|\| needs\.policy\.outputs\.owner_amendment_grade == 'G0'\)\)\n        id: decision/);
-  assert.match(workflow, /test "\$CONCLUSION" = PASS/);
-  assert.match(workflow, /test "\$CONCLUSION" = OWNER_ADDITION_G0/);
-  assert.match(workflow, /test "\$OWNER_ADDITION_RESULT" = success/);
+  assert.match(workflow, /OWNER_AMENDMENT_ATTEMPT_RESULT: \$\{\{ needs\['owner-amendment-attempt-classifier'\]\.result \}\}/);
+  assert.match(workflow, /OWNER_AMENDMENT_ATTEMPTED: \$\{\{ needs\['owner-amendment-attempt-classifier'\]\.outputs\.attempted \}\}/);
+  const attemptJob = workflow.match(/  owner-amendment-attempt-classifier:\n([\s\S]*?)\n  owner-amendment-semantic-eligibility:/)?.[1];
+  assert.ok(attemptJob);
+  assert.match(attemptJob, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+  assert.match(attemptJob, /owner-amendment-attempt-classifier\.mjs/);
+  assert.match(attemptJob, /OWNER_AMENDMENT_ATTEMPT:true\|OWNER_AMENDMENT_NOT_APPLICABLE:false/);
+  assert.doesNotMatch(attemptJob, /pull-requests: write|id-token: write|attestations: write|OPENAI_API_KEY/);
   const additionJob = workflow.match(/  owner-addition:\n([\s\S]*?)\n  report:/)?.[1];
   assert.ok(additionJob);
   assert.match(additionJob, /if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\) && needs\.policy\.outputs\.owner_addition_grade == 'G0' && needs\.review\.outputs\.decision_kind == 'OWNER_DECISION'/);
@@ -314,17 +329,20 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
 
 test('dogfoods only the protected reusable workflow with separated permissions', () => {
   const caller = readFileSync(join(root, '.github/workflows/self-architecture-gate.yml'), 'utf8');
+  const pullRequestCaller = caller;
   assert.match(caller, /pull_request_target:/);
+  assert.doesNotMatch(caller, /^  merge_group:/m);
+  assert.doesNotMatch(caller, /merge-group-(?:accept|codex-action-integrity):/);
   assert.match(caller, /uses: \.\/\.github\/workflows\/architecture-gate\.yml/);
-  assert.match(caller, /contents: read/);
-  assert.doesNotMatch(caller, /actions: read/);
-  assert.match(caller, /pull-requests: write/);
-  assert.match(caller, /protected-review-instructions: true/);
-  assert.match(caller, /schema-path: \.codex\/gatekeeper\/ci-decision\.schema\.json/);
-  assert.match(caller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
-  assert.doesNotMatch(caller, /owner-decision-environment/);
-  assert.match(caller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
-  assert.doesNotMatch(caller, /actions\/checkout/);
+  assert.match(pullRequestCaller, /contents: read/);
+  assert.match(pullRequestCaller, /actions: read/);
+  assert.match(pullRequestCaller, /pull-requests: write/);
+  assert.match(pullRequestCaller, /protected-review-instructions: true/);
+  assert.match(pullRequestCaller, /schema-path: \.codex\/gatekeeper\/ci-decision\.schema\.json/);
+  assert.match(pullRequestCaller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
+  assert.doesNotMatch(pullRequestCaller, /owner-decision-environment/);
+  assert.match(pullRequestCaller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
+  assert.doesNotMatch(pullRequestCaller, /actions\/checkout/);
 });
 
 test('produces attested BLOCK records only in a credential-separated signer job', () => {
@@ -364,6 +382,75 @@ test('produces attested BLOCK records only in a credential-separated signer job'
   assert.match(recordJob, /uses: actions\/upload-artifact\@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4/);
   assert.match(recordJob, /artifact-sha256=%s;attestation-id=%s;run-id=%s;run-attempt=%s/);
   assert.doesNotMatch(acceptJob, /block-review-record/);
+});
+
+test('produces exact OWNER_DECISION trigger evidence only for the prior-policy-selected self profile', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
+  const recordJob = workflow.match(/  owner-amendment-owner-decision-record:\n([\s\S]*?)\n  owner-amendment-semantic-eligibility:/)?.[1];
+  assert.ok(recordJob);
+  assert.match(workflow, /owner_amendment_trigger_profile: \$\{\{ steps\.resolve\.outputs\.ownerAmendmentTriggerProfile \}\}/);
+  assert.match(recordJob, /if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.event_name == 'pull_request_target' && github\.event\.pull_request\.base\.ref == 'main' && needs\.policy\.outputs\.mode == 'enforced' && needs\.policy\.outputs\.owner_amendment_grade == 'G0' && needs\.policy\.outputs\.owner_amendment_trigger_profile == 'completed-owner-decision-self-v1' && needs\.review\.outputs\.decision_kind == 'OWNER_DECISION'/);
+  assert.match(recordJob, /needs: \[policy, codex-action-integrity, review\]/);
+  assert.match(recordJob, /contents: read\n      id-token: write\n      attestations: write/);
+  assert.doesNotMatch(recordJob, /OPENAI_API_KEY|secrets\.OPENAI_API_KEY/);
+  assert.match(recordJob, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+  assert.match(recordJob, /RECORD_DIR="\$RUNNER_TEMP\/architecture-gate-owner-decision-record-input"/);
+  assert.match(recordJob, /working-directory: \$\{\{ runner\.temp \}\}/);
+  assert.match(recordJob, /node "\$GITHUB_WORKSPACE\/scripts\/owner-amendment-owner-decision-producer\.mjs"/);
+  assert.match(recordJob, /subject-path: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-decision-record-input\/review-record\.json/);
+  assert.doesNotMatch(recordJob, /job\.workflow_repository|job\.workflow_sha|\.architecture-gatekeeper-runtime/);
+  assert.match(recordJob, /name: owner-amendment-owner-decision-\$\{\{ github\.event\.pull_request\.base\.sha \}\}-\$\{\{ github\.event\.pull_request\.head\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
+  assert.match(workflow, /Require completed OWNER_DECISION evidence production when selected/);
+  assert.match(workflow, /needs: \[policy, review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-attempt-classifier, owner-amendment-semantic-eligibility, owner-amendment-semantic-eligibility-signer, report\]/);
+  assert.match(workflow, /ownerAmendmentTriggerProfile/);
+});
+
+test('OWNER_AMENDMENT semantic producer never checks out or executes pull-request code', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
+  const semanticJob = workflow.match(/  owner-amendment-semantic-eligibility:\n([\s\S]*?)\n  owner-amendment-semantic-eligibility-signer:/)?.[1];
+  assert.ok(semanticJob);
+  assert.match(semanticJob, /if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.event_name == 'pull_request_target' && github\.event\.pull_request\.base\.ref == 'main'/);
+  assert.match(semanticJob, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+  assert.match(semanticJob, /B_PR_NUMBER: \$\{\{ github\.event\.pull_request\.number \}\}/);
+  assert.match(semanticJob, /\[\[ "\$B_PR_NUMBER" =~ \^\[1-9\]\[0-9\]\*\$ \]\]/);
+  assert.ok(semanticJob.includes('[[ "$B_HEAD_SHA" =~ ^[a-f0-9]{40}$ ]]'));
+  assert.match(semanticJob, /git fetch --no-tags origin "refs\/pull\/\$\{B_PR_NUMBER\}\/head"/);
+  assert.match(semanticJob, /working-directory: \$\{\{ runner\.temp \}\}/);
+  assert.match(semanticJob, /node "\$GITHUB_WORKSPACE\/scripts\/owner-amendment-semantic-eligibility-producer\.mjs" prepare/);
+  assert.match(semanticJob, /node "\$GITHUB_WORKSPACE\/scripts\/owner-amendment-semantic-eligibility-producer\.mjs" stage-review-output/);
+  assert.match(semanticJob, /review_artifact_id: \$\{\{ steps\.review-artifact\.outputs\.artifact-id \}\}/);
+  assert.doesNotMatch(semanticJob, /id-token: write|attestations: write|actions\/attest@/);
+  assert.doesNotMatch(semanticJob, /job\.workflow_repository|job\.workflow_sha|ref: \$\{\{ github\.event\.pull_request\.head\.(?:sha|ref) \}\}|checkout.*head/i);
+
+  const signerJob = workflow.match(/  owner-amendment-semantic-eligibility-signer:\n([\s\S]*?)\n  report:/)?.[1];
+  assert.ok(signerJob);
+  assert.match(signerJob, /needs: \[policy, owner-amendment-attempt-classifier, owner-amendment-semantic-eligibility\]/);
+  assert.match(signerJob, /contents: read\n      actions: read\n      id-token: write\n      attestations: write/);
+  assert.match(signerJob, /artifact-ids: \$\{\{ needs\['owner-amendment-semantic-eligibility'\]\.outputs\.review_artifact_id \}\}/);
+  assert.match(signerJob, /owner-amendment-semantic-eligibility-producer\.mjs" prepare/);
+  assert.match(signerJob, /owner-amendment-semantic-eligibility-producer\.mjs" complete/);
+  assert.match(signerJob, /needs\['owner-amendment-attempt-classifier'\]\.outputs\.attempted == 'true'/);
+  assert.doesNotMatch(signerJob, /owner-amendment-semantic-eligibility-producer\.mjs complete[^\n]*>>\s*"\$GITHUB_OUTPUT"/);
+  assert.match(signerJob, /uses: actions\/attest@/);
+  assert.doesNotMatch(signerJob, /codex-action@|OPENAI_API_KEY|secrets\.OPENAI_API_KEY/);
+  assert.match(workflow, /OWNER_AMENDMENT_SIGNER_RESULT: \$\{\{ needs\['owner-amendment-semantic-eligibility-signer'\]\.result \}\}/);
+  assert.match(workflow, /OWNER_AMENDMENT_ELIGIBILITY: \$\{\{ needs\['owner-amendment-semantic-eligibility-signer'\]\.outputs\.eligibility \}\}/);
+});
+
+test('protected amendment Git commands pass the checkout through argv instead of child-process cwd', () => {
+  for (const path of [
+    '../scripts/owner-amendment-merge-group-gate.mjs',
+    '../scripts/owner-amendment-semantic-eligibility-producer.mjs',
+  ]) {
+    const source = readFileSync(new URL(path, import.meta.url), 'utf8');
+    assert.match(source, /execFileSync\('git', \['-C', process\.env\.GITHUB_WORKSPACE, \.\.\.args\]/);
+    assert.doesNotMatch(source, /cwd:\s*process\.env\.GITHUB_WORKSPACE/);
+  }
+  const ownerDecision = readFileSync(new URL('../scripts/owner-amendment-owner-decision-producer.mjs', import.meta.url), 'utf8');
+  assert.match(ownerDecision, /const workspace = process\.env\.GITHUB_WORKSPACE;[\s\S]*execFileSync\('git', \['-C', workspace, \.\.\.args\]/);
+  assert.doesNotMatch(ownerDecision, /cwd:\s*process\.env\.GITHUB_WORKSPACE/);
+  assert.match(ownerDecision, /git\(\['show', `\$\{baseSha\}:\$\{path\}`\]/);
+  assert.match(ownerDecision, /git\(\['ls-remote', 'origin', `refs\/pull\/\$\{context\.prNumber\}\/merge`\]/);
 });
 
 test('selects and materializes the protected self Authority Set for CI and local review', async () => {

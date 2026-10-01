@@ -34,5 +34,5 @@ test('wires only the primary review deadline from validated protected inputs', (
   assert.doesNotMatch(caller, /CODEX_TIMEOUT_SECONDS|codex-timeout-seconds/);
   assert.match(reusable, /owner-addition:\n[\s\S]*?timeout-minutes: 20/);
   assert.match(integration, /ARCHITECTURE_GATE_REVIEW_JOB_TIMEOUT_MINUTES/);
-  assert.match(integration, /GitHub cancellation and process cleanup remain best-effort/);
+  assert.match(integration, /GitHub\s+cancellation and process cleanup remain best-effort/);
 });

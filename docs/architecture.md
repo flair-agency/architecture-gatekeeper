@@ -1060,25 +1060,23 @@ misrepresented as an Architecture Gatekeeper guarantee.
 
 ### Development sequence and v0.6.0 self reference profile (owner decision)
 
-The project first establishes the smallest complete workflow it can operate
-on itself, then verifies it through dogfooding. It does not build a universal
-host, repository-plan, provenance, or Git merge adapter in anticipation of
-possible OSS use. After the self workflow is proven, additional capabilities
-are derived from concrete consumer use cases and their required assurance.
-This sequencing does not weaken an existing consumer's selected policy or
-turn a self-only result into a general support claim.
+First, establish and dogfood the smallest complete self-workflow; derive later
+capabilities from concrete consumer use cases and required assurance. Do not
+prebuild universal host, repository-plan, provenance, or Git-merge adapters for
+speculative OSS use. This sequence neither weakens existing consumer policy nor
+turns self-only results into general support claims.
 
-For v0.6.0, the reference environment is this repository on GitHub Free,
-public visibility. The release goal is a minimal dogfoodable self consumer:
-the `OWNER_ADDITION` path from v0.5.x can add a missing canonical decision
-once selected by this repository's previous-base policy, and
-`OWNER_AMENDMENT / G0` can change an existing one through normal protected
-adoption without routine administrator bypass. The release must prove both a
-completed `BLOCK` amendment case and a completed `OWNER_DECISION` amendment
-case, including a self normative-contract change under the previous protected
-base policy (Issue #137). These cases must preserve historical semantic
-results and establish exact B, protected evidence, canonical readback, and
-fresh review where applicable. The first BLOCK-triggered deployment selects the
+This repository (public GitHub Free) is the v0.6.0 reference: its previous-base
+policy may select v0.5.x `OWNER_ADDITION` for missing decisions or protected
+`OWNER_AMENDMENT / G0` adoption for changing existing ones, without routine
+admin bypass. Final v0.6.0 must prove completed `BLOCK` and `OWNER_DECISION`
+amendment cases, including the Issue #137 self contract change under prior
+protected-base policy. Both preserve historical semantic results and establish
+exact B, protected evidence, canonical readback, and fresh review where
+applicable. A numbered preview may distribute improvements to existing
+supported paths for feedback with new `OWNER_AMENDMENT` and App routes inactive;
+it makes no rollout, enforcement, or completion claims for those new targets.
+Final v0.6.0 still requires both cases. The first BLOCK-triggered deployment selects the
 following existing host primitives, subject to the validation requirements
 above and an explicit previous-base policy opt-in:
 

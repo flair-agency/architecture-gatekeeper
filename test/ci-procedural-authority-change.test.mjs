@@ -80,5 +80,5 @@ test('reusable workflow wires protected-base authority comparison to the procedu
   assert.match(workflow, /if: needs\.policy\.outputs\.mode == 'procedural'\n        id: selected-authority-change/);
   assert.match(workflow, /node \.architecture-gatekeeper-validation-runtime\/src\/ci-procedural-authority-change\.mjs/);
   assert.match(workflow, /node \.architecture-gatekeeper-runtime\/src\/ci-procedural-acceptance\.mjs/);
-  assert.match(workflow, /if: needs\.policy\.outputs\.mode == 'procedural'\n        uses: actions\/checkout@v5\n        with:\n          repository: \$\{\{ job\.workflow_repository \}\}\n          ref: \$\{\{ job\.workflow_sha \}\}/);
+  assert.match(workflow, /if: needs\.policy\.outputs\.mode == 'procedural' \|\| needs\.policy\.outputs\.mode == 'enforced'\n        uses: actions\/checkout@v5\n        with:\n          repository: \$\{\{ job\.workflow_repository \}\}\n          ref: \$\{\{ job\.workflow_sha \}\}/);
 });

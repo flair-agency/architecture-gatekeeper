@@ -54,10 +54,12 @@ function fixture({ recordChanges = {}, artifactChanges = {}, amendmentChanges = 
   Object.assign(amendment, amendmentChanges);
   const amendmentRecordBytes = Buffer.from(JSON.stringify(amendment));
   const run = { id: 42, event: 'pull_request_target', repository: { full_name: context.repository, id: 10 },
-    head_repository: { full_name: context.repository, id: 10 }, head_sha: context.headSha, run_attempt: 2 };
+    head_repository: { full_name: context.repository, id: 10 }, head_sha: context.workflowSha, run_attempt: 2,
+    pull_requests: [{ base: { ref: 'main', sha: context.baseSha, repo: { full_name: context.repository } },
+      head: { sha: context.headSha, repo: { full_name: context.repository } } }] };
   const artifact = { id: 77, name: `owner-amendment-block-${context.baseSha}-${context.headSha}-${context.runId}-${context.runAttempt}`,
     expired: false, size_in_bytes: zipBytes.length, digest: `sha256:${sha(zipBytes)}`,
-    workflow_run: { id: 42, repository_id: 10, head_repository_id: 10, head_sha: context.headSha } };
+    workflow_run: { id: 42, repository_id: 10, head_repository_id: 10, head_sha: context.workflowSha } };
   Object.assign(artifact, artifactChanges);
   const fetchCalls = [];
   const fetchImpl = async (url, options) => {

@@ -11,6 +11,7 @@ const OWNER_SCHEMA_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.json$/;
 const ADOPTION_WORKFLOW_PATH = /^\.github\/workflows\/[A-Za-z0-9._-]+\.ya?ml$/;
 const ADOPTION_JOB_NAME = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63} \/ [A-Za-z0-9_][A-Za-z0-9 ._-]{0,63}$/;
 const AMENDMENT_TAG_NAMESPACE = 'refs/tags/architecture-gatekeeper/amendments';
+const OWNER_AMENDMENT_TRIGGER_PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1']);
 const LEGACY_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
 
 function isRecord(value) {
@@ -114,11 +115,12 @@ function validateBranch(branch, label, version) {
     const amendment = branch.ownerAmendment;
     requireOnlyKeys(amendment, new Set(['version', 'grade', 'scope', 'triggerProfile', 'authorityId', 'authorityPath', 'evidenceProducer', 'tagNamespace', 'maxPromptBytes']), `${label} owner amendment`);
     if (version !== 2 || branch.mode !== 'enforced' || !Object.hasOwn(branch, 'authorityManifestPath') || amendment.version !== 1 || amendment.grade !== 'G0' ||
-        amendment.scope !== 'authority-only' || amendment.triggerProfile !== 'completed-block-v1' ||
+        amendment.scope !== 'authority-only' || !OWNER_AMENDMENT_TRIGGER_PROFILES.has(amendment.triggerProfile) ||
         !/^[a-z][a-z0-9-]{0,63}$/.test(amendment.authorityId || '') ||
         typeof amendment.authorityPath !== 'string' || amendment.authorityPath.length > 240 ||
         !OWNER_AUTHORITY_PATH.test(amendment.authorityPath) || amendment.authorityPath.split('/').some(part => part === '.' || part === '..') ||
         amendment.evidenceProducer !== 'github-actions-attestation' || amendment.tagNamespace !== AMENDMENT_TAG_NAMESPACE ||
+        (amendment.triggerProfile === 'completed-owner-decision-self-v1' && !Object.hasOwn(amendment, 'maxPromptBytes')) ||
         (Object.hasOwn(amendment, 'maxPromptBytes') && (!Number.isSafeInteger(amendment.maxPromptBytes) ||
           amendment.maxPromptBytes < 1 || amendment.maxPromptBytes > 1_048_576))) {
       throw new Error(`Invalid ${label} owner amendment selection`);

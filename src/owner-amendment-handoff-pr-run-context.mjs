@@ -39,22 +39,35 @@ function validatePullRequest(pr, { repository, number, label, requireOpen }) {
   return pr;
 }
 
-function validateRun(run, { repository, runId, runAttempt, aHeadSha, repositoryId }) {
+function validateRun(run, { repository, runId, runAttempt, aPrNumber, aHeadSha, baseSha, repositoryId }) {
   const workflowPath = typeof run?.path === 'string' ? run.path.split('@', 1)[0] : undefined;
+  // pull_request_target run metadata can name either the protected base or the
+  // exact A head. The separately selected PR and later ReviewRecord/artifact
+  // checks bind A; run.head_sha alone is not evidence of that binding.
+  const runHeadIsExactPullRequestEvent = run?.head_sha === aHeadSha || run?.head_sha === baseSha;
+  const pullRequests = run?.pull_requests;
+  const exactAssociatedPullRequests = Array.isArray(pullRequests) ? pullRequests.filter(pr =>
+    String(pr?.number) === String(aPrNumber) && pr?.base?.ref === 'main' && pr?.base?.sha === baseSha &&
+    repoName(pr?.base?.repo) === repository && pr?.head?.sha === aHeadSha &&
+    repoName(pr?.head?.repo) === repository) : [];
   if (String(run?.id) !== String(runId) || String(run.run_attempt) !== String(runAttempt) ||
       run.status !== 'completed' || run.event !== 'pull_request_target' ||
       repoName(run.repository) !== repository || repoName(run.head_repository) !== repository ||
       repoId(run.repository) !== repositoryId || repoId(run.head_repository) !== repositoryId ||
-      run.head_sha !== aHeadSha || workflowPath !== SELF_WORKFLOW_PATH) {
-    fail('workflow run does not match the exact completed self pull_request_target attempt and A head.');
+      !runHeadIsExactPullRequestEvent || !Array.isArray(pullRequests) ||
+      (pullRequests.length > 0 && (pullRequests.length !== 1 || exactAssociatedPullRequests.length !== 1)) ||
+      workflowPath !== SELF_WORKFLOW_PATH) {
+    fail('workflow run does not match the exact completed self pull_request_target attempt, protected base/A head and PR association.');
   }
   return { workflowPath, headSha: run.head_sha, repositoryId: repoId(run.repository) };
 }
 
 /**
  * Fetch and validate the open B PR, the A PR, and one exact Actions run
- * attempt. The run's `pull_requests` field is deliberately ignored because
- * GitHub can return it empty for pull_request_target runs.
+ * attempt. GitHub can return an empty `pull_requests` list for
+ * pull_request_target runs, so an empty list is tolerated; a non-empty list
+ * must contain exactly the selected A PR. Later artifact and ReviewRecord
+ * checks still bind the selected evidence to A's exact head and run attempt.
  *
  * The returned context is metadata only. It does not establish B eligibility,
  * evidence validity, or acceptance; callers must cross-check it against the
@@ -90,7 +103,8 @@ export async function selectOwnerAmendmentHandoffPrRunContext({ input, token, fe
       fail('A and B are not based on the same repository revision.');
     }
     const runContext = validateRun(run, { repository: input.repository, runId: input.runId,
-      runAttempt: input.runAttempt, aHeadSha: aPr.head.sha, repositoryId });
+      runAttempt: input.runAttempt, aPrNumber: input.aPrNumber, aHeadSha: aPr.head.sha,
+      baseSha: aPr.base.sha, repositoryId });
 
     return Object.freeze({ status: 'SELECTED_OWNER_AMENDMENT_HANDOFF_PR_RUN_CONTEXT',
       repository: input.repository, repositoryId, baseSha: bPr.base.sha,

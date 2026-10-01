@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
 import { inspectOwnerAmendmentSelfScope } from './owner-amendment-scope.mjs';
 import { parseAuthorityManifest, validateAuthorityLimits } from './authority-set.mjs';
@@ -85,7 +86,7 @@ function decodeLimits(encoded, profile) {
  * stdout bytes. This prepares eligibility inputs only; it does not accept B or
  * create/read a tag.
  */
-export function resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, headSha, runGit }) {
+export function resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, headSha, baseBranch = 'main', runGit }) {
   if (typeof repository !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(repository) || repository.includes('..')) {
     fail('a canonical owner/repository identity is required.');
   }
@@ -102,12 +103,14 @@ export function resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, he
   try { parsedPolicy = parseCiPolicyJson(text(policyBytes, 'protected CI policy')); }
   catch { fail('previous-base CI policy is invalid.'); }
   let policy;
-  try { policy = resolveCiPolicy(parsedPolicy, 'main'); }
-  catch { fail('previous-base main policy cannot be resolved.'); }
+  try { policy = resolveCiPolicy(parsedPolicy, baseBranch); }
+  catch { fail('previous-base policy cannot be resolved.'); }
+  if (baseBranch !== 'main') fail('v0.6.0 self amendment profile supports only protected main.');
   if (policy.mode !== 'enforced' || policy.ownerAmendmentVersion !== 1 || policy.ownerAmendmentGrade !== 'G0' ||
-      policy.ownerAmendmentScope !== 'authority-only' || policy.ownerAmendmentTriggerProfile !== 'completed-block-v1' ||
+      policy.ownerAmendmentScope !== 'authority-only' ||
+      !['completed-block-v1', 'completed-owner-decision-self-v1'].includes(policy.ownerAmendmentTriggerProfile) ||
       !policy.authorityManifestPath || !policy.authorityLimitsBase64 || !policy.ownerAmendmentAuthorityId || !policy.ownerAmendmentAuthorityPath) {
-    fail('previous protected main policy does not select self G0 completed-block-v1.');
+    fail('previous protected main policy does not select a supported self G0 amendment trigger profile.');
   }
 
   const profile = policy.authorityProfile ?? 'v1';
@@ -126,16 +129,65 @@ export function resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, he
     changedFiles: files, baseAuthorityBytes, headAuthorityBytes }); }
   catch { fail('exact B does not satisfy the previous-base self authority-only scope.'); }
 
+  let authorityChanges;
+  let priorAuthoritySetDigest;
+  let resultingAuthoritySetDigest;
+  if (policy.ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1') {
+    const members = [];
+    const changesByPath = new Map();
+    let previousTotal = 0;
+    let resultingTotal = 0;
+    for (const member of manifest.authorities) {
+      if (member.repository !== 'self' || member.revision !== 'authority-revision') {
+        fail('OWNER_DECISION profile requires every previous Authority Set member to be a self authority.');
+      }
+      const beforeBytes = readRegularBlob(runGit, baseSha, member.path, limits.maxFileBytes);
+      const changed = files.find(file => file.path === member.path);
+      const afterBytes = readRegularBlob(runGit, headSha, member.path, limits.maxFileBytes);
+      if (changed && beforeBytes.equals(afterBytes)) {
+        fail(`changed OWNER_DECISION Authority Set member ${member.path} has no before/after byte change.`);
+      }
+      if (!changed && !beforeBytes.equals(afterBytes)) {
+        fail('unreported OWNER_DECISION Authority Set member change differs between base and B.');
+      }
+      previousTotal += beforeBytes.length;
+      resultingTotal += afterBytes.length;
+      if (previousTotal > limits.maxTotalBytes || resultingTotal > limits.maxTotalBytes) {
+        fail('previous or resulting complete Authority Set exceeds its protected total byte limit.');
+      }
+      members.push({ beforeBytes, afterBytes, descriptor: bytes => ({ id: member.id, repository,
+        resolvedCommit: baseSha, path: member.path, byteLength: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex') }) });
+      if (changed) changesByPath.set(member.path, { path: member.path,
+        beforeBytes: Buffer.from(beforeBytes), afterBytes: Buffer.from(afterBytes) });
+    }
+    const expectedChangedPaths = files.map(file => file.path).sort();
+    const authorityChangedPaths = [...changesByPath.keys()].sort();
+    if (expectedChangedPaths.length !== authorityChangedPaths.length ||
+        expectedChangedPaths.some((changedPath, index) => changedPath !== authorityChangedPaths[index])) {
+      fail('OWNER_DECISION changed paths do not exactly match previous self Authority Set members.');
+    }
+    authorityChanges = authorityChangedPaths.map(changedPath => changesByPath.get(changedPath));
+    const previousDescriptors = members.map(member => member.descriptor(member.beforeBytes));
+    const resultingDescriptors = members.map(member => member.descriptor(member.afterBytes));
+    priorAuthoritySetDigest = createHash('sha256').update(JSON.stringify(previousDescriptors), 'utf8').digest('hex');
+    resultingAuthoritySetDigest = createHash('sha256').update(JSON.stringify(resultingDescriptors), 'utf8').digest('hex');
+  }
+
   const immutable = { repository, baseSha, headSha, policyPath: POLICY_PATH,
     parsedPolicy: deepFreeze(parsedPolicy), policy: deepFreeze(policy),
     manifestPath: policy.authorityManifestPath, manifest: deepFreeze(manifest),
-    limits: deepFreeze(limits), changedFiles: deepFreeze(files), scope };
+    limits: deepFreeze(limits), changedFiles: deepFreeze(files), scope,
+    ...(authorityChanges ? { priorAuthoritySetDigest, resultingAuthoritySetDigest } : {}) };
   Object.defineProperties(immutable, {
     policyBytes: { enumerable: true, get: () => Buffer.from(policyBytes) },
     manifestBytes: { enumerable: true, get: () => Buffer.from(manifestBytes) },
     authorityBytes: { enumerable: true, get: () => Object.freeze({
       base: Buffer.from(baseAuthorityBytes), head: Buffer.from(headAuthorityBytes),
     }) },
+    ...(authorityChanges ? { authorityChanges: { enumerable: true, get: () => Object.freeze(authorityChanges.map(change => Object.freeze({
+      path: change.path, beforeBytes: Buffer.from(change.beforeBytes), afterBytes: Buffer.from(change.afterBytes),
+    }))) } } : {}),
   });
   return Object.freeze(immutable);
 }
