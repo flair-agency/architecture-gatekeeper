@@ -63,8 +63,10 @@ test('prepareGeminiRequestBody formats prompt, schema, and thinking budget', () 
 test('runGeminiReviewer fails closed when no credentials are found', async () => {
   const prevKey = process.env.GEMINI_API_KEY;
   const prevToken = process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
+  const prevCloudsdkToken = process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
   delete process.env.GEMINI_API_KEY;
   delete process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
+  delete process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
   try {
     const request = {
       prompt: 'test prompt',
@@ -72,12 +74,13 @@ test('runGeminiReviewer fails closed when no credentials are found', async () =>
       reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'medium' },
     };
     await assert.rejects(
-      () => runGeminiReviewer(request),
+      () => runGeminiReviewer(request, { resolveGcloudAccessToken: () => null }),
       /No credentials found/
     );
   } finally {
     if (prevKey !== undefined) process.env.GEMINI_API_KEY = prevKey;
     if (prevToken !== undefined) process.env.GOOGLE_OAUTH_ACCESS_TOKEN = prevToken;
+    if (prevCloudsdkToken !== undefined) process.env.CLOUDSDK_AUTH_ACCESS_TOKEN = prevCloudsdkToken;
   }
 });
 
@@ -563,4 +566,74 @@ test('runGeminiReviewer sends Authorization Bearer header when bearer token is u
   });
 
   assert.deepEqual(result, expectedDecision);
+});
+
+test('runGeminiReviewer rejects plaintext HTTP endpoints for API key credentials (fail-closed)', async () => {
+  let attemptedFetch = false;
+  const mockFetch = async () => {
+    attemptedFetch = true;
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' },
+  };
+
+  await assert.rejects(
+    () => runGeminiReviewer(request, {
+      apiKey: 'secret-api-key',
+      baseUrl: 'http://insecure.endpoint.example/v1beta',
+      fetch: mockFetch,
+    }),
+    /insecure endpoint protocol http:\. HTTPS is required to protect credentials\./
+  );
+  assert.equal(attemptedFetch, false);
+});
+
+test('runGeminiReviewer rejects plaintext HTTP endpoints for Bearer token credentials (fail-closed)', async () => {
+  let attemptedFetch = false;
+  const mockFetch = async () => {
+    attemptedFetch = true;
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' },
+  };
+
+  await assert.rejects(
+    () => runGeminiReviewer(request, {
+      accessToken: 'secret-bearer-token',
+      baseUrl: 'http://insecure.endpoint.example/v1beta',
+      fetch: mockFetch,
+    }),
+    /insecure endpoint protocol http:\. HTTPS is required to protect credentials\./
+  );
+  assert.equal(attemptedFetch, false);
+});
+
+test('runGeminiReviewer bounds credential discovery by review deadline', async () => {
+  let observedGcloudTimeout = null;
+  const mockResolveGcloud = (timeoutMs) => {
+    observedGcloudTimeout = timeoutMs;
+    return null;
+  };
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low', reviewTimeoutMs: 1500 },
+  };
+
+  // With 1500ms reviewTimeoutMs, gcloudTimeoutMs should be bounded <= 1500ms rather than default 4000ms
+  await assert.rejects(
+    () => runGeminiReviewer(request, { resolveGcloudAccessToken: mockResolveGcloud }),
+    /No credentials found/
+  );
+  assert.ok(observedGcloudTimeout !== null);
+  assert.ok(observedGcloudTimeout <= 1500, `Expected <= 1500, got ${observedGcloudTimeout}`);
 });

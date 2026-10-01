@@ -132,7 +132,9 @@ export function resolveAuthCredentials(options = {}) {
     return { type: 'bearer', value: explicitToken.trim() };
   }
 
-  const gcloudToken = resolveGcloudAccessToken();
+  const gcloudTimeoutMs = options.gcloudTimeoutMs ?? 4000;
+  const resolveGcloud = options.resolveGcloudAccessToken || resolveGcloudAccessToken;
+  const gcloudToken = resolveGcloud(gcloudTimeoutMs);
   if (gcloudToken) {
     return { type: 'bearer', value: gcloudToken };
   }
@@ -183,13 +185,26 @@ export async function runGeminiReviewer(request, options = {}) {
     }
   }
   const timeoutMs = options.timeoutMs ?? recordedTimeoutMs;
-
-  const credentials = resolveAuthCredentials(options);
-
-  const baseUrl = options.baseUrl || 'https://generativelanguage.googleapis.com/v1beta';
-  const url = `${baseUrl.replace(/\/+$/, '')}/models/${encodeURIComponent(model)}:generateContent`;
-
+  const startTime = Date.now();
   const signal = AbortSignal.timeout(timeoutMs);
+
+  // Validate endpoint and require HTTPS before resolving or transmitting credentials
+  const baseUrl = options.baseUrl || 'https://generativelanguage.googleapis.com/v1beta';
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(baseUrl);
+  } catch {
+    throw new Error(`Architecture gate reviewer failed: invalid baseUrl: ${baseUrl}`);
+  }
+  if (parsedUrl.protocol !== 'https:') {
+    throw new Error(`Architecture gate reviewer failed: insecure endpoint protocol ${parsedUrl.protocol}. HTTPS is required to protect credentials.`);
+  }
+
+  const remainingMs = Math.max(0, timeoutMs - (Date.now() - startTime));
+  const gcloudTimeoutMs = Math.min(4000, remainingMs);
+  const credentials = resolveAuthCredentials({ ...options, gcloudTimeoutMs });
+
+  const url = `${baseUrl.replace(/\/+$/, '')}/models/${encodeURIComponent(model)}:generateContent`;
 
   const requestBody = prepareGeminiRequestBody(request, options);
   const fetchFn = options.fetch || globalThis.fetch;
