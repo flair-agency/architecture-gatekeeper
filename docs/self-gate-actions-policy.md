@@ -92,7 +92,7 @@ until step 4, no v0.6.0 merge-queue guarantee is claimed.
    verify `enforcement: active`, the single included workflow path, and the
    single allowed event. Keep the returned policy ID for recovery.
 3. On a subsequent non-draft pull request, confirm that the self Gate runs from
-   `pull_request_target` and that `policy`, `codex-action-integrity`, `review`,
+   `pull_request_target` and that `policy`, `review`,
    `report`, and `accept` complete. Check that the sticky PR comment updates.
    A successful run while the default policy is still in evaluate mode is not,
    by itself, proof that the saved allow policy is active.
