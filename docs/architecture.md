@@ -10,6 +10,21 @@ For an operational starting point, use the [documentation map](README.md).
 The diagrams below explain the order of operations; the surrounding text
 defines the requirements and assurance claims.
 
+## Contract navigation
+
+This index groups the existing sections for reading; it changes neither their
+normative status nor any route's implementation or adoption status. Read each
+route's conditions and exceptions together with the shared invariants.
+
+| Concern | Sections |
+| --- | --- |
+| Ownership and shared rules | [Consumer authority](#consumer-authority), [shared mechanism](#shared-mechanism), [acceptance authority](#acceptance-authority-and-host-enforcement-boundary), [normative invariants](#normative-invariants), [non-responsibilities](#non-responsibilities) |
+| Authority selection and bounds | [Distributed authority](#target-contract-distributed-authority), [CI bounds](#initial-distributed-authority-ci-bounds-issue-51-owner-decision), [local bounds](#initial-local-distributed-authority-bounds-issue-51-owner-decision) |
+| Review execution and acceptance | [Conceptual operation](#conceptual-operation), [local/manual review](#local-and-manual-review), [CI review](#ci-model-review), [current acceptance](#current-acceptance-mechanism), [target evidence](#target-evidence-and-acceptance-contract) |
+| Missing-decision governance | [OWNER_ADDITION / G0](#owner_addition--g0-route-for-missing-decisions-issue-111), [multi-document addition](#target-multi-document-owner_addition-route-issue-119-owner-decision), [adoption and assurance](#owner_addition-adoption-and-assurance-dimensions-issue-121-owner-decision) |
+| Existing-decision governance | [Owner amendment](#target-owner-amendment-governance-issue-75-owner-decision), [exact-claim authorization and revocation](#separate-exact-claim-authorization-and-revocation-owner-decision) |
+| Development and rollout | [Dogfooding and change discipline](#dogfooding-and-change-discipline), [tracked work](#relationship-to-tracked-work) |
+
 ## Why
 
 Repositories accumulate architecture decisions in canonical documents, but
@@ -786,7 +801,10 @@ resolve either issue or authorize a consumer-specific architecture.
 
 ### Three separate concepts and target contracts
 
-Three concerns remain distinct: review execution yields a structured decision; architecture evidence binds it to repository/revision/mechanism/policy; acceptance applies prior protected-base evidence policy. One workflow may combine them, but execution grants no merge acceptance and CI does not define review.
+[Review execution, evidence and acceptance](#shared-mechanism) remain distinct,
+even in one workflow. Execution grants no merge acceptance; CI does not define
+review. Evidence binding and protected-policy requirements are specified in the
+[target evidence contract](#target-evidence-and-acceptance-contract).
 
 ## Conceptual operation
 
@@ -887,6 +905,24 @@ Owner trusts `openai/codex-action` at the workflow pin; retires integrity jobs
 #### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)
 
 GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed-workspace Codex WIF (ChatGPT auth). OIDC request capability, assertion and exchanged API token stay in trusted CI, isolated from reviewer/tools, PR code and package lifecycle scripts. Only prior protected policy may select WIF; candidates cannot select or enable it. Missing/invalid/unavailable selection leaves review incomplete: no API-key fallback or weaker acceptance. Keys remain until WIF is implemented, verified and policy-selected. No reviewer/input/decision/evidence/acceptance/v0.6.0 change; inactive.
+
+#### Target multi-provider credential-isolated review proxy boundary (Issue #252 owner decision, 2026-10-02)
+
+CI may use a credential-isolated review proxy: the trusted launcher owns
+credentials and supplies them privately to the proxy; the runner does not
+inherit them or OIDC/token-renewal capabilities. The proxy binds only to an ephemeral loopback endpoint and limits
+credential-bearing dispatch to allowed methods/model routes on selected official
+provider hosts within launcher-selected project, region and model scope;
+arbitrary destinations, scope mismatches and redirects fail closed. The runner
+consumes responses for deterministic schema and authority validation.
+
+This target claims credential non-inheritance and constrained proxy dispatch,
+not restricted direct runner networking, same-user host isolation, or provider
+assurance equivalence. Protected acceptance requires explicitly adopted consumer
+policy and verified route-specific execution evidence; this text activates no
+route. Implementation details are in the
+[proxy specification](investigations/2026-10-02-credential-isolated-review-proxy-boundary.md);
+it cannot independently amend this contract.
 
 #### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
 
@@ -1155,13 +1191,8 @@ Architecture-changing work follows this order:
 - Issue #20 specifies the evidence format, attestation choice, protected-policy
   routes and model-free CI verification needed to fully separate review
   execution from acceptance verification.
-- Issue #111 defines the missing-decision adoption problem. Its `OWNER_ADDITION
-  / G0` mechanism is implemented in v0.5 and available only when a previous
-  protected consumer policy selects it; this repository's self policy remains
-  unselected. The candidate is bound to B by an annotated tag object. It does
-  not require the historical `BLOCK` evidence or exact-claim authorization
-  mechanisms of `OWNER_AMENDMENT`. The mechanism is not owner-authenticated,
-  and implementation changes after B becomes canonical require a fresh review.
+- Issue #111 defines missing-decision adoption under the
+  [OWNER_ADDITION / G0 contract](#owner_addition--g0-route-for-missing-decisions-issue-111).
 - Issue #75 defines the owner-amendment governance route. Issue #78 develops
   its core and explicit `G0` policy path; Issue #79 investigates a later
   production attestation adapter for a higher grade.

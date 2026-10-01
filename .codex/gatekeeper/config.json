@@ -5,7 +5,7 @@
   "authorityLimits": {
     "maxManifestBytes": 16384,
     "maxMembers": 16,
-    "maxFileBytes": 73728,
+    "maxFileBytes": 81920,
     "maxTotalBytes": 262144,
     "maxPromptBytes": 524288
   },
