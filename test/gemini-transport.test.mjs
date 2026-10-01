@@ -56,8 +56,7 @@ test('prepareGeminiRequestBody formats prompt, schema, and thinking budget', () 
   assert.equal(body.generationConfig.responseMimeType, 'application/json');
   assert.equal(body.generationConfig.responseJsonSchema.$schema, undefined);
   assert.equal(body.generationConfig.responseJsonSchema.type, 'object');
-  assert.equal(body.generationConfig.responseSchema.$schema, undefined);
-  assert.equal(body.generationConfig.responseSchema.type, 'object');
+  assert.equal(body.generationConfig.responseSchema, undefined);
   assert.equal(body.generationConfig.thinkingConfig.thinkingBudget, 4096);
 });
 

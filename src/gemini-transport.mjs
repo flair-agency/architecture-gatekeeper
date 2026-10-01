@@ -58,7 +58,6 @@ export function prepareGeminiRequestBody(request, options = {}) {
   const generationConfig = {
     responseMimeType: 'application/json',
     responseJsonSchema: schema,
-    responseSchema: schema,
   };
 
   if (options.reasoningEffort && options.reasoningEffort !== request.reviewer?.reasoningEffort) {
