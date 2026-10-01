@@ -181,10 +181,19 @@ export interface ReviewSecurityProxy {
 
 ### 4.1 Codex Implementation: `CodexResponsesProxy`
 
-- **Underlying Executable**: `codex-responses-api-proxy` (Rust binary).
+- **Underlying Executable**: `codex-responses-api-proxy` (Rust binary). Its
+  route allowlist alone is not evidence of launcher-selected model enforcement;
+  a verified body-validation layer is required before this adapter can satisfy
+  the target model-scope contract.
 - **Credentials**: `OPENAI_API_KEY` piped via `stdin`.
 - **Accepted Inbound Route**:
   - `POST /v1/responses` (no query string allowed).
+  - Parse a bounded JSON body and require its `model` to equal
+    `ProxyConfig.model` from trusted launcher selection before credential-bearing
+    dispatch. Missing, malformed, duplicate or mismatched model fields fail
+    closed. Do not forward a client-selected alternative model.
+  - Verify this enforcement in the selected adapter/wrapper; do not infer it
+    from the underlying binary's method/path check.
 - **Upstream Endpoint**:
   - `https://api.openai.com/v1/responses`
 - **In-Flight Header**:
@@ -274,7 +283,9 @@ authorization:
      credentials, and executes `gemini-ci-runner.mjs` against the loopback URL.
    - Comprehensive test suite in `test/gemini-security-proxy.test.mjs` covering
      route allowlisting, credential injection, withheld OIDC capabilities,
-     project/region/model mismatch rejection and fail-closed behavior.
+     project/region/model mismatch rejection and fail-closed behavior. Include
+     OpenAI body-selected model mismatch/missing/duplicate-field rejection;
+     an allowlisted Responses path alone must not pass these cases.
 3. **Phase 3: Formal Verification & Evidence Integration**:
    - Integrate with reusable CI workflows.
    - Collect and verify execution evidence before enabling any protected
