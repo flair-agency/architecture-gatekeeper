@@ -881,9 +881,29 @@ claim protected-instruction assurance. A privileged caller that requires
 protected acceptance must select protected review instructions, as this
 repository's self-review does.
 
+Owner trusts `openai/codex-action` at the workflow pin; retires integrity jobs
+(#40, 2026-10-02).
+
 #### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)
 
 GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed-workspace Codex WIF (ChatGPT auth). OIDC request capability, assertion and exchanged API token stay in trusted CI, isolated from reviewer/tools, PR code and package lifecycle scripts. Only prior protected policy may select WIF; candidates cannot select or enable it. Missing/invalid/unavailable selection leaves review incomplete: no API-key fallback or weaker acceptance. Keys remain until WIF is implemented, verified and policy-selected. No reviewer/input/decision/evidence/acceptance/v0.6.0 change; inactive.
+
+#### Target multi-provider credential-isolated review proxy boundary (Issue #252 owner decision, 2026-10-02)
+
+CI may use a credential-isolated review proxy: the trusted launcher owns
+credentials and supplies them privately to the proxy; the runner does not
+inherit them. The proxy binds only to an ephemeral loopback endpoint and limits
+credential-bearing dispatch to allowed methods/model routes on selected official
+provider hosts; arbitrary destinations and redirects fail closed. The runner
+consumes responses for deterministic schema and authority validation.
+
+This target claims credential non-inheritance and constrained proxy dispatch,
+not restricted direct runner networking, same-user host isolation, or provider
+assurance equivalence. Protected acceptance requires explicitly adopted consumer
+policy and verified route-specific execution evidence; this text activates no
+route. Implementation details are in the
+[proxy specification](investigations/2026-10-02-credential-isolated-review-proxy-boundary.md);
+it cannot independently amend this contract.
 
 #### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
 

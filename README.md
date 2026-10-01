@@ -96,6 +96,12 @@ and the package-owned prepare/validate contract; it does not fall back to nested
 
 ### Pull-request gate
 
+CI pins upstream `openai/codex-action` v1.12 to an immutable commit and trusts
+its published Action bundle. Fork-specific per-run integrity jobs are retired;
+step/job limits and fail-closed result validation remain. See the
+[integration reference](docs/integration-reference.md) for trust and timeout
+limits.
+
 The reusable workflow is
 [`architecture-gate.yml`](.github/workflows/architecture-gate.yml). Consumers
 pin it to the exact commit that produced the reviewed release and keep their

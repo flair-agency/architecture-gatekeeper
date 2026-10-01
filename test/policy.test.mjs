@@ -185,51 +185,58 @@ test('protected policy rejects duplicate JSON keys before resolving effective li
   assert.throws(() => execFileSync(process.execPath, [join(root, 'src/resolve-ci-policy.mjs'), file, 'main'], { stdio: 'ignore' }));
 });
 
-test('keeps protected codex-action arguments compatible', () => {
+test('uses the pinned upstream Codex Action with supported protected inputs', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
-  assert.match(workflow, /uses: flair-agency\/codex-action@308ab1c8ce784cd5f46b98a1c0801c5c040918d9/);
-  assert.doesNotMatch(workflow, /uses: openai\/codex-action@/);
-  assert.match(workflow, /codex-action-integrity:\n[\s\S]*?repository: flair-agency\/codex-action/);
-  assert.match(workflow, /codex-action-integrity:\n    if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\)\n    needs: policy/);
-  assert.match(workflow, /codex-action-integrity:\n[\s\S]*?timeout-minutes: 5/);
-  assert.match(workflow, /review:\n[\s\S]*?timeout-minutes: \$\{\{ fromJSON\(needs\.policy\.outputs\.review_job_timeout_minutes\) \}\}/);
-  assert.match(workflow, /src\/verify-codex-action\.mjs/);
-  assert.match(workflow, /provenance\/codex-action-v1\.12-runtime-cancellation\.json/);
-  assert.match(workflow, /provenance\/codex-action-runtime-integrity-procedure-v1\.json/);
-  assert.match(workflow, /provenance\/fixtures\/codex-action-runtime-candidate-v1\.json/);
-  assert.match(workflow, /fetch-depth: 0/);
-  assert.match(workflow, /ref: 308ab1c8ce784cd5f46b98a1c0801c5c040918d9/);
-  assert.match(workflow, /Verify the pinned action before exposing review credentials/);
-  assert.match(workflow, /name: Setup pnpm\n[\s\S]*?version: 10\.33\.0/);
-  assert.match(workflow, /pnpm run check/);
-  assert.match(workflow, /pnpm test/);
-  assert.match(workflow, /needs: \[policy, codex-action-integrity\]/);
-  assert.match(workflow, /persist-credentials: false/);
-  assert.match(workflow, /safety-strategy: drop-sudo/);
-  assert.match(workflow, /name: Run read-only architecture review\n        id: codex\n        timeout-minutes: \$\{\{ fromJSON\(needs\.policy\.outputs\.review_step_timeout_minutes\) \}\}/);
-  assert.match(workflow, /output-file: \$\{\{ runner\.temp \}\}\/architecture-gate-codex-final\.json/);
-  assert.match(workflow, /name: Diagnose architecture reviewer completion\n        if: always\(\)\n        timeout-minutes: 1\n        continue-on-error: true/);
-  assert.match(workflow, /Codex final message file: (?:present|absent)/);
-  assert.match(workflow, /Codex final message JSON: parseable/);
-  assert.doesNotMatch(workflow, /--ignore-user-config/);
-});
-
-test('preserves fixed Codex Action deadlines while varying only the primary review job', () => {
-  const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
-  const pin = '308ab1c8ce784cd5f46b98a1c0801c5c040918d9';
+  const pin = '86365089eb2b84e0a8fb0717b304f8bdcb13b20e';
   const actionSteps = workflow
     .split(/^      - name: /m)
     .slice(1)
     .map((step) => `      - name: ${step}`)
-    .filter((step) => /^        uses: flair-agency\/codex-action@/m.test(step));
+    .filter((step) => /^        uses: openai\/codex-action@/m.test(step));
 
-  assert.ok(actionSteps.length >= 2);
-  assert.match(actionSteps[0], new RegExp(`uses: flair-agency/codex-action@${pin}`));
-  assert.match(actionSteps[0], /timeout-seconds: "240"/);
-  for (const step of actionSteps.slice(1)) {
-    assert.match(step, new RegExp(`uses: flair-agency/codex-action@${pin}`));
-    assert.match(step, /timeout-seconds: "240"/);
+  assert.equal(actionSteps.length, 3);
+  for (const step of actionSteps) {
+    assert.match(step, new RegExp(`uses: openai/codex-action@${pin}`));
+    assert.match(step, /openai-api-key: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
+    assert.match(step, /model: \$\{\{/);
+    assert.match(step, /effort: \$\{\{/);
+    assert.match(step, /sandbox: read-only/);
+    assert.match(step, /safety-strategy: drop-sudo/);
+    assert.match(step, /codex-args:/);
+    assert.doesNotMatch(step, /timeout-seconds:/);
   }
+
+  assert.match(actionSteps[0], /output-file: \$\{\{ runner\.temp \}\}\/architecture-gate-codex-final\.json/);
+  assert.match(actionSteps[0], /output-schema-file:/);
+  assert.match(actionSteps[0], /prompt-file:/);
+  assert.match(actionSteps[1], /output-file: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-addition-final\.json/);
+  assert.match(actionSteps[2], /output-schema-file:/);
+  assert.match(workflow, /review:\n[\s\S]*?timeout-minutes: \$\{\{ fromJSON\(needs\.policy\.outputs\.review_job_timeout_minutes\) \}\}/);
+  assert.match(workflow, /name: Run read-only architecture review\n        id: codex\n        timeout-minutes: \$\{\{ fromJSON\(needs\.policy\.outputs\.review_step_timeout_minutes\) \}\}/);
+  assert.match(workflow, /name: Diagnose architecture reviewer completion\n        if: always\(\)\n        timeout-minutes: 1\n        continue-on-error: true/);
+  assert.match(workflow, /output-file: \$\{\{ runner\.temp \}\}\/architecture-gate-codex-final\.json/);
+  assert.match(workflow, /Codex final message file: (?:present|absent)/);
+  assert.match(workflow, /Codex final message JSON: parseable/);
+  assert.doesNotMatch(workflow, /--ignore-user-config/);
+  assert.doesNotMatch(workflow, /uses: flair-agency\/codex-action@/);
+  assert.doesNotMatch(workflow, /codex-action-integrity(?:-observe)?:/);
+  assert.doesNotMatch(workflow, /needs: \[policy, codex-action-integrity/);
+});
+
+test('keeps bounded job and step deadlines around upstream Codex Action calls', () => {
+  const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
+  const actionSteps = workflow
+    .split(/^      - name: /m)
+    .slice(1)
+    .map((step) => `      - name: ${step}`)
+    .filter((step) => /^        uses: openai\/codex-action@/m.test(step));
+
+  assert.equal(actionSteps.length, 3);
+  assert.match(actionSteps[0], /timeout-minutes: \$\{\{ fromJSON\(needs\.policy\.outputs\.review_step_timeout_minutes\) \}\}/);
+  for (const step of actionSteps.slice(1)) {
+    assert.match(step, /timeout-minutes: 5/);
+  }
+  assert.doesNotMatch(workflow, /timeout-seconds:/);
 });
 
 test('uses the immutable called-workflow runtime and keeps review jobs read-only', () => {
@@ -297,7 +304,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   const additionJob = workflow.match(/  owner-addition:\n([\s\S]*?)\n  report:/)?.[1];
   assert.ok(additionJob);
   assert.match(additionJob, /if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\) && needs\.policy\.outputs\.owner_addition_grade == 'G0' && needs\.review\.outputs\.decision_kind == 'OWNER_DECISION'/);
-  assert.match(additionJob, /needs: \[policy, codex-action-integrity, review\]/);
+  assert.match(additionJob, /needs: \[policy, review\]/);
   assert.match(additionJob, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
   assert.doesNotMatch(additionJob, /ref: refs\/pull\/.*\/merge/);
   assert.match(additionJob, /Fetch B and its annotated tag as Git objects only/);
@@ -390,7 +397,7 @@ test('produces exact OWNER_DECISION trigger evidence only for the prior-policy-s
   assert.ok(recordJob);
   assert.match(workflow, /owner_amendment_trigger_profile: \$\{\{ steps\.resolve\.outputs\.ownerAmendmentTriggerProfile \}\}/);
   assert.match(recordJob, /if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.event_name == 'pull_request_target' && github\.event\.pull_request\.base\.ref == 'main' && needs\.policy\.outputs\.mode == 'enforced' && needs\.policy\.outputs\.owner_amendment_grade == 'G0' && needs\.policy\.outputs\.owner_amendment_trigger_profile == 'completed-owner-decision-self-v1' && needs\.review\.outputs\.decision_kind == 'OWNER_DECISION'/);
-  assert.match(recordJob, /needs: \[policy, codex-action-integrity, review\]/);
+  assert.match(recordJob, /needs: \[policy, review\]/);
   assert.match(recordJob, /contents: read\n      id-token: write\n      attestations: write/);
   assert.doesNotMatch(recordJob, /OPENAI_API_KEY|secrets\.OPENAI_API_KEY/);
   assert.match(recordJob, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
@@ -466,8 +473,8 @@ test('selects and materializes the protected self Authority Set for CI and local
   assert.equal(selected.ownerAmendmentAuthorityId, 'architecture-contract');
   assert.equal(selected.ownerAmendmentAuthorityPath, 'docs/architecture.md');
   const selectedLimits = JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString());
-  assert.equal(selectedLimits.maxFileBytes, 73728);
-  assert.deepEqual(selectedLimits, { ...effectiveLimits, maxFileBytes: 73728 });
+  assert.equal(selectedLimits.maxFileBytes, 81920);
+  assert.deepEqual(selectedLimits, { ...effectiveLimits, maxFileBytes: 81920 });
   const manifestBytes = readFileSync(join(root, selected.authorityManifestPath));
   const manifest = parseAuthorityManifest(manifestBytes, selectedLimits);
   assert.deepEqual(manifest.authorities, [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }]);
@@ -504,7 +511,7 @@ test('selects and materializes the protected self Authority Set for CI and local
   const localConfig = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/config.json'), 'utf8'));
   assert.equal(localConfig.version, 2);
   assert.equal(localConfig.schemaPath, '.codex/gatekeeper/ci-decision.schema.json');
-  assert.equal(localConfig.authorityLimits.maxFileBytes, 73728);
+  assert.equal(localConfig.authorityLimits.maxFileBytes, 81920);
   assert.deepEqual(localConfig.authorityLimits, selectedLimits);
   const localManifest = parseAuthorityManifest(manifestBytes, localConfig.authorityLimits);
   const localMaterialized = await materializeAuthoritySet({ manifestBytes, limits: localConfig.authorityLimits,
