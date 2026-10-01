@@ -192,7 +192,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?repository: flair-agency\/codex-action/);
   assert.match(workflow, /codex-action-integrity:\n    if: \(needs\.policy\.outputs\.mode == 'enforced' \|\| needs\.policy\.outputs\.mode == 'procedural'\)\n    needs: policy/);
   assert.match(workflow, /codex-action-integrity:\n[\s\S]*?timeout-minutes: 5/);
-  assert.match(workflow, /review:\n[\s\S]*?timeout-minutes: 20/);
+  assert.match(workflow, /review:\n[\s\S]*?timeout-minutes: \$\{\{ fromJSON\(needs\.policy\.outputs\.review_job_timeout_minutes\) \}\}/);
   assert.match(workflow, /src\/verify-codex-action\.mjs/);
   assert.match(workflow, /provenance\/codex-action-v1\.12-runtime-cancellation\.json/);
   assert.match(workflow, /provenance\/codex-action-runtime-integrity-procedure-v1\.json/);
@@ -214,7 +214,7 @@ test('keeps protected codex-action arguments compatible', () => {
   assert.doesNotMatch(workflow, /--ignore-user-config/);
 });
 
-test('bounds every Codex Action call to 240 seconds with outer cleanup headroom', () => {
+test('bounds the primary Codex Action from protected settings and preserves amendment deadlines', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
   const pin = '643fb31fa44e961453125534c4c7182a5a0a6ba0';
   const actionSteps = workflow
@@ -224,7 +224,9 @@ test('bounds every Codex Action call to 240 seconds with outer cleanup headroom'
     .filter((step) => /^        uses: flair-agency\/codex-action@/m.test(step));
 
   assert.ok(actionSteps.length >= 2);
-  for (const step of actionSteps) {
+  assert.match(actionSteps[0], new RegExp(`uses: flair-agency/codex-action@${pin}`));
+  assert.match(actionSteps[0], /timeout-seconds: \$\{\{ needs\.policy\.outputs\.codex_timeout_seconds \}\}/);
+  for (const step of actionSteps.slice(1)) {
     assert.match(step, new RegExp(`uses: flair-agency/codex-action@${pin}`));
     assert.match(step, /timeout-seconds: "240"/);
   }
