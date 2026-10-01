@@ -27,7 +27,7 @@ const when = (value, label) => {
 
 function validateSelection(value, event) {
   exact(value, ['status', 'repository', 'repositoryId', 'mergeGroupBaseSha', 'mergeGroupHeadSha',
-    'bPrNumber', 'bBaseSha', 'bHeadSha', 'queueEntryState', 'queueEnteredAt'], 'selected B queue context');
+    'bPrNumber', 'bBaseSha', 'bHeadSha', 'bPullRequestCreatedAt', 'queueEntryState', 'queueEnteredAt'], 'selected B queue context');
   if (value.status !== 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT' || value.repository !== event.repository ||
       value.mergeGroupBaseSha !== event.baseSha || value.mergeGroupHeadSha !== event.headSha ||
       value.bBaseSha !== event.baseSha || !Number.isSafeInteger(value.repositoryId) || value.repositoryId < 1 ||
@@ -35,8 +35,10 @@ function validateSelection(value, event) {
       !['AWAITING_CHECKS', 'LOCKED', 'MERGEABLE', 'QUEUED'].includes(value.queueEntryState)) {
     fail('selected queue entry does not identify exact B, repository, base and merge-group head.');
   }
+  const createdAt = when(value.bPullRequestCreatedAt, 'exact B pull-request creation time');
   const queuedAt = when(value.queueEnteredAt, 'merge queue entry time');
-  return Object.freeze({ ...value, queueEnteredAtMs: queuedAt });
+  if (createdAt > queuedAt) fail('exact B pull request was created after merge queue entry.');
+  return Object.freeze({ ...value, bPullRequestCreatedAtMs: createdAt, queueEnteredAtMs: queuedAt });
 }
 
 function validatePolicy(value, selection) {

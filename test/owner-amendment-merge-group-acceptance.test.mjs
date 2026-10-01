@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../src/owner-amendment-merge-group-acceptance.mjs';
+import { selectOwnerAmendmentMergeGroupBContext } from '../src/owner-amendment-merge-group-b-context.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const baseSha = 'a'.repeat(40), bSha = 'b'.repeat(40), groupSha = 'c'.repeat(40);
@@ -25,7 +26,8 @@ function fixture(profile = 'completed-block-v1', edits = {}) {
   const schemaBytes = Buffer.from('{"type":"object","additionalProperties":false}\n');
   const selection = { status: 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT', repository, repositoryId: 17,
     mergeGroupBaseSha: baseSha, mergeGroupHeadSha: groupSha, bPrNumber: '8', bBaseSha: baseSha,
-    bHeadSha: bSha, queueEntryState: 'AWAITING_CHECKS', queueEnteredAt: '2026-09-29T12:00:00Z' };
+    bHeadSha: bSha, bPullRequestCreatedAt: '2026-09-29T10:00:00Z',
+    queueEntryState: 'AWAITING_CHECKS', queueEnteredAt: '2026-09-29T12:00:00Z' };
   const policy = { status: 'RESOLVED_PREVIOUS_OWNER_AMENDMENT_POLICY', repository, baseSha,
     grade: 'G0', scope: 'authority-only', triggerProfile: profile,
     authorityId: ids[0], authorityPath: 'docs/architecture.md', tagNamespace,
@@ -101,6 +103,46 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
     assert.equal(Object.hasOwn(result, 'semanticPass'), false);
   });
 }
+
+test('composes the authenticated merge-group selector result through queue-context validation', async () => {
+  const repoId = 1379218762, graphRepoId = 'R_kgDOChD4VA', treeSha = 'f'.repeat(40);
+  const repo = { id: repoId, full_name: repository };
+  const mergeCommit = { sha: groupSha, parents: [{ sha: baseSha }, { sha: bSha }], commit: { tree: { sha: treeSha } } };
+  const bCommit = { sha: bSha, commit: { tree: { sha: treeSha } } };
+  const pr = { number: 204, state: 'open', draft: false, created_at: '2026-09-29T10:00:00Z',
+    base: { ref: 'main', sha: baseSha, repo }, head: { sha: bSha, repo } };
+  const graph = { data: { repository: { id: graphRepoId, nameWithOwner: repository,
+    pullRequest: { number: 204, state: 'OPEN', isDraft: false, baseRefName: 'main',
+      baseRefOid: baseSha, headRefOid: bSha, baseRepository: { id: graphRepoId, nameWithOwner: repository },
+      headRepository: { id: graphRepoId, nameWithOwner: repository },
+      mergeQueueEntry: { state: 'AWAITING_CHECKS', enqueuedAt: '2026-09-29T11:00:00Z',
+        baseCommit: { oid: baseSha }, headCommit: { oid: bSha }, pullRequest: { number: 204 } } } } } };
+  const fetchImpl = async url => {
+    const key = String(url);
+    const body = key === `https://api.github.com/repos/${repository}` ? repo
+      : key.endsWith(`/commits/${groupSha}`) ? mergeCommit
+        : key.endsWith(`/commits/${bSha}/pulls?per_page=100&page=1`) ? [pr]
+          : key.endsWith(`/commits/${bSha}`) ? bCommit : graph;
+    return { ok: true, json: async () => body };
+  };
+  const selected = await selectOwnerAmendmentMergeGroupBContext({ event, token: 'fixture-token', fetchImpl });
+  assert.equal(selected.status, 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT');
+  assert.equal(selected.bPullRequestCreatedAt, pr.created_at);
+
+  let reachedPolicyAdapter = false;
+  const verifier = createOwnerAmendmentMergeGroupAcceptanceVerifier({ runtime,
+    selectBContext: async () => selected,
+    resolveProtectedPolicy: async () => { reachedPolicyAdapter = true; throw new Error('stop at unconfigured protected policy boundary'); },
+    verifyTrigger: async () => { throw new Error('must not reach trigger'); },
+    verifyTag: async () => { throw new Error('must not reach tag'); },
+    resolveEligibilityReviewInputs: async () => { throw new Error('must not reach inputs'); },
+    verifyEligibility: async () => { throw new Error('must not reach eligibility'); },
+  });
+  const result = await verifier.verify(event);
+  assert.equal(reachedPolicyAdapter, true);
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /stop at unconfigured protected policy boundary/);
+});
 
 test('fails closed on absent prior opt-in and leaves profile selection disabled by default', async () => {
   const f = fixture();
