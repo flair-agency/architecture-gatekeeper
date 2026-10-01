@@ -473,8 +473,8 @@ test('selects and materializes the protected self Authority Set for CI and local
   assert.equal(selected.ownerAmendmentAuthorityId, 'architecture-contract');
   assert.equal(selected.ownerAmendmentAuthorityPath, 'docs/architecture.md');
   const selectedLimits = JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString());
-  assert.equal(selectedLimits.maxFileBytes, 73728);
-  assert.deepEqual(selectedLimits, { ...effectiveLimits, maxFileBytes: 73728 });
+  assert.equal(selectedLimits.maxFileBytes, 81920);
+  assert.deepEqual(selectedLimits, { ...effectiveLimits, maxFileBytes: 81920 });
   const manifestBytes = readFileSync(join(root, selected.authorityManifestPath));
   const manifest = parseAuthorityManifest(manifestBytes, selectedLimits);
   assert.deepEqual(manifest.authorities, [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }]);
@@ -511,7 +511,7 @@ test('selects and materializes the protected self Authority Set for CI and local
   const localConfig = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/config.json'), 'utf8'));
   assert.equal(localConfig.version, 2);
   assert.equal(localConfig.schemaPath, '.codex/gatekeeper/ci-decision.schema.json');
-  assert.equal(localConfig.authorityLimits.maxFileBytes, 73728);
+  assert.equal(localConfig.authorityLimits.maxFileBytes, 81920);
   assert.deepEqual(localConfig.authorityLimits, selectedLimits);
   const localManifest = parseAuthorityManifest(manifestBytes, localConfig.authorityLimits);
   const localMaterialized = await materializeAuthoritySet({ manifestBytes, limits: localConfig.authorityLimits,
