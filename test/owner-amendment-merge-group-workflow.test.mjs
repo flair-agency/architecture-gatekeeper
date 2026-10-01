@@ -18,7 +18,7 @@ test('candidate wake-up is unprivileged and delegates all verification to the gu
   const receiver = readFileSync(new URL('../.github/workflows/self-architecture-gate-receiver.yml', import.meta.url), 'utf8');
   const codexActionProvenance = JSON.parse(readFileSync(new URL('../provenance/codex-action-v1.12-runtime-cancellation.json', import.meta.url), 'utf8'));
   assert.match(receiver, /workflow_run:\n    workflows: \[Self Architecture Gate\]\n    types: \[completed\]/);
-  const integrity = receiver.split('\n  protected-queue-receiver:')[0];
+  const integrity = receiver.split('\n  protected-queue-review:')[0];
   assert.match(integrity, /  codex-action-integrity:\n[\s\S]*?permissions:\n      contents: read/);
   const verifiedCheckoutRef = integrity.match(/repository: flair-agency\/codex-action\n\s+ref: ([a-f0-9]{40})/);
   assert.equal(verifiedCheckoutRef?.[1], codexActionProvenance.headCommit,
@@ -26,7 +26,7 @@ test('candidate wake-up is unprivileged and delegates all verification to the gu
   assert.match(integrity, /repository: flair-agency\/codex-action[\s\S]*?persist-credentials: false/);
   assert.match(integrity, /verify-codex-action\.mjs[\s\S]*?codex-action-v1\.12-runtime-cancellation\.json[\s\S]*?pnpm install --frozen-lockfile[\s\S]*?pnpm run check[\s\S]*?pnpm test[\s\S]*?git status --short -- dist/);
   assert.doesNotMatch(integrity, /secrets\.|OPENAI_API_KEY|OWNER_AMENDMENT_APP_/);
-  assert.match(receiver, /protected-queue-receiver:\n    needs: codex-action-integrity\n    if: needs\.codex-action-integrity\.result == 'success'/);
+  assert.match(receiver, /protected-queue-review:\n    needs: codex-action-integrity/);
   assert.match(receiver, /if: github\.repository == 'flair-agency\/architecture-gatekeeper' && github\.ref == 'refs\/heads\/main' && github\.event\.workflow_run\.event == 'merge_group' && vars\.OWNER_AMENDMENT_RECEIVER_ENABLED == 'true'/);
   assert.match(receiver, /environment:\n      name: architecture-gate-self-protected/);
   assert.match(receiver, /permissions:\n      actions: read\n      attestations: read\n      contents: read\n      pull-requests: read/);
@@ -40,10 +40,19 @@ test('candidate wake-up is unprivileged and delegates all verification to the gu
   assert.match(receiver, /Run the fresh read-only ordinary review\n        id: ordinary-review\n        if: needs\.codex-action-integrity\.result == 'success' && steps\.prepare-ordinary\.outcome == 'success'/);
   assert.match(receiver, /sandbox: read-only[\s\S]*?safety-strategy: drop-sudo[\s\S]*?timeout-seconds: "240"/);
   assert.match(receiver, /owner-amendment-workflow-run-receiver\.mjs" publish/);
-  const publishStep = receiver.split('\n      - name: Publish only the independently verified result')[1];
+  const reviewer = receiver.split('\n  protected-queue-reporter:')[0];
+  const reporter = receiver.split('\n  protected-queue-reporter:')[1];
+  assert.doesNotMatch(reviewer, /OWNER_AMENDMENT_APP_|checks: write/);
+  assert.match(reviewer, /outputs:\n      handoff:/);
+  assert.doesNotMatch(reporter, /OPENAI_API_KEY|openai-api-key|codex-action@/);
+  assert.match(reporter, /Compare reporter context with original before verification[\s\S]*?Independently reverify/);
+  assert.match(reporter, /environment:\n      name: architecture-gate-self-app-report/);
+  assert.match(reporter, /VERIFICATION_OUTCOME: \$\{\{ steps\.verify\.outcome \}\}[\s\S]*?ORDINARY_VALIDATION_OUTCOME: \$\{\{ steps\.ordinary-validation\.outcome \}\}/);
+  assert.doesNotMatch(reporter, /needs\.protected-queue-review\.result/);
+  const publishStep = reporter.split('\n      - name: Publish only reporter-local verification')[1];
   assert.match(publishStep, /if: always\(\) && steps\.resolve\.outcome == 'success'/);
   assert.match(publishStep, /OWNER_AMENDMENT_APP_PRIVATE_KEY: \$\{\{ secrets\.OWNER_AMENDMENT_APP_PRIVATE_KEY \}\}/);
-  const beforePublish = receiver.split('\n      - name: Publish only the independently verified result')[0];
+  const beforePublish = reporter.split('\n      - name: Publish only reporter-local verification')[0];
   assert.doesNotMatch(beforePublish, /OWNER_AMENDMENT_APP_(?:PRIVATE_KEY|ID|INSTALLATION_ID)/);
   assert.match(publishStep, /OWNER_AMENDMENT_APP_ID: \$\{\{ vars\.OWNER_AMENDMENT_APP_ID \}\}/);
   assert.match(publishStep, /OWNER_AMENDMENT_APP_INSTALLATION_ID: \$\{\{ vars\.OWNER_AMENDMENT_APP_INSTALLATION_ID \}\}/);

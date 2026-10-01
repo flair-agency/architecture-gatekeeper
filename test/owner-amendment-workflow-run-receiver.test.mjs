@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../src/owner-amendment-merge-group-acceptance.mjs';
 import { inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
-import { runnerEvent } from '../scripts/owner-amendment-workflow-run-receiver.mjs';
+import { decodeHandoff, runnerEvent } from '../scripts/owner-amendment-workflow-run-receiver.mjs';
 import { adaptVerifiedWorkflowRunContext, protectedCheckConclusion,
   resolveProtectedOwnerAmendmentWorkflowRunContext, sameVerifiedWorkflowRunContext,
   syntheticVerifiedMergeGroupEvent, prepareVerifiedCheckReport } from '../src/owner-amendment-workflow-run-receiver.mjs';
@@ -191,6 +191,22 @@ test('only independent protected verifier outcomes can publish success; failures
     { verificationOutcome: 'success', route: 'not-applicable', ordinaryValidationOutcome: 'success' },
     { verificationOutcome: 'success', route: 'candidate-supplied', ordinaryValidationOutcome: 'success' },
   ]) assert.equal(protectedCheckConclusion(value), 'failure');
+});
+
+test('handoff accepts its exact byte ceiling and rejects oversized, malformed, or altered context', async () => {
+  const context = await fixture().resolve();
+  const base = JSON.stringify({ context, decision: '' });
+  const decision = 'x'.repeat(11_800 - Buffer.byteLength(base));
+  const exact = Buffer.from(JSON.stringify({ context, decision }));
+  assert.equal(exact.length, 11_800);
+  assert.equal(decodeHandoff(exact.toString('base64')).decision.length, decision.length);
+  assert.equal(decodeHandoff(Buffer.from(JSON.stringify({ context, decision: null })).toString('base64')).decision, null);
+  assert.throws(() => decodeHandoff(Buffer.from(JSON.stringify({ context, decision: `${decision}x` })).toString('base64')), /oversized/);
+  for (const handoff of ['', Buffer.from(JSON.stringify({ context, decision: null, route: 'ordinary' })).toString('base64'),
+    Buffer.from(JSON.stringify({ context: { ...context, extra: true }, decision: null })).toString('base64')]) assert.throws(() => decodeHandoff(handoff));
+  assert.throws(() => decodeHandoff(Buffer.from('{').toString('base64')), /invalid JSON/);
+  assert.equal(sameVerifiedWorkflowRunContext(context, { ...context, bHeadSha: 'f'.repeat(40) }), false);
+  assert.equal(protectedCheckConclusion({ verificationOutcome: 'success', route: 'ordinary' }), 'failure');
 });
 
 test('publication needs identical live context reread; protected validation failure can bind only failure to that queue SHA', async () => {

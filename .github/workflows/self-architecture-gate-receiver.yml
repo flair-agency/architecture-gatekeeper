@@ -52,10 +52,12 @@ jobs:
           pnpm test
           test -z "$(git status --short -- dist)"
 
-  protected-queue-receiver:
+  protected-queue-review:
     needs: codex-action-integrity
     if: needs.codex-action-integrity.result == 'success' && github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/main' && github.event.workflow_run.event == 'merge_group' && vars.OWNER_AMENDMENT_RECEIVER_ENABLED == 'true'
-    name: protected-queue-receiver
+    name: protected-queue-review
+    outputs:
+      handoff: ${{ steps.package.outputs.handoff }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -127,18 +129,90 @@ jobs:
           safety-strategy: drop-sudo
           timeout-seconds: "240"
           codex-args: '["--ephemeral","-c","project_doc_max_bytes=0","--json"]'
-      - name: Require exact-tuple deterministic ordinary PASS
-        id: ordinary-validation
-        if: steps.prepare-ordinary.outcome == 'success' && steps.ordinary-review.outcome == 'success'
+      - name: Package only original context and untrusted ordinary decision bytes
+        id: package
+        if: always() && steps.resolve.outcome == 'success'
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          DECISION: ${{ steps.ordinary-review.outputs.final-message }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-workflow-run-receiver.mjs" handoff
+  protected-queue-reporter:
+    needs: [codex-action-integrity, protected-queue-review]
+    if: always() && needs.codex-action-integrity.result == 'success' && github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/main' && github.event.workflow_run.event == 'merge_group' && vars.OWNER_AMENDMENT_RECEIVER_ENABLED == 'true'
+    name: protected-queue-reporter
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: architecture-gate-self-app-report
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out only the protected default-branch revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Independently resolve original live queue context
+        id: resolve
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          GH_TOKEN: ${{ github.token }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-workflow-run-receiver.mjs" resolve
+      - name: Compare reporter context with original before verification
+        id: compare-handoff
+        if: steps.resolve.outcome == 'success' && needs.protected-queue-review.outputs.handoff != ''
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          HANDOFF: ${{ needs.protected-queue-review.outputs.handoff }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-workflow-run-receiver.mjs" compare-handoff
+      - name: Independently reverify prior-base policy and exact amendment evidence
+        id: verify
+        if: steps.compare-handoff.outcome == 'success'
         continue-on-error: true
         working-directory: ${{ runner.temp }}
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          GH_TOKEN: ${{ github.token }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-gate.mjs"
+      - name: Reprepare and validate ordinary decision from reporter-local inputs
+        id: ordinary-validation
+        if: steps.compare-handoff.outcome == 'success' && steps.verify.outcome == 'success' && steps.verify.outputs.route == 'ordinary'
+        continue-on-error: true
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ steps.verify.outputs.base_sha }}
           B_SHA: ${{ steps.verify.outputs.b_sha }}
-          DECISION: ${{ steps.ordinary-review.outputs.final-message }}
-        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-ordinary-review.mjs" validate
-      - name: Publish only the independently verified result for the exact live queue SHA
+          HANDOFF: ${{ needs.protected-queue-review.outputs.handoff }}
+        run: |
+          node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-ordinary-review.mjs" prepare
+          DECISION="$(node "$GITHUB_WORKSPACE/scripts/owner-amendment-workflow-run-receiver.mjs" print-decision)" node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-ordinary-review.mjs" validate
+      - name: Publish only reporter-local verification for the original live queue SHA
         if: always() && steps.resolve.outcome == 'success'
         working-directory: ${{ runner.temp }}
         env:
@@ -149,6 +223,7 @@ jobs:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
           RUNNER_TEMP: ${{ runner.temp }}
+          HANDOFF: ${{ needs.protected-queue-review.outputs.handoff }}
           GH_TOKEN: ${{ github.token }}
           VERIFICATION_OUTCOME: ${{ steps.verify.outcome }}
           VERIFIED_ROUTE: ${{ steps.verify.outputs.route }}

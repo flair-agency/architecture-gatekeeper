@@ -64,6 +64,7 @@ function verifyProtectedCheckout(context) {
 }
 
 function contextDirectory() { return resolveRunnerTempDirectory('owner-amendment-merge-group'); }
+const HANDOFF_LIMIT = 11_800;
 
 async function resolveContext({ writeFiles }) {
   if (process.env.GITHUB_REPOSITORY !== SELF || !process.env.GH_TOKEN) FAIL('protected self repository and read token are required.');
@@ -89,18 +90,41 @@ function envPositiveInteger(name) {
   return value;
 }
 
+export function decodeHandoff(encoded) {
+  if (typeof encoded !== 'string' || encoded.length > 4 * Math.ceil(HANDOFF_LIMIT / 3)) FAIL('handoff output is missing or oversized.');
+  const bytes = Buffer.from(encoded, 'base64');
+  if (!bytes.length || bytes.length > HANDOFF_LIMIT || bytes.toString('base64') !== encoded) FAIL('handoff payload is malformed or oversized.');
+  let value;
+  try { value = JSON.parse(bytes.toString('utf8')); } catch { FAIL('handoff payload is invalid JSON.'); }
+  if (!value || Object.keys(value).length !== 2 || !Object.hasOwn(value, 'context') || !Object.hasOwn(value, 'decision') ||
+      (value.decision !== null && typeof value.decision !== 'string')) FAIL('handoff payload has an invalid shape.');
+  adaptVerifiedWorkflowRunContext(value.context);
+  return value;
+}
+
+function readHandoff() { return decodeHandoff(process.env.HANDOFF); }
+
+function compareHandoff() {
+  const original = readHandoff();
+  const live = JSON.parse(readRunnerTempFile(contextDirectory(), 'verified-context.json', 16_384).toString('utf8'));
+  if (!sameVerifiedWorkflowRunContext(original.context, live)) FAIL('reporter live context differs from original reviewer context.');
+}
+
+function printDecision() {
+  const value = readHandoff();
+  process.stdout.write(value.decision ?? '');
+}
+
 async function publish() {
-  const directory = contextDirectory();
-  let initial;
-  try { initial = JSON.parse(readRunnerTempFile(directory, 'verified-context.json', 16_384).toString('utf8')); }
-  catch { FAIL('initial verified live queue context is unavailable.'); }
-  adaptVerifiedWorkflowRunContext(initial);
+  const handoff = readHandoff();
+  const initial = handoff.context;
 
   // Resolve the same wake-up selectors again immediately before publication.
   const finalContext = await resolveContext({ writeFiles: false });
   const verificationOutcome = process.env.VERIFICATION_OUTCOME;
   const route = process.env.VERIFIED_ROUTE;
   const ordinaryOutcome = process.env.ORDINARY_VALIDATION_OUTCOME;
+  if (route === 'amendment' && handoff.decision !== null) FAIL('amendment route handoff contains unexpected ordinary decision bytes.');
   const report = prepareVerifiedCheckReport({ initialContext: initial, finalContext, verificationOutcome,
     route, ordinaryValidationOutcome: ordinaryOutcome });
   if (report.status !== 'PREPARED_PROTECTED_QUEUE_CHECK') FAIL('live queue or base context changed before App publication.');
@@ -119,9 +143,23 @@ async function publish() {
   if (conclusion !== 'success') process.exitCode = 1;
 }
 
+function handoff() {
+  const directory = contextDirectory();
+  const context = JSON.parse(readRunnerTempFile(directory, 'verified-context.json', 16_384).toString('utf8'));
+  adaptVerifiedWorkflowRunContext(context);
+  const raw = process.env.DECISION;
+  if (typeof raw !== 'string' || Buffer.byteLength(raw, 'utf8') > 262_144) FAIL('ordinary decision output is missing or oversized.');
+  const envelope = Buffer.from(JSON.stringify({ context, decision: raw || null }));
+  if (envelope.length > HANDOFF_LIMIT) FAIL('handoff payload exceeds its fixed size limit.');
+  appendGitHubOutput(`handoff=${envelope.toString('base64')}\n`);
+}
+
 async function main(argv = process.argv.slice(2)) {
-  if (argv.length !== 1 || !['resolve', 'publish'].includes(argv[0])) FAIL('expected resolve or publish.');
+  if (argv.length !== 1 || !['resolve', 'handoff', 'compare-handoff', 'print-decision', 'publish'].includes(argv[0])) FAIL('expected resolve, handoff, compare-handoff, print-decision, or publish.');
   if (argv[0] === 'resolve') await resolveContext({ writeFiles: true });
+  else if (argv[0] === 'handoff') handoff();
+  else if (argv[0] === 'compare-handoff') compareHandoff();
+  else if (argv[0] === 'print-decision') printDecision();
   else await publish();
 }
 
