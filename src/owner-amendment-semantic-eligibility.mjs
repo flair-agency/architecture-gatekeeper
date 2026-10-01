@@ -362,6 +362,7 @@ function validateAmendmentRecord({ bytes, validator, expected }) {
   const result = validator({ bytes: Buffer.from(bytes), expected: Object.freeze({ ...expected }) });
   const keys = ['status', 'repository', 'baseSha', 'bSha', 'policyRevision', 'triggerProfile',
     'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest', 'changes', 'targetValidated', 'purpose'];
+  if (expected.triggerProfile === 'completed-owner-decision-self-v1') keys.push('authorityId', 'authorityPath');
   exact(result, keys, 'validated AmendmentRecord bindings');
   if (result.status !== 'VERIFIED_OWNER_AMENDMENT_RECORD' || result.repository !== expected.repository ||
       result.baseSha !== expected.baseSha || result.bSha !== expected.bSha || result.policyRevision !== expected.policyRevision ||
@@ -369,6 +370,8 @@ function validateAmendmentRecord({ bytes, validator, expected }) {
       result.priorAuthoritySetDigest !== expected.authoritySetDigest ||
       result.resultingAuthoritySetDigest !== expected.resultingAuthoritySetDigest ||
       JSON.stringify(result.changes) !== JSON.stringify(expected.changes) || result.targetValidated !== true ||
+      (expected.triggerProfile === 'completed-owner-decision-self-v1' &&
+        (result.authorityId !== expected.authorityId || result.authorityPath !== expected.authorityPath)) ||
       typeof result.purpose !== 'string' || !result.purpose.trim() || result.purpose.length > 500) {
     fail('AmendmentRecord profile validation does not bind exact B, trigger, target, prior/resulting Authority Sets and purpose.');
   }
@@ -478,11 +481,16 @@ function prepareOwnerAmendmentSemanticEligibilityInternal({ repository, baseSha,
       workflowPath: triggerProducerIdentity.workflowPath, workflowSha: triggerProducerIdentity.workflowSha,
       workflowRef: triggerProducerIdentity.workflowRef, runId: triggerProducerIdentity.runId,
       runAttempt: triggerProducerIdentity.runAttempt } });
-  const amendment = validateAmendmentRecord({ bytes: amendmentRecordBytes, validator: validateAmendment,
-    expected: { repository, baseSha, bSha, policyRevision, triggerProfile,
+  const amendmentExpected = { repository, baseSha, bSha, policyRevision, triggerProfile,
       triggerReviewRecordSha256: trigger.sha256, authoritySetDigest: selectedAuthority.digest,
       resultingAuthoritySetDigest: changeResult.resultingAuthoritySetDigest,
-      changes: records } });
+      changes: records };
+  if (triggerProfile === 'completed-owner-decision-self-v1') {
+    amendmentExpected.authorityId = policy.authorityId;
+    amendmentExpected.authorityPath = policy.authorityPath;
+  }
+  const amendment = validateAmendmentRecord({ bytes: amendmentRecordBytes, validator: validateAmendment,
+    expected: amendmentExpected });
   const checkedTag = validateTagEvidence({ tag, tagObjectBytes, validator: validateTagForProfile,
     expected: { repository, baseSha, bSha, triggerProfile, triggerReviewRecordSha256: trigger.sha256,
       amendmentRecordSha256: amendment.sha256, tagRef: `${policy.tagNamespace}/${bSha}`,

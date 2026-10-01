@@ -167,7 +167,7 @@ export function validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes, expe
       'authority', 'changes', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest',
       'triggeringReviewSha256', 'attestationBundleSha256', 'purpose'], 'AmendmentRecord');
     exact(expected, ['repository', 'baseSha', 'bSha', 'policyRevision', 'triggerProfile', 'triggerReviewRecordSha256',
-      'authoritySetDigest', 'resultingAuthoritySetDigest', 'changes'], 'expected protected AmendmentRecord bindings');
+      'authoritySetDigest', 'resultingAuthoritySetDigest', 'authorityId', 'authorityPath', 'changes'], 'expected protected AmendmentRecord bindings');
     exact(value.authority, ['id', 'path', 'previousSha256', 'newSha256'], 'AmendmentRecord authority');
     if (value.version !== 2 || value.kind !== 'owner-amendment-owner-decision-amendment-record' ||
         value.triggerProfile !== 'completed-owner-decision-self-v1' || value.repository !== expected.repository ||
@@ -178,6 +178,7 @@ export function validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes, expe
         !SHA256.test(value.priorAuthoritySetDigest ?? '') || !SHA256.test(value.resultingAuthoritySetDigest ?? '') ||
         value.priorAuthoritySetDigest !== expected.authoritySetDigest ||
         value.resultingAuthoritySetDigest !== expected.resultingAuthoritySetDigest ||
+        value.authority.id !== expected.authorityId || value.authority.path !== expected.authorityPath ||
         typeof value.purpose !== 'string' || !value.purpose.trim() || value.purpose.length > 500) fail('AmendmentRecord does not bind protected OWNER_DECISION inputs.');
     if (!Array.isArray(expected.changes) || !Array.isArray(value.changes) ||
         JSON.stringify(value.changes) !== JSON.stringify(expected.changes)) {
@@ -194,6 +195,7 @@ export function validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes, expe
       baseSha: value.baseSha, bSha: value.headSha, policyRevision: value.policyRevision,
       triggerProfile: value.triggerProfile, triggerReviewRecordSha256: value.triggeringReviewSha256,
       priorAuthoritySetDigest: expected.authoritySetDigest, resultingAuthoritySetDigest: expected.resultingAuthoritySetDigest,
+      authorityId: value.authority.id, authorityPath: value.authority.path,
       changes: Object.freeze(value.changes.map(change => Object.freeze({ ...change }))),
       targetValidated: true, purpose: value.purpose });
   } catch (error) { return Object.freeze({ status: 'INCOMPLETE', reason: error.message }); }

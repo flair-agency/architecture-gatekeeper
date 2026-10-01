@@ -458,6 +458,7 @@ test('OWNER_DECISION prompt, AmendmentRecord, and receipt bind every changed aut
   assert.match(prepared.promptBytes.toString('utf8'), /# Ownership boundaries/);
   assert.match(prepared.promptBytes.toString('utf8'), /Ownership remains with the project owner\./);
   const amendment = JSON.parse(f.amendmentRecordBytes.toString('utf8'));
+  assert.deepEqual([amendment.authority.id, amendment.authority.path], ['architecture', path]);
   assert.ok(amendment.changes.some(change => change.path === secondPath &&
     change.beforeSha256 === sha256(secondChange.beforeBytes) && change.afterSha256 === sha256(secondChange.afterBytes)));
   assert.equal(amendment.resultingAuthoritySetDigest, f.resultingAuthoritySetDigest);
@@ -484,6 +485,18 @@ test('OWNER_DECISION prompt, AmendmentRecord, and receipt bind every changed aut
       return inputs;
     } });
   assert.throws(() => mutated.prepare(f.args), /differ from its exact B Git object/);
+});
+
+test('OWNER_DECISION semantic preparation rejects a record targeting a different changed authority', () => {
+  const f = fixture('completed-owner-decision-self-v1', { multiAuthority: true });
+  const amendment = JSON.parse(f.args.amendmentRecordBytes.toString('utf8'));
+  const otherChange = amendment.changes.find(change => change.path === 'docs/ownership.md');
+  assert.ok(otherChange);
+  amendment.authority = { id: 'ownership', path: otherChange.path,
+    previousSha256: otherChange.beforeSha256, newSha256: otherChange.afterSha256 };
+  f.args.amendmentRecordBytes = Buffer.from(`${JSON.stringify(amendment)}\n`);
+
+  assert.throws(() => f.producer.prepare(f.args), /validated AmendmentRecord bindings has missing or unknown fields/);
 });
 
 test('owner-decision semantic eligibility rejects an unadopted decision ID claim in the AmendmentRecord', () => {

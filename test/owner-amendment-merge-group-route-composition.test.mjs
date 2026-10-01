@@ -381,11 +381,16 @@ function makeSemanticPipeline(fixture, resolved, trigger, evidence, api, gitChan
     validateTag: ({ expected }) => {
       const parsed = parseOwnerAmendmentSemanticTagObject(tagObjectBytes, { bSha: fixture.bSha,
         triggerProfile: profile, tagRef: expected.tagRef });
+      const amendmentExpected = { repository, baseSha: fixture.baseSha, bSha: fixture.bSha, policyRevision: fixture.baseSha,
+        triggerProfile: profile, triggerReviewRecordSha256: expected.triggerReviewRecordSha256,
+        authoritySetDigest: authoritySet.digest, resultingAuthoritySetDigest: evidence.resultingAuthoritySetDigest,
+        changes: changes.map(change => ({ path: change.path, beforeSha256: hash(change.beforeBytes), afterSha256: hash(change.afterBytes) })) };
+      if (profile === 'completed-owner-decision-self-v1') {
+        amendmentExpected.authorityId = resolved.scope.authorityId;
+        amendmentExpected.authorityPath = resolved.scope.authorityPath;
+      }
       const amendment = validators.validateAmendmentRecord({ bytes: parsed.amendmentRecordBytes,
-        expected: { repository, baseSha: fixture.baseSha, bSha: fixture.bSha, policyRevision: fixture.baseSha,
-          triggerProfile: profile, triggerReviewRecordSha256: expected.triggerReviewRecordSha256,
-          authoritySetDigest: authoritySet.digest, resultingAuthoritySetDigest: evidence.resultingAuthoritySetDigest,
-          changes: changes.map(change => ({ path: change.path, beforeSha256: hash(change.beforeBytes), afterSha256: hash(change.afterBytes) })) } });
+        expected: amendmentExpected });
       assert.equal(amendment.status, 'VERIFIED_OWNER_AMENDMENT_RECORD');
       return { status: 'VERIFIED_OWNER_AMENDMENT_TAG', repository, baseSha: fixture.baseSha,
         bSha: fixture.bSha, triggerProfile: profile, triggerReviewRecordSha256: expected.triggerReviewRecordSha256,

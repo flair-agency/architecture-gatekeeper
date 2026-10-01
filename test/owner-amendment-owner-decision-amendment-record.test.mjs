@@ -46,6 +46,7 @@ test('builds a closed OWNER_DECISION AmendmentRecord bound to exact trigger and 
     repository: review.repository, baseSha: base, bSha, policyRevision: base,
     triggerProfile: 'completed-owner-decision-self-v1', triggerReviewRecordSha256: sha(reviewBytes),
     authoritySetDigest: review.authority.setDigest, resultingAuthoritySetDigest,
+    authorityId: 'architecture', authorityPath: 'docs/architecture.md',
     changes: [
       { path: 'docs/architecture.md', beforeSha256: sha(before), afterSha256: sha(after) },
       { path: pathSecurity, beforeSha256: sha(beforeSecurity), afterSha256: sha(afterSecurity) },
@@ -54,7 +55,9 @@ test('builds a closed OWNER_DECISION AmendmentRecord bound to exact trigger and 
   assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_RECORD');
   assert.deepEqual(Object.keys(result).sort(), ['status', 'repository', 'baseSha', 'bSha', 'policyRevision',
     'triggerProfile', 'triggerReviewRecordSha256', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest',
-    'changes', 'targetValidated', 'purpose'].sort());
+    'authorityId', 'authorityPath', 'changes', 'targetValidated', 'purpose'].sort());
+  assert.equal(result.authorityId, 'architecture');
+  assert.equal(result.authorityPath, 'docs/architecture.md');
 });
 
 test('rejects a different trigger digest, extra decision ID claim, or changed authority bytes', () => {
@@ -62,6 +65,7 @@ test('rejects a different trigger digest, extra decision ID claim, or changed au
   const expected = { repository: review.repository, baseSha: base, bSha, policyRevision: base,
     triggerProfile: 'completed-owner-decision-self-v1', triggerReviewRecordSha256: sha(reviewBytes),
     authoritySetDigest: review.authority.setDigest, resultingAuthoritySetDigest,
+    authorityId: 'architecture', authorityPath: 'docs/architecture.md',
     changes: [
       { path: 'docs/architecture.md', beforeSha256: sha(before), afterSha256: sha(after) },
       { path: pathSecurity, beforeSha256: sha(beforeSecurity), afterSha256: sha(afterSecurity) },
@@ -73,6 +77,16 @@ test('rejects a different trigger digest, extra decision ID claim, or changed au
     expected }).status, 'INCOMPLETE');
   assert.equal(validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes: built.bytes,
     expected: { ...expected, changes: expected.changes.slice(0, 1) } }).status, 'INCOMPLETE');
+  const otherChangedMember = expected.changes[1];
+  const mismatchedTarget = { ...JSON.parse(built.bytes.toString('utf8')),
+    authority: { id: 'security', path: pathSecurity, previousSha256: otherChangedMember.beforeSha256,
+      newSha256: otherChangedMember.afterSha256 } };
+  assert.equal(validateOwnerAmendmentOwnerDecisionAmendmentRecord({
+    bytes: Buffer.from(`${JSON.stringify(mismatchedTarget)}\n`), expected,
+  }).status, 'INCOMPLETE');
+  assert.equal(validateOwnerAmendmentOwnerDecisionAmendmentRecord({
+    bytes: built.bytes, expected: { ...expected, authorityId: 'security', authorityPath: pathSecurity },
+  }).status, 'INCOMPLETE');
   assert.throws(() => buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecordBytes: reviewBytes,
     attestationBundleBytes: bundle, repository: review.repository, baseSha: base, bSha,
     authorityId: 'architecture', authorityPath: 'docs/architecture.md', previousAuthorityBytes: after,
