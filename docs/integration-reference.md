@@ -43,6 +43,58 @@ When an authority is inside a Git submodule, the local runtime reads it from the
 parent revision's pinned gitlink. It never fetches a missing component;
 unavailable pinned objects fail closed.
 
+## Upgrading legacy v1 consumers
+
+Check the installed package version and the caller's immutable workflow pin
+before choosing an upgrade procedure. A consumer still on 0.5.0 is not a
+0.5.1-compatible consumer merely because a newer package is installed locally.
+The 0.5.1 legacy v1 repair intentionally rejects enforced policies that lack
+base-selected authority and instruction paths.
+
+The ordinary reusable `architecture-gate-consumer.yml` needs `contents: read` and
+`pull-requests: write` from its caller. It contains no self-only OIDC or
+attestation signer. This repository's existing `architecture-gate.yml`
+retains those signing jobs and its attestation signer identity; ordinary consumers must not add `id-token: write`
+or `attestations: write` to work around a self-only permission requirement.
+This source change does not modify the already published 0.6.0-preview.1;
+consume it only through a separately verified corrected release and exact pin.
+
+### Adopt the protected selection before relying on the new gate
+
+1. Inventory the existing consumer-owned canonical authority files, CI prompt,
+   decision schema and optional validation file at the recorded base. Check
+   the proposed selectors against those exact bytes; copying this repository's
+   policy is not consumer adoption.
+2. Prepare explicit v1 `authorityFiles`, `promptPath`, `schemaPath`, and
+   `validationPath` (`null` if no additional validation is selected). Keep
+   the existing model, effort and authority meaning. The caller must use
+   protected review instructions and select the matching `validation-path`
+   (empty when the recorded selection is `null`).
+3. Check whether the previous consumer policy already authorizes an adoption
+   process that can make this selection and its base-owned caller canonical.
+   An owner must authorize the exact adoption under that consumer's governance;
+   package installation, a PR comment, and this runbook do not grant that power.
+4. If the old resolver rejects the new fields and the new resolver rejects the
+   old base, stop the normal upgrade PR at this adoption boundary. There is no
+   automatic bridge in this implementation, and this procedure authorizes no
+   administrative bypass or exception. The consumer owner must identify an
+   adoption process already permitted by its canonical governance and record
+   the exact authorized scope and failed/incomplete Gate result. If no such
+   process exists, the owner must settle that governance decision before
+   proceeding. Do not temporarily drop the
+   required check, enable an unselected owner route, infer selectors from the
+   candidate, or convert the failure to PASS.
+5. After actual adoption, read back the target branch and exact authority,
+   policy and caller identities. Refresh the upgrade PR against that base and
+   run the new gate. Verify least-privilege startup, protected snapshots,
+   decision validation and required acceptance on the exact refreshed head.
+   Local/native preparation alone is not successful CI acceptance.
+
+Update package/lockfile and any used Skill/workflow pins consistently with the
+selected corrected release. Preserve unsuccessful runs as history and report
+consumer adoption and host enforcement separately. This procedure enables no
+OWNER_AMENDMENT, App, merge queue, Environment migration or new owner route.
+
 ## Local integration
 
 Install an exact release (or an exact Git commit during pre-release adoption),
@@ -234,7 +286,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@<release-commit-sha>
+    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-consumer.yml@<release-commit-sha>
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       CI_SOURCE_READ_TOKEN: ${{ secrets.CI_SOURCE_READ_TOKEN }}
@@ -637,3 +689,23 @@ Local execution assumes a trusted Git executable, normal object resolution and
 the same-user environment already trusted to run project hooks. CI relies on a
 clean GitHub checkout. No review stage implements filesystem monitoring, path
 leases, rollback, local object-store defense or malicious-operator resistance.
+
+### Local reviewer execution composition
+
+Local manual review, UserPromptSubmit and post-tool screening use the shared
+local execution boundary rather than importing a provider transport. Existing
+Codex CLI defaults and synchronous APIs remain compatible. Programmatic manual
+and UserPromptSubmit calls accept an optional third argument `{ reviewer }`;
+post-tool screening retains its existing reviewer option. The adapter receives
+the revision-bound request and, on the async path, an optional AbortSignal in
+its second argument. It returns a raw structured decision; the caller still
+validates schema, selected authority and committed validation policy.
+
+Use the async API for a Promise-returning adapter. The sync API rejects such
+adapters and does not run a nested event loop. Async deadlines reject late
+results and request cooperative cancellation; they do not prove physical
+termination of an adapter. A blocking adapter must enforce its own process
+bound. Errors and invalid decisions remain incomplete, with no provider
+fallback. This seam does not select Gemini for the CLI or adopt provider-setting
+equivalence; explicit recorded provider settings and execution identity remain
+follow-up work under #265 coordinated with #252.

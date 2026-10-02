@@ -103,11 +103,17 @@ step/job limits and fail-closed result validation remain. See the
 limits.
 
 The reusable workflow is
-[`architecture-gate.yml`](.github/workflows/architecture-gate.yml). Consumers
+[`architecture-gate-consumer.yml`](.github/workflows/architecture-gate-consumer.yml). Consumers
 pin it to the exact commit that produced the reviewed release and keep their
 policy, prompt, schema, and optional validation policy in the consuming
 repository. See the [integration reference](docs/integration-reference.md) for
 the complete workflow example and protected-base behavior.
+
+Ordinary consumers use this reusable workflow without self-only OIDC or
+attestation permissions. The self repository uses a separate internal workflow
+for its selected evidence producers. Consumers upgrading an old enforced v1
+policy must first follow the [legacy adoption procedure](docs/integration-reference.md#upgrading-legacy-v1-consumers);
+adding selectors to a candidate PR cannot adopt its protected-base policy.
 
 The reviewer job emits bounded numeric Codex usage and tool counts to its
 Actions log when the pinned Action supplies them. This includes the ordinary

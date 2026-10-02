@@ -3,7 +3,7 @@ import { chmodSync, closeSync, linkSync, mkdirSync, openSync, readFileSync, rena
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createReviewRequestAsync, repositoryRoot, validateReviewResponse } from './review-contract.mjs';
-import { runCodexReviewer } from './codex-transport.mjs';
+import { executeLocalReviewer } from './local-reviewer-execution.mjs';
 
 const PATCH_LIMIT = 64 * 1024;
 const OUTPUT_LIMIT = 4000;
@@ -210,7 +210,7 @@ async function waitForBatchDelay(delayMs) {
 }
 
 /** Run the opt-in informational PostToolUse tracked-change screen. */
-export async function runPostToolScreenHook(input, { cwd = process.cwd(), reviewer = runCodexReviewer, batchDelayMs = DEFAULT_BATCH_DELAY_MS } = {}) {
+export async function runPostToolScreenHook(input, { cwd = process.cwd(), reviewer, batchDelayMs = DEFAULT_BATCH_DELAY_MS } = {}) {
   let event;
   try { event = typeof input === 'string' ? JSON.parse(input) : input; }
   catch { const result = incomplete('Invalid PostToolUse JSON.'); return { result, output: outputFor(result, {}) }; }
@@ -269,7 +269,7 @@ export async function runPostToolScreenHook(input, { cwd = process.cwd(), review
     // New marker files are written only by later events and remain for the next eligible event.
     newerPending = exists(markerPath(state));
     timing.reviewStartedAt = new Date().toISOString();
-    const decision = validateReviewResponse(request, await reviewer(request));
+    const decision = validateReviewResponse(request, await executeLocalReviewer(request, { reviewer }));
     timing.reviewCompletedAt = new Date().toISOString();
     if (readHead(root) !== candidate.head) {
       const result = incomplete('HEAD moved during semantic review; result is not associated with the current snapshot.', { reviewedRevision: candidate.head, requestId: identity, snapshotSha256: candidate.patchSha256 });
