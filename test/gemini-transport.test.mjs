@@ -1072,3 +1072,15 @@ test('canonical official endpoint permits trailing slash normalization', async (
     return { ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS"}' }] } }] }) };
   } });
 });
+
+
+test('decision extraction finishing after the deadline cannot return a semantic result', async () => {
+  const originalNow = Date.now;
+  let now = 1000;
+  Date.now = () => now;
+  try {
+    const request = { prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024, reviewTimeoutMs: 5 } };
+    const part = { get text() { now = 1010; return '{"decision":"PASS"}'; } };
+    await assert.rejects(executeGeminiReviewer(request, { apiKey: 'fixture', fetch: async () => ({ ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [part] } }] }) }) }), /timed out after 5ms/);
+  } finally { Date.now = originalNow; }
+});

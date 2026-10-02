@@ -1,6 +1,7 @@
+import { spawn, spawnSync } from 'node:child_process';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
@@ -280,4 +281,72 @@ test('proxyConfigOverride cannot erase or bypass required scope in runIsolatedGe
     ),
     /missing allowedRegion for Vertex mode/
   );
+});
+
+
+test('isolated environment filters mixed-case credential and renewal selectors', () => {
+  const filtered = buildIsolatedRunnerEnv({ gemini_api_key: 'secret', Google_Application_Credentials: '/secret', cloudSDK_auth_credential_file_override: '/secret', google_GHA_creds_path: '/secret', actions_id_token_request_token: 'secret', PATH: '/bin' }, 'http://127.0.0.1:1234');
+  assert.deepEqual(filtered, { PATH: '/bin', REVIEW_PROXY_URL: 'http://127.0.0.1:1234' });
+});
+
+test('isolated sessions never invoke gcloud credential fallback', async () => {
+  const saved = { ...process.env };
+  let calls = 0;
+  try {
+    for (const key of ['GEMINI_API_KEY', 'CLOUDSDK_AUTH_ACCESS_TOKEN', 'GOOGLE_OAUTH_ACCESS_TOKEN']) delete process.env[key];
+    await assert.rejects(runIsolatedGeminiSession(['--model', 'gemini-2.5-flash'], { credentialsOptions: { resolveGcloudAccessToken: () => { calls++; return 'renewable-token'; } } }), /No credentials found/);
+    assert.equal(calls, 0);
+  } finally { process.env = saved; }
+});
+
+test('launcher deadline kills a SIGTERM-ignoring child and closes the proxy', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-launcher-deadline-'));
+  const state = join(dir, 'state.json');
+  try {
+    const script = join(dir, 'hung.mjs');
+    writeFileSync(script, `import {writeFileSync} from 'node:fs'; process.on('SIGTERM',()=>{}); writeFileSync(${JSON.stringify(state)}, JSON.stringify({pid:process.pid, proxy:process.env.REVIEW_PROXY_URL})); setInterval(()=>{},1000);`);
+    const started = Date.now();
+    assert.equal(await runIsolatedGeminiSession(['--model','gemini-2.5-flash'], { timeoutMs: 400, runnerScript: script, credentialsOptions: { apiKey: 'fixture' } }), 124);
+    assert.ok(Date.now()-started < 5000);
+    const observed = JSON.parse(readFileSync(state));
+    assert.throws(() => process.kill(observed.pid, 0), /ESRCH/);
+    await assert.rejects(fetch(observed.proxy));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+test('deadline escalation survives direct child exit and stops its descendant', { skip: process.platform === 'win32' }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-descendant-'));
+  const state = join(dir, 'descendant.pid');
+  try {
+    const descendant = join(dir, 'descendant.mjs');
+    writeFileSync(descendant, `import{writeFileSync}from'node:fs'; process.on('SIGTERM',()=>{}); writeFileSync(${JSON.stringify(state)},String(process.pid)); setInterval(()=>{},1000);`);
+    const parent = join(dir, 'parent.mjs');
+    writeFileSync(parent, `import{spawn}from'node:child_process'; spawn(process.execPath,[${JSON.stringify(descendant)}],{stdio:'ignore'}); setInterval(()=>{},1000);`);
+    assert.equal(await runIsolatedGeminiSession(['--model','gemini-2.5-flash'], { timeoutMs: 600, runnerScript: parent, credentialsOptions: { apiKey: 'fixture' } }), 124);
+    const pid = Number(readFileSync(state));
+    const status = spawnSync('ps', ['-o','stat=','-p',String(pid)], { encoding:'utf8' });
+    assert.ok(status.status !== 0 || !status.stdout.trim() || status.stdout.trim().startsWith('Z'), `Descendant still running: ${status.stdout}`);
+  } finally { rmSync(dir, { recursive:true, force:true }); }
+});
+
+test('supervisor termination is forwarded to a detached runner', { skip: process.platform === 'win32' }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-supervisor-signal-'));
+  let supervisor;
+  try {
+    const state = join(dir, 'child.pid');
+    const childScript = join(dir, 'child.mjs');
+    writeFileSync(childScript, `import{writeFileSync}from'node:fs'; process.on('SIGTERM',()=>{}); writeFileSync(${JSON.stringify(state)},String(process.pid)); setInterval(()=>{},1000);`);
+    const wrapper = join(dir, 'supervisor.mjs');
+    const launcher = new URL('../src/gemini-launcher.mjs', import.meta.url).href;
+    writeFileSync(wrapper, `import{runIsolatedGeminiSession}from ${JSON.stringify(launcher)}; runIsolatedGeminiSession(['--model','gemini-2.5-flash'],{timeoutMs:5000,runnerScript:${JSON.stringify(childScript)},credentialsOptions:{apiKey:'fixture'}}).then(code=>process.exit(code));`);
+    supervisor = spawn(process.execPath, [wrapper], { stdio:'ignore' });
+    const closed = new Promise((resolve,reject) => { supervisor.once('close',resolve); supervisor.once('error',reject); });
+    const deadline = Date.now()+4000;
+    while (!existsSync(state) && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,20));
+    assert.ok(existsSync(state));
+    supervisor.kill('SIGTERM');
+    assert.equal(await closed,143);
+    assert.throws(()=>process.kill(Number(readFileSync(state)),0),/ESRCH/);
+  } finally { supervisor?.kill('SIGKILL'); rmSync(dir,{recursive:true,force:true}); }
 });

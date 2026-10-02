@@ -580,6 +580,9 @@ export async function executeGeminiReviewer(request, options = {}) {
       execution.backendReportedModel = data.modelVersion.trim();
     }
 
+    if (signal.aborted || Date.now() >= deadline) {
+      throw signal.reason instanceof Error ? signal.reason : new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+    }
     return {
       decision: parsedDecision,
       execution,

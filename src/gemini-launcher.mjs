@@ -18,7 +18,7 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { startGeminiSecurityProxy } from './gemini-security-proxy.mjs';
 import { resolveAuthCredentials } from './gemini-transport.mjs';
 
@@ -50,11 +50,12 @@ export function buildIsolatedRunnerEnv(env, proxyUrl) {
   const cleanEnv = {};
   for (const [key, value] of Object.entries(env)) {
     if (value === undefined) continue;
-    if (SENSITIVE_ENV_VARS.includes(key)) continue;
-    if (key.startsWith('ACTIONS_ID_TOKEN_') ||
-        key.startsWith('GOOGLE_APPLICATION_CREDENTIALS') ||
-        key.startsWith('GOOGLE_GHA_CREDS_') ||
-        key.startsWith('CLOUDSDK_AUTH_CREDENTIAL_FILE')) {
+    const normalizedKey = key.toUpperCase();
+    if (SENSITIVE_ENV_VARS.includes(normalizedKey)) continue;
+    if (normalizedKey.startsWith('ACTIONS_ID_TOKEN_') ||
+        normalizedKey.startsWith('GOOGLE_APPLICATION_CREDENTIALS') ||
+        normalizedKey.startsWith('GOOGLE_GHA_CREDS_') ||
+        normalizedKey.startsWith('CLOUDSDK_AUTH_CREDENTIAL_FILE')) {
       continue;
     }
     cleanEnv[key] = value;
@@ -77,6 +78,8 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
   let cliAccessToken = null;
   const filteredRunnerArgv = [];
 
+  const startedAt = Date.now();
+  let selectedTimeoutMs = null;
   let requestJsonPath = null;
   let allowedModel = null;
   let allowedProject = null;
@@ -107,6 +110,9 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
       requestJsonPath = arg.slice(15);
     }
 
+    if (arg === '--timeout' && i + 1 < runnerArgv.length) selectedTimeoutMs = Number(runnerArgv[i + 1]);
+    if (arg.startsWith('--timeout=')) selectedTimeoutMs = Number(arg.slice(10));
+
     if (arg === '--model' && i + 1 < runnerArgv.length) allowedModel = runnerArgv[i + 1];
     if (arg.startsWith('--model=')) allowedModel = arg.slice(8);
     if (arg === '--project' && i + 1 < runnerArgv.length) allowedProject = runnerArgv[i + 1];
@@ -121,16 +127,24 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
   if (requestJsonPath) {
     const resolvedPath = resolve(process.cwd(), requestJsonPath);
     if (existsSync(resolvedPath)) {
+      if (!lstatSync(resolvedPath).isFile()) throw new Error('Review request must be a regular file.');
       try {
         const reqData = JSON.parse(readFileSync(resolvedPath, 'utf8'));
+        if (reqData?.reviewer?.reviewTimeoutMs !== undefined) {
+          const recorded = reqData.reviewer.reviewTimeoutMs;
+          if (!Number.isInteger(recorded) || recorded < 1 || recorded > 3600000) throw new Error('Invalid recorded session deadline.');
+          selectedTimeoutMs = selectedTimeoutMs === null ? recorded : Math.min(selectedTimeoutMs, recorded);
+        }
         if (reqData?.reviewer?.model && !allowedModel) {
           allowedModel = reqData.reviewer.model;
         }
-      } catch {
-        // Runner will handle invalid JSON format
-      }
+      } catch (error) { throw new Error(`Invalid review request: ${error.message}`); }
     }
   }
+
+  const sessionTimeoutMs = options.timeoutMs ?? selectedTimeoutMs ?? Number(process.env.TIMEOUT_MS || 120000);
+  if (!Number.isInteger(sessionTimeoutMs) || sessionTimeoutMs < 1 || sessionTimeoutMs > 3600000 ||
+      (selectedTimeoutMs !== null && sessionTimeoutMs > selectedTimeoutMs)) throw new Error('Launcher requires a bounded session deadline that does not extend selected timeout.');
 
   // Derive trusted scope constraints
   allowedModel = allowedModel || process.env.MODEL || process.env.REVIEW_MODEL || null;
@@ -141,7 +155,7 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
   const credsOptions = { ...options.credentialsOptions };
   if (cliAccessToken) credsOptions.accessToken = cliAccessToken;
   if (cliApiKey) credsOptions.apiKey = cliApiKey;
-  const credentials = resolveAuthCredentials(credsOptions);
+  const credentials = resolveAuthCredentials({ ...credsOptions, resolveGcloudAccessToken: () => null });
   const allowedMode = credentials.type === 'bearer' ? 'vertex' : 'studio';
 
   // 2. Start security proxy on loopback with trusted scope constraints
@@ -178,6 +192,9 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
     }
   }
 
+  const remainingMs = sessionTimeoutMs - (Date.now() - startedAt);
+  if (remainingMs <= 0) throw new Error('Gemini session deadline expired before startup.');
+  effectiveProxyConfig.deadlineMs = remainingMs;
   const proxy = await startGeminiSecurityProxy(effectiveProxyConfig);
 
   process.stderr.write(`[gemini-launcher] Security proxy active on ${proxy.endpointUrl}\n`);
@@ -191,27 +208,48 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
   const child = spawn(process.execPath, [runnerPath, ...filteredRunnerArgv], {
     env: runnerEnv,
     stdio: 'inherit',
+    detached: process.platform !== 'win32',
   });
 
   return new Promise((resolveSession, rejectSession) => {
-    child.on('error', async (err) => {
+    let stoppedCode = null;
+    let stopCompletion = null;
+    const terminate = signal => {
       try {
-        await proxy.shutdown();
-      } catch {
-        // ignore shutdown error
-      }
-      rejectSession(err);
-    });
-
-    child.on('close', async (code) => {
-      try {
-        await proxy.shutdown();
-      } catch (err) {
-        process.stderr.write(`[gemini-launcher] Warning during proxy shutdown: ${err.message}\n`);
-      }
-      process.stderr.write(`[gemini-launcher] Review runner completed with exit code ${code}\n`);
-      resolveSession(code ?? 1);
-    });
+        if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, signal);
+        else child.kill(signal);
+      } catch (error) { if (error.code !== 'ESRCH') child.kill(signal); }
+    };
+    const stop = (signal, code) => {
+      if (stopCompletion) return;
+      stoppedCode = code;
+      void proxy.shutdown();
+      terminate(signal);
+      // Keep group escalation even if the direct child exits during the grace period.
+      stopCompletion = new Promise(resolveStop => setTimeout(() => {
+        terminate('SIGKILL');
+        resolveStop();
+      }, 250));
+    };
+    const onInterrupt = () => stop('SIGINT', 130);
+    const onTerminate = () => stop('SIGTERM', 143);
+    process.once('SIGINT', onInterrupt);
+    process.once('SIGTERM', onTerminate);
+    const timer = setTimeout(() => stop('SIGTERM', 124), Math.max(1, sessionTimeoutMs - (Date.now() - startedAt)));
+    let finishing = false;
+    const finish = async (code, error) => {
+      if (finishing) return;
+      finishing = true;
+      clearTimeout(timer);
+      if (stopCompletion) await stopCompletion;
+      process.removeListener('SIGINT', onInterrupt);
+      process.removeListener('SIGTERM', onTerminate);
+      await proxy.shutdown();
+      if (error) rejectSession(error);
+      else resolveSession(stoppedCode ?? code ?? 1);
+    };
+    child.once('error', error => { void finish(null, error); });
+    child.once('close', code => { void finish(code); });
   });
 }
 

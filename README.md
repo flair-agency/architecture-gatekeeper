@@ -139,6 +139,10 @@ feedback, without protected-authority assurance. Revision-bound requests must
 pass shared preflight and record `provider: "gemini"`; Codex selections are rejected.
 The current shared request constructor does not yet support committed Gemini
 settings (#265), so that route remains unavailable rather than falling back.
+The isolated launcher requires an explicit/environment key or access token and does
+not run local gcloud renewal. It applies a bounded session deadline, shuts down the
+proxy and terminates the child on expiry (exit 124), escalating after 250 ms. This
+is not a guarantee against uninterruptible operating-system processes.
 Explicit Gemini thinking budgets currently support `gemini-2.5-flash` and
 `gemini-2.5-pro`; direct endpoints must match the selected official provider scope.
 

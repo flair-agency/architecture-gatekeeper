@@ -70,6 +70,7 @@ export async function startGeminiSecurityProxy(config) {
 
   return new Promise((resolve, reject) => {
     let timer = null;
+    const activeRequests = new Set();
 
     const server = createServer(async (req, res) => {
       // 1. Only POST method is permitted
@@ -195,6 +196,9 @@ export async function startGeminiSecurityProxy(config) {
             upstreamRes.pipe(res);
           });
 
+          activeRequests.add(upstreamReq);
+          upstreamReq.once('close', () => activeRequests.delete(upstreamReq));
+
           upstreamReq.on('timeout', () => {
             upstreamReq.destroy(new Error('Upstream request timed out.'));
           });
@@ -230,6 +234,7 @@ export async function startGeminiSecurityProxy(config) {
           timer = null;
         }
         return new Promise((resolveClose) => {
+          for (const request of activeRequests) request.destroy();
           server.closeAllConnections?.();
           server.close(() => resolveClose());
         });
