@@ -42,7 +42,10 @@ export function validateThinkingBudget(model, budget) {
   if (!Number.isInteger(budget) || budget < 0) {
     throw new Error(`Architecture gate reviewer failed: thinkingBudget must be an integer >= 0, received: ${JSON.stringify(budget)}`);
   }
-  const limits = MODEL_THINKING_BUDGET_LIMITS[model] || { min: 0, max: 65536 };
+  const limits = MODEL_THINKING_BUDGET_LIMITS[model];
+  if (!limits) {
+    throw new Error(`Architecture gate reviewer failed: unknown or unsupported model profile '${model}' on Gemini route.`);
+  }
   if (budget < limits.min || budget > limits.max) {
     throw new Error(
       `Architecture gate reviewer failed: thinkingBudget ${budget} exceeds supported bounds [${limits.min}, ${limits.max}] for model '${model}'.`
@@ -106,11 +109,13 @@ export function resolveReviewerThinkingBudget(reviewer, options = {}) {
     if (options.reasoningEffort !== undefined) {
       throw new Error('Architecture gate reviewer failed: Gemini route does not accept options.reasoningEffort.');
     }
-    const rawBudget = reviewer.thinkingBudget !== undefined ? reviewer.thinkingBudget : options.thinkingBudget;
-    if (options.thinkingBudget !== undefined && reviewer.thinkingBudget !== undefined && options.thinkingBudget !== reviewer.thinkingBudget) {
+    if (reviewer.thinkingBudget === undefined) {
+      throw new Error('Architecture gate reviewer failed: recorded reviewer configuration must specify thinkingBudget for provider=gemini.');
+    }
+    if (options.thinkingBudget !== undefined && options.thinkingBudget !== reviewer.thinkingBudget) {
       throw new Error('Architecture gate reviewer failed: thinkingBudget mismatch.');
     }
-    const budget = validateThinkingBudget(reviewer.model, rawBudget);
+    const budget = validateThinkingBudget(reviewer.model, reviewer.thinkingBudget);
     return { budget, isExplicitGeminiRoute: true };
   }
 
@@ -427,15 +432,44 @@ export async function executeGeminiReviewer(request, options = {}) {
       }
     }
 
+    // Helper to race an async operation against cooperative deadline and abort signal
+    const raceWithDeadline = (operationPromise) => {
+      let expiredTimer;
+      const remainingMs = Math.max(0, deadline - Date.now());
+      const expiredPromise = new Promise((_, reject) => {
+        if (signal.aborted || Date.now() >= deadline) {
+          reject(signal.reason instanceof Error ? signal.reason : new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`));
+          return;
+        }
+        expiredTimer = setTimeout(() => {
+          reject(new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`));
+        }, remainingMs);
+        const onAbort = () => {
+          clearTimeout(expiredTimer);
+          reject(signal.reason instanceof Error ? signal.reason : new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`));
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+      });
+
+      return Promise.race([
+        operationPromise,
+        expiredPromise,
+      ]).finally(() => {
+        clearTimeout(expiredTimer);
+      });
+    };
+
     let response;
     try {
-      response = await fetchFn(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestBody),
-        redirect: 'error',
-        signal,
-      });
+      response = await raceWithDeadline(
+        fetchFn(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestBody),
+          redirect: 'error',
+          signal,
+        })
+      );
     } catch (error) {
       if (error.name === 'TimeoutError' || signal.aborted || Date.now() >= deadline) {
         throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
@@ -446,17 +480,20 @@ export async function executeGeminiReviewer(request, options = {}) {
     if (!response.ok) {
       let detail = '';
       try {
-        const errJson = await response.json();
+        const errJson = await raceWithDeadline(Promise.resolve().then(() => response.json()));
         detail = errJson?.error?.message ? `: ${errJson.error.message}` : '';
-      } catch {
-        // ignore body parsing failure
+      } catch (err) {
+        if (signal.aborted || Date.now() >= deadline) {
+          throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+        }
+        // ignore body parsing failure for HTTP error
       }
       throw new Error(`Architecture gate reviewer failed with status ${response.status}${detail}`);
     }
 
     let data;
     try {
-      data = await response.json();
+      data = await raceWithDeadline(Promise.resolve().then(() => response.json()));
     } catch (error) {
       if (signal.aborted || Date.now() >= deadline) {
         throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);

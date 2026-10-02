@@ -767,6 +767,16 @@ test('validateThinkingBudget enforces integer bounds per model profile', () => {
   assert.throws(() => validateThinkingBudget('gemini-2.5-flash', 1024.5), /must be an integer >= 0/);
   assert.throws(() => validateThinkingBudget('gemini-2.5-flash', '1024'), /must be an integer >= 0/);
   assert.throws(() => validateThinkingBudget('gemini-2.5-flash', undefined), /missing thinkingBudget/);
+
+  // Unknown or unsupported model profile fails closed
+  assert.throws(
+    () => validateThinkingBudget('unsupported-model', 1024),
+    /unknown or unsupported model profile 'unsupported-model' on Gemini route/
+  );
+  assert.throws(
+    () => validateThinkingBudget('unsupported-model', 65536),
+    /unknown or unsupported model profile 'unsupported-model' on Gemini route/
+  );
 });
 
 test('explicit Gemini reviewer contract rejects reasoningEffort and accepts thinkingBudget', async () => {
@@ -797,6 +807,35 @@ test('explicit Gemini reviewer contract rejects reasoningEffort and accepts thin
   await assert.rejects(
     () => executeGeminiReviewer(invalidGeminiRequest, { apiKey: 'k', fetch: mockFetch }),
     /Gemini route does not accept reasoningEffort/
+  );
+
+  // Rejects missing thinkingBudget in recorded reviewer configuration on provider=gemini
+  const missingRecordedBudgetRequest = {
+    prompt: 'Check compliance',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+    },
+  };
+  await assert.rejects(
+    () => executeGeminiReviewer(missingRecordedBudgetRequest, { apiKey: 'k', thinkingBudget: 2048, fetch: mockFetch }),
+    /recorded reviewer configuration must specify thinkingBudget for provider=gemini/
+  );
+
+  // Rejects unknown model profile before network / credentials
+  const unknownModelRequest = {
+    prompt: 'Check compliance',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'unsupported-model',
+      thinkingBudget: 1024,
+    },
+  };
+  await assert.rejects(
+    () => executeGeminiReviewer(unknownModelRequest, { apiKey: 'k', fetch: mockFetch }),
+    /unknown or unsupported model profile 'unsupported-model' on Gemini route/
   );
 
   // Rejects mixed options
@@ -904,6 +943,62 @@ test('enforces recorded deadline and cancellation during response body consumpti
     () => executeGeminiReviewer(request, { apiKey: 'k', fetch: hangingFetch }),
     /Architecture gate reviewer timed out after 30ms/
   );
+});
+
+test('races never-settling response body consumption against deadline for HTTP success', async () => {
+  // Never settling promise for response.json() on ok: true
+  const neverSettlingFetch = async () => ({
+    ok: true,
+    status: 200,
+    json: () => new Promise(() => {}),
+  });
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 1024,
+      reviewTimeoutMs: 25,
+    },
+  };
+
+  const start = Date.now();
+  await assert.rejects(
+    () => executeGeminiReviewer(request, { apiKey: 'k', fetch: neverSettlingFetch }),
+    /Architecture gate reviewer timed out after 25ms/
+  );
+  const elapsed = Date.now() - start;
+  assert.ok(elapsed >= 20 && elapsed < 200, `Expected timeout around 25ms, got ${elapsed}ms`);
+});
+
+test('races never-settling response body consumption against deadline for HTTP error', async () => {
+  // Never settling promise for response.json() on ok: false
+  const neverSettlingErrorFetch = async () => ({
+    ok: false,
+    status: 500,
+    json: () => new Promise(() => {}),
+  });
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 1024,
+      reviewTimeoutMs: 25,
+    },
+  };
+
+  const start = Date.now();
+  await assert.rejects(
+    () => executeGeminiReviewer(request, { apiKey: 'k', fetch: neverSettlingErrorFetch }),
+    /Architecture gate reviewer timed out after 25ms/
+  );
+  const elapsed = Date.now() - start;
+  assert.ok(elapsed >= 20 && elapsed < 200, `Expected timeout around 25ms, got ${elapsed}ms`);
 });
 
 test('cooperative external signal cancellation aborts execution', async () => {
