@@ -23,7 +23,12 @@ jobs:
       # Off by default. Enable only for a bounded self-review cost experiment.
       self-flex-probe: ${{ vars.ARCHITECTURE_GATE_SELF_FLEX == 'true' && vars.ARCHITECTURE_GATE_SELF_FLEX_PR == format('{0}', github.event.pull_request.number) && vars.ARCHITECTURE_GATE_SELF_FLEX_HEAD == github.event.pull_request.head.sha }}
       review-job-timeout-minutes: ${{ fromJSON(vars.ARCHITECTURE_GATE_REVIEW_JOB_TIMEOUT_MINUTES || '7') }}
+      # Opt in only after the architecture-gate-review Environment is provisioned.
+      self-review-environment: ${{ vars.ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT == 'true' }}
       schema-path: .codex/gatekeeper/ci-decision.schema.json
       validation-path: .codex/gatekeeper/decision.validation.json
     secrets:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # Empty on opt-in so a missing Environment secret cannot silently use the
+      # legacy repository secret. The called reviewer jobs then require their
+      # Environment-scoped OPENAI_API_KEY.
+      OPENAI_API_KEY: ${{ vars.ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT != 'true' && secrets.OPENAI_API_KEY || '' }}

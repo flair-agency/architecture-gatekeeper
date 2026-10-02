@@ -121,6 +121,36 @@ review path. It does not publish raw Codex JSONL, per-request API cost, or proof
 of the provider's effective service tier; missing or malformed usage remains
 unavailable for cost attribution.
 
+#### Self-review credential migration
+
+The self-review workflow keeps using the repository `OPENAI_API_KEY` secret
+unless the repository variable `ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT` is
+set to the exact string `true`. Stage the migration by first creating the
+`architecture-gate-self-protected` GitHub Actions Environment, limiting its
+deployment branch to `main`, and adding its `OPENAI_API_KEY` secret. Then set
+the variable to `true`. The workflow validates that the opt-in comes from this
+repository's `main` self-review workflow and only assigns the Environment to
+the three jobs that call OpenAI: ordinary review, OWNER_ADDITION eligibility,
+and OWNER_AMENDMENT semantic eligibility.
+
+On opt-in, the caller deliberately passes an empty repository key. A missing
+Environment key therefore fails review without falling back to the repository
+secret. Keep the repository secret until every workflow consumer has migrated;
+remove it only after those consumers are verified on their Environment-backed
+route. Reusable workflow users are unchanged because Environment selection
+defaults off.
+
+The repository variable is an opt-in selector, not proof of host configuration.
+Until the Environment is provisioned and its `main` deployment restriction and
+secret access are read back, this change makes no claim of verified credential
+isolation or successful Environment-backed execution.
+
+This variable stages credential selection for the existing self workflow. It
+does not create the separate protected App receiver or complete its rollout.
+That receiver still needs its own `main`-only Environment and App credentials,
+minimal App installation permissions, required-check source configuration,
+and host readback before any receiver activation.
+
 Consumers can optionally declare structured `findings` in their decision
 schema to receive verified added/deleted-line feedback in one non-accepting
 GitHub `COMMENT` review. Each inline comment identifies Architecture

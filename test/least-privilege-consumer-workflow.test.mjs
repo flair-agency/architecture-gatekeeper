@@ -44,7 +44,11 @@ test('self producer keeps its existing reusable workflow and exact protected evi
 test('consumer adapter keeps protected policy resolution and selected OWNER_ADDITION implementation aligned', () => {
   const resolveStep = source => source.match(/      - name: Resolve policy from protected base revision\n([\s\S]*?)(?=\n      - name: )/)?.[1];
   assert.equal(resolveStep(consumer), resolveStep(self));
-  assert.equal(job(consumer, 'owner-addition'), job(self, 'owner-addition'));
+  const selfAddition = job(self, 'owner-addition');
+  const selfEnvironment = "    environment: ${{ needs.policy.outputs.self_review_environment == 'true' && 'architecture-gate-self-protected' || null }}\n";
+  // The self-only credential binding is the sole permitted job difference.
+  assert.doesNotMatch(job(consumer, 'owner-addition'), /^    environment:/m);
+  assert.equal(job(consumer, 'owner-addition'), selfAddition.replace(selfEnvironment, ''));
   assert.match(consumer, /owner_addition_grade: \$\{\{ steps\.resolve\.outputs\.ownerAdditionGrade \}\}/);
   assert.match(consumer, /needs\.policy\.outputs\.policy_version == '5' && needs\.policy\.outputs\.adoption_evidence_producer == 'github-actions'/);
   assert.match(consumer, /name: Materialize recorded-base legacy authority before review/);
