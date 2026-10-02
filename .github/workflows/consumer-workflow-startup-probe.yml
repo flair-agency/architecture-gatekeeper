@@ -1,0 +1,11 @@
+name: Issue 274 least-privilege startup probe
+on:
+  push:
+    branches: [codex/issue274-startup-probe]
+permissions: {}
+jobs:
+  consumer:
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/architecture-gate-consumer.yml
