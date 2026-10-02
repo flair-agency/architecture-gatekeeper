@@ -31,6 +31,11 @@ The repository requires Node.js 22 or newer.
 6. Open a pull request that explains the outcome, affected boundaries and the
    verification performed. Link the corresponding issue when one exists.
 
+Use the [issue and pull request workflow](docs/issue-pr-workflow.md) for the
+required issue criteria, the five pull request sections, partial delivery,
+dependency tracking, and owner-decision handling. GitHub CLI/API users must
+include the same issue sections and PR headings used by the web templates.
+
 Follow [`docs/development.md`](docs/development.md) for repository layout,
 distribution checks and architecture-change rollout requirements. Changes to
 package entrypoints or distribution must also exercise the installed-package

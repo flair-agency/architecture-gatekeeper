@@ -1,36 +1,34 @@
-name: Feature request
-description: Propose a focused improvement to the shared package
-title: "Feature: "
+name: Task
+description: Propose one focused, reviewable unit of work
+title: "Task: "
 labels: []
 body:
   - type: textarea
     id: problem
     attributes:
       label: Problem
-      description: Describe the shared-package problem, not a consumer-specific architecture decision.
+      description: Describe why this work is needed and which shared-package concern it addresses.
     validations:
       required: true
   - type: textarea
     id: outcome
     attributes:
-      label: Proposed outcome
-      description: State the observable outcome without assuming new trust or acceptance guarantees.
-    validations:
-      required: true
-  - type: textarea
-    id: boundaries
-    attributes:
-      label: Architecture and assurance impact
-      description: Identify affected responsibilities, trust boundaries, evidence or acceptance policy, or state that none change.
+      label: Outcome
+      description: State the observable result when this task is complete.
     validations:
       required: true
   - type: textarea
     id: scope
     attributes:
       label: Scope
-      description: State what is in scope and out of scope. Keep consumer-specific architecture decisions with their owners.
+      description: State what is in scope and out of scope, including affected areas.
     validations:
       required: true
+  - type: textarea
+    id: assurance_dependency
+    attributes:
+      label: Owner decisions and assurance (optional)
+      description: Note affected boundaries or a needed canonical owner decision, or state that none is known. Link a real owner issue if one exists; do not invent one or decide it here.
   - type: textarea
     id: acceptance_verification
     attributes:
@@ -51,7 +49,3 @@ body:
     attributes:
       label: Proposed owner (optional)
       description: Name a responsible maintainer only if already known; maintainers confirm assignment during triage.
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives considered

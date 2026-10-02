@@ -29,6 +29,13 @@ body:
     validations:
       required: true
   - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: State what is broken and who or what path is affected.
+    validations:
+      required: true
+  - type: textarea
     id: reproduction
     attributes:
       label: Reproduction
@@ -38,9 +45,42 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: Expected behavior
+      label: Expected behavior and outcome
+      description: Describe the observable behavior that would resolve this report.
     validations:
       required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: State what is in scope and out of scope, including the affected path or component.
+    validations:
+      required: true
+  - type: textarea
+    id: assurance_dependency
+    attributes:
+      label: Owner decisions and assurance (optional)
+      description: Note affected boundaries or a needed canonical owner decision, or state that none is known. Link a real owner issue if one exists; do not invent one or decide it here.
+  - type: textarea
+    id: acceptance_verification
+    attributes:
+      label: Acceptance and verification criteria
+      description: List separate, observable criteria. For each, say how it can be verified (reproduction, regression check, or other evidence).
+      placeholder: |
+        - [ ] Observable criterion — verify by ...
+        - [ ] Observable criterion — verify by ...
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and related work
+      description: Link existing issues or state that none are known. Do not invent owner-decision issues.
+  - type: input
+    id: owner
+    attributes:
+      label: Proposed owner (optional)
+      description: Name a responsible maintainer only if already known; maintainers confirm assignment during triage.
   - type: textarea
     id: context
     attributes:
