@@ -269,4 +269,35 @@ test('runGeminiCiReview writes outputs to GITHUB_OUTPUT when present in valid ru
   }
 });
 
+test('resolveReviewRequest configures explicit Gemini provider with thinkingBudget', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-runner-test-'));
+  try {
+    const promptPath = join(dir, 'prompt.md');
+    const schemaPath = join(dir, 'schema.json');
+    writeFileSync(promptPath, 'Review this change', 'utf8');
+    writeFileSync(schemaPath, JSON.stringify({ type: 'object' }), 'utf8');
+
+    const req = resolveReviewRequest(
+      { prompt: 'prompt.md', schema: 'schema.json', provider: 'gemini', model: 'gemini-2.5-flash', budget: '2048' },
+      dir
+    );
+    assert.equal(req.reviewer.provider, 'gemini');
+    assert.equal(req.reviewer.model, 'gemini-2.5-flash');
+    assert.equal(req.reviewer.thinkingBudget, 2048);
+    assert.equal(req.reviewer.reasoningEffort, undefined);
+
+    // Rejects mixed settings
+    assert.throws(
+      () =>
+        resolveReviewRequest(
+          { prompt: 'prompt.md', schema: 'schema.json', provider: 'gemini', effort: 'low', budget: '2048' },
+          dir
+        ),
+      /mixed thinkingBudget and reasoningEffort settings are not allowed/
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 

@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { runGeminiReviewer } from './gemini-transport.mjs';
 import { validateJsonSchema } from './json-schema.mjs';
-import { validateReviewResponse } from './review-contract.mjs';
+import { createReviewRequestAsync, committedInput, loadConfig, validateReviewResponse } from './review-contract.mjs';
 import { appendGitHubOutput } from './runner-temp-path.mjs';
 
 /**
@@ -118,18 +118,37 @@ export function resolveReviewRequest(options, root = process.cwd()) {
   const prompt = readFileSync(safePromptPath, 'utf8');
   const schema = JSON.parse(readFileSync(safeSchemaPath, 'utf8'));
   const model = options.model || process.env.MODEL || 'gemini-3.8-flash';
-  const reasoningEffort = options.effort || options['reasoning-effort'] || process.env.EFFORT || 'low';
   const timeoutMs = Number(options.timeout || process.env.TIMEOUT_MS || 120000);
+
+  const rawBudget = options['thinking-budget'] || options.budget || process.env.THINKING_BUDGET;
+  const isExplicitGemini = options.provider === 'gemini' || process.env.REVIEWER_PROVIDER === 'gemini' || rawBudget !== undefined;
+
+  let reviewer;
+  if (isExplicitGemini) {
+    if (options.effort || options['reasoning-effort'] || process.env.EFFORT) {
+      throw new Error('Architecture gate reviewer failed: mixed thinkingBudget and reasoningEffort settings are not allowed.');
+    }
+    const budgetNum = rawBudget !== undefined ? Number(rawBudget) : 1024;
+    reviewer = {
+      provider: 'gemini',
+      model,
+      thinkingBudget: budgetNum,
+      reviewTimeoutMs: timeoutMs,
+    };
+  } else {
+    const reasoningEffort = options.effort || options['reasoning-effort'] || process.env.EFFORT || 'low';
+    reviewer = {
+      model,
+      reasoningEffort,
+      reviewTimeoutMs: timeoutMs,
+    };
+  }
 
   return {
     version: 1,
     prompt,
     schema,
-    reviewer: {
-      model,
-      reasoningEffort,
-      reviewTimeoutMs: timeoutMs,
-    },
+    reviewer,
     repositoryRoot: root,
   };
 }
@@ -163,7 +182,39 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
     transportOptions.apiKey = options['api-key'] || process.env.GEMINI_API_KEY;
   }
 
-  process.stderr.write(`[gemini-ci-runner] Invoking Gemini reviewer (${request.reviewer.model}, effort=${request.reviewer.reasoningEffort})...\n`);
+  // Requirement 3: Complete request preflight before contacting a provider:
+  // For revision-bound local requests verify request integrity, committed configuration and complete authority selection through shared mechanisms.
+  // Treat the prompt/schema-only standalone path as a separately labeled compatibility route with no protected-authority claim.
+  const isRevisionBound = Boolean(request.reviewedRevision || request.authoritySet);
+  if (isRevisionBound) {
+    process.stderr.write(`[gemini-ci-runner] Performing preflight verification for revision-bound request (revision=${request.reviewedRevision})...\n`);
+    const config = loadConfig(request.repositoryRoot, request.reviewedRevision);
+    if (config.version !== request.version) {
+      throw new Error('Architecture review request route changed.');
+    }
+    // Verify request integrity: reconstruct reference request to verify prompt, schema, reviewer, authority selection
+    const canonicalRequest = await createReviewRequestAsync(request.task, request.repositoryRoot);
+    if (canonicalRequest.reviewedRevision !== request.reviewedRevision) {
+      throw new Error('Architecture review request revision mismatch.');
+    }
+    if (canonicalRequest.schemaPath && canonicalRequest.schema) {
+      if (JSON.stringify(canonicalRequest.schema) !== JSON.stringify(request.schema)) {
+        throw new Error('Architecture review request schema mismatch with committed configuration.');
+      }
+    }
+    if (request.authoritySet && canonicalRequest.authoritySet) {
+      if (canonicalRequest.authoritySet.setDigest !== request.authoritySet.setDigest) {
+        throw new Error('Architecture review request authority set mismatch with committed configuration.');
+      }
+    }
+    if (canonicalRequest.requestId !== request.requestId) {
+      throw new Error('Architecture review request was modified.');
+    }
+  } else {
+    process.stderr.write('[gemini-ci-runner] Warning: running standalone prompt/schema compatibility route (no protected authority claim).\n');
+  }
+
+  process.stderr.write(`[gemini-ci-runner] Invoking Gemini reviewer (${request.reviewer.model})...\n`);
 
   // Transport invocation
   const rawDecision = await runGeminiReviewer(request, transportOptions);
@@ -173,7 +224,7 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
 
   // Validate complete review response if request is revision-bound or has authoritySet
   let validatedDecision = rawDecision;
-  if (request.reviewedRevision || request.authoritySet) {
+  if (isRevisionBound) {
     validatedDecision = validateReviewResponse(request, rawDecision);
   }
 

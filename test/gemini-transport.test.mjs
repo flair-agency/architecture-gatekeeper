@@ -2,12 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   cleanJsonSchema,
+  executeGeminiReviewer,
   mapEffortToThinkingBudget,
   prepareGeminiRequestBody,
   runGeminiReviewer,
   resolveAuthCredentials,
   resolveBaseUrl,
   resolveGcloudAccessToken,
+  validateThinkingBudget,
 } from '../src/gemini-transport.mjs';
 
 test('cleanJsonSchema removes $schema while keeping properties and rules', () => {
@@ -747,5 +749,181 @@ test('runGeminiReviewer automatically invokes Vertex AI endpoint when Bearer tok
     if (prevProject !== undefined) process.env.GOOGLE_CLOUD_PROJECT = prevProject;
     else delete process.env.GOOGLE_CLOUD_PROJECT;
   }
+});
+
+test('validateThinkingBudget enforces integer bounds per model profile', () => {
+  assert.equal(validateThinkingBudget('gemini-2.5-flash', 0), 0);
+  assert.equal(validateThinkingBudget('gemini-2.5-flash', 2048), 2048);
+  assert.equal(validateThinkingBudget('gemini-2.5-flash', 24576), 24576);
+
+  // Exceeds flash max
+  assert.throws(
+    () => validateThinkingBudget('gemini-2.5-flash', 30000),
+    /exceeds supported bounds/
+  );
+
+  // Negative or non-integer
+  assert.throws(() => validateThinkingBudget('gemini-2.5-flash', -1), /must be an integer >= 0/);
+  assert.throws(() => validateThinkingBudget('gemini-2.5-flash', 1024.5), /must be an integer >= 0/);
+  assert.throws(() => validateThinkingBudget('gemini-2.5-flash', '1024'), /must be an integer >= 0/);
+  assert.throws(() => validateThinkingBudget('gemini-2.5-flash', undefined), /missing thinkingBudget/);
+});
+
+test('explicit Gemini reviewer contract rejects reasoningEffort and accepts thinkingBudget', async () => {
+  const mockFetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      candidates: [
+        {
+          finishReason: 'STOP',
+          content: { parts: [{ text: JSON.stringify({ decision: 'PASS', summary: 'ok' }) }] },
+        },
+      ],
+      modelVersion: 'gemini-2.5-flash-001',
+    }),
+  });
+
+  // Rejects reasoningEffort when provider is gemini
+  const invalidGeminiRequest = {
+    prompt: 'Check compliance',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      reasoningEffort: 'low',
+    },
+  };
+  await assert.rejects(
+    () => executeGeminiReviewer(invalidGeminiRequest, { apiKey: 'k', fetch: mockFetch }),
+    /Gemini route does not accept reasoningEffort/
+  );
+
+  // Rejects mixed options
+  const mixedRequest = {
+    prompt: 'Check compliance',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 2048,
+    },
+  };
+  await assert.rejects(
+    () => executeGeminiReviewer(mixedRequest, { apiKey: 'k', reasoningEffort: 'high', fetch: mockFetch }),
+    /mixed thinkingBudget and reasoningEffort settings are not allowed/
+  );
+
+  // Rejects mismatched thinkingBudget options
+  await assert.rejects(
+    () => executeGeminiReviewer(mixedRequest, { apiKey: 'k', thinkingBudget: 4096, fetch: mockFetch }),
+    /thinkingBudget mismatch/
+  );
+
+  // Valid explicit Gemini request returns decision and execution envelope
+  const validRequest = {
+    prompt: 'Check compliance',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 2048,
+      reviewTimeoutMs: 60000,
+    },
+  };
+
+  const result = await executeGeminiReviewer(validRequest, { apiKey: 'k', fetch: mockFetch });
+  assert.deepEqual(result.decision, { decision: 'PASS', summary: 'ok' });
+  assert.equal(result.execution.provider, 'gemini');
+  assert.equal(result.execution.requestedModel, 'gemini-2.5-flash');
+  assert.equal(result.execution.appliedSettings.thinkingBudget, 2048);
+  assert.equal(result.execution.appliedSettings.reviewTimeoutMs, 60000);
+  assert.equal(result.execution.backendReportedModel, 'gemini-2.5-flash-001');
+
+  // Compatibility: runGeminiReviewer returns raw decision
+  const rawDecision = await runGeminiReviewer(validRequest, { apiKey: 'k', fetch: mockFetch });
+  assert.deepEqual(rawDecision, { decision: 'PASS', summary: 'ok' });
+});
+
+test('fails closed before credential resolution when reviewer settings are invalid or mismatched', async () => {
+  let credentialsTouched = false;
+  const originalEnv = { ...process.env };
+  delete process.env.GEMINI_API_KEY;
+  delete process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
+  delete process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+
+  // With no credentials in env and no apiKey passed, if it failed on credentials it would throw 'no credentials'
+  // But settings validation must happen first!
+  const requestMismatch = {
+    prompt: 'test',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 1024,
+    },
+  };
+
+  await assert.rejects(
+    () => executeGeminiReviewer(requestMismatch, { model: 'gemini-3.8-flash' }),
+    /model mismatch/
+  );
+
+  await assert.rejects(
+    () => executeGeminiReviewer(requestMismatch, { thinkingBudget: 2048 }),
+    /thinkingBudget mismatch/
+  );
+});
+
+test('enforces recorded deadline and cancellation during response body consumption', async () => {
+  // Mock fetch that hangs or delays during response.json()
+  const hangingFetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => {
+      // Simulate slow body consumption that exceeds timeout
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return {
+        candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS"}' }] } }],
+      };
+    },
+  });
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 1024,
+      reviewTimeoutMs: 30, // 30ms timeout, while response.json takes 100ms
+    },
+  };
+
+  await assert.rejects(
+    () => executeGeminiReviewer(request, { apiKey: 'k', fetch: hangingFetch }),
+    /Architecture gate reviewer timed out after 30ms/
+  );
+});
+
+test('cooperative external signal cancellation aborts execution', async () => {
+  const controller = new AbortController();
+  controller.abort(new Error('Caller cancelled review'));
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 1024,
+      reviewTimeoutMs: 60000,
+    },
+  };
+
+  await assert.rejects(
+    () => executeGeminiReviewer(request, { apiKey: 'k', signal: controller.signal }),
+    /Caller cancelled review/
+  );
 });
 
