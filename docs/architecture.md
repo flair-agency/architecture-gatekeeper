@@ -10,6 +10,21 @@ For an operational starting point, use the [documentation map](README.md).
 The diagrams below explain the order of operations; the surrounding text
 defines the requirements and assurance claims.
 
+## Contract navigation
+
+This index groups the existing sections for reading; it changes neither their
+normative status nor any route's implementation or adoption status. Read each
+route's conditions and exceptions together with the shared invariants.
+
+| Concern | Sections |
+| --- | --- |
+| Ownership and shared rules | [Consumer authority](#consumer-authority), [shared mechanism](#shared-mechanism), [acceptance authority](#acceptance-authority-and-host-enforcement-boundary), [normative invariants](#normative-invariants), [non-responsibilities](#non-responsibilities) |
+| Authority selection and bounds | [Distributed authority](#target-contract-distributed-authority), [CI bounds](#initial-distributed-authority-ci-bounds-issue-51-owner-decision), [local bounds](#initial-local-distributed-authority-bounds-issue-51-owner-decision) |
+| Review execution and acceptance | [Conceptual operation](#conceptual-operation), [local/manual review](#local-and-manual-review), [CI review](#ci-model-review), [current acceptance](#current-acceptance-mechanism), [target evidence](#target-evidence-and-acceptance-contract) |
+| Missing-decision governance | [OWNER_ADDITION / G0](#owner_addition--g0-route-for-missing-decisions-issue-111), [multi-document addition](#target-multi-document-owner_addition-route-issue-119-owner-decision), [adoption and assurance](#owner_addition-adoption-and-assurance-dimensions-issue-121-owner-decision) |
+| Existing-decision governance | [Owner amendment](#target-owner-amendment-governance-issue-75-owner-decision), [exact-claim authorization and revocation](#separate-exact-claim-authorization-and-revocation-owner-decision) |
+| Development and rollout | [Dogfooding and change discipline](#dogfooding-and-change-discipline), [tracked work](#relationship-to-tracked-work) |
+
 ## Why
 
 Repositories accumulate architecture decisions in canonical documents, but
@@ -186,72 +201,55 @@ T --> H
 
 ### OWNER_ADDITION / G0 route for missing decisions (Issue #111)
 
-When `OWNER_DECISION` identifies a missing architecture decision, it rejects
-the reviewed change A until that decision is canonical and A receives a fresh
-review. A consumer
-may separately opt in to a predecessor-B governance result called
-`OWNER_ADDITION / G0`. It is not a semantic `PASS` for B or A, and it does not
-change or erase A's prior `OWNER_DECISION`.
+`OWNER_DECISION` for a missing architecture decision rejects Change A until
+that decision becomes canonical and A receives fresh review. A consumer may
+separately select predecessor-B `OWNER_ADDITION / G0`; it is not semantic
+`PASS` for A or B and does not erase A's result.
 
-The initial route applies only when the **previous protected-base policy** opts
-in and identifies the authority eligible for this procedure. The previous protected
-Authority Set must contain exactly one `self` member, and its path must match
-the policy's selected authority path. The candidate B cannot enable the route
-or change its policy. B contains only the missing architecture decision being
-added to that authority. It cannot change an existing rule, include
-implementation or workflow changes, or assert that work was completed. The
-route does not accept unrelated unresolved choices or contradictions with the
-protected authority. A historical `BLOCK` ReviewRecord is not required; this
-is distinct from the `OWNER_AMENDMENT` route.
+The initial route requires previous protected-base policy opt-in and its
+selection of the exact eligible authority path, matching the previous Set's
+exactly one `self` member. B may modify only that selected authority file; it
+cannot enable or change policy. B adds only the missing decision: no existing-rule
+changes, implementation/workflow changes, completion claims, contradictions or
+unrelated unresolved choices. Historical BLOCK evidence is not required; this
+route differs from OWNER_AMENDMENT.
 
-An ordinary completed `OWNER_DECISION` must carry a protected structured
-`ownerDecisionId`. The annotated tag's versioned `AdditionRecord` binds
-`missingDecision.id` to that ID. B-specific eligibility review must verify the
-ID match and decide that B adds that missing choice without contradicting
-existing authority or introducing unrelated unresolved choices. The pure G0
-artifact procedure validates the binding; it cannot infer those semantic
-properties from authority text. This binding does not require retaining a
-historical `BLOCK` or a reusable historical review artifact.
+A completed ordinary `OWNER_DECISION` carries protected `ownerDecisionId`.
+The versioned tag `AdditionRecord` binds `missingDecision.id` to that ID.
+B-specific semantic eligibility verifies the match and that B adds the missing
+choice without contradiction or unrelated unresolved choices. The pure G0
+artifact verifier checks binding, not semantic properties inferred from text;
+no historical BLOCK or reusable historical review artifact is required.
 
-G0 requires a deliberate annotated Git tag object that targets the exact B
-commit and whose annotation binds the addition to the selected authority and
-missing decision, including its `ownerDecisionId`. The verifier checks the tag
-object's bytes, computes and records its object ID (OID), confirms the object
-targets B, and records the policy and authority state used for verification. A
-Git object OID identifies those exact tag-object bytes. The tag ref that points
-to the object is mutable: a read that the ref resolves to that OID establishes
-only the observed mapping at read time, not that the ref cannot later move or
-be deleted.
+A deliberate annotated Git tag targets exact B and binds selected authority,
+missing decision and `ownerDecisionId`. The verifier checks tag-object bytes,
+computes/records OID, confirms B, and records verification policy and authority
+state. OID identifies exact object bytes; reading the mutable ref proves only
+its observed mapping, not protection against later movement or deletion.
 
-G0 makes no claim that Gatekeeper authenticated the tagger, pusher or owner, and
-does not require an identity provider, a separately authenticated exact-claim
-receipt, a revocation service, or a guarantee that a later tag-ref change
-invalidates a green check. The result is procedural and auditable; it must not
-be described as strong owner authentication or as proof that the tag remained
-available through a later transition. Required verifier or service failure
-remains fail closed. Privileged credentials cannot be exposed to or used to
-execute B's pull-request code or package lifecycle scripts.
+G0 is procedural and auditable, not authentication of tagger, pusher or owner,
+or proof of tag availability through later transition. It requires no identity
+provider, authenticated exact-claim receipt, revocation service or guarantee
+that later ref changes invalidate a green check. Required verifier/service
+failures fail closed. Privileged credentials cannot reach or execute B's PR
+code or package lifecycle scripts.
 
-After B becomes canonical, A must receive a fresh review against the new
-protected base under the consumer's normal acceptance policy. That review may
-still return `BLOCK` or another `OWNER_DECISION`; G0 does not accept A. An
-owner-authorized administrative exception remains under the consumer's
-existing governance and outside this Gatekeeper result.
+After B becomes canonical, review A afresh against the new protected base under
+normal consumer acceptance policy; BLOCK or another OWNER_DECISION remains
+possible. G0 does not accept A. Owner-authorized administrative exceptions stay
+outside this result under existing consumer governance.
 
-The deterministic verifier and protected reporting path are implemented. The
-route is conditionally available only when the previous protected consumer
-policy explicitly selects it and all verifier requirements above pass. This
-repository's current protected policy does not select the route, so it remains
-inactive for self-review. A first-time policy adoption may use the one-time,
-owner-controlled administrative exception described by the consumer's existing
-governance, after code review and the fixture full-cycle E2E below; that
-exception is separate from Gatekeeper acceptance and does not itself enable the
-route for a review. The v0.5.1 package release is gated by that public fixture
-E2E and the package release checks. Passing the fixture does not activate this
-repository's self-review route or any real consumer's route. The fixture does
-not settle a real consumer's architecture or migration status. A work-completion
-claim is not a missing architecture decision; consumer owners must establish
-any required completion evidence separately.
+The deterministic verifier and protected reporter are implemented, but the
+route requires prior protected-policy selection and all verifier requirements.
+This repository's policy does not select it: self-review remains inactive.
+First-time policy adoption may use the existing governance's one-time
+owner-controlled administrative exception after code review and the fixture
+full-cycle E2E below; that exception is neither Gatekeeper acceptance nor route
+activation for a review. v0.5.1 release requires the public fixture E2E and
+package release checks. Fixture success activates no self or real-consumer
+route and settles no consumer architecture or migration status. Work completion
+is not a missing decision; owners establish required completion evidence
+separately.
 
 ### Target multi-document OWNER_ADDITION route (Issue #119 owner decision)
 
@@ -786,7 +784,10 @@ resolve either issue or authorize a consumer-specific architecture.
 
 ### Three separate concepts and target contracts
 
-Three concerns remain distinct: review execution yields a structured decision; architecture evidence binds it to repository/revision/mechanism/policy; acceptance applies prior protected-base evidence policy. One workflow may combine them, but execution grants no merge acceptance and CI does not define review.
+[Review execution, evidence and acceptance](#shared-mechanism) remain distinct,
+even in one workflow. Execution grants no merge acceptance; CI does not define
+review. Evidence binding and protected-policy requirements are specified in the
+[target evidence contract](#target-evidence-and-acceptance-contract).
 
 ## Conceptual operation
 
@@ -1173,13 +1174,8 @@ Architecture-changing work follows this order:
 - Issue #20 specifies the evidence format, attestation choice, protected-policy
   routes and model-free CI verification needed to fully separate review
   execution from acceptance verification.
-- Issue #111 defines the missing-decision adoption problem. Its `OWNER_ADDITION
-  / G0` mechanism is implemented in v0.5 and available only when a previous
-  protected consumer policy selects it; this repository's self policy remains
-  unselected. The candidate is bound to B by an annotated tag object. It does
-  not require the historical `BLOCK` evidence or exact-claim authorization
-  mechanisms of `OWNER_AMENDMENT`. The mechanism is not owner-authenticated,
-  and implementation changes after B becomes canonical require a fresh review.
+- Issue #111 defines missing-decision adoption under the
+  [OWNER_ADDITION / G0 contract](#owner_addition--g0-route-for-missing-decisions-issue-111).
 - Issue #75 defines the owner-amendment governance route. Issue #78 develops
   its core and explicit `G0` policy path; Issue #79 investigates a later
   production attestation adapter for a higher grade.
