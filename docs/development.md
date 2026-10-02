@@ -18,6 +18,7 @@ reusable and self-review workflows are in `.github/workflows/`.
   package smoke path in `test/installed-smoke.mjs` and the release workflow.
 - Update `README.md` when public integration or operational behavior changes.
 - Follow the [release runbook](release.md) when freezing, publishing, or verifying a package release.
+- Start release planning with the [Release planning issue form](../.github/ISSUE_TEMPLATE/release_planning.yml); it records scenarios and agreement before the runbook's publication steps.
 - Use the [issue and pull request workflow](issue-pr-workflow.md) to record scope, acceptance criteria, verification, and remaining work.
 - Keep the Skill, CLI, CI adapter and self-review configuration aligned when a
   shared contract changes.
