@@ -8,6 +8,7 @@ directory separates binding rules from setup and operating guidance:
 | Check responsibilities, review decisions, evidence, or acceptance rules | [Architecture contract](architecture.md) | Normative; owner decisions must be recorded here before implementation |
 | Configure local review, CI, policy versions, or distribution | [Integration reference](integration-reference.md) | Current implementation and setup |
 | Handle `OWNER_DECISION` or an unavailable CI review | [Owner intervention](owner-intervention.md) | Operational runbook |
+| Prepare, publish, and verify a package release | [Release runbook](release.md) | Maintainer release procedure |
 | Understand GitHub plan limits and this repository's example setup | [GitHub assurance](github-assurance.md) | Capability and claim guide; does not enable a route |
 | Diagnose child-reviewer authorization | [Reviewer host permissions](reviewer-host-permissions.md) | Host boundary and failure modes |
 | Maintain this repository's `pull_request_target` event policy | [Self-gate Actions policy](self-gate-actions-policy.md) | Repository-specific operations |
