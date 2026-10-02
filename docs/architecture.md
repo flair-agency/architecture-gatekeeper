@@ -867,6 +867,30 @@ Authority snapshots are included in the reviewer request from committed Git
 objects. The runtime neither compares those objects with working-tree bytes nor
 monitors whether `HEAD` changes while a review is running.
 
+#### Target local provider-independent execution (Issue #265 owner direction)
+
+Local callers depend on the shared review and execution contracts; composition
+selects a supported adapter from reviewer settings at the same recorded
+revision. Existing settings without a provider retain Codex compatibility.
+Provider selection, model, provider-specific settings and deadline remain
+explicit review inputs. Codex reasoning effort and Gemini thinking settings
+are distinct; a mapping does not establish semantic equivalence. The adapter
+must apply the selected settings or leave review incomplete, with no automatic
+provider fallback or parallel result adoption.
+
+Async adapters use explicit async APIs. Existing synchronous APIs remain
+compatible and reject an unsupported async selection before starting it.
+Execution reports identify the adapter-applied provider, requested model and
+settings separately from any backend-reported model identity; they do not prove
+backend internals or create reusable acceptance evidence. Schema, complete
+selected authority and committed validation remain shared responsibilities.
+Timeout, cancellation or unavailable credentials yield no semantic decision;
+cooperative cancellation alone does not prove physical termination. Automatic
+Codex child execution retains its sandbox and process bound. A Codex-native
+Skill that cannot apply another provider's settings remains incomplete rather
+than substituting its host model. This target enables no new route, changes no
+CI credential boundary and preserves local development-feedback assurance.
+
 ### CI model review
 
 CI model review provides an independent execution boundary. Protected-base
