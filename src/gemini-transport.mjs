@@ -24,13 +24,12 @@ export function cleanJsonSchema(schema) {
 // Values must be integers >= 0 within model boundaries.
 const MODEL_THINKING_BUDGET_LIMITS = {
   'gemini-2.5-flash': { min: 0, max: 24576 },
-  'gemini-2.5-pro': { min: 0, max: 32768 },
-  'gemini-3.8-flash': { min: 0, max: 32768 },
+  'gemini-2.5-pro': { min: 128, max: 32768 },
 };
 
 /**
  * Validates thinkingBudget for a given model.
- * Enforces integer >= 0 within model profile limits (or general default [0, 65536]).
+ * Enforces finite integer budgets within verified model profile limits.
  * @param {string} model
  * @param {unknown} budget
  * @returns {number}
@@ -273,6 +272,9 @@ export function resolveBaseUrl(credentials, options = {}) {
         process.env.GOOGLE_CLOUD_REGION ||
         process.env.CLOUDSDK_COMPUTE_REGION ||
         'us-central1';
+      if (typeof region !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(region) || !/^[A-Za-z0-9._-]+$/.test(projectId.trim())) {
+        throw new Error('Architecture gate reviewer failed: invalid Vertex project or region scope.');
+      }
       return `https://${region}-aiplatform.googleapis.com/v1/projects/${encodeURIComponent(projectId.trim())}/locations/${encodeURIComponent(region)}/publishers/google`;
     }
   }
@@ -323,6 +325,9 @@ export async function executeGeminiReviewer(request, options = {}) {
     }
   }
   const timeoutMs = options.timeoutMs ?? recordedTimeoutMs;
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 3600000) {
+    throw new Error('Architecture gate reviewer requires a bounded integer timeout.');
+  }
   const startTime = Date.now();
   const deadline = startTime + timeoutMs;
 
@@ -375,6 +380,9 @@ export async function executeGeminiReviewer(request, options = {}) {
       } catch {
         throw new Error(`Architecture gate reviewer failed: invalid proxyUrl: ${proxyUrl}`);
       }
+      if (!['http:', 'https:'].includes(parsedProxyUrl.protocol) || parsedProxyUrl.username || parsedProxyUrl.password || parsedProxyUrl.search || parsedProxyUrl.hash || !['', '/'].includes(parsedProxyUrl.pathname)) {
+        throw new Error('Architecture gate reviewer failed: proxyUrl must be a plain loopback HTTP endpoint.');
+      }
       if (parsedProxyUrl.hostname !== '127.0.0.1' && parsedProxyUrl.hostname !== 'localhost') {
         throw new Error(`Architecture gate reviewer failed: proxyUrl must bind to loopback (127.0.0.1), received: ${parsedProxyUrl.hostname}`);
       }
@@ -408,6 +416,7 @@ export async function executeGeminiReviewer(request, options = {}) {
       parsedUrl = new URL(baseUrl);
     } else {
       baseUrl = resolveBaseUrl(credentials, options);
+      while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
       try {
         parsedUrl = new URL(baseUrl);
       } catch {
@@ -416,9 +425,17 @@ export async function executeGeminiReviewer(request, options = {}) {
       if (parsedUrl.protocol !== 'https:') {
         throw new Error(`Architecture gate reviewer failed: insecure endpoint protocol ${parsedUrl.protocol}. HTTPS is required to protect credentials.`);
       }
+      if (parsedUrl.hostname !== 'generativelanguage.googleapis.com' && !/^[a-z0-9-]+-aiplatform\.googleapis\.com$/.test(parsedUrl.hostname)) {
+        throw new Error('Architecture gate reviewer failed: endpoint must match the selected official provider scope.');
+      }
+      const selectedBase = new URL(resolveBaseUrl(credentials, { ...options, baseUrl: undefined }));
+      if (parsedUrl.origin !== selectedBase.origin || parsedUrl.pathname !== selectedBase.pathname || parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
+        throw new Error('Architecture gate reviewer failed: endpoint must match the selected official provider scope.');
+      }
     }
 
-    const url = `${baseUrl.replace(/\/+$/, '')}/models/${encodeURIComponent(model)}:generateContent`;
+    while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+    const url = `${baseUrl}/models/${encodeURIComponent(model)}:generateContent`;
 
     const requestBody = prepareGeminiRequestBody(request, options);
     const fetchFn = options.fetch || globalThis.fetch;
@@ -437,6 +454,7 @@ export async function executeGeminiReviewer(request, options = {}) {
     // Helper to race an async operation against cooperative deadline and abort signal
     const raceWithDeadline = (operationPromise) => {
       let expiredTimer;
+      let onAbort;
       const remainingMs = Math.max(0, deadline - Date.now());
       const expiredPromise = new Promise((_, reject) => {
         if (signal.aborted || Date.now() >= deadline) {
@@ -446,7 +464,7 @@ export async function executeGeminiReviewer(request, options = {}) {
         expiredTimer = setTimeout(() => {
           reject(new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`));
         }, remainingMs);
-        const onAbort = () => {
+        onAbort = () => {
           clearTimeout(expiredTimer);
           reject(signal.reason instanceof Error ? signal.reason : new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`));
         };
@@ -458,6 +476,7 @@ export async function executeGeminiReviewer(request, options = {}) {
         expiredPromise,
       ]).finally(() => {
         clearTimeout(expiredTimer);
+        if (onAbort) signal.removeEventListener('abort', onAbort);
       });
     };
 

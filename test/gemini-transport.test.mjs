@@ -1030,3 +1030,45 @@ test('cooperative external signal cancellation aborts execution', async () => {
   );
 });
 
+
+
+test('direct credentials cannot be dispatched outside selected official scope', async () => {
+  const request = { prompt: 'review', schema: { type: 'object' }, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024 } };
+  let calls = 0;
+  for (const baseUrl of ['https://example.com/v1beta', 'https://generativelanguage.googleapis.com/other', 'https://generativelanguage.googleapis.com/v1beta?key=other']) {
+    await assert.rejects(executeGeminiReviewer(request, { apiKey: 'secret', baseUrl, fetch: async () => { calls++; } }), /selected official provider scope/);
+  }
+  assert.equal(calls, 0);
+});
+
+test('invalid recorded deadlines fail before credential lookup or fetch', async () => {
+  for (const reviewTimeoutMs of [0, -1, Infinity, 1.5, 3600001]) {
+    const request = { prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024, reviewTimeoutMs } };
+    await assert.rejects(executeGeminiReviewer(request, { resolveGcloudAccessToken: () => { throw new Error('Unexpected credential lookup'); } }), /bounded integer timeout/);
+  }
+});
+
+test('verified Pro profile rejects disabled thinking and unsupported profiles', () => {
+  assert.throws(() => validateThinkingBudget('gemini-2.5-pro', 0), /supported bounds/);
+  assert.equal(validateThinkingBudget('gemini-2.5-pro', 128), 128);
+  assert.throws(() => validateThinkingBudget('gemini-3.8-flash', 1024), /unsupported model profile/);
+});
+
+
+test('Vertex scope cannot inject an arbitrary host through region', async () => {
+  const request = { prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024 } };
+  let calls = 0;
+  for (const region of ['example.com/path', 'example.com#', 'us-central1@evil.example']) {
+    await assert.rejects(executeGeminiReviewer(request, { accessToken: 'fixture-token', projectId: 'p', region, fetch: async () => { calls++; } }), /invalid Vertex project or region scope/);
+  }
+  assert.equal(calls, 0);
+});
+
+
+test('canonical official endpoint permits trailing slash normalization', async () => {
+  const request = { prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024 } };
+  await executeGeminiReviewer(request, { apiKey: 'fixture', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/', fetch: async url => {
+    assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent');
+    return { ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS"}' }] } }] }) };
+  } });
+});

@@ -5,16 +5,16 @@
  * Zero external npm dependencies: uses Node.js standard library and native fetch.
  */
 import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { runGeminiReviewer } from './gemini-transport.mjs';
 import { validateJsonSchema } from './json-schema.mjs';
-import { createReviewRequestAsync, committedInput, loadConfig, validateReviewResponse } from './review-contract.mjs';
+import { preflightReviewRequest, validateReviewResponse } from './review-contract.mjs';
 import { appendGitHubOutput } from './runner-temp-path.mjs';
 
 /**
- * Resolves a file path relative to an authorized root directory using lexical checks.
+ * Resolves a file path relative to an authorized root directory using lexical and existing-ancestor realpath checks.
  * Rejects null bytes and verifies that the lexical path does not traverse outside
  * baseDir or recognized temporary directories.
  * @param {string} userPath
@@ -56,6 +56,16 @@ export function resolveSafePath(userPath, baseDir) {
     }
   }
 
+  // A lexical in-root path must not escape through a symlink, including output parents.
+  let ancestor = resolved;
+  while (!existsSync(ancestor) && dirname(ancestor) !== ancestor) ancestor = dirname(ancestor);
+  const physicalAncestor = realpathSync(ancestor);
+  const roots = [root, process.env.RUNNER_TEMP, tmpdir(), '/tmp', '/private/tmp', '/var/folders', '/private/var/folders'].filter(Boolean);
+  if (!roots.some(candidate => {
+    if (!existsSync(candidate)) return false;
+    const rel = relative(realpathSync(candidate), physicalAncestor);
+    return rel !== '..' && !rel.startsWith('../') && !isAbsolute(rel);
+  })) throw new Error('Path traversal denied: symlink escapes authorized root directories.');
   return resolved;
 }
 
@@ -117,7 +127,7 @@ export function resolveReviewRequest(options, root = process.cwd()) {
 
   const prompt = readFileSync(safePromptPath, 'utf8');
   const schema = JSON.parse(readFileSync(safeSchemaPath, 'utf8'));
-  const model = options.model || process.env.MODEL || 'gemini-3.8-flash';
+  const model = options.model || process.env.MODEL || 'gemini-2.5-flash';
   const timeoutMs = Number(options.timeout || process.env.TIMEOUT_MS || 120000);
 
   const rawBudget = options['thinking-budget'] || options.budget || process.env.THINKING_BUDGET;
@@ -167,6 +177,8 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
   const request = resolveReviewRequest(options, cwd);
 
   const transportOptions = {};
+  if (options.project) transportOptions.projectId = options.project;
+  if (options.region) transportOptions.region = options.region;
   if (options['proxy-url'] || process.env.REVIEW_PROXY_URL) {
     transportOptions.proxyUrl = options['proxy-url'] || process.env.REVIEW_PROXY_URL;
   }
@@ -187,29 +199,7 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
   // Treat the prompt/schema-only standalone path as a separately labeled compatibility route with no protected-authority claim.
   const isRevisionBound = Boolean(request.reviewedRevision || request.authoritySet);
   if (isRevisionBound) {
-    process.stderr.write(`[gemini-ci-runner] Performing preflight verification for revision-bound request (revision=${request.reviewedRevision})...\n`);
-    const config = loadConfig(request.repositoryRoot, request.reviewedRevision);
-    if (config.version !== request.version) {
-      throw new Error('Architecture review request route changed.');
-    }
-    // Verify request integrity: reconstruct reference request to verify prompt, schema, reviewer, authority selection
-    const canonicalRequest = await createReviewRequestAsync(request.task, request.repositoryRoot);
-    if (canonicalRequest.reviewedRevision !== request.reviewedRevision) {
-      throw new Error('Architecture review request revision mismatch.');
-    }
-    if (canonicalRequest.schemaPath && canonicalRequest.schema) {
-      if (JSON.stringify(canonicalRequest.schema) !== JSON.stringify(request.schema)) {
-        throw new Error('Architecture review request schema mismatch with committed configuration.');
-      }
-    }
-    if (request.authoritySet && canonicalRequest.authoritySet) {
-      if (canonicalRequest.authoritySet.setDigest !== request.authoritySet.setDigest) {
-        throw new Error('Architecture review request authority set mismatch with committed configuration.');
-      }
-    }
-    if (canonicalRequest.requestId !== request.requestId) {
-      throw new Error('Architecture review request was modified.');
-    }
+    await preflightReviewRequest(request, 'gemini');
   } else {
     process.stderr.write('[gemini-ci-runner] Warning: running standalone prompt/schema compatibility route (no protected authority claim).\n');
   }

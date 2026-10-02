@@ -1,9 +1,11 @@
+import { createHash } from 'node:crypto';
+import { createReviewRequestAsync, preflightReviewRequest } from '../src/review-contract.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseArgs, resolveReviewRequest, runGeminiCiReview } from '../src/gemini-ci-runner.mjs';
+import { parseArgs, resolveSafePath, resolveReviewRequest, runGeminiCiReview } from '../src/gemini-ci-runner.mjs';
 
 test('parseArgs parses key-value and flag arguments', () => {
   const args = ['--prompt', 'p.md', '--schema', 's.json', '--flag', '--output', 'out.json'];
@@ -301,3 +303,49 @@ test('resolveReviewRequest configures explicit Gemini provider with thinkingBudg
 });
 
 
+
+
+test('revision-bound request mutations and Codex selection are rejected before fetch', async () => {
+  const request = await createReviewRequestAsync('Test preflight rejection');
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-preflight-'));
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; throw new Error('Provider must not execute'); };
+  try {
+    for (const change of [
+      { prompt: request.prompt + 'tampered' },
+      { schema: { type: 'object' } },
+      { reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024 } },
+    ]) {
+      writeFileSync(join(dir, 'request.json'), JSON.stringify({ ...request, ...change }));
+      await assert.rejects(runGeminiCiReview(['--request-json', 'request.json'], dir), /request was modified/);
+    }
+    writeFileSync(join(dir, 'request.json'), JSON.stringify(request));
+    await assert.rejects(runGeminiCiReview(['--request-json', 'request.json'], dir), /recorded gemini provider selection/);
+    assert.equal(calls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+
+test('runner paths reject symlink escapes for reads and new outputs', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-path-'));
+  try {
+    symlinkSync('/etc', join(dir, 'outside'));
+    assert.throws(() => resolveSafePath('outside/hosts', dir), /symlink escapes/);
+    assert.throws(() => resolveSafePath('outside/new-output.json', dir), /symlink escapes/);
+    assert.equal(resolveSafePath('new-output.json', dir), join(dir, 'new-output.json'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+test('shared preflight compares rehashed requests to committed selection', async () => {
+  const request = await createReviewRequestAsync('Verify committed selection');
+  assert.equal(await preflightReviewRequest(request, 'codex'), request);
+  const { requestId, ...unsigned } = request;
+  unsigned.reviewer = { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024, reviewTimeoutMs: request.reviewer.reviewTimeoutMs };
+  const forged = { ...unsigned, requestId: createHash('sha256').update(JSON.stringify(unsigned)).digest('hex') };
+  await assert.rejects(preflightReviewRequest(forged, 'gemini'), /differs from committed inputs/);
+});

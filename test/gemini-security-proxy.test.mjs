@@ -47,6 +47,7 @@ test('validateGeminiRoute allowlists only valid generateContent endpoints', () =
 
 test('GeminiSecurityProxy binds strictly to 127.0.0.1 with ephemeral port and rejects non-POST', async () => {
   const proxy = await startGeminiSecurityProxy({
+    allowedMode: 'studio', allowedModel: 'gemini-2.5-flash',
     credentials: { type: 'apiKey', value: 'secret-test-key' },
   });
 
@@ -93,6 +94,7 @@ test('GeminiSecurityProxy injects credentials in-flight to upstream and rejects 
   const upstreamPort = mockUpstream.address().port;
 
   const proxy = await startGeminiSecurityProxy({
+    allowedMode: 'studio', allowedModel: 'gemini-2.5-flash',
     credentials: { type: 'apiKey', value: 'test-api-secret-123' },
     upstreamHost: '127.0.0.1',
     upstreamPort,
@@ -133,6 +135,7 @@ test('GeminiSecurityProxy injects Bearer token for Vertex requests', async () =>
   const upstreamPort = mockUpstream.address().port;
 
   const proxy = await startGeminiSecurityProxy({
+    allowedMode: 'vertex', allowedModel: 'gemini-2.5-flash', allowedProject: 'my-p', allowedRegion: 'us-central1',
     credentials: { type: 'bearer', value: 'oauth-token-xyz' },
     upstreamHost: '127.0.0.1',
     upstreamPort,
@@ -156,4 +159,13 @@ test('GeminiSecurityProxy injects Bearer token for Vertex requests', async () =>
     await proxy.shutdown();
     await new Promise(resolve => mockUpstream.close(resolve));
   }
+});
+
+
+test('proxy rejects absent or credential-incompatible scope before listening', async () => {
+  for (const config of [
+    { credentials: { type: 'apiKey', value: 'fixture' } },
+    { credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex', allowedModel: 'gemini-2.5-flash' },
+    { credentials: { type: 'apiKey', value: 'fixture' }, allowedMode: 'vertex', allowedModel: 'gemini-2.5-flash', allowedProject: 'p', allowedRegion: 'r' }
+  ]) await assert.rejects(startGeminiSecurityProxy(config), /complete credential-compatible/);
 });

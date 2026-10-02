@@ -133,6 +133,15 @@ In addition to Codex, repositories can run automated reviews with Google Gemini
 using the standalone runner `architecture-review-gemini-ci`. It supports keyless
 authentication via Google Cloud Workload Identity Federation (WIF) and Vertex AI,
 as well as Google AI Studio API keys.
+The launcher requires an explicit model scope (or the model in `--request-json`)
+and a project scope for Vertex. Standalone prompt/schema reviews are compatibility
+feedback, without protected-authority assurance. Revision-bound requests must
+pass shared preflight and record `provider: "gemini"`; Codex selections are rejected.
+The current shared request constructor does not yet support committed Gemini
+settings (#265), so that route remains unavailable rather than falling back.
+Explicit Gemini thinking budgets currently support `gemini-2.5-flash` and
+`gemini-2.5-pro`; direct endpoints must match the selected official provider scope.
+
 
 ## Assurance boundary
 

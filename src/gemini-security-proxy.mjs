@@ -57,6 +57,15 @@ export async function startGeminiSecurityProxy(config) {
   }
 
   const { credentials } = config;
+  const validScope = value => typeof value === 'string' && /^[A-Za-z0-9._-]+$/.test(value);
+  if (!validScope(config.allowedModel) ||
+      !['studio', 'vertex'].includes(config.allowedMode) ||
+      (credentials.type === 'apiKey' ? config.allowedMode !== 'studio' :
+       credentials.type !== 'bearer' || config.allowedMode !== 'vertex') ||
+      (config.allowedMode === 'vertex' &&
+       (!validScope(config.allowedProject) || !validScope(config.allowedRegion)))) {
+    throw new Error('GeminiSecurityProxy requires complete credential-compatible selected scope.');
+  }
   const upstreamHostOverride = config.upstreamHost || null;
 
   return new Promise((resolve, reject) => {
