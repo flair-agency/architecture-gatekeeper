@@ -311,10 +311,13 @@ and credential-isolated proxy architecture (`src/gemini-launcher.mjs`,
 fail-closed architecture reviews with Google Gemini.
 
 In accordance with the normative architecture contract (`docs/architecture.md`),
-the execution boundary enforces strict privilege separation:
+the launcher/proxy boundary supplies credential non-inheritance and scoped
+dispatch; it does not supply same-user host isolation:
 - **Trusted Launcher (`src/gemini-launcher.mjs`)**: Privileged supervisor process that receives
   credentials in trusted CI, starts the security proxy on local loopback, strips all sensitive
-  environment variables (`GEMINI_API_KEY`, tokens) via `env -u`, and spawns the runner.
+  known credential and OIDC environment selectors, and spawns the runner. It requires
+  supplied credentials rather than local gcloud renewal and applies a bounded session
+  deadline with child termination and proxy cleanup.
 - **Security Proxy (`src/gemini-security-proxy.mjs`)**: Listens strictly on `127.0.0.1:<ephemeral>`,
   enforces strict route allowlisting (`POST ...:generateContent`), injects credentials in-flight,
   and rejects redirects and non-allowlisted routes with `403 Forbidden`.
@@ -328,16 +331,19 @@ It supports two authentication modes with automatic endpoint routing:
   `google-github-actions/auth@v2`) is present along with a Google Cloud project
   (`GOOGLE_CLOUD_PROJECT`), requests automatically route to Google Cloud Vertex AI
   (`https://${REGION}-aiplatform.googleapis.com/...`). This avoids static API keys entirely.
-  To prevent unexpected cost overruns, consumers can configure Google Cloud Billing
-  Spend Limits (budget cap) for Vertex AI.
 - **Static API Key with Google AI Studio**:
   When `GEMINI_API_KEY` is supplied, requests automatically route to
   Google AI Studio (`https://generativelanguage.googleapis.com/...`).
 
-In accordance with cloud security best practices, short-lived WIF tokens take
-precedence over static API keys. The runner deterministically validates the response
-against the repository's decision schema, persists `decision.json` with mode `0600`,
-and sets standard GitHub Actions outputs (`decision-kind`, `decision-file`, `final-message`).
+Environment bearer tokens take precedence over environment API keys; explicit
+credential options follow the transport's explicit-option precedence. The runner
+validates decisions under the selected route and creates `decision.json` with mode
+`0600` in a private temporary directory outside the checkout by default. Explicit
+output paths must also be outside the reviewed repository and must not already
+exist. When `GITHUB_OUTPUT` is present, it publishes `decision-kind`, `decision-file`
+and `final-message` through the verified runner command-file directory, including
+from a checkout working directory. Required output publication failure fails the
+command. CI adoption must separately select a trusted runtime and acceptance policy.
 
 The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)
 and a `review-step-timeout-minutes` input (default 5). This repository's

@@ -368,6 +368,7 @@ export async function executeGeminiReviewer(request, options = {}) {
 
   try {
     const remainingMs = Math.max(0, timeoutMs - (Date.now() - startTime));
+    if (remainingMs <= 0 || signal.aborted) throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
     const gcloudTimeoutMs = Math.min(4000, remainingMs);
 
     const proxyUrl = options.proxyUrl || process.env.REVIEW_PROXY_URL;

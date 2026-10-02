@@ -139,6 +139,10 @@ feedback, without protected-authority assurance. Revision-bound requests must
 pass shared preflight and record `provider: "gemini"`; Codex selections are rejected.
 The current shared request constructor does not yet support committed Gemini
 settings (#265), so that route remains unavailable rather than falling back.
+Decision files default to a private temporary directory outside the checkout.
+Explicit output paths must be new files outside the reviewed repository. If
+`GITHUB_OUTPUT` is present, publication failure fails the runner; normal checkout
+execution uses the verified runner command-file directory.
 The isolated launcher requires an explicit/environment key or access token and does
 not run local gcloud renewal. It applies a bounded session deadline, shuts down the
 proxy and terminates the child on expiry (exit 124), escalating after 250 ms. This

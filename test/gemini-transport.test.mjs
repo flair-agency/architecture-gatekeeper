@@ -1084,3 +1084,14 @@ test('decision extraction finishing after the deadline cannot return a semantic 
     await assert.rejects(executeGeminiReviewer(request, { apiKey: 'fixture', fetch: async () => ({ ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [part] } }] }) }) }), /timed out after 5ms/);
   } finally { Date.now = originalNow; }
 });
+
+
+test('exhausted deadline never invokes credential discovery with an unlimited timeout', async () => {
+  const savedNow = Date.now;
+  let reads = 0, calls = 0;
+  Date.now = () => reads++ === 0 ? 1000 : 1010;
+  try {
+    await assert.rejects(executeGeminiReviewer({ prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024, reviewTimeoutMs: 5 } }, { resolveGcloudAccessToken: () => { calls++; return 'token'; } }), /timed out/);
+    assert.equal(calls, 0);
+  } finally { Date.now = savedNow; }
+});

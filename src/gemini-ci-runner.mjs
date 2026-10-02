@@ -4,13 +4,13 @@
  * Standalone review runner for Gemini provider in CI and local workflows.
  * Zero external npm dependencies: uses Node.js standard library and native fetch.
  */
-import { constants, existsSync, lstatSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { constants, existsSync, lstatSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { dirname, join, isAbsolute, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { runGeminiReviewer } from './gemini-transport.mjs';
 import { validateJsonSchema } from './json-schema.mjs';
-import { preflightReviewRequest, validateReviewResponse } from './review-contract.mjs';
+import { preflightReviewRequest, repositoryRoot, validateReviewResponse } from './review-contract.mjs';
 import { appendGitHubOutput } from './runner-temp-path.mjs';
 
 /**
@@ -188,10 +188,27 @@ export function formatGitHubReviewOutputs(decision, outputPath) {
  */
 export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = process.cwd()) {
   const options = parseArgs(argv);
-  const rawOutput = options.output || process.env.OUTPUT_PATH || 'decision.json';
-  const outputPath = resolveSafePath(rawOutput, cwd);
-
   const request = resolveReviewRequest(options, cwd);
+  const rawOutput = options.output || process.env.OUTPUT_PATH || join(mkdtempSync(join(tmpdir(), 'agk-gemini-result-')), 'decision.json');
+  const outputPath = resolveSafePath(rawOutput, cwd);
+  const checkoutRoots = new Set();
+  for (const source of [cwd, request.repositoryRoot].filter(Boolean)) {
+    try { checkoutRoots.add(repositoryRoot(source)); } catch { /* Non-Git compatibility inputs have no checkout. */ }
+  }
+  const verifyOutput = () => {
+    resolveSafePath(outputPath, cwd);
+    for (const checkoutRoot of checkoutRoots) {
+      let ancestor = outputPath;
+      while (!existsSync(ancestor) && dirname(ancestor) !== ancestor) ancestor = dirname(ancestor);
+      for (const path of [outputPath, realpathSync(ancestor)]) {
+        const rel = relative(checkoutRoot, path);
+        if (rel !== '..' && !rel.startsWith('../') && !isAbsolute(rel)) throw new Error('Review output must be outside the reviewed repository.');
+      }
+    }
+    try { lstatSync(outputPath); throw new Error('Review output must be a new file; overwriting is prohibited.'); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+  };
+  verifyOutput();
 
   const transportOptions = {};
   if (options.project) transportOptions.projectId = options.project;
@@ -239,18 +256,14 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
 
   // Persist result to output file
   const serialized = JSON.stringify(validatedDecision, null, 2);
-  resolveSafePath(outputPath, cwd);
-  writeFileSync(outputPath, `${serialized}\n`, { mode: 0o600, flag: constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | (constants.O_NOFOLLOW ?? 0) });
+  verifyOutput();
+  writeFileSync(outputPath, `${serialized}\n`, { mode: 0o600, flag: constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (constants.O_NOFOLLOW ?? 0) });
   process.stderr.write(`[gemini-ci-runner] Review completed: decision=${validatedDecision.decision}, summary=${validatedDecision.summary}\n`);
   process.stderr.write(`[gemini-ci-runner] Decision persisted to: ${outputPath}\n`);
 
   // If running inside GitHub Actions, export output variables safely
   if (process.env.GITHUB_OUTPUT) {
-    try {
-      appendGitHubOutput(githubOutputs);
-    } catch (err) {
-      process.stderr.write(`[gemini-ci-runner] GITHUB_OUTPUT export skipped: ${err.message}\n`);
-    }
+    appendGitHubOutput(githubOutputs, { runnerTempDirectory: process.env.RUNNER_TEMP });
   }
 
   return validatedDecision;

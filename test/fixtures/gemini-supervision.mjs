@@ -1,0 +1,16 @@
+import { spawn } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { runIsolatedGeminiSession } from '../../src/gemini-launcher.mjs';
+const [mode, state] = process.argv.slice(2);
+const script = fileURLToPath(import.meta.url);
+if (mode === 'supervisor') {
+  runIsolatedGeminiSession(['hang', state, '--model', 'gemini-2.5-flash'], { timeoutMs: 5000, runnerScript: script, credentialsOptions: { apiKey: 'fixture' } }).then(code => process.exit(code));
+} else {
+  if (mode === 'parent') spawn(process.execPath, [script, 'descendant', state], { stdio: 'ignore' });
+  else {
+    process.on('SIGTERM', () => {});
+    writeFileSync(state, mode === 'descendant' ? String(process.pid) : JSON.stringify({ pid: process.pid, proxy: process.env.REVIEW_PROXY_URL }));
+  }
+  setInterval(() => {}, 1000);
+}

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReviewRequestAsync, preflightReviewRequest } from '../src/review-contract.mjs';
 import test from 'node:test';
@@ -369,4 +370,37 @@ test('runner rejects dangling file and parent symlinks before dispatch or persis
     assert.throws(() => resolveSafePath('decision.json', dir), /dangling or inaccessible/);
     assert.throws(() => resolveSafePath('parent/decision.json', dir), /dangling or inaccessible/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+test('review output rejects repository writes and publishes from checkout cwd', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-output-contract-'));
+  const root = join(dir, 'checkout'); mkdirSync(root);
+  const runnerTemp = realpathSync(dir);
+  const originalFetch = globalThis.fetch, savedEnv = { ...process.env };
+  let calls = 0;
+  try {
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    writeFileSync(join(root, 'prompt.md'), 'review');
+    writeFileSync(join(root, 'schema.json'), '{"type":"object"}');
+    writeFileSync(join(root, 'authority.md'), 'unchanged authority');
+    globalThis.fetch = async () => { calls++; return { ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS","summary":"ok"}' }] } }] }) }; };
+    const args = ['--prompt','prompt.md','--schema','schema.json','--model','gemini-2.5-flash','--api-key','fixture'];
+    for (const path of ['authority.md', 'decision.json']) await assert.rejects(runGeminiCiReview([...args,'--output',path],root), /outside the reviewed repository/);
+    assert.equal(calls,0);
+    assert.equal(readFileSync(join(root,'authority.md'),'utf8'),'unchanged authority');
+    const commandDir = join(runnerTemp,'_runner_file_commands'); mkdirSync(commandDir);
+    process.env.RUNNER_TEMP = runnerTemp;
+    process.env.GITHUB_OUTPUT = join(commandDir,'set_output_fixture'); writeFileSync(process.env.GITHUB_OUTPUT,'');
+    assert.equal((await runGeminiCiReview(args,root)).decision,'PASS');
+    const published = readFileSync(process.env.GITHUB_OUTPUT,'utf8');
+    assert.match(published,/decision-kind=PASS/);
+    const resultPath = published.match(/^decision-file=(.+)$/m)[1];
+    assert.ok(!resultPath.startsWith(root+'/'));
+    rmSync(join(resultPath,'..'),{recursive:true,force:true});
+    process.env.GITHUB_OUTPUT = join(runnerTemp,'not_a_command_file');
+    const out = join(runnerTemp,'rejected-publication.json');
+    await assert.rejects(runGeminiCiReview([...args,'--output',out],root), /outside the runner-created command-file directory/);
+    await assert.rejects(runGeminiCiReview([...args,'--output',out],root), /overwriting is prohibited/);
+  } finally { globalThis.fetch=originalFetch; process.env=savedEnv; rmSync(dir,{recursive:true,force:true}); }
 });

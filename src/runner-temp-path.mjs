@@ -88,12 +88,12 @@ export function writeRunnerTempFile(directory, fileName, contents, { overwrite =
 }
 
 /** Append bounded step outputs only to the runner-created command file under RUNNER_TEMP. */
-export function appendGitHubOutput(contents) {
+export function appendGitHubOutput(contents, { runnerTempDirectory = process.cwd() } = {}) {
   if (typeof contents !== 'string' || contents.length === 0 || Buffer.byteLength(contents, 'utf8') > 16_384 ||
       contents.includes('\0')) fail('workflow output must be non-empty bounded text.');
   let runnerTemp;
-  try { runnerTemp = realpathSync(process.cwd()); } catch { fail('runner temp directory is unavailable.'); }
-  if (!process.env.RUNNER_TEMP || process.env.RUNNER_TEMP !== process.cwd()) fail('working directory is not the runner temp directory.');
+  try { runnerTemp = realpathSync(runnerTempDirectory); } catch { fail('runner temp directory is unavailable.'); }
+  if (!process.env.RUNNER_TEMP || process.env.RUNNER_TEMP !== runnerTempDirectory || runnerTemp !== runnerTempDirectory) fail('output root is not the canonical runner temp directory.');
   const commandDirectory = join(runnerTemp, '_runner_file_commands');
   let commandDirectoryStat;
   try { commandDirectoryStat = lstatSync(commandDirectory); } catch { fail('runner command-file directory is unavailable.'); }

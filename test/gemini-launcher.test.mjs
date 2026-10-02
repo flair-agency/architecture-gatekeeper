@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -302,15 +303,18 @@ test('isolated sessions never invoke gcloud credential fallback', async () => {
 test('launcher deadline kills a SIGTERM-ignoring child and closes the proxy', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'gemini-launcher-deadline-'));
   const state = join(dir, 'state.json');
+  const fixture = fileURLToPath(new URL('./fixtures/gemini-supervision.mjs', import.meta.url));
   try {
-    const script = join(dir, 'hung.mjs');
-    writeFileSync(script, `import {writeFileSync} from 'node:fs'; process.on('SIGTERM',()=>{}); writeFileSync(${JSON.stringify(state)}, JSON.stringify({pid:process.pid, proxy:process.env.REVIEW_PROXY_URL})); setInterval(()=>{},1000);`);
     const started = Date.now();
-    assert.equal(await runIsolatedGeminiSession(['--model','gemini-2.5-flash'], { timeoutMs: 400, runnerScript: script, credentialsOptions: { apiKey: 'fixture' } }), 124);
+    assert.equal(await runIsolatedGeminiSession(['hang', state, '--model','gemini-2.5-flash'], { timeoutMs: 400, runnerScript: fixture, credentialsOptions: { apiKey: 'fixture' } }), 124);
     assert.ok(Date.now()-started < 5000);
     const observed = JSON.parse(readFileSync(state));
     assert.throws(() => process.kill(observed.pid, 0), /ESRCH/);
-    await assert.rejects(fetch(observed.proxy));
+    const observedEndpoint = new URL(observed.proxy);
+    assert.equal(observedEndpoint.hostname, '127.0.0.1');
+    const endpoint = new URL('http://127.0.0.1');
+    endpoint.port = observedEndpoint.port;
+    await assert.rejects(fetch(endpoint));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -319,11 +323,8 @@ test('deadline escalation survives direct child exit and stops its descendant', 
   const dir = mkdtempSync(join(tmpdir(), 'gemini-descendant-'));
   const state = join(dir, 'descendant.pid');
   try {
-    const descendant = join(dir, 'descendant.mjs');
-    writeFileSync(descendant, `import{writeFileSync}from'node:fs'; process.on('SIGTERM',()=>{}); writeFileSync(${JSON.stringify(state)},String(process.pid)); setInterval(()=>{},1000);`);
-    const parent = join(dir, 'parent.mjs');
-    writeFileSync(parent, `import{spawn}from'node:child_process'; spawn(process.execPath,[${JSON.stringify(descendant)}],{stdio:'ignore'}); setInterval(()=>{},1000);`);
-    assert.equal(await runIsolatedGeminiSession(['--model','gemini-2.5-flash'], { timeoutMs: 600, runnerScript: parent, credentialsOptions: { apiKey: 'fixture' } }), 124);
+    const fixture = fileURLToPath(new URL('./fixtures/gemini-supervision.mjs', import.meta.url));
+    assert.equal(await runIsolatedGeminiSession(['parent',state,'--model','gemini-2.5-flash'], { timeoutMs:600, runnerScript:fixture, credentialsOptions:{apiKey:'fixture'} }),124);
     const pid = Number(readFileSync(state));
     const status = spawnSync('ps', ['-o','stat=','-p',String(pid)], { encoding:'utf8' });
     assert.ok(status.status !== 0 || !status.stdout.trim() || status.stdout.trim().startsWith('Z'), `Descendant still running: ${status.stdout}`);
@@ -335,18 +336,21 @@ test('supervisor termination is forwarded to a detached runner', { skip: process
   let supervisor;
   try {
     const state = join(dir, 'child.pid');
-    const childScript = join(dir, 'child.mjs');
-    writeFileSync(childScript, `import{writeFileSync}from'node:fs'; process.on('SIGTERM',()=>{}); writeFileSync(${JSON.stringify(state)},String(process.pid)); setInterval(()=>{},1000);`);
-    const wrapper = join(dir, 'supervisor.mjs');
-    const launcher = new URL('../src/gemini-launcher.mjs', import.meta.url).href;
-    writeFileSync(wrapper, `import{runIsolatedGeminiSession}from ${JSON.stringify(launcher)}; runIsolatedGeminiSession(['--model','gemini-2.5-flash'],{timeoutMs:5000,runnerScript:${JSON.stringify(childScript)},credentialsOptions:{apiKey:'fixture'}}).then(code=>process.exit(code));`);
-    supervisor = spawn(process.execPath, [wrapper], { stdio:'ignore' });
+    const fixture = fileURLToPath(new URL('./fixtures/gemini-supervision.mjs', import.meta.url));
+    supervisor = spawn(process.execPath, [fixture, 'supervisor', state], { stdio:'ignore' });
     const closed = new Promise((resolve,reject) => { supervisor.once('close',resolve); supervisor.once('error',reject); });
     const deadline = Date.now()+4000;
     while (!existsSync(state) && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,20));
     assert.ok(existsSync(state));
     supervisor.kill('SIGTERM');
     assert.equal(await closed,143);
-    assert.throws(()=>process.kill(Number(readFileSync(state)),0),/ESRCH/);
+    assert.throws(()=>process.kill(JSON.parse(readFileSync(state)).pid,0),/ESRCH/);
   } finally { supervisor?.kill('SIGKILL'); rmSync(dir,{recursive:true,force:true}); }
+});
+
+
+test('missing credential values reject before consuming adjacent flags', async () => {
+  for (const args of [['--api-key','--access-token','secret'], ['--access-token','--model','gemini-2.5-flash'], ['--api-key'], ['--access-token=']]) {
+    await assert.rejects(runIsolatedGeminiSession(args), /Missing .*credential value/);
+  }
 });
