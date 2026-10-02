@@ -36,7 +36,19 @@ test('Environment selection is fixed to protected self main workflow context bef
 test('opt-in guard accepts only self main context and leaves generic callers on the default route', async () => {
   const step = reusableWorkflow.match(/- name: Validate opt-in self-review Environment selection\n[\s\S]*?\n        run: \|\n((?:          .*\n)+)/)?.[1];
   assert.ok(step, 'guard run block must be present');
-  const script = step.split('\n').map(line => line.replace(/^          /, '')).join('\n');
+  // Execute only this fixed fixture; workflow bytes are compared as data.
+  const script = `set -euo pipefail
+if test "$SELECTED" = true; then
+  test "$REPOSITORY" = flair-agency/architecture-gatekeeper
+  test "$EVENT_NAME" = pull_request_target
+  test "$WORKFLOW_REF" = flair-agency/architecture-gatekeeper/.github/workflows/self-architecture-gate.yml@refs/heads/main
+  test "$BASE_REF" = main
+  echo 'selected=true' >> "$GITHUB_OUTPUT"
+else
+  echo 'selected=false' >> "$GITHUB_OUTPUT"
+fi
+`;
+  assert.equal(step.split('\n').map(line => line.replace(/^          /, '')).join('\n'), script);
   const directory = await mkdtemp(join(tmpdir(), 'agk-self-environment-'));
   try {
     const run = async ({ selected = 'false', repository = 'any/consumer', event = 'pull_request', ref = 'any/workflow.yml@refs/heads/main', base = 'main' } = {}) => {
