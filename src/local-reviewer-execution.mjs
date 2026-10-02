@@ -1,9 +1,16 @@
 import { runCodexReviewer } from './codex-transport.mjs';
 
+export function localReviewerProvider(request) {
+  const provider = request.reviewer?.provider ?? 'codex';
+  if (!['codex', 'gemini'].includes(provider)) throw new Error('Unsupported recorded local reviewer provider.');
+  return provider;
+}
+
 // Local composition boundary. Adapters return a raw decision; callers retain
 // revision-bound request construction and deterministic response validation.
 // The existing synchronous Codex adapter remains the compatibility default.
 export function executeLocalReviewerSync(request, { reviewer = runCodexReviewer } = {}) {
+  if (localReviewerProvider(request) !== 'codex') throw new Error('Selected local provider requires the async review API.');
   if (typeof reviewer !== 'function') throw new Error('Local reviewer adapter must be a function.');
   const decision = reviewer(request);
   if (decision && typeof decision.then === 'function') {
@@ -14,7 +21,12 @@ export function executeLocalReviewerSync(request, { reviewer = runCodexReviewer 
   return decision;
 }
 
-export async function executeLocalReviewer(request, { reviewer = runCodexReviewer } = {}) {
+export async function executeLocalReviewer(request, { reviewer } = {}) {
+  const provider = localReviewerProvider(request);
+  if (reviewer === undefined) {
+    if (provider !== 'codex') throw new Error('Selected local provider has no configured async adapter.');
+    reviewer = runCodexReviewer;
+  }
   if (typeof reviewer !== 'function') throw new Error('Local reviewer adapter must be a function.');
   const timeoutMs = request.reviewer?.reviewTimeoutMs;
   if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) throw new Error('Local reviewer requires a recorded deadline.');

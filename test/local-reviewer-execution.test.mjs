@@ -21,3 +21,18 @@ test('sync compatibility and async failures never manufacture a decision', async
   await assert.rejects(executeLocalReviewer({ reviewer: {} }), /recorded deadline/);
   assert.throws(() => executeLocalReviewerSync(request, { reviewer: async () => { throw new Error('async'); } }), /requires the async/);
 });
+
+
+test('sync provider rejection happens before any adapter dispatch', () => {
+  let calls = 0;
+  const reviewer = () => { calls += 1; return { decision: 'PASS' }; };
+  assert.throws(() => executeLocalReviewerSync({ reviewer: { provider: 'gemini' } }, { reviewer }), /requires the async/);
+  assert.throws(() => executeLocalReviewerSync({ reviewer: { provider: 'unknown' } }, { reviewer }), /Unsupported/);
+  assert.equal(calls, 0);
+});
+
+
+test('async provider cannot silently fall back to Codex', async () => {
+  await assert.rejects(executeLocalReviewer({ reviewer: { provider: 'gemini', reviewTimeoutMs: 50 } }), /no configured async adapter/);
+  await assert.rejects(executeLocalReviewer({ reviewer: { provider: 'unknown', reviewTimeoutMs: 50 } }), /Unsupported/);
+});
