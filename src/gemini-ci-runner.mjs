@@ -4,7 +4,7 @@
  * Standalone review runner for Gemini provider in CI and local workflows.
  * Zero external npm dependencies: uses Node.js standard library and native fetch.
  */
-import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { constants, existsSync, lstatSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -58,8 +58,16 @@ export function resolveSafePath(userPath, baseDir) {
 
   // A lexical in-root path must not escape through a symlink, including output parents.
   let ancestor = resolved;
-  while (!existsSync(ancestor) && dirname(ancestor) !== ancestor) ancestor = dirname(ancestor);
-  const physicalAncestor = realpathSync(ancestor);
+  while (true) {
+    try { lstatSync(ancestor); break; }
+    catch (error) {
+      if (error.code !== 'ENOENT' || dirname(ancestor) === ancestor) throw error;
+      ancestor = dirname(ancestor);
+    }
+  }
+  let physicalAncestor;
+  try { physicalAncestor = realpathSync(ancestor); }
+  catch { throw new Error('Path traversal denied: dangling or inaccessible path ancestor.'); }
   const roots = [root, process.env.RUNNER_TEMP, tmpdir(), '/tmp', '/private/tmp', '/var/folders', '/private/var/folders'].filter(Boolean);
   if (!roots.some(candidate => {
     if (!existsSync(candidate)) return false;
@@ -231,7 +239,8 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
 
   // Persist result to output file
   const serialized = JSON.stringify(validatedDecision, null, 2);
-  writeFileSync(outputPath, `${serialized}\n`, { mode: 0o600 });
+  resolveSafePath(outputPath, cwd);
+  writeFileSync(outputPath, `${serialized}\n`, { mode: 0o600, flag: constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | (constants.O_NOFOLLOW ?? 0) });
   process.stderr.write(`[gemini-ci-runner] Review completed: decision=${validatedDecision.decision}, summary=${validatedDecision.summary}\n`);
   process.stderr.write(`[gemini-ci-runner] Decision persisted to: ${outputPath}\n`);
 

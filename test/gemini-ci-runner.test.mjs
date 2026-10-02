@@ -359,3 +359,14 @@ test('GitHub output serialization rejects command-protocol injection', () => {
   assert.deepEqual(output.trimEnd().split('\n').map(line => line.split('=')[0]), ['final-message', 'decision-file', 'decision-kind']);
   assert.equal(output.trimEnd().split('\n').at(-1), 'decision-kind=BLOCK');
 });
+
+
+test('runner rejects dangling file and parent symlinks before dispatch or persistence', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-dangling-'));
+  try {
+    symlinkSync('/etc/agk-nonexistent-fixture-target', join(dir, 'decision.json'));
+    symlinkSync('/etc/agk-nonexistent-fixture-parent', join(dir, 'parent'));
+    assert.throws(() => resolveSafePath('decision.json', dir), /dangling or inaccessible/);
+    assert.throws(() => resolveSafePath('parent/decision.json', dir), /dangling or inaccessible/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
