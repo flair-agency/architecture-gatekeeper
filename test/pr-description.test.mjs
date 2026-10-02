@@ -46,6 +46,12 @@ test('rejects missing or duplicate required sections', () => {
   assert.equal(run(valid.replace('## Verification', '## Checks')).status, 1);
   assert.equal(run(valid + '\n## Verification\nPassed.').status, 1);
 });
+test('rejects reordered populated sections', () => {
+  const reordered = valid.replace(/(## Issue coverage[\s\S]*?)(## Verification[\s\S]*?)(?=## Remaining work)/, '$2$1');
+  const result = run(reordered);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /template order/);
+});
 test('ignores template instructions and rejects placeholders', () => {
   assert.equal(run(valid.replace('Makes the delivery record explicit.', '<!-- describe outcome -->')).status, 1);
   assert.equal(run(valid.replace('Makes the delivery record explicit.', 'TBD')).status, 1);

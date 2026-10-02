@@ -44,6 +44,10 @@ jobs:
           const required = ['Outcome', 'Issue coverage', 'Verification', 'Remaining work', 'Authority and assurance'];
           const errors = [];
           const fields = {};
+          const order = headings.filter(h => required.includes(h[1])).map(h => h[1]);
+          if (order.length === required.length && order.some((name, index) => name !== required[index])) {
+            errors.push('Use the required sections in the template order.');
+          }
           for (const name of required) {
             const matches = headings.filter(h => h[1] === name);
             if (matches.length !== 1) {
