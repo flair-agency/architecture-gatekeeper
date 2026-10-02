@@ -206,9 +206,10 @@ that decision becomes canonical and A receives fresh review. A consumer may
 separately select predecessor-B `OWNER_ADDITION / G0`; it is not semantic
 `PASS` for A or B and does not erase A's result.
 
-The initial route requires previous protected-base policy opt-in and an eligible
-authority path matching the previous Set's exactly one `self` member. B cannot
-enable or change policy. B adds only the missing decision: no existing-rule
+The initial route requires previous protected-base policy opt-in and its
+selection of the exact eligible authority path, matching the previous Set's
+exactly one `self` member. B may modify only that selected authority file; it
+cannot enable or change policy. B adds only the missing decision: no existing-rule
 changes, implementation/workflow changes, completion claims, contradictions or
 unrelated unresolved choices. Historical BLOCK evidence is not required; this
 route differs from OWNER_AMENDMENT.
