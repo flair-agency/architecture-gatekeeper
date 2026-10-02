@@ -4,6 +4,11 @@ This procedure releases the npm runtime and its GitHub release from one reviewed
 commit. The package workflow is triggered only by pushing a `v*` tag; do not
 publish from a local checkout or a preview rehearsal.
 
+GitHub Releases are the canonical release history. Prepare and human-review
+each release's notes in a temporary file outside the repository, pass that
+file to `gh release create`, and do not keep duplicate changelog or release
+notes files in the repository.
+
 ## Choose the release channel
 
 Numbered previews may distribute improvements to paths already supported by
@@ -175,13 +180,19 @@ to `$RELEASE_VERSION` and `latest` must equal the workflow's captured
 Save both command outputs before creating the GitHub release.
 
 Once registry verification succeeds, create the GitHub release for the same
-tag, using the matching `docs/releases/v<version>.md` notes when present. For a
+tag. Prepare the human-reviewed body in `RELEASE_NOTES_FILE` outside the
+repository and verify the file exists and is nonempty before using it. For a
 preview run:
 
 ```sh
+RELEASE_NOTES_FILE='/absolute/path/to/reviewed-release-notes.md'
+RELEASE_REPO="$(node -e "process.stdout.write(require('node:fs').realpathSync(process.argv[1]))" "$(git rev-parse --show-toplevel)")"
+test -f "$RELEASE_NOTES_FILE" && test -s "$RELEASE_NOTES_FILE"
+RELEASE_NOTES_FILE="$(node -e "process.stdout.write(require('node:fs').realpathSync(process.argv[1]))" "$RELEASE_NOTES_FILE")"
+case "$RELEASE_NOTES_FILE" in "$RELEASE_REPO"/*) echo 'release notes must be outside the repository' >&2; exit 1 ;; esac
 gh release create "$RELEASE_TAG" --repo flair-agency/architecture-gatekeeper \
   --verify-tag --prerelease --title "$RELEASE_TAG" \
-  --notes-file "docs/releases/$RELEASE_TAG.md"
+  --notes-file "$RELEASE_NOTES_FILE"
 ```
 
 For stable, use the same command without `--prerelease`. Read back the release
@@ -192,7 +203,8 @@ gh release view "$RELEASE_TAG" --repo flair-agency/architecture-gatekeeper \
   --json url,tagName,targetCommitish,isDraft,isPrerelease,body
 ```
 
-For a preview, verify `isPrerelease: true`. Record the package version,
+For a preview, verify `isPrerelease: true`. Confirm the read-back body matches
+the reviewed notes file, then remove the temporary notes file. Record the package version,
 tag and peeled commit SHA, Actions run URL/ID, archive integrity, registry
 version and dist-tags readback, and GitHub release URL/readback in durable
 release evidence. Update the release issue and project with those links and
