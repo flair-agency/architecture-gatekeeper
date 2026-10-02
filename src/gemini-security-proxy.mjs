@@ -29,7 +29,8 @@ const ALLOWED_AI_STUDIO_HOST = 'generativelanguage.googleapis.com';
  */
 export function validateGeminiRoute(pathname) {
   if (!pathname || typeof pathname !== 'string') return null;
-  const cleanPath = pathname.split('?')[0];
+  if (pathname.includes('?') || pathname.includes('#')) return null;
+  const cleanPath = pathname;
 
   if (ALLOWED_AI_STUDIO_PATH.test(cleanPath)) {
     return { mode: 'studio', path: cleanPath };

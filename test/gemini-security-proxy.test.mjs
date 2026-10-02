@@ -23,10 +23,8 @@ test('validateGeminiRoute allowlists only valid generateContent endpoints', () =
     mode: 'studio',
     path: '/v1beta/models/gemini-2.5-flash:generateContent',
   });
-  assert.deepEqual(validateGeminiRoute('/v1beta/models/gemini-3.8-flash:generateContent?key=abc'), {
-    mode: 'studio',
-    path: '/v1beta/models/gemini-3.8-flash:generateContent',
-  });
+  assert.equal(validateGeminiRoute('/v1beta/models/gemini-3.8-flash:generateContent?key=abc'), null);
+  assert.equal(validateGeminiRoute('/v1beta/models/gemini-3.8-flash:generateContent#fragment'), null);
 
   // Vertex paths
   assert.deepEqual(

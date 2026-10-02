@@ -404,3 +404,8 @@ test('review output rejects repository writes and publishes from checkout cwd', 
     await assert.rejects(runGeminiCiReview([...args,'--output',out],root), /overwriting is prohibited/);
   } finally { globalThis.fetch=originalFetch; process.env=savedEnv; rmSync(dir,{recursive:true,force:true}); }
 });
+
+ test('runner preserves equals-form values and rejects explicit alternate providers before input reads', () => {
+  assert.deepEqual(parseArgs(['--request-json=a=b.json', '--model=gemini-2.5-flash', '--provider=codex']), { 'request-json': 'a=b.json', model: 'gemini-2.5-flash', provider: 'codex' });
+  for (const provider of ['codex', 'other', '']) assert.throws(() => resolveReviewRequest({ provider, prompt: 'missing', schema: 'missing' }), /explicit provider/);
+});

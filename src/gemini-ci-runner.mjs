@@ -87,6 +87,11 @@ export function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith('--')) {
+      const separator = arg.indexOf('=');
+      if (separator !== -1) {
+        options[arg.slice(2, separator)] = arg.slice(separator + 1);
+        continue;
+      }
       const key = arg.slice(2);
       if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
         options[key] = argv[++i];
@@ -105,6 +110,10 @@ export function parseArgs(argv) {
  * @returns {object}
  */
 export function resolveReviewRequest(options, root = process.cwd()) {
+  const selectedProvider = options.provider ?? process.env.REVIEWER_PROVIDER;
+  if (selectedProvider !== undefined && selectedProvider !== 'gemini') {
+    throw new Error('Gemini runner requires provider gemini; explicit provider cannot be replaced.');
+  }
   if (options['request-json']) {
     const reqPath = resolveSafePath(options['request-json'], root);
     if (!existsSync(reqPath)) {
@@ -215,6 +224,7 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
   if (options.region) transportOptions.region = options.region;
   if (options['proxy-url'] || process.env.REVIEW_PROXY_URL) {
     transportOptions.proxyUrl = options['proxy-url'] || process.env.REVIEW_PROXY_URL;
+    transportOptions.proxyMode = process.env.REVIEW_PROXY_MODE;
   }
   if (options['base-url'] || process.env.GEMINI_BASE_URL) {
     transportOptions.baseUrl = options['base-url'] || process.env.GEMINI_BASE_URL;

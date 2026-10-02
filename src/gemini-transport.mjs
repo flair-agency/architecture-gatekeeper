@@ -406,7 +406,11 @@ export async function executeGeminiReviewer(request, options = {}) {
       while (cleanProxyUrl.endsWith('/')) {
         cleanProxyUrl = cleanProxyUrl.slice(0, -1);
       }
-      const isVertex = Boolean(options.projectId || process.env.GOOGLE_CLOUD_PROJECT || process.env.CLOUDSDK_CORE_PROJECT);
+      const proxyMode = options.proxyMode ?? process.env.REVIEW_PROXY_MODE;
+      if (proxyMode !== undefined && !['studio', 'vertex'].includes(proxyMode)) throw new Error('Invalid selected proxy mode.');
+      const isVertex = proxyMode === undefined
+        ? Boolean(options.projectId || process.env.GOOGLE_CLOUD_PROJECT || process.env.CLOUDSDK_CORE_PROJECT)
+        : proxyMode === 'vertex';
       if (isVertex) {
         const projectId = options.projectId || process.env.GOOGLE_CLOUD_PROJECT || process.env.CLOUDSDK_CORE_PROJECT || 'default';
         const region = options.region || process.env.GOOGLE_CLOUD_REGION || 'us-central1';

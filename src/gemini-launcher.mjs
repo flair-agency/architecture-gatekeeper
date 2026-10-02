@@ -24,6 +24,7 @@ import { resolveAuthCredentials } from './gemini-transport.mjs';
 
 const SENSITIVE_ENV_VARS = [
   'GEMINI_API_KEY',
+  'GOOGLE_API_KEY',
   'CLOUDSDK_AUTH_ACCESS_TOKEN',
   'GOOGLE_OAUTH_ACCESS_TOKEN',
   'GOOGLE_APPLICATION_CREDENTIALS',
@@ -205,6 +206,7 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
 
   // 3. Prepare clean environment for runner
   const runnerEnv = buildIsolatedRunnerEnv(process.env, proxy.endpointUrl);
+  runnerEnv.REVIEW_PROXY_MODE = effectiveProxyConfig.allowedMode;
 
   const runnerPath = options.runnerScript || resolve(dirname(fileURLToPath(import.meta.url)), 'gemini-ci-runner.mjs');
 

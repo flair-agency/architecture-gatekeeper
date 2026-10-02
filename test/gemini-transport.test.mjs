@@ -1095,3 +1095,13 @@ test('exhausted deadline never invokes credential discovery with an unlimited ti
     assert.equal(calls, 0);
   } finally { Date.now = savedNow; }
 });
+
+test('selected Studio proxy mode ignores unrelated project configuration and invalid modes do not dispatch', async () => {
+  const request = { prompt: 'review', schema: { type: 'object' }, reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' } };
+  let calls = 0;
+  const fetch = async url => { calls++; assert.equal(new URL(url).pathname, '/v1beta/models/gemini-2.5-flash:generateContent'); return { ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS"}' }] } }] }) }; };
+  await runGeminiReviewer(request, { proxyUrl: 'http://127.0.0.1:1234', proxyMode: 'studio', projectId: 'unrelated-project', fetch });
+  assert.equal(calls, 1);
+  await assert.rejects(runGeminiReviewer(request, { proxyUrl: 'http://127.0.0.1:1234', proxyMode: 'invalid', fetch }), /Invalid selected proxy mode/);
+  assert.equal(calls, 1);
+});

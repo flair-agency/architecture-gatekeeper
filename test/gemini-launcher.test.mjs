@@ -354,3 +354,8 @@ test('missing credential values reject before consuming adjacent flags', async (
     await assert.rejects(runIsolatedGeminiSession(args), /Missing .*credential value/);
   }
 });
+
+test('credential aliases are withheld even with unrelated authentication selected', () => {
+  const env = buildIsolatedRunnerEnv({ GOOGLE_API_KEY: 'sentinel', google_api_key: 'sentinel', GEMINI_API_KEY: 'sentinel', CLOUDSDK_AUTH_ACCESS_TOKEN: 'sentinel', PATH: '/bin' }, 'http://127.0.0.1:1234');
+  assert.deepEqual(env, { PATH: '/bin', REVIEW_PROXY_URL: 'http://127.0.0.1:1234' });
+});
