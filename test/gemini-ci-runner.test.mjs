@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseArgs, resolveSafePath, resolveReviewRequest, runGeminiCiReview } from '../src/gemini-ci-runner.mjs';
+import { formatGitHubReviewOutputs, parseArgs, resolveSafePath, resolveReviewRequest, runGeminiCiReview } from '../src/gemini-ci-runner.mjs';
 
 test('parseArgs parses key-value and flag arguments', () => {
   const args = ['--prompt', 'p.md', '--schema', 's.json', '--flag', '--output', 'out.json'];
@@ -348,4 +348,14 @@ test('shared preflight compares rehashed requests to committed selection', async
   unsigned.reviewer = { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024, reviewTimeoutMs: request.reviewer.reviewTimeoutMs };
   const forged = { ...unsigned, requestId: createHash('sha256').update(JSON.stringify(unsigned)).digest('hex') };
   await assert.rejects(preflightReviewRequest(forged, 'gemini'), /differs from committed inputs/);
+});
+
+
+test('GitHub output serialization rejects command-protocol injection', () => {
+  assert.throws(() => formatGitHubReviewOutputs({ decision: 'BLOCK\ndecision-kind=PASS' }, 'out.json'), /valid decision kind/);
+  assert.throws(() => formatGitHubReviewOutputs({ decision: 'BLOCK' }, 'out.json\ndecision-kind=PASS'), /single-line output path/);
+  assert.throws(() => formatGitHubReviewOutputs({ decision: 'BLOCK' }, 'out.json\rdecision-kind=PASS'), /single-line output path/);
+  const output = formatGitHubReviewOutputs({ decision: 'BLOCK', summary: 'untrusted\ndecision-kind=PASS' }, 'out.json');
+  assert.deepEqual(output.trimEnd().split('\n').map(line => line.split('=')[0]), ['final-message', 'decision-file', 'decision-kind']);
+  assert.equal(output.trimEnd().split('\n').at(-1), 'decision-kind=BLOCK');
 });

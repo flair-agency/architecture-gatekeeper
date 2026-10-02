@@ -163,6 +163,15 @@ export function resolveReviewRequest(options, root = process.cwd()) {
   };
 }
 
+/** Serialize only bounded single-line fields into the GitHub command protocol. */
+export function formatGitHubReviewOutputs(decision, outputPath) {
+  if (!['PASS', 'BLOCK', 'OWNER_DECISION'].includes(decision?.decision) ||
+      typeof outputPath !== 'string' || /[\r\n]/.test(outputPath)) {
+    throw new Error('Review outputs require a valid decision kind and a single-line output path.');
+  }
+  return `final-message=${JSON.stringify(decision)}\ndecision-file=${outputPath}\ndecision-kind=${decision.decision}\n`;
+}
+
 /**
  * Main execution routine for the Gemini CI review runner.
  * @param {string[]} argv
@@ -218,6 +227,8 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
     validatedDecision = validateReviewResponse(request, rawDecision);
   }
 
+  const githubOutputs = process.env.GITHUB_OUTPUT ? formatGitHubReviewOutputs(validatedDecision, outputPath) : null;
+
   // Persist result to output file
   const serialized = JSON.stringify(validatedDecision, null, 2);
   writeFileSync(outputPath, `${serialized}\n`, { mode: 0o600 });
@@ -226,9 +237,8 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
 
   // If running inside GitHub Actions, export output variables safely
   if (process.env.GITHUB_OUTPUT) {
-    const singleLine = JSON.stringify(validatedDecision);
     try {
-      appendGitHubOutput(`final-message=${singleLine}\ndecision-file=${outputPath}\ndecision-kind=${validatedDecision.decision}\n`);
+      appendGitHubOutput(githubOutputs);
     } catch (err) {
       process.stderr.write(`[gemini-ci-runner] GITHUB_OUTPUT export skipped: ${err.message}\n`);
     }

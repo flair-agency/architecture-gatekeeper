@@ -126,7 +126,7 @@ export async function startGeminiSecurityProxy(config) {
         }
 
         const isLoopbackTest = Boolean(config.allowLoopbackUpstream && (targetHost === '127.0.0.1' || targetHost === 'localhost'));
-        if (!ALLOWED_VERTEX_HOST.test(targetHost) && !isLoopbackTest) {
+        if ((!ALLOWED_VERTEX_HOST.test(targetHost) || targetHost !== `${config.allowedRegion}-aiplatform.googleapis.com`) && !isLoopbackTest) {
           res.writeHead(403, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: `Forbidden: unverified Vertex host ${targetHost}` }));
           return;

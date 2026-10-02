@@ -169,3 +169,13 @@ test('proxy rejects absent or credential-incompatible scope before listening', a
     { credentials: { type: 'apiKey', value: 'fixture' }, allowedMode: 'vertex', allowedModel: 'gemini-2.5-flash', allowedProject: 'p', allowedRegion: 'r' }
   ]) await assert.rejects(startGeminiSecurityProxy(config), /complete credential-compatible/);
 });
+
+
+test('Vertex proxy rejects an official host outside the selected region', async () => {
+  const proxy = await startGeminiSecurityProxy({ credentials: { type: 'bearer', value: 'fixture-token' }, allowedMode: 'vertex', allowedProject: 'p', allowedRegion: 'us-central1', allowedModel: 'gemini-2.5-flash', upstreamHost: 'europe-west1-aiplatform.googleapis.com' });
+  try {
+    const response = await fetch(`${proxy.endpointUrl}/v1/projects/p/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`, { method: 'POST', body: '{}' });
+    assert.equal(response.status, 403);
+    assert.match(await response.text(), /unverified Vertex host/);
+  } finally { await proxy.shutdown(); }
+});
