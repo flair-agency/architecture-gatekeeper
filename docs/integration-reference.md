@@ -715,3 +715,8 @@ bound. Errors and invalid decisions remain incomplete, with no provider
 fallback. This seam does not select Gemini for the CLI or adopt provider-setting
 equivalence; explicit recorded provider settings and execution identity remain
 follow-up work under #265 coordinated with #252.
+
+The Gemini loopback proxy rejects complete serialized request bodies exceeding
+16 MiB, including chunked uploads, before upstream dispatch. This implementation
+limit accommodates JSON expansion beyond prompt bytes; it does not truncate inputs
+or replace configured prompt limits. It is not a whole-process memory guarantee.

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
-import { validateGeminiRoute, startGeminiSecurityProxy } from '../src/gemini-security-proxy.mjs';
+import { createServer, request } from 'node:http';
+import { validateGeminiRoute, startGeminiSecurityProxy, MAX_PROXY_REQUEST_BYTES } from '../src/gemini-security-proxy.mjs';
 import { validateLoopbackEndpoint } from '../src/review-security-proxy.mjs';
 
 test('validateLoopbackEndpoint validates local loopback addresses', () => {
@@ -176,4 +176,23 @@ test('Vertex proxy rejects an official host outside the selected region', async 
     assert.equal(response.status, 403);
     assert.match(await response.text(), /unverified Vertex host/);
   } finally { await proxy.shutdown(); }
+});
+
+test('proxy rejects declared and chunked oversized bodies before upstream dispatch', async () => {
+  let calls = 0;
+  const upstream = createServer((_req, res) => { calls++; res.end('{}'); });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const proxy = await startGeminiSecurityProxy({ credentials: { type: 'apiKey', value: 'sentinel' }, allowedMode: 'studio', allowedModel: 'gemini-2.5-flash', upstreamHost: '127.0.0.1', upstreamHttp: true, allowLoopbackUpstream: true, upstreamPort: upstream.address().port });
+  try {
+    for (const declared of [true, false]) {
+      const status = await new Promise((resolve, reject) => {
+        const req = request(proxy.endpointUrl + '/v1beta/models/gemini-2.5-flash:generateContent', { method: 'POST', headers: declared ? { 'Content-Length': MAX_PROXY_REQUEST_BYTES + 1 } : { 'Transfer-Encoding': 'chunked' } }, res => { res.resume(); resolve(res.statusCode); if (declared) req.destroy(); });
+        req.on('error', reject);
+        if (declared) req.flushHeaders();
+        else req.end(Buffer.alloc(MAX_PROXY_REQUEST_BYTES + 1, 32));
+      });
+      assert.equal(status, 413);
+    }
+    assert.equal(calls, 0);
+  } finally { await proxy.shutdown(); await new Promise(resolve => upstream.close(resolve)); }
 });

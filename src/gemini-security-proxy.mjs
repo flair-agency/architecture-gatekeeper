@@ -17,6 +17,9 @@
 import { createServer } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
+// Implementation bound for the complete serialized request, not prompt truncation.
+export const MAX_PROXY_REQUEST_BYTES = 16 * 1024 * 1024;
+
 const ALLOWED_AI_STUDIO_PATH = /^\/v1beta\/models\/([a-zA-Z0-9._-]+):generateContent$/;
 const ALLOWED_VERTEX_PATH = /^\/v1\/projects\/([a-zA-Z0-9._-]+)\/locations\/([a-zA-Z0-9._-]+)\/publishers\/google\/models\/([a-zA-Z0-9._-]+):generateContent$/;
 const ALLOWED_VERTEX_HOST = /^[a-z0-9-]+-aiplatform\.googleapis\.com$/;
@@ -154,9 +157,28 @@ export async function startGeminiSecurityProxy(config) {
 
       // 4. Read client request body
       const chunks = [];
-      req.on('data', chunk => chunks.push(chunk));
+      let bodyBytes = 0;
+      let bodyRejected = false;
+      const rejectBody = () => {
+        bodyRejected = true;
+        chunks.length = 0;
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Request body exceeds proxy implementation limit.' }));
+        req.resume();
+      };
+      if (Number(req.headers['content-length']) > MAX_PROXY_REQUEST_BYTES) { rejectBody(); return; }
+      req.on('aborted', () => { bodyRejected = true; chunks.length = 0; });
+      req.on('error', () => { bodyRejected = true; chunks.length = 0; });
+      req.on('data', chunk => {
+        if (bodyRejected) return;
+        bodyBytes += chunk.length;
+        if (bodyBytes > MAX_PROXY_REQUEST_BYTES) { rejectBody(); return; }
+        chunks.push(chunk);
+      });
       req.on('end', () => {
+        if (bodyRejected) return;
         const bodyBuffer = Buffer.concat(chunks);
+        chunks.length = 0;
 
         // 5. Build forwarded headers with credential injection
         const forwardHeaders = {

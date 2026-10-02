@@ -467,7 +467,10 @@ export async function executeGeminiReviewer(request, options = {}) {
           return;
         }
         expiredTimer = setTimeout(() => {
-          reject(new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`));
+          // Record expiration before rejection so catch paths cannot misclassify
+          // an early timer tick as an HTTP JSON parsing failure.
+          timeoutController.abort(new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`));
+          reject(timeoutController.signal.reason);
         }, remainingMs);
         onAbort = () => {
           clearTimeout(expiredTimer);
