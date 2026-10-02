@@ -300,35 +300,37 @@ test('isolated sessions never invoke gcloud credential fallback', async () => {
   } finally { process.env = saved; }
 });
 
-test('launcher deadline kills a SIGTERM-ignoring child and closes the proxy', async () => {
+// Requirement: the total session deadline includes startup. No fixture readiness
+// is required here; process-group escalation is tested separately after readiness.
+test('launcher expires the total session deadline even before fixture readiness', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'gemini-launcher-deadline-'));
-  const state = join(dir, 'state.json');
   const fixture = fileURLToPath(new URL('./fixtures/gemini-supervision.mjs', import.meta.url));
   try {
     const started = Date.now();
-    assert.equal(await runIsolatedGeminiSession(['hang', state, '--model','gemini-2.5-flash'], { timeoutMs: 400, runnerScript: fixture, credentialsOptions: { apiKey: 'fixture' } }), 124);
-    assert.ok(Date.now()-started < 5000);
-    const observed = JSON.parse(readFileSync(state));
-    assert.throws(() => process.kill(observed.pid, 0), /ESRCH/);
-    const observedEndpoint = new URL(observed.proxy);
-    assert.equal(observedEndpoint.hostname, '127.0.0.1');
-    const endpoint = new URL('http://127.0.0.1');
-    endpoint.port = observedEndpoint.port;
-    await assert.rejects(fetch(endpoint));
+    assert.equal(await runIsolatedGeminiSession(['hang', join(dir, 'state.json'), '--model', 'gemini-2.5-flash'], { timeoutMs: 400, runnerScript: fixture, credentialsOptions: { apiKey: 'fixture' } }), 124);
+    assert.ok(Date.now() - started < 5000);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-
-test('deadline escalation survives direct child exit and stops its descendant', { skip: process.platform === 'win32' }, async () => {
+// Requirement: escalation must survive direct-child exit. Synchronize on the
+// descendant marker before stopping, rather than assuming Node starts in 600ms.
+test('supervisor escalation survives direct child exit and stops its ready descendant', { skip: process.platform === 'win32' }, async () => {
   const dir = mkdtempSync(join(tmpdir(), 'gemini-descendant-'));
-  const state = join(dir, 'descendant.pid');
+  let supervisor;
   try {
+    const state = join(dir, 'descendant.pid');
     const fixture = fileURLToPath(new URL('./fixtures/gemini-supervision.mjs', import.meta.url));
-    assert.equal(await runIsolatedGeminiSession(['parent',state,'--model','gemini-2.5-flash'], { timeoutMs:600, runnerScript:fixture, credentialsOptions:{apiKey:'fixture'} }),124);
+    supervisor = spawn(process.execPath, [fixture, 'supervisor-parent', state], { stdio: 'ignore' });
+    const closed = new Promise((resolve, reject) => { supervisor.once('close', resolve); supervisor.once('error', reject); });
+    const deadline = Date.now() + 8000;
+    while (!existsSync(state) && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 20));
+    assert.ok(existsSync(state), 'descendant readiness not observed within startup bound');
+    supervisor.kill('SIGTERM');
+    assert.equal(await closed, 143);
     const pid = Number(readFileSync(state));
-    const status = spawnSync('ps', ['-o','stat=','-p',String(pid)], { encoding:'utf8' });
+    const status = spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' });
     assert.ok(status.status !== 0 || !status.stdout.trim() || status.stdout.trim().startsWith('Z'), `Descendant still running: ${status.stdout}`);
-  } finally { rmSync(dir, { recursive:true, force:true }); }
+  } finally { supervisor?.kill('SIGKILL'); rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('supervisor termination is forwarded to a detached runner', { skip: process.platform === 'win32' }, async () => {
@@ -344,7 +346,13 @@ test('supervisor termination is forwarded to a detached runner', { skip: process
     assert.ok(existsSync(state));
     supervisor.kill('SIGTERM');
     assert.equal(await closed,143);
-    assert.throws(()=>process.kill(JSON.parse(readFileSync(state)).pid,0),/ESRCH/);
+    const observed = JSON.parse(readFileSync(state));
+    assert.throws(() => process.kill(observed.pid, 0), /ESRCH/);
+    const observedEndpoint = new URL(observed.proxy);
+    assert.equal(observedEndpoint.hostname, '127.0.0.1');
+    const endpoint = new URL('http://127.0.0.1');
+    endpoint.port = observedEndpoint.port;
+    await assert.rejects(fetch(endpoint));
   } finally { supervisor?.kill('SIGKILL'); rmSync(dir,{recursive:true,force:true}); }
 });
 
