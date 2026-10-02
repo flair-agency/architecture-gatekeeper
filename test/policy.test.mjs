@@ -348,7 +348,7 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.match(pullRequestCaller, /schema-path: \.codex\/gatekeeper\/ci-decision\.schema\.json/);
   assert.match(pullRequestCaller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
   assert.doesNotMatch(pullRequestCaller, /owner-decision-environment/);
-  assert.match(pullRequestCaller, /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/);
+  assert.match(pullRequestCaller, /OPENAI_API_KEY: \$\{\{ vars\.ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT != 'true' && secrets\.OPENAI_API_KEY \|\| '' \}\}/);
   assert.doesNotMatch(pullRequestCaller, /actions\/checkout/);
 });
 
