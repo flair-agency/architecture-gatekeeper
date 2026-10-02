@@ -4,15 +4,19 @@
  * Standalone review runner for Gemini provider in CI and local workflows.
  * Zero external npm dependencies: uses Node.js standard library and native fetch.
  */
-import { appendFileSync, existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { runGeminiReviewer } from './gemini-transport.mjs';
 import { validateJsonSchema } from './json-schema.mjs';
 import { validateReviewResponse } from './review-contract.mjs';
+import { appendGitHubOutput } from './runner-temp-path.mjs';
 
 /**
- * Resolves a file path safely relative to a base directory, rejecting path traversal attempts.
+ * Resolves a file path relative to an authorized root directory using lexical checks.
+ * Rejects null bytes and verifies that the lexical path does not traverse outside
+ * baseDir or recognized temporary directories.
  * @param {string} userPath
  * @param {string} baseDir
  * @returns {string}
@@ -21,17 +25,37 @@ export function resolveSafePath(userPath, baseDir) {
   if (typeof userPath !== 'string' || !userPath.trim()) {
     throw new Error('Path must be a non-empty string.');
   }
-  // If userPath is relative, resolve it against baseDir and ensure it doesn't escape baseDir via '..'
-  if (!isAbsolute(userPath)) {
-    const resolved = resolve(baseDir, userPath);
-    const rel = relative(baseDir, resolved);
-    if (rel.startsWith('..')) {
-      throw new Error(`Path traversal denied: path "${userPath}" escapes base directory "${baseDir}".`);
-    }
-    return resolved;
+  if (userPath.includes('\0')) {
+    throw new Error('Path contains forbidden null bytes.');
   }
-  // If userPath is absolute, ensure it does not contain relative navigation segments and normalize it
-  const resolved = resolve(userPath);
+  const root = resolve(baseDir);
+  const resolved = isAbsolute(userPath) ? resolve(userPath) : resolve(root, userPath);
+  
+  // Verify containment within baseDir
+  const relBase = relative(root, resolved);
+  const inBase = !relBase.startsWith('..') && !isAbsolute(relBase);
+
+  // If outside baseDir, verify if it is safely contained within runner temp or OS temp
+  if (!inBase) {
+    const authorizedTempRoots = [
+      process.env.RUNNER_TEMP ? resolve(process.env.RUNNER_TEMP) : null,
+      tmpdir() ? resolve(tmpdir()) : null,
+      '/tmp',
+      '/private/tmp',
+      '/var/folders',
+      '/private/var/folders',
+    ].filter(Boolean);
+
+    const inTemp = authorizedTempRoots.some((tempRoot) => {
+      const relTemp = relative(tempRoot, resolved);
+      return !relTemp.startsWith('..') && !isAbsolute(relTemp);
+    });
+
+    if (!inTemp) {
+      throw new Error(`Path traversal denied: path "${userPath}" escapes authorized root directories.`);
+    }
+  }
+
   return resolved;
 }
 
@@ -159,15 +183,13 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
   process.stderr.write(`[gemini-ci-runner] Review completed: decision=${validatedDecision.decision}, summary=${validatedDecision.summary}\n`);
   process.stderr.write(`[gemini-ci-runner] Decision persisted to: ${outputPath}\n`);
 
-  // If running inside GitHub Actions, export output variables
-  const rawGithubOutput = process.env.GITHUB_OUTPUT;
-  if (rawGithubOutput && typeof rawGithubOutput === 'string') {
-    const safeGithubOutput = resolve(rawGithubOutput);
-    if (existsSync(safeGithubOutput) && statSync(safeGithubOutput).isFile()) {
-      const singleLine = JSON.stringify(validatedDecision);
-      appendFileSync(safeGithubOutput, `final-message=${singleLine}\n`, 'utf8');
-      appendFileSync(safeGithubOutput, `decision-file=${outputPath}\n`, 'utf8');
-      appendFileSync(safeGithubOutput, `decision-kind=${validatedDecision.decision}\n`, 'utf8');
+  // If running inside GitHub Actions, export output variables safely
+  if (process.env.GITHUB_OUTPUT) {
+    const singleLine = JSON.stringify(validatedDecision);
+    try {
+      appendGitHubOutput(`final-message=${singleLine}\ndecision-file=${outputPath}\ndecision-kind=${validatedDecision.decision}\n`);
+    } catch (err) {
+      process.stderr.write(`[gemini-ci-runner] GITHUB_OUTPUT export skipped: ${err.message}\n`);
     }
   }
 

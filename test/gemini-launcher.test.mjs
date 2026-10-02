@@ -174,3 +174,110 @@ await runGeminiCiReview(process.argv.slice(2));
     rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('runIsolatedGeminiSession strips credential arguments from runner child process', async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), 'gemini-launcher-args-'));
+  try {
+    const mockRunnerScript = join(tmpDir, 'check-args-runner.mjs');
+    writeFileSync(
+      mockRunnerScript,
+      `
+import assert from 'node:assert/strict';
+const args = process.argv.slice(2);
+assert.ok(!args.some(arg => arg.includes('secret-api-key')), 'secret api key must not be passed to child args');
+assert.ok(!args.some(arg => arg.includes('secret-access-token')), 'secret access token must not be passed to child args');
+assert.ok(!args.includes('--api-key'), '--api-key must not be in child args');
+assert.ok(!args.includes('--access-token'), '--access-token must not be in child args');
+process.exit(0);
+`
+    );
+
+    const exitCode = await runIsolatedGeminiSession(
+      [
+        '--api-key', 'secret-api-key-123',
+        '--access-token=secret-access-token-456',
+        '--model', 'gemini-2.5-flash',
+      ],
+      {
+        runnerScript: mockRunnerScript,
+        proxyConfigOverride: {
+          upstreamHost: '127.0.0.1',
+          upstreamPort: 80,
+          allowLoopbackUpstream: true,
+        },
+      }
+    );
+
+    assert.equal(exitCode, 0);
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('runIsolatedGeminiSession requires complete scope before starting the proxy', async () => {
+  await assert.rejects(
+    runIsolatedGeminiSession([], {
+      credentialsOptions: { apiKey: 'key' },
+    }),
+    /Complete review scope required before starting security proxy: missing allowedModel/
+  );
+});
+
+test('proxyConfigOverride cannot erase or bypass required scope in runIsolatedGeminiSession', async () => {
+  await assert.rejects(
+    runIsolatedGeminiSession(
+      ['--model', 'gemini-2.5-flash'],
+      {
+        credentialsOptions: { apiKey: 'key' },
+        proxyConfigOverride: { allowedModel: null },
+      }
+    ),
+    /Complete review scope required before starting security proxy: missing allowedModel/
+  );
+
+  // Overriding mode to incompatible credential capability must fail closed
+  await assert.rejects(
+    runIsolatedGeminiSession(
+      ['--model', 'gemini-2.5-flash'],
+      {
+        credentialsOptions: { accessToken: 'token' },
+        proxyConfigOverride: { allowedMode: 'studio' },
+      }
+    ),
+    /bearer credentials require mode "vertex"/
+  );
+
+  // Overriding mode with apiKey to incompatible mode or erased mode must fail closed
+  await assert.rejects(
+    runIsolatedGeminiSession(
+      ['--model', 'gemini-2.5-flash'],
+      {
+        credentialsOptions: { apiKey: 'my-key' },
+        proxyConfigOverride: { allowedMode: 'vertex' },
+      }
+    ),
+    /API key credentials require mode "studio"/
+  );
+  await assert.rejects(
+    runIsolatedGeminiSession(
+      ['--model', 'gemini-2.5-flash'],
+      {
+        credentialsOptions: { apiKey: 'my-key' },
+        proxyConfigOverride: { allowedMode: null },
+      }
+    ),
+    /API key credentials require mode "studio"/
+  );
+
+  // Missing or erased allowedRegion in Vertex mode must fail closed
+  await assert.rejects(
+    runIsolatedGeminiSession(
+      ['--model', 'gemini-2.5-flash', '--project', 'my-proj'],
+      {
+        credentialsOptions: { accessToken: 'token' },
+        proxyConfigOverride: { allowedRegion: '' },
+      }
+    ),
+    /missing allowedRegion for Vertex mode/
+  );
+});

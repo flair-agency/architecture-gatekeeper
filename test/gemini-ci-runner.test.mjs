@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs, resolveReviewRequest, runGeminiCiReview } from '../src/gemini-ci-runner.mjs';
@@ -212,15 +212,29 @@ test('runGeminiCiReview fails closed when response violates decision schema', as
   }
 });
 
-test('runGeminiCiReview writes outputs to GITHUB_OUTPUT when present', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'gemini-runner-gh-out-'));
+test('runGeminiCiReview writes outputs to GITHUB_OUTPUT when present in valid runner temp', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'gemini-runner-gh-out-'));
+  const runnerTemp = join(root, 'runner-temp');
+  mkdirSync(runnerTemp);
+  const commandDir = join(runnerTemp, '_runner_file_commands');
+  mkdirSync(commandDir);
+  const githubOutputPath = join(commandDir, 'set_output_12345678-test');
+  writeFileSync(githubOutputPath, '', 'utf8');
+
+  const oldCwd = process.cwd();
   const originalFetch = globalThis.fetch;
   const originalEnv = { ...process.env };
+
   try {
-    const promptPath = join(dir, 'prompt.md');
-    const schemaPath = join(dir, 'decision.schema.json');
-    const githubOutputPath = join(dir, 'github_output.txt');
-    writeFileSync(githubOutputPath, '', 'utf8');
+    const realRunnerTemp = realpathSync(runnerTemp);
+    process.chdir(realRunnerTemp);
+    process.env.RUNNER_TEMP = realRunnerTemp;
+    process.env.GITHUB_OUTPUT = realpathSync(githubOutputPath);
+    process.env.GEMINI_API_KEY = 'test-key';
+    delete process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+
+    const promptPath = join(realRunnerTemp, 'prompt.md');
+    const schemaPath = join(realRunnerTemp, 'decision.schema.json');
 
     const schema = {
       type: 'object',
@@ -239,22 +253,19 @@ test('runGeminiCiReview writes outputs to GITHUB_OUTPUT when present', async () 
       }),
     });
 
-    process.env.GEMINI_API_KEY = 'test-key';
-    process.env.GITHUB_OUTPUT = githubOutputPath;
-    delete process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
-
     await runGeminiCiReview(
       ['--prompt', 'prompt.md', '--schema', 'decision.schema.json'],
-      dir
+      runnerTemp
     );
 
     const ghOutputContent = readFileSync(githubOutputPath, 'utf8');
     assert.match(ghOutputContent, /final-message={"decision":"PASS"}/);
     assert.match(ghOutputContent, /decision-kind=PASS/);
   } finally {
+    process.chdir(oldCwd);
     globalThis.fetch = originalFetch;
     process.env = originalEnv;
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
