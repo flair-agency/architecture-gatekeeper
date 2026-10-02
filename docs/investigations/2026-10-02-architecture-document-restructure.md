@@ -1,6 +1,7 @@
 # Architecture document restructuring plan (Issue #266)
 
-Status: working proposal; not canonical authority and not a change to any
+Status: bounded restructuring delivered; optional split remains an unadopted
+proposal. This record is not canonical authority and not a change to any
 execution, assurance, acceptance or release requirement.
 
 Baseline: main `2865fa48506e5ff7aa1caf5e1ce8c82230d43a66` after PR #264.
@@ -79,13 +80,25 @@ changes, additionally run applicable materialization, package smoke and protecte
 policy checks. Do not reset maxFileBytes until measured complete authority fits
 and the selected limits remain adequate.
 
-## Current work state
+## Delivered scope and clause inventory
 
-Inventory and migration hazards recorded. No canonical bytes moved, no manifest,
-policy, public entrypoint or acceptance route changed. The first deliverable is
-a navigation index and bounded deduplication of the three-concept recap and
-Issue #111 recap. The detailed addition contract retains prior-policy opt-in,
-current inactive self selection, exact-B annotated tagging, no historical BLOCK
-or amendment authorization requirement, no owner-authentication claim and fresh
-review after canonical adoption. Splitting authority is deferred until its
-migration contract is concrete.
+| Delivery | Consolidation | Retained source of binding rules |
+| --- | --- | --- |
+| PR #267 (`fd5191c`) | Navigation index; three-concept and Issue #111 recaps | Shared mechanism, target evidence/acceptance, and detailed OWNER_ADDITION sections retain their requirements; recap anchors remain |
+| PR #269 (`49437a1`) | Initial OWNER_ADDITION wording | Same section retains prior protected-policy opt-in, exact selected self authority path, B modifying only that file, exact-B annotated tag, missing-decision eligibility, no BLOCK/amendment prerequisite, principal authentication not verified, and fresh A review after adoption |
+
+No binding clause moved into this investigation or another supporting file.
+All existing architecture headings/anchors remain. The selected canonical
+member remains `architecture-contract` at `docs/architecture.md`; links in the
+navigation index are within that selected file. Manifest, policy, runtime,
+package entrypoints and release requirements are unchanged. Historical review
+evidence remains bound to its original revisions and is not rewritten.
+
+The bounded outcome in #266 is navigation plus deduplication, not a byte target
+or a mandatory canonical split. PRs #267 and #269 passed local native AGK,
+actual `/review`, and protected CI before integration; #269's review corrections
+explicitly restored the policy-selected path and single-file B scope. This
+completion record does not assert implementation or activation of an inactive
+target route. Further splitting would require a separately adopted authority
+selection and migration contract before moving normative bytes; it is not a
+remaining dependency of this bounded delivery or v0.6.0.
