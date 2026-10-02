@@ -1,0 +1,519 @@
+name: Architecture Gate
+
+on:
+  workflow_call:
+    inputs:
+      policy-path:
+        type: string
+        default: .codex/gatekeeper/ci-policy.json
+      prompt-path:
+        type: string
+        default: .codex/gatekeeper/ci-prompt.md
+      schema-path:
+        type: string
+        default: .codex/gatekeeper/decision.schema.json
+      validation-path:
+        type: string
+        default: ''
+      protected-review-instructions:
+        type: boolean
+        default: false
+      review-job-timeout-minutes:
+        type: number
+        default: 7
+      review-step-timeout-minutes:
+        type: number
+        default: 5
+    secrets:
+      OPENAI_API_KEY:
+        required: false
+      CI_SOURCE_READ_TOKEN:
+        required: false
+
+concurrency:
+  group: architecture-gate-${{ github.repository }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.resolve.outputs.mode }}
+      policy_version: ${{ steps.resolve.outputs.policyVersion }}
+      policy_sha256: ${{ steps.resolve.outputs.sha256 }}
+      legacy_authority_files_base64: ${{ steps.resolve.outputs.legacyAuthorityFilesBase64 }}
+      legacy_prompt_path: ${{ steps.resolve.outputs.legacyPromptPath }}
+      legacy_schema_path: ${{ steps.resolve.outputs.legacySchemaPath }}
+      legacy_validation_path: ${{ steps.resolve.outputs.legacyValidationPath }}
+      model: ${{ steps.resolve.outputs.model }}
+      effort: ${{ steps.resolve.outputs.reasoningEffort }}
+      authority_manifest_path: ${{ steps.resolve.outputs.authorityManifestPath }}
+      authority_limits_base64: ${{ steps.resolve.outputs.authorityLimitsBase64 }}
+      authority_profile: ${{ steps.resolve.outputs.authorityProfile }}
+      owner_addition_version: ${{ steps.resolve.outputs.ownerAdditionVersion }}
+      owner_addition_authority_id: ${{ steps.resolve.outputs.ownerAdditionAuthorityId }}
+      owner_addition_grade: ${{ steps.resolve.outputs.ownerAdditionGrade }}
+      owner_addition_authority_path: ${{ steps.resolve.outputs.ownerAdditionAuthorityPath }}
+      owner_addition_prompt_path: ${{ steps.resolve.outputs.ownerAdditionPromptPath }}
+      owner_addition_schema_path: ${{ steps.resolve.outputs.ownerAdditionSchemaPath }}
+      adoption_evidence_producer: ${{ steps.resolve.outputs.adoptionEvidenceProducer }}
+      adoption_evidence_workflow_path: ${{ steps.resolve.outputs.adoptionEvidenceWorkflowPath }}
+      adoption_evidence_job_name: ${{ steps.resolve.outputs.adoptionEvidenceJobName }}
+      review_job_timeout_minutes: ${{ steps.review-timeouts.outputs.jobTimeoutMinutes }}
+      review_step_timeout_minutes: ${{ steps.review-timeouts.outputs.stepTimeoutMinutes }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Validate bounded reviewer timeouts
+        id: review-timeouts
+        env:
+          REVIEW_JOB_TIMEOUT_MINUTES: ${{ inputs.review-job-timeout-minutes }}
+          REVIEW_STEP_TIMEOUT_MINUTES: ${{ inputs.review-step-timeout-minutes }}
+        run: node .architecture-gatekeeper-runtime/scripts/validate-review-timeouts.mjs >> "$GITHUB_OUTPUT"
+      - name: Resolve policy from protected base revision
+        id: resolve
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          POLICY_PATH: ${{ inputs.policy-path }}
+        run: |
+          if test "$GITHUB_EVENT_NAME" = pull_request; then
+            test "$POLICY_PATH" = .codex/gatekeeper/ci-policy.json
+          fi
+          if git cat-file -e "$BASE_SHA:$POLICY_PATH" 2>/dev/null; then
+            node .architecture-gatekeeper-runtime/src/materialize-regular-git-snapshot.mjs \
+              "$BASE_SHA" "$POLICY_PATH" "$RUNNER_TEMP/architecture-gate-policy.json" >> "$GITHUB_OUTPUT"
+            node .architecture-gatekeeper-runtime/src/resolve-ci-policy.mjs "$RUNNER_TEMP/architecture-gate-policy.json" "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
+          else
+            if test "$GITHUB_EVENT_NAME" = pull_request; then
+              echo 'Recorded-base CI policy is required for pull_request callers.' >&2
+              exit 1
+            fi
+            echo "Base revision has no CI policy; using fail-safe bootstrap enforcement."
+            echo "baseBranch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
+            echo "mode=enforced" >> "$GITHUB_OUTPUT"
+            echo "model=gpt-5.6-sol" >> "$GITHUB_OUTPUT"
+            echo "reasoningEffort=medium" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Reject self-only OWNER_AMENDMENT policy on the consumer workflow
+        env:
+          OWNER_AMENDMENT_GRADE: ${{ steps.resolve.outputs.ownerAmendmentGrade }}
+        run: |
+          if test "$OWNER_AMENDMENT_GRADE" = G0; then
+            echo 'OWNER_AMENDMENT is supported only by the protected self workflow.' >&2
+            exit 1
+          fi
+      - name: Require protected instructions for selected Authority Set or legacy v1
+        if: steps.resolve.outputs.authorityManifestPath != '' || steps.resolve.outputs.policyVersion == '1'
+        env:
+          PROTECTED_INSTRUCTIONS: ${{ inputs.protected-review-instructions }}
+        run: test "$PROTECTED_INSTRUCTIONS" = true
+      - name: Require caller validation selection to match recorded-base v1 policy
+        if: steps.resolve.outputs.policyVersion == '1'
+        env:
+          CALLER_VALIDATION_PATH: ${{ inputs.validation-path }}
+          BASE_VALIDATION_PATH: ${{ steps.resolve.outputs.legacyValidationPath }}
+        run: node .architecture-gatekeeper-runtime/src/verify-legacy-validation-selection.mjs "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"
+
+  review:
+    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
+    needs: [policy]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    # Values are range-checked in the protected policy job before this job starts.
+    timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_job_timeout_minutes) }}
+    outputs:
+      final_message: ${{ steps.codex.outputs.final-message }}
+      decision_kind: ${{ steps.decision.outputs.kind }}
+      reviewed_sha: ${{ steps.revision.outputs.sha }}
+      authority_provenance: ${{ steps.authority.outputs.provenance }}
+      selected_authority_changed: ${{ steps.selected-authority-change.outputs.changed }}
+      legacy_authority_provenance: ${{ steps.legacy-authority.outputs.provenance }}
+    steps:
+      - name: Check enforced credentials
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: node -e 'if (!process.env.OPENAI_API_KEY) { console.error("Missing OPENAI_API_KEY for enforced Architecture Gate"); process.exit(1); }'
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          submodules: ${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}
+          token: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          persist-credentials: false
+      - name: Record reviewed merge revision
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Materialize protected review instructions
+        if: inputs.protected-review-instructions && needs.policy.outputs.policy_version != '1'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PROMPT_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_prompt_path || inputs.prompt-path }}
+          SCHEMA_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_schema_path || inputs.schema-path }}
+        run: |
+          git show "$BASE_SHA:$PROMPT_PATH" > "$RUNNER_TEMP/architecture-gate-prompt.md"
+          git show "$BASE_SHA:$SCHEMA_PATH" > "$RUNNER_TEMP/architecture-gate-decision.schema.json"
+      - name: Materialize protected decision validation policy
+        if: needs.policy.outputs.policy_version != '1' && inputs.validation-path != ''
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          VALIDATION_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path || inputs.validation-path }}
+        run: git show "$BASE_SHA:$VALIDATION_PATH" > "$RUNNER_TEMP/architecture-gate-decision.validation.json"
+      - name: Check out the pinned validation runtime
+        if: inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-validation-runtime
+          persist-credentials: false
+      - name: Materialize recorded-base legacy authority before review
+        if: needs.policy.outputs.policy_version == '1'
+        id: legacy-authority
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ steps.revision.outputs.sha }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          POLICY_PATH: ${{ inputs.policy-path }}
+          POLICY_SHA256: ${{ needs.policy.outputs.policy_sha256 }}
+          AUTHORITY_FILES_BASE64: ${{ needs.policy.outputs.legacy_authority_files_base64 }}
+          PROMPT_PATH: ${{ needs.policy.outputs.legacy_prompt_path }}
+          SCHEMA_PATH: ${{ needs.policy.outputs.legacy_schema_path }}
+          VALIDATION_PATH: ${{ needs.policy.outputs.legacy_validation_path }}
+          PROMPT_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-prompt.md
+          SCHEMA_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-decision.schema.json
+          VALIDATION_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-decision.validation.json
+          OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-legacy-prompt.md
+          PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
+        run: node .architecture-gatekeeper-validation-runtime/src/prepare-legacy-ci-authority.mjs prepare
+      - name: Materialize protected Authority Set before review
+        if: needs.policy.outputs.authority_manifest_path != ''
+        id: authority
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MANIFEST_PATH: ${{ needs.policy.outputs.authority_manifest_path }}
+          SELF_REPOSITORY: ${{ github.repository }}
+          GATEKEEPER_SOURCE_TOKEN: ${{ secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
+          AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
+          OWNER_AUTHORITY_ID: ${{ needs.policy.outputs.owner_addition_authority_id }}
+          OWNER_AUTHORITY_PATH: ${{ needs.policy.outputs.owner_addition_authority_path }}
+        run: |
+          umask 077
+          git show "$BASE_SHA:$MANIFEST_PATH" > "$RUNNER_TEMP/architecture-gate-authorities.json"
+          PROFILE_ARGS=()
+          if test "$AUTHORITY_PROFILE" = owner-addition-v2; then
+            PROFILE_ARGS=(--affected-id "$OWNER_AUTHORITY_ID" --affected-path "$OWNER_AUTHORITY_PATH")
+          fi
+          node .architecture-gatekeeper-validation-runtime/src/prepare-authority-set.mjs \
+            --manifest "$RUNNER_TEMP/architecture-gate-authorities.json" \
+            --self-repository "$SELF_REPOSITORY" \
+            --self-root . \
+            --authority-sha "$BASE_SHA" \
+            --limits-base64 "$AUTHORITY_LIMITS_BASE64" \
+            --profile "$AUTHORITY_PROFILE" \
+            "${PROFILE_ARGS[@]}" \
+            --output-dir "$RUNNER_TEMP/architecture-gate-authority-set"
+          cat "$RUNNER_TEMP/architecture-gate-prompt.md" \
+            "$RUNNER_TEMP/architecture-gate-authority-set/authority-prompt.md" \
+            > "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
+          echo "provenance=$(base64 -w0 "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json")" >> "$GITHUB_OUTPUT"
+      - name: Detect candidate changes to the selected Authority Set
+        if: needs.policy.outputs.mode == 'procedural'
+        id: selected-authority-change
+        env:
+          AUTHORITY_PROVENANCE: ${{ steps.authority.outputs.provenance }}
+          SELF_REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .architecture-gatekeeper-validation-runtime/src/ci-procedural-authority-change.mjs
+      - name: Check protected Authority Set schema and complete prompt
+        if: needs.policy.outputs.authority_manifest_path != ''
+        env:
+          AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
+          AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
+        run: |
+          node .architecture-gatekeeper-validation-runtime/src/preflight-authority-set-review.mjs \
+            "$RUNNER_TEMP/architecture-gate-decision.schema.json" \
+            "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
+      - name: Run read-only architecture review
+        id: codex
+        timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_step_timeout_minutes) }}
+        uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          output-file: ${{ runner.temp }}/architecture-gate-codex-final.json
+          prompt-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-legacy-prompt.md', runner.temp) || needs.policy.outputs.authority_manifest_path != '' && format('{0}/architecture-gate-complete-prompt.md', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || inputs.prompt-path }}
+          model: ${{ needs.policy.outputs.model }}
+          effort: ${{ needs.policy.outputs.effort }}
+          sandbox: read-only
+          safety-strategy: drop-sudo
+          output-schema-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
+          # PR-owned AGENTS.md files are review evidence, never reviewer instructions.
+          codex-args: '["--ephemeral","-c","project_doc_max_bytes=0","--json"]'
+      - name: Diagnose architecture reviewer completion
+        if: always()
+        timeout-minutes: 1
+        continue-on-error: true
+        env:
+          REVIEW_OUTCOME: ${{ steps.codex.outcome }}
+          REVIEW_OUTPUT_FILE: ${{ runner.temp }}/architecture-gate-codex-final.json
+        run: |
+          echo "Codex Action outcome: $REVIEW_OUTCOME"
+          if test -f "$REVIEW_OUTPUT_FILE"; then
+            echo "Codex final message file: present ($(wc -c < "$REVIEW_OUTPUT_FILE") bytes)"
+            if node -e 'try { JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); } catch { process.exitCode = 1; }' "$REVIEW_OUTPUT_FILE"; then
+              echo "Codex final message JSON: parseable"
+            else
+              echo "Codex final message JSON: absent or invalid"
+            fi
+          else
+            echo "Codex final message file: absent"
+          fi
+          if command -v codex >/dev/null 2>&1; then
+            codex --version
+          else
+            echo "Codex CLI: unavailable"
+          fi
+          npm list -g --depth=0 @openai/codex @openai/codex-responses-api-proxy || true
+      - name: Identify the completed ordinary decision
+        if: needs.policy.outputs.mode == 'procedural' || (needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_addition_grade == 'G0')
+        id: decision
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+        run: node .architecture-gatekeeper-validation-runtime/src/ci-decision-kind.mjs
+      - name: Apply consumer-owned decision validation
+        if: (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '')
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-decision.mjs "$RUNNER_TEMP/architecture-gate-decision.validation.json"
+      - name: Require exact reported legacy authority files
+        if: needs.policy.outputs.policy_version == '1'
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+          PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
+        run: node .architecture-gatekeeper-validation-runtime/src/prepare-legacy-ci-authority.mjs validate
+      - name: Require exact reported Authority IDs
+        if: needs.policy.outputs.authority_manifest_path != ''
+        env:
+          DECISION: ${{ steps.codex.outputs.final-message }}
+        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
+
+  owner-addition:
+    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.owner_addition_grade == 'G0' && needs.review.outputs.decision_kind == 'OWNER_DECISION'
+    needs: [policy, review]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      procedure_base64: ${{ steps.prepare.outputs.procedure_base64 }}
+      eligibility: ${{ steps.eligibility.outputs.eligibility }}
+    steps:
+      - name: Check out only the previous protected base
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out the immutable Gatekeeper runtime
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Fetch B and its annotated tag as Git objects only
+        env:
+          FETCH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "${#HEAD_SHA}" = 40
+          TAG_REF="refs/tags/architecture-owner-addition/$HEAD_SHA"
+          AUTH="$(printf 'x-access-token:%s' "$FETCH_TOKEN" | base64 -w0)"
+          git -c "http.extraheader=AUTHORIZATION: basic $AUTH" fetch --no-tags origin "refs/pull/$PR_NUMBER/head"
+          test "$(git rev-parse FETCH_HEAD)" = "$HEAD_SHA"
+          git -c "http.extraheader=AUTHORIZATION: basic $AUTH" fetch --no-tags origin "refs/pull/$PR_NUMBER/merge"
+          test "$(git rev-parse FETCH_HEAD)" = "$REVIEWED_SHA"
+          read -r MERGE_PARENT_BASE MERGE_PARENT_HEAD < <(git rev-list --parents -n 1 "$REVIEWED_SHA" | cut -d' ' -f2-)
+          test "$MERGE_PARENT_BASE" = "$BASE_SHA"
+          test "$MERGE_PARENT_HEAD" = "$HEAD_SHA"
+          git -c "http.extraheader=AUTHORIZATION: basic $AUTH" fetch --no-tags --force origin "+$TAG_REF:$TAG_REF"
+          REMOTE_OID="$(git -c "http.extraheader=AUTHORIZATION: basic $AUTH" ls-remote --refs origin "$TAG_REF" | cut -f1)"
+          test -n "$REMOTE_OID"
+          test "$(git rev-parse "$TAG_REF")" = "$REMOTE_OID"
+      - name: Verify the exact G0 procedure and prepare protected eligibility input
+        id: prepare
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          POLICY_PATH: ${{ inputs.policy-path }}
+          OWNER_AUTHORITY_PATH: ${{ needs.policy.outputs.owner_addition_authority_path }}
+          OWNER_PROMPT_PATH: ${{ needs.policy.outputs.owner_addition_prompt_path }}
+          OWNER_SCHEMA_PATH: ${{ needs.policy.outputs.owner_addition_schema_path }}
+          ORDINARY_SCHEMA_PATH: ${{ inputs.schema-path }}
+          ORDINARY_DECISION: ${{ needs.review.outputs.final_message }}
+          ORDINARY_AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GATEKEEPER_SOURCE_TOKEN: ${{ needs.policy.outputs.owner_addition_version == '2' && (secrets.CI_SOURCE_READ_TOKEN || github.token) || '' }}
+          OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
+        run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs prepare
+      - name: Review B-specific missing-decision eligibility
+        id: codex-addition
+        timeout-minutes: 5
+        uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          output-file: ${{ runner.temp }}/architecture-gate-owner-addition-final.json
+          prompt-file: ${{ runner.temp }}/architecture-gate-owner-addition/eligibility-prompt.md
+          output-schema-file: ${{ runner.temp }}/architecture-gate-owner-addition/eligibility.schema.json
+          model: ${{ needs.policy.outputs.model }}
+          effort: ${{ needs.policy.outputs.effort }}
+          sandbox: read-only
+          safety-strategy: drop-sudo
+          codex-args: '["--ephemeral","-c","project_doc_max_bytes=0"]'
+      - name: Require completed B-specific eligibility review
+        id: eligibility
+        env:
+          DECISION: ${{ steps.codex-addition.outputs.final-message }}
+          OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
+          POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
+        run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs validate
+      - name: Preserve exact v5 pre-merge eligibility evidence
+        id: eligibility-evidence
+        if: needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: owner-addition-eligibility-evidence-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/architecture-gate-owner-addition/eligibility-evidence.json
+          if-no-files-found: error
+          overwrite: false
+          retention-days: 90
+      - name: Record exact uploaded eligibility artifact binding
+        if: needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
+        env:
+          ARTIFACT_ID: ${{ steps.eligibility-evidence.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.eligibility-evidence.outputs.artifact-digest }}
+        run: |
+          set -euo pipefail
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          [[ "$ARTIFACT_DIGEST" =~ ^[a-f0-9]{64}$ ]]
+          printf '::notice title=AGK_OWNER_ADDITION_ARTIFACT_V1::id=%s;sha256=%s\n' "$ARTIFACT_ID" "$ARTIFACT_DIGEST"
+
+  report:
+    if: always()
+    needs: [policy, review, owner-addition]
+    concurrency:
+      group: architecture-gate-report-${{ github.workflow }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    outputs:
+      conclusion: ${{ steps.report.outputs.conclusion }}
+      decision_digest: ${{ steps.report.outputs.decision_digest }}
+    steps:
+      - name: Check out the pinned reporting runtime
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Publish human-readable result
+        id: report
+        if: always()
+        env:
+          POLICY_RESULT: ${{ needs.policy.result }}
+          REVIEW_RESULT: ${{ needs.review.result }}
+          MODE: ${{ needs.policy.outputs.mode }}
+          POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
+          DECISION: ${{ needs.review.outputs.final_message }}
+          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
+          LEGACY_AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.legacy_authority_provenance }}
+          AUTHORITY_ROUTE_SELECTED: ${{ needs.policy.outputs.authority_manifest_path != '' }}
+          OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade == 'G0' }}
+          OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
+          OWNER_ADDITION_ELIGIBILITY: ${{ needs['owner-addition'].outputs.eligibility }}
+          OWNER_ADDITION_PROCEDURE_BASE64: ${{ needs['owner-addition'].outputs.procedure_base64 }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_REF: ${{ job.workflow_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .architecture-gatekeeper-runtime/src/ci-report.mjs
+
+  accept:
+    if: always()
+    needs: [policy, review, owner-addition, report]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require valid policy resolution
+        env:
+          POLICY_RESULT: ${{ needs.policy.result }}
+          MODE: ${{ needs.policy.outputs.mode }}
+        run: |
+          test "$POLICY_RESULT" = success
+          test "$MODE" = enforced || test "$MODE" = procedural || test "$MODE" = local-only
+      - name: Require successful reporting
+        env:
+          REPORT_RESULT: ${{ needs.report.result }}
+        run: test "$REPORT_RESULT" = success
+      - name: Record local-only waiver
+        if: needs.policy.outputs.mode == 'local-only'
+        run: |
+          echo "Architecture Gate: ACCEPTED WITHOUT CI AI REVIEW"
+          echo "Base branch: ${{ github.base_ref }}"
+          echo "AI acceptance review: WAIVED BY BASE-BRANCH POLICY"
+      - name: Check out the protected procedural acceptance verifier
+        if: needs.policy.outputs.mode == 'procedural' || needs.policy.outputs.mode == 'enforced'
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - name: Require model-backed PASS or verified G0 owner addition
+        if: needs.policy.outputs.mode == 'enforced'
+        env:
+          REVIEW_RESULT: ${{ needs.review.result }}
+          CONCLUSION: ${{ needs.report.outputs.conclusion }}
+          OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
+          OWNER_ADDITION_ELIGIBILITY: ${{ needs['owner-addition'].outputs.eligibility }}
+          OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade }}
+        run: node .architecture-gatekeeper-runtime/src/ci-enforced-acceptance.mjs
+      - name: Require PASS or pre-merge G0 eligibility
+        if: needs.policy.outputs.mode == 'procedural'
+        env:
+          REVIEW_RESULT: ${{ needs.review.result }}
+          CONCLUSION: ${{ needs.report.outputs.conclusion }}
+          OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
+          OWNER_ADDITION_ELIGIBILITY: ${{ needs['owner-addition'].outputs.eligibility }}
+          OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade }}
+          POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
+          EVIDENCE_PRODUCER: ${{ needs.policy.outputs.adoption_evidence_producer }}
+          SELECTED_AUTHORITY_CHANGED: ${{ needs.review.outputs.selected_authority_changed }}
+        run: node .architecture-gatekeeper-runtime/src/ci-procedural-acceptance.mjs

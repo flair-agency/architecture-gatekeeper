@@ -96,7 +96,7 @@ export function parsePinnedGatekeeperWorkflow(callerWorkflowBytes) {
   if (!source || source.includes('\uFFFD')) fail('caller workflow is not valid UTF-8.');
   const lines = source.split(/\r?\n/);
   const usesLines = [];
-  const targetMarker = 'flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml';
+  const targetMarker = 'flair-agency/architecture-gatekeeper/.github/workflows/';
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
     const match = line.match(/^(\s*)uses:\s*(.*?)\s*$/);
@@ -122,8 +122,8 @@ export function parsePinnedGatekeeperWorkflow(callerWorkflowBytes) {
   if (!callerJobId || !lines.slice(0, selectedUse.index).some(line => /^jobs:\s*$/.test(line))) {
     fail('Gatekeeper reusable workflow caller job ID is ambiguous or missing.');
   }
-  const match = selectedUse.use.match(/^flair-agency\/architecture-gatekeeper\/(\.github\/workflows\/architecture-gate\.yml)@([a-f0-9]{40})$/);
-  if (!match || match[1] !== '.github/workflows/architecture-gate.yml') {
+  const match = selectedUse.use.match(/^flair-agency\/architecture-gatekeeper\/(\.github\/workflows\/architecture-gate(?:-consumer)?\.yml)@([a-f0-9]{40})$/);
+  if (!match) {
     fail('Gatekeeper reusable workflow must use the exact supported path pinned to a 40-character commit SHA.');
   }
   const values = {};
@@ -297,7 +297,7 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
   }
   const callerWorkflowBytes = await file(callerPath, baseSha);
   const gatekeeperWorkflow = parsePinnedGatekeeperWorkflow(callerWorkflowBytes);
-  const reusableWorkflowBytes = await file('.github/workflows/architecture-gate.yml', gatekeeperWorkflow.sha,
+  const reusableWorkflowBytes = await file(gatekeeperWorkflow.path.slice('flair-agency/architecture-gatekeeper/'.length), gatekeeperWorkflow.sha,
     'flair-agency/architecture-gatekeeper');
   const defaults = parseGatekeeperWorkflowDefaults(reusableWorkflowBytes);
   const callerInputs = Object.fromEntries(Object.keys(defaults).map(name => [name,

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { buildOwnerAdditionFinalRecord, summarizeG0TagRefReadback, verifyG0TagObjectEvidence,
   verifyMergeAncestorComparison, parsePinnedGatekeeperWorkflow, parseGatekeeperWorkflowDefaults,
-  readG0TagObjectReadback, validateOwnerAdditionProducerJobName } from '../src/owner-addition-finalize.mjs';
+  readG0TagObjectReadback, validateOwnerAdditionProducerJobName, finalizeOwnerAddition } from '../src/owner-addition-finalize.mjs';
 import { digestOwnerDecisionAddition } from '../src/owner-decision-addition.mjs';
 
 const sha = char => char.repeat(40);
@@ -162,3 +162,44 @@ test('pinned reusable workflow defaults are read from the selected immutable wor
     'schema-path': '.codex/schema.json', 'validation-path': '',
   });
 });
+
+
+test('consumer workflow pin preserves selected path and rejects moving refs, unsupported paths and mixed callers', () => {
+  const caller = path => `jobs:\n  architecture:\n    uses: flair-agency/architecture-gatekeeper/.github/workflows/${path}@${sha('5')}\n`;
+  const source = caller('architecture-gate-consumer.yml');
+  assert.equal(parsePinnedGatekeeperWorkflow(Buffer.from(source)).path,
+    'flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-consumer.yml');
+  assert.throws(() => parsePinnedGatekeeperWorkflow(Buffer.from(source.replace(`@${sha('5')}`, '@main'))), /pinned to a 40-character/);
+  assert.throws(() => parsePinnedGatekeeperWorkflow(Buffer.from(caller('unrecognized.yml'))), /exact supported path/);
+  assert.throws(() => parsePinnedGatekeeperWorkflow(Buffer.from(source + caller('architecture-gate.yml'))), /exactly one/);
+});
+
+for (const workflow of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
+  test(`finalizer fetches selected ${workflow} from its exact recorded pin`, async () => {
+    const requested = [];
+    const caller = `jobs:\n  architecture:\n    uses: flair-agency/architecture-gatekeeper/.github/workflows/${workflow}@${sha('5')}\n`;
+    const boundary = new Error('Reached selected reusable workflow fetch');
+    const fetchImpl = async url => {
+      const path = new URL(url).pathname;
+      requested.push(url);
+      let data;
+      if (path.endsWith('/pulls/1')) data = { number: 1, state: 'closed', merged: true,
+        base: { ref: 'main', repo: { full_name: 'example/consumer' } },
+        head: { sha: sha('b') }, merge_commit_sha: sha('c') };
+      else if (path.endsWith(`/git/commits/${sha('c')}`)) data = {
+        parents: [{ sha: sha('a') }, { sha: sha('b') }], tree: { sha: sha('d') } };
+      else if (path.endsWith(`/git/commits/${sha('b')}`)) data = { tree: { sha: sha('d') } };
+      else if (path.endsWith('/actions/runs/100/attempts/1')) data = { path: '.github/workflows/caller.yml' };
+      else if (path.endsWith('/contents/.github/workflows/caller.yml')) data = {
+        type: 'file', encoding: 'base64', content: Buffer.from(caller).toString('base64') };
+      else if (path.endsWith(`/contents/.github/workflows/${workflow}`)) throw boundary;
+      else throw new Error(`Unexpected fetch: ${url}`);
+      return { ok: true, json: async () => data };
+    };
+    await assert.rejects(finalizeOwnerAddition({ repository: 'example/consumer', pullRequestNumber: 1,
+      githubToken: 'fixture-token', runId: '100', fetchImpl }), error => error === boundary);
+    assert.equal(requested.at(-1),
+      `https://api.github.com/repos/flair-agency/architecture-gatekeeper/contents/.github/workflows/${workflow}?ref=${sha('5')}`);
+    assert.ok(requested.some(url => url.endsWith(`caller.yml?ref=${sha('a')}`)));
+  });
+}
