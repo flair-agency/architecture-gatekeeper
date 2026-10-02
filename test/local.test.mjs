@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { runManualReviewCli, validate } from '../src/local-gate.mjs';
+import { runManualReview, runManualReviewAsync, runHookAsync, runManualReviewCli, validate } from '../src/local-gate.mjs';
 import { createReviewRequest, createReviewRequestAsync, validateReviewResponse } from '../src/review-contract.mjs';
 
 const cfg = { authorityFiles: ['AGENTS.md'], requiredReportedAuthorityFiles: ['AGENTS.md'], requiredPassArrays: ['reviewedScope'] };
@@ -239,4 +239,15 @@ test('native adapter supports local refs and fails closed on malformed schema ke
   git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'malformed schema');
   request = createReviewRequest('Review malformed schema', fixture.root);
   assert.throws(() => validateReviewResponse(request, {}), /schema validation failed/);
+});
+
+
+test('manual and UserPromptSubmit callers accept async adapters without invoking Codex', async t => {
+  const { root } = manualFixture(t);
+  const reviewer = async request => ({ decision: 'PASS', summary: 'adapter review', authorityFiles: ['AGENTS.md'], reviewedScope: [request.task] });
+  assert.equal((await runManualReviewAsync('manual', root, { reviewer })).decision, 'PASS');
+  const event = { hook_event_name: 'UserPromptSubmit', session_id: 'adapter', prompt: 'hook', cwd: root };
+  assert.equal((await runHookAsync(JSON.stringify(event), root, { reviewer })).hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+  await assert.rejects(runManualReviewAsync('invalid', root, { reviewer: async () => ({ decision: 'UNKNOWN' }) }), /unsupported/);
+  assert.throws(() => runManualReview('sync', root, { reviewer }), /requires the async/);
 });
