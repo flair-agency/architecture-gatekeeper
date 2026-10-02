@@ -777,6 +777,14 @@ test('validateThinkingBudget enforces integer bounds per model profile', () => {
     () => validateThinkingBudget('unsupported-model', 65536),
     /unknown or unsupported model profile 'unsupported-model' on Gemini route/
   );
+
+  // Inherited properties like constructor, toString, __proto__ fail closed
+  for (const inheritedKey of ['constructor', 'toString', '__proto__', 'valueOf']) {
+    assert.throws(
+      () => validateThinkingBudget(inheritedKey, 1024),
+      new RegExp(`unknown or unsupported model profile '${inheritedKey}' on Gemini route`)
+    );
+  }
 });
 
 test('explicit Gemini reviewer contract rejects reasoningEffort and accepts thinkingBudget', async () => {

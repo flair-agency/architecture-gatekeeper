@@ -42,7 +42,9 @@ export function validateThinkingBudget(model, budget) {
   if (!Number.isInteger(budget) || budget < 0) {
     throw new Error(`Architecture gate reviewer failed: thinkingBudget must be an integer >= 0, received: ${JSON.stringify(budget)}`);
   }
-  const limits = MODEL_THINKING_BUDGET_LIMITS[model];
+  const limits = Object.prototype.hasOwnProperty.call(MODEL_THINKING_BUDGET_LIMITS, model)
+    ? MODEL_THINKING_BUDGET_LIMITS[model]
+    : undefined;
   if (!limits) {
     throw new Error(`Architecture gate reviewer failed: unknown or unsupported model profile '${model}' on Gemini route.`);
   }
