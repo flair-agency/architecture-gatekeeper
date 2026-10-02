@@ -601,3 +601,23 @@ Local execution assumes a trusted Git executable, normal object resolution and
 the same-user environment already trusted to run project hooks. CI relies on a
 clean GitHub checkout. No review stage implements filesystem monitoring, path
 leases, rollback, local object-store defense or malicious-operator resistance.
+
+### Local reviewer execution composition
+
+Local manual review, UserPromptSubmit and post-tool screening use the shared
+local execution boundary rather than importing a provider transport. Existing
+Codex CLI defaults and synchronous APIs remain compatible. Programmatic manual
+and UserPromptSubmit calls accept an optional third argument `{ reviewer }`;
+post-tool screening retains its existing reviewer option. The adapter receives
+the revision-bound request and, on the async path, an optional AbortSignal in
+its second argument. It returns a raw structured decision; the caller still
+validates schema, selected authority and committed validation policy.
+
+Use the async API for a Promise-returning adapter. The sync API rejects such
+adapters and does not run a nested event loop. Async deadlines reject late
+results and request cooperative cancellation; they do not prove physical
+termination of an adapter. A blocking adapter must enforce its own process
+bound. Errors and invalid decisions remain incomplete, with no provider
+fallback. This seam does not select Gemini for the CLI or adopt provider-setting
+equivalence; explicit recorded provider settings and execution identity remain
+follow-up work under #265 coordinated with #252.
