@@ -42,6 +42,26 @@ individual before/after file snapshots or package protected references as a
 separate input packet. The consumer workflow invokes this helper; the legacy
 reusable `architecture-gate.yml` does not. Neither workflow dispatches Gemini.
 
+## First runtime preparation slice
+
+`src/prepare-review-file-context.mjs` provides an internal, currently unwired
+preparation helper. Trusted orchestration supplies exact merge revisions,
+explicit base reference paths and all three limits. It returns full before/after
+regular UTF-8 file snapshots, Git object IDs and content digests; absent sides
+are `null`. It reads committed objects, not working-tree files, and rejects
+unsupported file modes, invalid text, missing objects and exceeded limits.
+The complete serialized result, including metadata and JSON escaping, is bounded.
+
+This first slice supports at most 32 changed-path/reference entries, 131,072
+bytes per blob and 524,288 bytes per serialized context. Callers must explicitly
+select limits at or below those runtime caps. These are internal preparation
+bounds, not newly adopted consumer policy or replacements for `maxPromptBytes`.
+A future composer must additionally bound the complete prompt and verify the
+protected selection and complete Authority Set. The helper does not establish
+repository-origin identity, infer required references, execute a reviewer,
+persist evidence, or alter either CI workflow. Its snapshot selection is not
+itself proof of protected authority or semantic completeness.
+
 ## Proposed staged deliveries
 
 These stages are implementation proposals. Each requires the relevant owner
