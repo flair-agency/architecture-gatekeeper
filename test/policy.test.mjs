@@ -468,7 +468,8 @@ test('selects and materializes the protected self Authority Set for CI and local
   assert.equal(selected.model, 'gpt-6.1-sol');
   assert.equal(selected.reasoningEffort, 'medium');
   assert.equal(selected.authorityManifestPath, '.codex/gatekeeper/authorities.json');
-  assert.equal(selected.ownerAmendmentTriggerProfile, 'completed-block-v1');
+  assert.equal(selected.ownerAmendmentTriggerProfile, 'completed-owner-decision-self-v1');
+  assert.equal(selected.ownerAmendmentMaxPromptBytes, 524288);
   assert.equal(selected.ownerAmendmentEvidenceProducer, 'github-actions-attestation');
   assert.equal(selected.ownerAmendmentAuthorityId, 'architecture-contract');
   assert.equal(selected.ownerAmendmentAuthorityPath, 'docs/architecture.md');
