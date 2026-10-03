@@ -303,6 +303,54 @@ The migration retires the temporary Flair fork and its additional lifecycle
 controls; it does not establish that hosted hangs are fixed. `local-only`
 records an explicit waiver and makes no OpenAI API call.
 
+### Gemini CI Review Runner
+
+Architecture Gatekeeper includes a standalone, zero-external-dependency runner
+and credential-isolated proxy architecture (`src/gemini-launcher.mjs`,
+`src/gemini-security-proxy.mjs`, and `src/gemini-ci-runner.mjs`) for executing
+fail-closed architecture reviews with Google Gemini.
+
+In accordance with the normative architecture contract (`docs/architecture.md`),
+the launcher/proxy boundary supplies credential non-inheritance and scoped
+dispatch; it does not supply same-user host isolation:
+- **Trusted Launcher (`src/gemini-launcher.mjs`)**: Privileged supervisor process that receives
+  credentials in trusted CI, starts the security proxy on local loopback, strips all sensitive
+  known credential and OIDC environment selectors, and spawns the runner. It requires
+  supplied credentials rather than local gcloud renewal. This boundary does not
+  make an already-authenticated same-user Cloud SDK installation inaccessible;
+  the host must withhold ambient user credentials or supply separate OS isolation
+  for that stronger guarantee. The launcher applies a bounded session
+  deadline with child termination and proxy cleanup.
+- **Security Proxy (`src/gemini-security-proxy.mjs`)**: Listens strictly on `127.0.0.1:<ephemeral>`,
+  enforces strict route allowlisting (`POST ...:generateContent`), injects credentials in-flight,
+  and rejects redirects and non-allowlisted routes with `403 Forbidden`.
+- **Review Runner (`src/gemini-ci-runner.mjs`)**: Credential-free client that connects to the
+  loopback proxy, parses results, deterministically validates decisions, and outputs results.
+
+It supports two authentication modes with automatic endpoint routing:
+
+- **Keyless Google Cloud Workload Identity Federation (WIF) with Vertex AI (Recommended)**:
+  When a short-lived OAuth Bearer token (`CLOUDSDK_AUTH_ACCESS_TOKEN` via
+  `google-github-actions/auth@v2`) is present along with a Google Cloud project
+  (`GOOGLE_CLOUD_PROJECT`), requests automatically route to Google Cloud Vertex AI
+  (`https://${REGION}-aiplatform.googleapis.com/...`). This avoids static API keys entirely.
+- **Static API Key with Google AI Studio**:
+  When `GEMINI_API_KEY` is supplied, requests automatically route to
+  Google AI Studio (`https://generativelanguage.googleapis.com/...`).
+
+Environment bearer tokens take precedence over environment API keys; explicit
+credential options follow the transport's explicit-option precedence. The runner
+validates decisions under the selected route and creates `decision.json` with mode
+`0600` in a private temporary directory outside the checkout by default. Explicit
+output paths must also be outside the reviewed repository and must not already
+exist. They must remain within `RUNNER_TEMP` or a recognized OS temporary root:
+`os.tmpdir()`, `/tmp`, `/private/tmp`, `/var/folders`, or `/private/var/folders`.
+Existing-ancestor checks reject symlink escapes from the selected root; arbitrary
+artifact directories outside these roots are unsupported. When `GITHUB_OUTPUT` is present, it publishes `decision-kind`, `decision-file`
+and `final-message` through the trusted runner-provided canonical existing file, with regular-file,
+link and opened-identity checks, including from a checkout working directory. Required output publication failure fails the
+command. CI adoption must separately select a trusted runtime and acceptance policy.
+
 The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)
 and a `review-step-timeout-minutes` input (default 5). This repository's
 protected self-review caller reads the optional Actions repository variable
@@ -673,3 +721,8 @@ bound. Errors and invalid decisions remain incomplete, with no provider
 fallback. This seam does not select Gemini for the CLI or adopt provider-setting
 equivalence; explicit recorded provider settings and execution identity remain
 follow-up work under #265 coordinated with #252.
+
+The Gemini loopback proxy rejects complete serialized request bodies exceeding
+16 MiB, including chunked uploads, before upstream dispatch. This implementation
+limit accommodates JSON expansion beyond prompt bytes; it does not truncate inputs
+or replace configured prompt limits. It is not a whole-process memory guarantee.

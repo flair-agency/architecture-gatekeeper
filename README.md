@@ -170,6 +170,31 @@ comment URLs when available. The existing report remains the fallback. See the
 [CI integration reference](docs/integration-reference.md) for location
 validation, bounds and rerun behavior.
 
+In addition to Codex, repositories can run automated reviews with Google Gemini
+using the standalone runner `architecture-review-gemini-ci`. It supports keyless
+authentication via Google Cloud Workload Identity Federation (WIF) and Vertex AI,
+as well as Google AI Studio API keys.
+The launcher requires an explicit model scope (or the model in `--request-json`)
+and a project scope for Vertex. Standalone prompt/schema reviews are compatibility
+feedback, without protected-authority assurance. Revision-bound requests must
+pass shared preflight and record `provider: "gemini"`; Codex selections are rejected.
+The current shared request constructor does not yet support committed Gemini
+settings (#265), so that route remains unavailable rather than falling back.
+Decision files default to a private temporary directory outside the checkout.
+Explicit output paths must be new files outside the reviewed repository, within
+`RUNNER_TEMP` or a recognized OS temporary root. Symlink escapes are rejected. If
+`GITHUB_OUTPUT` is present, publication failure fails the runner; normal checkout
+execution uses the trusted runner-provided canonical output file, with regular-file, link and opened-identity checks.
+The isolated launcher requires an explicit/environment key or access token and does
+not run local gcloud renewal. An authenticated same-user Cloud SDK installation
+is outside this isolation boundary: use a host without ambient credentials or a
+separate OS isolation boundary when those credentials must be inaccessible. It applies a bounded session deadline, shuts down the
+proxy and terminates the child on expiry (exit 124), escalating after 250 ms. This
+is not a guarantee against uninterruptible operating-system processes.
+Explicit Gemini thinking budgets currently support `gemini-2.5-flash` and
+`gemini-2.5-pro`; direct endpoints must match the selected official provider scope.
+
+
 ## Assurance boundary
 
 - Consumers own architecture and policy; this package only executes the

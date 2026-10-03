@@ -1,0 +1,237 @@
+#!/usr/bin/env node
+/**
+ * src/gemini-ci-runner.mjs
+ * Standalone review runner for Gemini provider in CI and local workflows.
+ * Zero external npm dependencies: uses Node.js standard library and native fetch.
+ */
+import { constants, existsSync, lstatSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { runGeminiReviewer } from './gemini-transport.mjs';
+import { validateJsonSchema } from './json-schema.mjs';
+import { preflightReviewRequest, repositoryRoot, validateReviewResponse } from './review-contract.mjs';
+import { appendGitHubOutput } from './runner-temp-path.mjs';
+
+import { containsPath, resolveSafePath } from './review-input-path.mjs';
+export { resolveSafePath };
+
+/**
+ * Parses CLI arguments into an options object.
+ * @param {string[]} argv
+ * @returns {Record<string, string>}
+ */
+export function parseArgs(argv) {
+  const options = {};
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg.startsWith('--')) {
+      const separator = arg.indexOf('=');
+      if (separator !== -1) {
+        options[arg.slice(2, separator)] = arg.slice(separator + 1);
+        continue;
+      }
+      const key = arg.slice(2);
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+        options[key] = argv[++i];
+      } else {
+        options[key] = 'true';
+      }
+    }
+  }
+  return options;
+}
+
+/**
+ * Builds or loads a complete review request.
+ * @param {Record<string, string>} options
+ * @param {string} root
+ * @returns {object}
+ */
+export function resolveReviewRequest(options, root = process.cwd()) {
+  const selectedProvider = options.provider ?? process.env.REVIEWER_PROVIDER;
+  if (selectedProvider !== undefined && selectedProvider !== 'gemini') {
+    throw new Error('Gemini runner requires provider gemini; explicit provider cannot be replaced.');
+  }
+  if (options['request-json']) {
+    const reqPath = resolveSafePath(options['request-json'], root);
+    if (!existsSync(reqPath)) {
+      throw new Error(`Review request file not found: ${reqPath}`);
+    }
+    return JSON.parse(readFileSync(reqPath, 'utf8'));
+  }
+
+  const promptPath = options.prompt || process.env.PROMPT_PATH;
+  const schemaPath = options.schema || process.env.SCHEMA_PATH;
+
+  if (!promptPath) {
+    throw new Error('Missing prompt file path (--prompt or PROMPT_PATH).');
+  }
+  if (!schemaPath) {
+    throw new Error('Missing schema file path (--schema or SCHEMA_PATH).');
+  }
+
+  const safePromptPath = resolveSafePath(promptPath, root);
+  const safeSchemaPath = resolveSafePath(schemaPath, root);
+
+  if (!existsSync(safePromptPath)) {
+    throw new Error(`Missing or non-existent prompt file: ${safePromptPath}`);
+  }
+  if (!existsSync(safeSchemaPath)) {
+    throw new Error(`Missing or non-existent schema file: ${safeSchemaPath}`);
+  }
+
+  const prompt = readFileSync(safePromptPath, 'utf8');
+  const schema = JSON.parse(readFileSync(safeSchemaPath, 'utf8'));
+  const model = options.model || process.env.MODEL || process.env.REVIEW_MODEL || 'gemini-2.5-flash';
+  const timeoutMs = Number(options.timeout || process.env.TIMEOUT_MS || 120000);
+
+  const rawBudget = options['thinking-budget'] || options.budget || process.env.THINKING_BUDGET;
+  const isExplicitGemini = options.provider === 'gemini' || process.env.REVIEWER_PROVIDER === 'gemini' || rawBudget !== undefined;
+
+  let reviewer;
+  if (isExplicitGemini) {
+    if (options.effort || options['reasoning-effort'] || process.env.EFFORT) {
+      throw new Error('Architecture gate reviewer failed: mixed thinkingBudget and reasoningEffort settings are not allowed.');
+    }
+    const budgetNum = rawBudget !== undefined ? Number(rawBudget) : 1024;
+    reviewer = {
+      provider: 'gemini',
+      model,
+      thinkingBudget: budgetNum,
+      reviewTimeoutMs: timeoutMs,
+    };
+  } else {
+    const reasoningEffort = options.effort || options['reasoning-effort'] || process.env.EFFORT || 'low';
+    reviewer = {
+      model,
+      reasoningEffort,
+      reviewTimeoutMs: timeoutMs,
+    };
+  }
+
+  return {
+    version: 1,
+    prompt,
+    schema,
+    reviewer,
+    repositoryRoot: root,
+  };
+}
+
+/** Serialize only bounded single-line fields into the GitHub command protocol. */
+export function formatGitHubReviewOutputs(decision, outputPath) {
+  if (!['PASS', 'BLOCK', 'OWNER_DECISION'].includes(decision?.decision) ||
+      typeof outputPath !== 'string' || /[\r\n]/.test(outputPath)) {
+    throw new Error('Review outputs require a valid decision kind and a single-line output path.');
+  }
+  return `final-message=${JSON.stringify(decision)}\ndecision-file=${outputPath}\ndecision-kind=${decision.decision}\n`;
+}
+
+/**
+ * Main execution routine for the Gemini CI review runner.
+ * @param {string[]} argv
+ * @param {string} cwd
+ * @returns {Promise<object>} validated review decision
+ */
+export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = process.cwd()) {
+  const options = parseArgs(argv);
+  const request = resolveReviewRequest(options, cwd);
+  const checkoutRoots = new Set();
+  for (const source of [cwd, request.repositoryRoot].filter(Boolean)) {
+    try { checkoutRoots.add(repositoryRoot(source)); } catch { /* Non-Git compatibility inputs have no checkout. */ }
+  }
+  const requireOutsideCheckout = target => {
+    let ancestor = target;
+    while (!existsSync(ancestor) && dirname(ancestor) !== ancestor) ancestor = dirname(ancestor);
+    for (const checkoutRoot of checkoutRoots) {
+      for (const path of [target, realpathSync(ancestor)]) {
+        if (containsPath(checkoutRoot, path)) throw new Error('Review output must be outside the reviewed repository.');
+      }
+    }
+  };
+  let rawOutput = options.output || process.env.OUTPUT_PATH;
+  if (!rawOutput) {
+    // TMPDIR/TEMP can be caller-controlled. Validate lexical and physical roots
+    // before mkdtemp performs any write, including when the root is a symlink.
+    const temporaryRoot = resolveSafePath(tmpdir(), cwd);
+    requireOutsideCheckout(temporaryRoot);
+    rawOutput = join(mkdtempSync(join(realpathSync(temporaryRoot), 'agk-gemini-result-')), 'decision.json');
+  }
+  const outputPath = resolveSafePath(rawOutput, cwd);
+  const verifyOutput = () => {
+    resolveSafePath(outputPath, cwd);
+    requireOutsideCheckout(outputPath);
+    try { lstatSync(outputPath); throw new Error('Review output must be a new file; overwriting is prohibited.'); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+  };
+  verifyOutput();
+
+  const transportOptions = {};
+  if (options.project) transportOptions.projectId = options.project;
+  if (options.region) transportOptions.region = options.region;
+  if (options['proxy-url'] || process.env.REVIEW_PROXY_URL) {
+    transportOptions.proxyUrl = options['proxy-url'] || process.env.REVIEW_PROXY_URL;
+    transportOptions.proxyMode = process.env.REVIEW_PROXY_MODE;
+  }
+  if (options['base-url'] || process.env.GEMINI_BASE_URL) {
+    transportOptions.baseUrl = options['base-url'] || process.env.GEMINI_BASE_URL;
+  }
+  
+  // Forward explicit options only. The transport owns environment-token/key
+  // precedence, including all supported OAuth aliases.
+  if (options['api-key']) transportOptions.apiKey = options['api-key'];
+  if (options['access-token']) transportOptions.accessToken = options['access-token'];
+
+  // Requirement 3: Complete request preflight before contacting a provider:
+  // For revision-bound local requests verify request integrity, committed configuration and complete authority selection through shared mechanisms.
+  // Treat the prompt/schema-only standalone path as a separately labeled compatibility route with no protected-authority claim.
+  const isRevisionBound = ['reviewedRevision', 'authoritySet', 'requestId', 'task'].some(key => Object.hasOwn(request, key));
+  if (isRevisionBound) {
+    await preflightReviewRequest(request, 'gemini');
+  } else {
+    process.stderr.write('[gemini-ci-runner] Warning: running standalone prompt/schema compatibility route (no protected authority claim).\n');
+  }
+
+  process.stderr.write(`[gemini-ci-runner] Invoking Gemini reviewer (${request.reviewer.model})...\n`);
+
+  // Transport invocation
+  const rawDecision = await runGeminiReviewer(request, transportOptions);
+
+  // Schema-level deterministic validation
+  validateJsonSchema(rawDecision, request.schema);
+
+  // Validate complete review response if request is revision-bound or has authoritySet
+  let validatedDecision = rawDecision;
+  if (isRevisionBound) {
+    validatedDecision = validateReviewResponse(request, rawDecision);
+  }
+
+  const githubOutputs = process.env.GITHUB_OUTPUT ? formatGitHubReviewOutputs(validatedDecision, outputPath) : null;
+
+  // Persist result to output file
+  const serialized = JSON.stringify(validatedDecision, null, 2);
+  verifyOutput();
+  writeFileSync(outputPath, `${serialized}\n`, { mode: 0o600, flag: constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (constants.O_NOFOLLOW ?? 0) });
+  process.stderr.write(`[gemini-ci-runner] Review completed: decision=${validatedDecision.decision}, summary=${validatedDecision.summary}\n`);
+  process.stderr.write(`[gemini-ci-runner] Decision persisted to: ${outputPath}\n`);
+
+  // If running inside GitHub Actions, export output variables safely
+  if (process.env.GITHUB_OUTPUT) {
+    appendGitHubOutput(githubOutputs);
+  }
+
+  return validatedDecision;
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) {
+  runGeminiCiReview()
+    .then((result) => {
+      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      process.exit(0);
+    })
+    .catch((error) => {
+      process.stderr.write(`[gemini-ci-runner] ERROR: ${error.message}\n`);
+      process.exit(2);
+    });
+}

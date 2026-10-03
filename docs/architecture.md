@@ -916,8 +916,13 @@ GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed
 #### Target multi-provider credential-isolated review proxy boundary (Issue #252 owner decision, 2026-10-02)
 
 CI may use a credential-isolated review proxy: the trusted launcher owns
-credentials and supplies them privately to the proxy; the runner does not
-inherit them or OIDC/token-renewal capabilities. The proxy binds only to an ephemeral loopback endpoint and limits
+credentials and supplies them privately to the proxy. The launcher must withhold
+provider credentials and OIDC/token-renewal capabilities from the runner’s
+environment, arguments, and any other explicitly supplied launch interface.
+This includes credential-file selectors and handles granting access to a
+credential or renewal service; withholding an exchanged token alone is
+insufficient when a renewal capability would still be passed to the runner.
+The proxy binds only to an ephemeral loopback endpoint and limits
 credential-bearing dispatch to allowed methods/model routes on selected official
 provider hosts within launcher-selected project, region and model scope;
 arbitrary destinations, scope mismatches and redirects fail closed. The runner
@@ -925,11 +930,32 @@ consumes responses for deterministic schema and authority validation.
 
 This target claims credential non-inheritance and constrained proxy dispatch,
 not restricted direct runner networking, same-user host isolation, or provider
-assurance equivalence. Protected acceptance requires explicitly adopted consumer
-policy and verified route-specific execution evidence; this text activates no
-route. Implementation details are in the
+assurance equivalence. Credential non-inheritance does not make independently
+available host capabilities inaccessible: an authenticated Cloud SDK installation,
+credential files readable by the same OS user, or host identity services may
+remain accessible. Preventing their use requires separately selected and verified
+host isolation. Protected acceptance requires explicitly adopted consumer policy
+and verified route-specific execution evidence; this text activates no route.
+Implementation details are in the
 [proxy specification](investigations/2026-10-02-credential-isolated-review-proxy-boundary.md);
 it cannot independently amend this contract.
+
+#### GitHub step-output sink (owner decision, 2026-10-03)
+
+The GitHub-specific step-output adapter treats `GITHUB_OUTPUT` as a trusted
+sink supplied by the invoking GitHub runner. It reads that environment value
+directly; it exposes no caller-selected sink or runner-temp argument and does
+not require the sink to be below `RUNNER_TEMP`. The invoking execution must
+preserve this runner-provided value rather than derive it from candidate code,
+repository content, request JSON, or model output.
+
+The adapter requires an absolute canonical path to an existing regular file,
+rejects symbolic links and hardlinks, and checks the opened file's identity
+before appending bounded command-protocol data. These checks do not authenticate
+an attacker-controlled environment or establish same-user host isolation.
+Publication supplies no semantic acceptance authority and activates no CI
+route. This decision does not change the fixed runner-temp paths used for
+protected review inputs and other temporary artifacts.
 
 #### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
 

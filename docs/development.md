@@ -44,7 +44,20 @@ for your OS, including the standard query packs. Add its `codeql` directory to
 exits with installation guidance before creating a scan directory. Supported
 systems follow CodeQL's official requirements; allow several GB of disk space.
 The command analyzes JavaScript/TypeScript and Actions with the default suites,
-including the local threat model used by CI.
+including the local threat model used by CI. The repository-owned model pack in
+`.github/codeql/extensions/github-output` represents only the adopted GitHub
+runner output boundary. Local analysis explicitly loads the same pack that
+GitHub default setup discovers from this directory.
+
+Before scanning the repository, the command runs the standard path-injection
+query with and without the model against a generated fixture. Only the trusted
+accessor finding may disappear; unrelated environment, CLI, and checked-path
+findings must remain. Model or query incompatibility fails this regression and
+stops analysis. `npm run codeql:model` runs only this regression; the CI
+`codeql-model` job runs it with the official CodeQL CLI independently of the
+existing default-setup scan. The fixture, baseline/modeled SARIF, and regression result are
+retained alongside the whole-tree results. Hosted model loading still requires
+verification in the subsequent GitHub CodeQL run.
 
 Each invocation retains SARIF results,
 CodeQL database logs, and `summary.json` under

@@ -90,6 +90,12 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   if (finalizer.status === 0 || !finalizer.stderr.includes('usage: owner-addition-finalize')) {
     throw new Error('installed finalizer entrypoint is unavailable');
   }
+  const geminiScript = resolve(installedBin, 'architecture-review-gemini-ci');
+  const geminiCi = spawnSync(process.execPath, [geminiScript],
+    { cwd: root, env, encoding: 'utf8' });
+  if (geminiCi.status === 0 || !geminiCi.stderr.includes('gemini-ci-runner')) {
+    throw new Error('installed gemini-ci entrypoint is unavailable');
+  }
   writeFileSync(join(root, 'large-authority.md'), 'x'.repeat(153943));
   writeFileSync(join(gate, 'authorities.json'), JSON.stringify({ version: 1, authorities: [
     { id: 'architecture', repository: 'self', revision: 'authority-revision', path: 'AGENTS.md' },

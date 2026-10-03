@@ -5,6 +5,7 @@ import { runCodeql } from '../scripts/codeql-local.mjs';
 function harness({ missing = false, failure = 0, home = '/home/developer', redirected = false } = {}) {
   const calls = [], writes = new Map(), made = [], messages = [];
   const context = {
+    verifyGithubOutputModel: () => {},
     fileURLToPath: () => '/repo/scripts/codeql-local.mjs',
     homedir: () => home,
     process: { platform: 'linux', exit(code) { throw new Error(`exit:${code}`); } },

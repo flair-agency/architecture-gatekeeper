@@ -20,9 +20,48 @@ export function cleanJsonSchema(schema) {
   return cleaned;
 }
 
+// Model-supported thinking budget profiles.
+// Values must be integers >= 0 within model boundaries.
+const MODEL_THINKING_BUDGET_LIMITS = {
+  'gemini-2.5-flash': { min: 0, max: 24576 },
+  'gemini-2.5-pro': { min: 128, max: 32768 },
+};
+
 /**
- * Maps reasoning effort strings (e.g. from Gatekeeper's config)
+ * Validates thinkingBudget for a given model.
+ * Enforces finite integer budgets within verified model profile limits.
+ * @param {string} model
+ * @param {unknown} budget
+ * @returns {number}
+ */
+export function validateThinkingBudget(model, budget) {
+  if (budget === undefined || budget === null) {
+    throw new Error('Architecture gate reviewer failed: missing thinkingBudget for Gemini route.');
+  }
+  if (!Number.isInteger(budget) || budget < 0) {
+    throw new Error(`Architecture gate reviewer failed: thinkingBudget must be an integer >= 0, received: ${JSON.stringify(budget)}`);
+  }
+  const limits = Object.prototype.hasOwnProperty.call(MODEL_THINKING_BUDGET_LIMITS, model)
+    ? MODEL_THINKING_BUDGET_LIMITS[model]
+    : undefined;
+  if (!limits) {
+    throw new Error(`Architecture gate reviewer failed: unknown or unsupported model profile '${model}' on Gemini route.`);
+  }
+  if (budget < limits.min || budget > limits.max) {
+    throw new Error(
+      `Architecture gate reviewer failed: thinkingBudget ${budget} exceeds supported bounds [${limits.min}, ${limits.max}] for model '${model}'.`
+    );
+  }
+  return budget;
+}
+
+/**
+ * Legacy compatibility adapter: maps reasoning effort strings (e.g. from legacy CLI/config)
  * to Gemini thinking budget values.
+ *
+ * NOTE: This is an explicit legacy adapter for standalone CLI/v1 compatibility only.
+ * It must NOT select the recorded Gemini provider route.
+ *
  * @param {string} effort
  * @returns {number | undefined}
  */
@@ -46,6 +85,68 @@ export function mapEffortToThinkingBudget(effort) {
 }
 
 /**
+ * Resolves and validates the thinking budget for a review request.
+ * Enforces mutual exclusivity: rejects mixed reasoningEffort and thinkingBudget settings.
+ *
+ * @param {object} reviewer
+ * @param {object} [options]
+ * @returns {{ budget: number, isExplicitGeminiRoute: boolean }}
+ */
+export function resolveReviewerThinkingBudget(reviewer, options = {}) {
+  const isExplicitGemini = reviewer?.provider === 'gemini';
+
+  // Reject mixed settings
+  const hasThinkingBudget = reviewer?.thinkingBudget !== undefined || options?.thinkingBudget !== undefined;
+  const hasReasoningEffort = reviewer?.reasoningEffort !== undefined || options?.reasoningEffort !== undefined;
+
+  if (hasThinkingBudget && hasReasoningEffort) {
+    throw new Error('Architecture gate reviewer failed: mixed thinkingBudget and reasoningEffort settings are not allowed.');
+  }
+
+  if (isExplicitGemini) {
+    if (reviewer.reasoningEffort !== undefined) {
+      throw new Error('Architecture gate reviewer failed: Gemini route does not accept reasoningEffort.');
+    }
+    if (options.reasoningEffort !== undefined) {
+      throw new Error('Architecture gate reviewer failed: Gemini route does not accept options.reasoningEffort.');
+    }
+    if (reviewer.thinkingBudget === undefined) {
+      throw new Error('Architecture gate reviewer failed: recorded reviewer configuration must specify thinkingBudget for provider=gemini.');
+    }
+    if (options.thinkingBudget !== undefined && options.thinkingBudget !== reviewer.thinkingBudget) {
+      throw new Error('Architecture gate reviewer failed: thinkingBudget mismatch.');
+    }
+    const budget = validateThinkingBudget(reviewer.model, reviewer.thinkingBudget);
+    return { budget, isExplicitGeminiRoute: true };
+  }
+
+  // If an explicit provider is specified and it is not 'gemini', reject it fail-closed
+  if (reviewer?.provider && reviewer.provider !== 'gemini') {
+    throw new Error(`Architecture gate reviewer failed: unsupported provider '${reviewer.provider}' on Gemini transport.`);
+  }
+
+  // Legacy / unrecorded route using reasoningEffort (ONLY when provider is omitted/undefined)
+  if (!reviewer?.provider && reviewer?.reasoningEffort && typeof reviewer.reasoningEffort === 'string') {
+    if (options.reasoningEffort && options.reasoningEffort !== reviewer.reasoningEffort) {
+      throw new Error('Architecture gate reviewer failed: reasoningEffort mismatch.');
+    }
+    const budget = mapEffortToThinkingBudget(reviewer.reasoningEffort);
+    if (budget === undefined) {
+      throw new Error(`Architecture gate reviewer failed: unsupported reasoningEffort: ${reviewer.reasoningEffort}`);
+    }
+    return { budget, isExplicitGeminiRoute: false };
+  }
+
+  // Fallback: options.thinkingBudget provided explicitly on legacy route without provider
+  if (!reviewer?.provider && options.thinkingBudget !== undefined) {
+    const budget = validateThinkingBudget(reviewer?.model, options.thinkingBudget);
+    return { budget, isExplicitGeminiRoute: false };
+  }
+
+  throw new Error('Architecture gate reviewer failed: missing or invalid reviewer reasoningEffort or thinkingBudget.');
+}
+
+/**
  * Prepares the request payload for Gemini generateContent API.
  * @param {object} request Review request created by review-contract
  * @param {object} [options]
@@ -55,17 +156,7 @@ export function prepareGeminiRequestBody(request, options = {}) {
   const prompt = request.prompt;
   const schema = cleanJsonSchema(request.schema);
 
-  if (!request?.reviewer?.reasoningEffort || typeof request.reviewer.reasoningEffort !== 'string') {
-    throw new Error('Architecture gate reviewer failed: missing or invalid reviewer reasoningEffort.');
-  }
-  if (options.reasoningEffort && options.reasoningEffort !== request.reviewer.reasoningEffort) {
-    throw new Error('Architecture gate reviewer failed: reasoningEffort mismatch.');
-  }
-  const effort = request.reviewer.reasoningEffort;
-  const budget = mapEffortToThinkingBudget(effort);
-  if (budget === undefined) {
-    throw new Error(`Architecture gate reviewer failed: unsupported reasoningEffort: ${effort}`);
-  }
+  const { budget } = resolveReviewerThinkingBudget(request?.reviewer, options);
 
   const generationConfig = {
     responseMimeType: 'application/json',
@@ -110,26 +201,35 @@ export function resolveGcloudAccessToken(timeoutMs = 4000) {
 }
 
 /**
- * Resolves available authentication credentials with explicit fallback precedence:
- * 1. Explicit API key (options.apiKey or GEMINI_API_KEY)
- * 2. Explicit OAuth Bearer token (options.accessToken or GOOGLE_OAUTH_ACCESS_TOKEN)
- * 3. Local gcloud access token via `gcloud auth print-access-token`
+ * Resolves available authentication credentials with explicit precedence:
+ * 1. Explicit option apiKey (options.apiKey)
+ * 2. Explicit option accessToken (options.accessToken)
+ * 3. Short-lived WIF / OAuth Bearer token from environment (CLOUDSDK_AUTH_ACCESS_TOKEN or GOOGLE_OAUTH_ACCESS_TOKEN)
+ * 4. Static environment API key (GEMINI_API_KEY)
+ * 5. Local gcloud CLI access token via `gcloud auth print-access-token`
  *
  * @param {object} [options]
  * @returns {{ type: 'apiKey' | 'bearer', value: string }}
  */
 export function resolveAuthCredentials(options = {}) {
-  const apiKey = options.apiKey || process.env.GEMINI_API_KEY;
-  if (apiKey && typeof apiKey === 'string' && apiKey.trim()) {
-    return { type: 'apiKey', value: apiKey.trim() };
+  if (options.apiKey && typeof options.apiKey === 'string' && options.apiKey.trim()) {
+    return { type: 'apiKey', value: options.apiKey.trim() };
   }
 
-  const explicitToken =
-    options.accessToken ||
-    process.env.GOOGLE_OAUTH_ACCESS_TOKEN ||
-    process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
-  if (explicitToken && typeof explicitToken === 'string' && explicitToken.trim()) {
-    return { type: 'bearer', value: explicitToken.trim() };
+  if (options.accessToken && typeof options.accessToken === 'string' && options.accessToken.trim()) {
+    return { type: 'bearer', value: options.accessToken.trim() };
+  }
+
+  const envToken =
+    process.env.CLOUDSDK_AUTH_ACCESS_TOKEN ||
+    process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
+  if (envToken && typeof envToken === 'string' && envToken.trim()) {
+    return { type: 'bearer', value: envToken.trim() };
+  }
+
+  const envApiKey = process.env.GEMINI_API_KEY;
+  if (envApiKey && typeof envApiKey === 'string' && envApiKey.trim()) {
+    return { type: 'apiKey', value: envApiKey.trim() };
   }
 
   const gcloudTimeoutMs = options.gcloudTimeoutMs ?? 4000;
@@ -145,20 +245,76 @@ export function resolveAuthCredentials(options = {}) {
 }
 
 /**
- * Executes an architecture review using the Gemini API.
- * Fails closed on any HTTP, network, timeout, or schema error.
+ * Resolves the appropriate base URL based on credentials and options.
+ * Routes Bearer tokens to Vertex AI when a Google Cloud project is available,
+ * and routes API keys to Google AI Studio.
  *
- * @param {object} request Review request created by createReviewRequest or createReviewRequestAsync
+ * @param {{ type: 'apiKey' | 'bearer', value: string }} credentials
  * @param {object} [options]
- * @param {string} [options.apiKey] Gemini API Key (defaults to process.env.GEMINI_API_KEY)
- * @param {string} [options.accessToken] Google OAuth Bearer token
- * @param {string} [options.model] Model name (defaults to request.reviewer.model or "gemini-2.5-flash")
- * @param {string} [options.baseUrl] Base API URL (defaults to Google Generative Language API)
- * @param {number} [options.timeoutMs] Review timeout in milliseconds
- * @param {typeof fetch} [options.fetch] Custom fetch implementation (useful for testing)
- * @returns {Promise<object>} Parsed decision JSON conforming to the requested schema
+ * @returns {string}
  */
-export async function runGeminiReviewer(request, options = {}) {
+export function resolveBaseUrl(credentials, options = {}) {
+  return options.baseUrl || resolveProviderBaseUrl(credentials, options);
+}
+
+/** Resolve Vertex scope identically for direct transport and proxy dispatch. */
+export function resolveVertexProject(options = {}, env = process.env) {
+  return options.projectId || env.GOOGLE_CLOUD_PROJECT || env.CLOUDSDK_CORE_PROJECT || env.CLOUDSDK_PROJECT || env.GCP_PROJECT || null;
+}
+
+/** Resolve Vertex region identically for direct transport and proxy dispatch. */
+export function resolveVertexRegion(options = {}, env = process.env) {
+  return options.region || env.GOOGLE_CLOUD_REGION || env.CLOUDSDK_COMPUTE_REGION || 'us-central1';
+}
+
+/** Known provider secrets to withhold, including Google SDK aliases not used for auth selection. */
+export function getSupportedEnvironmentCredentialValues(env = process.env) {
+  return [env.CLOUDSDK_AUTH_ACCESS_TOKEN, env.GOOGLE_OAUTH_ACCESS_TOKEN, env.GEMINI_API_KEY, env.GOOGLE_API_KEY]
+    .filter(value => typeof value === 'string' && value.trim().length > 0)
+    .map(value => value.trim());
+}
+
+function resolveProviderBaseUrl(credentials, options) {
+  if (credentials.type === 'bearer') {
+    const projectId = resolveVertexProject(options);
+
+    if (projectId && typeof projectId === 'string' && projectId.trim()) {
+      const region = resolveVertexRegion(options);
+      if (typeof region !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(region) || !/^[A-Za-z0-9._-]+$/.test(projectId.trim())) {
+        throw new Error('Architecture gate reviewer failed: invalid Vertex project or region scope.');
+      }
+      return `https://${encodeURIComponent(region)}-aiplatform.googleapis.com/v1/projects/${encodeURIComponent(projectId.trim())}/locations/${encodeURIComponent(region)}/publishers/google`;
+    }
+  }
+
+  return 'https://generativelanguage.googleapis.com/v1beta';
+}
+
+/**
+ * Executes an architecture review using the Gemini API and returns both
+ * the parsed decision and adapter-generated execution metadata.
+ *
+ * Implements Requirement 2 and 4 of the local provider execution contract:
+ * - Returns `{ decision, execution }`
+ * - Execution metadata is generated by the adapter (provider, requestedModel, appliedSettings, backendReportedModel)
+ * - Model-produced identity fields are never used for execution provenance
+ * - Propagates cooperative cancellation and enforces recorded deadline across credential resolution, fetch, and body consumption
+ * - Timeout/cancellation/failure leaves review incomplete (no fallback, no late decision adoption)
+ *
+ * @param {object} request Review request created by review-contract
+ * @param {object} [options]
+ * @param {string} [options.apiKey] Gemini API Key
+ * @param {string} [options.accessToken] Google OAuth Bearer token
+ * @param {string} [options.projectId] Google Cloud project ID for Vertex AI
+ * @param {string} [options.region] Google Cloud region for Vertex AI
+ * @param {string} [options.model] Model name override (must match request.reviewer.model if both present)
+ * @param {string} [options.baseUrl] Base API URL
+ * @param {number} [options.timeoutMs] Review timeout in milliseconds
+ * @param {AbortSignal} [options.signal] External cancellation signal
+ * @param {typeof fetch} [options.fetch] Custom fetch implementation
+ * @returns {Promise<{ decision: object, execution: { provider: string, requestedModel: string, appliedSettings: object, backendReportedModel?: string } }>}
+ */
+export async function executeGeminiReviewer(request, options = {}) {
   if (!request?.reviewer?.model || typeof request.reviewer.model !== 'string') {
     throw new Error('Architecture gate reviewer failed: missing or invalid reviewer model.');
   }
@@ -167,16 +323,8 @@ export async function runGeminiReviewer(request, options = {}) {
   }
   const model = request.reviewer.model;
 
-  if (!request?.reviewer?.reasoningEffort || typeof request.reviewer.reasoningEffort !== 'string') {
-    throw new Error('Architecture gate reviewer failed: missing or invalid reviewer reasoningEffort.');
-  }
-  if (options.reasoningEffort && options.reasoningEffort !== request.reviewer.reasoningEffort) {
-    throw new Error('Architecture gate reviewer failed: reasoningEffort mismatch.');
-  }
-  const budget = mapEffortToThinkingBudget(request.reviewer.reasoningEffort);
-  if (budget === undefined) {
-    throw new Error(`Architecture gate reviewer failed: unsupported reasoningEffort: ${request.reviewer.reasoningEffort}`);
-  }
+  // Resolve and validate thinking budget or effort
+  const { budget } = resolveReviewerThinkingBudget(request.reviewer, options);
 
   const recordedTimeoutMs = request.reviewer?.reviewTimeoutMs ?? 120000;
   if (options.timeoutMs !== undefined) {
@@ -185,102 +333,310 @@ export async function runGeminiReviewer(request, options = {}) {
     }
   }
   const timeoutMs = options.timeoutMs ?? recordedTimeoutMs;
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 3600000) {
+    throw new Error('Architecture gate reviewer requires a bounded integer timeout.');
+  }
   const startTime = Date.now();
-  const signal = AbortSignal.timeout(timeoutMs);
+  const deadline = startTime + timeoutMs;
 
-  // Validate endpoint and require HTTPS before resolving or transmitting credentials
-  const baseUrl = options.baseUrl || 'https://generativelanguage.googleapis.com/v1beta';
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(baseUrl);
-  } catch {
-    throw new Error(`Architecture gate reviewer failed: invalid baseUrl: ${baseUrl}`);
+  // Compose internal timeout signal with optional external signal
+  const timeoutController = new AbortController();
+  const timeoutTimer = setTimeout(() => {
+    timeoutController.abort(new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`));
+  }, timeoutMs);
+
+  const externalSignal = options.signal;
+  if (externalSignal?.aborted) {
+    clearTimeout(timeoutTimer);
+    throw (externalSignal.reason instanceof Error ? externalSignal.reason : new Error('Architecture gate reviewer aborted.'));
   }
-  if (parsedUrl.protocol !== 'https:') {
-    throw new Error(`Architecture gate reviewer failed: insecure endpoint protocol ${parsedUrl.protocol}. HTTPS is required to protect credentials.`);
-  }
 
-  const remainingMs = Math.max(0, timeoutMs - (Date.now() - startTime));
-  const gcloudTimeoutMs = Math.min(4000, remainingMs);
-  const credentials = resolveAuthCredentials({ ...options, gcloudTimeoutMs });
-
-  const url = `${baseUrl.replace(/\/+$/, '')}/models/${encodeURIComponent(model)}:generateContent`;
-
-  const requestBody = prepareGeminiRequestBody(request, options);
-  const fetchFn = options.fetch || globalThis.fetch;
-
-  const headers = {
-    'Content-Type': 'application/json',
+  const abortController = new AbortController();
+  const onExternalAbort = () => {
+    abortController.abort(externalSignal.reason instanceof Error ? externalSignal.reason : new Error('Architecture gate reviewer aborted.'));
   };
-  if (credentials.type === 'apiKey') {
-    headers['x-goog-api-key'] = credentials.value;
-  } else {
-    headers['Authorization'] = `Bearer ${credentials.value}`;
-  }
+  const onTimeoutAbort = () => {
+    abortController.abort(timeoutController.signal.reason);
+  };
 
-  let response;
+  if (externalSignal) {
+    externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+  }
+  timeoutController.signal.addEventListener('abort', onTimeoutAbort, { once: true });
+
+  const signal = abortController.signal;
+
+  const cleanupSignals = () => {
+    clearTimeout(timeoutTimer);
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onExternalAbort);
+    }
+    timeoutController.signal.removeEventListener('abort', onTimeoutAbort);
+  };
+
   try {
-    response = await fetchFn(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody),
-      redirect: 'error',
-      signal,
-    });
-  } catch (error) {
-    if (error.name === 'TimeoutError' || signal.aborted) {
+    const remainingMs = Math.max(0, timeoutMs - (Date.now() - startTime));
+    if (remainingMs <= 0 || signal.aborted) throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+    const gcloudTimeoutMs = Math.min(4000, remainingMs);
+
+    const proxyUrl = options.proxyUrl || process.env.REVIEW_PROXY_URL;
+    let credentials = null;
+    let parsedProxyUrl = null;
+
+    if (proxyUrl) {
+      try {
+        parsedProxyUrl = new URL(proxyUrl);
+      } catch {
+        throw new Error(`Architecture gate reviewer failed: invalid proxyUrl: ${proxyUrl}`);
+      }
+      if (!['http:', 'https:'].includes(parsedProxyUrl.protocol) || parsedProxyUrl.username || parsedProxyUrl.password || parsedProxyUrl.search || parsedProxyUrl.hash || !['', '/'].includes(parsedProxyUrl.pathname)) {
+        throw new Error('Architecture gate reviewer failed: proxyUrl must be a plain loopback HTTP endpoint.');
+      }
+      if (parsedProxyUrl.hostname !== '127.0.0.1' && parsedProxyUrl.hostname !== 'localhost') {
+        throw new Error(`Architecture gate reviewer failed: proxyUrl must bind to loopback (127.0.0.1), received: ${parsedProxyUrl.hostname}`);
+      }
+    } else {
+      if (signal.aborted) {
+        throw signal.reason || new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+      }
+      credentials = resolveAuthCredentials({ ...options, gcloudTimeoutMs });
+    }
+
+    if (signal.aborted) {
+      throw signal.reason || new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+    }
+
+    // Validate endpoint and require HTTPS before transmitting credentials directly
+    let baseUrl;
+    let parsedUrl;
+    if (parsedProxyUrl) {
+      const protocol = parsedProxyUrl.protocol === 'https:' ? 'https:' : 'http:';
+      const host = parsedProxyUrl.hostname === 'localhost' ? 'localhost' : '127.0.0.1';
+      const port = parsedProxyUrl.port ? `:${encodeURIComponent(parsedProxyUrl.port)}` : '';
+      let cleanProxyUrl = `${protocol}//${host}${port}`;
+      while (cleanProxyUrl.endsWith('/')) {
+        cleanProxyUrl = cleanProxyUrl.slice(0, -1);
+      }
+      const proxyMode = options.proxyMode ?? process.env.REVIEW_PROXY_MODE;
+      if (proxyMode !== undefined && !['studio', 'vertex'].includes(proxyMode)) throw new Error('Invalid selected proxy mode.');
+      const isVertex = proxyMode === undefined
+        ? Boolean(resolveVertexProject(options))
+        : proxyMode === 'vertex';
+      if (isVertex) {
+        const projectId = resolveVertexProject(options) || 'default';
+        const region = resolveVertexRegion(options);
+        baseUrl = `${cleanProxyUrl}/v1/projects/${encodeURIComponent(projectId)}/locations/${encodeURIComponent(region)}/publishers/google`;
+      } else {
+        baseUrl = `${cleanProxyUrl}/v1beta`;
+      }
+      parsedUrl = new URL(baseUrl);
+    } else {
+      baseUrl = resolveBaseUrl(credentials, options);
+      while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+      try {
+        parsedUrl = new URL(baseUrl);
+      } catch {
+        throw new Error(`Architecture gate reviewer failed: invalid baseUrl: ${baseUrl}`);
+      }
+      if (parsedUrl.protocol !== 'https:') {
+        throw new Error(`Architecture gate reviewer failed: insecure endpoint protocol ${parsedUrl.protocol}. HTTPS is required to protect credentials.`);
+      }
+      if (parsedUrl.hostname !== 'generativelanguage.googleapis.com' && !/^[a-z0-9-]+-aiplatform\.googleapis\.com$/.test(parsedUrl.hostname)) {
+        throw new Error('Architecture gate reviewer failed: endpoint must match the selected official provider scope.');
+      }
+      const selectedBase = new URL(resolveProviderBaseUrl(credentials, options));
+      if (parsedUrl.origin !== selectedBase.origin || parsedUrl.pathname !== selectedBase.pathname || parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
+        throw new Error('Architecture gate reviewer failed: endpoint must match the selected official provider scope.');
+      }
+      // Dispatch the provider-derived endpoint, never the caller's validated spelling.
+      baseUrl = resolveProviderBaseUrl(credentials, options);
+    }
+
+    while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+    const url = `${baseUrl}/models/${encodeURIComponent(model)}:generateContent`;
+    // Validate the complete dispatch URL, not only its base before composition.
+    const dispatchUrl = new URL(url);
+    if (parsedProxyUrl) {
+      if (dispatchUrl.hostname !== '127.0.0.1' && dispatchUrl.hostname !== 'localhost') {
+        throw new Error('Architecture gate reviewer failed: proxy dispatch must remain loopback.');
+      }
+      if (dispatchUrl.origin !== parsedProxyUrl.origin) throw new Error('Architecture gate reviewer failed: proxy dispatch origin changed.');
+    } else if (dispatchUrl.origin !== parsedUrl.origin || dispatchUrl.protocol !== 'https:' ||
+        (dispatchUrl.hostname !== 'generativelanguage.googleapis.com' && !/^[a-z0-9-]+-aiplatform\.googleapis\.com$/.test(dispatchUrl.hostname))) {
+      throw new Error('Architecture gate reviewer failed: dispatch must remain in the selected official provider scope.');
+    }
+
+    const requestBody = prepareGeminiRequestBody(request, options);
+    const fetchFn = options.fetch || globalThis.fetch;
+
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (credentials) {
+      if (credentials.type === 'apiKey') {
+        headers['x-goog-api-key'] = credentials.value;
+      } else {
+        headers['Authorization'] = `Bearer ${credentials.value}`;
+      }
+    }
+
+    // Helper to race an async operation against cooperative deadline and abort signal
+    const raceWithDeadline = (operationPromise) => {
+      let expiredTimer;
+      let onAbort;
+      const remainingMs = Math.max(0, deadline - Date.now());
+      const expiredPromise = new Promise((_, reject) => {
+        if (signal.aborted || Date.now() >= deadline) {
+          reject(signal.reason instanceof Error ? signal.reason : new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`));
+          return;
+        }
+        expiredTimer = setTimeout(() => {
+          // Record expiration before rejection so catch paths cannot misclassify
+          // an early timer tick as an HTTP JSON parsing failure.
+          timeoutController.abort(new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`));
+          reject(timeoutController.signal.reason);
+        }, remainingMs);
+        onAbort = () => {
+          clearTimeout(expiredTimer);
+          reject(signal.reason instanceof Error ? signal.reason : new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`));
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+      });
+
+      return Promise.race([
+        operationPromise,
+        expiredPromise,
+      ]).finally(() => {
+        clearTimeout(expiredTimer);
+        if (onAbort) signal.removeEventListener('abort', onAbort);
+      });
+    };
+
+    let response;
+    try {
+      const body = JSON.stringify(requestBody);
+      if (signal.aborted || Date.now() >= deadline) {
+        throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+      }
+      response = await raceWithDeadline(
+        fetchFn(url, {
+          method: 'POST',
+          headers,
+          body,
+          redirect: 'error',
+          signal,
+        })
+      );
+    } catch (error) {
+      if (error.name === 'TimeoutError' || signal.aborted || Date.now() >= deadline) {
+        throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+      }
+      throw new Error(`Architecture gate reviewer network failure: ${error.message}`);
+    }
+
+    if (!response.ok) {
+      let detail = '';
+      try {
+        const errJson = await raceWithDeadline(Promise.resolve().then(() => response.json()));
+        detail = errJson?.error?.message ? `: ${errJson.error.message}` : '';
+      } catch (err) {
+        if (signal.aborted || Date.now() >= deadline) {
+          throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+        }
+        // ignore body parsing failure for HTTP error
+      }
+      throw new Error(`Architecture gate reviewer failed with status ${response.status}${detail}`);
+    }
+
+    let data;
+    try {
+      data = await raceWithDeadline(Promise.resolve().then(() => response.json()));
+    } catch (error) {
+      if (signal.aborted || Date.now() >= deadline) {
+        throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+      }
+      throw new Error('Architecture gate reviewer returned invalid HTTP JSON response.');
+    }
+
+    if (signal.aborted || Date.now() >= deadline) {
       throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
     }
-    throw new Error(`Architecture gate reviewer network failure: ${error.message}`);
-  }
 
-  if (!response.ok) {
-    let detail = '';
-    try {
-      const errJson = await response.json();
-      detail = errJson?.error?.message ? `: ${errJson.error.message}` : '';
-    } catch {
-      // ignore body parsing failure
+    const candidate = data?.candidates?.[0];
+    if (!candidate || typeof candidate !== 'object') {
+      throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
     }
-    throw new Error(`Architecture gate reviewer failed with status ${response.status}${detail}`);
-  }
 
-  let data;
-  try {
-    data = await response.json();
-  } catch {
-    throw new Error('Architecture gate reviewer returned invalid HTTP JSON response.');
-  }
+    if (candidate.finishReason !== 'STOP') {
+      throw new Error(
+        `Architecture gate reviewer candidate completion failed with finishReason: ${candidate.finishReason ?? 'MISSING'}`
+      );
+    }
 
-  const candidate = data?.candidates?.[0];
-  if (!candidate || typeof candidate !== 'object') {
-    throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
-  }
+    const parts = candidate.content?.parts;
+    if (!Array.isArray(parts) || parts.length === 0) {
+      throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
+    }
 
-  if (candidate.finishReason !== 'STOP') {
-    throw new Error(
-      `Architecture gate reviewer candidate completion failed with finishReason: ${candidate.finishReason ?? 'MISSING'}`
-    );
-  }
+    const answerParts = parts.filter(part => !part?.thought && typeof part?.text === 'string');
+    if (answerParts.length === 0) {
+      throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
+    }
 
-  const parts = candidate.content?.parts;
-  if (!Array.isArray(parts) || parts.length === 0) {
-    throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
-  }
+    const combinedText = answerParts.map(part => part.text).join('').trim();
+    if (!combinedText) {
+      throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
+    }
 
-  const answerParts = parts.filter(part => !part?.thought && typeof part?.text === 'string');
-  if (answerParts.length === 0) {
-    throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
-  }
+    let parsedDecision;
+    try {
+      parsedDecision = JSON.parse(combinedText);
+    } catch {
+      throw new Error('Architecture gate reviewer returned non-JSON candidate content.');
+    }
 
-  const combinedText = answerParts.map(part => part.text).join('').trim();
-  if (!combinedText) {
-    throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
-  }
+    // Build adapter-generated execution metadata
+    // Provenance is adapter-generated, independent of model text/identity claims.
+    const appliedSettings = {
+      thinkingBudget: budget,
+      reviewTimeoutMs: timeoutMs,
+    };
+    if (request.reviewer?.reasoningEffort) {
+      appliedSettings.reasoningEffort = request.reviewer.reasoningEffort;
+    }
 
-  try {
-    return JSON.parse(combinedText);
-  } catch {
-    throw new Error('Architecture gate reviewer returned non-JSON candidate content.');
+    const execution = {
+      provider: 'gemini',
+      requestedModel: model,
+      appliedSettings,
+    };
+
+    // Backend-reported model identity is recorded only when actually returned by the provider HTTP envelope
+    if (typeof data?.modelVersion === 'string' && data.modelVersion.trim()) {
+      execution.backendReportedModel = data.modelVersion.trim();
+    }
+
+    if (signal.aborted || Date.now() >= deadline) {
+      throw signal.reason instanceof Error ? signal.reason : new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+    }
+    return {
+      decision: parsedDecision,
+      execution,
+    };
+  } finally {
+    cleanupSignals();
   }
+}
+
+/**
+ * Raw-decision transport API for Gemini reviewer.
+ * Keeps backward compatibility: returns raw decision JSON directly.
+ *
+ * @param {object} request Review request created by review-contract
+ * @param {object} [options]
+ * @returns {Promise<object>} Parsed decision JSON conforming to the requested schema
+ */
+export async function runGeminiReviewer(request, options = {}) {
+  const result = await executeGeminiReviewer(request, options);
+  return result.decision;
 }

@@ -2,11 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   cleanJsonSchema,
+  executeGeminiReviewer,
   mapEffortToThinkingBudget,
   prepareGeminiRequestBody,
   runGeminiReviewer,
   resolveAuthCredentials,
+  resolveBaseUrl,
+  resolveVertexProject,
+  resolveVertexRegion,
   resolveGcloudAccessToken,
+  validateThinkingBudget,
 } from '../src/gemini-transport.mjs';
 
 test('cleanJsonSchema removes $schema while keeping properties and rules', () => {
@@ -636,4 +641,520 @@ test('runGeminiReviewer bounds credential discovery by review deadline', async (
   );
   assert.ok(observedGcloudTimeout !== null);
   assert.ok(observedGcloudTimeout <= 1500, `Expected <= 1500, got ${observedGcloudTimeout}`);
+});
+
+test('resolveAuthCredentials prioritizes environment short-lived WIF token over environment static API key', () => {
+  const prevEnvToken = process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+  const prevEnvKey = process.env.GEMINI_API_KEY;
+  try {
+    process.env.CLOUDSDK_AUTH_ACCESS_TOKEN = 'short-lived-wif-token';
+    process.env.GEMINI_API_KEY = 'static-api-key';
+
+    const creds = resolveAuthCredentials();
+    assert.deepEqual(creds, { type: 'bearer', value: 'short-lived-wif-token' });
+  } finally {
+    if (prevEnvToken !== undefined) process.env.CLOUDSDK_AUTH_ACCESS_TOKEN = prevEnvToken;
+    else delete process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+    if (prevEnvKey !== undefined) process.env.GEMINI_API_KEY = prevEnvKey;
+    else delete process.env.GEMINI_API_KEY;
+  }
+});
+
+test('resolveBaseUrl routes Bearer token to Vertex AI URL when project ID is present', () => {
+  const creds = { type: 'bearer', value: 'token' };
+
+  // Explicit options
+  const urlWithOptions = resolveBaseUrl(creds, { projectId: 'my-gcp-project', region: 'asia-northeast1' });
+  assert.equal(
+    urlWithOptions,
+    'https://asia-northeast1-aiplatform.googleapis.com/v1/projects/my-gcp-project/locations/asia-northeast1/publishers/google'
+  );
+
+  // Environment variables with default region us-central1
+  const prevProject = process.env.GOOGLE_CLOUD_PROJECT;
+  const prevRegion = process.env.GOOGLE_CLOUD_REGION;
+  try {
+    process.env.GOOGLE_CLOUD_PROJECT = 'env-gcp-project';
+    delete process.env.GOOGLE_CLOUD_REGION;
+
+    const envUrl = resolveBaseUrl(creds);
+    assert.equal(
+      envUrl,
+      'https://us-central1-aiplatform.googleapis.com/v1/projects/env-gcp-project/locations/us-central1/publishers/google'
+    );
+  } finally {
+    if (prevProject !== undefined) process.env.GOOGLE_CLOUD_PROJECT = prevProject;
+    else delete process.env.GOOGLE_CLOUD_PROJECT;
+    if (prevRegion !== undefined) process.env.GOOGLE_CLOUD_REGION = prevRegion;
+    else delete process.env.GOOGLE_CLOUD_REGION;
+  }
+});
+
+test('Vertex project and region aliases resolve consistently for launcher and transport paths', async () => {
+  const env = {
+    CLOUDSDK_PROJECT: 'alias-project',
+    CLOUDSDK_COMPUTE_REGION: 'asia-northeast1',
+  };
+  const scope = { projectId: resolveVertexProject({}, env), region: resolveVertexRegion({}, env) };
+  assert.deepEqual(scope, { projectId: 'alias-project', region: 'asia-northeast1' });
+  assert.equal(
+    resolveBaseUrl({ type: 'bearer', value: 'token' }, { ...scope }),
+    'https://asia-northeast1-aiplatform.googleapis.com/v1/projects/alias-project/locations/asia-northeast1/publishers/google'
+  );
+
+  const previous = { ...process.env };
+  try {
+    delete process.env.GOOGLE_CLOUD_PROJECT;
+    delete process.env.CLOUDSDK_CORE_PROJECT;
+    delete process.env.GCP_PROJECT;
+    delete process.env.GOOGLE_CLOUD_REGION;
+    process.env.CLOUDSDK_PROJECT = env.CLOUDSDK_PROJECT;
+    process.env.CLOUDSDK_COMPUTE_REGION = env.CLOUDSDK_COMPUTE_REGION;
+    let dispatched;
+    await runGeminiReviewer({
+      prompt: 'scope check', schema: { type: 'object' },
+      reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' },
+    }, {
+      accessToken: 'token', proxyUrl: 'http://127.0.0.1:1234', fetch: async url => {
+        dispatched = String(url);
+        return { ok: true, status: 200, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS"}' }] } }] }) };
+      },
+    });
+    assert.match(dispatched, /\/v1\/projects\/alias-project\/locations\/asia-northeast1\/publishers\/google\/models\//);
+  } finally { process.env = previous; }
+});
+
+test('resolveBaseUrl routes apiKey credentials to Generative Language API', () => {
+  const creds = { type: 'apiKey', value: 'api-key-123' };
+  const prevProject = process.env.GOOGLE_CLOUD_PROJECT;
+  try {
+    process.env.GOOGLE_CLOUD_PROJECT = 'some-project';
+    const url = resolveBaseUrl(creds);
+    assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta');
+  } finally {
+    if (prevProject !== undefined) process.env.GOOGLE_CLOUD_PROJECT = prevProject;
+    else delete process.env.GOOGLE_CLOUD_PROJECT;
+  }
+});
+
+test('runGeminiReviewer automatically invokes Vertex AI endpoint when Bearer token and project ID are configured', async () => {
+  let requestedUrl = null;
+  let authorizationHeader = null;
+
+  const mockFetch = async (url, options) => {
+    requestedUrl = url;
+    authorizationHeader = options.headers['Authorization'];
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [
+          {
+            finishReason: 'STOP',
+            content: {
+              parts: [{ text: JSON.stringify({ decision: 'PASS', summary: 'Vertex AI review completed' }) }],
+            },
+          },
+        ],
+      }),
+    };
+  };
+
+  const prevToken = process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+  const prevProject = process.env.GOOGLE_CLOUD_PROJECT;
+  try {
+    process.env.CLOUDSDK_AUTH_ACCESS_TOKEN = 'wif-bearer-token';
+    process.env.GOOGLE_CLOUD_PROJECT = 'wif-ci-project';
+
+    const request = {
+      prompt: 'Verify architecture compliance on Vertex AI',
+      schema: { type: 'object' },
+      reviewer: { model: 'gemini-3.8-flash', reasoningEffort: 'low' },
+    };
+
+    const decision = await runGeminiReviewer(request, { fetch: mockFetch });
+    assert.equal(decision.decision, 'PASS');
+    assert.equal(
+      requestedUrl,
+      'https://us-central1-aiplatform.googleapis.com/v1/projects/wif-ci-project/locations/us-central1/publishers/google/models/gemini-3.8-flash:generateContent'
+    );
+    assert.equal(authorizationHeader, 'Bearer wif-bearer-token');
+  } finally {
+    if (prevToken !== undefined) process.env.CLOUDSDK_AUTH_ACCESS_TOKEN = prevToken;
+    else delete process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+    if (prevProject !== undefined) process.env.GOOGLE_CLOUD_PROJECT = prevProject;
+    else delete process.env.GOOGLE_CLOUD_PROJECT;
+  }
+});
+
+test('validateThinkingBudget enforces integer bounds per model profile', () => {
+  assert.equal(validateThinkingBudget('gemini-2.5-flash', 0), 0);
+  assert.equal(validateThinkingBudget('gemini-2.5-flash', 2048), 2048);
+  assert.equal(validateThinkingBudget('gemini-2.5-flash', 24576), 24576);
+
+  // Exceeds flash max
+  assert.throws(
+    () => validateThinkingBudget('gemini-2.5-flash', 30000),
+    /exceeds supported bounds/
+  );
+
+  // Negative or non-integer
+  assert.throws(() => validateThinkingBudget('gemini-2.5-flash', -1), /must be an integer >= 0/);
+  assert.throws(() => validateThinkingBudget('gemini-2.5-flash', 1024.5), /must be an integer >= 0/);
+  assert.throws(() => validateThinkingBudget('gemini-2.5-flash', '1024'), /must be an integer >= 0/);
+  assert.throws(() => validateThinkingBudget('gemini-2.5-flash', undefined), /missing thinkingBudget/);
+
+  // Unknown or unsupported model profile fails closed
+  assert.throws(
+    () => validateThinkingBudget('unsupported-model', 1024),
+    /unknown or unsupported model profile 'unsupported-model' on Gemini route/
+  );
+  assert.throws(
+    () => validateThinkingBudget('unsupported-model', 65536),
+    /unknown or unsupported model profile 'unsupported-model' on Gemini route/
+  );
+
+  // Inherited properties like constructor, toString, __proto__ fail closed
+  for (const inheritedKey of ['constructor', 'toString', '__proto__', 'valueOf']) {
+    assert.throws(
+      () => validateThinkingBudget(inheritedKey, 1024),
+      new RegExp(`unknown or unsupported model profile '${inheritedKey}' on Gemini route`)
+    );
+  }
+});
+
+test('explicit Gemini reviewer contract rejects reasoningEffort and accepts thinkingBudget', async () => {
+  const mockFetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      candidates: [
+        {
+          finishReason: 'STOP',
+          content: { parts: [{ text: JSON.stringify({ decision: 'PASS', summary: 'ok' }) }] },
+        },
+      ],
+      modelVersion: 'gemini-2.5-flash-001',
+    }),
+  });
+
+  // Rejects reasoningEffort when provider is gemini
+  const invalidGeminiRequest = {
+    prompt: 'Check compliance',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      reasoningEffort: 'low',
+    },
+  };
+  await assert.rejects(
+    () => executeGeminiReviewer(invalidGeminiRequest, { apiKey: 'k', fetch: mockFetch }),
+    /Gemini route does not accept reasoningEffort/
+  );
+
+  // Rejects missing thinkingBudget in recorded reviewer configuration on provider=gemini
+  const missingRecordedBudgetRequest = {
+    prompt: 'Check compliance',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+    },
+  };
+  await assert.rejects(
+    () => executeGeminiReviewer(missingRecordedBudgetRequest, { apiKey: 'k', thinkingBudget: 2048, fetch: mockFetch }),
+    /recorded reviewer configuration must specify thinkingBudget for provider=gemini/
+  );
+
+  // Rejects unknown model profile before network / credentials
+  const unknownModelRequest = {
+    prompt: 'Check compliance',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'unsupported-model',
+      thinkingBudget: 1024,
+    },
+  };
+  await assert.rejects(
+    () => executeGeminiReviewer(unknownModelRequest, { apiKey: 'k', fetch: mockFetch }),
+    /unknown or unsupported model profile 'unsupported-model' on Gemini route/
+  );
+
+  // Rejects mixed options
+  const mixedRequest = {
+    prompt: 'Check compliance',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 2048,
+    },
+  };
+  await assert.rejects(
+    () => executeGeminiReviewer(mixedRequest, { apiKey: 'k', reasoningEffort: 'high', fetch: mockFetch }),
+    /mixed thinkingBudget and reasoningEffort settings are not allowed/
+  );
+
+  // Rejects mismatched thinkingBudget options
+  await assert.rejects(
+    () => executeGeminiReviewer(mixedRequest, { apiKey: 'k', thinkingBudget: 4096, fetch: mockFetch }),
+    /thinkingBudget mismatch/
+  );
+
+  // Valid explicit Gemini request returns decision and execution envelope
+  const validRequest = {
+    prompt: 'Check compliance',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 2048,
+      reviewTimeoutMs: 60000,
+    },
+  };
+
+  const result = await executeGeminiReviewer(validRequest, { apiKey: 'k', fetch: mockFetch });
+  assert.deepEqual(result.decision, { decision: 'PASS', summary: 'ok' });
+  assert.equal(result.execution.provider, 'gemini');
+  assert.equal(result.execution.requestedModel, 'gemini-2.5-flash');
+  assert.equal(result.execution.appliedSettings.thinkingBudget, 2048);
+  assert.equal(result.execution.appliedSettings.reviewTimeoutMs, 60000);
+  assert.equal(result.execution.backendReportedModel, 'gemini-2.5-flash-001');
+
+  // Compatibility: runGeminiReviewer returns raw decision
+  const rawDecision = await runGeminiReviewer(validRequest, { apiKey: 'k', fetch: mockFetch });
+  assert.deepEqual(rawDecision, { decision: 'PASS', summary: 'ok' });
+});
+
+test('fails closed before credential resolution when reviewer settings are invalid or mismatched', async () => {
+  let credentialsTouched = false;
+  const originalEnv = { ...process.env };
+  delete process.env.GEMINI_API_KEY;
+  delete process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
+  delete process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+
+  // With no credentials in env and no apiKey passed, if it failed on credentials it would throw 'no credentials'
+  // But settings validation must happen first!
+  const requestMismatch = {
+    prompt: 'test',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 1024,
+    },
+  };
+
+  await assert.rejects(
+    () => executeGeminiReviewer(requestMismatch, { model: 'gemini-3.8-flash' }),
+    /model mismatch/
+  );
+
+  await assert.rejects(
+    () => executeGeminiReviewer(requestMismatch, { thinkingBudget: 2048 }),
+    /thinkingBudget mismatch/
+  );
+});
+
+test('enforces recorded deadline and cancellation during response body consumption', async () => {
+  // Mock fetch that hangs or delays during response.json()
+  const hangingFetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => {
+      // Simulate slow body consumption that exceeds timeout
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return {
+        candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS"}' }] } }],
+      };
+    },
+  });
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 1024,
+      reviewTimeoutMs: 30, // 30ms timeout, while response.json takes 100ms
+    },
+  };
+
+  await assert.rejects(
+    () => executeGeminiReviewer(request, { apiKey: 'k', fetch: hangingFetch }),
+    /Architecture gate reviewer timed out after 30ms/
+  );
+});
+
+test('races never-settling response body consumption against deadline for HTTP success', async () => {
+  // Never settling promise for response.json() on ok: true
+  const neverSettlingFetch = async () => ({
+    ok: true,
+    status: 200,
+    json: () => new Promise(() => {}),
+  });
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 1024,
+      reviewTimeoutMs: 25,
+    },
+  };
+
+  const start = Date.now();
+  await assert.rejects(
+    () => executeGeminiReviewer(request, { apiKey: 'k', fetch: neverSettlingFetch }),
+    /Architecture gate reviewer timed out after 25ms/
+  );
+  const elapsed = Date.now() - start;
+  assert.ok(elapsed >= 20 && elapsed < 200, `Expected timeout around 25ms, got ${elapsed}ms`);
+});
+
+test('races never-settling response body consumption against deadline for HTTP error', async () => {
+  // Never settling promise for response.json() on ok: false
+  const neverSettlingErrorFetch = async () => ({
+    ok: false,
+    status: 500,
+    json: () => new Promise(() => {}),
+  });
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 1024,
+      reviewTimeoutMs: 25,
+    },
+  };
+
+  const start = Date.now();
+  await assert.rejects(
+    () => executeGeminiReviewer(request, { apiKey: 'k', fetch: neverSettlingErrorFetch }),
+    /Architecture gate reviewer timed out after 25ms/
+  );
+  const elapsed = Date.now() - start;
+  assert.ok(elapsed >= 20 && elapsed < 200, `Expected timeout around 25ms, got ${elapsed}ms`);
+});
+
+test('cooperative external signal cancellation aborts execution', async () => {
+  const controller = new AbortController();
+  controller.abort(new Error('Caller cancelled review'));
+
+  const request = {
+    prompt: 'test prompt',
+    schema: { type: 'object' },
+    reviewer: {
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      thinkingBudget: 1024,
+      reviewTimeoutMs: 60000,
+    },
+  };
+
+  await assert.rejects(
+    () => executeGeminiReviewer(request, { apiKey: 'k', signal: controller.signal }),
+    /Caller cancelled review/
+  );
+});
+
+
+
+test('direct credentials cannot be dispatched outside selected official scope', async () => {
+  const request = { prompt: 'review', schema: { type: 'object' }, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024 } };
+  let calls = 0;
+  for (const baseUrl of ['https://example.com/v1beta', 'https://generativelanguage.googleapis.com/other', 'https://generativelanguage.googleapis.com/v1beta?key=other', 'https://user:password@generativelanguage.googleapis.com/v1beta', 'https://generativelanguage.googleapis.com/v1beta#fragment']) {
+    await assert.rejects(executeGeminiReviewer(request, { apiKey: 'secret', baseUrl, fetch: async () => { calls++; } }), /selected official provider scope/);
+  }
+  assert.equal(calls, 0);
+});
+
+test('invalid recorded deadlines fail before credential lookup or fetch', async () => {
+  for (const reviewTimeoutMs of [0, -1, Infinity, 1.5, 3600001]) {
+    const request = { prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024, reviewTimeoutMs } };
+    await assert.rejects(executeGeminiReviewer(request, { resolveGcloudAccessToken: () => { throw new Error('Unexpected credential lookup'); } }), /bounded integer timeout/);
+  }
+});
+
+test('verified Pro profile rejects disabled thinking and unsupported profiles', () => {
+  assert.throws(() => validateThinkingBudget('gemini-2.5-pro', 0), /supported bounds/);
+  assert.equal(validateThinkingBudget('gemini-2.5-pro', 128), 128);
+  assert.throws(() => validateThinkingBudget('gemini-3.8-flash', 1024), /unsupported model profile/);
+});
+
+
+test('Vertex scope cannot inject an arbitrary host through region', async () => {
+  const request = { prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024 } };
+  let calls = 0;
+  for (const region of ['example.com/path', 'example.com#', 'us-central1@evil.example']) {
+    await assert.rejects(executeGeminiReviewer(request, { accessToken: 'fixture-token', projectId: 'p', region, fetch: async () => { calls++; } }), /invalid Vertex project or region scope/);
+  }
+  assert.equal(calls, 0);
+});
+
+
+test('canonical official endpoint permits trailing slash normalization', async () => {
+  const request = { prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024 } };
+  await executeGeminiReviewer(request, { apiKey: 'fixture', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/', fetch: async url => {
+    assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent');
+    return { ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS"}' }] } }] }) };
+  } });
+});
+
+
+test('decision extraction finishing after the deadline cannot return a semantic result', async () => {
+  const originalNow = Date.now;
+  let now = 1000;
+  Date.now = () => now;
+  try {
+    const request = { prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024, reviewTimeoutMs: 5 } };
+    const part = { get text() { now = 1010; return '{"decision":"PASS"}'; } };
+    await assert.rejects(executeGeminiReviewer(request, { apiKey: 'fixture', fetch: async () => ({ ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [part] } }] }) }) }), /timed out after 5ms/);
+  } finally { Date.now = originalNow; }
+});
+
+
+test('exhausted deadline never invokes credential discovery with an unlimited timeout', async () => {
+  const savedNow = Date.now;
+  let reads = 0, calls = 0;
+  Date.now = () => reads++ === 0 ? 1000 : 1010;
+  try {
+    await assert.rejects(executeGeminiReviewer({ prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024, reviewTimeoutMs: 5 } }, { resolveGcloudAccessToken: () => { calls++; return 'token'; } }), /timed out/);
+    assert.equal(calls, 0);
+  } finally { Date.now = savedNow; }
+});
+
+test('selected Studio proxy mode ignores unrelated project configuration and invalid modes do not dispatch', async () => {
+  const request = { prompt: 'review', schema: { type: 'object' }, reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' } };
+  let calls = 0;
+  const fetch = async url => { calls++; assert.equal(new URL(url).pathname, '/v1beta/models/gemini-2.5-flash:generateContent'); return { ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS"}' }] } }] }) }; };
+  await runGeminiReviewer(request, { proxyUrl: 'http://127.0.0.1:1234', proxyMode: 'studio', projectId: 'unrelated-project', fetch });
+  assert.equal(calls, 1);
+  await assert.rejects(runGeminiReviewer(request, { proxyUrl: 'http://127.0.0.1:1234', proxyMode: 'invalid', fetch }), /Invalid selected proxy mode/);
+  assert.equal(calls, 1);
+});
+
+
+test('serialization exhausting the deadline does not dispatch fetch', async () => {
+  const originalNow = Date.now;
+  const originalStringify = JSON.stringify;
+  let now = 1000, calls = 0;
+  Date.now = () => now;
+  JSON.stringify = (...args) => {
+    const body = originalStringify(...args);
+    if (args[0]?.contents) now = 1010;
+    return body;
+  };
+  try {
+    await assert.rejects(executeGeminiReviewer({ prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024, reviewTimeoutMs: 5 } }, { apiKey: 'fixture', fetch: async () => { calls++; throw new Error('must not dispatch'); } }), /timed out after 5ms/);
+    assert.equal(calls, 0);
+  } finally { Date.now = originalNow; JSON.stringify = originalStringify; }
 });
