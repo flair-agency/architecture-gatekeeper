@@ -962,6 +962,16 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - name: Check out the exact protected base for amendment policy recheck
+        if: needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_amendment_grade == 'G0'
+        uses: actions/checkout@v5
+        # Policy bytes only: the following verifier executes from the protected workflow checkout above.
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .architecture-gatekeeper-protected-base
+          fetch-depth: 1
+          persist-credentials: false
       - name: Recheck exact B amendment tag at final acceptance boundary
         if: needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_amendment_grade == 'G0'
         env:
@@ -971,7 +981,7 @@ jobs:
           BASE_BRANCH: ${{ github.base_ref }}
           TRIGGER_PROFILE: ${{ needs.policy.outputs.owner_amendment_trigger_profile }}
           GH_TOKEN: ${{ github.token }}
-          PROTECTED_RUNTIME_PATH: ${{ github.workspace }}/.architecture-gatekeeper-runtime
+          PROTECTED_POLICY_PATH: ${{ github.workspace }}/.architecture-gatekeeper-protected-base
           OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
         run: node .architecture-gatekeeper-runtime/scripts/owner-amendment-attempt-classifier.mjs acceptance-guard
       - name: Require model-backed PASS or verified G0 owner addition/amendment

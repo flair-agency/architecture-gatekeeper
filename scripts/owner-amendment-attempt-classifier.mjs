@@ -10,11 +10,26 @@ const baseBranch = process.env.BASE_BRANCH;
 const triggerProfile = process.env.TRIGGER_PROFILE;
 const token = process.env.GH_TOKEN;
 
-function readProtectedPolicyBytes(gitDirectory) {
+function readProtectedPolicyBytes(gitDirectory, requireExactHead = false) {
   if (!gitDirectory) fail('protected policy Git checkout is unavailable.');
-  return execFileSync('git', ['-C', gitDirectory, '--no-replace-objects', 'show',
-    `${baseSha}:.codex/gatekeeper/ci-policy.json`], { encoding: 'buffer', maxBuffer: 65_536,
-    stdio: ['ignore', 'pipe', 'pipe'] });
+  if (requireExactHead) {
+    let checkoutSha;
+    try {
+      checkoutSha = execFileSync('git', ['-C', gitDirectory, '--no-replace-objects', 'rev-parse', '--verify', 'HEAD'], {
+        encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim();
+    } catch {
+      fail('exact protected-base policy checkout is unavailable.');
+    }
+    if (checkoutSha !== baseSha) fail('policy checkout does not match the exact protected base revision.');
+  }
+  try {
+    return execFileSync('git', ['-C', gitDirectory, '--no-replace-objects', 'show',
+      `${baseSha}:.codex/gatekeeper/ci-policy.json`], { encoding: 'buffer', maxBuffer: 65_536,
+      stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch {
+    fail('protected policy is unavailable at the recorded base revision.');
+  }
 }
 
 function readTagRef({ expectedUrl, repository: selectedRepository, tagNamespace, bSha: selectedB }) {
@@ -36,9 +51,9 @@ function readTagRef({ expectedUrl, repository: selectedRepository, tagNamespace,
 try {
   const command = process.argv[2] ?? 'classify';
   const policyGitDirectory = command === 'acceptance-guard'
-    ? process.env.PROTECTED_RUNTIME_PATH : process.env.GITHUB_WORKSPACE;
+    ? process.env.PROTECTED_POLICY_PATH : process.env.GITHUB_WORKSPACE;
   const input = { repository, baseSha, bSha, baseBranch, triggerProfile,
-    policyBytes: readProtectedPolicyBytes(policyGitDirectory), readTagRef };
+    policyBytes: readProtectedPolicyBytes(policyGitDirectory, command === 'acceptance-guard'), readTagRef };
   const result = command === 'classify' ? await classifyOwnerAmendmentTagAttempt(input)
     : command === 'acceptance-guard' ? await assertOwnerAmendmentTagAbsentAtAcceptance(input)
       : fail('unsupported classifier command.');
