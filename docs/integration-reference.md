@@ -705,22 +705,58 @@ leases, rollback, local object-store defense or malicious-operator resistance.
 ### Local reviewer execution composition
 
 Local manual review, UserPromptSubmit and post-tool screening use the shared
-local execution boundary rather than importing a provider transport. Existing
-Codex CLI defaults and synchronous APIs remain compatible. Programmatic manual
-and UserPromptSubmit calls accept an optional third argument `{ reviewer }`;
-post-tool screening retains its existing reviewer option. The adapter receives
-the revision-bound request and, on the async path, an optional AbortSignal in
-its second argument. It returns a raw structured decision; the caller still
-validates schema, selected authority and committed validation policy.
+local execution boundary. Hook event parsing remains specific to the Codex
+host; reviewer selection is independent of that event format. Configuration,
+selected authority, prompt, schema and reviewer settings come from the same
+recorded Git revision, with deterministic validation shared by both providers.
 
-Use the async API for a Promise-returning adapter. The sync API rejects such
-adapters and does not run a nested event loop. Async deadlines reject late
-results and request cooperative cancellation; they do not prove physical
-termination of an adapter. A blocking adapter must enforce its own process
-bound. Errors and invalid decisions remain incomplete, with no provider
-fallback. This seam does not select Gemini for the CLI or adopt provider-setting
-equivalence; explicit recorded provider settings and execution identity remain
-follow-up work under #265 coordinated with #252.
+The file selected by `reviewerConfigPath` chooses one provider. Existing settings
+without `provider` continue to select Codex. For example:
+
+```json
+{ "provider": "codex", "model": "gpt-6.1-sol", "reasoningEffort": "medium" }
+```
+
+An explicit Gemini selection uses its own settings:
+
+```json
+{ "provider": "gemini", "model": "gemini-2.5-flash", "thinkingBudget": 1024 }
+```
+
+Commit these settings before review. `reviewTimeoutMs` remains in the gate
+configuration. Gemini thinking budgets must match a supported model profile;
+Codex `reasoningEffort` and Gemini `thinkingBudget` are not interchangeable.
+Unsupported settings leave review incomplete. Gemini uses the existing
+[authentication modes](#gemini-ci-review-runner) contract; local execution does not
+establish the separate CI credential-isolation boundary.
+
+The installed manual CLI and Hook CLIs use asynchronous execution and select
+the recorded provider. Gemini does not start Codex or require OpenAI credentials.
+Programmatic `runManualReviewAsync` and `runHookAsync` support both providers;
+existing synchronous APIs support Codex and reject a Gemini selection before
+starting any reviewer. The Codex-native Skill supports Codex settings only and
+fails closed for Gemini rather than substituting its host model.
+
+Validated local results include an `execution` report from the built-in adapter:
+`provider`, `requestedModel`, and `appliedSettings`. Gemini may also report
+`backendReportedModel` from the HTTP envelope. Requested identity and applied
+settings do not attest the backend's internals, model quality, or acceptance.
+
+Programmatic manual and UserPromptSubmit calls retain an optional third argument
+`{ reviewer }`; post-tool screening retains its reviewer option. This is a
+trusted adapter injection seam. The adapter receives the revision-bound request
+and, on the async path, an AbortSignal in its second argument. It may return a
+raw structured decision or `{ decision, execution }`. A raw injected result has
+no attested execution identity; an injected envelope's metadata belongs to that
+adapter. The caller still validates the decision against schema, authority and
+committed validation policy. Use the async API for Promise-returning adapters;
+a legacy sync callback returning a Promise is rejected after invocation.
+
+Async deadlines reject late results and request cooperative cancellation; they
+do not prove physical termination. A blocking adapter must enforce its own
+process bound. Errors and invalid decisions remain incomplete, with no fallback
+or parallel result adoption. These local results remain development feedback,
+not protected CI acceptance.
 
 The Gemini loopback proxy rejects complete serialized request bodies exceeding
 16 MiB, including chunked uploads, before upstream dispatch. This implementation

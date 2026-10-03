@@ -21,3 +21,14 @@ test('sync compatibility and async failures never manufacture a decision', async
   await assert.rejects(executeLocalReviewer({ reviewer: {} }), /recorded deadline/);
   assert.throws(() => executeLocalReviewerSync(request, { reviewer: async () => { throw new Error('async'); } }), /requires the async/);
 });
+
+test('sync Gemini selection fails before starting any adapter', () => {
+  let started = false;
+  assert.throws(() => executeLocalReviewerSync({ reviewer: { provider: 'gemini' } }, { reviewer: () => { started = true; } }), /Gemini requires the async/);
+  assert.equal(started, false);
+});
+
+test('raw injected adapters do not receive fabricated provider identity', async () => {
+  const result = await executeLocalReviewer(request, { reviewer: async () => ({ decision: 'PASS' }) });
+  assert.deepEqual(result, { decision: { decision: 'PASS' }, execution: null });
+});

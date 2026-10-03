@@ -185,6 +185,7 @@ function outputFor(result, eventMeta, newerPending = false, timing = {}) {
     reviewedRevision: result.reviewedRevision,
     requestId: result.requestId,
     snapshotSha256: result.snapshotSha256,
+    execution: result.execution,
     ...timing,
     ...eventMeta,
     ...(newerPending ? { newerCandidatePending: true } : {})
@@ -269,13 +270,14 @@ export async function runPostToolScreenHook(input, { cwd = process.cwd(), review
     // New marker files are written only by later events and remain for the next eligible event.
     newerPending = exists(markerPath(state));
     timing.reviewStartedAt = new Date().toISOString();
-    const decision = validateReviewResponse(request, await executeLocalReviewer(request, { reviewer }));
+    const executionResult = await executeLocalReviewer(request, { reviewer });
+    const decision = validateReviewResponse(request, executionResult.decision);
     timing.reviewCompletedAt = new Date().toISOString();
     if (readHead(root) !== candidate.head) {
       const result = incomplete('HEAD moved during semantic review; result is not associated with the current snapshot.', { reviewedRevision: candidate.head, requestId: identity, snapshotSha256: candidate.patchSha256 });
       return { result, output: outputFor(result, eventMeta, newerPending, timing) };
     }
-    const result = { status: decision.decision, summary: decision.summary || '', reviewedRevision: decision.reviewedRevision, requestId: identity, snapshotSha256: candidate.patchSha256 };
+    const result = { status: decision.decision, summary: decision.summary || '', reviewedRevision: decision.reviewedRevision, requestId: identity, snapshotSha256: candidate.patchSha256, execution: executionResult.execution };
     atomicJson(identityPath(state), { requestId: identity, recordedAt: Date.now() });
     newerPending = exists(markerPath(state));
     return { result, output: outputFor(result, eventMeta, newerPending, timing) };

@@ -35,6 +35,9 @@ automatic local screening Hook, CI acceptance gate, and general code review.
 1. Create private temporary paths for a review request and decision.
 2. Run the repository's installed, version-pinned entrypoint:
    `architecture-review-native prepare <request-path> <task...>`.
+   This Codex-native adapter supports recorded Codex settings only. A recorded
+   Gemini selection leaves this Skill incomplete; use the asynchronous local
+   reviewer instead. Do not substitute the host model.
 3. Start a separate host-native reviewer/subagent whose role is limited to
    reviewing and does not include changing the reviewed repository. Give it
    exactly the returned prompt, schema, model and reasoning effort. Apply the
