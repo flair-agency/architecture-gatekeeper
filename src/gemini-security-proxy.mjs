@@ -11,7 +11,7 @@
  * 1. Strict loopback binding (127.0.0.1:ephemeral)
  * 2. Strict method (POST only) and route allowlist (*:generateContent)
  * 3. In-flight credential injection (x-goog-api-key or Authorization: Bearer)
- * 4. Pinned upstream provider hosts (generativelanguage.googleapis.com or *-aiplatform.googleapis.com)
+ * 4. Pinned upstream provider hosts (generativelanguage.googleapis.com or selected Vertex location)
  * 5. Fail-closed on redirects, non-allowlisted routes, malformed URLs, or upstream errors
  */
 import { createServer } from 'node:http';
@@ -28,7 +28,16 @@ export function remainingDeadlineMs(deadlineAt, now = Date.now()) {
 const ALLOWED_AI_STUDIO_PATH = /^\/v1beta\/models\/([a-zA-Z0-9._-]+):generateContent$/;
 const ALLOWED_VERTEX_PATH = /^\/v1\/projects\/([a-zA-Z0-9._-]+)\/locations\/([a-zA-Z0-9._-]+)\/publishers\/google\/models\/([a-zA-Z0-9._-]+):generateContent$/;
 const ALLOWED_VERTEX_STREAM_PATH = /^\/v1\/publishers\/google\/models\/([a-zA-Z0-9._-]+):streamGenerateContent\?alt=sse$/;
-const ALLOWED_VERTEX_HOST = /^[a-z0-9-]+-aiplatform\.googleapis\.com$/;
+const ALLOWED_VERTEX_REGIONAL_HOST = /^[a-z0-9-]+-aiplatform\.googleapis\.com$/;
+const VERTEX_LOCATION_HOSTS = Object.freeze({
+  global: 'aiplatform.googleapis.com',
+  us: 'aiplatform.us.rep.googleapis.com',
+  eu: 'aiplatform.eu.rep.googleapis.com',
+});
+const hasVertexLocationHost = location => Object.hasOwn(VERTEX_LOCATION_HOSTS, location);
+const vertexHostForLocation = location => hasVertexLocationHost(location)
+  ? VERTEX_LOCATION_HOSTS[location]
+  : `${location}-aiplatform.googleapis.com`;
 const ALLOWED_AI_STUDIO_HOST = 'generativelanguage.googleapis.com';
 
 /**
@@ -143,12 +152,14 @@ export async function startGeminiSecurityProxy(config) {
         if (upstreamHostOverride) {
           targetHost = upstreamHostOverride;
         } else {
-          const region = reqRegion || 'us-central1';
-          targetHost = `${region}-aiplatform.googleapis.com`;
+          targetHost = vertexHostForLocation(reqRegion || 'us-central1');
         }
 
         const isLoopbackTest = Boolean(config.allowLoopbackUpstream && (targetHost === '127.0.0.1' || targetHost === 'localhost'));
-        if ((!ALLOWED_VERTEX_HOST.test(targetHost) || targetHost !== `${config.allowedRegion}-aiplatform.googleapis.com`) && !isLoopbackTest) {
+        const expectedHost = vertexHostForLocation(config.allowedRegion);
+        const isExpectedVertexHost = targetHost === expectedHost &&
+          (hasVertexLocationHost(config.allowedRegion) || ALLOWED_VERTEX_REGIONAL_HOST.test(targetHost));
+        if (!isExpectedVertexHost && !isLoopbackTest) {
           res.writeHead(403, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: `Forbidden: unverified Vertex host ${targetHost}` }));
           return;

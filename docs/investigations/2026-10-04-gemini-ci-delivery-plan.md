@@ -261,3 +261,47 @@ contained `thinkingBudget`. The four read tools and parent-only upstream dummy
 Bearer remained unchanged. This proves configuration propagation only. Actual WIF authentication, protected CI input/authority binding,
 quality, cost, latency and decision consistency still need route-specific
 verification before activation.
+
+## Trusted-parent CLI/proxy composition
+
+The next internal composition keeps the explicit bearer credential in the
+trusted parent. The parent starts the existing scoped Vertex proxy, passes only
+its loopback endpoint to the controlled CLI session, and closes the proxy on
+success or failure. Model/project/region come from one selected execution input;
+a caller cannot independently override the proxy scope or endpoint. One bounded
+session deadline covers startup and execution. The result remains raw response
+text requiring the existing protected CI validators, not the local reviewer
+contract or a new acceptance format.
+
+This composition does not discover authentication from environment variables,
+install a runtime, select a deployment, activate a workflow, or add fallback.
+Protected CI will retain exact-base policy/authority selection and the current
+ordinary/owner-addition/owner-amendment validation paths. The public workflow
+seam and authenticated Vertex/WIF cases remain subsequent work in #252.
+
+### Protected CI integration seam
+
+The existing `prepare-review-context.mjs` complete prompt, exact-base authority
+snapshots/provenance, decision schema and validators remain the CI contract.
+`prepareReviewFileContext` can supply the revision-bound evidence packet;
+`runGeminiCliSession` supplies raw response text. The trusted CI parent must not
+route this result through local `preflightReviewRequest` or
+`validateReviewResponse`. Existing decision-kind, consumer-rule and Authority
+Set validators continue downstream. Enabled OWNER_ADDITION and the self
+OWNER_AMENDMENT semantic pipeline need their own provider-dispatch coverage;
+an ordinary review probe alone cannot establish those cases.
+
+The successful historical PoC identifies project `architecture-gatekeeper`.
+Its old `us-central1` default is not evidence for the adopted 3.8 model's
+location. Verify the supported location and exact official endpoint before
+real WIF execution; do not silently reuse that default. The current proxy
+constructs a regional host, so a global route would need an explicit official
+host-mapping implementation and tests rather than an arbitrary upstream URL.
+
+Google's [endpoint documentation](https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations)
+confirms the exact host mapping: `global` uses `aiplatform.googleapis.com`,
+`us` uses `aiplatform.us.rep.googleapis.com`, and `eu` uses
+`aiplatform.eu.rep.googleapis.com`. The previous offline `us` probe verified
+CLI settings and route propagation against a dummy server; it did not verify
+the real official upstream host. Correct the proxy mapping and retain exact
+selected project/location/model checks before treating a real call as evidence.
