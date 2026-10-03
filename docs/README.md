@@ -16,6 +16,21 @@ directory separates binding rules from setup and operating guidance:
 | Maintain this repository's `pull_request_target` event policy | [Self-gate Actions policy](self-gate-actions-policy.md) | Repository-specific operations |
 | Change the package or roll it out | [Development guide](development.md) | Maintainer workflow |
 
+## Contract navigation
+
+This index groups the existing sections for reading; it changes neither their
+normative status nor any route's implementation or adoption status. Read each
+route's conditions and exceptions together with the shared invariants.
+
+| Concern | Sections |
+| --- | --- |
+| Ownership and shared rules | [Consumer authority](architecture.md#consumer-authority), [shared mechanism](architecture.md#shared-mechanism), [acceptance authority](architecture.md#acceptance-authority-and-host-enforcement-boundary), [normative invariants](architecture.md#normative-invariants), [non-responsibilities](architecture.md#non-responsibilities) |
+| Authority selection and bounds | [Distributed authority](architecture.md#target-contract-distributed-authority), [CI bounds](architecture.md#initial-distributed-authority-ci-bounds-issue-51-owner-decision), [local bounds](architecture.md#initial-local-distributed-authority-bounds-issue-51-owner-decision) |
+| Review execution and acceptance | [Conceptual operation](architecture.md#conceptual-operation), [local/manual review](architecture.md#local-and-manual-review), [CI review](architecture.md#ci-model-review), [current acceptance](architecture.md#current-acceptance-mechanism), [target evidence](architecture.md#target-evidence-and-acceptance-contract) |
+| Missing-decision governance | [OWNER_ADDITION / G0](architecture.md#owner_addition--g0-route-for-missing-decisions-issue-111), [multi-document addition](architecture.md#target-multi-document-owner_addition-route-issue-119-owner-decision), [adoption and assurance](architecture.md#owner_addition-adoption-and-assurance-dimensions-issue-121-owner-decision) |
+| Existing-decision governance | [Owner amendment](architecture.md#target-owner-amendment-governance-issue-75-owner-decision), [exact-claim authorization and revocation](architecture.md#separate-exact-claim-authorization-and-revocation-owner-decision) |
+| Development and rollout | [Dogfooding and change discipline](architecture.md#dogfooding-and-change-discipline), [tracked work](architecture.md#relationship-to-tracked-work) |
+
 [Investigations](investigations/) preserve dated experiments and proposals.
 They are evidence and context, not amendments to the architecture contract.
 

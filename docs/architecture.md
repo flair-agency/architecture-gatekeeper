@@ -14,16 +14,8 @@ defines the requirements and assurance claims.
 
 This index groups the existing sections for reading; it changes neither their
 normative status nor any route's implementation or adoption status. Read each
-route's conditions and exceptions together with the shared invariants.
-
-| Concern | Sections |
-| --- | --- |
-| Ownership and shared rules | [Consumer authority](#consumer-authority), [shared mechanism](#shared-mechanism), [acceptance authority](#acceptance-authority-and-host-enforcement-boundary), [normative invariants](#normative-invariants), [non-responsibilities](#non-responsibilities) |
-| Authority selection and bounds | [Distributed authority](#target-contract-distributed-authority), [CI bounds](#initial-distributed-authority-ci-bounds-issue-51-owner-decision), [local bounds](#initial-local-distributed-authority-bounds-issue-51-owner-decision) |
-| Review execution and acceptance | [Conceptual operation](#conceptual-operation), [local/manual review](#local-and-manual-review), [CI review](#ci-model-review), [current acceptance](#current-acceptance-mechanism), [target evidence](#target-evidence-and-acceptance-contract) |
-| Missing-decision governance | [OWNER_ADDITION / G0](#owner_addition--g0-route-for-missing-decisions-issue-111), [multi-document addition](#target-multi-document-owner_addition-route-issue-119-owner-decision), [adoption and assurance](#owner_addition-adoption-and-assurance-dimensions-issue-121-owner-decision) |
-| Existing-decision governance | [Owner amendment](#target-owner-amendment-governance-issue-75-owner-decision), [exact-claim authorization and revocation](#separate-exact-claim-authorization-and-revocation-owner-decision) |
-| Development and rollout | [Dogfooding and change discipline](#dogfooding-and-change-discipline), [tracked work](#relationship-to-tracked-work) |
+route's conditions and exceptions together with the shared invariants. The full
+[topic index is in the documentation map](README.md#contract-navigation).
 
 ## Why
 
