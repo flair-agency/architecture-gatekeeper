@@ -940,12 +940,12 @@ cannot amend this contract.
 
 #### Target Gemini CI authentication selection (Issue #252 owner decision, 2026-10-04)
 
-Gemini CI targets Vertex AI with Google Cloud WIF. Trusted CI exchanges GitHub
+First Gemini CI route targets Vertex AI with Google Cloud WIF. Trusted CI exchanges GitHub
 OIDC for scoped, short-lived Google credentials;
 only the launcher/proxy receives credentials or renewal capabilities through
 explicit launch interfaces. Authentication failure leaves review incomplete,
 without API-key or provider fallback. This does not deploy.
-Deployment bindings, scope, credential lifecycle and limits need verification
+Deployment bindings, scope, credential lifecycle and limits need selection/verification
 before activation. Codex stays supported; standby/parallel adoption is separate.
 No quality claim, acceptance route or release gate changes here.
 
@@ -961,7 +961,7 @@ CLI exit zero alone is insufficient: schema/authority validation is mandatory;
 Timeout, cancellation, auth failure or invalid output leaves review incomplete.
 This claims no candidate-code execution, Codex equivalence or host isolation,
 and activates no acceptance route. Owner selects `gemini-3.8-flash` with
-`thinkingLevel: MEDIUM` as the initial CI profile (2026-10-04), without
+`thinkingLevel: MEDIUM` as the initial CI profile, without
 `thinkingBudget`. Verify quality, cost, latency and decision consistency before activation;
 determinism is not promised.
 
