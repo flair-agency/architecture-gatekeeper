@@ -1,0 +1,240 @@
+# Review execution contract
+
+This is a required normative member of the Architecture Gatekeeper self Authority
+Set. Read it with the [shared contract](../architecture.md) and every other
+selected member; topic separation supplies no implicit precedence or route
+activation. Setup and operating guidance are in the [documentation map](../README.md).
+
+### Local and manual review
+
+Local and manual review are first-class development paths. They exist to find
+responsibility and trust-boundary problems before code is pushed. The runtime
+uses repository-owned configuration and authority from a recorded commit,
+assigns the reviewer a review-only role, and keeps task text and working-tree
+content in the untrusted evidence domain. Execution adapters apply the
+safeguards available in their environment; enforcement mechanisms are not
+uniform semantic requirements.
+
+The local trust boundary assumes the same user, Git executable, object store,
+installed runtime and Codex environment. Local review is not a filesystem
+monitor, Git transaction manager, malicious-operator defense, or proof that the
+operator could not bypass their own tools.
+
+A local decision is development feedback unless protected-base policy
+explicitly permits a defined evidence format and the authoritative verifier
+validates it. A bare or author-controlled `PASS` is never sufficient.
+
+Local review uses a shared semantic contract with separate execution adapters.
+The shared contract records one Git revision, reads configuration, prompt,
+schema, reviewer settings and authority from that revision, constructs the
+review request, and deterministically validates the returned decision. It does
+not choose how every host obtains that decision.
+
+- When Codex is selected, the automatic command Hook may launch a read-only
+  child `codex exec`, because
+  a command hook has no native reviewer handle. Its process timeout and
+  read-only sandbox remain required safeguards for this automatically invoked
+  child process.
+- The standalone terminal CLI selects the adapter from committed reviewer
+  settings. When Codex is selected, it uses the same child transport, retaining
+  its read-only sandbox and bounded process timeout. When Gemini is selected,
+  it uses the asynchronous Gemini API adapter under the explicit provider
+  settings and deadline; it does not launch a Codex child or claim that child's
+  sandbox guarantees. The automatic Hook uses the same provider selection.
+- The Codex-hosted Skill prepares the revision-bound request, applies its
+  recorded model and reasoning effort to a separate host-native reviewer whose
+  role is limited to review and does not include changing the reviewed
+  repository, then asks the shared runtime to validate the returned JSON. A
+  host that cannot provide the recorded model or reasoning effort leaves the
+  review incomplete and fails closed. Host-enforced read-only sandboxing and an
+  exact hard timeout are environment-specific controls, not conditions for a
+  native Skill review to be complete; the host's task lifecycle may provide
+  cancellation or other bounds. The Skill does not re-enter Codex through a
+  nested command.
+- CI retains its independent model-review adapter and exact-SHA-pinned reusable
+  workflow.
+
+The native adapter's request and decision paths are host-managed session
+inputs supplied by the trusted Skill execution side, not destinations selected
+by candidate repository content, task text, or reviewer output. The Skill
+execution side owns private temporary allocation, exact-request and decision
+recording, and cleanup on success, failure, or cancellation. The native adapter
+owns request construction and persistence and decision validation; it does not
+attest the supplied paths' private allocation or isolate a hostile same-user
+host. Exclusive creation and file permissions are supporting measures, not a
+generic path sanitizer or proof of parent-directory privacy.
+
+For a native Skill, the review-only role is part of the semantic contract, while
+physical write denial and exact hard-timeout enforcement are execution
+controls. This role assignment does not prove that a host technically
+prevented writes; the local trust boundary does not attest host internals.
+Host sandboxing, process approval, credentials and permission to send review
+inputs to a model service are outside the semantic decision contract. A host
+refusal before a validated structured decision leaves the review incomplete; it
+is not a `BLOCK` decision. Gatekeeper must not weaken host policy to start a
+reviewer or reinterpret that refusal as an architecture judgment.
+
+The recorded revision selects inputs; it is not a workstation integrity lock.
+Authority snapshots are included in the reviewer request from committed Git
+objects. The runtime neither compares those objects with working-tree bytes nor
+monitors whether `HEAD` changes while a review is running.
+
+#### Target local provider-independent execution (Issue #265 owner direction)
+
+Local callers depend on the shared review and execution contracts; composition
+selects a supported adapter from reviewer settings at the same recorded
+revision. Existing settings without a provider retain Codex compatibility.
+Provider selection, model, provider-specific settings and deadline remain
+explicit review inputs. Codex reasoning effort and Gemini thinking settings
+are distinct; a mapping does not establish semantic equivalence. The adapter
+must apply the selected settings or leave review incomplete, with no automatic
+provider fallback or parallel result adoption.
+
+Async adapters use explicit async APIs. Existing synchronous APIs remain
+compatible and reject an unsupported async selection before starting it.
+Execution reports identify the adapter-applied provider, requested model and
+settings separately from any backend-reported model identity; they do not prove
+backend internals or create reusable acceptance evidence. Schema, complete
+selected authority and committed validation remain shared responsibilities.
+Timeout, cancellation or unavailable credentials yield no semantic decision;
+cooperative cancellation alone does not prove physical termination. Automatic
+Codex child execution retains its sandbox and process bound. A Codex-native
+Skill that cannot apply another provider's settings remains incomplete rather
+than substituting its host model. This target enables no new route, changes no
+CI credential boundary and preserves local development-feedback assurance.
+
+### CI model review
+
+CI model review provides an independent execution boundary. Protected-base
+policy and instructions select the required assurance; pull-request content
+cannot authorize its own weaker route. Review credentials remain isolated from
+untrusted or unverified executable code, and model/API/billing failure remains
+fail closed when CI model review is required.
+
+The reusable workflow currently retains a compatibility input that can read the
+prompt and schema from the reviewed checkout while a consumer bootstraps its
+first base-owned instructions. That route provides model review but does not
+claim protected-instruction assurance. A privileged caller that requires
+protected acceptance must select protected review instructions, as this
+repository's self-review does.
+
+Owner trusts `openai/codex-action` at the workflow pin; retires integrity jobs
+(#40, 2026-10-02).
+
+#### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)
+
+GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed-workspace Codex WIF (ChatGPT auth). OIDC request capability, assertion and exchanged API token stay in trusted CI, isolated from reviewer/tools, PR code and package lifecycle scripts. Only prior protected policy may select WIF; candidates cannot select or enable it. Missing/invalid/unavailable selection leaves review incomplete: no API-key fallback or weaker acceptance. Keys remain until WIF is implemented, verified and policy-selected. No reviewer/input/decision/evidence/acceptance/v0.6.0 change; inactive.
+
+#### Target multi-provider credential-isolated review proxy boundary (Issue #252 owner decision, 2026-10-02)
+
+CI may use a credential-isolated review proxy: the trusted launcher owns
+credentials and supplies them privately to the proxy. The launcher must withhold
+provider credentials and OIDC/token-renewal capabilities from the runner’s
+environment, arguments, and any other explicitly supplied launch interface.
+This includes credential-file selectors and handles granting access to a
+credential or renewal service; withholding an exchanged token alone is
+insufficient when a renewal capability would still be passed to the runner.
+The proxy binds only to an ephemeral loopback endpoint and limits
+credential-bearing dispatch to allowed methods/model routes on selected official
+provider hosts within launcher-selected project, region and model scope;
+arbitrary destinations, scope mismatches and redirects fail closed. The runner
+consumes responses for deterministic schema and authority validation.
+
+This target claims credential non-inheritance and constrained proxy dispatch,
+not restricted direct runner networking, same-user host isolation, or provider
+assurance equivalence. Credential non-inheritance does not make independently
+available host capabilities inaccessible: an authenticated Cloud SDK installation,
+credential files readable by the same OS user, or host identity services may
+remain accessible. Preventing their use requires separately selected and verified
+host isolation. Protected acceptance requires explicitly adopted consumer policy
+and verified route-specific execution evidence; this text activates no route.
+Implementation details are in the
+[proxy specification](../investigations/2026-10-02-credential-isolated-review-proxy-boundary.md);
+it cannot independently amend this contract.
+
+#### Target Gemini CI authentication selection (Issue #252 owner decision, 2026-10-04)
+
+The first Gemini CI integration targets Vertex AI authenticated through Google
+Cloud Workload Identity Federation. The trusted CI side obtains the GitHub OIDC
+assertion and exchanges it for scoped, short-lived Google credentials; only the
+credential-isolated launcher/proxy uses the resulting provider credential.
+The reviewer runner does not inherit the assertion, provider credential or
+renewal capability through any explicitly supplied launch interface, under the
+proxy boundary above. Authentication failure leaves the selected review
+incomplete; it does not enable API-key authentication or another provider.
+
+This selects the authentication direction, not a deployed consumer profile.
+Exact Google identity bindings, project, region, model, thinking settings,
+credential lifetime/renewal and operational limits still require explicit
+selection and verification before activation. Codex remains supported; standby
+or parallel result adoption is separate work. This decision does not activate
+Gemini CI, establish semantic quality, or change acceptance and release gates.
+
+#### GitHub step-output sink (owner decision, 2026-10-03)
+
+The GitHub-specific step-output adapter treats `GITHUB_OUTPUT` as a trusted
+sink supplied by the invoking GitHub runner. It reads that environment value
+directly; it exposes no caller-selected sink or runner-temp argument and does
+not require the sink to be below `RUNNER_TEMP`. The invoking execution must
+preserve this runner-provided value rather than derive it from candidate code,
+repository content, request JSON, or model output.
+
+The adapter requires an absolute canonical path to an existing regular file,
+rejects symbolic links and hardlinks, and checks the opened file's identity
+before appending bounded command-protocol data. These checks do not authenticate
+an attacker-controlled environment or establish same-user host isolation.
+Publication supplies no semantic acceptance authority and activates no CI
+route. This decision does not change the fixed runner-temp paths used for
+protected review inputs and other temporary artifacts.
+
+#### Target: legacy v1 CI authority repair (Issue #120 owner decision)
+
+The LIVE Agency #106 trial exposed a false acceptance: an enforced legacy v1
+review treated candidate-edited authority and unsupported completion claims as
+canonical. The owner explicitly authorized a fail-closed repair for v0.5.1 on
+2026-09-26, including a compatibility break for existing enforced v1 consumers.
+This is the target contract, not active acceptance behavior. It becomes
+applicable only after PR #126's implementation and focused regression tests are
+integrated. Until then, this text does not establish that the v1 runtime
+enforces these requirements. Historical v1 reports are not retroactively
+reclassified.
+
+For an enforced v1 review, the recorded base policy must select a nonempty,
+bounded `authorityFiles` list of canonical repository paths, plus canonical
+`promptPath` and `schemaPath` values. It must include `validationPath`, either
+set to a canonical JSON path for additional decision validation or explicitly
+to `null` when no additional validation is selected. The caller's
+`validation-path` input must match this recorded-base value exactly. Missing,
+malformed, or mismatched validation selections fail before review. The workflow
+must read the selected policy, instructions and authority bytes from that same
+recorded base, validate regular-file snapshots, and make their identities
+visible in the report. The candidate cannot choose a different base file
+through caller-supplied paths or change the policy, instructions, or validation
+rules used for its review; candidate-modified authority cannot be treated as
+adopted.
+Under this target, the ordinary v1 accept path must fail closed when any
+selected authority is changed by the candidate, the selector or required
+snapshot is absent or invalid, or the decision omits or adds a selected
+authority path. A separate previous-base-authorized addition route remains
+available for an eligible authority-only B; an ordinary v1 `PASS` cannot
+substitute for it.
+
+Previously valid enforced v1 policies without these base-selected inputs, or
+without a matching caller validation selection, cease to qualify for acceptance
+when this target is implemented. A candidate PR cannot enable its own
+acceptance by adding the fields to its head; the consumer must first adopt the
+base policy and a base-owned caller under its own governance. A caller loaded
+from a pull-request merge commit can itself be candidate-controlled, including
+its selected reusable-workflow revision. Until the caller and required check
+producer are controlled by the applicable host mechanism, the workflow result
+alone cannot claim protected merge enforcement or a protected canonical
+transition. Missing host-enforcement evidence is reported as its own assurance
+dimension; it does not by itself require permanent `ADVISORY_ONLY` treatment of
+a procedural OWNER_ADDITION result. The separately versioned Issue #121 route
+defines the evidence and selection rules for that outcome and does not weaken
+this legacy v1 fail-closed target.
+
+CI execution is one evidence source, not a prerequisite for every repository
+to obtain local/manual review. Repositories may select a local-only guardrail,
+an explicitly defined locally attested route, CI model review, or policy-based
+routing among supported routes. The trust claim must match the selected route.

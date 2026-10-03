@@ -6,6 +6,36 @@
       "repository": "self",
       "revision": "authority-revision",
       "path": "docs/architecture.md"
+    },
+    {
+      "id": "architecture-authority-set",
+      "repository": "self",
+      "revision": "authority-revision",
+      "path": "docs/architecture/authority-set.md"
+    },
+    {
+      "id": "architecture-owner-addition",
+      "repository": "self",
+      "revision": "authority-revision",
+      "path": "docs/architecture/owner-addition.md"
+    },
+    {
+      "id": "architecture-owner-amendment",
+      "repository": "self",
+      "revision": "authority-revision",
+      "path": "docs/architecture/owner-amendment.md"
+    },
+    {
+      "id": "architecture-review-execution",
+      "repository": "self",
+      "revision": "authority-revision",
+      "path": "docs/architecture/review-execution.md"
+    },
+    {
+      "id": "architecture-self-profile",
+      "repository": "self",
+      "revision": "authority-revision",
+      "path": "docs/architecture/self-profile.md"
     }
   ]
 }

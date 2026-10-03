@@ -17,12 +17,14 @@ const workflowRef = `${repository}/${context.workflowPath}@refs/heads/main`;
 const paths = { policy: '.codex/gatekeeper/ci-policy.json', prompt: '.codex/gatekeeper/ci-prompt.md',
   schema: '.codex/gatekeeper/ci-decision.schema.json', validation: '.codex/gatekeeper/decision.validation.json', manifest: '.codex/gatekeeper/authorities.json' };
 const baseInputs = Object.fromEntries(Object.entries(paths).map(([k, p]) => [k, git('show', `${baseSha}:${p}`)]));
-const authorityBytes = git('show', `${baseSha}:docs/architecture.md`);
-const authorityMembers = [{ id: 'architecture-contract', repository, resolvedCommit: baseSha, path: 'docs/architecture.md', byteLength: authorityBytes.length, sha256: sha(authorityBytes) }];
+const authorityMembers = JSON.parse(baseInputs.manifest).authorities.map(({ id, path }) => {
+  const authorityBytes = git('show', `${baseSha}:${path}`);
+  return { id, repository, resolvedCommit: baseSha, path, byteLength: authorityBytes.length, sha256: sha(authorityBytes) };
+});
 const provenance = { version: 1, selfRepository: repository, authorityRevision: baseSha,
   manifestSha256: sha(baseInputs.manifest), setDigest: sha(Buffer.from(JSON.stringify(authorityMembers))), members: authorityMembers };
 const decision = { decision: 'BLOCK', findings: [], summary: 'A protected boundary is weakened.', authority: ['protected architecture'],
-  authorityFiles: ['docs/architecture.md'], authorityIds: ['architecture-contract'], responsibility: ['acceptance'],
+  authorityFiles: authorityMembers.map(member => member.path), authorityIds: authorityMembers.map(member => member.id), responsibility: ['acceptance'],
   capabilitySurface: ['CI'], qualityGuarantees: ['fail closed'], reviewedScope: ['change A'], prohibitedChanges: ['weaken gate'],
   gates: { sharedMechanism: { decision: 'BLOCK', summary: 'weakens validation', consumerOwnership: '', failClosedBehavior: '', compatibility: '', minimality: '' },
     trustBoundary: { decision: 'PASS', summary: 'credentials stay isolated', tokenPermissions: '', untrustedInputs: '', credentialHandling: '', reportingIsolation: '' } } };
@@ -50,6 +52,10 @@ test('re-derives protected digests and builds deterministic BLOCK record from ex
   assert.equal(record.decisionBytesBase64, decisionBytes.toString('base64'));
   assert.equal(record.inputDigests.schema, sha(baseInputs.schema));
   assert.deepEqual(produceOwnerAmendmentBlock({ decisionBytes, provenance, context, baseInputs }), record);
+  const missingMember = { ...provenance, members: provenance.members.slice(0, -1) };
+  assert.throws(() => produceOwnerAmendmentBlock({ decisionBytes, provenance: missingMember, context, baseInputs }), /Authority Set provenance/);
+  const missingId = Buffer.from(JSON.stringify({ ...decision, authorityIds: decision.authorityIds.slice(0, -1) }));
+  assert.throws(() => produceOwnerAmendmentBlock({ decisionBytes: missingId, provenance, context, baseInputs }));
   assert.throws(() => produceOwnerAmendmentBlock({ decisionBytes: Buffer.from(JSON.stringify({ ...decision, decision: 'PASS' })), provenance, context, baseInputs }), /BLOCK/);
   const changed = { ...baseInputs, schema: Buffer.from('{}') };
   assert.notEqual(produceOwnerAmendmentBlock({ decisionBytes, provenance, context, baseInputs: changed }).inputDigests.schema, record.inputDigests.schema);

@@ -22,7 +22,8 @@ async function fixture(t) {
   git(root, 'init', '-q');
   git(root, 'config', 'user.name', 'Test');
   git(root, 'config', 'user.email', 'test@example.com');
-  for (const path of [...Object.values(paths), 'docs/architecture.md']) {
+  const manifest = JSON.parse(readFileSync(new URL(`../${paths.manifest}`, import.meta.url), 'utf8'));
+  for (const path of new Set([...Object.values(paths), ...manifest.authorities.map(member => member.path)])) {
     const target = join(root, path);
     mkdirSync(dirname(target), { recursive: true });
     cpSync(new URL(`../${path}`, import.meta.url), target);
@@ -53,7 +54,7 @@ async function fixture(t) {
     members: set.members.map(({ id, repository, resolvedCommit, path, byteLength, sha256 }) =>
       ({ id, repository, resolvedCommit, path, byteLength, sha256 })) };
   const decision = { decision: 'BLOCK', findings: [], summary: 'Weakens fail-closed behavior', authority: ['protected architecture'],
-    authorityFiles: ['docs/architecture.md'], authorityIds: ['architecture-contract'],
+    authorityFiles: set.members.map(member => member.path), authorityIds: set.members.map(member => member.id),
     responsibility: ['acceptance'], capabilitySurface: ['CI'], qualityGuarantees: ['fail closed'],
     reviewedScope: ['fixture'], prohibitedChanges: ['accept timeout'], gates: {
       sharedMechanism: { decision: 'BLOCK', summary: 'timeout accepted', consumerOwnership: '',
