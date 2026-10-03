@@ -181,8 +181,9 @@ The launcher requires an explicit model scope (or the model in `--request-json`)
 and a project scope for Vertex. Standalone prompt/schema reviews are compatibility
 feedback, without protected-authority assurance. Revision-bound requests must
 pass shared preflight and record `provider: "gemini"`; Codex selections are rejected.
-The current shared request constructor does not yet support committed Gemini
-settings (#265), so that route remains unavailable rather than falling back.
+The shared request constructor supports committed Gemini settings for the
+asynchronous local route. The reusable CI workflows still select Codex;
+protected Gemini CI integration and adoption remain tracked in #252.
 Decision files default to a private temporary directory outside the checkout.
 Explicit output paths must be new files outside the reviewed repository, within
 `RUNNER_TEMP` or a recognized OS temporary root. Symlink escapes are rejected. If
