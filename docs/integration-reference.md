@@ -341,8 +341,8 @@ validates decisions under the selected route and creates `decision.json` with mo
 `0600` in a private temporary directory outside the checkout by default. Explicit
 output paths must also be outside the reviewed repository and must not already
 exist. When `GITHUB_OUTPUT` is present, it publishes `decision-kind`, `decision-file`
-and `final-message` through the verified runner command-file directory, including
-from a checkout working directory. Required output publication failure fails the
+and `final-message` through the trusted runner-provided canonical existing file, with regular-file,
+link and opened-identity checks, including from a checkout working directory. Required output publication failure fails the
 command. CI adoption must separately select a trusted runtime and acceptance policy.
 
 The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)

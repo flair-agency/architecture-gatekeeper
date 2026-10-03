@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer, request } from 'node:http';
-import { validateGeminiRoute, startGeminiSecurityProxy, MAX_PROXY_REQUEST_BYTES } from '../src/gemini-security-proxy.mjs';
+import http, { createServer, request } from 'node:http';
+import { syncBuiltinESMExports } from 'node:module';
+import { validateGeminiRoute, startGeminiSecurityProxy, MAX_PROXY_REQUEST_BYTES, remainingDeadlineMs } from '../src/gemini-security-proxy.mjs';
 import { validateLoopbackEndpoint } from '../src/review-security-proxy.mjs';
 
 test('validateLoopbackEndpoint validates local loopback addresses', () => {
@@ -41,6 +42,69 @@ test('validateGeminiRoute allowlists only valid generateContent endpoints', () =
   assert.equal(validateGeminiRoute('/v1/projects/p/locations/l/operations/op123'), null);
   assert.equal(validateGeminiRoute('/v1/responses'), null);
   assert.equal(validateGeminiRoute('/arbitrary/path'), null);
+});
+
+test('upstream timeout tracks the remaining selected session deadline without a 60-second cap', () => {
+  const startedAt = 1_000_000;
+  const selectedBudgetMs = 120_000;
+  const deadlineAt = startedAt + selectedBudgetMs;
+
+  assert.equal(remainingDeadlineMs(deadlineAt, startedAt), 120_000);
+  assert.equal(remainingDeadlineMs(deadlineAt, startedAt + 90_000), 30_000);
+  assert.equal(remainingDeadlineMs(deadlineAt, deadlineAt + 1), 0);
+});
+
+test('proxy passes selected and remaining deadlines to upstream dispatch and rejects expired dispatch', async () => {
+  let upstreamCalls = 0;
+  const upstream = createServer((_req, res) => {
+    upstreamCalls++;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end('{}');
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+
+  const realRequest = http.request;
+  const realNow = Date.now;
+  const observedTimeouts = [];
+  let fakeNow = realNow();
+  http.request = (options, ...args) => {
+    if (options.port === upstream.address().port) observedTimeouts.push(options.timeout);
+    return realRequest(options, ...args);
+  };
+  syncBuiltinESMExports();
+  Date.now = () => fakeNow;
+  const proxy = await startGeminiSecurityProxy({
+    allowedMode: 'studio', allowedModel: 'gemini-2.5-flash',
+    credentials: { type: 'apiKey', value: 'fixture' },
+    upstreamHost: '127.0.0.1', upstreamPort: upstream.address().port,
+    upstreamHttp: true, allowLoopbackUpstream: true, deadlineMs: 120_000,
+  });
+
+  const post = () => new Promise((resolve, reject) => {
+    const req = realRequest(`${proxy.endpointUrl}/v1beta/models/gemini-2.5-flash:generateContent`, { method: 'POST' }, res => {
+      res.resume();
+      res.on('end', () => resolve(res.statusCode));
+    });
+    req.on('error', reject);
+    req.end('{}');
+  });
+
+  try {
+    assert.equal(await post(), 200);
+    fakeNow += 90_000;
+    assert.equal(await post(), 200);
+    fakeNow += 30_001;
+    assert.equal(await post(), 504);
+
+    assert.deepEqual(observedTimeouts, [120_000, 30_000]);
+    assert.equal(upstreamCalls, 2);
+  } finally {
+    Date.now = realNow;
+    await proxy.shutdown();
+    http.request = realRequest;
+    syncBuiltinESMExports();
+    await new Promise(resolve => upstream.close(resolve));
+  }
 });
 
 test('GeminiSecurityProxy binds strictly to 127.0.0.1 with ephemeral port and rejects non-POST', async () => {

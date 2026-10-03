@@ -444,3 +444,36 @@ test('checkout input symlinks cannot cross to another otherwise authorized tempo
     assert.equal(resolveSafePath(join(outside, 'prompt.md'), checkout), realpathSync(join(outside, 'prompt.md')));
   } finally { rmSync(checkout, { recursive: true, force: true }); rmSync(outside, { recursive: true, force: true }); }
 });
+
+test('direct runner preserves OAuth alias precedence and explicit API-key selection', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-oauth-alias-'));
+  const saved = { ...process.env }, originalFetch = globalThis.fetch;
+  try {
+    writeFileSync(join(dir, 'prompt.md'), 'review');
+    writeFileSync(join(dir, 'schema.json'), '{"type":"object"}');
+    delete process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
+    delete process.env.REVIEW_PROXY_URL;
+    delete process.env.GEMINI_BASE_URL;
+    delete process.env.GITHUB_OUTPUT;
+    process.env.GOOGLE_OAUTH_ACCESS_TOKEN = 'oauth-alias-token';
+    process.env.GEMINI_API_KEY = 'environment-key';
+    process.env.GOOGLE_CLOUD_PROJECT = 'fixture-project';
+    process.env.GOOGLE_CLOUD_REGION = 'us-central1';
+    let call = 0;
+    globalThis.fetch = async (url, options) => {
+      if (call++ === 0) {
+        assert.match(String(url), /us-central1-aiplatform\.googleapis\.com/);
+        assert.equal(options.headers.Authorization, 'Bearer oauth-alias-token');
+        assert.equal(options.headers['x-goog-api-key'], undefined);
+      } else {
+        assert.match(String(url), /generativelanguage\.googleapis\.com/);
+        assert.equal(options.headers['x-goog-api-key'], 'explicit-key');
+      }
+      return { ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS","summary":"ok"}' }] } }] }) };
+    };
+    const args = ['--prompt', 'prompt.md', '--schema', 'schema.json', '--model', 'gemini-2.5-flash'];
+    await runGeminiCiReview([...args, '--output', join(dir, 'oauth.json')], dir);
+    await runGeminiCiReview([...args, '--api-key', 'explicit-key', '--output', join(dir, 'key.json')], dir);
+    assert.equal(call, 2);
+  } finally { globalThis.fetch = originalFetch; process.env = saved; rmSync(dir, { recursive: true, force: true }); }
+});

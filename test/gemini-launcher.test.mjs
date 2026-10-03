@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { buildIsolatedRunnerEnv, runIsolatedGeminiSession } from '../src/gemini-launcher.mjs';
 
-test('buildIsolatedRunnerEnv strips sensitive variables and sets REVIEW_PROXY_URL', () => {
+test('buildIsolatedRunnerEnv allowlists operational variables and sets REVIEW_PROXY_URL', () => {
   const dirtyEnv = {
     PATH: '/usr/bin',
     GEMINI_API_KEY: 'super-secret-key',
@@ -27,7 +27,7 @@ test('buildIsolatedRunnerEnv strips sensitive variables and sets REVIEW_PROXY_UR
   const clean = buildIsolatedRunnerEnv(dirtyEnv, 'http://127.0.0.1:45678');
 
   assert.equal(clean.PATH, '/usr/bin');
-  assert.equal(clean.CUSTOM_VAR, 'keep-me');
+  assert.equal(clean.CUSTOM_VAR, undefined);
   assert.equal(clean.REVIEW_PROXY_URL, 'http://127.0.0.1:45678');
   assert.equal(clean.GEMINI_API_KEY, undefined);
   assert.equal(clean.CLOUDSDK_AUTH_ACCESS_TOKEN, undefined);
@@ -373,4 +373,34 @@ test('isolated launcher rejects endpoint overrides before authentication or spaw
   for (const args of [['--proxy-url', 'http://127.0.0.1:1'], ['--proxy-url=http://127.0.0.1:1'], ['--base-url', 'https://example.com'], ['--base-url=https://example.com']]) {
     await assert.rejects(runIsolatedGeminiSession(args), /prohibit endpoint overrides/);
   }
+});
+
+test('runner environment rejects caller-named credentials and credential-valued operational inputs', () => {
+  const clean = buildIsolatedRunnerEnv({ PATH: '/bin', INPUT_API_KEY: 'key-sentinel', VERTEX_ACCESS_TOKEN: 'token-sentinel', REVIEW_API_KEY: 'key-sentinel', GITHUB_CUSTOM_SECRET: 'key-sentinel', GITHUB_OUTPUT: '/runner/set_output', RUNNER_TEMP: '/runner/temp', NODE_OPTIONS: '--import=/attacker.mjs' }, 'http://127.0.0.1:1234', ['key-sentinel', 'token-sentinel']);
+  assert.deepEqual(clean, { PATH: '/bin', GITHUB_OUTPUT: '/runner/set_output', RUNNER_TEMP: '/runner/temp', REVIEW_PROXY_URL: 'http://127.0.0.1:1234' });
+  assert.throws(() => buildIsolatedRunnerEnv({ GITHUB_OUTPUT: '/runner/key-sentinel/output' }, 'http://127.0.0.1:1234', ['key-sentinel']), /operational input contains/);
+});
+
+test('actual runner child inherits no caller-named CLI or options credentials', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-credential-alias-'));
+  const saved = { ...process.env };
+  try {
+    const runner = join(dir, 'runner.mjs');
+    writeFileSync(runner, `import assert from 'node:assert/strict';
+for (const name of ['INPUT_API_KEY', 'VERTEX_ACCESS_TOKEN', 'REVIEW_API_KEY', 'CUSTOM_SECRET', 'NODE_OPTIONS']) assert.equal(process.env[name], undefined);
+assert.ok(!process.argv.some(value => value.includes('alias-secret')));
+assert.ok(process.env.REVIEW_PROXY_URL);
+`);
+    process.env.INPUT_API_KEY = 'alias-secret-api';
+    process.env.VERTEX_ACCESS_TOKEN = 'alias-secret-token';
+    process.env.REVIEW_API_KEY = 'alias-secret-api';
+    process.env.CUSTOM_SECRET = 'alias-secret-other';
+    for (const configuration of [
+      { args: ['--api-key', process.env.INPUT_API_KEY], credentialsOptions: {} },
+      { args: ['--access-token', process.env.VERTEX_ACCESS_TOKEN], credentialsOptions: {} },
+      { args: [], credentialsOptions: { apiKey: process.env.REVIEW_API_KEY } },
+    ]) {
+      assert.equal(await runIsolatedGeminiSession([...configuration.args, '--model', 'gemini-2.5-flash', '--project', 'fixture-project'], { runnerScript: runner, credentialsOptions: configuration.credentialsOptions }), 0);
+    }
+  } finally { process.env = saved; rmSync(dir, { recursive: true, force: true }); }
 });

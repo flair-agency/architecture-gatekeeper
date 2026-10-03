@@ -5,7 +5,7 @@
  * Zero external npm dependencies: uses Node.js standard library and native fetch.
  */
 import { constants, existsSync, lstatSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { dirname, join, isAbsolute, relative, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { runGeminiReviewer } from './gemini-transport.mjs';
@@ -13,7 +13,7 @@ import { validateJsonSchema } from './json-schema.mjs';
 import { preflightReviewRequest, repositoryRoot, validateReviewResponse } from './review-contract.mjs';
 import { appendGitHubOutput } from './runner-temp-path.mjs';
 
-import { resolveSafePath } from './review-input-path.mjs';
+import { containsPath, resolveSafePath } from './review-input-path.mjs';
 export { resolveSafePath };
 
 /**
@@ -149,8 +149,7 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
       let ancestor = outputPath;
       while (!existsSync(ancestor) && dirname(ancestor) !== ancestor) ancestor = dirname(ancestor);
       for (const path of [outputPath, realpathSync(ancestor)]) {
-        const rel = relative(checkoutRoot, path);
-        if (rel !== '..' && !rel.startsWith('../') && !isAbsolute(rel)) throw new Error('Review output must be outside the reviewed repository.');
+        if (containsPath(checkoutRoot, path)) throw new Error('Review output must be outside the reviewed repository.');
       }
     }
     try { lstatSync(outputPath); throw new Error('Review output must be a new file; overwriting is prohibited.'); }
@@ -169,13 +168,10 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
     transportOptions.baseUrl = options['base-url'] || process.env.GEMINI_BASE_URL;
   }
   
-  // Codex P1: Preserve WIF precedence when forwarding credentials
-  const hasAccessToken = Boolean(options['access-token'] || process.env.CLOUDSDK_AUTH_ACCESS_TOKEN);
-  if (hasAccessToken) {
-    transportOptions.accessToken = options['access-token'] || process.env.CLOUDSDK_AUTH_ACCESS_TOKEN;
-  } else if (options['api-key'] || process.env.GEMINI_API_KEY) {
-    transportOptions.apiKey = options['api-key'] || process.env.GEMINI_API_KEY;
-  }
+  // Forward explicit options only. The transport owns environment-token/key
+  // precedence, including all supported OAuth aliases.
+  if (options['api-key']) transportOptions.apiKey = options['api-key'];
+  if (options['access-token']) transportOptions.accessToken = options['access-token'];
 
   // Requirement 3: Complete request preflight before contacting a provider:
   // For revision-bound local requests verify request integrity, committed configuration and complete authority selection through shared mechanisms.

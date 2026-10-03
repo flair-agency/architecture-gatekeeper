@@ -2,6 +2,12 @@ import { lstatSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 
+/** Same-drive parent traversal and cross-drive paths are outside on each platform. */
+export function containsPath(parent, target, paths = { relative, isAbsolute, sep }) {
+  const rel = paths.relative(parent, target);
+  return rel !== '..' && !rel.startsWith('..' + paths.sep) && !paths.isAbsolute(rel);
+}
+
 /**
  * Resolves a file path relative to an authorized root directory using lexical and existing-ancestor realpath checks.
  * Rejects null bytes and verifies that the lexical path does not traverse outside
@@ -20,10 +26,7 @@ export function resolveSafePath(userPath, baseDir) {
   const root = resolve(baseDir);
   const resolved = isAbsolute(userPath) ? resolve(userPath) : resolve(root, userPath);
   
-  const contains = (parent, target) => {
-    const rel = relative(parent, target);
-    return rel !== '..' && !rel.startsWith('..' + sep) && !isAbsolute(rel);
-  };
+  const contains = containsPath;
   // A checkout path must remain in that checkout, even when another root is allowed.
   const candidates = contains(root, resolved) ? [root] :
     [process.env.RUNNER_TEMP, tmpdir(), '/tmp', '/private/tmp', '/var/folders', '/private/var/folders']

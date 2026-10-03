@@ -183,7 +183,7 @@ settings (#265), so that route remains unavailable rather than falling back.
 Decision files default to a private temporary directory outside the checkout.
 Explicit output paths must be new files outside the reviewed repository. If
 `GITHUB_OUTPUT` is present, publication failure fails the runner; normal checkout
-execution uses the verified runner command-file directory.
+execution uses the trusted runner-provided canonical output file, with regular-file, link and opened-identity checks.
 The isolated launcher requires an explicit/environment key or access token and does
 not run local gcloud renewal. It applies a bounded session deadline, shuts down the
 proxy and terminates the child on expiry (exit 124), escalating after 250 ms. This

@@ -11,7 +11,7 @@
  * Topology:
  * 1. Trusted Launcher runs in privileged CI environment with access to secrets (GEMINI_API_KEY / CLOUDSDK_AUTH_ACCESS_TOKEN).
  * 2. Starts GeminiSecurityProxy on local loopback (127.0.0.1:<ephemeral>).
- * 3. Strips all provider secrets from environment (env -u equivalent).
+ * 3. Constructs the child environment from an explicit operational allowlist.
  * 4. Spawns gemini-ci-runner child process with only REVIEW_PROXY_URL and unprivileged arguments.
  * 5. Waits for runner exit, shuts down proxy, and forwards runner exit code.
  */
@@ -23,42 +23,26 @@ import { startGeminiSecurityProxy } from './gemini-security-proxy.mjs';
 import { resolveAuthCredentials } from './gemini-transport.mjs';
 import { resolveSafePath } from './review-input-path.mjs';
 
-const SENSITIVE_ENV_VARS = [
-  'GEMINI_API_KEY',
-  'GOOGLE_API_KEY',
-  'CLOUDSDK_AUTH_ACCESS_TOKEN',
-  'GOOGLE_OAUTH_ACCESS_TOKEN',
-  'GOOGLE_APPLICATION_CREDENTIALS',
-  'CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE',
-  'GOOGLE_GHA_CREDS_PATH',
-  'OPENAI_API_KEY',
-  'GITHUB_TOKEN',
-  'GH_TOKEN',
-  'ACTIONS_ID_TOKEN_REQUEST_URL',
-  'ACTIONS_ID_TOKEN_REQUEST_TOKEN',
-  'ACTIONS_RUNTIME_TOKEN',
-  'ACTIONS_RESULTS_URL',
-  'ACTIONS_CACHE_URL',
-];
+// Forward only the operational inputs consumed by this runner. Names that merely
+// look like GitHub/Google variables are not trusted or forwarded as a group.
+const RUNNER_ENV_NAMES = new Set([
+  'PATH', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATHEXT',
+  'TMPDIR', 'TMP', 'TEMP', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TZ',
+  'GITHUB_OUTPUT', 'GITHUB_WORKSPACE', 'RUNNER_TEMP',
+  'PROMPT_PATH', 'SCHEMA_PATH', 'OUTPUT_PATH', 'MODEL', 'REVIEW_MODEL',
+  'REVIEWER_PROVIDER', 'EFFORT', 'THINKING_BUDGET', 'TIMEOUT_MS',
+  'GOOGLE_CLOUD_PROJECT', 'CLOUDSDK_CORE_PROJECT', 'CLOUDSDK_PROJECT',
+  'GCP_PROJECT', 'GOOGLE_CLOUD_REGION', 'CLOUDSDK_COMPUTE_REGION',
+]);
 
-/**
- * Builds a clean environment dictionary for the unprivileged runner.
- * Strips all sensitive credentials, OIDC tokens, and credential-file access.
- * @param {NodeJS.ProcessEnv} env
- * @param {string} proxyUrl
- * @returns {Record<string, string>}
- */
-export function buildIsolatedRunnerEnv(env, proxyUrl) {
+/** Construct the runner environment from explicit operational names only. */
+export function buildIsolatedRunnerEnv(env, proxyUrl, credentialValues = []) {
   const cleanEnv = {};
   for (const [key, value] of Object.entries(env)) {
-    if (value === undefined) continue;
-    const normalizedKey = key.toUpperCase();
-    if (SENSITIVE_ENV_VARS.includes(normalizedKey)) continue;
-    if (normalizedKey.startsWith('ACTIONS_ID_TOKEN_') ||
-        normalizedKey.startsWith('GOOGLE_APPLICATION_CREDENTIALS') ||
-        normalizedKey.startsWith('GOOGLE_GHA_CREDS_') ||
-        normalizedKey.startsWith('CLOUDSDK_AUTH_CREDENTIAL_FILE')) {
-      continue;
+    if (typeof value !== 'string' || !RUNNER_ENV_NAMES.has(key.toUpperCase())) continue;
+    // Even an operational variable must not contain a supplied credential.
+    if (credentialValues.some(secret => typeof secret === 'string' && secret.length > 0 && value.includes(secret))) {
+      throw new Error('A runner operational input contains a provider credential.');
     }
     cleanEnv[key] = value;
   }
@@ -204,12 +188,14 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
   const remainingMs = sessionTimeoutMs - (Date.now() - startedAt);
   if (remainingMs <= 0) throw new Error('Gemini session deadline expired before startup.');
   effectiveProxyConfig.deadlineMs = remainingMs;
+  // Validate environment isolation before allocating the proxy listener.
+  const runnerEnv = buildIsolatedRunnerEnv(process.env, '', [credentials.value, credsOptions.apiKey, credsOptions.accessToken]);
   const proxy = await startGeminiSecurityProxy(effectiveProxyConfig);
 
   process.stderr.write(`[gemini-launcher] Security proxy active on ${proxy.endpointUrl}\n`);
 
   // 3. Prepare clean environment for runner
-  const runnerEnv = buildIsolatedRunnerEnv(process.env, proxy.endpointUrl);
+  runnerEnv.REVIEW_PROXY_URL = proxy.endpointUrl;
   runnerEnv.REVIEW_PROXY_MODE = effectiveProxyConfig.allowedMode;
 
   const runnerPath = options.runnerScript || resolve(dirname(fileURLToPath(import.meta.url)), 'gemini-ci-runner.mjs');

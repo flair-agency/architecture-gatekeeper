@@ -20,6 +20,11 @@ import { request as httpsRequest } from 'node:https';
 // Implementation bound for the complete serialized request, not prompt truncation.
 export const MAX_PROXY_REQUEST_BYTES = 16 * 1024 * 1024;
 
+/** Return the nonnegative time remaining before a fixed session deadline. */
+export function remainingDeadlineMs(deadlineAt, now = Date.now()) {
+  return Math.max(0, deadlineAt - now);
+}
+
 const ALLOWED_AI_STUDIO_PATH = /^\/v1beta\/models\/([a-zA-Z0-9._-]+):generateContent$/;
 const ALLOWED_VERTEX_PATH = /^\/v1\/projects\/([a-zA-Z0-9._-]+)\/locations\/([a-zA-Z0-9._-]+)\/publishers\/google\/models\/([a-zA-Z0-9._-]+):generateContent$/;
 const ALLOWED_VERTEX_HOST = /^[a-z0-9-]+-aiplatform\.googleapis\.com$/;
@@ -74,6 +79,7 @@ export async function startGeminiSecurityProxy(config) {
 
   return new Promise((resolve, reject) => {
     let timer = null;
+    let deadlineAt = null;
     const activeRequests = new Set();
 
     const server = createServer(async (req, res) => {
@@ -193,13 +199,19 @@ export async function startGeminiSecurityProxy(config) {
         }
 
         const isLocalUpstream = targetHost === '127.0.0.1' || targetHost === 'localhost';
+        const remainingMs = deadlineAt === null ? null : remainingDeadlineMs(deadlineAt);
+        if (remainingMs === 0) {
+          res.writeHead(504, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Gateway Timeout: proxy session deadline expired.' }));
+          return;
+        }
         const requestOptions = {
           hostname: targetHost,
           port: isLocalUpstream ? (config.upstreamPort || 443) : 443,
           path: parsedRoute.path,
           method: 'POST',
           headers: forwardHeaders,
-          timeout: 60000,
+          timeout: remainingMs ?? 60000,
         };
 
         const transport = isLocalUpstream && config.upstreamHttp ? import('node:http') : Promise.resolve({ request: httpsRequest });
@@ -245,9 +257,10 @@ export async function startGeminiSecurityProxy(config) {
       const endpointUrl = `http://127.0.0.1:${address.port}`;
 
       if (config.deadlineMs && Number.isSafeInteger(config.deadlineMs) && config.deadlineMs > 0) {
+        deadlineAt = Date.now() + config.deadlineMs;
         timer = setTimeout(() => {
           shutdown();
-        }, config.deadlineMs);
+        }, remainingDeadlineMs(deadlineAt));
         timer.unref?.();
       }
 
