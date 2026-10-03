@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "status": "Decided",
+  "outcome": "Adopt",
+  "proposal": {
+    "path": "proposal.md",
+    "revision": "065f47cddcf444db8760b8358734004080a7f3c2",
+    "sha256": "5d75fc1342078a381e19df8f4da46f567c5ec66035b5bb3f2cb126b76feaa0b9"
+  },
+  "owner": "Human owner in the active coordinator conversation; no independent authentication claim",
+  "authorizationEvidence": "owner-evidence.md (local transcription of direct human reply)",
+  "decisionDate": "2026-10-04",
+  "scope": "Initial protected CI single-provider selection for an individually accepted and previously protected-policy-authorized route",
+  "applicabilityConditions": [
+    "Selected route individually satisfies adopted #252 acceptance criteria",
+    "Prior protected-policy authorization; other provider acceptance is not required"
+  ],
+  "exceptions": [
+    "Local provider behavior is outside scope",
+    "No route activation, canonical update, or release prerequisite"
+  ],
+  "adoptedContent": [
+    {
+      "proposalLocator": "proposal.md#L64, the sole Proposed Decision paragraph beginning “**Proposed Decision (the exact content offered for owner review):**”"
+    }
+  ],
+  "amendedContent": null
+}

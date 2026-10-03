@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "authorities": [
+    {
+      "id": "agk-259-single-provider-ci",
+      "repository": "self",
+      "revision": "authority-revision",
+      "path": "docs/decisions/agk-259/decision-package/authority-set/authority.md"
+    }
+  ]
+}
