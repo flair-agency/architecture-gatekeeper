@@ -177,6 +177,42 @@ await runGeminiCiReview(process.argv.slice(2));
   }
 });
 
+test('launcher pins bearer proxy scope from every supported project and region alias', async () => {
+  const saved = { ...process.env };
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-launcher-vertex-alias-'));
+  const observedPaths = [];
+  const upstream = createServer((req, res) => {
+    observedPaths.push(req.url);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS"}' }] } }] }));
+  });
+  try {
+    await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+    const runner = join(dir, 'runner.mjs');
+    writeFileSync(runner, `import { runGeminiReviewer } from '${join(process.cwd(), 'src/gemini-transport.mjs')}';
+const result = await runGeminiReviewer({ prompt: 'scope', schema: { type: 'object' }, reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' } });
+if (result.decision !== 'PASS') process.exit(2);
+`);
+    for (const [projectVariable, project] of [['CLOUDSDK_PROJECT', 'cloudsdk-project'], ['GCP_PROJECT', 'gcp-project']]) {
+      process.env = { ...saved };
+      for (const name of ['GOOGLE_CLOUD_PROJECT', 'CLOUDSDK_CORE_PROJECT', 'CLOUDSDK_PROJECT', 'GCP_PROJECT', 'GOOGLE_CLOUD_REGION', 'CLOUDSDK_COMPUTE_REGION']) delete process.env[name];
+      process.env[projectVariable] = project;
+      process.env.CLOUDSDK_COMPUTE_REGION = 'asia-northeast1';
+      const code = await runIsolatedGeminiSession(['--model', 'gemini-2.5-flash'], {
+        runnerScript: runner,
+        credentialsOptions: { accessToken: 'launcher-bearer-token' },
+        proxyConfigOverride: { upstreamHost: '127.0.0.1', upstreamPort: upstream.address().port, upstreamHttp: true, allowLoopbackUpstream: true },
+      });
+      assert.equal(code, 0);
+      assert.equal(observedPaths.at(-1), `/v1/projects/${project}/locations/asia-northeast1/publishers/google/models/gemini-2.5-flash:generateContent`);
+    }
+  } finally {
+    process.env = saved;
+    await new Promise(resolve => upstream.close(resolve));
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('runIsolatedGeminiSession strips credential arguments from runner child process', async () => {
   const tmpDir = mkdtempSync(join(tmpdir(), 'gemini-launcher-args-'));
   try {
@@ -366,6 +402,29 @@ test('missing credential values reject before consuming adjacent flags', async (
 test('credential aliases are withheld even with unrelated authentication selected', () => {
   const env = buildIsolatedRunnerEnv({ GOOGLE_API_KEY: 'sentinel', google_api_key: 'sentinel', GEMINI_API_KEY: 'sentinel', CLOUDSDK_AUTH_ACCESS_TOKEN: 'sentinel', PATH: '/bin' }, 'http://127.0.0.1:1234');
   assert.deepEqual(env, { PATH: '/bin', REVIEW_PROXY_URL: 'http://127.0.0.1:1234' });
+});
+
+test('launcher rejects an unselected source credential embedded in an operational input', async () => {
+  const saved = { ...process.env };
+  try {
+    for (const [name, value, operational] of [
+      ['CLOUDSDK_AUTH_ACCESS_TOKEN', ' unused-cloudsdk-token ', 'unused-cloudsdk-token'],
+      ['GOOGLE_OAUTH_ACCESS_TOKEN', 'unused-oauth-token', 'unused-oauth-token'],
+      ['GEMINI_API_KEY', 'unused-gemini-key', 'unused-gemini-key'],
+    ]) {
+      process.env = { ...saved, [name]: value, OUTPUT_PATH: `/runner/${operational}/output` };
+      await assert.rejects(
+        runIsolatedGeminiSession(['--model', 'gemini-2.5-flash'], { credentialsOptions: { apiKey: 'selected-studio-key' } }),
+        /operational input contains a provider credential/
+      );
+    }
+
+    process.env = { ...saved, CLOUDSDK_AUTH_ACCESS_TOKEN: '', GOOGLE_OAUTH_ACCESS_TOKEN: 'selected-oauth-token', GEMINI_API_KEY: 'unselected-studio-key', OUTPUT_PATH: '/runner/unselected-studio-key/output' };
+    await assert.rejects(
+      runIsolatedGeminiSession(['--model', 'gemini-2.5-flash', '--project', 'fixture-project']),
+      /operational input contains a provider credential/
+    );
+  } finally { process.env = saved; }
 });
 
 

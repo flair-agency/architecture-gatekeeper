@@ -8,6 +8,8 @@ import {
   runGeminiReviewer,
   resolveAuthCredentials,
   resolveBaseUrl,
+  resolveVertexProject,
+  resolveVertexRegion,
   resolveGcloudAccessToken,
   validateThinkingBudget,
 } from '../src/gemini-transport.mjs';
@@ -686,6 +688,40 @@ test('resolveBaseUrl routes Bearer token to Vertex AI URL when project ID is pre
     if (prevRegion !== undefined) process.env.GOOGLE_CLOUD_REGION = prevRegion;
     else delete process.env.GOOGLE_CLOUD_REGION;
   }
+});
+
+test('Vertex project and region aliases resolve consistently for launcher and transport paths', async () => {
+  const env = {
+    CLOUDSDK_PROJECT: 'alias-project',
+    CLOUDSDK_COMPUTE_REGION: 'asia-northeast1',
+  };
+  const scope = { projectId: resolveVertexProject({}, env), region: resolveVertexRegion({}, env) };
+  assert.deepEqual(scope, { projectId: 'alias-project', region: 'asia-northeast1' });
+  assert.equal(
+    resolveBaseUrl({ type: 'bearer', value: 'token' }, { ...scope }),
+    'https://asia-northeast1-aiplatform.googleapis.com/v1/projects/alias-project/locations/asia-northeast1/publishers/google'
+  );
+
+  const previous = { ...process.env };
+  try {
+    delete process.env.GOOGLE_CLOUD_PROJECT;
+    delete process.env.CLOUDSDK_CORE_PROJECT;
+    delete process.env.GCP_PROJECT;
+    delete process.env.GOOGLE_CLOUD_REGION;
+    process.env.CLOUDSDK_PROJECT = env.CLOUDSDK_PROJECT;
+    process.env.CLOUDSDK_COMPUTE_REGION = env.CLOUDSDK_COMPUTE_REGION;
+    let dispatched;
+    await runGeminiReviewer({
+      prompt: 'scope check', schema: { type: 'object' },
+      reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' },
+    }, {
+      accessToken: 'token', proxyUrl: 'http://127.0.0.1:1234', fetch: async url => {
+        dispatched = String(url);
+        return { ok: true, status: 200, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"decision":"PASS"}' }] } }] }) };
+      },
+    });
+    assert.match(dispatched, /\/v1\/projects\/alias-project\/locations\/asia-northeast1\/publishers\/google\/models\//);
+  } finally { process.env = previous; }
 });
 
 test('resolveBaseUrl routes apiKey credentials to Generative Language API', () => {

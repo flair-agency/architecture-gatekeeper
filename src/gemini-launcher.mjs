@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { startGeminiSecurityProxy } from './gemini-security-proxy.mjs';
-import { resolveAuthCredentials } from './gemini-transport.mjs';
+import { getSupportedEnvironmentCredentialValues, resolveAuthCredentials, resolveVertexProject, resolveVertexRegion } from './gemini-transport.mjs';
 import { resolveSafePath } from './review-input-path.mjs';
 
 // Forward only the operational inputs consumed by this runner. Names that merely
@@ -141,8 +141,8 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
 
   // Derive trusted scope constraints
   allowedModel = allowedModel || process.env.MODEL || process.env.REVIEW_MODEL || null;
-  allowedProject = allowedProject || process.env.GOOGLE_CLOUD_PROJECT || process.env.CLOUDSDK_CORE_PROJECT || null;
-  allowedRegion = allowedRegion || process.env.GOOGLE_CLOUD_REGION || 'us-central1';
+  allowedProject = resolveVertexProject({ projectId: allowedProject });
+  allowedRegion = resolveVertexRegion({ region: allowedRegion });
 
   // Resolve credentials in the privileged supervisor context
   const credsOptions = { ...options.credentialsOptions };
@@ -189,7 +189,14 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
   if (remainingMs <= 0) throw new Error('Gemini session deadline expired before startup.');
   effectiveProxyConfig.deadlineMs = remainingMs;
   // Validate environment isolation before allocating the proxy listener.
-  const runnerEnv = buildIsolatedRunnerEnv(process.env, '', [credentials.value, credsOptions.apiKey, credsOptions.accessToken]);
+  const runnerEnv = buildIsolatedRunnerEnv(process.env, '', [
+    ...getSupportedEnvironmentCredentialValues(process.env),
+    credentials.value,
+    credsOptions.apiKey,
+    credsOptions.accessToken,
+    cliApiKey,
+    cliAccessToken,
+  ]);
   const proxy = await startGeminiSecurityProxy(effectiveProxyConfig);
 
   process.stderr.write(`[gemini-launcher] Security proxy active on ${proxy.endpointUrl}\n`);

@@ -257,21 +257,29 @@ export function resolveBaseUrl(credentials, options = {}) {
   return options.baseUrl || resolveProviderBaseUrl(credentials, options);
 }
 
+/** Resolve Vertex scope identically for direct transport and proxy dispatch. */
+export function resolveVertexProject(options = {}, env = process.env) {
+  return options.projectId || env.GOOGLE_CLOUD_PROJECT || env.CLOUDSDK_CORE_PROJECT || env.CLOUDSDK_PROJECT || env.GCP_PROJECT || null;
+}
+
+/** Resolve Vertex region identically for direct transport and proxy dispatch. */
+export function resolveVertexRegion(options = {}, env = process.env) {
+  return options.region || env.GOOGLE_CLOUD_REGION || env.CLOUDSDK_COMPUTE_REGION || 'us-central1';
+}
+
+/** Return source-environment credential values supported by resolveAuthCredentials. */
+export function getSupportedEnvironmentCredentialValues(env = process.env) {
+  return [env.CLOUDSDK_AUTH_ACCESS_TOKEN, env.GOOGLE_OAUTH_ACCESS_TOKEN, env.GEMINI_API_KEY]
+    .filter(value => typeof value === 'string' && value.trim().length > 0)
+    .map(value => value.trim());
+}
+
 function resolveProviderBaseUrl(credentials, options) {
   if (credentials.type === 'bearer') {
-    const projectId =
-      options.projectId ||
-      process.env.GOOGLE_CLOUD_PROJECT ||
-      process.env.CLOUDSDK_CORE_PROJECT ||
-      process.env.CLOUDSDK_PROJECT ||
-      process.env.GCP_PROJECT;
+    const projectId = resolveVertexProject(options);
 
     if (projectId && typeof projectId === 'string' && projectId.trim()) {
-      const region =
-        options.region ||
-        process.env.GOOGLE_CLOUD_REGION ||
-        process.env.CLOUDSDK_COMPUTE_REGION ||
-        'us-central1';
+      const region = resolveVertexRegion(options);
       if (typeof region !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(region) || !/^[A-Za-z0-9._-]+$/.test(projectId.trim())) {
         throw new Error('Architecture gate reviewer failed: invalid Vertex project or region scope.');
       }
@@ -412,11 +420,11 @@ export async function executeGeminiReviewer(request, options = {}) {
       const proxyMode = options.proxyMode ?? process.env.REVIEW_PROXY_MODE;
       if (proxyMode !== undefined && !['studio', 'vertex'].includes(proxyMode)) throw new Error('Invalid selected proxy mode.');
       const isVertex = proxyMode === undefined
-        ? Boolean(options.projectId || process.env.GOOGLE_CLOUD_PROJECT || process.env.CLOUDSDK_CORE_PROJECT)
+        ? Boolean(resolveVertexProject(options))
         : proxyMode === 'vertex';
       if (isVertex) {
-        const projectId = options.projectId || process.env.GOOGLE_CLOUD_PROJECT || process.env.CLOUDSDK_CORE_PROJECT || 'default';
-        const region = options.region || process.env.GOOGLE_CLOUD_REGION || 'us-central1';
+        const projectId = resolveVertexProject(options) || 'default';
+        const region = resolveVertexRegion(options);
         baseUrl = `${cleanProxyUrl}/v1/projects/${encodeURIComponent(projectId)}/locations/${encodeURIComponent(region)}/publishers/google`;
       } else {
         baseUrl = `${cleanProxyUrl}/v1beta`;
