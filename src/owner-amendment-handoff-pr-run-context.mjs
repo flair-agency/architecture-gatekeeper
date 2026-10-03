@@ -1,6 +1,7 @@
 // Select GitHub's authenticated PR and workflow-run metadata for an
 // OWNER_AMENDMENT handoff. This is context only; later layers must verify the
 // protected Git objects, evidence, and eligibility independently.
+import { matchesGitHubAssociatedRepository } from './github-associated-repository.mjs';
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const SHA = /^[a-f0-9]{40}$/;
 const SELF_WORKFLOW_PATH = '.github/workflows/self-architecture-gate.yml';
@@ -48,8 +49,8 @@ function validateRun(run, { repository, runId, runAttempt, aPrNumber, aHeadSha, 
   const pullRequests = run?.pull_requests;
   const exactAssociatedPullRequests = Array.isArray(pullRequests) ? pullRequests.filter(pr =>
     String(pr?.number) === String(aPrNumber) && pr?.base?.ref === 'main' && pr?.base?.sha === baseSha &&
-    repoName(pr?.base?.repo) === repository && pr?.head?.sha === aHeadSha &&
-    repoName(pr?.head?.repo) === repository) : [];
+    matchesGitHubAssociatedRepository(pr?.base?.repo, { repository, repositoryId }) && pr?.head?.sha === aHeadSha &&
+    matchesGitHubAssociatedRepository(pr?.head?.repo, { repository, repositoryId })) : [];
   if (String(run?.id) !== String(runId) || String(run.run_attempt) !== String(runAttempt) ||
       run.status !== 'completed' || run.event !== 'pull_request_target' ||
       repoName(run.repository) !== repository || repoName(run.head_repository) !== repository ||
