@@ -1,4 +1,4 @@
-# Gemini CI Delivery Plan: Vertex AI with Google Cloud WIF
+# Reviewer execution options for Gemini CI: Vertex AI with WIF
 
 Status: proposed delivery plan. This document records the user's selection of
 Vertex AI with Google Cloud Workload Identity Federation (WIF) as the provider
@@ -42,137 +42,110 @@ individual before/after file snapshots or package protected references as a
 separate input packet. The consumer workflow invokes this helper; the legacy
 reusable `architecture-gate.yml` does not. Neither workflow dispatches Gemini.
 
-## Proposed staged deliveries
+## Optional snapshot context helper
 
-These stages are implementation proposals. Each requires the relevant owner
-authorization before it changes canonical policy or a protected route. A
-stage may provide runtime support without enabling consumer adoption.
+`src/prepare-review-file-context.mjs` provides an internal, currently unwired
+preparation helper. Trusted orchestration supplies exact merge revisions,
+explicit base reference paths and all three limits. It returns full before/after
+regular UTF-8 file snapshots, Git object IDs and content digests; absent sides
+are `null`. It reads committed objects, not working-tree files, and rejects
+unsupported file modes, invalid text, missing objects and exceeded limits.
+The complete serialized result, including metadata and JSON escaping, is bounded.
 
-### 1. Immutable, explicit review input packet
+This provider-independent helper supports at most 32 changed-path/reference entries, 131,072
+bytes per blob and 524,288 bytes per serialized context. Callers must explicitly
+select limits at or below those runtime caps. These are internal preparation
+bounds, not newly adopted consumer policy or replacements for `maxPromptBytes`.
+A future composer must additionally bound the complete prompt and verify the
+protected selection and complete Authority Set. The helper does not establish
+repository-origin identity, infer required references, execute a reviewer,
+persist evidence, or alter either CI workflow. Its snapshot selection is not
+itself proof of protected authority or semantic completeness.
 
-Add a bounded preparation API that produces a private immutable packet from
-recorded revisions. It should contain the exact changed-path list, full before
-and after snapshots for each selected changed file, and the protected
-references selected by the caller's prior policy: prompt, schema, validation
-rules, and authority snapshots or Authority Set members. Bind the packet to
-repository identity as available, base SHA, head SHA, reviewed merge SHA,
-manifest/selection identity, content digests, and the exact file paths. Reject
-missing objects, path ambiguity, symlinks or submodules unless an adopted
-source rule explicitly supports them, invalid encodings, binary files unless
-their treatment is selected, and all size/count limits before reviewer startup.
-Write the packet outside the checkout with restrictive permissions and no
-overwrite.
+## Execution contract before CI integration
 
-“Complete input packet” here means complete relative to this explicit selected
-context and its declared bounds. It does not claim semantic completeness of
-architecture authority, nor prove the reviewer understood every byte. Existing
-Codex workspace visibility remains a separate property; passing a packet alone
-does not remove that visibility. Keep the current patch-based helper available
-until the packet path is reviewed and selected.
+Provider choice does not select an execution model. The current Codex route
+uses a CLI agent with workspace/Git access; the implemented Gemini transport
+uses REST requests containing explicit context. Comparing these as equivalent
+provider adapters hides differences in context discovery and responsibility.
+The Vertex AI/WIF authentication selection does not select REST over a CLI.
 
-### 2. Protected provider policy and shared validation
+Before wiring Gemini into CI, compare execution options against one review
+contract, preserving existing protected selection and acceptance:
 
-Version the CI policy schema to select a provider/authentication route only
-from protected-base bytes. Define the exact supported values, required fields,
-provider model scope, project and region selection, input-packet limits, and
-failure behavior. The policy resolver should reject unknown fields, missing or
-malformed selections, candidate-controlled overrides, and values beyond
-runtime ceilings. Preserve existing policy versions and Codex behavior for
-consumers that have not adopted the new version.
+| Concern | Contract to specify and verify |
+| --- | --- |
+| Review scope | Repository identity as supported; exact base, head and reviewed merge revisions |
+| Protected context | Selected authority, prompt, schema, validation and their identities |
+| Context access | Available workspace/Git reads, discovery tools or explicit snapshots; revision binding, bounds and unsupported inputs |
+| Execution capabilities | Allowed tools, writes, commands, network destinations and cancellation; distinguish configured controls from enforced controls |
+| Credentials | Vertex/WIF credential ownership, launcher interfaces, proxy compatibility and renewal boundary |
+| Output | Extracted decision, deterministic validation, execution identity and incomplete failure outcomes |
 
-Route both supported reviewers through the same prepared input and
-provider-independent deterministic checks where their decision schemas permit
-it: JSON/schema validation, authority-set completeness, decision invariants,
-timeout handling, and no-decision behavior for preparation, service or
-validation failures. Record the selected provider and bounded provenance in
-the result without treating model output or packet provenance as acceptance by
-itself.
+### Options to compare
 
-### 3. Protected Vertex AI/WIF launcher path
+| Option | Context responsibility | Required investigation |
+| --- | --- | --- |
+| Codex CLI with workspace (current baseline) | Agent can discover additional repository context | Document actual access, input binding, sandbox, credential and timeout guarantees |
+| Gemini CLI with workspace | Proposed agent-based alternative, to be verified | Pin and inspect CLI behavior; verify Vertex/WIF and proxy integration, tool policy, writes, prompt injection exposure, output extraction and cancellation |
+| Gemini REST with explicit context | Trusted orchestration selects supplied files or provides separately specified read tools | Verify reference selection covers the chosen review scope, hard bounds, and incomplete outcomes when context cannot be supplied |
 
-Implement the selected direction with a trusted launcher that obtains a
-GitHub OIDC assertion and exchanges it for a short-lived Google credential
-through an explicitly configured Google Cloud WIF trust. Keep the OIDC request
-capability, assertion, exchanged token, and token renewal capability out of
-the review runner's environment, arguments, files, and other launch handles.
-Keep credential-bearing dispatch inside a loopback proxy whose upstream is the
-selected regional Vertex AI host and whose method, exact project/region/model
-route, request shape, redirect handling, and deadline are constrained by
-protected policy. Fail closed on missing identity configuration, failed
-exchange, scope mismatch, disallowed destination, redirect, timeout, API
-failure, or invalid response. Do not fall back to an API key, Codex, another
-provider, or a weaker input route.
+The snapshot helper can supply explicit context to any compatible adapter. It
+is not a mandatory Gemini preprocessing step or a complete context strategy.
+A REST-only request needs supplied context, but need not use this particular
+helper; a separately adopted read-tool boundary is another option. A workspace
+adapter may use snapshots for reproducibility without giving up discovery.
+Identical strings are not proof of equivalent review capabilities or quality.
+No `read-only`, command denial, credential isolation or network guarantee is
+inferred from an adapter's name or an operating mode.
 
-Credential non-inheritance and constrained proxy dispatch do not establish
-network isolation, same-user process isolation, or that independently
-available Cloud SDK credentials and identity services cannot be used by the
-runner. Any stronger host claim needs separate selection and verification.
+## Revised delivery sequence
 
-### 4. Ordinary review and enabled-route governance
-
-Integrate the new runner first as a protected-policy-selected ordinary review
-path that emits the existing semantic decision kinds and follows existing
-fail-closed reporting. Keep acceptance separate: host check selection and
-target-transition enforcement remain independently configured and verified.
-Then consider any route-specific procedural evidence or owner-governance
-integration as a separate delivery with explicit evidence producer, actor,
-identity, lifecycle, and verification rules. Do not infer those rules from
-the proxy or from a successful semantic review. No owner-addition,
-owner-amendment, or other special governance path becomes enabled merely
-because ordinary Gemini review is available.
-
-## Minimal flow
+1. Compare the options above and propose the smallest execution/context profile
+   that meets the consumer's review requirements. Record required owner
+   decisions in canonical authority before activation. Existing runtime work
+   and this optional helper do not settle that choice.
+2. Implement protected selection of the chosen provider, runtime, context
+   strategy, model/settings and limits. Preserve old Codex policy versions;
+   candidate inputs cannot select their own reviewer or raise bounds.
+3. Integrate Vertex/WIF under the adopted credential boundary. Verify OIDC,
+   token and renewal non-inheritance through explicit runner interfaces,
+   constrained provider dispatch, credential lifetime and failure handling.
+   No credential or provider fallback is activated by authentication failure.
+4. Exercise ordinary review and each enabled governance path with shared
+   deterministic validation and route-specific producer evidence. Require
+   bounded owner-adjudicated cases and real authorized reviews; schema success
+   does not prove semantic quality or host merge enforcement.
 
 ```mermaid
-flowchart LR
-  P[Protected base policy] --> I[Bounded explicit input packet]
-  I --> L[Trusted WIF launcher and proxy]
-  L --> R[Credential-free review runner]
-  R --> V[Shared deterministic validation]
-  V --> D[Existing decision and reporting path]
-  H[Host check and transition rules] --> D
+flowchart TD
+  P[Protected review scope and context selection] --> E[Selected execution profile]
+  E --> W[Workspace and permitted discovery tools]
+  E --> C[Explicit snapshots or adopted read-tool boundary]
+  W --> A[Compatible reviewer adapter]
+  C --> A
+  K[Selected credential boundary] --> A
+  A --> V[Shared decision validation]
+  V --> R[Existing reporting and acceptance verification]
 ```
 
-The diagram describes a proposed runtime flow. It does not claim the host
-enforces the resulting check or that the consumer has selected this route.
+This is a proposed responsibility diagram, not an implemented universal
+adapter framework. No route or capability is activated by this plan.
 
-## Acceptance and evidence matrix
+## Verification and remaining selections
 
-| Stage | Required verification | What it may establish | What it does not establish |
-| --- | --- | --- | --- |
-| Input packet | Revision/parent binding; exact before/after bytes and protected-reference digests; limits; path, symlink, submodule and encoding cases; private output; no overwrite | Packet matches the declared selected context | Semantic authority completeness or reviewer comprehension |
-| Policy selection | Base-revision resolution; strict schema/version validation; malformed, unknown and candidate override rejection; old-version compatibility | Protected policy selected provider and bounded scope | Correct external WIF trust configuration or host enforcement |
-| WIF launcher/proxy | OIDC capability containment; exchange success/failure; child env/argv/files/handles inspection; exact Vertex route/model/project/region; redirect, method, timeout and scope rejection | Credentials are not passed through explicit runner interfaces and proxy dispatch is constrained as tested | Direct network blocking, same-user isolation, or absence of independently available host credentials |
-| Shared validation | Schema and decision invariants; complete selected authority IDs/files where applicable; no decision on every preparation/provider/validation error; no fallback | The supplied response meets deterministic contract checks | Semantic correctness or acceptance authority |
-| Adoption and host enforcement | Protected consumer selection; exact producer/check/target rule; route-specific execution evidence; independent host transition verification | The configured consumer route is adopted and the host applies its selected acceptance rule | Universal provider equivalence or unselected governance routes |
+Evaluate candidate options using the same review cases and authority. Record
+which context each can access, which restrictions the host actually enforces,
+credential exposure, total deadline/cancellation behavior and validated output.
+Cover PASS/BLOCK/OWNER_DECISION plus unavailable context, unsupported input,
+authentication, timeout, refusal, partial and invalid-output failures. Verify
+Gemini with Codex absent and OpenAI credentials unset. Preserve fail-closed
+acceptance and independently verify any required host protection.
 
-## Decisions intentionally left open
-
-This plan records Vertex AI with Google Cloud WIF as the user's selected
-provider/authentication direction. The following still require an explicit
-consumer or deployment decision before implementation or activation:
-
-- Which consumer repository and protected branch will adopt the route, and
-  whether this repository's self-review is the first consumer.
-- The Google Cloud project, WIF provider/service-account trust setup, allowed
-  GitHub repository/ref claims, token audience and lifetime, and the exact
-  deployment/environment secret and permission boundary.
-- The Vertex region and official endpoint allowlist, model identifier,
-  thinking/reasoning settings, request and response quotas, billing limits,
-  retry policy and service deadline.
-- Whether the explicit packet supplements the review prompt while the reviewer
-  retains workspace access, or whether a separately verified execution
-  boundary will restrict repository access to the packet.
-- Which changed-file classes are supported (binary files, symlinks, submodules,
-  generated content), packet retention and cleanup, and exact per-file/count/
-  total/prompt ceilings within runtime ceilings.
-- Whether provider adoption changes only ordinary semantic review or also
-  requires route-specific producer evidence, special governance integration,
-  or changed host-enforced acceptance.
-- Rollout, rollback and the point at which any consumer may stop requiring the
-  current Codex credential and route.
-
-Until those decisions are recorded in canonical authority and the selected
-route is implemented and verified, the protected route remains the existing
-Codex route. This document records runtime delivery proposals only; it does
-not enable a route, amend acceptance policy, or claim adoption.
+Still open: execution/context profile; adopting consumer and branch; exact
+Google identity bindings, project/region, model/thinking settings, quotas and
+billing limits, credential lifetime/renewal, supported file classes, complete
+prompt limits, retention/cleanup and route-specific governance evidence.
+Standby/fallback or parallel result adoption stays with #259. Vertex AI with
+WIF remains the selected authentication direction. #252 remains open until
+its CI adoption criteria are met; this work adds no release gate.
