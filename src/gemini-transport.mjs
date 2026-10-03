@@ -254,10 +254,10 @@ export function resolveAuthCredentials(options = {}) {
  * @returns {string}
  */
 export function resolveBaseUrl(credentials, options = {}) {
-  if (options.baseUrl) {
-    return options.baseUrl;
-  }
+  return options.baseUrl || resolveProviderBaseUrl(credentials, options);
+}
 
+function resolveProviderBaseUrl(credentials, options) {
   if (credentials.type === 'bearer') {
     const projectId =
       options.projectId ||
@@ -275,7 +275,7 @@ export function resolveBaseUrl(credentials, options = {}) {
       if (typeof region !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(region) || !/^[A-Za-z0-9._-]+$/.test(projectId.trim())) {
         throw new Error('Architecture gate reviewer failed: invalid Vertex project or region scope.');
       }
-      return `https://${region}-aiplatform.googleapis.com/v1/projects/${encodeURIComponent(projectId.trim())}/locations/${encodeURIComponent(region)}/publishers/google`;
+      return `https://${encodeURIComponent(region)}-aiplatform.googleapis.com/v1/projects/${encodeURIComponent(projectId.trim())}/locations/${encodeURIComponent(region)}/publishers/google`;
     }
   }
 
@@ -402,7 +402,10 @@ export async function executeGeminiReviewer(request, options = {}) {
     let baseUrl;
     let parsedUrl;
     if (parsedProxyUrl) {
-      let cleanProxyUrl = proxyUrl;
+      const protocol = parsedProxyUrl.protocol === 'https:' ? 'https:' : 'http:';
+      const host = parsedProxyUrl.hostname === 'localhost' ? 'localhost' : '127.0.0.1';
+      const port = parsedProxyUrl.port ? `:${encodeURIComponent(parsedProxyUrl.port)}` : '';
+      let cleanProxyUrl = `${protocol}//${host}${port}`;
       while (cleanProxyUrl.endsWith('/')) {
         cleanProxyUrl = cleanProxyUrl.slice(0, -1);
       }
@@ -433,14 +436,27 @@ export async function executeGeminiReviewer(request, options = {}) {
       if (parsedUrl.hostname !== 'generativelanguage.googleapis.com' && !/^[a-z0-9-]+-aiplatform\.googleapis\.com$/.test(parsedUrl.hostname)) {
         throw new Error('Architecture gate reviewer failed: endpoint must match the selected official provider scope.');
       }
-      const selectedBase = new URL(resolveBaseUrl(credentials, { ...options, baseUrl: undefined }));
+      const selectedBase = new URL(resolveProviderBaseUrl(credentials, options));
       if (parsedUrl.origin !== selectedBase.origin || parsedUrl.pathname !== selectedBase.pathname || parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
         throw new Error('Architecture gate reviewer failed: endpoint must match the selected official provider scope.');
       }
+      // Dispatch the provider-derived endpoint, never the caller's validated spelling.
+      baseUrl = resolveProviderBaseUrl(credentials, options);
     }
 
     while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
     const url = `${baseUrl}/models/${encodeURIComponent(model)}:generateContent`;
+    // Validate the complete dispatch URL, not only its base before composition.
+    const dispatchUrl = new URL(url);
+    if (parsedProxyUrl) {
+      if (dispatchUrl.hostname !== '127.0.0.1' && dispatchUrl.hostname !== 'localhost') {
+        throw new Error('Architecture gate reviewer failed: proxy dispatch must remain loopback.');
+      }
+      if (dispatchUrl.origin !== parsedProxyUrl.origin) throw new Error('Architecture gate reviewer failed: proxy dispatch origin changed.');
+    } else if (dispatchUrl.origin !== parsedUrl.origin || dispatchUrl.protocol !== 'https:' ||
+        (dispatchUrl.hostname !== 'generativelanguage.googleapis.com' && !/^[a-z0-9-]+-aiplatform\.googleapis\.com$/.test(dispatchUrl.hostname))) {
+      throw new Error('Architecture gate reviewer failed: dispatch must remain in the selected official provider scope.');
+    }
 
     const requestBody = prepareGeminiRequestBody(request, options);
     const fetchFn = options.fetch || globalThis.fetch;

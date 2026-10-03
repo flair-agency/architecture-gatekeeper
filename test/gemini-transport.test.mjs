@@ -1035,7 +1035,7 @@ test('cooperative external signal cancellation aborts execution', async () => {
 test('direct credentials cannot be dispatched outside selected official scope', async () => {
   const request = { prompt: 'review', schema: { type: 'object' }, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024 } };
   let calls = 0;
-  for (const baseUrl of ['https://example.com/v1beta', 'https://generativelanguage.googleapis.com/other', 'https://generativelanguage.googleapis.com/v1beta?key=other']) {
+  for (const baseUrl of ['https://example.com/v1beta', 'https://generativelanguage.googleapis.com/other', 'https://generativelanguage.googleapis.com/v1beta?key=other', 'https://user:password@generativelanguage.googleapis.com/v1beta', 'https://generativelanguage.googleapis.com/v1beta#fragment']) {
     await assert.rejects(executeGeminiReviewer(request, { apiKey: 'secret', baseUrl, fetch: async () => { calls++; } }), /selected official provider scope/);
   }
   assert.equal(calls, 0);

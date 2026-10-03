@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { linkSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ownerAmendmentTagApiRoute, readRunnerTempFile,
@@ -56,6 +56,11 @@ test('appends workflow outputs only to a direct runner-created command file', ()
   const outside = join(root, 'outside'); writeFileSync(outside, 'untouched');
   const linkedPath = join(commandDir, 'set_output_link'); symlinkSync(outside, linkedPath);
   process.env.GITHUB_OUTPUT = linkedPath;
+  assert.throws(() => appendGitHubOutput('route=amendment\n'), /direct regular file/);
+  assert.equal(readFileSync(outside, 'utf8'), 'untouched');
+  const hardlinkedPath = join(commandDir, 'set_output_hardlink');
+  linkSync(outside, hardlinkedPath);
+  process.env.GITHUB_OUTPUT = hardlinkedPath;
   assert.throws(() => appendGitHubOutput('route=amendment\n'), /direct regular file/);
   assert.equal(readFileSync(outside, 'utf8'), 'untouched');
   process.env.GITHUB_OUTPUT = outputPath;

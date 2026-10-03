@@ -1,6 +1,6 @@
 import { constants } from 'node:fs';
 import { closeSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 const fail = message => { throw new Error(`Runner temporary path: ${message}`); };
 const CHILD_PATHS = Object.freeze({
@@ -94,7 +94,11 @@ export function appendGitHubOutput(contents, { runnerTempDirectory = process.cwd
   let runnerTemp;
   try { runnerTemp = realpathSync(runnerTempDirectory); } catch { fail('runner temp directory is unavailable.'); }
   if (!process.env.RUNNER_TEMP || process.env.RUNNER_TEMP !== runnerTempDirectory || runnerTemp !== runnerTempDirectory) fail('output root is not the canonical runner temp directory.');
-  const commandDirectory = join(runnerTemp, '_runner_file_commands');
+  const commandDirectory = resolve(runnerTemp, '_runner_file_commands');
+  const directoryRelative = relative(runnerTemp, commandDirectory);
+  if (directoryRelative === '..' || directoryRelative.startsWith('..' + sep) || isAbsolute(directoryRelative)) {
+    fail('runner command-file directory escapes runner temp.');
+  }
   let commandDirectoryStat;
   try { commandDirectoryStat = lstatSync(commandDirectory); } catch { fail('runner command-file directory is unavailable.'); }
   if (!commandDirectoryStat.isDirectory() || commandDirectoryStat.isSymbolicLink() || realpathSync(commandDirectory) !== commandDirectory) {
@@ -107,7 +111,11 @@ export function appendGitHubOutput(contents, { runnerTempDirectory = process.cwd
   }
   // Rebuild the sink path from the verified directory and the constrained
   // runner-generated leaf instead of passing the environment value to fs.
-  const validatedOutputPath = join(commandDirectory, basename(outputPath));
+  const validatedOutputPath = resolve(commandDirectory, basename(outputPath));
+  const outputRelative = relative(commandDirectory, validatedOutputPath);
+  if (outputRelative === '..' || outputRelative.startsWith('..' + sep) || isAbsolute(outputRelative)) {
+    fail('GitHub output escapes the runner command-file directory.');
+  }
   if (validatedOutputPath !== outputPath) fail('GitHub output path is not a canonical direct child.');
   let before;
   try { before = lstatSync(validatedOutputPath); } catch { fail('runner-created output file is unavailable.'); }
