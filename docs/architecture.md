@@ -395,8 +395,7 @@ own trigger-specific evidence and semantic questions: this profile preserves
 the historical `OWNER_DECISION` and assesses resolution of its escalation;
 the BLOCK profile below requires a completed BLOCK and assesses resolution of
 the identified conflict. Only previous-base policy opts in and scopes a route;
-B cannot self-authorize. If prior policy cannot authorize first opt-in, use
-owner-controlled bootstrap. Contract entry alone enables no route.
+B cannot self-authorize. Bootstrap is limited by [B1–B8](#canonical-authority-lifecycle); contract entry alone enables no route.
 
 #### Self-v1 semantic eligibility input and receipt (owner decision)
 
@@ -1080,6 +1079,16 @@ G0 adoption record also needs the separate pre-merge and post-merge evidence
 specified above. If Issue #20 adds other evidence routes, each must verify
 its selected policy and evidence explicitly. No route silently reinterprets
 `BLOCK`, accepts A's `OWNER_DECISION`, or treats report delivery as adoption.
+
+### Canonical authority lifecycle
+
+Support exact (predecessor/profile, topology/bounds, host/merge, caller) tuples only with finite predecessor-authorized owner-choice → eligible scoped B (given services/evidence) → adoption/readback, plus production trace, matching fixture and fail-closed negatives. Graph alone proves nothing; semantic failure cannot force eligibility. Else `UNSUPPORTED`, retain predecessor; no acceptance/fallback/false-addition split/exception.
+
+Existing addition/amendment clauses govern B/Set/policy/evidence/freshness; bind repo/target lineage and runtime/caller. Track canonical snapshot, phase/kind, capability/assurance. `ABSENT_INITIAL`=never-existing root; missing decision=addition; lost member=recovery; T4=oversized Set. Pending retains predecessor; pre-integration failure stays pending/ineligible/incomplete; post-integration failure records placement/adoption separately (no fictitious rollback); success needs valid adoption + verified placement. Preserve history; fresh review is new.
+
+Keep defined/implemented/released/selectable/prior-selected/eligible/owner action/adopted/canonically placed/commissioning/active distinct. Normal transitions use no exception. T0 root; T1 missing-decision addition; T2 amend existing; normal, no bootstrap; T3 equivalent maintenance (selector→T5/T6); T4 preselected bounded oversized recovery; T5 prior-authorized compatible migration; T6 incompatible migration via prior-authorized bridge or unsupported; T7 first selection via normal route or guarded bootstrap; T8 normal adoption before active; T9 later profile-fresh use, no fallback/reset.
+
+Bootstrap only for absent-ever root or genuine first activation lacking authorized normal/staged path. T0/T7 share nonresettable repo/target lineage authorization (incl inseparable root/config); rename/backend/manifest/policy/profile changes/missing files cannot reset it. B1 proves absent-ever root or never-completed first activation (missing file/version/receipt is no proof). B2 inventories authorized normal/staged/migration/repair exits: any finite noncircular path bars bootstrap regardless of cost/deadline; missing code/tests/defect/outage do not prove absence. B3 independent existing/external governance authorizes exact scope; B4 binds candidate/paths/ops/actors/lineage; B5 verifies prep/limits/inputs/producer/host. Require implemented T8 plan before start; resulting policy must authorize it. B6 reads back first-operation target/policy/caller; B7 consumes lineage authorization; B8 later normal adoption/readback before ACTIVE, zero exception; commissioning until then. Bootstrap is external, not PASS/G0.
 
 ## Normative invariants
 
