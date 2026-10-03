@@ -316,7 +316,10 @@ dispatch; it does not supply same-user host isolation:
 - **Trusted Launcher (`src/gemini-launcher.mjs`)**: Privileged supervisor process that receives
   credentials in trusted CI, starts the security proxy on local loopback, strips all sensitive
   known credential and OIDC environment selectors, and spawns the runner. It requires
-  supplied credentials rather than local gcloud renewal and applies a bounded session
+  supplied credentials rather than local gcloud renewal. This boundary does not
+  make an already-authenticated same-user Cloud SDK installation inaccessible;
+  the host must withhold ambient user credentials or supply separate OS isolation
+  for that stronger guarantee. The launcher applies a bounded session
   deadline with child termination and proxy cleanup.
 - **Security Proxy (`src/gemini-security-proxy.mjs`)**: Listens strictly on `127.0.0.1:<ephemeral>`,
   enforces strict route allowlisting (`POST ...:generateContent`), injects credentials in-flight,
@@ -340,7 +343,10 @@ credential options follow the transport's explicit-option precedence. The runner
 validates decisions under the selected route and creates `decision.json` with mode
 `0600` in a private temporary directory outside the checkout by default. Explicit
 output paths must also be outside the reviewed repository and must not already
-exist. When `GITHUB_OUTPUT` is present, it publishes `decision-kind`, `decision-file`
+exist. They must remain within `RUNNER_TEMP` or a recognized OS temporary root:
+`os.tmpdir()`, `/tmp`, `/private/tmp`, `/var/folders`, or `/private/var/folders`.
+Existing-ancestor checks reject symlink escapes from the selected root; arbitrary
+artifact directories outside these roots are unsupported. When `GITHUB_OUTPUT` is present, it publishes `decision-kind`, `decision-file`
 and `final-message` through the trusted runner-provided canonical existing file, with regular-file,
 link and opened-identity checks, including from a checkout working directory. Required output publication failure fails the
 command. CI adoption must separately select a trusted runtime and acceptance policy.

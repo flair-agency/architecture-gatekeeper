@@ -267,9 +267,9 @@ export function resolveVertexRegion(options = {}, env = process.env) {
   return options.region || env.GOOGLE_CLOUD_REGION || env.CLOUDSDK_COMPUTE_REGION || 'us-central1';
 }
 
-/** Return source-environment credential values supported by resolveAuthCredentials. */
+/** Known provider secrets to withhold, including Google SDK aliases not used for auth selection. */
 export function getSupportedEnvironmentCredentialValues(env = process.env) {
-  return [env.CLOUDSDK_AUTH_ACCESS_TOKEN, env.GOOGLE_OAUTH_ACCESS_TOKEN, env.GEMINI_API_KEY]
+  return [env.CLOUDSDK_AUTH_ACCESS_TOKEN, env.GOOGLE_OAUTH_ACCESS_TOKEN, env.GEMINI_API_KEY, env.GOOGLE_API_KEY]
     .filter(value => typeof value === 'string' && value.trim().length > 0)
     .map(value => value.trim());
 }

@@ -411,6 +411,7 @@ test('launcher rejects an unselected source credential embedded in an operationa
       ['CLOUDSDK_AUTH_ACCESS_TOKEN', ' unused-cloudsdk-token ', 'unused-cloudsdk-token'],
       ['GOOGLE_OAUTH_ACCESS_TOKEN', 'unused-oauth-token', 'unused-oauth-token'],
       ['GEMINI_API_KEY', 'unused-gemini-key', 'unused-gemini-key'],
+      ['GOOGLE_API_KEY', ' unused-google-key ', 'unused-google-key'],
     ]) {
       process.env = { ...saved, [name]: value, OUTPUT_PATH: `/runner/${operational}/output` };
       await assert.rejects(

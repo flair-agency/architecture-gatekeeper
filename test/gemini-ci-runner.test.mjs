@@ -341,6 +341,8 @@ test('runner paths reject symlink escapes for reads and new outputs', () => {
     assert.throws(() => resolveSafePath('outside/hosts', dir), /symlink escapes/);
     assert.throws(() => resolveSafePath('outside/new-output.json', dir), /symlink escapes/);
     assert.equal(resolveSafePath('new-output.json', dir), join(realpathSync(dir), 'new-output.json'));
+    // Explicit outside-checkout outputs still need an authorized temporary root.
+    assert.throws(() => resolveSafePath('/var/artifacts/agk-decision.json', dir), /escapes authorized root/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

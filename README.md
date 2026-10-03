@@ -181,11 +181,14 @@ pass shared preflight and record `provider: "gemini"`; Codex selections are reje
 The current shared request constructor does not yet support committed Gemini
 settings (#265), so that route remains unavailable rather than falling back.
 Decision files default to a private temporary directory outside the checkout.
-Explicit output paths must be new files outside the reviewed repository. If
+Explicit output paths must be new files outside the reviewed repository, within
+`RUNNER_TEMP` or a recognized OS temporary root. Symlink escapes are rejected. If
 `GITHUB_OUTPUT` is present, publication failure fails the runner; normal checkout
 execution uses the trusted runner-provided canonical output file, with regular-file, link and opened-identity checks.
 The isolated launcher requires an explicit/environment key or access token and does
-not run local gcloud renewal. It applies a bounded session deadline, shuts down the
+not run local gcloud renewal. An authenticated same-user Cloud SDK installation
+is outside this isolation boundary: use a host without ambient credentials or a
+separate OS isolation boundary when those credentials must be inaccessible. It applies a bounded session deadline, shuts down the
 proxy and terminates the child on expiry (exit 124), escalating after 250 ms. This
 is not a guarantee against uninterruptible operating-system processes.
 Explicit Gemini thinking budgets currently support `gemini-2.5-flash` and
