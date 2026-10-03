@@ -931,6 +931,23 @@ route. Implementation details are in the
 [proxy specification](investigations/2026-10-02-credential-isolated-review-proxy-boundary.md);
 it cannot independently amend this contract.
 
+#### GitHub step-output sink (owner decision, 2026-10-03)
+
+The GitHub-specific step-output adapter treats `GITHUB_OUTPUT` as a trusted
+sink supplied by the invoking GitHub runner. It reads that environment value
+directly; it exposes no caller-selected sink or runner-temp argument and does
+not require the sink to be below `RUNNER_TEMP`. The invoking execution must
+preserve this runner-provided value rather than derive it from candidate code,
+repository content, request JSON, or model output.
+
+The adapter requires an absolute canonical path to an existing regular file,
+rejects symbolic links and hardlinks, and checks the opened file's identity
+before appending bounded command-protocol data. These checks do not authenticate
+an attacker-controlled environment or establish same-user host isolation.
+Publication supplies no semantic acceptance authority and activates no CI
+route. This decision does not change the fixed runner-temp paths used for
+protected review inputs and other temporary artifacts.
+
 #### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
 
 Owner-adopted target A is for this public GitHub Free self-repository; it is not implemented/enforced and needs no hosted server, ChatGPT Cloud or WIF. Only an unprivileged candidate `merge_group` job relays/wakes the protected-default-branch `workflow_run` receiver. It independently resolves live queue SHA/state, current protected base, exact queued PR/B, prior-base policy, full Authority Set and exact evidence, runs existing ordinary semantic, B/G0 and deterministic validators. Candidate workflows, success, artifacts and policy confer no authority. Only protected producer receives the review API and GitHub App private keys via a `main`-only Environment; the self-repository App has only `checks:write`. Reports bind verified results to exact queue SHA and App identity; host config expects that App as check source.
