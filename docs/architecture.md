@@ -185,6 +185,10 @@ See the [full normative section](architecture/review-execution.md#target-multi-p
 
 See the [full normative section](architecture/review-execution.md#target-gemini-ci-authentication-selection-issue-252-owner-decision-2026-10-04).
 
+#### Target Gemini CI execution selection (Issue #252 owner decision, 2026-10-04)
+
+See the [full normative section](architecture/review-execution.md#target-gemini-ci-execution-selection-issue-252-owner-decision-2026-10-04).
+
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
 See the [full normative section](architecture/review-execution.md#github-step-output-sink-owner-decision-2026-10-03).

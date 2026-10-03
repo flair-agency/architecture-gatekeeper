@@ -27,6 +27,7 @@ export function remainingDeadlineMs(deadlineAt, now = Date.now()) {
 
 const ALLOWED_AI_STUDIO_PATH = /^\/v1beta\/models\/([a-zA-Z0-9._-]+):generateContent$/;
 const ALLOWED_VERTEX_PATH = /^\/v1\/projects\/([a-zA-Z0-9._-]+)\/locations\/([a-zA-Z0-9._-]+)\/publishers\/google\/models\/([a-zA-Z0-9._-]+):generateContent$/;
+const ALLOWED_VERTEX_STREAM_PATH = /^\/v1\/publishers\/google\/models\/([a-zA-Z0-9._-]+):streamGenerateContent\?alt=sse$/;
 const ALLOWED_VERTEX_HOST = /^[a-z0-9-]+-aiplatform\.googleapis\.com$/;
 const ALLOWED_AI_STUDIO_HOST = 'generativelanguage.googleapis.com';
 
@@ -37,8 +38,11 @@ const ALLOWED_AI_STUDIO_HOST = 'generativelanguage.googleapis.com';
  */
 export function validateGeminiRoute(pathname) {
   if (!pathname || typeof pathname !== 'string') return null;
-  if (pathname.includes('?') || pathname.includes('#')) return null;
+  if (pathname.includes('#')) return null;
   const cleanPath = pathname;
+
+  if (ALLOWED_VERTEX_STREAM_PATH.test(cleanPath)) return { mode: 'vertex', path: cleanPath, streaming: true };
+  if (pathname.includes('?')) return null;
 
   if (ALLOWED_AI_STUDIO_PATH.test(cleanPath)) {
     return { mode: 'studio', path: cleanPath };
@@ -57,6 +61,7 @@ export function validateGeminiRoute(pathname) {
  * @param {'apiKey' | 'bearer'} config.credentials.type
  * @param {string} config.credentials.value
  * @param {string} [config.upstreamHost] Override upstream host (e.g., for testing or Vertex regional endpoint)
+ * @param {boolean} [config.allowStreaming] Explicitly enable the scoped Vertex SSE route.
  * @param {number} [config.deadlineMs] Max server lifetime before auto-shutdown
  * @returns {Promise<{ endpointUrl: string, shutdown: () => Promise<void> }>}
  */
@@ -92,6 +97,12 @@ export async function startGeminiSecurityProxy(config) {
 
       // 2. Strict route allowlisting
       const parsedRoute = validateGeminiRoute(req.url);
+      const streamMatch = typeof req.url === 'string' && ALLOWED_VERTEX_STREAM_PATH.exec(req.url);
+      if (streamMatch && config.allowStreaming !== true) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Forbidden: streaming route is not enabled.' }));
+        return;
+      }
       if (!parsedRoute) {
         res.writeHead(403, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: `Forbidden: route ${req.url} is not allowlisted.` }));
@@ -109,9 +120,9 @@ export async function startGeminiSecurityProxy(config) {
       let targetHost;
       if (parsedRoute.mode === 'vertex') {
         const match = ALLOWED_VERTEX_PATH.exec(parsedRoute.path);
-        const reqProject = match ? match[1] : null;
-        const reqRegion = match ? match[2] : null;
-        const reqModel = match ? match[3] : null;
+        const reqProject = match ? match[1] : config.allowedProject;
+        const reqRegion = match ? match[2] : config.allowedRegion;
+        const reqModel = match ? match[3] : (streamMatch ? streamMatch[1] : null);
 
         if (config.allowedProject && reqProject !== config.allowedProject) {
           res.writeHead(403, { 'Content-Type': 'application/json' });
@@ -208,7 +219,7 @@ export async function startGeminiSecurityProxy(config) {
         const requestOptions = {
           hostname: targetHost,
           port: isLocalUpstream ? (config.upstreamPort || 443) : 443,
-          path: parsedRoute.path,
+          path: streamMatch ? `/v1/projects/${config.allowedProject}/locations/${config.allowedRegion}/publishers/google/models/${config.allowedModel}:streamGenerateContent?alt=sse` : parsedRoute.path,
           method: 'POST',
           headers: forwardHeaders,
           timeout: remainingMs ?? 60000,
@@ -217,22 +228,30 @@ export async function startGeminiSecurityProxy(config) {
         const transport = isLocalUpstream && config.upstreamHttp ? import('node:http') : Promise.resolve({ request: httpsRequest });
 
         transport.then(({ request: makeRequest }) => {
+          // The client may disconnect while the body is read or the transport is imported.
+          if (res.destroyed || req.aborted) return;
           const upstreamReq = makeRequest(requestOptions, upstreamRes => {
             // Fail closed on redirect
             if (upstreamRes.statusCode >= 300 && upstreamRes.statusCode < 400) {
+              upstreamRes.resume();
               res.writeHead(502, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ error: 'Bad Gateway: Upstream redirects are prohibited on credential-bearing proxy.' }));
               return;
             }
 
             res.writeHead(upstreamRes.statusCode, {
-              'Content-Type': upstreamRes.headers['content-type'] || 'application/json',
+              'Content-Type': upstreamRes.headers['content-type'] || (streamMatch ? 'text/event-stream' : 'application/json'),
+              ...(upstreamRes.headers['cache-control'] ? { 'Cache-Control': upstreamRes.headers['cache-control'] } : {}),
+            });
+            upstreamRes.on('error', err => {
+              if (!res.destroyed) res.destroy(err);
             });
             upstreamRes.pipe(res);
           });
 
           activeRequests.add(upstreamReq);
           upstreamReq.once('close', () => activeRequests.delete(upstreamReq));
+          res.once('close', () => { if (!res.writableEnded) upstreamReq.destroy(); });
 
           upstreamReq.on('timeout', () => {
             upstreamReq.destroy(new Error('Upstream request timed out.'));
@@ -242,7 +261,7 @@ export async function startGeminiSecurityProxy(config) {
             if (!res.headersSent) {
               res.writeHead(502, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ error: `Bad Gateway: ${err.message}` }));
-            }
+            } else if (!res.destroyed) res.destroy(err);
           });
 
           upstreamReq.write(bodyBuffer);
