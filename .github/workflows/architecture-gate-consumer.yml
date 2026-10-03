@@ -246,8 +246,6 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           REVIEWED_SHA: ${{ steps.revision.outputs.sha }}
-          PROMPT_PATH: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-legacy-prompt.md', runner.temp) || needs.policy.outputs.authority_manifest_path != '' && format('{0}/architecture-gate-complete-prompt.md', runner.temp) }}
-          OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-review-prompt.md
           AUTHORITY_ROUTE_SELECTED: ${{ needs.policy.outputs.authority_manifest_path != '' }}
           AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
           AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}

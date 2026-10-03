@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { lstatSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { dirname, isAbsolute, relative, sep } from 'node:path';
+import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
 import { decodeLimits } from './prepare-authority-set.mjs';
@@ -19,23 +19,20 @@ function git(root, args, maxBuffer = 16_384) {
   });
 }
 
-function within(parent, candidate) {
-  const rel = relative(parent, candidate);
-  return rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
-}
-
-function readPrompt(path, roots, maxBytes) {
+function readPrompt(path, runnerTempPath, runnerTempRealPath, maxBytes) {
   if (typeof path !== 'string' || !path) fail('selected prompt path is missing.');
+  const normalizedPath = resolve(path);
+  if (!normalizedPath.startsWith(`${runnerTempPath}${sep}`)) throw new Error('Review task context: selected prompt is outside the runner temporary directory.');
   let actual;
   try {
-    const stat = lstatSync(path);
+    const stat = lstatSync(normalizedPath);
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > maxBytes) fail('selected prompt must be a bounded regular file.');
-    actual = realpathSync(path);
+    actual = resolve(realpathSync(normalizedPath));
   } catch (error) {
     if (error.message.startsWith('Review task context:')) throw error;
     fail('selected prompt file is unavailable.');
   }
-  if (!roots.some(root => within(root, actual))) fail('selected prompt is outside the checkout and runner temporary directory.');
+  if (!actual.startsWith(`${runnerTempRealPath}${sep}`)) throw new Error('Review task context: selected prompt resolves outside the runner temporary directory.');
   return readFileSync(actual);
 }
 
@@ -86,14 +83,21 @@ function resolveContext({ root, baseSha, headSha, reviewedSha, repository, promp
   if (!Number.isSafeInteger(maxPromptBytes) || maxPromptBytes < 1 || maxPromptBytes > MAX_RUNTIME_PROMPT_BYTES) {
     fail('effective prompt limit is invalid or exceeds the runtime ceiling.');
   }
-  const runnerTemp = process.env.RUNNER_TEMP ? realpathSync(process.env.RUNNER_TEMP) : null;
-  const allowedRoots = [checkout, ...(runnerTemp ? [runnerTemp] : [])];
-  const promptBytes = readPrompt(promptPath, allowedRoots, maxPromptBytes);
+  const runnerTempPath = process.env.RUNNER_TEMP ? resolve(process.env.RUNNER_TEMP) : null;
+  if (!runnerTempPath) fail('runner temporary directory is unavailable.');
+  let runnerTempRealPath;
+  try { runnerTempRealPath = resolve(realpathSync(runnerTempPath)); }
+  catch { fail('runner temporary directory is unavailable.'); }
+  const promptBytes = readPrompt(promptPath, runnerTempPath, runnerTempRealPath, maxPromptBytes);
   if (!outputPath || !isAbsolute(outputPath)) fail('final prompt output path must be absolute.');
-  const outputParent = realpathSync(dirname(outputPath));
-  if (!runnerTemp || !within(runnerTemp, outputParent)) fail('final prompt must be written under the runner temporary directory.');
+  const normalizedOutputPath = resolve(outputPath);
+  if (!normalizedOutputPath.startsWith(`${runnerTempPath}${sep}`)) throw new Error('Review task context: final prompt output is outside the runner temporary directory.');
+  const outputParent = resolve(realpathSync(dirname(normalizedOutputPath)));
+  if (outputParent !== runnerTempRealPath && !outputParent.startsWith(`${runnerTempRealPath}${sep}`)) {
+    throw new Error('Review task context: final prompt output parent resolves outside the runner temporary directory.');
+  }
   try {
-    lstatSync(outputPath);
+    lstatSync(normalizedOutputPath);
     fail('final prompt output already exists.');
   } catch (error) {
     if (error.code !== 'ENOENT') {
@@ -134,25 +138,36 @@ function resolveContext({ root, baseSha, headSha, reviewedSha, repository, promp
   const contextBytes = Buffer.from(`\n\n${context}\n`, 'utf8');
   const finalBytes = Buffer.concat([promptBytes, contextBytes]);
   if (finalBytes.length > maxPromptBytes) fail('final review prompt including task context exceeds the effective prompt limit.');
-  return { bytes: finalBytes, maxPromptBytes, changedPathList, contextBytes: contextBytes.length };
+  return { bytes: finalBytes, maxPromptBytes, changedPathList, contextBytes: contextBytes.length,
+    outputPath: normalizedOutputPath };
 }
 
 export function prepareReviewContext(input) {
   const result = resolveContext(input);
-  writeFileSync(input.outputPath, result.bytes, { flag: 'wx', mode: 0o600 });
-  if ((lstatSync(input.outputPath).mode & 0o777) !== 0o600) fail('final prompt permissions are not private.');
+  const outputPath = result.outputPath;
+  writeFileSync(outputPath, result.bytes, { flag: 'wx', mode: 0o600 });
+  if ((lstatSync(outputPath).mode & 0o777) !== 0o600) fail('final prompt permissions are not private.');
   return { maxPromptBytes: result.maxPromptBytes, finalPromptBytes: result.bytes.length,
     contextBytes: result.contextBytes, changedPaths: result.changedPathList.length };
 }
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
+    const runnerTemp = process.env.RUNNER_TEMP;
+    const authorityRouteSelected = process.env.AUTHORITY_ROUTE_SELECTED;
+    const policyVersion = process.env.POLICY_VERSION;
+    if (!runnerTemp || !isAbsolute(runnerTemp)) fail('runner temporary directory is missing or invalid.');
+    const promptName = policyVersion === '1' ? 'architecture-gate-legacy-prompt.md' :
+      authorityRouteSelected === 'true' ? 'architecture-gate-complete-prompt.md' : null;
+    if (!promptName || (policyVersion === '1' && authorityRouteSelected === 'true')) {
+      fail('protected review route cannot select a prompt file.');
+    }
     const result = prepareReviewContext({ root: process.env.GITHUB_WORKSPACE,
       baseSha: process.env.BASE_SHA, headSha: process.env.HEAD_SHA, reviewedSha: process.env.REVIEWED_SHA,
-      repository: process.env.GITHUB_REPOSITORY, promptPath: process.env.PROMPT_PATH,
-      outputPath: process.env.OUTPUT_PATH, authorityRouteSelected: process.env.AUTHORITY_ROUTE_SELECTED,
+      repository: process.env.GITHUB_REPOSITORY, promptPath: join(runnerTemp, promptName),
+      outputPath: join(runnerTemp, 'architecture-gate-review-prompt.md'), authorityRouteSelected,
       authorityLimitsBase64: process.env.AUTHORITY_LIMITS_BASE64, authorityProfile: process.env.AUTHORITY_PROFILE,
-      policyVersion: process.env.POLICY_VERSION });
+      policyVersion });
     process.stdout.write(`${JSON.stringify(result)}\n`);
   } catch (error) {
     process.stderr.write(`${error.message}\n`);

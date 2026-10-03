@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { prepareReviewContext } from '../src/prepare-review-context.mjs';
 
 const git = (root, ...args) => execFileSync('git', ['--no-replace-objects', ...args], { cwd: root, encoding: 'utf8', env: {
@@ -62,6 +63,53 @@ test('appends exact base-to-reviewed-merge context across divergent history', t 
   assert.doesNotMatch(JSON.stringify(data), /must not be review scope/);
   assert.equal(result.finalPromptBytes, Buffer.byteLength(prompt));
   assert.ok(result.finalPromptBytes <= result.maxPromptBytes);
+});
+
+test('protected CLI derives its prompt and output from runner-temp fixed names', t => {
+  const context = makeReview(t);
+  const protectedPromptPath = join(context.runnerTemp, 'architecture-gate-complete-prompt.md');
+  const attackerPromptPath = join(context.runnerTemp, 'attacker-selected-prompt.md');
+  const attackerOutputPath = join(context.root, 'attacker-selected-output.md');
+  const finalPromptPath = join(context.runnerTemp, 'architecture-gate-review-prompt.md');
+  writeFileSync(protectedPromptPath, 'Protected fixed-name prompt.');
+  writeFileSync(attackerPromptPath, 'Attacker-selected prompt.');
+  const output = execFileSync(process.execPath, [fileURLToPath(new URL('../src/prepare-review-context.mjs', import.meta.url))], {
+    encoding: 'utf8', env: { ...process.env, GITHUB_WORKSPACE: context.root, RUNNER_TEMP: context.runnerTemp,
+      GITHUB_REPOSITORY: context.input.repository, BASE_SHA: context.input.baseSha,
+      HEAD_SHA: context.input.headSha, REVIEWED_SHA: context.input.reviewedSha,
+      AUTHORITY_ROUTE_SELECTED: 'true', AUTHORITY_LIMITS_BASE64: context.input.authorityLimitsBase64,
+      AUTHORITY_PROFILE: 'v1', POLICY_VERSION: '', PROMPT_PATH: attackerPromptPath,
+      OUTPUT_PATH: attackerOutputPath },
+  });
+  const prompt = readFileSync(finalPromptPath, 'utf8');
+  assert.equal(JSON.parse(output).changedPaths, 2);
+  assert.match(prompt, /^Protected fixed-name prompt\./);
+  assert.doesNotMatch(prompt, /Attacker-selected prompt/);
+  assert.equal(existsSync(attackerOutputPath), false);
+});
+
+test('rejects prompt and output paths outside runner temp and refuses symlinks', t => {
+  const context = makeReview(t);
+  process.env.RUNNER_TEMP = context.runnerTemp;
+  t.after(() => { delete process.env.RUNNER_TEMP; });
+  const outsidePrompt = join(context.root, 'outside-prompt.md');
+  const outsideOutput = join(context.root, 'outside-output.md');
+  writeFileSync(outsidePrompt, 'must not be read');
+  assert.throws(() => prepareReviewContext({ ...context.input, promptPath: outsidePrompt }), /selected prompt is outside/);
+  assert.throws(() => prepareReviewContext({ ...context.input, outputPath: outsideOutput }), /final prompt output is outside/);
+  assert.equal(existsSync(outsideOutput), false);
+
+  const promptLink = join(context.runnerTemp, 'prompt-link.md');
+  symlinkSync(outsidePrompt, promptLink);
+  assert.throws(() => prepareReviewContext({ ...context.input, promptPath: promptLink }), /bounded regular file/);
+  assert.equal(existsSync(context.outputPath), false);
+
+  const outputTarget = join(context.root, 'output-target.md');
+  writeFileSync(outputTarget, 'keep this file');
+  const outputLink = join(context.runnerTemp, 'final-prompt.md');
+  symlinkSync(outputTarget, outputLink);
+  assert.throws(() => prepareReviewContext({ ...context.input, outputPath: outputLink }), /output already exists/);
+  assert.equal(readFileSync(outputTarget, 'utf8'), 'keep this file');
 });
 
 test('fails closed when exact merge parents or protected prompt limit cannot be verified', t => {
