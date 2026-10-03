@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { resolveSafePath } from '../../src/review-input-path.mjs';
 import { runIsolatedGeminiSession } from '../../src/gemini-launcher.mjs';
 const [mode, state] = process.argv.slice(2);
 const script = fileURLToPath(import.meta.url);
@@ -10,7 +12,7 @@ if (mode === 'supervisor' || mode === 'supervisor-parent') {
   if (mode === 'parent') spawn(process.execPath, [script, 'descendant', state], { stdio: 'ignore' });
   else {
     process.on('SIGTERM', () => {});
-    writeFileSync(state, mode === 'descendant' ? String(process.pid) : JSON.stringify({ pid: process.pid, proxy: process.env.REVIEW_PROXY_URL }));
+    writeFileSync(resolveSafePath(state, tmpdir()), mode === 'descendant' ? String(process.pid) : JSON.stringify({ pid: process.pid, proxy: process.env.REVIEW_PROXY_URL }));
   }
   setInterval(() => {}, 1000);
 }

@@ -340,7 +340,7 @@ test('runner paths reject symlink escapes for reads and new outputs', () => {
     symlinkSync('/etc', join(dir, 'outside'));
     assert.throws(() => resolveSafePath('outside/hosts', dir), /symlink escapes/);
     assert.throws(() => resolveSafePath('outside/new-output.json', dir), /symlink escapes/);
-    assert.equal(resolveSafePath('new-output.json', dir), join(dir, 'new-output.json'));
+    assert.equal(resolveSafePath('new-output.json', dir), join(realpathSync(dir), 'new-output.json'));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -430,4 +430,17 @@ test('standalone runner model selection matches launcher REVIEW_MODEL precedence
     if (oldReviewModel === undefined) delete process.env.REVIEW_MODEL; else process.env.REVIEW_MODEL = oldReviewModel;
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+
+test('checkout input symlinks cannot cross to another otherwise authorized temporary root', () => {
+  const checkout = mkdtempSync(join(tmpdir(), 'gemini-root-checkout-'));
+  const outside = mkdtempSync(join(tmpdir(), 'gemini-root-outside-'));
+  try {
+    writeFileSync(join(outside, 'prompt.md'), 'Host-private bytes');
+    symlinkSync(outside, join(checkout, 'linked'));
+    assert.throws(() => resolveSafePath('linked/prompt.md', checkout), /symlink escapes/);
+    assert.throws(() => resolveSafePath('linked/new.json', checkout), /symlink escapes/);
+    assert.equal(resolveSafePath(join(outside, 'prompt.md'), checkout), realpathSync(join(outside, 'prompt.md')));
+  } finally { rmSync(checkout, { recursive: true, force: true }); rmSync(outside, { recursive: true, force: true }); }
 });

@@ -13,69 +13,8 @@ import { validateJsonSchema } from './json-schema.mjs';
 import { preflightReviewRequest, repositoryRoot, validateReviewResponse } from './review-contract.mjs';
 import { appendGitHubOutput } from './runner-temp-path.mjs';
 
-/**
- * Resolves a file path relative to an authorized root directory using lexical and existing-ancestor realpath checks.
- * Rejects null bytes and verifies that the lexical path does not traverse outside
- * baseDir or recognized temporary directories.
- * @param {string} userPath
- * @param {string} baseDir
- * @returns {string}
- */
-export function resolveSafePath(userPath, baseDir) {
-  if (typeof userPath !== 'string' || !userPath.trim()) {
-    throw new Error('Path must be a non-empty string.');
-  }
-  if (userPath.includes('\0')) {
-    throw new Error('Path contains forbidden null bytes.');
-  }
-  const root = resolve(baseDir);
-  const resolved = isAbsolute(userPath) ? resolve(userPath) : resolve(root, userPath);
-  
-  // Verify containment within baseDir
-  const relBase = relative(root, resolved);
-  const inBase = !relBase.startsWith('..') && !isAbsolute(relBase);
-
-  // If outside baseDir, verify if it is safely contained within runner temp or OS temp
-  if (!inBase) {
-    const authorizedTempRoots = [
-      process.env.RUNNER_TEMP ? resolve(process.env.RUNNER_TEMP) : null,
-      tmpdir() ? resolve(tmpdir()) : null,
-      '/tmp',
-      '/private/tmp',
-      '/var/folders',
-      '/private/var/folders',
-    ].filter(Boolean);
-
-    const inTemp = authorizedTempRoots.some((tempRoot) => {
-      const relTemp = relative(tempRoot, resolved);
-      return !relTemp.startsWith('..') && !isAbsolute(relTemp);
-    });
-
-    if (!inTemp) {
-      throw new Error(`Path traversal denied: path "${userPath}" escapes authorized root directories.`);
-    }
-  }
-
-  // A lexical in-root path must not escape through a symlink, including output parents.
-  let ancestor = resolved;
-  while (true) {
-    try { lstatSync(ancestor); break; }
-    catch (error) {
-      if (error.code !== 'ENOENT' || dirname(ancestor) === ancestor) throw error;
-      ancestor = dirname(ancestor);
-    }
-  }
-  let physicalAncestor;
-  try { physicalAncestor = realpathSync(ancestor); }
-  catch { throw new Error('Path traversal denied: dangling or inaccessible path ancestor.'); }
-  const roots = [root, process.env.RUNNER_TEMP, tmpdir(), '/tmp', '/private/tmp', '/var/folders', '/private/var/folders'].filter(Boolean);
-  if (!roots.some(candidate => {
-    if (!existsSync(candidate)) return false;
-    const rel = relative(realpathSync(candidate), physicalAncestor);
-    return rel !== '..' && !rel.startsWith('../') && !isAbsolute(rel);
-  })) throw new Error('Path traversal denied: symlink escapes authorized root directories.');
-  return resolved;
-}
+import { resolveSafePath } from './review-input-path.mjs';
+export { resolveSafePath };
 
 /**
  * Parses CLI arguments into an options object.

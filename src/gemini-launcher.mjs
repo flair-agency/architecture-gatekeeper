@@ -21,6 +21,7 @@ import { dirname, resolve } from 'node:path';
 import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { startGeminiSecurityProxy } from './gemini-security-proxy.mjs';
 import { resolveAuthCredentials } from './gemini-transport.mjs';
+import { resolveSafePath } from './review-input-path.mjs';
 
 const SENSITIVE_ENV_VARS = [
   'GEMINI_API_KEY',
@@ -88,6 +89,9 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
 
   for (let i = 0; i < runnerArgv.length; i++) {
     const arg = runnerArgv[i];
+    if (arg === '--proxy-url' || arg.startsWith('--proxy-url=') || arg === '--base-url' || arg.startsWith('--base-url=')) {
+      throw new Error('Isolated sessions prohibit endpoint overrides; the launcher selects the proxy.');
+    }
     if (arg === '--api-key' && (!runnerArgv[i + 1]?.trim() || runnerArgv[i + 1].startsWith('--'))) throw new Error('Missing --api-key credential value.');
     if (arg === '--access-token' && (!runnerArgv[i + 1]?.trim() || runnerArgv[i + 1].startsWith('--'))) throw new Error('Missing --access-token credential value.');
     if (arg === '--api-key' && i + 1 < runnerArgv.length) {
@@ -130,7 +134,7 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
 
   // If request-json is provided, inspect it to derive reviewer scope before startup
   if (requestJsonPath) {
-    const resolvedPath = resolve(process.cwd(), requestJsonPath);
+    const resolvedPath = resolveSafePath(requestJsonPath, process.cwd());
     if (existsSync(resolvedPath)) {
       if (!lstatSync(resolvedPath).isFile()) throw new Error('Review request must be a regular file.');
       try {

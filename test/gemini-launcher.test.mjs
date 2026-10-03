@@ -367,3 +367,10 @@ test('credential aliases are withheld even with unrelated authentication selecte
   const env = buildIsolatedRunnerEnv({ GOOGLE_API_KEY: 'sentinel', google_api_key: 'sentinel', GEMINI_API_KEY: 'sentinel', CLOUDSDK_AUTH_ACCESS_TOKEN: 'sentinel', PATH: '/bin' }, 'http://127.0.0.1:1234');
   assert.deepEqual(env, { PATH: '/bin', REVIEW_PROXY_URL: 'http://127.0.0.1:1234' });
 });
+
+
+test('isolated launcher rejects endpoint overrides before authentication or spawning', async () => {
+  for (const args of [['--proxy-url', 'http://127.0.0.1:1'], ['--proxy-url=http://127.0.0.1:1'], ['--base-url', 'https://example.com'], ['--base-url=https://example.com']]) {
+    await assert.rejects(runIsolatedGeminiSession(args), /prohibit endpoint overrides/);
+  }
+});
