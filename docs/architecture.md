@@ -916,8 +916,13 @@ GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed
 #### Target multi-provider credential-isolated review proxy boundary (Issue #252 owner decision, 2026-10-02)
 
 CI may use a credential-isolated review proxy: the trusted launcher owns
-credentials and supplies them privately to the proxy; the runner does not
-inherit them or OIDC/token-renewal capabilities. The proxy binds only to an ephemeral loopback endpoint and limits
+credentials and supplies them privately to the proxy. The launcher must withhold
+provider credentials and OIDC/token-renewal capabilities from the runner’s
+environment, arguments, and any other explicitly supplied launch interface.
+This includes credential-file selectors and handles granting access to a
+credential or renewal service; withholding an exchanged token alone is
+insufficient when a renewal capability would still be passed to the runner.
+The proxy binds only to an ephemeral loopback endpoint and limits
 credential-bearing dispatch to allowed methods/model routes on selected official
 provider hosts within launcher-selected project, region and model scope;
 arbitrary destinations, scope mismatches and redirects fail closed. The runner
@@ -925,9 +930,13 @@ consumes responses for deterministic schema and authority validation.
 
 This target claims credential non-inheritance and constrained proxy dispatch,
 not restricted direct runner networking, same-user host isolation, or provider
-assurance equivalence. Protected acceptance requires explicitly adopted consumer
-policy and verified route-specific execution evidence; this text activates no
-route. Implementation details are in the
+assurance equivalence. Credential non-inheritance does not make independently
+available host capabilities inaccessible: an authenticated Cloud SDK installation,
+credential files readable by the same OS user, or host identity services may
+remain accessible. Preventing their use requires separately selected and verified
+host isolation. Protected acceptance requires explicitly adopted consumer policy
+and verified route-specific execution evidence; this text activates no route.
+Implementation details are in the
 [proxy specification](investigations/2026-10-02-credential-isolated-review-proxy-boundary.md);
 it cannot independently amend this contract.
 

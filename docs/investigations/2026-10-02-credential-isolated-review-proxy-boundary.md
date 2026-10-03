@@ -77,12 +77,16 @@ roles:
 1. **Trusted Launcher (Credential-bearing supervisor)**: Receives environment
    secrets from the CI platform, selects the verified proxy executable, spawns
    the proxy, and starts the reviewer with an explicitly sanitized environment.
-2. **Review Runner (Credential-free client)**: Runs in a separate child process
-   with all provider secrets and OIDC/token-renewal capabilities removed from
-   its environment and accessible resources. In GitHub Actions this includes
+2. **Review Runner (Client without inherited provider credentials)**: Runs in a
+   separate child process without provider secrets or OIDC/token-renewal
+   capabilities supplied through its environment, arguments, or other explicit
+   launch interfaces. This includes credential-file selectors and handles to
+   credential or renewal services. In GitHub Actions, the launcher withholds
    `ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN`; withholding
-   an exchanged token alone does not prevent obtaining a replacement. It
-   communicates exclusively with the local loopback endpoint.
+   an exchanged token alone is insufficient if renewal access is still passed.
+   The review transport connects to the configured loopback proxy. This does not
+   restrict direct networking or access to independently available same-user
+   host credentials, authenticated Cloud SDK installations, or identity services.
 
 ```mermaid
 flowchart TD
