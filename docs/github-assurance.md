@@ -24,7 +24,7 @@ new B bindings; the old bytes cannot be reconstructed from a digest. See
 [#78](https://github.com/flair-agency/architecture-gatekeeper/issues/78) and
 [#83](https://github.com/flair-agency/architecture-gatekeeper/issues/83).
 The owner has selected a compact
-[v0.6.0 public/self reference profile](architecture.md#development-sequence-and-v060-self-reference-profile-owner-decision):
+[v0.6.0 public/self reference profile](architecture/self-profile.md#development-sequence-and-v060-self-reference-profile-owner-decision):
 Actions artifact plus artifact attestation for initial `BLOCK` production,
 followed by verified handoff of the exact record and bundle bytes into a
 versioned annotated amendment tag targeting B. The tag ref must be protected

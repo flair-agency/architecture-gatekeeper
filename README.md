@@ -19,8 +19,8 @@ It supports three review paths:
 
 The package does not define a consumer's architecture and does not grant
 filesystem, publication, deployment, credential, or service authority.
-[`docs/architecture.md`](docs/architecture.md) is the normative architecture
-and assurance contract.
+[`docs/architecture.md`](docs/architecture.md) introduces the normative architecture
+and assurance contract, including all five required members in `docs/architecture/`.
 
 ## Requirements
 

@@ -307,7 +307,7 @@ its own review. `enforced` runs the exact-SHA-pinned
 `openai/codex-action` v1.12 at commit
 `86365089eb2b84e0a8fb0717b304f8bdcb13b20e`. The upstream Action is a trusted
 credential-bearing dependency under the
-[selected trust contract](architecture.md#ci-model-review).
+[selected trust contract](architecture/review-execution.md#ci-model-review).
 The migration retires the temporary Flair fork and its additional lifecycle
 controls; it does not establish that hosted hangs are fixed. `local-only`
 records an explicit waiver and makes no OpenAI API call.
@@ -471,7 +471,8 @@ sources or IDs fail the review. The runtime ceilings are 65,536 manifest
 bytes, 32 members, 131,072 bytes per file, 524,288 bytes total, and 1,048,576
 bytes for the complete prompt. The values above are the recommended effective
 profile. This repository's self-review selects the version 2 route from its
-protected base, with `docs/architecture.md` as its first Authority Set member.
+protected base, with `docs/architecture.md` and all five topic members selected
+as one complete Authority Set.
 The adoption pull request is reviewed under the prior protected-base policy;
 the new selection applies to subsequent pull requests after merge. Local and
 manual review can opt in separately through version 2 of
