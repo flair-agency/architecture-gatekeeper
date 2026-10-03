@@ -241,7 +241,12 @@ explicit `$architecture-review` workflow is distributed separately from this
 repository at `skills/architecture-review/`; install that directory through the
 supported Codex Skill installation route and keep its revision aligned with the
 runtime release you adopt. The Skill uses the host-native reviewer/subagent
-interface. It calls `architecture-review-native prepare` to construct a
+interface. The trusted Skill execution side allocates a unique protected
+session directory and supplies uncreated request/decision filenames independent
+of candidate inputs. It owns retained E2E records and cleanup on success,
+failure or cancellation. The adapter does not attest that allocation's privacy;
+exclusive file creation and permissions do not prove parent-directory integrity.
+It calls `architecture-review-native prepare` to construct a
 committed-revision request, gives that request to a separate reviewer whose role
 is limited to review and does not include changing the repository, and calls
 `architecture-review-native validate` on the returned JSON. The host must apply

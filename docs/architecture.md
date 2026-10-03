@@ -852,6 +852,16 @@ not choose how every host obtains that decision.
 - CI retains its independent model-review adapter and exact-SHA-pinned reusable
   workflow.
 
+The native adapter's request and decision paths are host-managed session
+inputs supplied by the trusted Skill execution side, not destinations selected
+by candidate repository content, task text, or reviewer output. The Skill
+execution side owns private temporary allocation, exact-request and decision
+recording, and cleanup on success, failure, or cancellation. The native adapter
+owns request construction and persistence and decision validation; it does not
+attest the supplied paths' private allocation or isolate a hostile same-user
+host. Exclusive creation and file permissions are supporting measures, not a
+generic path sanitizer or proof of parent-directory privacy.
+
 For a native Skill, the review-only role is part of the semantic contract, while
 physical write denial and exact hard-timeout enforcement are execution
 controls. This role assignment does not prove that a host technically
