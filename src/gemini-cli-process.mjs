@@ -1,6 +1,6 @@
 /** Internal POSIX supervisor for the pinned Gemini CLI execution profile. */
 import { spawn } from 'node:child_process';
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, lstatSync, mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { delimiter, dirname, join, resolve } from 'node:path';
 
 const VERSION = '0.62.0';
@@ -9,7 +9,7 @@ const GEMINI_CLI_STDIN_LIMIT = 8 * 1024 * 1024;
 
 function validate(options) {
   if (process.platform === 'win32') throw new Error('Gemini CLI process supervisor supports POSIX platforms only.');
-  const { cliEntrypoint, workspaceDirectory, privateParentDirectory, prompt, model, thinkingBudget,
+  const { cliEntrypoint, workspaceDirectory, privateParentDirectory, prompt, model, thinkingBudget, thinkingLevel,
     project, region, proxyUrl, timeoutMs, maxPromptBytes, maxStdoutBytes, maxStderrBytes } = options ?? {};
   for (const [value, label] of [[cliEntrypoint, 'CLI entrypoint'], [workspaceDirectory, 'workspace directory'], [privateParentDirectory, 'private parent directory']]) {
     if (typeof value !== 'string' || !value || !value.startsWith('/')) throw new Error(`Gemini CLI ${label} must be an absolute path.`);
@@ -18,7 +18,13 @@ function validate(options) {
   if (promptLimit > GEMINI_CLI_STDIN_LIMIT) throw new Error('Gemini CLI prompt byte limit exceeds the CLI stdin limit of 8 MiB.');
   if (typeof prompt !== 'string' || !prompt || Buffer.byteLength(prompt, 'utf8') > promptLimit || Buffer.from(prompt, 'utf8').toString('utf8') !== prompt) throw new Error('Gemini CLI prompt is empty, invalid UTF-8 text, or exceeds its configured byte limit.');
   if (typeof model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(model)) throw new Error('Gemini CLI model is invalid.');
-  if (!Number.isSafeInteger(thinkingBudget) || thinkingBudget < 0) throw new Error('Gemini CLI thinking budget must be a nonnegative safe integer.');
+  if (model === 'gemini-3.8-flash') {
+    if (thinkingBudget !== undefined) throw new Error('Gemini CLI gemini-3.8-flash does not support thinkingBudget.');
+    if (!['LOW', 'MEDIUM', 'HIGH'].includes(thinkingLevel)) throw new Error('Gemini CLI gemini-3.8-flash requires thinkingLevel LOW, MEDIUM, or HIGH.');
+  } else {
+    if (thinkingLevel !== undefined) throw new Error('Gemini CLI thinkingLevel is supported only for gemini-3.8-flash.');
+    if (!Number.isSafeInteger(thinkingBudget) || thinkingBudget < 0) throw new Error('Gemini CLI thinking budget must be a nonnegative safe integer.');
+  }
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_TIMEOUT) throw new Error('Gemini CLI timeout is invalid.');
   positive(maxStdoutBytes, 'stdout'); positive(maxStderrBytes, 'stderr');
   if (typeof project !== 'string' || !/^[A-Za-z0-9._:-]+$/.test(project)) throw new Error('Gemini CLI project is required and must be valid.');
@@ -31,6 +37,43 @@ function validate(options) {
 function positive(value, label) {
   if (!Number.isSafeInteger(value) || value < 1) throw new Error(`Gemini CLI ${label} byte limit must be an explicit positive safe integer.`);
   return value;
+}
+
+function rejectWorkspaceControls(workspaceDirectory) {
+  let workspace;
+  try {
+    workspace = realpathSync(workspaceDirectory);
+  } catch {
+    throw new Error('Gemini CLI workspace must resolve to an existing directory.');
+  }
+  try {
+    if (!lstatSync(workspace).isDirectory()) throw new Error('Gemini CLI workspace must be a directory.');
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Gemini CLI workspace must be a directory.') throw error;
+    throw new Error('Gemini CLI workspace must resolve to an existing directory.');
+  }
+
+  // Gemini CLI 0.62.0 loads workspace settings from cwd, .env files while
+  // walking every parent, and contextual instruction files up to a boundary.
+  // Check canonical ancestors and use lstat so dangling control symlinks fail
+  // closed too. The caller must keep this tree stable until child exit.
+  let directory = workspace;
+  while (true) {
+    for (const name of ['.gemini', '.agents', '.env', 'GEMINI.md']) {
+      try {
+        lstatSync(join(directory, name));
+        throw new Error(`Gemini CLI workspace contains a forbidden control path: ${join(directory, name)}.`);
+      } catch (error) {
+        if (error?.code === 'ENOENT') continue;
+        if (error instanceof Error && error.message.startsWith('Gemini CLI workspace contains a forbidden control path:')) throw error;
+        throw new Error(`Gemini CLI workspace control path could not be checked: ${join(directory, name)}.`);
+      }
+    }
+    const parent = dirname(directory);
+    if (parent === directory) break;
+    directory = parent;
+  }
+  return workspace;
 }
 
 function controlledEnv(home, options) {
@@ -55,6 +98,9 @@ function controlledEnv(home, options) {
 }
 
 function settings(options) {
+  const thinkingConfig = options.model === 'gemini-3.8-flash'
+    ? { thinkingLevel: options.thinkingLevel, includeThoughts: false }
+    : { thinkingBudget: options.thinkingBudget, includeThoughts: false };
   return {
     tools: { core: ['read_file', 'list_directory', 'glob', 'grep_search'] },
     hooksConfig: { enabled: false },
@@ -64,7 +110,7 @@ function settings(options) {
     security: { auth: { selectedType: 'vertex-ai' } },
     modelConfigs: {
       customOverrides: [{ match: { model: options.model }, modelConfig: {
-        generateContentConfig: { thinkingConfig: { thinkingBudget: options.thinkingBudget, includeThoughts: false } },
+        generateContentConfig: { thinkingConfig },
       } }],
     },
   };
@@ -126,20 +172,21 @@ export async function runGeminiCliProcess(options) {
   if (options.signal?.aborted) throw new Error('Gemini CLI execution cancelled before setup.');
   let home;
   try {
+    const workspaceDirectory = rejectWorkspaceControls(options.workspaceDirectory);
     home = mkdtempSync(join(resolve(options.privateParentDirectory), 'agk-gemini-home-'));
     chmodSync(home, 0o700);
     const gemini = join(home, '.gemini'); mkdirSync(gemini, { mode: 0o700 }); chmodSync(gemini, 0o700);
     writeFileSync(join(gemini, 'settings.json'), JSON.stringify(settings(options)), { mode: 0o600, flag: 'wx' });
     const env = controlledEnv(home, options);
     const versionResult = await spawnBounded(process.execPath, [options.cliEntrypoint, '--version'], {
-      cwd: options.workspaceDirectory, env, deadline, maxStdoutBytes: options.maxStdoutBytes,
+      cwd: workspaceDirectory, env, deadline, maxStdoutBytes: options.maxStdoutBytes,
       maxStderrBytes: options.maxStderrBytes, signal: options.signal,
     });
     if (versionResult.timedOut || versionResult.cancelled || versionResult.signal || versionResult.exitCode !== 0 || versionResult.stdout.trim() !== VERSION) {
       throw new Error('Gemini CLI version probe failed or did not report the pinned version 0.62.0.');
     }
     const result = await spawnBounded(process.execPath, [options.cliEntrypoint, `--model=${options.model}`, '--output-format', 'json'], {
-      cwd: options.workspaceDirectory, env, deadline, maxStdoutBytes: options.maxStdoutBytes,
+      cwd: workspaceDirectory, env, deadline, maxStdoutBytes: options.maxStdoutBytes,
       maxStderrBytes: options.maxStderrBytes, signal: options.signal, input: Buffer.from(options.prompt, 'utf8'),
     });
     return result;

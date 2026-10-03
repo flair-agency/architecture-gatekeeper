@@ -201,8 +201,15 @@ flags or exceed the OS single-argument limit. The prompt limit cannot exceed the
 pinned CLI stdin limit of 8 MiB; oversized input fails before execution. Ambient credentials, renewal selectors, `NODE_OPTIONS` and default HOME
 configuration are not forwarded. The SDK's fixed non-secret placeholder enables
 Vertex client mode only; the proxy replaces it with its parent-owned Bearer
-credential upstream. Missing system configuration paths inside the private HOME
-prevent loading ambient system settings; no ownership check is bypassed.
+credential upstream. Missing system settings/default paths inside the private
+HOME prevent ambient system configuration. Gemini CLI requires root ownership
+for system settings, so generated user-owned files cannot enforce that layer;
+no ownership check is bypassed. Instead, the physical workspace and every
+ancestor must contain no operational `.gemini`, `.agents`, `.env` or `GEMINI.md`.
+Rejection precedes launch: candidate control bytes belong only in ordinal
+evidence snapshots, not auto-loaded paths. This prevents workspace overrides
+and avoids relying on an empty MCP map to erase entries during deep merge.
+The trusted caller must keep those directories stable throughout execution.
 
 One deadline covers setup, version probe and review. Explicit prompt/stdout/stderr
 byte limits reject overflow without returning a truncated decision. Output is
@@ -238,3 +245,19 @@ review contract and must not substitute for protected CI prompt/schema, authorit
 and consumer-rule validation. CI integration must use the same protected checks
 as Codex. No public launcher, policy selector or workflow invokes this internal
 session yet. Actual WIF and enabled governance runs remain required for adoption.
+
+## Adopted model-setting implementation
+
+The owner selected `gemini-3.8-flash` with `thinkingLevel: MEDIUM` on 2026-10-04;
+canonical authority records that selection. The internal process/session path
+must send exactly that level setting, without a simultaneous `thinkingBudget`.
+Legacy budget-based fixtures remain separate compatibility tests, not the chosen
+initial CI profile. LOW/HIGH are explicit supported settings, not an automatic
+fallback or a claim that Codex reasoning effort maps to Gemini levels.
+
+A fixed-CLI offline read-tool roundtrip sent two requests to the selected
+`gemini-3.8-flash` scope; both carried `thinkingLevel: MEDIUM` and neither
+contained `thinkingBudget`. The four read tools and parent-only upstream dummy
+Bearer remained unchanged. This proves configuration propagation only. Actual WIF authentication, protected CI input/authority binding,
+quality, cost, latency and decision consistency still need route-specific
+verification before activation.
