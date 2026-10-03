@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,10 +23,18 @@ Then run npm run codeql again.`);
   if (result.status !== 0) throw new Error(`CodeQL failed (${result.status ?? result.signal}); see scan logs.`);
 }
 run(['version']);
-mkdirSync(scanRoot, { recursive: true });
-const physicalRoot = realpathSync(scanRoot);
-const rel = relative(source, physicalRoot);
-if (rel === '' || (!rel.startsWith('..' + sep) && rel !== '..' && !isAbsolute(rel))) throw new Error('SCAN_ROOT must be outside the repository.');
+function requireOutsideRepository(root) {
+  const rel = relative(source, root);
+  if (rel === '' || (!rel.startsWith('..' + sep) && rel !== '..' && !isAbsolute(rel))) throw new Error('SCAN_ROOT must be outside the repository.');
+}
+// Resolve existing ancestors before creating anything, including symlinked parents.
+let ancestor = resolve(scanRoot);
+while (!existsSync(ancestor)) ancestor = dirname(ancestor);
+const plannedRoot = resolve(realpathSync(ancestor), relative(ancestor, resolve(scanRoot)));
+requireOutsideRepository(plannedRoot);
+mkdirSync(plannedRoot, { recursive: true });
+const physicalRoot = realpathSync(plannedRoot);
+requireOutsideRepository(physicalRoot);
 const scan = mkdtempSync(join(physicalRoot, 'scan-'));
 console.log(`CodeQL output: ${scan}`);
 const summary = { source, binary, scan, startedAt: new Date().toISOString(), languages: [] };
