@@ -27,6 +27,7 @@ import { deriveOwnerAmendmentGitChanges } from '../src/owner-amendment-git-chang
 import { materializeAuthoritySet } from '../src/authority-set.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
 import { inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
+import { selectOwnerAmendmentHandoffPrRunContext } from '../src/owner-amendment-handoff-pr-run-context.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -100,6 +101,10 @@ function attestation(recordBytes, expected) {
 
 function apiFixture({ repoPath, baseSha, bSha, groupSha, triggerHeadSha, profile, triggerRecordBytes, bundleBytes }) {
   const repositoryId = 1379218762;
+  // Captured Actions associated-PR repository shape; ordinary PR lookups and
+  // top-level run repositories retain their full identity responses.
+  const associatedRepository = () => ({ id: repositoryId, name: 'architecture-gatekeeper',
+    url: `https://api.github.com/repos/${repository}` });
   const triggerRunId = '101', triggerAttempt = '2', triggerPr = 199, bPr = 201;
   const eligibilityRunId = '202', eligibilityAttempt = '1';
   const bTreeSha = git(repoPath, ['rev-parse', `${bSha}^{tree}`]).toString('ascii').trim();
@@ -114,8 +119,8 @@ function apiFixture({ repoPath, baseSha, bSha, groupSha, triggerHeadSha, profile
   const run = { id: Number(triggerRunId), run_attempt: Number(triggerAttempt), status: 'completed',
     event: 'pull_request_target', path: `${workflowPath}@refs/heads/main`, repository: { full_name: repository, id: repositoryId },
     head_repository: { full_name: repository, id: repositoryId }, head_sha: baseSha,
-    pull_requests: [{ number: triggerPr, base: { ref: 'main', sha: baseSha, repo: { full_name: repository, id: repositoryId } },
-      head: { sha: triggerHeadSha, repo: { full_name: repository, id: repositoryId } } }] };
+    pull_requests: [{ number: triggerPr, base: { ref: 'main', sha: baseSha, repo: associatedRepository() },
+      head: { sha: triggerHeadSha, repo: associatedRepository() } }] };
   const triggerArtifactName = `owner-amendment-${profileName}-${baseSha}-${triggerHeadSha}-${triggerRunId}-${triggerAttempt}`;
   artifacts.set('444', { id: 444, name: triggerArtifactName, expired: false, size_in_bytes: triggerZip.length,
     digest: `sha256:${hash(triggerZip)}`, expires_at: '2099-09-30T10:00:00Z', workflow_run: { id: 101,
@@ -144,7 +149,7 @@ function apiFixture({ repoPath, baseSha, bSha, groupSha, triggerHeadSha, profile
       id: 202, run_attempt: 1, status: 'completed', event: 'pull_request_target', path: `${workflowPath}@refs/heads/main`,
       repository: { full_name: repository, id: repositoryId }, head_repository: { full_name: repository, id: repositoryId },
       head_sha: baseSha, pull_requests: [{ number: bPr, base: { ref: 'main', sha: baseSha,
-        repo: { full_name: repository } }, head: { sha: bSha, repo: { full_name: repository } } }],
+        repo: associatedRepository() }, head: { sha: bSha, repo: associatedRepository() } }],
     });
     if (path.endsWith('/actions/workflows/self-architecture-gate.yml/runs')) return response(200, {
       total_count: 1, workflow_runs: [{ id: 202, run_attempt: 1, created_at: '2026-09-29T10:30:00Z',
@@ -152,8 +157,8 @@ function apiFixture({ repoPath, baseSha, bSha, groupSha, triggerHeadSha, profile
         event: 'pull_request_target', path: `${workflowPath}@refs/heads/main`,
         repository: { full_name: repository, id: repositoryId }, head_repository: { full_name: repository, id: repositoryId },
         head_sha: baseSha, pull_requests: [{ number: bPr,
-          base: { ref: 'main', sha: baseSha, repo: { full_name: repository } },
-          head: { sha: bSha, repo: { full_name: repository } } }] }],
+          base: { ref: 'main', sha: baseSha, repo: associatedRepository() },
+          head: { sha: bSha, repo: associatedRepository() } }] }],
     });
     if (path.endsWith('/actions/runs/202/attempts/1/jobs')) return response(200, { total_count: 1, jobs: [{
       id: 909, run_id: 202, run_attempt: 1, head_sha: baseSha,
@@ -546,6 +551,10 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
       triggerRecordBytes: Buffer.from('{}'), bundleBytes: Buffer.from('{}') });
     const trigger = triggerEvidence(fixture, resolved, api);
     api.setTriggerRecord(trigger.recordBytes, trigger.bundleBytes);
+    const selectedHandoff = await selectOwnerAmendmentHandoffPrRunContext({ input: { repository,
+      bPrNumber: api.bPr, aPrNumber: api.triggerPr, runId: '101', runAttempt: '2' },
+    token: 'fixture-token', fetchImpl: api.fetchImpl });
+    assert.equal(selectedHandoff.status, 'SELECTED_OWNER_AMENDMENT_HANDOFF_PR_RUN_CONTEXT', selectedHandoff.reason);
     const authorityChanges = resolved.authorityChanges ?? [{ path: 'docs/architecture.md',
       beforeBytes: fixture.oldArchitecture, afterBytes: fixture.newArchitecture }];
     let handoff;

@@ -1,3 +1,4 @@
+import { matchesGitHubAssociatedRepository } from './github-associated-repository.mjs';
 // Discover the one BLOCK artifact emitted by an exact trusted Actions run.
 // This only selects an artifact ID; a later layer fetches and authenticates it.
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -29,8 +30,10 @@ function validateExpected(expected) {
 function validateRun(run, expected) {
   const pullRequests = run?.pull_requests;
   const associations = Array.isArray(run?.pull_requests) ? run.pull_requests.filter(pr =>
-    pr?.base?.ref === 'main' && pr?.base?.sha === expected.baseSha && pr?.base?.repo?.full_name === expected.repository &&
-    pr?.head?.sha === expected.headSha && pr?.head?.repo?.full_name === expected.repository) : [];
+    pr?.base?.ref === 'main' && pr?.base?.sha === expected.baseSha &&
+    matchesGitHubAssociatedRepository(pr?.base?.repo, { repository: expected.repository, repositoryId: run.repository?.id }) &&
+    pr?.head?.sha === expected.headSha &&
+    matchesGitHubAssociatedRepository(pr?.head?.repo, { repository: expected.repository, repositoryId: run.repository?.id })) : [];
   if (String(run?.id) !== String(expected.runId) || run.status !== 'completed' ||
       run.event !== 'pull_request_target' ||
       run.repository?.full_name !== expected.repository || run.head_repository?.full_name !== expected.repository ||

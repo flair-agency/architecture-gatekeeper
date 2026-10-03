@@ -54,6 +54,17 @@ test('supports captured empty PR associations while naming the exact trusted bas
   assert.equal(result.headSha, expected.headSha);
 });
 
+test('discovers compact associated-PR metadata and rejects a mismatched numeric identity', async () => {
+  const compactRun = structuredClone(run);
+  for (const side of ['base', 'head']) compactRun.pull_requests[0][side].repo = {
+    id: 7, name: 'example', url: `https://api.github.com/repos/${expected.repository}` };
+  const discover = () => discoverOwnerAmendmentBlockArtifact({ expected, token: 'fixture-token',
+    fetchImpl: fetchFor({ runValue: compactRun }).fetchImpl });
+  assert.equal((await discover()).status, 'DISCOVERED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
+  compactRun.pull_requests[0].head.repo.id = 8;
+  assert.equal((await discover()).status, 'INCOMPLETE');
+});
+
 test('walks every page before returning the uniquely matching artifact', async () => {
   const unrelated = Array.from({ length: 100 }, (_, index) => ({ id: index + 100, name: 'unrelated', expired: false }));
   const { fetchImpl, requests } = fetchFor({ pages: [unrelated, [artifact(501)]] });
