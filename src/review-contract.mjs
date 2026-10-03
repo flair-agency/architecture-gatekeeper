@@ -43,7 +43,10 @@ export function loadConfig(root, revision) {
   return value;
 }
 function reviewerSettings(root, revision, path) {
-  const value = jsonInput(root, revision, path, 'reviewer configuration');
+  const source = committedInput(root, revision, path);
+  let value;
+  try { value = JSON.parse(source); rejectDuplicateJsonKeys(source, 'reviewer configuration'); }
+  catch (error) { if (error.message.startsWith('Architecture gate cannot') || error.message.includes('pinned component')) throw error; invalid('Architecture gate reviewer configuration is invalid.'); }
   const provider = Object.hasOwn(value, 'provider') ? value.provider : 'codex';
   if (typeof value.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(value.model) || !['codex', 'gemini'].includes(provider)) invalid('Architecture gate reviewer configuration is unsupported.');
   if (provider === 'codex') {

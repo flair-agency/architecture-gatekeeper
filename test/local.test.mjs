@@ -269,6 +269,36 @@ test('provider settings reject mixed or unsupported configurations before execut
   }
 });
 
+test('reviewer configuration rejects duplicate provider and model setting keys', async t => {
+  const fixture = manualFixture(t);
+  const reviewerPath = join(fixture.root, '.codex', 'gatekeeper', 'reviewer.json');
+  const duplicateSettings = [
+    '{"provider":"codex","provider":"gemini","model":"gemini-2.5-flash","thinkingBudget":512}',
+    '{"provider":"codex","model":"first-model","model":"second-model","reasoningEffort":"low"}',
+    '{"model":"gpt-model","reasoningEffort":"low","reasoningEffort":"high"}',
+    '{"provider":"gemini","model":"gemini-2.5-flash","thinkingBudget":0,"thinkingBudget":512}'
+  ];
+  for (const settings of duplicateSettings) {
+    writeFileSync(reviewerPath, settings);
+    git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', `duplicate reviewer setting ${Date.now()}`);
+    await assert.rejects(createReviewRequestAsync('Review duplicate reviewer settings', fixture.root), /reviewer configuration is invalid/);
+  }
+});
+
+test('manual CLI rejects unterminated reviewer JSON promptly', t => {
+  const fixture = manualFixture(t);
+  const reviewerPath = join(fixture.root, '.codex', 'gatekeeper', 'reviewer.json');
+  writeFileSync(reviewerPath, '{"model":[');
+  git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'malformed reviewer settings');
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../src/manual-review.mjs', import.meta.url)), 'Review malformed settings'], {
+    cwd: fixture.root, encoding: 'utf8', timeout: 3000,
+    env: { ...process.env, PATH: `${fixture.bin}:${process.env.PATH}` }
+  });
+  assert.notEqual(result.error?.code, 'ETIMEDOUT');
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /reviewer configuration is invalid/);
+});
+
 test('native Codex preparation rejects Gemini before creating a request file', async t => {
   const fixture = manualFixture(t);
   const reviewerPath = join(fixture.root, '.codex', 'gatekeeper', 'reviewer.json');
