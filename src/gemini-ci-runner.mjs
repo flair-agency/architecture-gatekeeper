@@ -137,21 +137,31 @@ export function formatGitHubReviewOutputs(decision, outputPath) {
 export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = process.cwd()) {
   const options = parseArgs(argv);
   const request = resolveReviewRequest(options, cwd);
-  const rawOutput = options.output || process.env.OUTPUT_PATH || join(mkdtempSync(join(tmpdir(), 'agk-gemini-result-')), 'decision.json');
-  const outputPath = resolveSafePath(rawOutput, cwd);
   const checkoutRoots = new Set();
   for (const source of [cwd, request.repositoryRoot].filter(Boolean)) {
     try { checkoutRoots.add(repositoryRoot(source)); } catch { /* Non-Git compatibility inputs have no checkout. */ }
   }
-  const verifyOutput = () => {
-    resolveSafePath(outputPath, cwd);
+  const requireOutsideCheckout = target => {
+    let ancestor = target;
+    while (!existsSync(ancestor) && dirname(ancestor) !== ancestor) ancestor = dirname(ancestor);
     for (const checkoutRoot of checkoutRoots) {
-      let ancestor = outputPath;
-      while (!existsSync(ancestor) && dirname(ancestor) !== ancestor) ancestor = dirname(ancestor);
-      for (const path of [outputPath, realpathSync(ancestor)]) {
+      for (const path of [target, realpathSync(ancestor)]) {
         if (containsPath(checkoutRoot, path)) throw new Error('Review output must be outside the reviewed repository.');
       }
     }
+  };
+  let rawOutput = options.output || process.env.OUTPUT_PATH;
+  if (!rawOutput) {
+    // TMPDIR/TEMP can be caller-controlled. Validate lexical and physical roots
+    // before mkdtemp performs any write, including when the root is a symlink.
+    const temporaryRoot = resolveSafePath(tmpdir(), cwd);
+    requireOutsideCheckout(temporaryRoot);
+    rawOutput = join(mkdtempSync(join(realpathSync(temporaryRoot), 'agk-gemini-result-')), 'decision.json');
+  }
+  const outputPath = resolveSafePath(rawOutput, cwd);
+  const verifyOutput = () => {
+    resolveSafePath(outputPath, cwd);
+    requireOutsideCheckout(outputPath);
     try { lstatSync(outputPath); throw new Error('Review output must be a new file; overwriting is prohibited.'); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   };

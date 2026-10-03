@@ -1,9 +1,9 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReviewRequestAsync, preflightReviewRequest } from '../src/review-contract.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { formatGitHubReviewOutputs, parseArgs, resolveSafePath, resolveReviewRequest, runGeminiCiReview } from '../src/gemini-ci-runner.mjs';
@@ -476,4 +476,41 @@ test('direct runner preserves OAuth alias precedence and explicit API-key select
     await runGeminiCiReview([...args, '--api-key', 'explicit-key', '--output', join(dir, 'key.json')], dir);
     assert.equal(call, 2);
   } finally { globalThis.fetch = originalFetch; process.env = saved; rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('default output rejects checkout and symlinked temporary roots before creating directories', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-temp-root-'));
+  const root = join(dir, 'checkout'); mkdirSync(root);
+  try {
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    writeFileSync(join(root, 'prompt.md'), 'review');
+    writeFileSync(join(root, 'schema.json'), '{"type":"object"}');
+    const link = join(dir, 'linked-temp');
+    symlinkSync(root, link, process.platform === 'win32' ? 'junction' : 'dir');
+    // Resolve Apple's Git shim before overriding TMPDIR: xcrun otherwise writes
+    // its own cache into the checkout, independently of runner output creation.
+    let childPath = process.env.PATH;
+    if (process.platform === 'darwin') {
+      const git = execFileSync('/usr/bin/xcrun', ['--find', 'git'], { encoding: 'utf8' }).trim();
+      const bin = join(dir, 'bin'); mkdirSync(bin);
+      symlinkSync(git, join(bin, 'git'));
+      childPath = `${bin}:${childPath}`;
+    }
+    const before = readdirSync(root).sort();
+    const moduleUrl = new URL('../src/gemini-ci-runner.mjs', import.meta.url).href;
+    const program = `import assert from 'node:assert/strict';
+import { runGeminiCiReview } from ${JSON.stringify(moduleUrl)};
+let dispatches = 0;
+globalThis.fetch = async () => { dispatches++; throw new Error('must not dispatch'); };
+await assert.rejects(runGeminiCiReview(['--prompt','prompt.md','--schema','schema.json','--model','gemini-2.5-flash']), /outside the reviewed repository/);
+assert.equal(dispatches, 0);
+`;
+    for (const temporaryRoot of [root, link]) {
+      const env = { ...process.env, PATH: childPath, TMPDIR: temporaryRoot, TEMP: temporaryRoot, TMP: temporaryRoot };
+      delete env.OUTPUT_PATH;
+      const result = spawnSync(process.execPath, ['--input-type=module', '-e', program], { cwd: root, env, encoding: 'utf8', timeout: 5000 });
+      assert.equal(result.status, 0, result.stderr);
+      assert.deepEqual(readdirSync(root).sort(), before);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
