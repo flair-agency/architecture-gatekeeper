@@ -184,3 +184,40 @@ a nonresponding server required an external watchdog. Further implementation
 must verify cancellation with descendants, complete context selection, CLI
 version/configuration control, thinking settings and authenticated governance
 cases before route activation.
+
+## Internal CLI process supervisor
+
+`gemini-cli-process.mjs` runs an already provisioned CLI under a fresh private
+HOME, a fixed operational environment and generated read-tool configuration.
+It accepts only the reported CLI version 0.62.0; that consistency check does not
+attest installed bytes. The trusted caller owns the installer/runtime identity,
+private parent, controlled workspace, protected scope/settings, request preflight
+and final `gemini-cli-response.mjs` validation. This is not a standalone review
+or acceptance entrypoint.
+
+The selected model and thinking budget are explicit. The prompt is sent through
+stdin and the model is a literal option value, so prompt text cannot become CLI
+flags or exceed the OS single-argument limit. The prompt limit cannot exceed the
+pinned CLI stdin limit of 8 MiB; oversized input fails before execution. Ambient credentials, renewal selectors, `NODE_OPTIONS` and default HOME
+configuration are not forwarded. The SDK's fixed non-secret placeholder enables
+Vertex client mode only; the proxy replaces it with its parent-owned Bearer
+credential upstream. Missing system configuration paths inside the private HOME
+prevent loading ambient system settings; no ownership check is bypassed.
+
+One deadline covers setup, version probe and review. Explicit prompt/stdout/stderr
+byte limits reject overflow without returning a truncated decision. Output is
+strict UTF-8. Cancellation, timeout and overflow kill the POSIX process group;
+cleanup also handles descendants after main-process exit and removes the private
+HOME. This implementation rejects Windows and claims neither host confinement nor
+an absolute kernel termination guarantee. OS-level uninterruptible processes
+remain outside that guarantee.
+
+Focused fixtures exercise a mismatched/hung version probe, hung review, abort,
+output overflow, split/invalid UTF-8, option-shaped prompts, and descendants with
+inherited or closed output pipes. An additional fixed-CLI offline run used the
+actual supervisor and proxy with test-only network interception: `read_file`
+succeeded, only the four selected tools were advertised, both model requests
+carried thinkingBudget 1024, and the upstream saw only the fixed scope and parent
+dummy Bearer. No real WIF exchange or semantic-quality proof is supplied. Protected
+CI wiring, complete context composition and authenticated governance evidence
+remain #252 work.
