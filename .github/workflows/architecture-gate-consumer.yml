@@ -240,6 +240,17 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node .architecture-gatekeeper-validation-runtime/src/ci-procedural-authority-change.mjs
+      - name: Attach exact pull request task context to protected review
+        if: needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ steps.revision.outputs.sha }}
+          AUTHORITY_ROUTE_SELECTED: ${{ needs.policy.outputs.authority_manifest_path != '' }}
+          AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
+          AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
+          POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
+        run: node .architecture-gatekeeper-validation-runtime/src/prepare-review-context.mjs
       - name: Check protected Authority Set schema and complete prompt
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
@@ -248,7 +259,7 @@ jobs:
         run: |
           node .architecture-gatekeeper-validation-runtime/src/preflight-authority-set-review.mjs \
             "$RUNNER_TEMP/architecture-gate-decision.schema.json" \
-            "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
+            "$RUNNER_TEMP/architecture-gate-review-prompt.md"
       - name: Run read-only architecture review
         id: codex
         timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_step_timeout_minutes) }}
@@ -256,7 +267,7 @@ jobs:
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           output-file: ${{ runner.temp }}/architecture-gate-codex-final.json
-          prompt-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-legacy-prompt.md', runner.temp) || needs.policy.outputs.authority_manifest_path != '' && format('{0}/architecture-gate-complete-prompt.md', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || inputs.prompt-path }}
+          prompt-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-review-prompt.md', runner.temp) || needs.policy.outputs.authority_manifest_path != '' && format('{0}/architecture-gate-review-prompt.md', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || inputs.prompt-path }}
           model: ${{ needs.policy.outputs.model }}
           effort: ${{ needs.policy.outputs.effort }}
           sandbox: read-only
