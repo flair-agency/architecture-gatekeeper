@@ -403,7 +403,7 @@ test('review output rejects repository writes and publishes from checkout cwd', 
     rmSync(join(resultPath,'..'),{recursive:true,force:true});
     process.env.GITHUB_OUTPUT = join(runnerTemp,'not_a_command_file');
     const out = join(runnerTemp,'rejected-publication.json');
-    await assert.rejects(runGeminiCiReview([...args,'--output',out],root), /outside the runner-created command-file directory/);
+    await assert.rejects(runGeminiCiReview([...args,'--output',out],root), /output file is unavailable/);
     await assert.rejects(runGeminiCiReview([...args,'--output',out],root), /overwriting is prohibited/);
   } finally { globalThis.fetch=originalFetch; process.env=savedEnv; rmSync(dir,{recursive:true,force:true}); }
 });

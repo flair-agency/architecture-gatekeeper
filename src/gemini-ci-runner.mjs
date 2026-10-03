@@ -212,7 +212,7 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
 
   // If running inside GitHub Actions, export output variables safely
   if (process.env.GITHUB_OUTPUT) {
-    appendGitHubOutput(githubOutputs, { runnerTempDirectory: process.env.RUNNER_TEMP });
+    appendGitHubOutput(githubOutputs);
   }
 
   return validatedDecision;

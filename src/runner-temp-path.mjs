@@ -1,6 +1,6 @@
 import { constants } from 'node:fs';
 import { closeSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 
 const fail = message => { throw new Error(`Runner temporary path: ${message}`); };
 const CHILD_PATHS = Object.freeze({
@@ -87,44 +87,23 @@ export function writeRunnerTempFile(directory, fileName, contents, { overwrite =
   return target;
 }
 
-/** Append bounded step outputs only to the runner-created command file under RUNNER_TEMP. */
-export function appendGitHubOutput(contents, { runnerTempDirectory = process.cwd() } = {}) {
+/** Append bounded step outputs to the trusted GitHub runner-provided sink. */
+export function appendGitHubOutput(contents) {
   if (typeof contents !== 'string' || contents.length === 0 || Buffer.byteLength(contents, 'utf8') > 16_384 ||
       contents.includes('\0')) fail('workflow output must be non-empty bounded text.');
-  let runnerTemp;
-  try { runnerTemp = realpathSync(runnerTempDirectory); } catch { fail('runner temp directory is unavailable.'); }
-  if (!process.env.RUNNER_TEMP || process.env.RUNNER_TEMP !== runnerTempDirectory || runnerTemp !== runnerTempDirectory) fail('output root is not the canonical runner temp directory.');
-  const commandDirectory = resolve(runnerTemp, '_runner_file_commands');
-  const directoryRelative = relative(runnerTemp, commandDirectory);
-  if (directoryRelative === '..' || directoryRelative.startsWith('..' + sep) || isAbsolute(directoryRelative)) {
-    fail('runner command-file directory escapes runner temp.');
-  }
-  let commandDirectoryStat;
-  try { commandDirectoryStat = lstatSync(commandDirectory); } catch { fail('runner command-file directory is unavailable.'); }
-  if (!commandDirectoryStat.isDirectory() || commandDirectoryStat.isSymbolicLink() || realpathSync(commandDirectory) !== commandDirectory) {
-    fail('runner command-file directory is not a direct real directory under RUNNER_TEMP.');
-  }
+  // The invoking GitHub runner owns this sink; it is not a caller path option.
   const outputPath = process.env.GITHUB_OUTPUT;
-  if (typeof outputPath !== 'string' || !isAbsolute(outputPath) || dirname(outputPath) !== commandDirectory ||
-      !/^set_output_[A-Za-z0-9_-]{1,128}$/.test(basename(outputPath)) || resolve(outputPath) !== outputPath) {
-    fail('GitHub output path is outside the runner-created command-file directory.');
+  if (typeof outputPath !== 'string' || !isAbsolute(outputPath) || resolve(outputPath) !== outputPath) {
+    fail('GitHub output must be a canonical absolute path supplied by the runner.');
   }
-  // Rebuild the sink path from the verified directory and the constrained
-  // runner-generated leaf instead of passing the environment value to fs.
-  const validatedOutputPath = resolve(commandDirectory, basename(outputPath));
-  const outputRelative = relative(commandDirectory, validatedOutputPath);
-  if (outputRelative === '..' || outputRelative.startsWith('..' + sep) || isAbsolute(outputRelative)) {
-    fail('GitHub output escapes the runner command-file directory.');
-  }
-  if (validatedOutputPath !== outputPath) fail('GitHub output path is not a canonical direct child.');
   let before;
-  try { before = lstatSync(validatedOutputPath); } catch { fail('runner-created output file is unavailable.'); }
-  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || realpathSync(validatedOutputPath) !== validatedOutputPath) {
+  try { before = lstatSync(outputPath); } catch { fail('runner-created output file is unavailable.'); }
+  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || realpathSync(outputPath) !== outputPath) {
     fail('runner-created output is not a direct regular file.');
   }
   let fd;
   try {
-    fd = openSync(validatedOutputPath, constants.O_WRONLY | constants.O_APPEND | (constants.O_NOFOLLOW ?? 0));
+    fd = openSync(outputPath, constants.O_WRONLY | constants.O_APPEND | (constants.O_NOFOLLOW ?? 0));
     const opened = fstatSync(fd);
     if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== before.dev || opened.ino !== before.ino) {
       fail('runner-created output file changed during validation.');

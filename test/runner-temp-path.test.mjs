@@ -43,7 +43,7 @@ test('uses no-follow bounded regular-file I/O beneath the fixed runner directory
   assert.throws(() => resolveRunnerTempDirectory('owner-amendment-eligibility'), /runner temp directory/);
 }));
 
-test('appends workflow outputs only to a direct runner-created command file', () => fixture((root, runnerTemp) => {
+test('appends to trusted GITHUB_OUTPUT independently of RUNNER_TEMP and cwd', () => fixture((root, runnerTemp) => {
   const commandDir = join(runnerTemp, '_runner_file_commands'); mkdirSync(commandDir);
   const outputPath = join(commandDir, 'set_output_12345678-abcd'); writeFileSync(outputPath, '');
   process.env.GITHUB_OUTPUT = outputPath;
@@ -51,8 +51,15 @@ test('appends workflow outputs only to a direct runner-created command file', ()
   assert.equal(readFileSync(outputPath, 'utf8'), 'route=ordinary\n');
   process.env.GITHUB_OUTPUT = join(root, 'outside-output');
   writeFileSync(process.env.GITHUB_OUTPUT, 'untouched');
-  assert.throws(() => appendGitHubOutput('route=amendment\n'), /outside the runner-created command-file directory/);
-  assert.equal(readFileSync(join(root, 'outside-output'), 'utf8'), 'untouched');
+  process.env.GITHUB_OUTPUT = realpathSync(process.env.GITHUB_OUTPUT);
+  delete process.env.RUNNER_TEMP;
+  process.chdir(root);
+  appendGitHubOutput('route=amendment\n');
+  assert.equal(readFileSync(join(root, 'outside-output'), 'utf8'), 'untouchedroute=amendment\n');
+  process.env.GITHUB_OUTPUT = 'relative-output';
+  assert.throws(() => appendGitHubOutput('route=ordinary\n'), /canonical absolute path/);
+  process.env.GITHUB_OUTPUT = join(root, 'missing-output');
+  assert.throws(() => appendGitHubOutput('route=ordinary\n'), /output file is unavailable/);
   const outside = join(root, 'outside'); writeFileSync(outside, 'untouched');
   const linkedPath = join(commandDir, 'set_output_link'); symlinkSync(outside, linkedPath);
   process.env.GITHUB_OUTPUT = linkedPath;
