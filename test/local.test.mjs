@@ -189,6 +189,17 @@ test('manual review uses committed authority when the worktree differs', t => {
   assert.doesNotMatch(readFileSync(capture, 'utf8'), /Uncommitted replacement/);
 });
 
+test('manual caller preserves a consumer execution field and exposes adapter metadata only by opt-in', async t => {
+  const fixture = manualFixture(t);
+  const execution = { consumerOwned: true };
+  const decision = { decision: 'PASS', summary: 'fixture', authorityFiles: ['AGENTS.md'], reviewedScope: ['fixture'], execution };
+  const raw = runManualReview('Review collision', fixture.root, { reviewer: () => decision });
+  assert.equal(raw.execution, execution);
+  const reported = await runManualReviewAsync('Review collision', fixture.root, { reviewer: async () => decision, executionReport: true });
+  assert.equal(reported.decision.execution, execution);
+  assert.equal(reported.execution, null);
+});
+
 test('committed Gemini settings dispatch asynchronously without invoking Codex and report adapter identity', async t => {
   const fixture = manualFixture(t);
   const reviewerPath = join(fixture.root, '.codex', 'gatekeeper', 'reviewer.json');
@@ -197,6 +208,7 @@ test('committed Gemini settings dispatch asynchronously without invoking Codex a
   let called = 0;
   let requestBody;
   const result = await runManualReviewAsync('Review with Gemini', fixture.root, {
+    executionReport: true,
     apiKey: 'fixture-key',
     fetch: async (url, init) => {
       called += 1;
@@ -208,6 +220,7 @@ test('committed Gemini settings dispatch asynchronously without invoking Codex a
   assert.equal(called, 1);
   assert.equal(requestBody.generationConfig.thinkingConfig.thinkingBudget, 512);
   assert.deepEqual(result.execution, { provider: 'gemini', requestedModel: 'gemini-2.5-flash', appliedSettings: { thinkingBudget: 512, reviewTimeoutMs: 5000 }, backendReportedModel: 'gemini-2.5-flash-001' });
+  assert.equal(result.decision.decision, 'PASS');
 });
 
 test('Gemini manual-review CLI works with a model-free fetch shim and PATH without Codex', t => {
@@ -226,13 +239,13 @@ test('Gemini manual-review CLI works with a model-free fetch shim and PATH witho
   const gitPath = dirname(execFileSync('which', ['git'], { encoding: 'utf8' }).trim());
   const childEnv = { ...process.env, PATH: `${poisonBin}:${gitPath}`, NODE_OPTIONS: `--import=${JSON.stringify(preload)}`, GEMINI_API_KEY: 'fixture-key' };
   for (const key of ['OPENAI_API_KEY', 'CODEX_API_KEY', 'OPENAI_BASE_URL']) delete childEnv[key];
-  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../src/manual-review.mjs', import.meta.url)), 'Review Gemini CLI'], {
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../src/manual-review.mjs', import.meta.url)), '--execution-report', 'Review Gemini CLI'], {
     cwd: fixture.root, encoding: 'utf8',
     env: childEnv
   });
   assert.equal(result.status, 0, result.stderr);
   const decision = JSON.parse(result.stdout);
-  assert.equal(decision.decision, 'BLOCK');
+  assert.equal(decision.decision.decision, 'BLOCK');
   assert.equal(decision.execution.provider, 'gemini');
   assert.equal(decision.execution.appliedSettings.thinkingBudget, 0);
   assert.equal(existsSync(codexMarker), false);
@@ -246,6 +259,7 @@ test('provider settings reject mixed or unsupported configurations before execut
     { provider: 'gemini', model: 'gemini-2.5-flash', reasoningEffort: 'low' },
     { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 0, temperature: 0 },
     { provider: 'other', model: 'model', reasoningEffort: 'low' },
+    { provider: null, model: 'gpt-model', reasoningEffort: 'low' },
     { provider: 'codex', model: 'gpt-model', thinkingBudget: 0, reasoningEffort: 'low' },
     { model: 'gpt-model', reasoningEffort: 'low', temperature: 0 }
   ]) {

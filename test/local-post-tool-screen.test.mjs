@@ -84,6 +84,20 @@ test('screens tracked candidate bytes and deduplicates regardless of event-speci
   assert.equal(requests.length, 2);
 });
 
+test('PostTool caller forwards explicit envelope format and reports adapter metadata', async t => {
+  const root = fixture(t);
+  writeFileSync(join(root, 'candidate.md'), 'screen with envelope\n');
+  const metadata = { provider: 'fixture', backendReportedModel: 'fixture-v1' };
+  const result = await runFixtureHook(event(root), {
+    batchDelayMs: 0,
+    reviewerResultFormat: 'envelope',
+    reviewer: request => ({ decision: pass(request), execution: metadata })
+  });
+  assert.equal(result.result.status, 'PASS');
+  assert.deepEqual(result.result.reviewerExecution, metadata);
+  assert.match(result.output, /fixture-v1/);
+});
+
 test('unsupported and oversized candidates are incomplete without calling reviewer', async t => {
   const root = fixture(t);
   writeFileSync(join(root, 'untracked.txt'), 'new\n');

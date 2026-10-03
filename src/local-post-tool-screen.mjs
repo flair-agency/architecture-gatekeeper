@@ -185,7 +185,7 @@ function outputFor(result, eventMeta, newerPending = false, timing = {}) {
     reviewedRevision: result.reviewedRevision,
     requestId: result.requestId,
     snapshotSha256: result.snapshotSha256,
-    execution: result.execution,
+    reviewerExecution: result.reviewerExecution,
     ...timing,
     ...eventMeta,
     ...(newerPending ? { newerCandidatePending: true } : {})
@@ -211,7 +211,7 @@ async function waitForBatchDelay(delayMs) {
 }
 
 /** Run the opt-in informational PostToolUse tracked-change screen. */
-export async function runPostToolScreenHook(input, { cwd = process.cwd(), reviewer, batchDelayMs = DEFAULT_BATCH_DELAY_MS } = {}) {
+export async function runPostToolScreenHook(input, { cwd = process.cwd(), reviewer, reviewerResultFormat, batchDelayMs = DEFAULT_BATCH_DELAY_MS } = {}) {
   let event;
   try { event = typeof input === 'string' ? JSON.parse(input) : input; }
   catch { const result = incomplete('Invalid PostToolUse JSON.'); return { result, output: outputFor(result, {}) }; }
@@ -270,14 +270,14 @@ export async function runPostToolScreenHook(input, { cwd = process.cwd(), review
     // New marker files are written only by later events and remain for the next eligible event.
     newerPending = exists(markerPath(state));
     timing.reviewStartedAt = new Date().toISOString();
-    const executionResult = await executeLocalReviewer(request, { reviewer });
+    const executionResult = await executeLocalReviewer(request, { reviewer, reviewerResultFormat });
     const decision = validateReviewResponse(request, executionResult.decision);
     timing.reviewCompletedAt = new Date().toISOString();
     if (readHead(root) !== candidate.head) {
       const result = incomplete('HEAD moved during semantic review; result is not associated with the current snapshot.', { reviewedRevision: candidate.head, requestId: identity, snapshotSha256: candidate.patchSha256 });
       return { result, output: outputFor(result, eventMeta, newerPending, timing) };
     }
-    const result = { status: decision.decision, summary: decision.summary || '', reviewedRevision: decision.reviewedRevision, requestId: identity, snapshotSha256: candidate.patchSha256, execution: executionResult.execution };
+    const result = { status: decision.decision, summary: decision.summary || '', reviewedRevision: decision.reviewedRevision, requestId: identity, snapshotSha256: candidate.patchSha256, reviewerExecution: executionResult.execution };
     atomicJson(identityPath(state), { requestId: identity, recordedAt: Date.now() });
     newerPending = exists(markerPath(state));
     return { result, output: outputFor(result, eventMeta, newerPending, timing) };

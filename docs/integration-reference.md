@@ -737,7 +737,11 @@ existing synchronous APIs support Codex and reject a Gemini selection before
 starting any reviewer. The Codex-native Skill supports Codex settings only and
 fails closed for Gemini rather than substituting its host model.
 
-Validated local results include an `execution` report from the built-in adapter:
+Request a separate execution report with `architecture-review --execution-report`
+or the manual-review programmatic `{ executionReport: true }` option. The report has shape
+`{ decision: validatedDecision, execution }`; the default API/CLI result remains
+the consumer decision, without overwriting any consumer field. The adapter report
+contains:
 `provider`, `requestedModel`, and `appliedSettings`. Gemini may also report
 `backendReportedModel` from the HTTP envelope. Requested identity and applied
 settings do not attest the backend's internals, model quality, or acceptance.
@@ -746,7 +750,9 @@ Programmatic manual and UserPromptSubmit calls retain an optional third argument
 `{ reviewer }`; post-tool screening retains its reviewer option. This is a
 trusted adapter injection seam. The adapter receives the revision-bound request
 and, on the async path, an AbortSignal in its second argument. It may return a
-raw structured decision or `{ decision, execution }`. A raw injected result has
+raw structured decision. To return `{ decision, execution }`, explicitly select
+`reviewerResultFormat: "envelope"` in the caller options. There is no shape-based
+guess that can reinterpret consumer-owned fields. A raw injected result has
 no attested execution identity; an injected envelope's metadata belongs to that
 adapter. The caller still validates the decision against schema, authority and
 committed validation policy. Use the async API for Promise-returning adapters;

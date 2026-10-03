@@ -44,7 +44,7 @@ export function loadConfig(root, revision) {
 }
 function reviewerSettings(root, revision, path) {
   const value = jsonInput(root, revision, path, 'reviewer configuration');
-  const provider = value.provider ?? 'codex';
+  const provider = Object.hasOwn(value, 'provider') ? value.provider : 'codex';
   if (typeof value.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(value.model) || !['codex', 'gemini'].includes(provider)) invalid('Architecture gate reviewer configuration is unsupported.');
   if (provider === 'codex') {
     if (!EFFORTS.has(value.reasoningEffort) || value.thinkingBudget !== undefined || Object.keys(value).some(key => !['provider', 'model', 'reasoningEffort'].includes(key))) invalid('Architecture gate Codex reviewer configuration is unsupported.');
@@ -93,7 +93,7 @@ export function validateReviewResponse(request, decision) { verifyRequest(reques
 /** Shared preflight for revision-bound execution; response validation remains separate. */
 export async function preflightReviewRequest(request, expectedProvider) {
   verifyRequest(request);
-  const provider = request.reviewer.provider ?? 'codex';
+  const provider = Object.hasOwn(request.reviewer, 'provider') ? request.reviewer.provider : 'codex';
   if (expectedProvider && provider !== expectedProvider) {
     invalid(`Revision-bound ${expectedProvider} execution requires a recorded ${expectedProvider} provider selection.`);
   }
