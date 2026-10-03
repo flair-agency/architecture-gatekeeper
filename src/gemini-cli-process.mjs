@@ -1,6 +1,6 @@
 /** Internal POSIX supervisor for the pinned Gemini CLI execution profile. */
 import { spawn } from 'node:child_process';
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, lstatSync, mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { delimiter, dirname, join, resolve } from 'node:path';
 
 const VERSION = '0.62.0';
@@ -31,6 +31,43 @@ function validate(options) {
 function positive(value, label) {
   if (!Number.isSafeInteger(value) || value < 1) throw new Error(`Gemini CLI ${label} byte limit must be an explicit positive safe integer.`);
   return value;
+}
+
+function rejectWorkspaceControls(workspaceDirectory) {
+  let workspace;
+  try {
+    workspace = realpathSync(workspaceDirectory);
+  } catch {
+    throw new Error('Gemini CLI workspace must resolve to an existing directory.');
+  }
+  try {
+    if (!lstatSync(workspace).isDirectory()) throw new Error('Gemini CLI workspace must be a directory.');
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Gemini CLI workspace must be a directory.') throw error;
+    throw new Error('Gemini CLI workspace must resolve to an existing directory.');
+  }
+
+  // Gemini CLI 0.62.0 loads workspace settings from cwd, .env files while
+  // walking every parent, and contextual instruction files up to a boundary.
+  // Check canonical ancestors and use lstat so dangling control symlinks fail
+  // closed too. The caller must keep this tree stable until child exit.
+  let directory = workspace;
+  while (true) {
+    for (const name of ['.gemini', '.agents', '.env', 'GEMINI.md']) {
+      try {
+        lstatSync(join(directory, name));
+        throw new Error(`Gemini CLI workspace contains a forbidden control path: ${join(directory, name)}.`);
+      } catch (error) {
+        if (error?.code === 'ENOENT') continue;
+        if (error instanceof Error && error.message.startsWith('Gemini CLI workspace contains a forbidden control path:')) throw error;
+        throw new Error(`Gemini CLI workspace control path could not be checked: ${join(directory, name)}.`);
+      }
+    }
+    const parent = dirname(directory);
+    if (parent === directory) break;
+    directory = parent;
+  }
+  return workspace;
 }
 
 function controlledEnv(home, options) {
@@ -126,20 +163,21 @@ export async function runGeminiCliProcess(options) {
   if (options.signal?.aborted) throw new Error('Gemini CLI execution cancelled before setup.');
   let home;
   try {
+    const workspaceDirectory = rejectWorkspaceControls(options.workspaceDirectory);
     home = mkdtempSync(join(resolve(options.privateParentDirectory), 'agk-gemini-home-'));
     chmodSync(home, 0o700);
     const gemini = join(home, '.gemini'); mkdirSync(gemini, { mode: 0o700 }); chmodSync(gemini, 0o700);
     writeFileSync(join(gemini, 'settings.json'), JSON.stringify(settings(options)), { mode: 0o600, flag: 'wx' });
     const env = controlledEnv(home, options);
     const versionResult = await spawnBounded(process.execPath, [options.cliEntrypoint, '--version'], {
-      cwd: options.workspaceDirectory, env, deadline, maxStdoutBytes: options.maxStdoutBytes,
+      cwd: workspaceDirectory, env, deadline, maxStdoutBytes: options.maxStdoutBytes,
       maxStderrBytes: options.maxStderrBytes, signal: options.signal,
     });
     if (versionResult.timedOut || versionResult.cancelled || versionResult.signal || versionResult.exitCode !== 0 || versionResult.stdout.trim() !== VERSION) {
       throw new Error('Gemini CLI version probe failed or did not report the pinned version 0.62.0.');
     }
     const result = await spawnBounded(process.execPath, [options.cliEntrypoint, `--model=${options.model}`, '--output-format', 'json'], {
-      cwd: options.workspaceDirectory, env, deadline, maxStdoutBytes: options.maxStdoutBytes,
+      cwd: workspaceDirectory, env, deadline, maxStdoutBytes: options.maxStdoutBytes,
       maxStderrBytes: options.maxStderrBytes, signal: options.signal, input: Buffer.from(options.prompt, 'utf8'),
     });
     return result;

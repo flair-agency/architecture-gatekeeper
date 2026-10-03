@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,7 +13,7 @@ const base = (mode = 'normal') => {
   const workspaceDirectory = join(root, 'workspace'); mkdirSync(workspaceDirectory);
   const cliEntrypoint = join(root, 'fake-cli.mjs');
   writeFileSync(cliEntrypoint, `
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
@@ -26,7 +26,7 @@ if (mode === 'early-stdin') process.exit(0);
 const promptChunks = []; for await (const chunk of process.stdin) promptChunks.push(chunk);
 const prompt = Buffer.concat(promptChunks).toString('utf8');
 const settings = JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8'));
-const state = { settings, env: process.env, argv: process.argv.slice(2), prompt, promptSha256: createHash('sha256').update(prompt).digest('hex') };
+const state = { settings, userSettingsMode: (await import('node:fs')).statSync(join(process.env.HOME, '.gemini/settings.json')).mode & 0o777, systemSettingsPathExists: existsSync(process.env.GEMINI_CLI_SYSTEM_SETTINGS_PATH), systemDefaultsPathExists: existsSync(process.env.GEMINI_CLI_SYSTEM_DEFAULTS_PATH), env: process.env, argv: process.argv.slice(2), prompt, promptSha256: createHash('sha256').update(prompt).digest('hex') };
 writeFileSync(join(process.cwd(), 'observed.json'), JSON.stringify(state));
 if (mode === 'hang') { setInterval(() => {}, 1000); }
 if (mode === 'large') { process.stdout.write('x'.repeat(4096)); setInterval(() => {}, 1000); }
@@ -72,9 +72,35 @@ test('uses a fresh private HOME, minimal environment, and fixed CLI arguments', 
   assert.equal(seen.settings.general.enableAutoUpdate, false);
   assert.deepEqual(seen.settings.hooksConfig, { enabled: false });
   assert.deepEqual(seen.settings.skills, { enabled: false });
+  assert.equal(seen.userSettingsMode, 0o600);
+  assert.equal(seen.systemSettingsPathExists, false);
+  assert.equal(seen.systemDefaultsPathExists, false);
   assert.equal(seen.settings.security.auth.selectedType, 'vertex-ai');
   assert.equal(seen.settings.modelConfigs.customOverrides[0].modelConfig.generateContentConfig.thinkingConfig.thinkingBudget, 1024);
   assert.equal(readdirSync(fixture.privateParentDirectory).length, 0);
+});
+
+test('rejects workspace and ancestor Gemini operational controls before HOME allocation or CLI spawn', async t => {
+  const cases = [
+    ['workspace .gemini directory', (f) => mkdirSync(join(f.workspaceDirectory, '.gemini'))],
+    ['workspace .agents directory', (f) => mkdirSync(join(f.workspaceDirectory, '.agents'))],
+    ['workspace .env', (f) => writeFileSync(join(f.workspaceDirectory, '.env'), 'CONTROL=1')],
+    ['workspace GEMINI.md', (f) => writeFileSync(join(f.workspaceDirectory, 'GEMINI.md'), 'instructions')],
+    ['ancestor .gemini directory', (f) => mkdirSync(join(f.root, '.gemini'))],
+    ['ancestor .agents directory', (f) => mkdirSync(join(f.root, '.agents'))],
+    ['ancestor .env', (f) => writeFileSync(join(f.root, '.env'), 'CONTROL=1')],
+    ['ancestor GEMINI.md', (f) => writeFileSync(join(f.root, 'GEMINI.md'), 'instructions')],
+    ['dangling workspace control symlink', (f) => symlinkSync(join(f.root, 'missing'), join(f.workspaceDirectory, '.env'))],
+    ['dangling ancestor control symlink', (f) => symlinkSync(join(f.root, 'missing'), join(f.root, 'GEMINI.md'))],
+  ];
+  for (const [label, createControl] of cases) {
+    const fixture = base();
+    t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+    createControl(fixture);
+    await assert.rejects(runGeminiCliProcess(options(fixture)), /forbidden control path/, label);
+    assert.equal(readdirSync(fixture.privateParentDirectory).length, 0, `${label}: no private HOME allocated`);
+    assert.equal(existsSync(join(fixture.workspaceDirectory, 'observed.json')), false, `${label}: CLI not spawned`);
+  }
 });
 
 test('rejects a mismatched CLI version and removes its private HOME', async t => {
