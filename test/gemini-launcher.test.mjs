@@ -343,7 +343,7 @@ test('launcher expires the total session deadline even before fixture readiness'
   const fixture = fileURLToPath(new URL('./fixtures/gemini-supervision.mjs', import.meta.url));
   try {
     const started = Date.now();
-    assert.equal(await runIsolatedGeminiSession(['hang', join(dir, 'state.json'), '--model', 'gemini-2.5-flash'], { timeoutMs: 400, runnerScript: fixture, credentialsOptions: { apiKey: 'fixture' } }), 124);
+    assert.equal(await runIsolatedGeminiSession(['hang', join(dir, 'state.json'), '--model', 'gemini-2.5-flash'], { timeoutMs: 400, runnerScript: fixture, credentialsOptions: { apiKey: 'supervision-credential-sentinel' } }), 124);
     assert.ok(Date.now() - started < 5000);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -397,6 +397,28 @@ test('missing credential values reject before consuming adjacent flags', async (
   for (const args of [['--api-key','--access-token','secret'], ['--access-token','--model','gemini-2.5-flash'], ['--api-key'], ['--access-token='], ['--api-key', '   '], ['--access-token', '   ']]) {
     await assert.rejects(runIsolatedGeminiSession(args), /Missing .*credential value/);
   }
+});
+
+test('launcher rejects credentials repeated in forwarded arguments before proxy allocation', async () => {
+  await assert.rejects(
+    runIsolatedGeminiSession(['--api-key=first-cli-secret', '--api-key=selected-cli-secret', '--payload', 'first-cli-secret', '--model', 'gemini-2.5-flash']),
+    /Runner arguments contain a provider credential/
+  );
+});
+
+test('spawned runner receives EOF on stdin even when supervisor stdin contains secret bytes', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-launcher-stdin-'));
+  const runner = join(dir, 'stdin-runner.mjs');
+  const supervisor = join(dir, 'supervisor.mjs');
+  try {
+    writeFileSync(runner, `let byteCount = 0; for await (const chunk of process.stdin) byteCount += chunk.length; if (byteCount !== 0) process.exit(42);`);
+    writeFileSync(supervisor, `import { runIsolatedGeminiSession } from '${join(process.cwd(), 'src/gemini-launcher.mjs')}';\nprocess.exit(await runIsolatedGeminiSession(['--model', 'gemini-2.5-flash'], { runnerScript: process.argv[2], credentialsOptions: { apiKey: 'stdin-fixture-key' } }));\n`);
+    const child = spawn(process.execPath, [supervisor, runner], { stdio: ['pipe', 'ignore', 'pipe'] });
+    const closed = new Promise((resolve, reject) => { child.once('close', (code, signal) => resolve({ code, signal })); child.once('error', reject); });
+    child.stdin.end('supervisor-secret-renewal-handle');
+    const result = await closed;
+    assert.deepEqual(result, { code: 0, signal: null });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('credential aliases are withheld even with unrelated authentication selected', () => {

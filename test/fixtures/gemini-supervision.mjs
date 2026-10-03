@@ -7,7 +7,7 @@ import { runIsolatedGeminiSession } from '../../src/gemini-launcher.mjs';
 const [mode, state] = process.argv.slice(2);
 const script = fileURLToPath(import.meta.url);
 if (mode === 'supervisor' || mode === 'supervisor-parent') {
-  runIsolatedGeminiSession([mode === 'supervisor-parent' ? 'parent' : 'hang', state, '--model', 'gemini-2.5-flash'], { timeoutMs: 10000, runnerScript: script, credentialsOptions: { apiKey: 'fixture' } }).then(code => process.exit(code));
+  runIsolatedGeminiSession([mode === 'supervisor-parent' ? 'parent' : 'hang', state, '--model', 'gemini-2.5-flash'], { timeoutMs: 10000, runnerScript: script, credentialsOptions: { apiKey: 'supervision-credential-sentinel' } }).then(code => process.exit(code));
 } else {
   if (mode === 'parent') spawn(process.execPath, [script, 'descendant', state], { stdio: 'ignore' });
   else {

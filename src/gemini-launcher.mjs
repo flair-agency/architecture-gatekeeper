@@ -62,6 +62,7 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
   // 1. Consume credential options: filter credentials out of runner arguments so secrets never appear on child command line
   let cliApiKey = null;
   let cliAccessToken = null;
+  const cliCredentialValues = [];
   const filteredRunnerArgv = [];
 
   const startedAt = Date.now();
@@ -80,20 +81,24 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
     if (arg === '--access-token' && (!runnerArgv[i + 1]?.trim() || runnerArgv[i + 1].startsWith('--'))) throw new Error('Missing --access-token credential value.');
     if (arg === '--api-key' && i + 1 < runnerArgv.length) {
       cliApiKey = runnerArgv[++i];
+      cliCredentialValues.push(cliApiKey);
       continue;
     }
     if (arg.startsWith('--api-key=')) {
       cliApiKey = arg.slice(10);
       if (!cliApiKey.trim()) throw new Error('Missing --api-key credential value.');
+      cliCredentialValues.push(cliApiKey);
       continue;
     }
     if (arg === '--access-token' && i + 1 < runnerArgv.length) {
       cliAccessToken = runnerArgv[++i];
+      cliCredentialValues.push(cliAccessToken);
       continue;
     }
     if (arg.startsWith('--access-token=')) {
       cliAccessToken = arg.slice(15);
       if (!cliAccessToken.trim()) throw new Error('Missing --access-token credential value.');
+      cliCredentialValues.push(cliAccessToken);
       continue;
     }
 
@@ -150,6 +155,21 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
   if (cliApiKey) credsOptions.apiKey = cliApiKey;
   const credentials = resolveAuthCredentials({ ...credsOptions, resolveGcloudAccessToken: () => null });
   const allowedMode = credentials.type === 'bearer' ? 'vertex' : 'studio';
+  const runnerPath = options.runnerScript || resolve(dirname(fileURLToPath(import.meta.url)), 'gemini-ci-runner.mjs');
+  const credentialValues = [
+    ...getSupportedEnvironmentCredentialValues(process.env),
+    credentials.value,
+    credsOptions.apiKey,
+    credsOptions.accessToken,
+    options.credentialsOptions?.apiKey,
+    options.credentialsOptions?.accessToken,
+    ...cliCredentialValues,
+  ].filter(value => typeof value === 'string' && value.length > 0)
+    .flatMap(value => [value, value.trim()]).filter(Boolean);
+  const leakedCredentialArg = [runnerPath, ...filteredRunnerArgv].some(arg =>
+    credentialValues.some(secret => [secret, secret.trim()].some(value => value.length > 0 && arg.includes(value)))
+  );
+  if (leakedCredentialArg) throw new Error('Runner arguments contain a provider credential.');
 
   // 2. Start security proxy on loopback with trusted scope constraints
   // Ensure proxyConfigOverride cannot erase or bypass required scope
@@ -189,14 +209,7 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
   if (remainingMs <= 0) throw new Error('Gemini session deadline expired before startup.');
   effectiveProxyConfig.deadlineMs = remainingMs;
   // Validate environment isolation before allocating the proxy listener.
-  const runnerEnv = buildIsolatedRunnerEnv(process.env, '', [
-    ...getSupportedEnvironmentCredentialValues(process.env),
-    credentials.value,
-    credsOptions.apiKey,
-    credsOptions.accessToken,
-    cliApiKey,
-    cliAccessToken,
-  ]);
+  const runnerEnv = buildIsolatedRunnerEnv(process.env, '', credentialValues);
   const proxy = await startGeminiSecurityProxy(effectiveProxyConfig);
 
   process.stderr.write(`[gemini-launcher] Security proxy active on ${proxy.endpointUrl}\n`);
@@ -205,12 +218,10 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
   runnerEnv.REVIEW_PROXY_URL = proxy.endpointUrl;
   runnerEnv.REVIEW_PROXY_MODE = effectiveProxyConfig.allowedMode;
 
-  const runnerPath = options.runnerScript || resolve(dirname(fileURLToPath(import.meta.url)), 'gemini-ci-runner.mjs');
-
   // 4. Spawn runner process with sanitized arguments (no credentials forwarded)
   const child = spawn(process.execPath, [runnerPath, ...filteredRunnerArgv], {
     env: runnerEnv,
-    stdio: 'inherit',
+    stdio: ['ignore', 'inherit', 'inherit'],
     detached: process.platform !== 'win32',
   });
 

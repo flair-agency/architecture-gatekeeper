@@ -1141,3 +1141,20 @@ test('selected Studio proxy mode ignores unrelated project configuration and inv
   await assert.rejects(runGeminiReviewer(request, { proxyUrl: 'http://127.0.0.1:1234', proxyMode: 'invalid', fetch }), /Invalid selected proxy mode/);
   assert.equal(calls, 1);
 });
+
+
+test('serialization exhausting the deadline does not dispatch fetch', async () => {
+  const originalNow = Date.now;
+  const originalStringify = JSON.stringify;
+  let now = 1000, calls = 0;
+  Date.now = () => now;
+  JSON.stringify = (...args) => {
+    const body = originalStringify(...args);
+    if (args[0]?.contents) now = 1010;
+    return body;
+  };
+  try {
+    await assert.rejects(executeGeminiReviewer({ prompt: 'review', schema: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024, reviewTimeoutMs: 5 } }, { apiKey: 'fixture', fetch: async () => { calls++; throw new Error('must not dispatch'); } }), /timed out after 5ms/);
+    assert.equal(calls, 0);
+  } finally { Date.now = originalNow; JSON.stringify = originalStringify; }
+});

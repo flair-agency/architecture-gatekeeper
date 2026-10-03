@@ -514,11 +514,15 @@ export async function executeGeminiReviewer(request, options = {}) {
 
     let response;
     try {
+      const body = JSON.stringify(requestBody);
+      if (signal.aborted || Date.now() >= deadline) {
+        throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+      }
       response = await raceWithDeadline(
         fetchFn(url, {
           method: 'POST',
           headers,
-          body: JSON.stringify(requestBody),
+          body,
           redirect: 'error',
           signal,
         })
