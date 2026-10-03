@@ -214,6 +214,75 @@ still needs a concrete authorized evidence source and a proven final
 validation/transition ordering; allowing a new `BLOCK` does not itself prove
 either condition.
 
+### Target procedural BLOCK amendment profile (Issue #147 owner decision)
+
+The owner authorizes a separately versioned procedural `OWNER_AMENDMENT`
+profile triggered only by a completed `BLOCK` for the originally reviewed
+Change A. Its profile name and wire formats remain unassigned until their
+versioned contracts are defined. This target does not reinterpret either
+existing G0 profile or Issue #121's addition-only procedure. Consumer-selected
+assurance does not universally require host merge enforcement; an enforced
+route retains every selected protection and cannot downgrade to this route.
+
+Before use, the previously adopted consumer policy and governance must select
+this profile, eligible authority scope, full Authority Set, required validators,
+trusted producer and custody, and owner integration/readback procedure. B cannot
+select or weaken its own rules. This decision extends no existing policy's
+affected-member scope and activates no self or consumer route.
+
+The trigger must be one specific completed, validated BLOCK ReviewRecord for
+identified A, with exact original bytes and authenticated producer provenance
+binding repository, base/head/reviewed revisions, prior policy and complete
+Authority Set, review inputs, runtime, producer execution and completion.
+PASS, OWNER_DECISION, refusal, preparation rejection or incomplete review cannot
+trigger this profile. Digests, mutable comments, unsigned artifacts and readable
+logs alone are insufficient; later signing cannot retroactively authenticate an
+untrusted historical execution. The selected source must preserve verifiability
+through adoption. Loss before adoption stops the attempt; recovery, only where
+previous policy permits it, requires a new completed BLOCK and regeneration of
+every dependent binding. History is preserved, not restored or rewritten.
+
+Authority-only Change B materially resolves the bound conflict and changes only
+the prior-selected eligible authority scope. It contains no implementation,
+workflow, executable-policy, publication payload or unrelated completion claim.
+The separately supplied AmendmentRecord binds exact repository/base/B, trigger,
+target decision and affected members' before/after identities. This target does
+not authorize adding a record file to B; any such inclusion requires an explicit
+versioned scope contract. B-specific semantic review receives the full previous
+policy and Authority Set, exact proposed authority bytes and diff, both records
+and every required validator; all complete-set and fail-closed rules remain.
+
+Before integration, the selected trusted producer issues a versioned exact-B
+eligibility receipt binding those inputs, semantic result, runtime, producer,
+completion time and assurance. Every bound change invalidates that receipt.
+Eligibility reports adoption and canonical placement pending; it authorizes
+neither A nor a claim of completed adoption. Selected evidence and live bindings
+must remain valid through the owner procedure and final adoption validation.
+
+The owner integrates eligible B by the selected ordinary procedure. A normal
+merge commit may preserve exact B as its second parent, recorded base as its
+first parent and B's tree as its resulting tree; the integration commit need not
+equal B's commit identity. Trusted integration metadata and subsequent target
+readback must establish the selected exact B-to-integration binding and expected
+authority bytes. Other integration forms require their own defined, verified
+binding; none is inferred here. The final versioned adoption record binds the
+repository/target, base/B, integration and observed target identities, policy and
+full Set, affected members, trigger/AmendmentRecord/eligibility identities,
+producer, timestamps and assurance. Missing, stale or mismatched evidence leaves
+adoption incomplete; canonical placement is reported independently, never used
+to repair invalid adoption. After valid adoption, review A afresh under the
+resulting canonical authority and ordinary policy; fresh PASS is not guaranteed.
+
+The trusted private-repository provenance backend remains unselected. A signed
+attestation adapter or independent trusted host/custody requires a separately
+owner-selected contract and demonstrated capability, credentials, authentication,
+retention and readback boundaries. No backend is selected by availability or
+fallback. Reports keep procedural adoption, principal authentication, exact-claim
+authorization, policy protection and host enforcement distinct and make only
+verified claims. Implementation, negative fixtures and a finite predecessor-
+authorized production adoption trace remain required; this text grants no
+backend use, LIVE adoption, publication permission or activation.
+
 ### Separate exact-claim authorization and revocation (owner decision)
 
 `G0` remains a procedural governance grade with
