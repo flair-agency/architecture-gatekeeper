@@ -940,29 +940,30 @@ cannot amend this contract.
 
 #### Target Gemini CI authentication selection (Issue #252 owner decision, 2026-10-04)
 
-First Gemini CI route targets Vertex AI with Google Cloud WIF. Trusted CI exchanges GitHub
-OIDC for scoped, short-lived Google credentials;
-only the launcher/proxy receives credentials or renewal capabilities through
+First Gemini CI route uses Vertex AI with Google Cloud WIF. Trusted CI exchanges
+GitHub OIDC for scoped, short-lived Google credentials;
+the launcher/proxy alone receives credentials or renewal capabilities through
 explicit launch interfaces. Authentication failure leaves review incomplete,
-without API-key or provider fallback. This does not deploy.
-Deployment bindings, scope, credential lifecycle and limits need selection/verification
-before activation. Codex stays supported; standby/parallel adoption is separate.
-No quality claim, acceptance route or release gate changes here.
+without API-key or provider fallback. No deployment.
+Select/verify deployment bindings, scope, credential lifecycle and limits
+before activation. Codex remains supported; standby/parallel adoption is separate.
+No quality claim, acceptance route or release gate changes.
 
 #### Target Gemini CI execution selection (Issue #252 owner decision, 2026-10-04)
 
-Use Gemini CLI with a controlled revision-bound workspace, launcher-owned
-configuration and a read-tool allowlist. Candidate control/instruction
-files retain complete bytes and path/revision identity as evidence, never
+Use Gemini CLI with a revision-bound controlled workspace, launcher-owned
+configuration and a read-tool allowlist. Candidate controls/instructions
+retain complete bytes and path/revision identity as evidence, never
 automatically loaded configuration or protected instructions. Candidate
 workspace configuration cannot enable tools, hooks, skills, extensions or MCP.
 The launcher/proxy retains WIF credentials under the boundary above.
 CLI exit zero alone is insufficient: schema/authority validation is mandatory;
 Timeout, cancellation, auth failure or invalid output leaves review incomplete.
-This claims no candidate-code execution, Codex equivalence or host isolation,
-and activates no acceptance route. Owner selects `gemini-3.8-flash` with
+No candidate-code execution, Codex equivalence or host isolation is claimed;
+no acceptance route activates. Owner adopts `gemini-3.8-flash` with
 `thinkingLevel: MEDIUM` as the initial CI profile, without
-`thinkingBudget`. Verify quality, cost, latency and decision consistency before activation;
+`thinkingBudget`. Before activation, verify authenticated route evidence, quality, cost,
+latency and decision consistency;
 determinism is not promised.
 
 #### GitHub step-output sink (owner decision, 2026-10-03)
