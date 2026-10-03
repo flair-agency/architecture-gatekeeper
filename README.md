@@ -109,6 +109,13 @@ policy, prompt, schema, and optional validation policy in the consuming
 repository. See the [integration reference](docs/integration-reference.md) for
 the complete workflow example and protected-base behavior.
 
+On the protected Authority Set and legacy v1 consumer routes, the reviewer
+receives the exact event base/head revisions, verified merge revision and the
+base-to-merge committed diff as untrusted task data. Untracked helper checkouts
+are excluded from that diff. The complete prompt, including task data, must fit
+the existing selected limit; missing revisions, mismatched merge parents or
+excess bytes leave review incomplete. Other compatibility routes are unchanged.
+
 Ordinary consumers use this reusable workflow without self-only OIDC or
 attestation permissions. The self repository uses a separate internal workflow
 for its selected evidence producers. Consumers upgrading an old enforced v1
