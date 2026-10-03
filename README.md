@@ -114,7 +114,11 @@ receives the exact event base/head revisions, verified merge revision and the
 base-to-merge committed diff as untrusted task data. Untracked helper checkouts
 are excluded from that diff. The complete prompt, including task data, must fit
 the existing selected limit; missing revisions, mismatched merge parents or
-excess bytes leave review incomplete. Other compatibility routes are unchanged.
+excess bytes leave review incomplete. These parent checks validate GitHub’s
+synthetic review checkout against the recorded event tuple; they do not restrict
+the eventual PR merge strategy or prove canonical transition or host enforcement.
+A stale or mismatched checkout requires a fresh review run. Other compatibility
+routes are unchanged.
 
 Ordinary consumers use this reusable workflow without self-only OIDC or
 attestation permissions. The self repository uses a separate internal workflow

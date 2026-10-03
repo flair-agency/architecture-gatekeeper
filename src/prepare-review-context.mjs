@@ -109,9 +109,10 @@ function resolveContext({ root, baseSha, headSha, reviewedSha, repository, promp
   let changedPathBytes;
   let diffBytes;
   try {
-    changedPathBytes = git(checkout, ['diff', '--name-only', '-z', '--no-renames', '--no-ext-diff', '--no-textconv', baseSha, reviewedSha, '--'], maxPromptBytes);
-    diffBytes = git(checkout, ['diff', '--binary', '--full-index', '--unified=3', '--no-renames',
-      '--no-ext-diff', '--no-textconv', baseSha, reviewedSha, '--'], maxPromptBytes);
+    changedPathBytes = git(checkout, ['diff', '--name-only', '-z', '--no-renames', '--no-ext-diff',
+      '--no-textconv', '--ignore-submodules=none', baseSha, reviewedSha, '--'], maxPromptBytes);
+    diffBytes = git(checkout, ['diff', '--text', '--full-index', '--unified=3', '--no-renames',
+      '--no-ext-diff', '--no-textconv', '--ignore-submodules=none', baseSha, reviewedSha, '--'], maxPromptBytes);
   } catch {
     fail('exact committed base-to-reviewed-merge paths or diff are unavailable or exceed the output bound.');
   }
@@ -127,6 +128,7 @@ function resolveContext({ root, baseSha, headSha, reviewedSha, repository, promp
     }
   } catch { fail('changed paths are not valid UTF-8.'); }
   let diff;
+  if (diffBytes.includes(0)) fail('candidate diff contains binary content and cannot be reviewed as text.');
   try { diff = decoder.decode(diffBytes); } catch { fail('candidate diff is not valid UTF-8 text.'); }
 
   const context = [

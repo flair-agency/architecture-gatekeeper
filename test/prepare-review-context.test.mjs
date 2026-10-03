@@ -12,19 +12,34 @@ const git = (root, ...args) => execFileSync('git', ['--no-replace-objects', ...a
   GIT_COMMITTER_NAME: 'Test', GIT_COMMITTER_EMAIL: 'test@example.com',
 } }).trim();
 
-function makeReview(t, maliciousDiffConfig = false) {
+function makeReview(t, { maliciousDiffConfig = false, submoduleIgnoreAll = false, binaryContent = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'review-task-context-'));
   const runnerTemp = mkdtempSync(join(tmpdir(), 'review-task-context-runner-'));
   t.after(() => { rmSync(root, { recursive: true, force: true }); rmSync(runnerTemp, { recursive: true, force: true }); });
   git(root, 'init', '-q');
   git(root, 'config', 'core.autocrlf', 'false');
   writeFileSync(join(root, 'subject.md'), 'before\n');
-  git(root, 'add', '.'); git(root, 'commit', '-qm', 'base');
+  if (submoduleIgnoreAll) {
+    git(root, 'add', 'subject.md'); git(root, 'commit', '-qm', 'seed submodule commit');
+    const seedSha = git(root, 'rev-parse', 'HEAD');
+    writeFileSync(join(root, '.gitmodules'), '[submodule "vendor/sub"]\n\tpath = vendor/sub\n\turl = https://example.invalid/sub.git\n\tignore = all\n');
+    git(root, 'add', '.gitmodules');
+    git(root, 'update-index', '--add', '--cacheinfo', `160000,${seedSha},vendor/sub`);
+    git(root, 'commit', '-qm', 'base with gitlink');
+  } else {
+    git(root, 'add', '.'); git(root, 'commit', '-qm', 'base');
+  }
   git(root, 'checkout', '-qb', 'candidate');
-  writeFileSync(join(root, 'subject.md'), 'after\n');
+  writeFileSync(join(root, 'subject.md'), binaryContent ? Buffer.from([0x61, 0x00, 0xff, 0x62]) : 'after\n');
   writeFileSync(join(root, 'line\nname.md'), 'newline path\n');
-  if (maliciousDiffConfig) writeFileSync(join(root, '.gitattributes'), '*.md diff=execute-me\n');
-  git(root, 'add', '.'); git(root, 'commit', '-qm', 'candidate');
+  if (maliciousDiffConfig) writeFileSync(join(root, '.gitattributes'), '*.md binary\nsubject.md -diff\n*.md diff=execute-me\n');
+  let submoduleCommit;
+  if (submoduleIgnoreAll) {
+    submoduleCommit = git(root, 'rev-parse', 'HEAD');
+  }
+  git(root, 'add', '.');
+  if (submoduleCommit) git(root, 'update-index', '--add', '--cacheinfo', `160000,${submoduleCommit},vendor/sub`);
+  git(root, 'commit', '-qm', 'candidate');
   const headSha = git(root, 'rev-parse', 'HEAD');
   git(root, 'checkout', '-q', '-');
   writeFileSync(join(root, 'target-only.md'), 'target line retained\n');
@@ -122,8 +137,8 @@ test('fails closed when exact merge parents or protected prompt limit cannot be 
   assert.throws(() => prepareReviewContext({ ...context.input, reviewedSha: 'f'.repeat(40) }), /all exist in the checkout/);
 });
 
-test('bounds the combined prompt and never invokes candidate diff drivers', t => {
-  const context = makeReview(t, true);
+test('forces textual diffs despite binary attributes and never invokes candidate diff drivers', t => {
+  const context = makeReview(t, { maliciousDiffConfig: true });
   process.env.RUNNER_TEMP = context.runnerTemp;
   t.after(() => { delete process.env.RUNNER_TEMP; });
   git(context.root, 'config', 'diff.execute-me.command', 'touch candidate-diff-driver-was-executed');
@@ -133,6 +148,28 @@ test('bounds the combined prompt and never invokes candidate diff drivers', t =>
   assert.throws(() => prepareReviewContext(context.input), /final review prompt including task context exceeds/);
   context.input.authorityLimitsBase64 = Buffer.from(JSON.stringify({ ...limits, maxPromptBytes: 8192 })).toString('base64');
   prepareReviewContext(context.input);
+  const prompt = readFileSync(context.outputPath, 'utf8');
+  const data = JSON.parse(prompt.slice(prompt.indexOf('{', prompt.indexOf('untrusted candidate data'))));
+  assert.match(data.exactBaseToReviewedMergeDiff, /-before\n\+after/);
+  assert.doesNotMatch(data.exactBaseToReviewedMergeDiff, /Binary files .* differ/);
   assert.equal(existsSync(join(context.root, 'candidate-diff-driver-was-executed')), false);
   assert.equal(existsSync(join(context.root, 'candidate-external-diff-was-executed')), false);
+});
+
+test('fails closed on binary content and includes gitlinks despite submodule ignore=all', t => {
+  const binary = makeReview(t, { binaryContent: true });
+  process.env.RUNNER_TEMP = binary.runnerTemp;
+  t.after(() => { delete process.env.RUNNER_TEMP; });
+  assert.throws(() => prepareReviewContext(binary.input), /binary content/);
+  assert.equal(existsSync(binary.outputPath), false);
+
+  const submodule = makeReview(t, { submoduleIgnoreAll: true });
+  process.env.RUNNER_TEMP = submodule.runnerTemp;
+  git(submodule.root, 'config', 'submodule.vendor/sub.ignore', 'all');
+  const result = prepareReviewContext(submodule.input);
+  const prompt = readFileSync(submodule.outputPath, 'utf8');
+  const data = JSON.parse(prompt.slice(prompt.indexOf('{', prompt.indexOf('untrusted candidate data'))));
+  assert.ok(result.changedPaths > 0);
+  assert.ok(data.changedPaths.includes('vendor/sub'));
+  assert.match(data.exactBaseToReviewedMergeDiff, /-Subproject commit [a-f0-9]+\n\+Subproject commit [a-f0-9]+/);
 });
