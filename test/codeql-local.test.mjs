@@ -1,15 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import * as path from 'node:path';
-import { runInNewContext } from 'node:vm';
+import { runCodeql } from '../scripts/codeql-local.mjs';
 
-const script = readFileSync(new URL('../scripts/codeql-local.mjs', import.meta.url), 'utf8')
-  .replace(/^#!.*\n/, '').replace(/^import .*;\n/gm, '').replaceAll('import.meta.url', 'scriptUrl');
 function harness({ missing = false, failure = 0, home = '/home/developer', redirected = false } = {}) {
   const calls = [], writes = new Map(), made = [], messages = [];
   const context = {
-    ...path, scriptUrl: 'file:///repo/scripts/codeql-local.mjs', fileURLToPath: () => '/repo/scripts/codeql-local.mjs',
+    fileURLToPath: () => '/repo/scripts/codeql-local.mjs',
     homedir: () => home,
     process: { platform: 'linux', exit(code) { throw new Error(`exit:${code}`); } },
     console: { log: text => messages.push(text), error: text => messages.push(text) },
@@ -23,7 +19,7 @@ function harness({ missing = false, failure = 0, home = '/home/developer', redir
       return missing ? { error: { code: 'ENOENT' } } : { status: failure };
     },
   };
-  return { calls, writes, made, messages, run: () => runInNewContext(script, context) };
+  return { calls, writes, made, messages, run: () => runCodeql(context) };
 }
 test('missing PATH CLI gives installation guidance before creating output', () => {
   const h = harness({ missing: true });
