@@ -20,11 +20,12 @@
         "version": 1,
         "grade": "G0",
         "scope": "authority-only",
-        "triggerProfile": "completed-block-v1",
+        "triggerProfile": "completed-owner-decision-self-v1",
         "authorityId": "architecture-contract",
         "authorityPath": "docs/architecture.md",
         "evidenceProducer": "github-actions-attestation",
-        "tagNamespace": "refs/tags/architecture-gatekeeper/amendments"
+        "tagNamespace": "refs/tags/architecture-gatekeeper/amendments",
+        "maxPromptBytes": 524288
       }
     }
   }

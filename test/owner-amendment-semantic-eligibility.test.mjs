@@ -563,16 +563,20 @@ test('enforces prompt and byte limits and requires trusted validators at produce
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({}), /trusted resolveProtectedInputs dependency/);
 });
 
-test('real v2 resolver selects authority id/path and Authority Set limit separately; producer fails closed without ownerAmendment.maxPromptBytes', () => {
-  const policyBytes = readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'));
-  const selected = resolveCiPolicy(parseCiPolicyJson(policyBytes.toString('utf8')), 'main');
-  assert.equal(selected.ownerAmendmentTriggerProfile, 'completed-block-v1');
+test('real v2 resolver selects the OWNER_DECISION profile and explicit prompt limit; producer fails closed when a prior policy omits that limit', () => {
+  const selectedPolicyBytes = readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'));
+  const selected = resolveCiPolicy(parseCiPolicyJson(selectedPolicyBytes.toString('utf8')), 'main');
+  assert.equal(selected.ownerAmendmentTriggerProfile, 'completed-owner-decision-self-v1');
   assert.equal(selected.ownerAmendmentAuthorityId, 'architecture-contract');
   assert.equal(selected.ownerAmendmentAuthorityPath, 'docs/architecture.md');
   assert.equal(JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64')).maxPromptBytes, 524_288);
-  const f = fixture('completed-block-v1');
+  assert.equal(selected.ownerAmendmentMaxPromptBytes, 524_288);
+  const f = fixture('completed-owner-decision-self-v1');
+  const priorPolicyWithoutLimit = JSON.parse(f.args.policyBytes.toString('utf8'));
+  delete priorPolicyWithoutLimit.branches.main.ownerAmendment.maxPromptBytes;
+  const priorPolicyBytes = Buffer.from(JSON.stringify(priorPolicyWithoutLimit));
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
-    resolveProtectedInputs: () => ({ ...f.validators.resolveProtectedInputs(), policyBytes }) }).prepare(f.args), /previous protected policy/);
+    resolveProtectedInputs: () => ({ ...f.validators.resolveProtectedInputs(), policyBytes: priorPolicyBytes }) }).prepare(f.args), /previous protected policy/);
 });
 
 test('fails closed when B changes a non-authority path or a diff omits/changes declared paths', () => {
