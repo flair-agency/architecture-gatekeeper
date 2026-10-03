@@ -1,0 +1,9 @@
+# Trust premise, not a generic sanitizer: docs/architecture.md GitHub step-output sink.
+# Match only the no-argument accessor in this repository file. Runtime file
+# integrity checks do not remove taint from any other path.
+extensions:
+  - addsTo:
+      pack: codeql/javascript-all
+      extensible: barrierModel
+    data:
+      - ['file:src/github-runner-env.mjs', 'Member[trustedGitHubOutputPath].ReturnValue', 'path-injection']

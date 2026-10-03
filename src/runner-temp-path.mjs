@@ -1,4 +1,5 @@
 import { constants } from 'node:fs';
+import { trustedGitHubOutputPath } from './github-runner-env.mjs';
 import { closeSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 
@@ -92,7 +93,7 @@ export function appendGitHubOutput(contents) {
   if (typeof contents !== 'string' || contents.length === 0 || Buffer.byteLength(contents, 'utf8') > 16_384 ||
       contents.includes('\0')) fail('workflow output must be non-empty bounded text.');
   // The invoking GitHub runner owns this sink; it is not a caller path option.
-  const outputPath = process.env.GITHUB_OUTPUT;
+  const outputPath = trustedGitHubOutputPath();
   if (typeof outputPath !== 'string' || !isAbsolute(outputPath) || resolve(outputPath) !== outputPath) {
     fail('GitHub output must be a canonical absolute path supplied by the runner.');
   }

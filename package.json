@@ -44,7 +44,8 @@
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "codeql": "node scripts/codeql-local.mjs"
+    "codeql": "node scripts/codeql-local.mjs",
+    "codeql:model": "node scripts/codeql-local.mjs --model-only"
   },
   "engines": {
     "node": ">=22"
