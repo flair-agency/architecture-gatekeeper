@@ -34,6 +34,32 @@ route's conditions and exceptions together with the shared invariants.
 [Investigations](investigations/) preserve dated experiments and proposals.
 They are evidence and context, not amendments to the architecture contract.
 
+## Why repeatable review
+
+Repositories accumulate architecture decisions in canonical documents, but
+ordinary code review does not reliably detect when a proposed change moves a
+responsibility across an ownership boundary, weakens an acceptance rule, or
+introduces a capability that the repository has not authorized. Instructions
+alone describe the intended architecture; they do not provide a repeatable
+decision at design time, during implementation, and before merge.
+
+## Tracked work
+
+- Issue #1 rolls the mechanism out per consumer. Each adoption selects its own
+  authority and assurance policy under this contract.
+- Issue #19 improves latency and routing without weakening these invariants.
+- Issue #20 specifies the evidence format, attestation choice, protected-policy
+  routes and model-free CI verification needed to fully separate review
+  execution from acceptance verification.
+- Issue #111 defines missing-decision adoption under the
+  [OWNER_ADDITION / G0 contract](architecture.md#owner_addition--g0-route-for-missing-decisions-issue-111).
+- Issue #75 defines the owner-amendment governance route. Issue #78 develops
+  its core and explicit `G0` policy path; Issue #79 investigates a later
+  production attestation adapter for a higher grade.
+
+Issues may refine implementation choices, measurements and rollout. They do
+not amend the architecture contract.
+
 ## Two recovery flows
 
 ```mermaid

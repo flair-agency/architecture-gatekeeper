@@ -19,13 +19,6 @@ route's conditions and exceptions together with the shared invariants. The full
 
 ## Why
 
-Repositories accumulate architecture decisions in canonical documents, but
-ordinary code review does not reliably detect when a proposed change moves a
-responsibility across an ownership boundary, weakens an acceptance rule, or
-introduces a capability that the repository has not authorized. Instructions
-alone describe the intended architecture; they do not provide a repeatable
-decision at design time, during implementation, and before merge.
-
 Architecture Gatekeeper exists to make those semantic checks repeatable while
 leaving architecture ownership with each consumer repository. Its success is
 not “an AI job ran.” Its success is that a proposed change is evaluated against
@@ -1249,19 +1242,23 @@ Architecture-changing work follows this order:
 4. dogfood the affected path before push;
 5. use CI as an independent acceptance check, not as the first design review.
 
+## Canonical document organization (owner direction, 2026-10-04)
+
+The self contract may be split, preserving meaning, into `docs/architecture.md`
+and `docs/architecture/{authority-set,owner-addition,owner-amendment,review-execution,self-profile}.md`.
+All six are required selected authority, with stable IDs and no implicit
+precedence. Adopt this migration authorization before moving binding clauses.
+Then review the complete move, manifest, prompts, references and distribution
+under the predecessor selection; the new selection applies only after adoption.
+Preserve every requirement, exception, applicability, affected-member scope,
+assurance, freshness, compatibility and historical result. Verify clause
+coverage and complete local/CI inputs. Existing lifecycle T3/T5/T6 and acceptance
+govern each stage. This permits no limit increase, route activation or fallback;
+splitting does not extend the policy-selected self amendment target.
+
 ## Relationship to tracked work
 
-- Issue #1 rolls the mechanism out per consumer. Each adoption selects its own
-  authority and assurance policy under this contract.
-- Issue #19 improves latency and routing without weakening these invariants.
-- Issue #20 specifies the evidence format, attestation choice, protected-policy
-  routes and model-free CI verification needed to fully separate review
-  execution from acceptance verification.
-- Issue #111 defines missing-decision adoption under the
-  [OWNER_ADDITION / G0 contract](#owner_addition--g0-route-for-missing-decisions-issue-111).
-- Issue #75 defines the owner-amendment governance route. Issue #78 develops
-  its core and explicit `G0` policy path; Issue #79 investigates a later
-  production attestation adapter for a higher grade.
+The [documentation map](README.md#tracked-work) lists the related Issues.
 
 Those Issues may refine implementation choices, measurements and rollout. They
 must not be used as implicit amendments to this contract.
