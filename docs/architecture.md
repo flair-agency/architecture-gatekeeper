@@ -954,6 +954,24 @@ Implementation details are in the
 [proxy specification](investigations/2026-10-02-credential-isolated-review-proxy-boundary.md);
 it cannot independently amend this contract.
 
+#### Target Gemini CI authentication selection (Issue #252 owner decision, 2026-10-04)
+
+The first Gemini CI integration targets Vertex AI authenticated through Google
+Cloud Workload Identity Federation. The trusted CI side obtains the GitHub OIDC
+assertion and exchanges it for scoped, short-lived Google credentials; only the
+credential-isolated launcher/proxy uses the resulting provider credential.
+The reviewer runner does not inherit the assertion, provider credential or
+renewal capability through any explicitly supplied launch interface, under the
+proxy boundary above. Authentication failure leaves the selected review
+incomplete; it does not enable API-key authentication or another provider.
+
+This selects the authentication direction, not a deployed consumer profile.
+Exact Google identity bindings, project, region, model, thinking settings,
+credential lifetime/renewal and operational limits still require explicit
+selection and verification before activation. Codex remains supported; standby
+or parallel result adoption is separate work. This decision does not activate
+Gemini CI, establish semantic quality, or change acceptance and release gates.
+
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
 The GitHub-specific step-output adapter treats `GITHUB_OUTPUT` as a trusted
