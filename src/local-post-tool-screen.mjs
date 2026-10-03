@@ -192,6 +192,11 @@ function outputFor(result, eventMeta, newerPending = false, timing = {}) {
   };
   response.hookSpecificOutput.additionalContext = `Architecture screening (informational): ${JSON.stringify(body)}`;
   let serialized = JSON.stringify(response);
+  if (Buffer.byteLength(serialized) > OUTPUT_LIMIT && Object.hasOwn(body, 'reviewerExecution')) {
+    delete body.reviewerExecution;
+    response.hookSpecificOutput.additionalContext = `Architecture screening (informational): ${JSON.stringify(body)}`;
+    serialized = JSON.stringify(response);
+  }
   if (Buffer.byteLength(serialized) > OUTPUT_LIMIT) {
     const original = Buffer.from(body.summary);
     let length = original.length;
@@ -202,6 +207,23 @@ function outputFor(result, eventMeta, newerPending = false, timing = {}) {
       if (response.systemMessage) response.systemMessage = `Architecture screening ${result.status}: ${body.summary}`;
       serialized = JSON.stringify(response);
     }
+  }
+  if (Buffer.byteLength(serialized) > OUTPUT_LIMIT) {
+    for (const key of [...Object.keys(timing), ...Object.keys(eventMeta), 'newerCandidatePending']) delete body[key];
+    response.hookSpecificOutput.additionalContext = `Architecture screening (informational): ${JSON.stringify(body)}`;
+    serialized = JSON.stringify(response);
+  }
+  if (Buffer.byteLength(serialized) > OUTPUT_LIMIT) {
+    const minimal = {
+      status: body.status,
+      summary: '',
+      ...(body.reviewedRevision ? { reviewedRevision: body.reviewedRevision } : {}),
+      ...(body.requestId ? { requestId: body.requestId } : {}),
+      ...(body.snapshotSha256 ? { snapshotSha256: body.snapshotSha256 } : {})
+    };
+    response.hookSpecificOutput.additionalContext = `Architecture screening (informational): ${JSON.stringify(minimal)}`;
+    if (response.systemMessage) response.systemMessage = `Architecture screening ${body.status}:`;
+    serialized = JSON.stringify(response);
   }
   return serialized;
 }

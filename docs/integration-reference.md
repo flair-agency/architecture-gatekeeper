@@ -168,7 +168,8 @@ per worktree and retries the latest changed candidate on a later eligible
 event. It does not start a daemon or drain pending work after a review.
 Identical candidates are deduplicated. The serialized Hook
 context is capped at 4,000 UTF-8 bytes and reports status, summary, revision,
-and request/snapshot identity.
+and request/snapshot identity. Optional execution metadata is omitted when
+needed to keep the serialized output within that cap.
 
 This pilot is currently unsupported on native Windows because the current
 single-flight lock implementation excludes `win32` and assumes atomic hard-link

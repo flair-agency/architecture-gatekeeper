@@ -98,6 +98,26 @@ test('PostTool caller forwards explicit envelope format and reports adapter meta
   assert.match(result.output, /fixture-v1/);
 });
 
+test('oversized escaped and multibyte reviewer metadata stays within output cap', async t => {
+  const root = fixture(t);
+  writeFileSync(join(root, 'candidate.md'), 'screen with large metadata\n');
+  const result = await runFixtureHook(event(root), {
+    batchDelayMs: 0,
+    reviewerResultFormat: 'envelope',
+    reviewer: request => ({
+      decision: pass(request),
+      execution: { provider: 'fixture', backendReportedModel: `${'モデル"\\'.repeat(1600)}終` }
+    })
+  });
+  assert.equal(result.result.status, 'PASS');
+  assert.equal(result.result.summary, 'bounded finding');
+  assert.ok(Buffer.byteLength(result.output) <= 4000);
+  const context = JSON.parse(result.output).hookSpecificOutput.additionalContext;
+  for (const key of ['requestId', 'snapshotSha256', 'reviewedRevision']) assert.match(context, new RegExp(key));
+  assert.match(context, /bounded finding/);
+  assert.doesNotMatch(context, /reviewerExecution/);
+});
+
 test('unsupported and oversized candidates are incomplete without calling reviewer', async t => {
   const root = fixture(t);
   writeFileSync(join(root, 'untracked.txt'), 'new\n');
