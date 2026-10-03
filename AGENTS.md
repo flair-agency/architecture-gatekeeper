@@ -2,7 +2,7 @@
 
 ## Authority
 
-- `docs/architecture.md` is the normative architecture and assurance contract. Read it before changing architecture, trust boundaries, review decisions, evidence, or acceptance policy; implementation and discussion materials do not amend it.
+- `docs/architecture.md` and the five required members in `docs/architecture/` form the normative architecture and assurance contract selected by `.codex/gatekeeper/authorities.json`. Read the complete selected Set before changing architecture, trust boundaries, review decisions, evidence, or acceptance policy; implementation and discussion materials do not amend it.
 - Escalate unresolved owner decisions. Record an authorized decision in canonical authority before implementing a new responsibility or assurance rule. Do not infer a consumer's architecture from this shared package.
 
 ## Agent roles

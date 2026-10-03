@@ -99,6 +99,15 @@ test('retrieves bounded zip bytes from the expected artifact and run', async () 
   assert.equal(requests.find(request => request.url.endsWith('/actions/artifacts/88/zip')).options.redirect, 'follow');
 });
 
+test('fetches compact associated-PR metadata and rejects a mismatched numeric identity', async () => {
+  const f = fixture();
+  for (const side of ['base', 'head']) f.run.pull_requests[0][side].repo = {
+    id: 7, name: 'example', url: `https://api.github.com/repos/${expected.repository}` };
+  assert.equal((await retrieve(f)).status, 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
+  f.run.pull_requests[0].base.repo.id = 8;
+  assert.equal((await retrieve(f)).status, 'INCOMPLETE');
+});
+
 test('supports captured empty PR associations and protected trigger metadata for later exact-record binding', async () => {
   const f = capturedSelfBlockFixture();
   const result = await retrieve(f, { expected: f.captured });

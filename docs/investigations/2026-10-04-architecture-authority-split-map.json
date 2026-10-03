@@ -1,0 +1,417 @@
+{
+  "version": 1,
+  "sourceRevision": "504628050516cf7feeeb2b18509641af34b03150",
+  "source": "canonical stage-one organization authorization adopted in PR #311; single-member migration predecessor",
+  "sourceSha256": "9823492f82a3e0a9be420b99cb42b5ca9f70aeb4734c65098825bf5e12748a73",
+  "sourceBytes": 81731,
+  "blocks": [
+    {
+      "heading": "# Architecture Gatekeeper contract",
+      "slug": "architecture-gatekeeper-contract",
+      "sourceFirstLine": 1,
+      "sourceLastLine": 12,
+      "destination": "docs/architecture.md",
+      "disposition": "normative-set introduction and required-member index",
+      "sourceSha256": "51c6455b9b5fecf72cf2c103680017d3a4f37a64399847af79af292faa260c8b",
+      "destinationBlockSha256": "cc330097b83929c7906901335ca8fb335ce1465faf09e95c5d31306c74368342"
+    },
+    {
+      "heading": "## Contract navigation",
+      "slug": "contract-navigation",
+      "sourceFirstLine": 13,
+      "sourceLastLine": 19,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "8367df6c9f0ef4a95ec26db1faf0695dfe47e629071e5d12ef7a2ed7bd7c6809",
+      "destinationBlockSha256": "8367df6c9f0ef4a95ec26db1faf0695dfe47e629071e5d12ef7a2ed7bd7c6809"
+    },
+    {
+      "heading": "## Why",
+      "slug": "why",
+      "sourceFirstLine": 20,
+      "sourceLastLine": 33,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "826700932209940e01d27147332e80e0a27beebcd1117a7dca63098a56787cdd",
+      "destinationBlockSha256": "826700932209940e01d27147332e80e0a27beebcd1117a7dca63098a56787cdd"
+    },
+    {
+      "heading": "## What",
+      "slug": "what",
+      "sourceFirstLine": 34,
+      "sourceLastLine": 35,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "0732cdf6f8b467601da7228213bd706c924a29008510f172a72e9249830c88fb",
+      "destinationBlockSha256": "0732cdf6f8b467601da7228213bd706c924a29008510f172a72e9249830c88fb"
+    },
+    {
+      "heading": "### Consumer authority",
+      "slug": "consumer-authority",
+      "sourceFirstLine": 36,
+      "sourceLastLine": 49,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "3a9abbd8c675359a3028bfe07b0ea8dfb2ec8fcc6dc0c64317078c9cfb25ce96",
+      "destinationBlockSha256": "3a9abbd8c675359a3028bfe07b0ea8dfb2ec8fcc6dc0c64317078c9cfb25ce96"
+    },
+    {
+      "heading": "### Target contract: distributed authority",
+      "slug": "target-contract-distributed-authority",
+      "sourceFirstLine": 50,
+      "sourceLastLine": 106,
+      "destination": "docs/architecture/authority-set.md",
+      "disposition": "unchanged",
+      "sourceSha256": "7c2867561abcdd83d01fe08149884db4f8c7d6da18b7503fa4fa02748f71e24f",
+      "destinationBlockSha256": "7c2867561abcdd83d01fe08149884db4f8c7d6da18b7503fa4fa02748f71e24f"
+    },
+    {
+      "heading": "### Initial distributed-authority CI bounds (Issue #51 owner decision)",
+      "slug": "initial-distributed-authority-ci-bounds-issue-51-owner-decision",
+      "sourceFirstLine": 107,
+      "sourceLastLine": 125,
+      "destination": "docs/architecture/authority-set.md",
+      "disposition": "unchanged",
+      "sourceSha256": "17f18f68b7cb7d96f6bc728ae3b14770a565bee88920bf27102937b8a64ecbef",
+      "destinationBlockSha256": "17f18f68b7cb7d96f6bc728ae3b14770a565bee88920bf27102937b8a64ecbef"
+    },
+    {
+      "heading": "### Initial local distributed-authority bounds (Issue #51 owner decision)",
+      "slug": "initial-local-distributed-authority-bounds-issue-51-owner-decision",
+      "sourceFirstLine": 126,
+      "sourceLastLine": 151,
+      "destination": "docs/architecture/authority-set.md",
+      "disposition": "terminal blank line removed",
+      "sourceSha256": "b1c7019c5def575f05c79f66bbe6110b4b606dd240122f58e66bfab0cde11e22",
+      "destinationBlockSha256": "504d11de7788600dc121d92ca6c2639956ffecd48de12829395d006acbd57407"
+    },
+    {
+      "heading": "### Shared mechanism",
+      "slug": "shared-mechanism",
+      "sourceFirstLine": 152,
+      "sourceLastLine": 157,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "29e622b6578a60421e43bc16b60edbf2bca4a75449e9f61a99dc6b2ba92767e4",
+      "destinationBlockSha256": "29e622b6578a60421e43bc16b60edbf2bca4a75449e9f61a99dc6b2ba92767e4"
+    },
+    {
+      "heading": "### Acceptance authority and host enforcement boundary",
+      "slug": "acceptance-authority-and-host-enforcement-boundary",
+      "sourceFirstLine": 158,
+      "sourceLastLine": 186,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "a1aa19716f2063a158a7843b2f01f249e7774e00ca7f300b1dff5b92f80bf31e",
+      "destinationBlockSha256": "a1aa19716f2063a158a7843b2f01f249e7774e00ca7f300b1dff5b92f80bf31e"
+    },
+    {
+      "heading": "### OWNER_ADDITION / G0 route for missing decisions (Issue #111)",
+      "slug": "owner_addition--g0-route-for-missing-decisions-issue-111",
+      "sourceFirstLine": 187,
+      "sourceLastLine": 238,
+      "destination": "docs/architecture/owner-addition.md",
+      "disposition": "unchanged",
+      "sourceSha256": "1798ce79d8fd9691d26d721151bd3053fc01099199cfc69b24c67653b9ec0732",
+      "destinationBlockSha256": "1798ce79d8fd9691d26d721151bd3053fc01099199cfc69b24c67653b9ec0732"
+    },
+    {
+      "heading": "### Target multi-document OWNER_ADDITION route (Issue #119 owner decision)",
+      "slug": "target-multi-document-owner_addition-route-issue-119-owner-decision",
+      "sourceFirstLine": 239,
+      "sourceLastLine": 321,
+      "destination": "docs/architecture/owner-addition.md",
+      "disposition": "unchanged",
+      "sourceSha256": "390c2bbae13c15a950c489dbeb3ebf746ff533aeb2af1892f6a7278808239689",
+      "destinationBlockSha256": "390c2bbae13c15a950c489dbeb3ebf746ff533aeb2af1892f6a7278808239689"
+    },
+    {
+      "heading": "#### v0.5.1 public fixture full-cycle release gate (owner decision)",
+      "slug": "v051-public-fixture-full-cycle-release-gate-owner-decision",
+      "sourceFirstLine": 322,
+      "sourceLastLine": 343,
+      "destination": "docs/architecture/owner-addition.md",
+      "disposition": "unchanged",
+      "sourceSha256": "40c4221063612bfa817d53bee73d53cd8fbaa36cbb8436ff29c2b34482685c18",
+      "destinationBlockSha256": "40c4221063612bfa817d53bee73d53cd8fbaa36cbb8436ff29c2b34482685c18"
+    },
+    {
+      "heading": "### Target owner-amendment governance (Issue #75 owner decision)",
+      "slug": "target-owner-amendment-governance-issue-75-owner-decision",
+      "sourceFirstLine": 344,
+      "sourceLastLine": 392,
+      "destination": "docs/architecture/owner-amendment.md",
+      "disposition": "relative links retargeted",
+      "sourceSha256": "9dec64291cfd29872e7adf1b4ed593a582b3c875e9a40fdfc0f98ac03933f42d",
+      "destinationBlockSha256": "dcb22c2d4fb958bbedc5eca1ead455696a592f052142904b6e42ce02a77b5fa9"
+    },
+    {
+      "heading": "#### Self-v1 semantic eligibility input and receipt (owner decision)",
+      "slug": "self-v1-semantic-eligibility-input-and-receipt-owner-decision",
+      "sourceFirstLine": 393,
+      "sourceLastLine": 552,
+      "destination": "docs/architecture/owner-amendment.md",
+      "disposition": "unchanged",
+      "sourceSha256": "bfa1d42b081e1f2c23bce5c58f7b6453efee84feaf5e2fc37a0a08690efc7a0f",
+      "destinationBlockSha256": "bfa1d42b081e1f2c23bce5c58f7b6453efee84feaf5e2fc37a0a08690efc7a0f"
+    },
+    {
+      "heading": "### Separate exact-claim authorization and revocation (owner decision)",
+      "slug": "separate-exact-claim-authorization-and-revocation-owner-decision",
+      "sourceFirstLine": 553,
+      "sourceLastLine": 640,
+      "destination": "docs/architecture/owner-amendment.md",
+      "disposition": "terminal blank line removed",
+      "sourceSha256": "d249c4a312499ac2b31949702206a1a2f6dbf430dd3dab156fff3f89c0143748",
+      "destinationBlockSha256": "87bd4314d97534ccc6191e5f3ad22751ef29775f4d10af8e4cf24dfeca56b73e"
+    },
+    {
+      "heading": "### OWNER_ADDITION adoption and assurance dimensions ([Issue #121](https://github.com/flair-agency/architecture-gatekeeper/issues/121) owner decision)",
+      "slug": "owner_addition-adoption-and-assurance-dimensions-issue-121-owner-decision",
+      "sourceFirstLine": 641,
+      "sourceLastLine": 768,
+      "destination": "docs/architecture/owner-addition.md",
+      "disposition": "terminal blank line removed",
+      "sourceSha256": "7439f14a9b0b327fbd6464c65bb806a765204fb13101032f6ee6e540e1274914",
+      "destinationBlockSha256": "695dcfee27e328a2cbe97fcc660269d6a8b8c9cd0dda7bc8169a638a4b7996ed"
+    },
+    {
+      "heading": "### Three separate concepts and target contracts",
+      "slug": "three-separate-concepts-and-target-contracts",
+      "sourceFirstLine": 769,
+      "sourceLastLine": 775,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "10161d7d73e1cdf1438df5ffe0885647f65cb2362529b77013a2c2d72fbea1e6",
+      "destinationBlockSha256": "10161d7d73e1cdf1438df5ffe0885647f65cb2362529b77013a2c2d72fbea1e6"
+    },
+    {
+      "heading": "## Conceptual operation",
+      "slug": "conceptual-operation",
+      "sourceFirstLine": 776,
+      "sourceLastLine": 793,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "ce0ffad05fef9a7ec7844713445c5cccd677586faeac1e4d2866a401ed801d5c",
+      "destinationBlockSha256": "ce0ffad05fef9a7ec7844713445c5cccd677586faeac1e4d2866a401ed801d5c"
+    },
+    {
+      "heading": "### Local and manual review",
+      "slug": "local-and-manual-review",
+      "sourceFirstLine": 794,
+      "sourceLastLine": 867,
+      "destination": "docs/architecture/review-execution.md",
+      "disposition": "unchanged",
+      "sourceSha256": "4e87fce52c207d7763f0708af588bc730af350ac44a3f3ec5fc7da0fed551e81",
+      "destinationBlockSha256": "4e87fce52c207d7763f0708af588bc730af350ac44a3f3ec5fc7da0fed551e81"
+    },
+    {
+      "heading": "#### Target local provider-independent execution (Issue #265 owner direction)",
+      "slug": "target-local-provider-independent-execution-issue-265-owner-direction",
+      "sourceFirstLine": 868,
+      "sourceLastLine": 891,
+      "destination": "docs/architecture/review-execution.md",
+      "disposition": "unchanged",
+      "sourceSha256": "f494618427d255a0c2705e3e0e25d109044dd73b64dfe32d60b080a33a794634",
+      "destinationBlockSha256": "f494618427d255a0c2705e3e0e25d109044dd73b64dfe32d60b080a33a794634"
+    },
+    {
+      "heading": "### CI model review",
+      "slug": "ci-model-review",
+      "sourceFirstLine": 892,
+      "sourceLastLine": 909,
+      "destination": "docs/architecture/review-execution.md",
+      "disposition": "unchanged",
+      "sourceSha256": "52fae7b3ba0c32b3bf63030941a898678a363838e6f30d71e42fea7af9864305",
+      "destinationBlockSha256": "52fae7b3ba0c32b3bf63030941a898678a363838e6f30d71e42fea7af9864305"
+    },
+    {
+      "heading": "#### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)",
+      "slug": "target-api-wif-ci-authentication-boundary-issue-218-owner-decision-2026-09-30",
+      "sourceFirstLine": 910,
+      "sourceLastLine": 913,
+      "destination": "docs/architecture/review-execution.md",
+      "disposition": "unchanged",
+      "sourceSha256": "45d51bc1cf4fff7c310910ad4ece31969405d198e0fcc855ffa0d033709a2aef",
+      "destinationBlockSha256": "45d51bc1cf4fff7c310910ad4ece31969405d198e0fcc855ffa0d033709a2aef"
+    },
+    {
+      "heading": "#### Target multi-provider credential-isolated review proxy boundary (Issue #252 owner decision, 2026-10-02)",
+      "slug": "target-multi-provider-credential-isolated-review-proxy-boundary-issue-252-owner-decision-2026-10-02",
+      "sourceFirstLine": 914,
+      "sourceLastLine": 940,
+      "destination": "docs/architecture/review-execution.md",
+      "disposition": "relative links retargeted",
+      "sourceSha256": "d2129330f8676cd1da99c10ea2c8bc189a5daa52eee4e426686aa87c2f65cbed",
+      "destinationBlockSha256": "26ca9cf88de56c2d59b9fb9e3903a8a0912b6b047c9e458a58476108d46c5cc1"
+    },
+    {
+      "heading": "#### Target Gemini CI authentication selection (Issue #252 owner decision, 2026-10-04)",
+      "slug": "target-gemini-ci-authentication-selection-issue-252-owner-decision-2026-10-04",
+      "sourceFirstLine": 941,
+      "sourceLastLine": 958,
+      "destination": "docs/architecture/review-execution.md",
+      "disposition": "unchanged",
+      "sourceSha256": "9fabc54f5b5b1c88f6d7f56222c06c40b61d0a33435e1e0d3d6489e6d74c6566",
+      "destinationBlockSha256": "9fabc54f5b5b1c88f6d7f56222c06c40b61d0a33435e1e0d3d6489e6d74c6566"
+    },
+    {
+      "heading": "#### GitHub step-output sink (owner decision, 2026-10-03)",
+      "slug": "github-step-output-sink-owner-decision-2026-10-03",
+      "sourceFirstLine": 959,
+      "sourceLastLine": 975,
+      "destination": "docs/architecture/review-execution.md",
+      "disposition": "unchanged",
+      "sourceSha256": "e76fcef85a4df9c2b1016246d193d4f987afda5fa97bfb131681941ac9314f02",
+      "destinationBlockSha256": "e76fcef85a4df9c2b1016246d193d4f987afda5fa97bfb131681941ac9314f02"
+    },
+    {
+      "heading": "#### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)",
+      "slug": "target-self-only-github-freepublic-reporter-issue-210-a-owner-decision",
+      "sourceFirstLine": 976,
+      "sourceLastLine": 981,
+      "destination": "docs/architecture/self-profile.md",
+      "disposition": "unchanged",
+      "sourceSha256": "7fd4c996533e262b66eec0206fd3d89e9b57a8dafe1f21088381fcbfcc7229ee",
+      "destinationBlockSha256": "7fd4c996533e262b66eec0206fd3d89e9b57a8dafe1f21088381fcbfcc7229ee"
+    },
+    {
+      "heading": "#### Target: legacy v1 CI authority repair (Issue #120 owner decision)",
+      "slug": "target-legacy-v1-ci-authority-repair-issue-120-owner-decision",
+      "sourceFirstLine": 982,
+      "sourceLastLine": 1033,
+      "destination": "docs/architecture/review-execution.md",
+      "disposition": "terminal blank line removed",
+      "sourceSha256": "07d7d99dd2c6324a983d7bae8bdfe79b1540e6251974ddfe353d3832ef6c289b",
+      "destinationBlockSha256": "0038daab9afd9dc7f29dab43a2ba59e5a2b50ad3a62069e6bfb7676766d823ff"
+    },
+    {
+      "heading": "### Current acceptance mechanism",
+      "slug": "current-acceptance-mechanism",
+      "sourceFirstLine": 1034,
+      "sourceLastLine": 1053,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "94e1c65f17d80c47c3ae36b466d14927e0642794e5baf344cda3c926debb65bf",
+      "destinationBlockSha256": "94e1c65f17d80c47c3ae36b466d14927e0642794e5baf344cda3c926debb65bf"
+    },
+    {
+      "heading": "### Target evidence and acceptance contract",
+      "slug": "target-evidence-and-acceptance-contract",
+      "sourceFirstLine": 1054,
+      "sourceLastLine": 1075,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "ae72c0f72795b418c72b41dee1684cc5dbe39ae85e4fab6c5211b0a5a4e30da1",
+      "destinationBlockSha256": "ae72c0f72795b418c72b41dee1684cc5dbe39ae85e4fab6c5211b0a5a4e30da1"
+    },
+    {
+      "heading": "### Canonical authority lifecycle",
+      "slug": "canonical-authority-lifecycle",
+      "sourceFirstLine": 1076,
+      "sourceLastLine": 1085,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "cd190b88038dfff0c503d8de54c6930e0d7b84593b27aeeeaf865c507b9007d2",
+      "destinationBlockSha256": "cd190b88038dfff0c503d8de54c6930e0d7b84593b27aeeeaf865c507b9007d2"
+    },
+    {
+      "heading": "## Normative invariants",
+      "slug": "normative-invariants",
+      "sourceFirstLine": 1086,
+      "sourceLastLine": 1130,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "a4849d07d0adf2f3fc6d27ac7bd7680c0724d880db0476358f6568adde426bcb",
+      "destinationBlockSha256": "a4849d07d0adf2f3fc6d27ac7bd7680c0724d880db0476358f6568adde426bcb"
+    },
+    {
+      "heading": "## Non-responsibilities",
+      "slug": "non-responsibilities",
+      "sourceFirstLine": 1131,
+      "sourceLastLine": 1156,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "69611029bf847cdc525e3235b525eadc67eba803ce0483239cb5390b52148e08",
+      "destinationBlockSha256": "69611029bf847cdc525e3235b525eadc67eba803ce0483239cb5390b52148e08"
+    },
+    {
+      "heading": "## Dogfooding and change discipline",
+      "slug": "dogfooding-and-change-discipline",
+      "sourceFirstLine": 1157,
+      "sourceLastLine": 1158,
+      "destination": "docs/architecture/self-profile.md",
+      "disposition": "unchanged",
+      "sourceSha256": "7a782bd39c8c03b4d1b286e195c52401f87023ffeb51c27d343dd7a74c2799ba",
+      "destinationBlockSha256": "7a782bd39c8c03b4d1b286e195c52401f87023ffeb51c27d343dd7a74c2799ba"
+    },
+    {
+      "heading": "### Development sequence and v0.6.0 self reference profile (owner decision)",
+      "slug": "development-sequence-and-v060-self-reference-profile-owner-decision",
+      "sourceFirstLine": 1159,
+      "sourceLastLine": 1244,
+      "destination": "docs/architecture/self-profile.md",
+      "disposition": "terminal blank line removed",
+      "sourceSha256": "6672673f8c443923b6f8992e62f6d1fecec4564f57bbf3044aae2d9151dd1dd9",
+      "destinationBlockSha256": "3eeeebae09f3513b159e51f97e9d058932fe655e7b61c73412538bf4e0bb6f37"
+    },
+    {
+      "heading": "## Canonical document organization (owner direction, 2026-10-04)",
+      "slug": "canonical-document-organization-owner-direction-2026-10-04",
+      "sourceFirstLine": 1245,
+      "sourceLastLine": 1258,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "73dd8a5f69a86c250abc0e1caa8a437a17f0a3a1c9f01fdd911a24f307877301",
+      "destinationBlockSha256": "73dd8a5f69a86c250abc0e1caa8a437a17f0a3a1c9f01fdd911a24f307877301"
+    },
+    {
+      "heading": "## Relationship to tracked work",
+      "slug": "relationship-to-tracked-work",
+      "sourceFirstLine": 1259,
+      "sourceLastLine": 1264,
+      "destination": "docs/architecture.md",
+      "disposition": "unchanged",
+      "sourceSha256": "755cb6411a55a8a8bcdd225f8833590e8919b516f59f634193e7a32bd9b90b5a",
+      "destinationBlockSha256": "755cb6411a55a8a8bcdd225f8833590e8919b516f59f634193e7a32bd9b90b5a"
+    }
+  ],
+  "members": [
+    {
+      "id": "architecture-contract",
+      "path": "docs/architecture.md",
+      "byteLength": 21422,
+      "sha256": "47d9afe1351a4894ca8563c9f2fb87480dbebc614f9810e368aab3f4556301ba"
+    },
+    {
+      "id": "architecture-authority-set",
+      "path": "docs/architecture/authority-set.md",
+      "byteLength": 6863,
+      "sha256": "7ae5930a76090c2c11f382ef7b5a432f136448e17bdb47e38babb2d31bd16b28"
+    },
+    {
+      "id": "architecture-owner-addition",
+      "path": "docs/architecture/owner-addition.md",
+      "byteLength": 18063,
+      "sha256": "c9e06a9c838f9aba6a18991b5b72729d6cfc49048beb05f163602912cb90d191"
+    },
+    {
+      "id": "architecture-owner-amendment",
+      "path": "docs/architecture/owner-amendment.md",
+      "byteLength": 19793,
+      "sha256": "678002be8b13c02d43e4f838174f7aa3f647dc9a97440c5a7d8ae9f22a14ea9f"
+    },
+    {
+      "id": "architecture-review-execution",
+      "path": "docs/architecture/review-execution.md",
+      "byteLength": 15401,
+      "sha256": "10623ff76492427402736009936e5105a9b778909ec68d5fba3241bc94631328"
+    },
+    {
+      "id": "architecture-self-profile",
+      "path": "docs/architecture/self-profile.md",
+      "byteLength": 7150,
+      "sha256": "58d7904651dda51a3b5cb49290bcb95a4ee7a958313a908472249efea8b2ca77"
+    }
+  ]
+}
