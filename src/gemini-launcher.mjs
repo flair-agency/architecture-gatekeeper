@@ -88,8 +88,8 @@ export async function runIsolatedGeminiSession(runnerArgv = process.argv.slice(2
 
   for (let i = 0; i < runnerArgv.length; i++) {
     const arg = runnerArgv[i];
-    if (arg === '--api-key' && (!runnerArgv[i + 1] || runnerArgv[i + 1].startsWith('--'))) throw new Error('Missing --api-key credential value.');
-    if (arg === '--access-token' && (!runnerArgv[i + 1] || runnerArgv[i + 1].startsWith('--'))) throw new Error('Missing --access-token credential value.');
+    if (arg === '--api-key' && (!runnerArgv[i + 1]?.trim() || runnerArgv[i + 1].startsWith('--'))) throw new Error('Missing --api-key credential value.');
+    if (arg === '--access-token' && (!runnerArgv[i + 1]?.trim() || runnerArgv[i + 1].startsWith('--'))) throw new Error('Missing --access-token credential value.');
     if (arg === '--api-key' && i + 1 < runnerArgv.length) {
       cliApiKey = runnerArgv[++i];
       continue;

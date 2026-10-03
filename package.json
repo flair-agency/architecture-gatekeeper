@@ -43,7 +43,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "codeql": "node scripts/codeql-local.mjs"
   },
   "engines": {
     "node": ">=22"

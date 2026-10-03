@@ -35,6 +35,8 @@ Use the [issue and pull request workflow](docs/issue-pr-workflow.md) for the
 required issue criteria, the five pull request sections, partial delivery,
 dependency tracking, and owner-decision handling. GitHub CLI/API users must
 include the same issue sections and PR headings used by the web templates.
+For release work, use the [Release planning form](.github/ISSUE_TEMPLATE/release_planning.yml)
+and follow the [release planning procedure](docs/release.md#plan-a-release).
 
 Follow [`docs/development.md`](docs/development.md) for repository layout,
 distribution checks and architecture-change rollout requirements. Changes to

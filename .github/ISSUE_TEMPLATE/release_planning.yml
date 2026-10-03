@@ -1,0 +1,96 @@
+name: Release planning
+description: Plan a release using explicit scope, evidence, scenarios and owner agreement
+title: "Release: "
+labels: []
+body:
+  - type: textarea
+    id: outcome_scope
+    attributes:
+      label: Outcome and scope
+      description: State the release outcome, included/excluded delivery issues, criteria, dependencies, compatibility/adoption evidence, and explicit deferrals.
+      placeholder: |
+        Outcome:
+        Included issues/features and acceptance criteria:
+        Excluded/deferred work:
+        Dependencies and critical path:
+        Required assurance/adoption/compatibility evidence:
+        Unresolved owner decisions (link canonical authority or real issue):
+    validations:
+      required: true
+  - type: textarea
+    id: version
+    attributes:
+      label: Version and compatibility rationale
+      description: Explain the package/API/CLI/configuration/workflow/Skill impact, migration guidance, version and channel. Distinguish project 0.x policy from SemVer requirements.
+      placeholder: |
+        Proposed version/channel (proposal until agreed):
+        Public compatibility impact and migration:
+        Rationale under https://semver.org/ and this project's 0.x policy:
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Work, estimates, and evidence
+      description: Separate observed facts, assumptions and unknowns. Link issue criteria and comparable dated observations; separate effort, waiting, capacity and parallel work.
+      placeholder: |
+        Remaining tasks/criteria and owners:
+        Evidence source, observed date, revision, workflow run/attempt/job/step:
+        Measurements: test categories (non-overlapping), packaging, review, waiting, manual work, feedback, setup, recovery:
+        Assumptions, unknowns, capacity/calendar, risks and cases outside any bound:
+        Avoid double-counting parent jobs/steps or concurrent elapsed time.
+    validations:
+      required: true
+  - type: textarea
+    id: scenarios
+    attributes:
+      label: Three scenarios
+      description: Record active effort and elapsed-time range separately. State evidence and assumptions; an unbounded dependency means no defensible longest date.
+      placeholder: |
+        Estimation baseline datetime + timezone:
+        Shortest — proposed date + timezone; effort / elapsed / smooth-execution assumptions:
+        Target — proposed date + timezone; challenging effort / elapsed / difficulty and rework evidence:
+        Longest recovery deadline — proposed date + timezone only if defensible; bounded stalls, trigger, recovery action/owner and elapsed bound:
+        Unbounded dependencies or cases outside bound (say “unknown” where appropriate):
+    validations:
+      required: true
+  - type: textarea
+    id: preview_recovery
+    attributes:
+      label: Preview, feedback, and recovery
+      description: State why preview is useful, or why none is needed. For each preview record ship criteria, limitations, channel, observation/feedback and update/recovery. Published artifacts are immutable.
+      placeholder: |
+        Preview need/content/cadence/channel and ship criteria (or none and why):
+        Supported/experimental limitations and promotion criteria:
+        Feedback record: version, SHA, consumer pins, reproduction, impact, evidence and owner:
+        Compatibility, update/recovery procedure and corrective-release approach:
+        Feedback-driven scope/date changes and renewed agreement:
+    validations:
+      required: true
+  - type: textarea
+    id: agreement_checkpoints
+    attributes:
+      label: Owner agreement and checkpoints
+      description: A proposed date is not an agreed goal. Record owner and agreement date before setting a milestone; update history at scope agreement, previews/feedback, freeze, publish and follow-up.
+      placeholder: |
+        Proposed target date and assumptions:
+        Owner agreement (owner/date/scope/target/capacity) — leave pending until agreed:
+        Milestone URL/date (only after agreement):
+        Checkpoints/evidence/blockers/reforecast triggers:
+        Change history (date, reason, scope/estimate/date impact, renewed agreement):
+    validations:
+      required: true
+  - type: textarea
+    id: hotfix_learning
+    attributes:
+      label: Hotfix and learning
+      description: Complete hotfix fields when applicable; otherwise state not applicable. Include a retrospective after publication and owned next-release effectiveness check.
+      placeholder: |
+        Hotfix: impact/urgency evidence, affected supported version/channel, minimal fix and regression coverage:
+        Expedited reviews/approvals/checks, update/recovery, communication/monitoring, forward-ports:
+        Planned release interruption and reforecast:
+        Retrospective: plan versus actual; causes by implementation/test/package/review/wait/manual/feedback/recovery:
+        Improvement issue/owner and how the next release will measure effect:
+        Candidate SHA, run links, package/version, registry and GitHub readbacks (fill when available):
+    validations:
+      required: true

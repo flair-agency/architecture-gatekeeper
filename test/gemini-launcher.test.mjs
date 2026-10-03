@@ -358,7 +358,7 @@ test('supervisor termination is forwarded to a detached runner', { skip: process
 
 
 test('missing credential values reject before consuming adjacent flags', async () => {
-  for (const args of [['--api-key','--access-token','secret'], ['--access-token','--model','gemini-2.5-flash'], ['--api-key'], ['--access-token=']]) {
+  for (const args of [['--api-key','--access-token','secret'], ['--access-token','--model','gemini-2.5-flash'], ['--api-key'], ['--access-token='], ['--api-key', '   '], ['--access-token', '   ']]) {
     await assert.rejects(runIsolatedGeminiSession(args), /Missing .*credential value/);
   }
 });

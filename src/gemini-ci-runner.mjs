@@ -144,7 +144,7 @@ export function resolveReviewRequest(options, root = process.cwd()) {
 
   const prompt = readFileSync(safePromptPath, 'utf8');
   const schema = JSON.parse(readFileSync(safeSchemaPath, 'utf8'));
-  const model = options.model || process.env.MODEL || 'gemini-2.5-flash';
+  const model = options.model || process.env.MODEL || process.env.REVIEW_MODEL || 'gemini-2.5-flash';
   const timeoutMs = Number(options.timeout || process.env.TIMEOUT_MS || 120000);
 
   const rawBudget = options['thinking-budget'] || options.budget || process.env.THINKING_BUDGET;
@@ -241,7 +241,7 @@ export async function runGeminiCiReview(argv = process.argv.slice(2), cwd = proc
   // Requirement 3: Complete request preflight before contacting a provider:
   // For revision-bound local requests verify request integrity, committed configuration and complete authority selection through shared mechanisms.
   // Treat the prompt/schema-only standalone path as a separately labeled compatibility route with no protected-authority claim.
-  const isRevisionBound = Boolean(request.reviewedRevision || request.authoritySet);
+  const isRevisionBound = ['reviewedRevision', 'authoritySet', 'requestId', 'task'].some(key => Object.hasOwn(request, key));
   if (isRevisionBound) {
     await preflightReviewRequest(request, 'gemini');
   } else {

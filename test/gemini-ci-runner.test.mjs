@@ -315,11 +315,14 @@ test('revision-bound request mutations and Codex selection are rejected before f
   try {
     for (const change of [
       { prompt: request.prompt + 'tampered' },
+      { reviewedRevision: '' },
+      { reviewedRevision: null },
+      { reviewedRevision: undefined },
       { schema: { type: 'object' } },
       { reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024 } },
     ]) {
       writeFileSync(join(dir, 'request.json'), JSON.stringify({ ...request, ...change }));
-      await assert.rejects(runGeminiCiReview(['--request-json', 'request.json'], dir), /request was modified/);
+      await assert.rejects(runGeminiCiReview(['--request-json', 'request.json'], dir), /request was modified|request is unsupported/);
     }
     writeFileSync(join(dir, 'request.json'), JSON.stringify(request));
     await assert.rejects(runGeminiCiReview(['--request-json', 'request.json'], dir), /recorded gemini provider selection/);
@@ -408,4 +411,23 @@ test('review output rejects repository writes and publishes from checkout cwd', 
  test('runner preserves equals-form values and rejects explicit alternate providers before input reads', () => {
   assert.deepEqual(parseArgs(['--request-json=a=b.json', '--model=gemini-2.5-flash', '--provider=codex']), { 'request-json': 'a=b.json', model: 'gemini-2.5-flash', provider: 'codex' });
   for (const provider of ['codex', 'other', '']) assert.throws(() => resolveReviewRequest({ provider, prompt: 'missing', schema: 'missing' }), /explicit provider/);
+});
+
+
+test('standalone runner model selection matches launcher REVIEW_MODEL precedence', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gemini-model-env-'));
+  const oldModel = process.env.MODEL, oldReviewModel = process.env.REVIEW_MODEL;
+  try {
+    writeFileSync(join(dir, 'prompt.md'), 'Review');
+    writeFileSync(join(dir, 'schema.json'), JSON.stringify({ type: 'object' }));
+    delete process.env.MODEL;
+    process.env.REVIEW_MODEL = 'gemini-2.5-pro';
+    assert.equal(resolveReviewRequest({ prompt: 'prompt.md', schema: 'schema.json' }, dir).reviewer.model, 'gemini-2.5-pro');
+    process.env.MODEL = 'gemini-2.5-flash';
+    assert.equal(resolveReviewRequest({ prompt: 'prompt.md', schema: 'schema.json' }, dir).reviewer.model, 'gemini-2.5-flash');
+  } finally {
+    if (oldModel === undefined) delete process.env.MODEL; else process.env.MODEL = oldModel;
+    if (oldReviewModel === undefined) delete process.env.REVIEW_MODEL; else process.env.REVIEW_MODEL = oldReviewModel;
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

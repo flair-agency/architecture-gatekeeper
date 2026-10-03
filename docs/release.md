@@ -9,6 +9,227 @@ each release's notes in a temporary file outside the repository, pass that
 file to `gh release create`, and do not keep duplicate changelog or release
 notes files in the repository.
 
+## Plan a release
+
+Start a release planning issue using the
+[Release planning form](../.github/ISSUE_TEMPLATE/release_planning.yml). Use
+this section to plan scope, evidence and timing; use the procedures below to
+freeze, publish and verify an artifact. A plan, milestone or preview does not
+change the normative [architecture contract](architecture.md), select a
+consumer route, or waive a publication gate. Record unresolved owner choices
+as open and get them recorded in canonical authority before implementing a
+new responsibility or assurance rule.
+
+### Scope and evidence
+
+List included and excluded delivery issues, acceptance criteria, dependencies
+and the critical path. Identify required assurance, adoption and compatibility
+evidence as well as any explicit deferrals. Distinguish shipping code from
+consumer activation: publishing a package does not change a consumer's
+protected policy. A scope change records its reason, affected criteria,
+dependencies and schedule impact in the planning issue, then revises the
+scenarios and agreement history before treating the new plan as current.
+
+For every estimate, preserve the observation date and source, or label it an
+assumption or unknown. Gather elapsed CI time by job, test category, archive
+packing/install/smoke, review turnaround, external setup and approvals,
+consumer verification, manual work, feedback handling, known failures and
+recovery. Separate active effort from elapsed waiting and calendar capacity.
+Do not count shared checks twice or turn a timeout into a measured review
+duration. Reuse recent comparable work only when its scope and environment are
+relevant; revise stale evidence. Keep reproducible command/run links and
+observed start/end times so later plans can compare like with like.
+
+For CI, capture the exact run with
+`gh run view RUN_ID --attempt ATTEMPT --json headSha,event,jobs,url`; retain
+job and step timestamps, outcomes and timezone. Measure local commands with
+`/usr/bin/time -p COMMAND` and record runtime/machine context. The current
+`npm test` reports the suite as a whole; do not label that total as unit,
+integration or E2E time. If category data is needed, inventory non-overlapping
+test files and run each category with `node --test test/name.test.mjs`; record
+the exact command and files. Do not sum concurrent job durations into wall
+time or count a step again with its parent job. For review and manual work, record
+active effort separately from elapsed time; a timeout is a censored
+observation, not a completed review duration.
+
+### Version and channel
+
+Use [Semantic Versioning 2.0.0](https://semver.org/) as the vocabulary for
+public API compatibility: the specification describes MAJOR, MINOR and PATCH
+for a stable `1.0.0` API, and prerelease identifiers have lower precedence than
+the corresponding final version. This project is currently `0.x`. Its working
+convention is that breaking public changes may use MINOR, compatible feature
+additions may also use MINOR, and compatible fixes use PATCH; this is a project
+convention, not a SemVer requirement or compatibility guarantee. Record the
+affected package, CLI, configuration, workflow, Skill and
+consumer interfaces; explain the selected version and migration guidance.
+Do not imply that a SemVer label alone establishes support or consumer
+activation.
+
+Decide whether a preview gives useful feedback on changed, supported paths.
+For each preview, record the intended content, version/channel, supported and
+experimental limitations, ship criteria, observation window or trigger,
+feedback owner, update/recovery procedure and promotion criteria. Do not
+publish an unchanged or unverified version to satisfy a calendar date. Capture
+feedback with the version and source SHA, consumer package/runtime pins,
+reproduction, impact and evidence. Assess compatibility and scope impact;
+update the issue's estimates, scenarios and owner agreement when feedback
+changes the work. A preview feedback record is planning evidence, not proof of
+formal adoption or a release gate.
+
+Published versions and tags are immutable. Recovery means compatible consumer
+pins or a new corrective release, never overwriting a published artifact.
+Check consumer compatibility before asking users to update or pin back, and
+document the corrective version and recovery steps.
+
+### Effort and date scenarios
+
+Provide three scenario ranges, with elapsed time and active effort separated:
+
+| Scenario | Include | Required assumptions |
+| --- | --- | --- |
+| Shortest | Smooth execution with the required work and gates completed | Available capacity, review availability, dependencies and no rework |
+| Target | Challenging delivery allowing for difficulty, uncertainty and ordinary rework | Evidence and assumptions supporting the central estimate |
+| Longest recovery deadline | Bounded stalls and named recovery actions | Bounds, owner, trigger and recovery duration for each material risk |
+
+Estimate remaining reviewable tasks from their acceptance criteria and
+dependencies. Include implementation, unit/integration/E2E work, packaging,
+reviews, external setup, approvals, consumer verification, feedback and known
+recovery steps. Do not make a scenario shorter by omitting required gates or
+parallelizing work that shares a dependency. A release deadline never waives
+publication or assurance requirements.
+
+Do not invent an upper bound. When review queues, owner availability, external
+setup or another material dependency has no defensible bound, state that the
+longest date is unknown or conditional, identify the trigger for reforecast,
+and record what evidence would establish a bound. Name cases outside any
+bounded scenario. A date proposal remains a proposal until the release owner
+agrees to the scope, target date, capacity and assumptions in the issue.
+Only then set the linked GitHub milestone to that target date. Keep the
+shortest and longest assumptions, agreement date/owner, and subsequent
+reforecasts in the issue history. Changing scope or a material assumption
+requires renewed agreement and milestone update.
+
+### Hotfix planning and response
+
+Triage a proposed hotfix by user impact, severity, urgency, affected supported
+version/channel and whether a normal release can meet the recovery need.
+Record evidence and the decision, then bound the fix to the smallest
+corrective change and its regression coverage. Identify the source branch,
+concurrent planned work and every maintained branch that needs a forward-port.
+Expedite coordination and review turnaround where possible; preserve required
+architecture, security, compatibility, approval and publication checks. If a
+required check cannot complete, the hotfix is not publishable through this
+runbook.
+
+Choose the patch or prerelease version and channel consistent with the
+affected supported line and the existing publication workflow. This
+repository's stable publication moves the `latest` dist-tag to the published
+stable version; the current preview channel is `preview`. Thus the ordinary
+hotfix path is a correction on the currently selected stable line or a
+preview-channel correction. Do not describe publishing an older stable-line
+patch as a routine hotfix: that would move `latest`. Supporting an older line
+needs a separately designed and owner-adopted channel and publication policy
+before use. This planning guidance grants no new publish route.
+
+Before release, name the user communication, compatible update or recovery
+steps, monitoring signals and follow-up owner. Preserve artifacts and logs.
+After publication, verify the exact source, package, integrity, channel and
+GitHub release readbacks using the runbook below. Record whether planned work
+was interrupted, reforecast its scope and dates, forward-port the fix to each
+maintained branch, and create follow-up issues for deferred cleanup. Never
+rewrite a published artifact or skip a gate because the change is urgent.
+
+### Checkpoints and retrospective
+
+At planning, scope agreement, each preview or material feedback event,
+candidate freeze, publication and follow-up, update the issue with date,
+version/channel/SHA when known, completed and remaining criteria, estimate
+changes, evidence links, blockers and decisions. If a required field is not
+known, leave it explicitly unknown with an owner and next checkpoint. For
+GitHub web submissions the form supplies these fields; CLI/API submissions
+must include the same sections. Maintainers review completeness during triage
+and at each checkpoint, request missing evidence, and keep dates proposed
+until an owner agreement is recorded. This is a coordination practice, not a
+new required acceptance check.
+
+After the release, compare each scenario with actual active effort and elapsed
+time. Attribute variance to implementation, test category, package work,
+review, waiting, manual effort, feedback, rework, recovery or changed scope;
+link the evidence. Map each inspection item to the guarantee it supports. If
+shipping cost is high, inspect whether each check is valid, whether test time
+or packaging is measured as a bottleneck, and whether existing CI/CD work can
+be reused before proposing broad performance work. If feedback costs time,
+improve intake, update and recovery instructions separately. Turn demonstrated
+improvements into owned issues and record in the next release whether they
+changed the measured cost or result.
+
+Use this retrospective record in the planning issue (or a later issue edit):
+
+```markdown
+## Release retrospective
+- Published version / channel / source SHA:
+- Plan and actual: shortest __; target __; longest/recovery __; actual __
+- Active effort versus elapsed waiting:
+- Variance by implementation, test category, package, review, manual work,
+  feedback and recovery (with evidence):
+- Scope or assumption changes and owner/date decisions:
+- What inspection protected, and any invalid or duplicate work found:
+- Improvement issue, owner and verification in the next release:
+```
+
+Illustrative planning examples below are explicitly hypothetical unless linked
+to a dated issue record. For historical estimates, #116 and #212 are examples
+to reassess from their linked tasks and evidence; their old estimates do not
+set current scope or a release date. Current records show #116's two protected
+E2E cases remain the formal objective; #210 has host wiring/readback work,
+#211 depends on that rollout, and #272 remains open. #212's 1–2 active-hour
+estimate and #211's 2–4 hours are dated estimates, not current elapsed-date
+bounds. #215 records one review deadline near 240 seconds and an outer delay
+around 12 minutes, not a normal review duration. A separate normal observation
+is [CI run 36975276625](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/36975276625),
+attempt 1, SHA `f9e1f06a32d618e8dcb95d410e8cbe1e27ba7c92`: job `test`
+ran 2026-10-02 06:47:44–06:48:05 UTC (21 seconds); its test step took
+10 seconds and pack/install/smoke took 5 seconds, included in that 21 seconds.
+This single successful observation measures neither human effort nor queue
+waiting, failed reviews or recovery. The #276 rehearsal did not run the full
+suite and is not equivalent candidate-readiness evidence.
+The earlier 6–12-hour preview overhead proposal therefore has no measured basis
+in these records. Do not reuse it as a buffer or claim shortest/longest dates
+from it. After this planning change is merged, prepare the v0.6.0 formal
+release plan afresh from current evidence and owner agreement. This resets
+planning assumptions only; canonical architecture and existing release gates
+remain in force until the owner changes them through canonical authority.
+
+**Hypothetical preview exercise (not a v0.6.0 plan):** the initial proposal
+includes feature F in `0.8.0-preview.1`, channel `preview`, with an agreed target
+of 2026-11-06 12:00 UTC. Consumer C reports a reproducible configuration failure
+and supplies exact package/workflow/Skill pins, source SHA and log. The owner
+records the impact, checks that C's unchanged protected policy still supports
+the previous `0.8.0-preview.0` pin set, and verifies that recovery in the fixture
+before recommending it. A pin rollback does not undo adopted authority.
+Feature F is deferred; `0.8.0-preview.2` contains only the compatible fix.
+The proposal changes to 2026-11-07 12:00 UTC, pending renewed agreement. The
+feedback loop ends only after C reproduces the original failure, verifies the
+corrective update and compatible recovery, and records results. Otherwise the
+blocker and next observation remain open; a date alone does not end observation.
+All versions, dates and results in this exercise are invented, not ship evidence.
+
+**Hypothetical hotfix exercise:** suppose the currently selected stable line
+is `0.7.2` on `latest`, and a high-impact regression requires a compatible
+`0.7.3` patch. Scope is one configuration fix plus regression coverage; feature F
+on the development branch is paused. The release maintainer records expedited
+review and required check owners, uses the existing stable publish workflow,
+and verifies source/version/integrity and `latest=0.7.3` readbacks. A tested
+`0.7.1` package/workflow/Skill pin set is a recovery candidate only if the
+consumer's adopted policy remains compatible; otherwise deliver a new fix.
+Close monitoring after the affected consumer and fixture verify the original
+reproduction, corrective update and available recovery. Forward-port the fix to
+the development branch and re-estimate feature F; record the new proposal and
+owner agreement instead of silently retaining the old date. These are invented
+versions and outcomes; the example authorizes no older-line channel or skipped
+gate and proves no completed recovery.
+
 ## Choose the release channel
 
 Numbered previews may distribute improvements to paths already supported by
@@ -42,9 +263,9 @@ amendment cycle. Keep those gaps visible in release and issue tracking.
    the development guide. Complete the host-native Skill's local `PASS`, run
    Codex `/review` against the exact candidate, and obtain the required
    GitHub Code/Security Review on that exact head. Confirm the native `CI`
-   workflow for this SHA is green. `CI` runs the suite; package archive install
-   and smoke are separate checks in the publication workflow and in the
-   non-publishing rehearsal below. Save the review revisions/URLs and check
+   workflow for this SHA is green. `CI` runs `npm test`, packs the archive,
+   checks required archive paths, installs it offline and runs the installed
+   smoke test. Save the review revisions/URLs and check
    run IDs. Reviewers assess the candidate; their review is not itself
    acceptance of a protected consumer route.
 3. Run one actual synthetic consumer pull request against the fixed candidate
