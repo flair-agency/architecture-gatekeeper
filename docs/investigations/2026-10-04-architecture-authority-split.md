@@ -58,7 +58,7 @@ module-only amendment eligibility. Route-specific B scope remains unchanged.
 ## Second-stage verification
 
 Inventory each original heading/block and its destination, compare complete
-text after only documented relative-link changes, and verify retained root
+text after documented relative-link and terminal blank-line changes, and verify retained root
 fragments for moved sections. Do not use hashes or keyword counts as proof of
 semantic correctness. Independent semantic and general review assess the
 mapping and exact diff under the old canonical Set.
@@ -73,3 +73,40 @@ prove adoption, host enforcement, route activation or release readiness.
 Document-wide duplicate/status reconciliation remains tracked by #272; this
 split must not imply that stale implementation claims have been audited or that
 all #272 or v0.6.0 final criteria are complete.
+
+## Prepared second-stage clause map
+
+The canonical predecessor is the organization-authorization commit
+`504628050516cf7feeeb2b18509641af34b03150` adopted in
+[PR #311](https://github.com/flair-agency/architecture-gatekeeper/pull/311).
+Canonical readback verified all three stage-one documents against the reviewed
+proposal `689416fe4e9a4fb289812e7d1fcc281d27c2c825`: their bytes are identical.
+The selected architecture is 81,731 bytes, SHA-256
+`9823492f82a3e0a9be420b99cb42b5ca9f70aeb4734c65098825bf5e12748a73`.
+Its authority manifest still selects the single complete predecessor. The
+second-stage candidate requires review under that protected selection; the
+six-member selection applies only after its separate adoption.
+
+The [machine-readable map](2026-10-04-architecture-authority-split-map.json)
+inventories every stage-one heading/block and its destination. Relative links
+are retargeted within moved blocks, and the final blank line of each new member
+is removed. The opening paragraph identifies the
+complete Set and adds its member index; module preambles and root fragment
+pointers are new navigation/authority-boundary text. Other source clauses are
+retained in full, including inactive target contracts and rollout requirements.
+
+Stage two is a dependent candidate; it must not be adopted before stage one.
+The first migration does not consolidate repeated binding clauses or correct
+implementation-status narration. Those separate #272 edits need their own
+clause/status evidence.
+
+| Member | Bytes |
+| --- | ---: |
+| docs/architecture.md | 21,422 |
+| docs/architecture/authority-set.md | 6,863 |
+| docs/architecture/owner-addition.md | 18,063 |
+| docs/architecture/owner-amendment.md | 19,793 |
+| docs/architecture/review-execution.md | 15,401 |
+| docs/architecture/self-profile.md | 7,150 |
+
+Total selected content: 88,692 bytes.
