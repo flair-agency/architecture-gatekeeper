@@ -14,16 +14,8 @@ defines the requirements and assurance claims.
 
 This index groups the existing sections for reading; it changes neither their
 normative status nor any route's implementation or adoption status. Read each
-route's conditions and exceptions together with the shared invariants.
-
-| Concern | Sections |
-| --- | --- |
-| Ownership and shared rules | [Consumer authority](#consumer-authority), [shared mechanism](#shared-mechanism), [acceptance authority](#acceptance-authority-and-host-enforcement-boundary), [normative invariants](#normative-invariants), [non-responsibilities](#non-responsibilities) |
-| Authority selection and bounds | [Distributed authority](#target-contract-distributed-authority), [CI bounds](#initial-distributed-authority-ci-bounds-issue-51-owner-decision), [local bounds](#initial-local-distributed-authority-bounds-issue-51-owner-decision) |
-| Review execution and acceptance | [Conceptual operation](#conceptual-operation), [local/manual review](#local-and-manual-review), [CI review](#ci-model-review), [current acceptance](#current-acceptance-mechanism), [target evidence](#target-evidence-and-acceptance-contract) |
-| Missing-decision governance | [OWNER_ADDITION / G0](#owner_addition--g0-route-for-missing-decisions-issue-111), [multi-document addition](#target-multi-document-owner_addition-route-issue-119-owner-decision), [adoption and assurance](#owner_addition-adoption-and-assurance-dimensions-issue-121-owner-decision) |
-| Existing-decision governance | [Owner amendment](#target-owner-amendment-governance-issue-75-owner-decision), [exact-claim authorization and revocation](#separate-exact-claim-authorization-and-revocation-owner-decision) |
-| Development and rollout | [Dogfooding and change discipline](#dogfooding-and-change-discipline), [tracked work](#relationship-to-tracked-work) |
+route's conditions and exceptions together with the shared invariants. The full
+[topic index is in the documentation map](README.md#contract-navigation).
 
 ## Why
 
@@ -403,8 +395,7 @@ own trigger-specific evidence and semantic questions: this profile preserves
 the historical `OWNER_DECISION` and assesses resolution of its escalation;
 the BLOCK profile below requires a completed BLOCK and assesses resolution of
 the identified conflict. Only previous-base policy opts in and scopes a route;
-B cannot self-authorize. If prior policy cannot authorize first opt-in, use
-owner-controlled bootstrap. Contract entry alone enables no route.
+B cannot self-authorize. Bootstrap is limited by [B1–B8](#canonical-authority-lifecycle); contract entry alone enables no route.
 
 #### Self-v1 semantic eligibility input and receipt (owner decision)
 
@@ -929,67 +920,49 @@ GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed
 
 #### Target multi-provider credential-isolated review proxy boundary (Issue #252 owner decision, 2026-10-02)
 
-CI may use a credential-isolated review proxy: the trusted launcher owns
-credentials and supplies them privately to the proxy. The launcher must withhold
-provider credentials and OIDC/token-renewal capabilities from the runner’s
-environment, arguments, and any other explicitly supplied launch interface.
-This includes credential-file selectors and handles granting access to a
-credential or renewal service; withholding an exchanged token alone is
-insufficient when a renewal capability would still be passed to the runner.
-The proxy binds only to an ephemeral loopback endpoint and limits
-credential-bearing dispatch to allowed methods/model routes on selected official
-provider hosts within launcher-selected project, region and model scope;
-arbitrary destinations, scope mismatches and redirects fail closed. The runner
-consumes responses for deterministic schema and authority validation.
+A trusted CI launcher may keep provider credentials in a private loopback proxy.
+It withholds credentials and OIDC/token-renewal capabilities from every explicit
+runner launch interface, including environment, arguments, credential-file
+selectors and credential/renewal-service handles. Withholding only an exchanged
+token is insufficient. The ephemeral loopback proxy permits only selected
+methods/model routes on official provider hosts within launcher-selected
+project/region/model scope; arbitrary destinations, mismatches and redirects
+fail closed. Runner responses require deterministic schema/authority validation.
 
-This target claims credential non-inheritance and constrained proxy dispatch,
-not restricted direct runner networking, same-user host isolation, or provider
-assurance equivalence. Credential non-inheritance does not make independently
-available host capabilities inaccessible: an authenticated Cloud SDK installation,
-credential files readable by the same OS user, or host identity services may
-remain accessible. Preventing their use requires separately selected and verified
-host isolation. Protected acceptance requires explicitly adopted consumer policy
-and verified route-specific execution evidence; this text activates no route.
-Implementation details are in the
-[proxy specification](investigations/2026-10-02-credential-isolated-review-proxy-boundary.md);
-it cannot independently amend this contract.
+This claims credential non-inheritance and constrained dispatch, not direct
+runner-network restrictions, same-user host isolation or provider equivalence.
+Blocking ambient Cloud SDK credentials, same-user-readable credential files or
+host identity services requires separately selected/verified host isolation.
+Protected acceptance still requires adopted consumer policy and verified
+route-specific evidence; no route activates here. The
+[proxy specification](investigations/2026-10-02-credential-isolated-review-proxy-boundary.md)
+cannot amend this contract.
 
 #### Target Gemini CI authentication selection (Issue #252 owner decision, 2026-10-04)
 
-The first Gemini CI integration targets Vertex AI authenticated through Google
-Cloud Workload Identity Federation. The trusted CI side obtains the GitHub OIDC
-assertion and exchanges it for scoped, short-lived Google credentials; only the
-credential-isolated launcher/proxy uses the resulting provider credential.
-The reviewer runner does not inherit the assertion, provider credential or
-renewal capability through any explicitly supplied launch interface, under the
-proxy boundary above. Authentication failure leaves the selected review
-incomplete; it does not enable API-key authentication or another provider.
-
-This selects the authentication direction, not a deployed consumer profile.
-Exact Google identity bindings, project, region, model, thinking settings,
-credential lifetime/renewal and operational limits still require explicit
-selection and verification before activation. Codex remains supported; standby
-or parallel result adoption is separate work. This decision does not activate
-Gemini CI, establish semantic quality, or change acceptance and release gates.
+The first Gemini CI route targets Vertex AI with Google Cloud WIF. Trusted CI
+obtains GitHub OIDC and exchanges it for scoped, short-lived Google credentials;
+only the launcher/proxy receives credentials or renewal capabilities through
+explicit launch interfaces. Authentication failure leaves review incomplete,
+without API-key or provider fallback. This selects a direction, not deployment.
+Identity bindings, project/region/model, thinking, credential lifecycle and
+limits require selection/verification before activation. Codex stays
+supported; standby/parallel adoption is separate. No semantic-quality claim,
+acceptance route or release gate changes here.
 
 #### Target Gemini CI execution selection (Issue #252 owner decision, 2026-10-04)
 
-The first Gemini CI execution profile uses Gemini CLI with a controlled,
-revision-bound review workspace and a launcher-owned configuration. Candidate
-configuration and instruction files remain complete review evidence with their
-original paths and revision identity, but are not installed as automatically
-loaded CLI configuration or protected instructions. The runner exposes an
-explicit read-tool allowlist; candidate content cannot enable additional tools,
-hooks, skills, extensions or MCP servers through workspace configuration.
-
-The trusted launcher/proxy retains Vertex AI WIF credentials under the boundary
-above. CLI responses require deterministic decision-schema and authority
-validation; a successful process exit alone is not a completed review. Timeout,
-cancellation, authentication or invalid output leaves review incomplete.
-This selection does not assert Codex/Gemini semantic or capability equivalence,
-same-user host isolation, or unrestricted candidate-code execution. Exact
-provider settings and authenticated route evidence remain prerequisites for
-activation; this decision itself enables no CI acceptance route.
+Use Gemini CLI with a controlled, revision-bound workspace, launcher-owned
+configuration and explicit read-tool allowlist. Candidate control/instruction
+files remain complete evidence with original path/revision identity, never
+automatically loaded CLI configuration or protected instructions. Candidate
+workspace configuration cannot enable tools, hooks, skills, extensions or MCP.
+The launcher/proxy retains Vertex WIF credentials under the boundary above.
+CLI exit zero alone is insufficient: schema/authority validation is mandatory;
+timeout, cancellation, authentication or invalid output leaves review incomplete.
+This claims no candidate-code execution, Codex equivalence or host isolation,
+and activates no acceptance route. Provider settings and authenticated evidence
+remain prerequisites.
 
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
@@ -1107,6 +1080,16 @@ G0 adoption record also needs the separate pre-merge and post-merge evidence
 specified above. If Issue #20 adds other evidence routes, each must verify
 its selected policy and evidence explicitly. No route silently reinterprets
 `BLOCK`, accepts A's `OWNER_DECISION`, or treats report delivery as adoption.
+
+### Canonical authority lifecycle
+
+For selected Gatekeeper lifecycle-v1 tuples (predecessor/profile, topology/bounds, host/merge, caller), support requires finite predecessor-authorized owner-choice → eligible scoped B (required services/evidence) → adoption/readback, production trace, matching fixture and fail-closed negatives. Unselected: inactive. No graph-only support; failed semantics cannot force eligibility. Else `UNSUPPORTED`; retain predecessor; no acceptance/fallback/false-addition split/exception. Legacy policy/artifact/acceptance meanings remain unchanged. B1–B8 govern only this Gatekeeper lifecycle/bootstrap and its `ACTIVE` claim. Consumer-authorized external-admin exceptions remain consumer-owned; they never establish Gatekeeper adoption/`ACTIVE`.
+
+Existing addition/amendment clauses govern B/Set/policy/evidence/freshness; bind repo/target lineage and runtime/caller. Track canonical snapshot, phase/kind, capability/assurance. `ABSENT_INITIAL`=never-existing root; missing decision=addition; lost member=recovery; T4=oversized Set. Pending retains predecessor; pre-integration failure stays pending/ineligible/incomplete; post-integration failure records placement/adoption separately (no fictitious rollback); success needs valid adoption + verified placement. Preserve history; fresh review is new.
+
+Keep defined/implemented/released/selectable/prior-selected/eligible/owner action/adopted/canonically placed/commissioning/active distinct. Normal transitions use no exception. T0 root; T1 missing-decision addition; T2 amend existing; normal, no bootstrap; T3 equivalent maintenance (selector→T5/T6); T4 preselected bounded oversized recovery; T5 prior-authorized compatible migration; T6 incompatible migration via prior-authorized bridge or unsupported; T7 first selection via normal route or guarded bootstrap; T8 normal adoption before active; T9 later profile-fresh use, no fallback/reset.
+
+Bootstrap only for absent-ever root or genuine first activation lacking authorized normal/staged path. T0/T7 share nonresettable repo/target lineage authorization (incl inseparable root/config); rename/backend/manifest/policy/profile changes/missing files cannot reset it. B1 proves absent-ever root or never-completed first activation (missing file/version/receipt is no proof). B2 inventories authorized normal/staged/migration/repair exits: any finite noncircular path bars bootstrap regardless of cost/deadline; missing code/tests/defect/outage do not prove absence. B3 independent existing/external governance authorizes exact scope; B4 binds candidate/paths/ops/actors/lineage; B5 verifies prep/limits/inputs/producer/host. Require implemented T8 plan before start; resulting policy must authorize it. B6 reads back first-operation target/policy/caller; B7 consumes lineage authorization; B8 later normal adoption/readback before ACTIVE, zero exception; commissioning until then. Bootstrap is external, not PASS/G0.
 
 ## Normative invariants
 
