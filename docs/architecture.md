@@ -940,29 +940,30 @@ cannot amend this contract.
 
 #### Target Gemini CI authentication selection (Issue #252 owner decision, 2026-10-04)
 
-The first Gemini CI route targets Vertex AI with Google Cloud WIF. Trusted CI
-obtains GitHub OIDC and exchanges it for scoped, short-lived Google credentials;
+Gemini CI targets Vertex AI with Google Cloud WIF. Trusted CI exchanges GitHub
+OIDC for scoped, short-lived Google credentials;
 only the launcher/proxy receives credentials or renewal capabilities through
 explicit launch interfaces. Authentication failure leaves review incomplete,
-without API-key or provider fallback. This selects a direction, not deployment.
-Identity bindings, project/region/model, thinking, credential lifecycle and
-limits require selection/verification before activation. Codex stays
-supported; standby/parallel adoption is separate. No semantic-quality claim,
-acceptance route or release gate changes here.
+without API-key or provider fallback. This does not deploy.
+Deployment bindings, scope, credential lifecycle and limits need verification
+before activation. Codex stays supported; standby/parallel adoption is separate.
+No quality claim, acceptance route or release gate changes here.
 
 #### Target Gemini CI execution selection (Issue #252 owner decision, 2026-10-04)
 
-Use Gemini CLI with a controlled, revision-bound workspace, launcher-owned
-configuration and explicit read-tool allowlist. Candidate control/instruction
-files remain complete evidence with original path/revision identity, never
-automatically loaded CLI configuration or protected instructions. Candidate
+Use Gemini CLI with a controlled revision-bound workspace, launcher-owned
+configuration and a read-tool allowlist. Candidate control/instruction
+files retain complete bytes and path/revision identity as evidence, never
+automatically loaded configuration or protected instructions. Candidate
 workspace configuration cannot enable tools, hooks, skills, extensions or MCP.
-The launcher/proxy retains Vertex WIF credentials under the boundary above.
+The launcher/proxy retains WIF credentials under the boundary above.
 CLI exit zero alone is insufficient: schema/authority validation is mandatory;
-timeout, cancellation, authentication or invalid output leaves review incomplete.
+Timeout, cancellation, auth failure or invalid output leaves review incomplete.
 This claims no candidate-code execution, Codex equivalence or host isolation,
-and activates no acceptance route. Provider settings and authenticated evidence
-remain prerequisites.
+and activates no acceptance route. Owner selects `gemini-3.8-flash` with
+`thinkingLevel: MEDIUM` as the initial CI profile (2026-10-04), without
+`thinkingBudget`. Verify quality, cost, latency and decision consistency before activation;
+determinism is not promised.
 
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
