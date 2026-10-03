@@ -6,6 +6,7 @@ import { validateDecisionRules } from './validate-decision.mjs';
 import { validateJsonSchema } from './json-schema.mjs';
 import { materializeAuthoritySet, parseAuthorityManifest, readCommittedAuthorityFile, rejectDuplicateJsonKeys, validateAuthorityLimits, validateAuthoritySetDecision } from './authority-set.mjs';
 import { validateAuthorityReviewSchema } from './preflight-authority-set-review.mjs';
+import { validateThinkingBudget } from './gemini-transport.mjs';
 const CONFIG_PATH = '.codex/gatekeeper/config.json';
 const EFFORTS = new Set(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
 function run(command, args, options = {}) { return spawnSync(command, args, { encoding: 'utf8', ...options }); }
@@ -41,7 +42,22 @@ export function loadConfig(root, revision) {
   if (value?.version !== 1 || pathArrays.some(key => !Array.isArray(value[key]) || value[key].some(path => !validPath(path))) || !Array.isArray(value.requiredPassArrays) || value.requiredPassArrays.some(key => typeof key !== 'string' || !key) || !validPath(value.promptPath) || !validPath(value.schemaPath) || !validPath(value.reviewerConfigPath) || (value.validationPath !== undefined && !validPath(value.validationPath)) || !Number.isInteger(value.reviewTimeoutMs) || value.reviewTimeoutMs < 1000 || value.reviewTimeoutMs > 3600000) invalid('Architecture gate configuration is unsupported.');
   return value;
 }
-function reviewerSettings(root, revision, path) { const value = jsonInput(root, revision, path, 'reviewer configuration'); if (typeof value.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(value.model) || !EFFORTS.has(value.reasoningEffort)) invalid('Architecture gate reviewer configuration is unsupported.'); return value; }
+function reviewerSettings(root, revision, path) {
+  const source = committedInput(root, revision, path);
+  let value;
+  try { value = JSON.parse(source); rejectDuplicateJsonKeys(source, 'reviewer configuration'); }
+  catch (error) { if (error.message.startsWith('Architecture gate cannot') || error.message.includes('pinned component')) throw error; invalid('Architecture gate reviewer configuration is invalid.'); }
+  const provider = Object.hasOwn(value, 'provider') ? value.provider : 'codex';
+  if (typeof value.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(value.model) || !['codex', 'gemini'].includes(provider)) invalid('Architecture gate reviewer configuration is unsupported.');
+  if (provider === 'codex') {
+    if (!EFFORTS.has(value.reasoningEffort) || value.thinkingBudget !== undefined || Object.keys(value).some(key => !['provider', 'model', 'reasoningEffort'].includes(key))) invalid('Architecture gate Codex reviewer configuration is unsupported.');
+    return value;
+  }
+  if (value.reasoningEffort !== undefined || Object.keys(value).some(key => !['provider', 'model', 'thinkingBudget'].includes(key))) invalid('Architecture gate Gemini reviewer configuration is unsupported.');
+  try { validateThinkingBudget(value.model, value.thinkingBudget); }
+  catch { invalid('Architecture gate Gemini reviewer configuration is unsupported.'); }
+  return value;
+}
 function requestId(request) { return createHash('sha256').update(JSON.stringify(request)).digest('hex'); }
 function createV1ReviewRequest(task, root, revision, config) {
   const schema = jsonInput(root, revision, config.schemaPath, 'decision schema'); const reviewer = { ...reviewerSettings(root, revision, config.reviewerConfigPath), reviewTimeoutMs: config.reviewTimeoutMs }; const authority = config.authorityFiles.map(path => ({ path, content: committedInput(root, revision, path) })); const basePrompt = committedInput(root, revision, config.promptPath);
@@ -80,7 +96,7 @@ export function validateReviewResponse(request, decision) { verifyRequest(reques
 /** Shared preflight for revision-bound execution; response validation remains separate. */
 export async function preflightReviewRequest(request, expectedProvider) {
   verifyRequest(request);
-  const provider = request.reviewer.provider ?? 'codex';
+  const provider = Object.hasOwn(request.reviewer, 'provider') ? request.reviewer.provider : 'codex';
   if (expectedProvider && provider !== expectedProvider) {
     invalid(`Revision-bound ${expectedProvider} execution requires a recorded ${expectedProvider} provider selection.`);
   }

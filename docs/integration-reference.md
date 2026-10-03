@@ -168,7 +168,8 @@ per worktree and retries the latest changed candidate on a later eligible
 event. It does not start a daemon or drain pending work after a review.
 Identical candidates are deduplicated. The serialized Hook
 context is capped at 4,000 UTF-8 bytes and reports status, summary, revision,
-and request/snapshot identity.
+and request/snapshot identity. Optional execution metadata is omitted when
+needed to keep the serialized output within that cap.
 
 This pilot is currently unsupported on native Windows because the current
 single-flight lock implementation excludes `win32` and assumes atomic hard-link
@@ -223,8 +224,11 @@ architecture-review 'Should this responsibility move from Runtime to the Provide
 ```
 
 The task may instead be supplied on standard input. This standalone terminal
-adapter uses child `codex exec`; it is separate from the Codex-hosted Skill.
-Its host boundary is described in
+adapter selects the provider from committed reviewer settings: Codex uses child
+`codex exec`, while Gemini uses the asynchronous API transport without starting
+Codex. It is separate from the Codex-hosted Skill. Provider configuration is
+specified in [local execution composition](#local-reviewer-execution-composition).
+The Codex child host boundary is described in
 [reviewer host permissions](reviewer-host-permissions.md).
 The command uses the same
 committed consumer-owned configuration, prompt, schema, reviewer settings and
@@ -240,7 +244,12 @@ explicit `$architecture-review` workflow is distributed separately from this
 repository at `skills/architecture-review/`; install that directory through the
 supported Codex Skill installation route and keep its revision aligned with the
 runtime release you adopt. The Skill uses the host-native reviewer/subagent
-interface. It calls `architecture-review-native prepare` to construct a
+interface. The trusted Skill execution side allocates a unique protected
+session directory and supplies uncreated request/decision filenames independent
+of candidate inputs. It owns retained E2E records and cleanup on success,
+failure or cancellation. The adapter does not attest that allocation's privacy;
+exclusive file creation and permissions do not prove parent-directory integrity.
+It calls `architecture-review-native prepare` to construct a
 committed-revision request, gives that request to a separate reviewer whose role
 is limited to review and does not include changing the repository, and calls
 `architecture-review-native validate` on the returned JSON. The host must apply
@@ -705,22 +714,64 @@ leases, rollback, local object-store defense or malicious-operator resistance.
 ### Local reviewer execution composition
 
 Local manual review, UserPromptSubmit and post-tool screening use the shared
-local execution boundary rather than importing a provider transport. Existing
-Codex CLI defaults and synchronous APIs remain compatible. Programmatic manual
-and UserPromptSubmit calls accept an optional third argument `{ reviewer }`;
-post-tool screening retains its existing reviewer option. The adapter receives
-the revision-bound request and, on the async path, an optional AbortSignal in
-its second argument. It returns a raw structured decision; the caller still
-validates schema, selected authority and committed validation policy.
+local execution boundary. Hook event parsing remains specific to the Codex
+host; reviewer selection is independent of that event format. Configuration,
+selected authority, prompt, schema and reviewer settings come from the same
+recorded Git revision, with deterministic validation shared by both providers.
 
-Use the async API for a Promise-returning adapter. The sync API rejects such
-adapters and does not run a nested event loop. Async deadlines reject late
-results and request cooperative cancellation; they do not prove physical
-termination of an adapter. A blocking adapter must enforce its own process
-bound. Errors and invalid decisions remain incomplete, with no provider
-fallback. This seam does not select Gemini for the CLI or adopt provider-setting
-equivalence; explicit recorded provider settings and execution identity remain
-follow-up work under #265 coordinated with #252.
+The file selected by `reviewerConfigPath` chooses one provider. Existing settings
+without `provider` continue to select Codex. For example:
+
+```json
+{ "provider": "codex", "model": "gpt-6.1-sol", "reasoningEffort": "medium" }
+```
+
+An explicit Gemini selection uses its own settings:
+
+```json
+{ "provider": "gemini", "model": "gemini-2.5-flash", "thinkingBudget": 1024 }
+```
+
+Commit these settings before review. `reviewTimeoutMs` remains in the gate
+configuration. Gemini thinking budgets must match a supported model profile;
+Codex `reasoningEffort` and Gemini `thinkingBudget` are not interchangeable.
+Unsupported settings leave review incomplete. Gemini uses the existing
+[authentication modes](#gemini-ci-review-runner) contract; local execution does not
+establish the separate CI credential-isolation boundary.
+
+The installed manual CLI and Hook CLIs use asynchronous execution and select
+the recorded provider. Gemini does not start Codex or require OpenAI credentials.
+Programmatic `runManualReviewAsync` and `runHookAsync` support both providers;
+existing synchronous APIs support Codex and reject a Gemini selection before
+starting any reviewer. The Codex-native Skill supports Codex settings only and
+fails closed for Gemini rather than substituting its host model.
+
+Request a separate execution report with `architecture-review --execution-report`
+or the manual-review programmatic `{ executionReport: true }` option. The report has shape
+`{ decision: validatedDecision, execution }`; the default API/CLI result remains
+the consumer decision, without overwriting any consumer field. The adapter report
+contains:
+`provider`, `requestedModel`, and `appliedSettings`. Gemini may also report
+`backendReportedModel` from the HTTP envelope. Requested identity and applied
+settings do not attest the backend's internals, model quality, or acceptance.
+
+Programmatic manual and UserPromptSubmit calls retain an optional third argument
+`{ reviewer }`; post-tool screening retains its reviewer option. This is a
+trusted adapter injection seam. The adapter receives the revision-bound request
+and, on the async path, an AbortSignal in its second argument. It may return a
+raw structured decision. To return `{ decision, execution }`, explicitly select
+`reviewerResultFormat: "envelope"` in the caller options. There is no shape-based
+guess that can reinterpret consumer-owned fields. A raw injected result has
+no attested execution identity; an injected envelope's metadata belongs to that
+adapter. The caller still validates the decision against schema, authority and
+committed validation policy. Use the async API for Promise-returning adapters;
+a legacy sync callback returning a Promise is rejected after invocation.
+
+Async deadlines reject late results and request cooperative cancellation; they
+do not prove physical termination. A blocking adapter must enforce its own
+process bound. Errors and invalid decisions remain incomplete, with no fallback
+or parallel result adoption. These local results remain development feedback,
+not protected CI acceptance.
 
 The Gemini loopback proxy rejects complete serialized request bodies exceeding
 16 MiB, including chunked uploads, before upstream dispatch. This implementation

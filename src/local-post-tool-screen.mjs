@@ -185,12 +185,18 @@ function outputFor(result, eventMeta, newerPending = false, timing = {}) {
     reviewedRevision: result.reviewedRevision,
     requestId: result.requestId,
     snapshotSha256: result.snapshotSha256,
+    reviewerExecution: result.reviewerExecution,
     ...timing,
     ...eventMeta,
     ...(newerPending ? { newerCandidatePending: true } : {})
   };
   response.hookSpecificOutput.additionalContext = `Architecture screening (informational): ${JSON.stringify(body)}`;
   let serialized = JSON.stringify(response);
+  if (Buffer.byteLength(serialized) > OUTPUT_LIMIT && Object.hasOwn(body, 'reviewerExecution')) {
+    delete body.reviewerExecution;
+    response.hookSpecificOutput.additionalContext = `Architecture screening (informational): ${JSON.stringify(body)}`;
+    serialized = JSON.stringify(response);
+  }
   if (Buffer.byteLength(serialized) > OUTPUT_LIMIT) {
     const original = Buffer.from(body.summary);
     let length = original.length;
@@ -202,6 +208,23 @@ function outputFor(result, eventMeta, newerPending = false, timing = {}) {
       serialized = JSON.stringify(response);
     }
   }
+  if (Buffer.byteLength(serialized) > OUTPUT_LIMIT) {
+    for (const key of [...Object.keys(timing), ...Object.keys(eventMeta), 'newerCandidatePending']) delete body[key];
+    response.hookSpecificOutput.additionalContext = `Architecture screening (informational): ${JSON.stringify(body)}`;
+    serialized = JSON.stringify(response);
+  }
+  if (Buffer.byteLength(serialized) > OUTPUT_LIMIT) {
+    const minimal = {
+      status: body.status,
+      summary: '',
+      ...(body.reviewedRevision ? { reviewedRevision: body.reviewedRevision } : {}),
+      ...(body.requestId ? { requestId: body.requestId } : {}),
+      ...(body.snapshotSha256 ? { snapshotSha256: body.snapshotSha256 } : {})
+    };
+    response.hookSpecificOutput.additionalContext = `Architecture screening (informational): ${JSON.stringify(minimal)}`;
+    if (response.systemMessage) response.systemMessage = `Architecture screening ${body.status}:`;
+    serialized = JSON.stringify(response);
+  }
   return serialized;
 }
 
@@ -210,7 +233,7 @@ async function waitForBatchDelay(delayMs) {
 }
 
 /** Run the opt-in informational PostToolUse tracked-change screen. */
-export async function runPostToolScreenHook(input, { cwd = process.cwd(), reviewer, batchDelayMs = DEFAULT_BATCH_DELAY_MS } = {}) {
+export async function runPostToolScreenHook(input, { cwd = process.cwd(), reviewer, reviewerResultFormat, batchDelayMs = DEFAULT_BATCH_DELAY_MS } = {}) {
   let event;
   try { event = typeof input === 'string' ? JSON.parse(input) : input; }
   catch { const result = incomplete('Invalid PostToolUse JSON.'); return { result, output: outputFor(result, {}) }; }
@@ -269,13 +292,14 @@ export async function runPostToolScreenHook(input, { cwd = process.cwd(), review
     // New marker files are written only by later events and remain for the next eligible event.
     newerPending = exists(markerPath(state));
     timing.reviewStartedAt = new Date().toISOString();
-    const decision = validateReviewResponse(request, await executeLocalReviewer(request, { reviewer }));
+    const executionResult = await executeLocalReviewer(request, { reviewer, reviewerResultFormat });
+    const decision = validateReviewResponse(request, executionResult.decision);
     timing.reviewCompletedAt = new Date().toISOString();
     if (readHead(root) !== candidate.head) {
       const result = incomplete('HEAD moved during semantic review; result is not associated with the current snapshot.', { reviewedRevision: candidate.head, requestId: identity, snapshotSha256: candidate.patchSha256 });
       return { result, output: outputFor(result, eventMeta, newerPending, timing) };
     }
-    const result = { status: decision.decision, summary: decision.summary || '', reviewedRevision: decision.reviewedRevision, requestId: identity, snapshotSha256: candidate.patchSha256 };
+    const result = { status: decision.decision, summary: decision.summary || '', reviewedRevision: decision.reviewedRevision, requestId: identity, snapshotSha256: candidate.patchSha256, reviewerExecution: executionResult.execution };
     atomicJson(identityPath(state), { requestId: identity, recordedAt: Date.now() });
     newerPending = exists(markerPath(state));
     return { result, output: outputFor(result, eventMeta, newerPending, timing) };

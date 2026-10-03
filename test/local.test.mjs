@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { runManualReview, runManualReviewAsync, runHookAsync, runManualReviewCli, validate } from '../src/local-gate.mjs';
@@ -165,6 +165,9 @@ function runManual({ root, bin }, extraEnv = {}) {
 
 test('manual review returns BLOCK without Hook context, Hook output or session state', t => {
   const fixture = manualFixture(t);
+  const request = createReviewRequest('Review settings shape', fixture.root);
+  assert.deepEqual(Object.keys(request.reviewer).sort(), ['model', 'reasoningEffort', 'reviewTimeoutMs']);
+  assert.equal(request.reviewer.provider, undefined);
   const capture = join(fixture.root, 'prompt.txt');
   const result = runManual(fixture, { CODEX_CAPTURE_PATH: capture });
   assert.equal(result.status, 0, result.stderr);
@@ -184,6 +187,127 @@ test('manual review uses committed authority when the worktree differs', t => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(readFileSync(capture, 'utf8'), /# Test authority/);
   assert.doesNotMatch(readFileSync(capture, 'utf8'), /Uncommitted replacement/);
+});
+
+test('manual caller preserves a consumer execution field and exposes adapter metadata only by opt-in', async t => {
+  const fixture = manualFixture(t);
+  const execution = { consumerOwned: true };
+  const decision = { decision: 'PASS', summary: 'fixture', authorityFiles: ['AGENTS.md'], reviewedScope: ['fixture'], execution };
+  const raw = runManualReview('Review collision', fixture.root, { reviewer: () => decision });
+  assert.equal(raw.execution, execution);
+  const reported = await runManualReviewAsync('Review collision', fixture.root, { reviewer: async () => decision, executionReport: true });
+  assert.equal(reported.decision.execution, execution);
+  assert.equal(reported.execution, null);
+});
+
+test('committed Gemini settings dispatch asynchronously without invoking Codex and report adapter identity', async t => {
+  const fixture = manualFixture(t);
+  const reviewerPath = join(fixture.root, '.codex', 'gatekeeper', 'reviewer.json');
+  writeFileSync(reviewerPath, JSON.stringify({ provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 512 }));
+  git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'select Gemini reviewer');
+  let called = 0;
+  let requestBody;
+  const result = await runManualReviewAsync('Review with Gemini', fixture.root, {
+    executionReport: true,
+    apiKey: 'fixture-key',
+    fetch: async (url, init) => {
+      called += 1;
+      assert.match(url, /gemini-2\.5-flash:generateContent$/);
+      requestBody = JSON.parse(init.body);
+      return { ok: true, json: async () => ({ modelVersion: 'gemini-2.5-flash-001', candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ decision: 'PASS', summary: 'fixture', authorityFiles: ['AGENTS.md'], reviewedScope: ['fixture'] }) }] } }] }) };
+    }
+  });
+  assert.equal(called, 1);
+  assert.equal(requestBody.generationConfig.thinkingConfig.thinkingBudget, 512);
+  assert.deepEqual(result.execution, { provider: 'gemini', requestedModel: 'gemini-2.5-flash', appliedSettings: { thinkingBudget: 512, reviewTimeoutMs: 5000 }, backendReportedModel: 'gemini-2.5-flash-001' });
+  assert.equal(result.decision.decision, 'PASS');
+});
+
+test('Gemini manual-review CLI works with a model-free fetch shim and PATH without Codex', t => {
+  const fixture = manualFixture(t);
+  const reviewerPath = join(fixture.root, '.codex', 'gatekeeper', 'reviewer.json');
+  writeFileSync(reviewerPath, JSON.stringify({ provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 0 }));
+  const preload = join(fixture.root, 'fixture-fetch.mjs');
+  const poisonBin = join(fixture.root, 'poison-bin');
+  mkdirSync(poisonBin);
+  const codexMarker = join(fixture.root, 'codex-invoked');
+  const codexTrap = join(poisonBin, 'codex');
+  writeFileSync(codexTrap, `#!/bin/sh\nprintf invoked > '${codexMarker}'\nexit 91\n`);
+  chmodSync(codexTrap, 0o755);
+  writeFileSync(preload, `globalThis.fetch = async () => ({ ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ decision: 'BLOCK', summary: 'fixture CLI', authorityFiles: ['AGENTS.md'], reviewedScope: ['fixture'] }) }] } }] }) });\n`);
+  git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'select Gemini reviewer');
+  const gitPath = dirname(execFileSync('which', ['git'], { encoding: 'utf8' }).trim());
+  const childEnv = { ...process.env, PATH: `${poisonBin}:${gitPath}`, NODE_OPTIONS: `--import=${JSON.stringify(preload)}`, GEMINI_API_KEY: 'fixture-key' };
+  for (const key of ['OPENAI_API_KEY', 'CODEX_API_KEY', 'OPENAI_BASE_URL']) delete childEnv[key];
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../src/manual-review.mjs', import.meta.url)), '--execution-report', 'Review Gemini CLI'], {
+    cwd: fixture.root, encoding: 'utf8',
+    env: childEnv
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const decision = JSON.parse(result.stdout);
+  assert.equal(decision.decision.decision, 'BLOCK');
+  assert.equal(decision.execution.provider, 'gemini');
+  assert.equal(decision.execution.appliedSettings.thinkingBudget, 0);
+  assert.equal(existsSync(codexMarker), false);
+});
+
+test('provider settings reject mixed or unsupported configurations before execution', async t => {
+  const fixture = manualFixture(t);
+  const reviewerPath = join(fixture.root, '.codex', 'gatekeeper', 'reviewer.json');
+  for (const settings of [
+    { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 0, reasoningEffort: 'low' },
+    { provider: 'gemini', model: 'gemini-2.5-flash', reasoningEffort: 'low' },
+    { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 0, temperature: 0 },
+    { provider: 'other', model: 'model', reasoningEffort: 'low' },
+    { provider: null, model: 'gpt-model', reasoningEffort: 'low' },
+    { provider: 'codex', model: 'gpt-model', thinkingBudget: 0, reasoningEffort: 'low' },
+    { model: 'gpt-model', reasoningEffort: 'low', temperature: 0 }
+  ]) {
+    writeFileSync(reviewerPath, JSON.stringify(settings));
+    git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', `invalid reviewer ${Date.now()}`);
+    await assert.rejects(createReviewRequestAsync('Review invalid provider settings', fixture.root), /reviewer configuration is unsupported|cannot specify reasoningEffort/);
+  }
+});
+
+test('reviewer configuration rejects duplicate provider and model setting keys', async t => {
+  const fixture = manualFixture(t);
+  const reviewerPath = join(fixture.root, '.codex', 'gatekeeper', 'reviewer.json');
+  const duplicateSettings = [
+    '{"provider":"codex","provider":"gemini","model":"gemini-2.5-flash","thinkingBudget":512}',
+    '{"provider":"codex","model":"first-model","model":"second-model","reasoningEffort":"low"}',
+    '{"model":"gpt-model","reasoningEffort":"low","reasoningEffort":"high"}',
+    '{"provider":"gemini","model":"gemini-2.5-flash","thinkingBudget":0,"thinkingBudget":512}'
+  ];
+  for (const settings of duplicateSettings) {
+    writeFileSync(reviewerPath, settings);
+    git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', `duplicate reviewer setting ${Date.now()}`);
+    await assert.rejects(createReviewRequestAsync('Review duplicate reviewer settings', fixture.root), /reviewer configuration is invalid/);
+  }
+});
+
+test('manual CLI rejects unterminated reviewer JSON promptly', t => {
+  const fixture = manualFixture(t);
+  const reviewerPath = join(fixture.root, '.codex', 'gatekeeper', 'reviewer.json');
+  writeFileSync(reviewerPath, '{"model":[');
+  git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'malformed reviewer settings');
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../src/manual-review.mjs', import.meta.url)), 'Review malformed settings'], {
+    cwd: fixture.root, encoding: 'utf8', timeout: 3000,
+    env: { ...process.env, PATH: `${fixture.bin}:${process.env.PATH}` }
+  });
+  assert.notEqual(result.error?.code, 'ETIMEDOUT');
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /reviewer configuration is invalid/);
+});
+
+test('native Codex preparation rejects Gemini before creating a request file', async t => {
+  const fixture = manualFixture(t);
+  const reviewerPath = join(fixture.root, '.codex', 'gatekeeper', 'reviewer.json');
+  writeFileSync(reviewerPath, JSON.stringify({ provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 512 }));
+  git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'select Gemini reviewer');
+  const requestPath = join(fixture.root, 'native-request.json');
+  const { runNativeReviewCli } = await import('../src/native-review.mjs');
+  await assert.rejects(runNativeReviewCli(['prepare', requestPath, 'Review'], fixture.root), /cannot apply Gemini settings/);
+  assert.equal(existsSync(requestPath), false);
 });
 
 test('manual review reports the recorded revision when HEAD changes during review', t => {

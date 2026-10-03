@@ -3,13 +3,15 @@
 ## Scope
 
 The automatic `UserPromptSubmit` Hook and standalone `architecture-review` CLI
-start a child Codex reviewer. The Codex-hosted Skill uses a host-native reviewer
+start a child Codex reviewer when committed settings select Codex. This document
+covers that selection only; Gemini uses the asynchronous API transport and does
+not inherit these child sandbox guarantees. The Codex-hosted Skill uses a host-native reviewer
 and is outside this child-process boundary. Host authorization is separate from
 an architecture decision and from merge acceptance.
 
 ## Permission boundary
 
-Both local paths call the same `runCodexReviewer` transport after selecting
+With Codex selected, both local paths call the same `runCodexReviewer` transport after selecting
 committed review inputs. The Hook has no native reviewer handle, and the
 standalone CLI runs without a Codex host task. Each starts an installed
 `codex exec` process. The transport requests `--sandbox read-only`, disables

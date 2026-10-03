@@ -832,13 +832,17 @@ schema, reviewer settings and authority from that revision, constructs the
 review request, and deterministically validates the returned decision. It does
 not choose how every host obtains that decision.
 
-- The automatic command Hook may launch a read-only child `codex exec`, because
+- When Codex is selected, the automatic command Hook may launch a read-only
+  child `codex exec`, because
   a command hook has no native reviewer handle. Its process timeout and
   read-only sandbox remain required safeguards for this automatically invoked
   child process.
-- The standalone terminal CLI explicitly uses the same child transport when no
-  Codex host task exists, retaining its read-only sandbox and bounded process
-  timeout.
+- The standalone terminal CLI selects the adapter from committed reviewer
+  settings. When Codex is selected, it uses the same child transport, retaining
+  its read-only sandbox and bounded process timeout. When Gemini is selected,
+  it uses the asynchronous Gemini API adapter under the explicit provider
+  settings and deadline; it does not launch a Codex child or claim that child's
+  sandbox guarantees. The automatic Hook uses the same provider selection.
 - The Codex-hosted Skill prepares the revision-bound request, applies its
   recorded model and reasoning effort to a separate host-native reviewer whose
   role is limited to review and does not include changing the reviewed
@@ -851,6 +855,16 @@ not choose how every host obtains that decision.
   nested command.
 - CI retains its independent model-review adapter and exact-SHA-pinned reusable
   workflow.
+
+The native adapter's request and decision paths are host-managed session
+inputs supplied by the trusted Skill execution side, not destinations selected
+by candidate repository content, task text, or reviewer output. The Skill
+execution side owns private temporary allocation, exact-request and decision
+recording, and cleanup on success, failure, or cancellation. The native adapter
+owns request construction and persistence and decision validation; it does not
+attest the supplied paths' private allocation or isolate a hostile same-user
+host. Exclusive creation and file permissions are supporting measures, not a
+generic path sanitizer or proof of parent-directory privacy.
 
 For a native Skill, the review-only role is part of the semantic contract, while
 physical write denial and exact hard-timeout enforcement are execution

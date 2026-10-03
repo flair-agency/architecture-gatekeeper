@@ -53,8 +53,11 @@ CI example, distribution rules, and trust boundaries, see the
 ### Local hook
 
 The launcher imports the already-installed exact package version and invokes a
-local `codex` binary with hooks disabled and a read-only sandbox. It never uses
-`npx` or a registry fallback.
+selected reviewer adapter from committed settings. Codex remains the default,
+using a local `codex` binary with hooks disabled and a read-only sandbox. An
+explicit Gemini selection uses the asynchronous API adapter without starting
+Codex. It never uses `npx` or a registry fallback. See the
+[local provider configuration](docs/integration-reference.md#local-reviewer-execution-composition).
 
 Consumers may opt into an additional asynchronous `PostToolUse` change screen
 with a separate launcher that imports `runPostToolScreenHookCli`. Configure it

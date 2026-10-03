@@ -37,6 +37,29 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   writeFileSync(decisionPath, JSON.stringify(decision));
   const native = JSON.parse(run('architecture-review-native', ['validate', requestPath, decisionPath]));
   if (native.decision !== 'PASS') throw new Error('native adapter did not pass');
+  // Exercise the installed Gemini path using model-free HTTP, with a poison
+  // Codex executable so a hidden child-provider fallback fails this smoke.
+  writeFileSync(join(gate, 'reviewer.json'), JSON.stringify({ provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 0 }));
+  execFileSync('git', ['add', '.'], { cwd: root }); execFileSync('git', ['commit', '-m', 'select installed Gemini'], { cwd: root });
+  const preload = join(parent, 'gemini-fetch.mjs');
+  const responseFixture = join(parent, 'gemini-response.json');
+  writeFileSync(responseFixture, JSON.stringify({ modelVersion: 'fixture-backend', candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(decision) }] } }] }));
+  writeFileSync(preload, "import { readFileSync } from 'node:fs';\nglobalThis.fetch = async () => ({ ok: true, json: async () => JSON.parse(readFileSync(process.env.AGK_SMOKE_RESPONSE_FILE, 'utf8')) });\n");
+  env.AGK_SMOKE_RESPONSE_FILE = responseFixture;
+  const originalCodex = readFileSync(codex, 'utf8');
+  writeFileSync(codex, '#!/usr/bin/env node\nprocess.stderr.write("Codex must not start for Gemini"); process.exit(99);\n');
+  env.NODE_OPTIONS = `--import=${JSON.stringify(preload)}`;
+  env.GEMINI_API_KEY = 'fixture-key';
+  delete env.OPENAI_API_KEY; delete env.CODEX_API_KEY;
+  delete env.CLOUDSDK_AUTH_ACCESS_TOKEN; delete env.GOOGLE_OAUTH_ACCESS_TOKEN; delete env.REVIEW_PROXY_URL;
+  const geminiManual = JSON.parse(run('architecture-review', ['--execution-report', 'Review installed Gemini adapter']));
+  if (geminiManual.execution?.provider !== 'gemini' || geminiManual.execution?.backendReportedModel !== 'fixture-backend') throw new Error('installed Gemini execution identity missing');
+  if (geminiManual.decision.decision !== 'PASS') throw new Error('installed Gemini decision not validated');
+  const geminiHook = JSON.parse(run('architecture-gatekeeper', [], JSON.stringify({ hook_event_name: 'UserPromptSubmit', session_id: 'installed-gemini', cwd: root, prompt: 'Review installed Gemini Hook' })));
+  if (!geminiHook.hookSpecificOutput?.additionalContext.includes('"decision": "PASS"')) throw new Error('installed Hook did not select Gemini');
+  delete env.NODE_OPTIONS; delete env.GEMINI_API_KEY; delete env.AGK_SMOKE_RESPONSE_FILE;
+  writeFileSync(codex, originalCodex);
+  writeFileSync(join(gate, 'reviewer.json'), JSON.stringify({ model: 'fixture-model', reasoningEffort: 'low' }));
   const v2Decision = { decision: 'PASS', summary: 'installed Authority Set passed', authorityIds: ['architecture'], reviewedScope: ['installed package entrypoint'] };
   writeFileSync(join(gate, 'authorities.json'), JSON.stringify({ version: 1, authorities: [{ id: 'architecture', repository: 'self', revision: 'authority-revision', path: 'AGENTS.md' }] }));
   writeFileSync(join(gate, 'schema.json'), JSON.stringify({ type: 'object', additionalProperties: false, required: ['decision', 'summary', 'authorityIds', 'reviewedScope'], properties: { decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] }, summary: { type: 'string', minLength: 1 }, authorityIds: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } }, reviewedScope: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } } } }));

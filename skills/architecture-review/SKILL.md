@@ -32,9 +32,18 @@ automatic local screening Hook, CI acceptance gate, and general code review.
 
 ## Run the native review
 
-1. Create private temporary paths for a review request and decision.
+1. Allocate a unique, access-controlled temporary directory through the trusted
+   host, with protections appropriate to its OS (including ACLs where needed).
+   Choose fixed request and decision filenames inside it. Pass an uncreated
+   request filename to prepare: pre-creating the file conflicts with its `wx`
+   exclusive-create behavior. Never derive these paths from candidate content,
+   task text or reviewer output. The Skill execution side owns this allocation;
+   the native adapter does not verify its privacy or parent-directory integrity.
 2. Run the repository's installed, version-pinned entrypoint:
    `architecture-review-native prepare <request-path> <task...>`.
+   This Codex-native adapter supports recorded Codex settings only. A recorded
+   Gemini selection leaves this Skill incomplete; use the asynchronous local
+   reviewer instead. Do not substitute the host model.
 3. Start a separate host-native reviewer/subagent whose role is limited to
    reviewing and does not include changing the reviewed repository. Give it
    exactly the returned prompt, schema, model and reasoning effort. Apply the
@@ -57,7 +66,12 @@ automatic local screening Hook, CI acceptance gate, and general code review.
 4. Write only that JSON object to the private decision path.
 5. Run `architecture-review-native validate <request-path> <decision-path>`.
    Treat any preparation, reviewer, parsing, schema or policy failure as an
-   incomplete review. Always remove both temporary files.
+   incomplete review. Always remove both temporary files and the session
+   directory in host-side cleanup on success, failure or cancellation, including
+   a reviewer that never returns. Before cleanup, preserve the exact prepared
+   inputs and returned decision needed for E2E investigation in a separate
+   access-controlled record or host transcript. File mode `0600` and exclusive
+   creation do not by themselves establish directory privacy or host isolation.
 
 The native reviewer is the Skill execution adapter. Its review-only role is
 required; physical write denial and exact hard-timeout enforcement depend on
@@ -78,8 +92,8 @@ must not be reported as a successful native Skill E2E or as CI acceptance.
 
 If the repository has not adopted `architecture-review-native`, report that the
 native Skill review is unavailable. Do not fall back to the standalone
-`architecture-review` command: that terminal adapter launches child
-`codex exec`. The automatic Hook and CI gate remain separate entrypoints.
+`architecture-review` command: that terminal adapter uses the selected provider
+transport (child `codex exec` for Codex), rather than a host-native reviewer. The automatic Hook and CI gate remain separate entrypoints.
 
 Present the structured decision, reviewed revision, authority sources consulted,
 scope reviewed and the reason for any `BLOCK` or `OWNER_DECISION`.
