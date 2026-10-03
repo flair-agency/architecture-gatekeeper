@@ -832,13 +832,17 @@ schema, reviewer settings and authority from that revision, constructs the
 review request, and deterministically validates the returned decision. It does
 not choose how every host obtains that decision.
 
-- The automatic command Hook may launch a read-only child `codex exec`, because
+- When Codex is selected, the automatic command Hook may launch a read-only
+  child `codex exec`, because
   a command hook has no native reviewer handle. Its process timeout and
   read-only sandbox remain required safeguards for this automatically invoked
   child process.
-- The standalone terminal CLI explicitly uses the same child transport when no
-  Codex host task exists, retaining its read-only sandbox and bounded process
-  timeout.
+- The standalone terminal CLI selects the adapter from committed reviewer
+  settings. When Codex is selected, it uses the same child transport, retaining
+  its read-only sandbox and bounded process timeout. When Gemini is selected,
+  it uses the asynchronous Gemini API adapter under the explicit provider
+  settings and deadline; it does not launch a Codex child or claim that child's
+  sandbox guarantees. The automatic Hook uses the same provider selection.
 - The Codex-hosted Skill prepares the revision-bound request, applies its
   recorded model and reasoning effort to a separate host-native reviewer whose
   role is limited to review and does not include changing the reviewed

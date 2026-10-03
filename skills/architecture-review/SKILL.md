@@ -92,8 +92,8 @@ must not be reported as a successful native Skill E2E or as CI acceptance.
 
 If the repository has not adopted `architecture-review-native`, report that the
 native Skill review is unavailable. Do not fall back to the standalone
-`architecture-review` command: that terminal adapter launches child
-`codex exec`. The automatic Hook and CI gate remain separate entrypoints.
+`architecture-review` command: that terminal adapter uses the selected provider
+transport (child `codex exec` for Codex), rather than a host-native reviewer. The automatic Hook and CI gate remain separate entrypoints.
 
 Present the structured decision, reviewed revision, authority sources consulted,
 scope reviewed and the reason for any `BLOCK` or `OWNER_DECISION`.

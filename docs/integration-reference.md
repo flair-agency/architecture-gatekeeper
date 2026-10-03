@@ -224,8 +224,11 @@ architecture-review 'Should this responsibility move from Runtime to the Provide
 ```
 
 The task may instead be supplied on standard input. This standalone terminal
-adapter uses child `codex exec`; it is separate from the Codex-hosted Skill.
-Its host boundary is described in
+adapter selects the provider from committed reviewer settings: Codex uses child
+`codex exec`, while Gemini uses the asynchronous API transport without starting
+Codex. It is separate from the Codex-hosted Skill. Provider configuration is
+specified in [local execution composition](#local-reviewer-execution-composition).
+The Codex child host boundary is described in
 [reviewer host permissions](reviewer-host-permissions.md).
 The command uses the same
 committed consumer-owned configuration, prompt, schema, reviewer settings and
