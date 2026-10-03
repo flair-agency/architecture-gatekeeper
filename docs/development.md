@@ -40,8 +40,7 @@ npm run codeql
 
 Install the [official CodeQL bundle](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/scan-from-the-command-line/set-up-codeql-cli)
 for your OS, including the standard query packs. Add its `codeql` directory to
-`PATH`, or supply absolute `CODEQL_BIN` pointing to `codeql` (`codeql.exe` on
-Windows). No npm dependencies need installing. If the CLI is missing, the command
+`PATH` (`codeql.exe` on Windows). No npm dependencies need installing. If the CLI is missing, the command
 exits with installation guidance before creating a scan directory. Supported
 systems follow CodeQL's official requirements; allow several GB of disk space.
 The command analyzes JavaScript/TypeScript and Actions with the default suites,
@@ -49,8 +48,8 @@ including the local threat model used by CI.
 
 Each invocation retains SARIF results,
 CodeQL database logs, and `summary.json` under
-`~/.local/share/architecture-gatekeeper/codeql/scan-*`. Override that parent
-with absolute `SCAN_ROOT`; it must be outside the repository. These artifacts
+`~/.local/share/architecture-gatekeeper/codeql/scan-*`. The resolved output
+directory must be outside the repository. These artifacts
 can be large and are retained until explicitly removed.
 
 A successful command means analysis completed, not that findings are absent.

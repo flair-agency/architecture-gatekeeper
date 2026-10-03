@@ -6,16 +6,15 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const source = realpathSync(resolve(dirname(fileURLToPath(import.meta.url)), '..'));
-const binary = process.env.CODEQL_BIN || (process.platform === 'win32' ? 'codeql.exe' : 'codeql');
-const scanRoot = process.env.SCAN_ROOT || join(homedir(), '.local/share/architecture-gatekeeper/codeql');
-if ((process.env.CODEQL_BIN && !isAbsolute(binary)) || !isAbsolute(scanRoot)) throw new Error('CODEQL_BIN, when supplied, and SCAN_ROOT must be absolute paths.');
+const binary = process.platform === 'win32' ? 'codeql.exe' : 'codeql';
+const scanRoot = join(homedir(), '.local/share/architecture-gatekeeper/codeql');
 function run(args) {
   const result = spawnSync(binary, args, { stdio: 'inherit' });
   if (result.error?.code === 'ENOENT') {
     console.error(`CodeQL CLI was not found: ${binary}
 Install the official CodeQL bundle for your OS:
 https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/scan-from-the-command-line/set-up-codeql-cli
-Add its codeql directory to PATH, or set CODEQL_BIN to the absolute path of codeql (Windows: codeql.exe).
+Add its codeql directory to PATH (Windows: the directory containing codeql.exe).
 Then run npm run codeql again.`);
     process.exit(1);
   }
@@ -25,7 +24,7 @@ Then run npm run codeql again.`);
 run(['version']);
 function requireOutsideRepository(root) {
   const rel = relative(source, root);
-  if (rel === '' || (!rel.startsWith('..' + sep) && rel !== '..' && !isAbsolute(rel))) throw new Error('SCAN_ROOT must be outside the repository.');
+  if (rel === '' || (!rel.startsWith('..' + sep) && rel !== '..' && !isAbsolute(rel))) throw new Error('The CodeQL output directory must be outside the repository.');
 }
 // Resolve existing ancestors before creating anything, including symlinked parents.
 let ancestor = resolve(scanRoot);
