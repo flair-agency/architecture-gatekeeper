@@ -238,7 +238,7 @@ rollout completion, enforcement, or completion of new `OWNER_AMENDMENT` or App
 routes. A preview is not a substitute for the formal v0.6.0 gates.
 
 Formal v0.6.0 requires both protected self `OWNER_AMENDMENT / G0` cycles in the
-canonical [architecture contract](architecture.md#development-sequence-and-v060-self-reference-profile-owner-decision):
+canonical [architecture contract](architecture/self-profile.md#development-sequence-and-v060-self-reference-profile-owner-decision):
 the completed-`BLOCK` case and the completed-`OWNER_DECISION` case, including
 the Issue #137 contract change. Each applicable cycle must bind exact B and
 protected evidence, pass its protected queue transition, read back canonical

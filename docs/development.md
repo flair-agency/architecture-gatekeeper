@@ -2,7 +2,8 @@
 
 This guide describes repository implementation and verification practices.
 The normative architecture and assurance contract is in
-[`architecture.md`](architecture.md); this guide does not amend it.
+[`architecture.md`](architecture.md) and its five required normative members;
+this guide does not amend that Set.
 
 ## Repository layout
 
@@ -25,9 +26,10 @@ reusable and self-review workflows are in `.github/workflows/`.
 
 ## Architecture changes and rollout
 
-Record any required owner decision in `docs/architecture.md` before changing
+Record any required owner decision in the complete selected architecture Set
+(the relevant normative member) before changing
 architecture or assurance responsibilities. Follow its
-[dogfooding and change discipline](architecture.md#dogfooding-and-change-discipline)
+[dogfooding and change discipline](architecture/self-profile.md#dogfooding-and-change-discipline)
 for local/manual, packaged and CI paths as applicable before broader rollout.
 
 ## Local CodeQL
