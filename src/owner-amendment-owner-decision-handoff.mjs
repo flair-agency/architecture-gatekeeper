@@ -20,7 +20,7 @@ const canonical = value => Array.isArray(value) ? value.map(canonical) : value &
 export async function handoffOwnerAmendmentOwnerDecision({ repository, policy, manifest, baseSha, bSha,
   changedFiles, baseAuthorityBytes, headAuthorityBytes, authorityChanges, priorAuthoritySetDigest,
   resultingAuthoritySetDigest, triggerRun, authorityId, authorityPath, purpose,
-  tagNamespace, rulesetId, token, tagger, fetchImpl = fetch, runGh,
+  tagNamespace, rulesetId, token, tagger, rulesetReadback, fetchImpl = fetch, runGh,
   fetchArtifact = fetchOwnerAmendmentBlockArtifact, extractArtifact = extractOwnerAmendmentBlockArtifactZip,
   verifyEvidence = verifyOwnerAmendmentBlockEvidence, createTag = createAndReadOwnerAmendmentTag }) {
   try {
@@ -81,7 +81,7 @@ export async function handoffOwnerAmendmentOwnerDecision({ repository, policy, m
     if (Buffer.byteLength(tagMessage) > 262_144) fail('profiled tag envelope exceeds its byte limit.');
     const tagRef = `${tagNamespace}/${bSha}`;
     const tag = await createTag({ repository, tagRef, bSha, tagMessage,
-      tagNamespace, rulesetId, token, tagger, fetchImpl });
+      tagNamespace, rulesetId, token, tagger, rulesetReadback, fetchImpl });
     return Object.freeze({ status: 'OWNER_DECISION_TAG_TRANSPORTED_AND_READ_BACK', repository, baseSha, bSha,
       triggerProfile: envelope.triggerProfile, tagRef,
       tagObjectSha: tag.tagReadback.sha, reviewRecordSha256: envelope.reviewRecordSha256,

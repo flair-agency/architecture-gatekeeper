@@ -15,6 +15,7 @@ permissions:
 jobs:
   handoff:
     if: github.ref == 'refs/heads/main' && github.event.action == 'owner-amendment-block-handoff-v1'
+    environment: github-ruleset-readback
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -25,6 +26,13 @@ jobs:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: 22
+      - name: Isolated complete ruleset readback
+        env:
+          RULESET_READBACK_APP_ID: ${{ vars.RULESET_READBACK_APP_ID }}
+          RULESET_READBACK_INSTALLATION_ID: ${{ vars.RULESET_READBACK_INSTALLATION_ID }}
+          RULESET_READBACK_PRIVATE_KEY: ${{ secrets.RULESET_READBACK_PRIVATE_KEY }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+        run: env -u GH_TOKEN -u GITHUB_TOKEN node src/github-ruleset-readback-cli.mjs
       - name: Verify evidence and transport exact-B tag
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -35,5 +43,7 @@ jobs:
           A_PR_NUMBER: ${{ github.event.client_payload.a_pr_number }}
           BLOCK_RUN_ID: ${{ github.event.client_payload.block_run_id }}
           BLOCK_RUN_ATTEMPT: ${{ github.event.client_payload.block_run_attempt }}
+          OWNER_AMENDMENT_RULESET_READBACK_FILE: ${{ runner.temp }}/owner-amendment-ruleset-readback/snapshot.json
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
           GH_TOKEN: ${{ github.token }}
         run: node src/owner-amendment-handoff-cli.mjs
