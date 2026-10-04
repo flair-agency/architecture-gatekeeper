@@ -1,3 +1,4 @@
+import { matchesGitHubAssociatedRepository } from './github-associated-repository.mjs';
 // Fetch a GitHub Actions artifact archive for a trusted BLOCK producer run.
 // This transports compressed evidence; it does not extract or authenticate its
 // contents, verify attestation, or decide acceptance.
@@ -92,8 +93,10 @@ export async function fetchOwnerAmendmentBlockArtifact({ expected, token, fetchI
     // receipt and attestation later bind exact B and the protected workflow.
     const pullRequests = run?.pull_requests;
     const associations = Array.isArray(pullRequests) ? pullRequests.filter(pr =>
-      pr?.base?.ref === 'main' && pr?.base?.sha === expected.baseSha && pr?.base?.repo?.full_name === expected.repository &&
-      pr?.head?.sha === expected.headSha && pr?.head?.repo?.full_name === expected.repository) : [];
+      pr?.base?.ref === 'main' && pr?.base?.sha === expected.baseSha &&
+      matchesGitHubAssociatedRepository(pr?.base?.repo, { repository: expected.repository, repositoryId: run.repository?.id }) &&
+      pr?.head?.sha === expected.headSha &&
+      matchesGitHubAssociatedRepository(pr?.head?.repo, { repository: expected.repository, repositoryId: run.repository?.id })) : [];
     if (String(run.id) !== String(expected.runId) || run.event !== 'pull_request_target' ||
         run.repository?.full_name !== expected.repository ||
         run.head_repository?.full_name !== expected.repository || !/^[a-f0-9]{40}$/.test(run.head_sha ?? '') ||

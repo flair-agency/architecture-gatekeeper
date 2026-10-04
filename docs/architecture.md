@@ -1,7 +1,7 @@
 # Architecture Gatekeeper contract
 
-This document is the normative architecture contract for Architecture
-Gatekeeper. Implementation documents, examples, Issues and pull requests must
+This document and the five required members listed below form the normative
+architecture contract for Architecture Gatekeeper. Implementation documents, examples, Issues and pull requests must
 conform to it. When an implementation detail conflicts with this document, the
 detail does not silently redefine the architecture; the contract must be
 changed explicitly through owner review first.
@@ -9,6 +9,20 @@ changed explicitly through owner review first.
 For an operational starting point, use the [documentation map](README.md).
 The diagrams below explain the order of operations; the surrounding text
 defines the requirements and assurance claims.
+
+All six members are required together, as selected by the committed authority
+manifest. Topic separation gives no member implicit precedence. The headings
+retained here for moved sections preserve old fragments; follow their links for
+the full clauses. These pointers do not materialize another authority member.
+
+| Stable ID | Required document |
+| --- | --- |
+| `architecture-contract` | [docs/architecture.md](architecture.md) |
+| `architecture-authority-set` | [docs/architecture/authority-set.md](architecture/authority-set.md) |
+| `architecture-owner-addition` | [docs/architecture/owner-addition.md](architecture/owner-addition.md) |
+| `architecture-owner-amendment` | [docs/architecture/owner-amendment.md](architecture/owner-amendment.md) |
+| `architecture-review-execution` | [docs/architecture/review-execution.md](architecture/review-execution.md) |
+| `architecture-self-profile` | [docs/architecture/self-profile.md](architecture/self-profile.md) |
 
 ## Contract navigation
 
@@ -18,13 +32,6 @@ route's conditions and exceptions together with the shared invariants. The full
 [topic index is in the documentation map](README.md#contract-navigation).
 
 ## Why
-
-Repositories accumulate architecture decisions in canonical documents, but
-ordinary code review does not reliably detect when a proposed change moves a
-responsibility across an ownership boundary, weakens an acceptance rule, or
-introduces a capability that the repository has not authorized. Instructions
-alone describe the intended architecture; they do not provide a repeatable
-decision at design time, during implementation, and before merge.
 
 Architecture Gatekeeper exists to make those semantic checks repeatable while
 leaving architecture ownership with each consumer repository. Its success is
@@ -56,105 +63,15 @@ layout, examples, or another consumer's policy.
 
 ### Target contract: distributed authority
 
-A consumer may opt in to a versioned, finite Authority Set whose required
-documents reside in one or more repositories. Authority topology is independent
-of source layout and runtime dependencies. The consumer selects each member by
-stable ID, repository identity, path and immutable revision. The selector is a
-review input that identifies owner-adopted sources; it is not itself semantic
-architecture authority. Links, dependencies and submodules do not implicitly
-add members or establish precedence between them.
-
-The existing `authorityFiles` decision field reports repository paths. An
-opt-in distributed route reports stable source IDs in a separate `authorityIds`
-field under its own decision schema. A self member's `authority-revision`
-selector resolves to the protected base commit in CI or the single recorded
-commit in local/manual review; its manifest does not pin a stale SHA.
-
-An opt-in CI route claiming protected-authority assurance must select its
-Authority Set and same-repository authority bytes from the protected base
-revision, not the pull-request merge checkout. External revisions are
-consumer-adopted snapshots: an upstream change has no effect until the
-consumer updates its protected selection. A selection-change pull request is
-reviewed under the previous protected selection; the new selection applies to
-subsequent reviews after merge. Local/manual review selects configuration and
-same-repository authority from its single recorded commit. Both routes use the
-same Authority Set semantics but need not select identical snapshots, and a
-local result remains development feedback under the current acceptance policy.
-
-Before semantic review on an enabled route, Gatekeeper must resolve every
-required member to a bounded, immutable regular-file snapshot, verify the
-declared repository, revision and path, compute its content digest, and supply
-the selected bytes and source IDs to the reviewer. The supported source types
-and per-file, member-count and total-size limits must be explicit before the
-route is enabled. A missing, inaccessible, malformed or unverifiable member
-leaves the review incomplete, without a `PASS`, `BLOCK` or `OWNER_DECISION` and
-without falling back to a smaller set. Authority content is never executed.
-Source-read credentials are confined to materialization and are not exposed to
-pull-request code or the semantic reviewer, which does not discover additional
-authority through general repository access.
-
-For every completed `PASS`, `BLOCK` or `OWNER_DECISION` on the enabled route,
-deterministic validation requires the reported source IDs to equal the complete
-required set. Omitted, duplicate or extra IDs invalidate the result as an
-incomplete review. A material conflict among successfully loaded authorities
-without an adopted precedence or refinement rule calls for `OWNER_DECISION`,
-not an invented ordering. Report the selected-set identity and each member's
-repository, resolved commit, path and content digest with the reviewed
-revision. These same-run provenance details do not establish that the model
-internally read every byte and are not independently reusable acceptance
-evidence.
-
-This target contract applies only after the route is implemented and explicitly
-selected. Existing single-repository and CI compatibility routes retain their
-current assurance claims except for the explicit fail-closed legacy v1 repair
-below; naming a protected architecture file in a prompt
-alone does not satisfy the materialization requirement above. An enabled
-enforced review cannot downgrade to an older route when resolution fails.
+See the [full normative section](architecture/authority-set.md#target-contract-distributed-authority).
 
 ### Initial distributed-authority CI bounds (Issue #51 owner decision)
 
-The first CI implementation supports GitHub repositories only. A consumer that
-selects this route must declare all five effective limits in its protected-base
-policy: `maxManifestBytes`, `maxMembers`, `maxFileBytes`, `maxTotalBytes`, and
-`maxPromptBytes`. There are no implicit defaults, and a pull request cannot
-raise these limits for its own review. The recommended initial consumer profile
-is respectively 16,384 bytes, 16 members, 65,536 bytes, 262,144 bytes, and
-524,288 bytes. These recommendations do not activate the route by themselves.
-
-The versioned Gatekeeper runtime ceilings, in the same order, are 65,536 bytes,
-32 members, 131,072 bytes, 524,288 bytes, and 1,048,576 bytes. Neither workflow
-inputs nor environment variables may raise these ceilings. Changing them
-requires review and release of the Gatekeeper runtime. Missing, invalid or
-over-ceiling effective limits fail closed before authority materialization.
-The prompt limit applies to the complete review prompt, including selected
-authority content. The existing protected-base selection, immutable revisions,
-complete-set validation and offline review boundary continue to apply.
+See the [full normative section](architecture/authority-set.md#initial-distributed-authority-ci-bounds-issue-51-owner-decision).
 
 ### Initial local distributed-authority bounds (Issue #51 owner decision)
 
-The first local/manual Authority Set route supports same-repository (`self`)
-members from the one recorded Git commit only. It is opt-in through committed
-consumer configuration. The configuration selects a committed manifest and
-declares all five effective limits named above; the same versioned runtime
-ceilings apply. The complete prompt, including the task and any Hook context,
-must fit `maxPromptBytes`. Missing, invalid or over-ceiling limits leave the
-review incomplete before semantic review.
-
-For local `self`, the configured repository name labels the current Git root;
-the local same-user trust boundary does not attest its GitHub origin. The
-reviewed commit and object bytes are verified within that root, and local
-provenance must not claim a stronger repository-identity guarantee.
-
-An external member selected by a local manifest is not silently omitted or
-replaced with a working-tree copy. Until an explicit local source-access and
-credential boundary is adopted, that selection leaves local review incomplete.
-This initial route does not request a source-read credential or use one to
-resolve authority. Local child execution may inherit the host environment;
-this route does not claim isolation from credentials that the host already
-supplies. Any later external-source route must define how source credentials
-are withheld from the semantic reviewer before it is enabled. A local result
-remains development feedback, not merge-acceptance evidence. Existing consumers
-that have not selected this route keep the legacy `authorityFiles` behavior.
+See the [full normative section](architecture/authority-set.md#initial-local-distributed-authority-bounds-issue-51-owner-decision).
 
 ### Shared mechanism
 
@@ -193,585 +110,31 @@ T --> H
 
 ### OWNER_ADDITION / G0 route for missing decisions (Issue #111)
 
-`OWNER_DECISION` for a missing architecture decision rejects Change A until
-that decision becomes canonical and A receives fresh review. A consumer may
-separately select predecessor-B `OWNER_ADDITION / G0`; it is not semantic
-`PASS` for A or B and does not erase A's result.
-
-The initial route requires previous protected-base policy opt-in and its
-selection of the exact eligible authority path, matching the previous Set's
-exactly one `self` member. B may modify only that selected authority file; it
-cannot enable or change policy. B adds only the missing decision: no existing-rule
-changes, implementation/workflow changes, completion claims, contradictions or
-unrelated unresolved choices. Historical BLOCK evidence is not required; this
-route differs from OWNER_AMENDMENT.
-
-A completed ordinary `OWNER_DECISION` carries protected `ownerDecisionId`.
-The versioned tag `AdditionRecord` binds `missingDecision.id` to that ID.
-B-specific semantic eligibility verifies the match and that B adds the missing
-choice without contradiction or unrelated unresolved choices. The pure G0
-artifact verifier checks binding, not semantic properties inferred from text;
-no historical BLOCK or reusable historical review artifact is required.
-
-A deliberate annotated Git tag targets exact B and binds selected authority,
-missing decision and `ownerDecisionId`. The verifier checks tag-object bytes,
-computes/records OID, confirms B, and records verification policy and authority
-state. OID identifies exact object bytes; reading the mutable ref proves only
-its observed mapping, not protection against later movement or deletion.
-
-G0 is procedural and auditable, not authentication of tagger, pusher or owner,
-or proof of tag availability through later transition. It requires no identity
-provider, authenticated exact-claim receipt, revocation service or guarantee
-that later ref changes invalidate a green check. Required verifier/service
-failures fail closed. Privileged credentials cannot reach or execute B's PR
-code or package lifecycle scripts.
-
-After B becomes canonical, review A afresh against the new protected base under
-normal consumer acceptance policy; BLOCK or another OWNER_DECISION remains
-possible. G0 does not accept A. Owner-authorized administrative exceptions stay
-outside this result under existing consumer governance.
-
-The deterministic verifier and protected reporter are implemented, but the
-route requires prior protected-policy selection and all verifier requirements.
-This repository's policy does not select it: self-review remains inactive.
-First-time policy adoption may use the existing governance's one-time
-owner-controlled administrative exception after code review and the fixture
-full-cycle E2E below; that exception is neither Gatekeeper acceptance nor route
-activation for a review. v0.5.1 release requires the public fixture E2E and
-package release checks. Fixture success activates no self or real-consumer
-route and settles no consumer architecture or migration status. Work completion
-is not a missing decision; owners establish required completion evidence
-separately.
+See the [full normative section](architecture/owner-addition.md#owner_addition--g0-route-for-missing-decisions-issue-111).
 
 ### Target multi-document OWNER_ADDITION route (Issue #119 owner decision)
 
-The owner selected the following bounded extension for v0.5.1 on 2026-09-26.
-It removes the initial route's single-member Authority Set restriction only
-through an explicitly versioned, consumer-selected route. It preserves the
-single-file scope of Change B and does not authorize a consumer architecture
-decision, an existing-rule amendment, or a work-completion claim.
-
-The previous base policy selects the complete required Authority Set and
-exactly one affected `self` member by stable ID and path. That member must use
-`authority-revision`; its base bytes come from the same recorded base as the
-policy and manifest. B may modify only that existing authority file. B cannot
-change the policy, manifest, another authority member, implementation, or
-workflow, or enable this route for its own review. An enforced route retains
-protected-base selection. The separately versioned recorded-base procedural
-route in Issue #121 reports its observed policy protection and host enforcement;
-that selection does not relax addition eligibility.
-
-Both the ordinary review of B and its separate addition-eligibility review
-must receive every required member of that same base-selected Authority Set.
-Same-repository members are immutable base snapshots, and external members
-remain the exact consumer-selected snapshots under the existing GitHub
-materialization and credential boundary. The eligibility request also receives
-the affected member's proposed B bytes and exact base-to-B diff, identified as
-candidate evidence rather than existing canonical authority. It must check
-the proposed addition against unchanged members as well as the affected
-member's existing rules. Links, prompt references, repository discovery,
-summaries, and a smaller selected subset cannot substitute for required
-authority bytes.
-
-Every completed ordinary semantic decision and every completed B eligibility
-result must report exactly the complete selected `authorityIds`. Missing,
-duplicate, or extra IDs invalidate that review. A missing, inaccessible,
-malformed, unverifiable, or oversized member leaves the procedure incomplete
-before semantic review; it cannot be omitted, truncated, sampled, or replaced
-by a weaker route. A material conflict among loaded authorities with no
-adopted precedence or refinement rule remains an unresolved owner decision.
-B must still add only the identified missing decision without changing an
-existing rule, introducing a contradiction or unrelated unresolved choice,
-or asserting completed work. An ordinary `BLOCK` cannot trigger this route.
-
-The new route uses explicit policy, AdditionRecord, eligibility-schema and
-report versions distinct from the initial route. Its tag-bound AdditionRecord
-and procedure/report bind the repository, exact base and B commits, selected
-policy revision and digest, manifest digest, complete selected-set digest,
-affected member ID and path, before/after content digests, and exact missing
-decision ID. The report also records every member's repository, resolved
-commit, path and content digest, the annotated tag object OID and observed
-tag-ref mapping. The ordinary review and eligibility result must be bound to
-that same selected-set identity. A stale or mismatched base, head, policy,
-set, affected member, decision ID or tag invalidates the procedure. These are
-same-run bindings; they do not establish that a model read every byte or
-create independently reusable acceptance evidence.
-
-For this new route's ordinary and B-specific review, the versioned
-`maxFileBytes` runtime ceiling is 262,144 bytes (256 KiB). The other ceilings
-remain 65,536 manifest bytes, 32 members, 524,288 total authority bytes and
-1,048,576 complete prompt bytes. The consumer must explicitly select all five
-effective limits in the previous base policy. A lower selected limit remains
-binding, and B cannot raise its own limit. The complete base set and the set
-with the affected member replaced by its proposed bytes must each fit the
-selected file and total-content limits. The complete eligibility prompt,
-including all base authority bytes, proposed bytes, diff, ordinary result,
-tag claim, metadata and instructions, must fit `maxPromptBytes`; exceeding it
-leaves the review incomplete. This extension does not raise the limits of
-the initial distributed-authority or local/manual routes.
-
-The extension preserves `OWNER_ADDITION / G0` semantics: the annotated tag
-binds exact B and its missing decision, principal authentication remains
-`not_verified`, the tag-ref mapping is observed at verification time, and no
-later canonical transition or continuing tag availability is inferred. B's
-governance result is not a semantic `PASS` for B or A. A requires fresh review
-after B becomes canonical. Existing v0.5 policy bytes, records, schemas and
-historical results retain their original single-member interpretation and
-limits; a verifier must reject ambiguous version mixing rather than upgrade
-them by reinterpretation.
-
-This target requires implementation, focused negative verification and the
-synthetic fixture E2E below for v0.5.1 package release. It does not activate a
-real consumer; representative LIVE Agency E2E remains a separate prerequisite.
-Issue #120 owns legacy PR-head authority repair; consumer-specific decision
-classification and rule amendments cannot replace the fixture A/B lifecycle.
+See the [full normative section](architecture/owner-addition.md#target-multi-document-owner_addition-route-issue-119-owner-decision).
 
 #### v0.5.1 public fixture full-cycle release gate (owner decision)
 
-The public `flair-agency/architecture-gatekeeper-v05-fixture` is the v0.5.1
-release E2E. With synthetic data it must demonstrate:
-
-1. Change A receives an ordinary `OWNER_DECISION` with its exact
-   `ownerDecisionId`.
-2. Authority-only B binds that decision, is assessed against the complete
-   selected Authority Set, and reports `eligible` before merge, not semantic
-   `PASS` for B or A.
-3. The exact eligible B is adopted by an ordinary pull-request merge commit
-   whose first parent is the recorded base, second parent is exact B, and tree
-   equals B's tree.
-4. A post-merge canonical readback verifies that the target contains that
-   merge commit and the expected authority state.
-5. A is reviewed freshly against the resulting canonical authority and returns
-   `PASS` under the fixture's normal review policy.
-
-Issues #119/#121 conditions still apply. A's earlier `OWNER_DECISION` remains
-historical; fresh `PASS` is new. Fixture success proves no real consumer's
-readiness, policy, owner authorization or host enforcement.
+See the [full normative section](architecture/owner-addition.md#v051-public-fixture-full-cycle-release-gate-owner-decision).
 
 ### Target owner-amendment governance (Issue #75 owner decision)
 
-`OWNER_AMENDMENT` is an acceptance result for a separate, authority-only
-amendment Change B that changes an existing canonical architecture decision.
-It is not a semantic-review decision and does not turn a historical `BLOCK` or
-`OWNER_DECISION` into `PASS`. A prior `BLOCK` is a representative trigger, not
-the definition of amendment. A completed `OWNER_DECISION` may also identify an
-owner choice to change an existing decision; a missing-decision addition still
-belongs to `OWNER_ADDITION`. The originally reviewed Change A remains rejected
-until B becomes canonical and A receives a fresh review where A exists.
-
-The procedures below are versioned trigger profiles: BLOCK evidence is
-specific to its profile and is not required for all amendments. The supported
-v0.6.0 self profiles are `completed-block-v1` for a completed BLOCK and
-`completed-owner-decision-self-v1` for a completed OWNER_DECISION. Each profile
-must specify exact completed review evidence, predecessor binding, owner
-procedure, protected producer and transition checks. A tag or candidate claim
-cannot infer or enable a profile; B cannot select its route or authorize its
-adoption through proposed policy.
-
-The owner adopts profile `completed-owner-decision-self-v1`. The exact
-completed ReviewRecord digest identifies escalation/revision, not human choice
-or identity. AmendmentRecord and deliberate annotated tag bind exact B, target
-existing decision, trigger ReviewRecord digest, prior/resulting Sets and
-purpose: proposed resolution, not authenticated approval. At G0,
-`principalAuthentication` and `exactClaimAuthorization` are `not_verified`;
-the owner procedure is prior-policy-authorized declaration and protected
-adoption, not proof of owner approval. Stronger assurance needs a separate
-verified route; no G0 fallback.
-
-B-specific semantic eligibility is a common `OWNER_AMENDMENT` invariant,
-independent of trigger. Review the exact authority-only B against the full
-previous protected policy and Authority Set; confirm it materially addresses
-its declared trigger and amends only its target decision; exclude unrelated
-changes, implementation/workflow/executable-policy edits and unsupported
-completion claims, and leave resulting authority coherent. Assess resulting
-rules without requiring agreement with superseded rules. This does not impose
-a universal one-file limit or decision ID. Before merge, a trusted producer must
-issue versioned eligibility evidence binding exact B, trigger profile and
-ReviewRecord digest, AmendmentRecord, and previous policy/Set; validate record
-bytes and producer provenance. `merge_group` deterministically revalidates
-eligibility, trigger evidence, protected tag and transition, failing closed on
-missing, stale, mismatched or unverifiable evidence. The profiles retain their
-own trigger-specific evidence and semantic questions: this profile preserves
-the historical `OWNER_DECISION` and assesses resolution of its escalation;
-the BLOCK profile below requires a completed BLOCK and assesses resolution of
-the identified conflict. Only previous-base policy opts in and scopes a route;
-B cannot self-authorize. Bootstrap is limited by [B1–B8](#canonical-authority-lifecycle); contract entry alone enables no route.
+See the [full normative section](architecture/owner-amendment.md#target-owner-amendment-governance-issue-75-owner-decision).
 
 #### Self-v1 semantic eligibility input and receipt (owner decision)
 
-The closed `owner-amendment-semantic-eligibility-v1` format reports semantic
-eligibility for exact B only; it is not `PASS` or `OWNER_AMENDMENT`, does not
-rewrite the trigger result, and does not authenticate an owner or authorize an
-exact claim. Those assurances remain `not_verified`; this decision enables no
-route.
-
-The previous-base policy selects the trigger profile, authority scope, trusted
-producer, and required `ownerAmendment.maxPromptBytes` (no default; positive
-safe integer, at most the 1,048,576-byte runtime ceiling). B cannot set or
-raise it. The complete prompt must fit. The protected producer supplies the
-exact raw UTF-8 policy, full Authority Set and member bytes, repository/base/B,
-all changed authority paths' before/after bytes and complete diff, trigger
-ReviewRecord bytes and AmendmentRecord bytes, and annotated-tag identity. It
-materializes the exact completed trigger ReviewRecord, verifies its selected
-profile, digest, predecessor bindings, and trusted producer provenance before
-constructing the prompt, then includes its decoded content as untrusted data.
-The record supplies escalation/revision context only; it neither states owner
-choice nor replaces canonical authority. The producer verifies all input
-bindings before review. It also validates the AmendmentRecord's profile schema,
-exact-byte digest, and applicable repository/base/B, trigger, target authority,
-and before/after bindings before prompt construction. The prompt includes both
-decoded records as separately identified untrusted data; the AmendmentRecord's
-target and purpose are proposed claims, not owner choice or approval. Policy,
-authority, and record content are data, not instructions. No one-file limit
-applies. IDs follow protected manifest order.
-`authoritySetDigest` is SHA-256 of compact UTF-8 JSON for the ordered member
-descriptors `{id,repository,resolvedCommit,path,byteLength,sha256}`.
-
-The closed decision object has exactly `version`, `kind`, `eligibility`,
-`triggerProfile`, `authorityIds`, `authoritySetDigest`, and `checks`;
-`version=1`, `kind=owner-amendment-semantic-eligibility-decision`, and
-`eligibility` is `ELIGIBLE` or `INELIGIBLE`. Profile, complete ordered IDs,
-and set digest equal the input. `checks` has exactly these boolean fields:
-`materiallyAddressesTrigger`, `amendsOnlyTargetDecision`,
-`excludesUnrelatedChanges`,
-`excludesImplementationWorkflowAndExecutablePolicyEdits`,
-`excludesUnsupportedCompletionClaims`, `resultingAuthorityIsCoherent`, and
-`assessesResultingRulesWithoutRequiringAgreementWithSupersededRules`.
-`ELIGIBLE` requires all checks true; `INELIGIBLE` records at least one false
-check and cannot produce eligible evidence. Duplicate, extra, missing,
-malformed, or mismatched fields leave review incomplete. The receipt records
-the semantic determination; deterministic validation does not prove its
-semantic correctness.
-
-A completed decision has a version-1 `owner-amendment-semantic-eligibility-receipt`
-in canonical UTF-8 JSON: recursively Unicode-code-point-sorted object keys,
-array order preserved, compact separators, one final LF. Reject duplicate
-keys and unknown, missing, noncanonical, or invalid fields at every level.
-The exact top-level field set is `version,kind,eligibility,repository,baseSha,
-bSha,triggerProfile,triggerReviewRecordSha256,amendmentRecordSha256,
-policyRevision,policySha256,authoritySetDigest,authorityIds,changes,diffSha256,
-promptSha256,schemaSha256,decisionSha256,model,reasoningEffort,gatekeeper,
-tag,producer`;
-`policyRevision=baseSha`. All `*Sha256` fields hash the named exact raw bytes
-(decision bytes use the canonical decision encoding); `authoritySetDigest`
-uses the member-descriptor algorithm above. `changes` is an ordered array of exact
-`{path,beforeSha256,afterSha256}` objects. `tag` is exactly
-`{tagRef,tagObjectOid,observedTagRefOid}`, binding the protected ref, exact
-annotated object and observed ref mapping; it makes no claim the mutable ref
-cannot later move or disappear. `producer` is exactly
-`{workflowPath,workflowSha,workflowRef,runId,runAttempt,jobId}`, identifying
-the selected protected workflow and exact job execution. `gatekeeper` is
-exactly `{repository,revision,package}`: the canonical Gatekeeper repository,
-full immutable Git commit SHA of the runtime source, and either `null` for
-direct Git execution or an exact `{name,version,integrity}` package identity.
-For package execution, these values identify the selected package and its
-registry-read version and integrity, as required by the package distribution
-contract. This is distinct from producer workflow/job identity. `model` and
-`reasoningEffort` record the exact values selected by the previous-base
-policy. The verifier matches runtime identity, producer, model, and effort to
-their protected selections. Producer provenance must authenticate separately
-before acceptance; fields alone do not authenticate the producer. It requires
-every receipt identity/digest to match the protected selection and review
-input. Only a validated `ELIGIBLE` receipt can serve as input to a separately
-implemented acceptance route; it never reports `OWNER_AMENDMENT` or
-authorizes B.
-
-For BLOCK-triggered amendments, the exact completed `BLOCK` must identify the
-conflict that B's semantic eligibility assesses. Preserve that historical
-result; B never changes it to `PASS`. The first BLOCK-triggered implementation
-may accept Change B at governance
-grade `G0` when the **previous protected-base policy** explicitly authorizes
-that grade for
-the affected authority and amendment scope. `G0` still requires a deliberate,
-per-amendment annotated-tag artifact. The verifier must check its immutable
-object identity, exact B revision, amendment purpose and triggering `BLOCK`
-identity. `G0` means the tag's creator or pusher is **not authenticated as the
-owner** by Gatekeeper. Tagger name/email and author-supplied claims do not
-establish identity. The resulting record must say `OWNER_AMENDMENT / G0`, name
-the protected policy revision and tag object OID, and report that principal
-authentication was not verified. A change cannot lower its own required grade
-or select its own acceptance policy. No grade or amendment route is enabled
-by default.
-
-The `G0` option reflects the first user's existing owner-controlled exception
-operation: Gatekeeper does not currently authenticate the owner behind each
-amendment. Making `G1` mandatory from the outset would exclude single-owner
-and other repositories that cannot yet provide a supported identity-verifying
-mechanism. `G0` gives those repositories a formal, auditable procedure without
-falsely claiming that each tag was pushed by the owner. It does not remove the
-repository's responsibility to control who can merge under its hosting rules.
-
-The value of this BLOCK-triggered route is procedural: it replaces a
-recurring, unstructured merge exception with a separate amendment Change,
-an annotated tag binding
-that change to the exact triggering `BLOCK`, protected acceptance conditions
-and an audit record. That improvement in process traceability must not be
-described as improvement in per-change owner authentication; the latter
-requires a higher-grade identity-verifying adapter.
-
-For this route, the triggering `BLOCK` is one specific, completed and
-verifiable ReviewRecord for the identified Change A, generated before B's
-protected canonical transition. “Exact” requires validating the ReviewRecord
-bytes and producer provenance bound by B's AmendmentRecord; it does not
-require retaining the first or earliest `BLOCK` ever produced for A. A
-readable record without valid producer provenance, or a digest without the
-record bytes, is insufficient. Stale, unrelated, incomplete or unverifiable
-evidence cannot trigger `OWNER_AMENDMENT`.
-
-The evidence supporting B must remain valid through B's protected canonical
-transition. A successful required check or a readback performed when that
-check runs does not alone establish that the same evidence remains valid at a
-later transition. The selected host integration must establish freshness and
-ordering through that transition. If the triggering ReviewRecord or its
-provenance, binding, or applicable previous protected-base authority/policy
-cannot be validated at transition, B is incomplete and this route must not
-authorize it. Expiry or later unavailability after a completed transition
-does not retroactively invalidate that `OWNER_AMENDMENT` under this
-acceptance-time evidence contract. Retention of B's acceptance record and any
-post-transition audit material is a separate protected-policy choice.
-
-If the bound triggering `BLOCK` is lost before B's transition, that pending
-attempt cannot proceed on the missing record. Where the previous
-protected-base policy permits recovery, a fresh review may produce a new
-completed `BLOCK` for the identified Change A. This is new evidence with a
-new identity, not restoration or proof of the old ReviewRecord; review
-execution cannot be assumed to reproduce its exact bytes. It must be
-generated under the applicable previous protected-base authority/policy, and
-the repository, immutable base/head tuple and other required review inputs
-must align with the identified A. If they do not align, the reviewed change
-has a different A identity and B must identify it as such. B's AmendmentRecord
-and every tag, evidence receipt or exact-claim authorization bound to the old
-triggering `BLOCK` must be regenerated or reauthorized for the new identity.
-Only a completed `BLOCK` supports this recovery; `PASS`, `OWNER_DECISION`,
-refusal or incomplete review does not. The new bindings and evidence must be
-validated through B's protected canonical transition.
-
-Gatekeeper validates the selected evidence while a pending B is adopted; it
-does not prescribe a universal storage backend or indefinite retention of
-every earlier `BLOCK`. The consumer's protected policy and host integration
-select a source that can supply the exact record bytes and verifiable producer
-provenance through B's transition, and define the availability horizon and
-later audit retention. Missing evidence cannot be replaced by a claim that a
-previous review probably returned `BLOCK`. A first production deployment
-still needs a concrete authorized evidence source and a proven final
-validation/transition ordering; allowing a new `BLOCK` does not itself prove
-either condition.
+See the [full normative section](architecture/owner-amendment.md#self-v1-semantic-eligibility-input-and-receipt-owner-decision).
 
 ### Separate exact-claim authorization and revocation (owner decision)
 
-`G0` remains a procedural governance grade with
-`principalAuthentication=not_verified`. It does not itself prove that an
-authorized owner approved the substance of an amendment. If an
-owner-approved, versioned Amendment Claim route is later defined,
-authenticated authorization of its exact claim is a **separate assurance**
-from `G0` and from authentication of the annotated tag actor. Neither `G0`
-nor any higher tag-actor governance grade is redefined by this assurance;
-the observed grade and exact-claim authorization result must be recorded
-independently. The previous protected-base policy may select or require the
-additional assurance for an affected authority and amendment scope;
-candidate Change B cannot waive or add it for itself. Failure,
-unavailability or incompleteness of a required authorization cannot fall
-back to `G0` alone or another weaker route.
-
-When selected, the authorization must establish that a principal with the
-required owner authority approved the **exact** claim identity, including
-its bound prior and proposed authority revisions, amendment purpose and
-supporting evidence identities. A change to any bound claim content requires
-new authorization. A general PR/MR `APPROVED` state, annotated-tag actor,
-mutable review body or author-supplied statement is not by itself proof that
-the principal approved that exact claim at the time of authorization. The
-claim identity must not depend on the later authorization receipt that
-references it.
-
-Ordinary revocation of an exact-claim authorization is prospective. If it
-occurs **before the protected canonical transition** for B, adoption must be
-prevented, even if an earlier required check reported success. A successful
-check is not the canonical transition. After a completed protected canonical
-transition, a later ordinary revocation does not erase that historical
-acceptance; it prevents future or otherwise unconsumed use of the revoked
-authorization. Evidence discovered later to have been invalid **at the time
-of acceptance** (for example, forgery or lack of authority) is a separate
-correction or incident matter, not an ordinary revoke and not an automatic
-rollback rule.
-
-This states the assurance and time semantics, not an enabled mechanism.
-The exact receipt, identity-verification adapter, revocation source, and
-host-specific ordering between final validation and protected merge remain
-unselected and unproven. A host adapter must provide an immutable commitment
-to the exact claim at authorization time and demonstrate that revocation or
-claim change after a green check cannot permit a later canonical transition.
-No exact-claim authorization route may be enabled until those properties and
-the selected policy are proved end to end. This decision does not remove the
-current BLOCK-evidence profile's trigger requirements or authorize the broader
-Amendment Claim evidence model proposed in #107.
-
-In the BLOCK-evidence profile, even at `G0`, the protected verifier must
-validate a versioned ReviewRecord
-for the exact historical `BLOCK`, an AmendmentRecord binding B to that review
-and the authority being amended, the current repository/base/head and
-authority identities, and the strict authority-amendment scope. It must reject
-unrelated implementation changes in B, stale or unrelated review evidence,
-and changed bound state. The check is successful only for B; it cannot accept
-A using B's amendment result. A qualifying B may have been authored by a
-non-owner: `G0` makes no author-identity claim. Repository merge permissions
-and branch rules control who can actually merge it and are separate from the
-Gatekeeper grade.
-
-The annotated tag is procedural evidence at every enabled grade. Tag-content
-and revision verification are core requirements, separate from verifying the
-actor behind the tag. The `G0` route selects a Null **identity-authentication**
-adapter: it reports no verified principal, while the core still requires a
-valid tag artifact. A missing, malformed, stale or unverifiable tag is not a
-valid `G0` result. Where a higher grade is selected, an external identity
-provider is the source of actor attribution. Its adapter validates and
-normalizes the provider's evidence for the exact tag; the protected core
-checks that principal against the owner policy. The adapter does not itself
-establish a human's identity or return acceptance results or grades. An
-invalid, unavailable or incomplete selected higher-grade adapter result cannot
-trigger a `G0` fallback. The tag object's remote availability and tag-ref
-update/deletion must have an enforceable freshness rule before the tagged
-route is enabled; a stale successful check cannot remain authoritative after
-its bound evidence changes. A higher-grade adapter that relies on a push
-event must additionally bind that event to the exact tag object.
-Future grades may express one authenticated owner or a distinct-principal
-quorum; the core must keep the number/relationship of attesters separate from
-the strength of each authentication mechanism. Mechanisms and any alternatives
-are selected by protected policy, never by a first-success fallback chain.
-
-This is a target contract, not an active acceptance route. It becomes active
-only after the evidence format, deterministic verifier, protected routing and
-current-state checks are implemented and tested. Until then, existing
-acceptance behavior remains in force. Enabling `G0` for this repository for
-the first time cannot be justified by the candidate policy in that same
-change; its adoption follows the existing owner-controlled exception process.
+See the [full normative section](architecture/owner-amendment.md#separate-exact-claim-authorization-and-revocation-owner-decision).
 
 ### OWNER_ADDITION adoption and assurance dimensions ([Issue #121](https://github.com/flair-agency/architecture-gatekeeper/issues/121) owner decision)
 
-The scalar `G0` label is retained for compatibility with existing v0.5
-`OWNER_ADDITION` and `OWNER_AMENDMENT` artifacts. It means only that the
-annotated-tag actor's principal identity was not verified. It is not a total
-governance-strength grade and makes no claim about exact-claim authorization,
-quorum, policy protection, host merge enforcement, or a completed canonical
-transition. Existing v0.5 policy bytes, artifacts, route behavior, and
-historical results keep their original meanings.
-
-Future governance reports must keep these assurance facts distinct:
-
-- **Procedure and eligibility:** whether route-specific evidence and semantic
-  checks are `eligible`, `ineligible`, or `incomplete` for the exact candidate.
-- **Principal authentication:** whether an approved identity mechanism
-  verified the relevant actor. Existing G0 reports `not_verified`; tagger
-  name/email or a claim in the candidate does not change that state.
-- **Exact-claim authorization:** whether a principal with the required owner
-  authority authorized the bound claim. This is independent of actor
-  authentication and requires its own selected evidence contract.
-- **Quorum:** whether the number and relationship of authorized attestations
-  selected by policy are satisfied. Quorum does not alter the strength of the
-  identity mechanism for each attester.
-- **Policy protection:** whether evidence establishes that the policy used for
-  a decision was protected from candidate self-selection or alteration.
-- **Host enforcement:** whether evidence establishes that the hosting service
-  applied a merge rule to the exact target, required check and producer, with
-  its bypass scope and observation time identified.
-- **Canonical transition or placement:** whether a readback of the named
-  target ref establishes that the exact authority state became canonical and
-  what is present at observation time. This Git/readback fact does not by
-  itself establish valid OWNER_ADDITION adoption.
-- **Evidence freshness:** which bound evidence was checked and for which
-  route-specific lifecycle boundary.
-
-An unavailable source is reported as unavailable; a fact that was not
-verified is not inferred from a green check. Reports bind their repository,
-recorded base and candidate head, policy/report versions and digests, and
-evidence identities. The status and provenance of each dimension remain
-separate; no scalar grade may summarize them as an overall assurance level.
-
-For the separately versioned v0.5.1 OWNER_ADDITION route, absence of verified
-host merge enforcement does not by itself make an otherwise valid G0
-procedure permanently `ADVISORY_ONLY`. A consumer must explicitly select the
-route from the recorded base policy; B cannot enable it, weaken it, or select
-policy from its own head. The report binds and identifies that base revision
-and policy digest, while reporting `policyProtection=not_claimed` whenever
-protection of that policy was not established. A required enforced route
-cannot downgrade when its selected host evidence is absent, inaccessible,
-stale or invalid.
-
-Before merge, an eligible exact candidate's result is `eligibility=eligible`,
-`adoption=pending`, and `canonical=pending`. Eligibility alone is neither
-adoption nor canonical placement. A final `OWNER_ADDITION / G0` adoption
-record is valid only when all of the following are established for the same
-exact B:
-
-- Its deliberate annotated G0 tag and AdditionRecord bind the required
-  decision and match an ordinary completed `OWNER_DECISION` with the same
-  `ownerDecisionId`.
-- The ordinary review and separate B eligibility review both report exactly
-  the complete selected-base `authorityIds` and the same verified selected-set
-  digest; B's eligibility result is `eligible`.
-- Evidence verifies that this exact eligibility result existed before merge
-  and records its selected producer and completion time. Those facts come
-  from a source selected by the recorded-base policy, never an
-  author-controlled field or arbitrary saved green report.
-- An ordinary PR merge commit has the recorded base as its first parent and
-  exact B as its second parent, and its tree equals B's tree. Trusted host PR
-  metadata binds that commit to the named B PR as merged before readback.
-- A later readback identifies the observed target ref and verifies that it
-  contains the merge commit and expected authority state.
-
-The adoption record binds the repository, target branch, PR identity, base,
-B, merge commit, its ordered parents and tree, target ref and observed target
-commit, selected policy and Authority Set identities, Gatekeeper identity,
-prompt, schema and validation input identities, tag object, eligibility
-result, producer and timestamp. A missing, mismatched or post-merge-only
-eligibility result leaves adoption incomplete. v0.5.1 supports this
-merge-commit form; squash and rebase integration are unsupported until a later
-route version defines and verifies their exact B-to-result binding.
-
-Canonical placement and valid adoption are reported independently. If an
-ineligible B is nevertheless merged and read back on the target, the report
-may say `canonical=verified` while `adoption=invalid`; the readback must never
-convert that change into a valid OWNER_ADDITION. A known ineligible B has
-`adoption=invalid` even while canonical placement is pending; eligibility
-alone never establishes the placement. After a valid adoption, A still
-requires a fresh review against the resulting
-canonical authority under the consumer's normal acceptance policy.
-
-The v0.5.1 G0 route reports `principalAuthentication=not_verified` and reports
-host enforcement as `unavailable` or `not_verified` according to observed
-evidence. These are independent assurance dimensions: the procedural
-adoption claim does not authenticate the owner/tag actor or claim that GitHub
-prevented a disallowed merge. Conversely, unavailable host enforcement does
-not invalidate the specifically evidenced procedural adoption above.
-
-The new policy, evidence and report formats must have explicit versions
-distinct from current v0.5. Existing v0.5 policy bytes, artifacts, route
-behavior and historical results keep their original meanings; a verifier must
-reject ambiguous version mixing and must not upgrade historical G0 results by
-reinterpretation. This Issue #121 contract is limited to OWNER_ADDITION and
-does not generalize to OWNER_AMENDMENT or other routes. It defines the target
-contract, not an active route. Implementation, focused negative verification,
-and the public fixture full-cycle E2E specified in the Issue #119 release gate
-are required for the v0.5.1 package release. Passing that fixture does not
-prove readiness or adoption for a real consumer or replace the protected
-representative LIVE Agency end-to-end prerequisite for route activation. Each
-consumer must separately select and verify the route under its own base policy
-and governance.
-
-Evidence lifecycle remains route-specific. Existing `OWNER_ADDITION / G0`
-observes the mutable tag-ref mapping to the bound tag object at verification
-time and makes no promise that the ref remains unchanged through a later
-transition. This point-in-time semantics applies to historical v0.5 artifacts
-and is not strengthened or weakened by the versioned Issue #121 route.
-`OWNER_AMENDMENT` continues to require its bound evidence to remain valid
-through the protected
-canonical transition; its freshness requirement cannot be reduced to G0's
-verification-time observation.
-
-Issue #119 (complete multi-document Authority Set support) and Issue #120
-(legacy PR-head authority failure) remain independent blockers for a LIVE
-Agency consumer trial. Those trial-specific blockers are not part of the
-v0.5.1 public-fixture release gate above. This assurance decision does not
-resolve either issue or authorize a consumer-specific architecture.
+See the [full normative section](architecture/owner-addition.md#owner_addition-adoption-and-assurance-dimensions-issue-121-owner-decision).
 
 ### Three separate concepts and target contracts
 
@@ -800,246 +163,43 @@ Local feedback is not automatically merge evidence. `OWNER_ADDITION / G0` and `O
 
 ### Local and manual review
 
-Local and manual review are first-class development paths. They exist to find
-responsibility and trust-boundary problems before code is pushed. The runtime
-uses repository-owned configuration and authority from a recorded commit,
-assigns the reviewer a review-only role, and keeps task text and working-tree
-content in the untrusted evidence domain. Execution adapters apply the
-safeguards available in their environment; enforcement mechanisms are not
-uniform semantic requirements.
-
-The local trust boundary assumes the same user, Git executable, object store,
-installed runtime and Codex environment. Local review is not a filesystem
-monitor, Git transaction manager, malicious-operator defense, or proof that the
-operator could not bypass their own tools.
-
-A local decision is development feedback unless protected-base policy
-explicitly permits a defined evidence format and the authoritative verifier
-validates it. A bare or author-controlled `PASS` is never sufficient.
-
-Local review uses a shared semantic contract with separate execution adapters.
-The shared contract records one Git revision, reads configuration, prompt,
-schema, reviewer settings and authority from that revision, constructs the
-review request, and deterministically validates the returned decision. It does
-not choose how every host obtains that decision.
-
-- When Codex is selected, the automatic command Hook may launch a read-only
-  child `codex exec`, because
-  a command hook has no native reviewer handle. Its process timeout and
-  read-only sandbox remain required safeguards for this automatically invoked
-  child process.
-- The standalone terminal CLI selects the adapter from committed reviewer
-  settings. When Codex is selected, it uses the same child transport, retaining
-  its read-only sandbox and bounded process timeout. When Gemini is selected,
-  it uses the asynchronous Gemini API adapter under the explicit provider
-  settings and deadline; it does not launch a Codex child or claim that child's
-  sandbox guarantees. The automatic Hook uses the same provider selection.
-- The Codex-hosted Skill prepares the revision-bound request, applies its
-  recorded model and reasoning effort to a separate host-native reviewer whose
-  role is limited to review and does not include changing the reviewed
-  repository, then asks the shared runtime to validate the returned JSON. A
-  host that cannot provide the recorded model or reasoning effort leaves the
-  review incomplete and fails closed. Host-enforced read-only sandboxing and an
-  exact hard timeout are environment-specific controls, not conditions for a
-  native Skill review to be complete; the host's task lifecycle may provide
-  cancellation or other bounds. The Skill does not re-enter Codex through a
-  nested command.
-- CI retains its independent model-review adapter and exact-SHA-pinned reusable
-  workflow.
-
-The native adapter's request and decision paths are host-managed session
-inputs supplied by the trusted Skill execution side, not destinations selected
-by candidate repository content, task text, or reviewer output. The Skill
-execution side owns private temporary allocation, exact-request and decision
-recording, and cleanup on success, failure, or cancellation. The native adapter
-owns request construction and persistence and decision validation; it does not
-attest the supplied paths' private allocation or isolate a hostile same-user
-host. Exclusive creation and file permissions are supporting measures, not a
-generic path sanitizer or proof of parent-directory privacy.
-
-For a native Skill, the review-only role is part of the semantic contract, while
-physical write denial and exact hard-timeout enforcement are execution
-controls. This role assignment does not prove that a host technically
-prevented writes; the local trust boundary does not attest host internals.
-Host sandboxing, process approval, credentials and permission to send review
-inputs to a model service are outside the semantic decision contract. A host
-refusal before a validated structured decision leaves the review incomplete; it
-is not a `BLOCK` decision. Gatekeeper must not weaken host policy to start a
-reviewer or reinterpret that refusal as an architecture judgment.
-
-The recorded revision selects inputs; it is not a workstation integrity lock.
-Authority snapshots are included in the reviewer request from committed Git
-objects. The runtime neither compares those objects with working-tree bytes nor
-monitors whether `HEAD` changes while a review is running.
+See the [full normative section](architecture/review-execution.md#local-and-manual-review).
 
 #### Target local provider-independent execution (Issue #265 owner direction)
 
-Local callers depend on the shared review and execution contracts; composition
-selects a supported adapter from reviewer settings at the same recorded
-revision. Existing settings without a provider retain Codex compatibility.
-Provider selection, model, provider-specific settings and deadline remain
-explicit review inputs. Codex reasoning effort and Gemini thinking settings
-are distinct; a mapping does not establish semantic equivalence. The adapter
-must apply the selected settings or leave review incomplete, with no automatic
-provider fallback or parallel result adoption.
-
-Async adapters use explicit async APIs. Existing synchronous APIs remain
-compatible and reject an unsupported async selection before starting it.
-Execution reports identify the adapter-applied provider, requested model and
-settings separately from any backend-reported model identity; they do not prove
-backend internals or create reusable acceptance evidence. Schema, complete
-selected authority and committed validation remain shared responsibilities.
-Timeout, cancellation or unavailable credentials yield no semantic decision;
-cooperative cancellation alone does not prove physical termination. Automatic
-Codex child execution retains its sandbox and process bound. A Codex-native
-Skill that cannot apply another provider's settings remains incomplete rather
-than substituting its host model. This target enables no new route, changes no
-CI credential boundary and preserves local development-feedback assurance.
+See the [full normative section](architecture/review-execution.md#target-local-provider-independent-execution-issue-265-owner-direction).
 
 ### CI model review
 
-CI model review provides an independent execution boundary. Protected-base
-policy and instructions select the required assurance; pull-request content
-cannot authorize its own weaker route. Review credentials remain isolated from
-untrusted or unverified executable code, and model/API/billing failure remains
-fail closed when CI model review is required.
-
-The reusable workflow currently retains a compatibility input that can read the
-prompt and schema from the reviewed checkout while a consumer bootstraps its
-first base-owned instructions. That route provides model review but does not
-claim protected-instruction assurance. A privileged caller that requires
-protected acceptance must select protected review instructions, as this
-repository's self-review does.
-
-Owner trusts `openai/codex-action` at the workflow pin; retires integrity jobs
-(#40, 2026-10-02).
+See the [full normative section](architecture/review-execution.md#ci-model-review).
 
 #### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)
 
-GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed-workspace Codex WIF (ChatGPT auth). OIDC request capability, assertion and exchanged API token stay in trusted CI, isolated from reviewer/tools, PR code and package lifecycle scripts. Only prior protected policy may select WIF; candidates cannot select or enable it. Missing/invalid/unavailable selection leaves review incomplete: no API-key fallback or weaker acceptance. Keys remain until WIF is implemented, verified and policy-selected. No reviewer/input/decision/evidence/acceptance/v0.6.0 change; inactive.
+See the [full normative section](architecture/review-execution.md#target-api-wif-ci-authentication-boundary-issue-218-owner-decision-2026-09-30).
 
 #### Target multi-provider credential-isolated review proxy boundary (Issue #252 owner decision, 2026-10-02)
 
-A trusted CI launcher may keep provider credentials in a private loopback proxy.
-It withholds credentials and OIDC/token-renewal capabilities from every explicit
-runner launch interface, including environment, arguments, credential-file
-selectors and credential/renewal-service handles. Withholding only an exchanged
-token is insufficient. The ephemeral loopback proxy permits only selected
-methods/model routes on official provider hosts within launcher-selected
-project/region/model scope; arbitrary destinations, mismatches and redirects
-fail closed. Runner responses require deterministic schema/authority validation.
-
-This claims credential non-inheritance and constrained dispatch, not direct
-runner-network restrictions, same-user host isolation or provider equivalence.
-Blocking ambient Cloud SDK credentials, same-user-readable credential files or
-host identity services requires separately selected/verified host isolation.
-Protected acceptance still requires adopted consumer policy and verified
-route-specific evidence; no route activates here. The
-[proxy specification](investigations/2026-10-02-credential-isolated-review-proxy-boundary.md)
-cannot amend this contract.
+See the [full normative section](architecture/review-execution.md#target-multi-provider-credential-isolated-review-proxy-boundary-issue-252-owner-decision-2026-10-02).
 
 #### Target Gemini CI authentication selection (Issue #252 owner decision, 2026-10-04)
 
-First Gemini CI route uses Vertex AI with Google Cloud WIF. Trusted CI exchanges
-GitHub OIDC for scoped, short-lived Google credentials;
-the launcher/proxy alone receives credentials or renewal capabilities through
-explicit launch interfaces. Authentication failure leaves review incomplete,
-without API-key or provider fallback. No deployment.
-Select/verify deployment bindings, scope, credential lifecycle and limits
-before activation. Codex remains supported; standby/parallel adoption is separate.
-No quality claim, acceptance route or release gate changes.
+See the [full normative section](architecture/review-execution.md#target-gemini-ci-authentication-selection-issue-252-owner-decision-2026-10-04).
 
 #### Target Gemini CI execution selection (Issue #252 owner decision, 2026-10-04)
 
-Use Gemini CLI with a revision-bound controlled workspace, launcher-owned
-configuration and a read-tool allowlist. Candidate controls/instructions
-retain complete bytes and path/revision identity as evidence, never
-automatically loaded configuration or protected instructions. Candidate
-workspace configuration cannot enable tools, hooks, skills, extensions or MCP.
-The launcher/proxy retains WIF credentials under the boundary above.
-CLI exit zero alone is insufficient: schema/authority validation is mandatory;
-Timeout, cancellation, auth failure or invalid output leaves review incomplete.
-No candidate-code execution, Codex equivalence or host isolation is claimed;
-no acceptance route activates. Owner adopts `gemini-3.8-flash` with
-`thinkingLevel: MEDIUM` as the initial CI profile, without
-`thinkingBudget`. Before activation, verify authenticated route evidence, quality, cost,
-latency and decision consistency;
-determinism is not promised.
+See the [full normative section](architecture/review-execution.md#target-gemini-ci-execution-selection-issue-252-owner-decision-2026-10-04).
 
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
-The GitHub-specific step-output adapter treats `GITHUB_OUTPUT` as a trusted
-sink supplied by the invoking GitHub runner. It reads that environment value
-directly; it exposes no caller-selected sink or runner-temp argument and does
-not require the sink to be below `RUNNER_TEMP`. The invoking execution must
-preserve this runner-provided value rather than derive it from candidate code,
-repository content, request JSON, or model output.
-
-The adapter requires an absolute canonical path to an existing regular file,
-rejects symbolic links and hardlinks, and checks the opened file's identity
-before appending bounded command-protocol data. These checks do not authenticate
-an attacker-controlled environment or establish same-user host isolation.
-Publication supplies no semantic acceptance authority and activates no CI
-route. This decision does not change the fixed runner-temp paths used for
-protected review inputs and other temporary artifacts.
+See the [full normative section](architecture/review-execution.md#github-step-output-sink-owner-decision-2026-10-03).
 
 #### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
 
-Owner-adopted target A is for this public GitHub Free self-repository; it is not implemented/enforced and needs no hosted server, ChatGPT Cloud or WIF. Only an unprivileged candidate `merge_group` job relays/wakes the protected-default-branch `workflow_run` receiver. It independently resolves live queue SHA/state, current protected base, exact queued PR/B, prior-base policy, full Authority Set and exact evidence, runs existing ordinary semantic, B/G0 and deterministic validators. Candidate workflows, success, artifacts and policy confer no authority. Only protected producer receives the review API and GitHub App private keys via a `main`-only Environment; the self-repository App has only `checks:write`. Reports bind verified results to exact queue SHA and App identity; host config expects that App as check source.
-
-This document activates no route. Reviewed profile/policy adoption precedes staged activation. Before rollout-completion, verified-host-enforcement or release claims, require exact-context spoof rejection and both protected BLOCK/OWNER_DECISION E2Es: exact B, evidence/tag handoff, queue transition, canonical readback, fresh A review. Current `pull_request_target`-only route remains until reviewed adoption.
+See the [full normative section](architecture/self-profile.md#target-self-only-github-freepublic-reporter-issue-210-a-owner-decision).
 
 #### Target: legacy v1 CI authority repair (Issue #120 owner decision)
 
-The LIVE Agency #106 trial exposed a false acceptance: an enforced legacy v1
-review treated candidate-edited authority and unsupported completion claims as
-canonical. The owner explicitly authorized a fail-closed repair for v0.5.1 on
-2026-09-26, including a compatibility break for existing enforced v1 consumers.
-This is the target contract, not active acceptance behavior. It becomes
-applicable only after PR #126's implementation and focused regression tests are
-integrated. Until then, this text does not establish that the v1 runtime
-enforces these requirements. Historical v1 reports are not retroactively
-reclassified.
-
-For an enforced v1 review, the recorded base policy must select a nonempty,
-bounded `authorityFiles` list of canonical repository paths, plus canonical
-`promptPath` and `schemaPath` values. It must include `validationPath`, either
-set to a canonical JSON path for additional decision validation or explicitly
-to `null` when no additional validation is selected. The caller's
-`validation-path` input must match this recorded-base value exactly. Missing,
-malformed, or mismatched validation selections fail before review. The workflow
-must read the selected policy, instructions and authority bytes from that same
-recorded base, validate regular-file snapshots, and make their identities
-visible in the report. The candidate cannot choose a different base file
-through caller-supplied paths or change the policy, instructions, or validation
-rules used for its review; candidate-modified authority cannot be treated as
-adopted.
-Under this target, the ordinary v1 accept path must fail closed when any
-selected authority is changed by the candidate, the selector or required
-snapshot is absent or invalid, or the decision omits or adds a selected
-authority path. A separate previous-base-authorized addition route remains
-available for an eligible authority-only B; an ordinary v1 `PASS` cannot
-substitute for it.
-
-Previously valid enforced v1 policies without these base-selected inputs, or
-without a matching caller validation selection, cease to qualify for acceptance
-when this target is implemented. A candidate PR cannot enable its own
-acceptance by adding the fields to its head; the consumer must first adopt the
-base policy and a base-owned caller under its own governance. A caller loaded
-from a pull-request merge commit can itself be candidate-controlled, including
-its selected reusable-workflow revision. Until the caller and required check
-producer are controlled by the applicable host mechanism, the workflow result
-alone cannot claim protected merge enforcement or a protected canonical
-transition. Missing host-enforcement evidence is reported as its own assurance
-dimension; it does not by itself require permanent `ADVISORY_ONLY` treatment of
-a procedural OWNER_ADDITION result. The separately versioned Issue #121 route
-defines the evidence and selection rules for that outcome and does not weaken
-this legacy v1 fail-closed target.
-
-CI execution is one evidence source, not a prerequisite for every repository
-to obtain local/manual review. Repositories may select a local-only guardrail,
-an explicitly defined locally attested route, CI model review, or policy-based
-routing among supported routes. The trust claim must match the selected route.
+See the [full normative section](architecture/review-execution.md#target-legacy-v1-ci-authority-repair-issue-120-owner-decision).
 
 ### Current acceptance mechanism
 
@@ -1166,105 +326,29 @@ misrepresented as an Architecture Gatekeeper guarantee.
 
 ## Dogfooding and change discipline
 
+See the [full normative section](architecture/self-profile.md#dogfooding-and-change-discipline).
+
 ### Development sequence and v0.6.0 self reference profile (owner decision)
 
-First, establish and dogfood the smallest complete self-workflow; derive later
-capabilities from concrete consumer use cases and required assurance. Do not
-prebuild universal host, repository-plan, provenance, or Git-merge adapters for
-speculative OSS use. This sequence neither weakens existing consumer policy nor
-turns self-only results into general support claims.
+See the [full normative section](architecture/self-profile.md#development-sequence-and-v060-self-reference-profile-owner-decision).
 
-This repository (public GitHub Free) is the v0.6.0 reference: its previous-base
-policy may select v0.5.x `OWNER_ADDITION` for missing decisions or protected
-`OWNER_AMENDMENT / G0` adoption for changing existing ones, without routine
-admin bypass. Final v0.6.0 must prove completed `BLOCK` and `OWNER_DECISION`
-amendment cases, including the Issue #137 self contract change under prior
-protected-base policy. Both preserve historical semantic results and establish
-exact B, protected evidence, canonical readback, and fresh review where
-applicable. A numbered preview may distribute improvements to existing
-supported paths for feedback with new `OWNER_AMENDMENT` and App routes inactive;
-it makes no rollout, enforcement, or completion claims for those new targets.
-Final v0.6.0 still requires both cases. The first BLOCK-triggered deployment selects the
-following existing host primitives, subject to the validation requirements
-above and an explicit previous-base policy opt-in:
+## Canonical document organization (owner direction, 2026-10-04)
 
-| Concern | Self reference selection |
-| --- | --- |
-| Initial `BLOCK` transport | Exact, versioned ReviewRecord in a GitHub Actions artifact |
-| Producer provenance | GitHub artifact attestation over those exact bytes, verified against the selected protected producer workflow, revision, run and attempt |
-| Transition evidence | Versioned annotated amendment tag targeting exact B and binding the completed ReviewRecord bytes, the verifiable attestation bundle bytes and AmendmentRecord; the tag ref is protected against update and deletion |
-| Protected B transition | Required check on a `merge_group`, GitHub merge queue using a merge commit, and post-merge canonical readback; the merge commit retains exact B as its second parent |
-| Git history | Linear history is not a requirement of this self profile; required checks and PR protection remain |
-
-```mermaid
-flowchart LR
-    A[A reviewed] --> BL[Completed BLOCK]
-    BL --> E[Actions artifact bytes + verified attestation]
-    E --> T[Protected versioned annotated tag targets exact B and binds record, bundle, AmendmentRecord]
-    T --> Q[Required merge_group check revalidates tag ref, evidence, prior policy, and exact B]
-    Q --> M[Protected transition; merge commit retains exact B]
-    M --> C[Canonical readback]
-    C --> R[A reviewed afresh]
-```
-
-At the protected-tag handoff, the Actions artifact must be retrievable and its
-attestation verifiable. The exact completed ReviewRecord bytes and attestation
-bundle bytes must be copied into the tag and bound by its AmendmentRecord.
-The verifier must establish byte-for-byte identity and validate the producer
-provenance before relying on the tag. After that verified handoff, the original
-Actions artifact need not remain available through B's canonical transition;
-the protected tag becomes the transition evidence source. Its versioned tag
-object must target exact B, bind the exact evidence and applicable previous
-protected-base policy, and its remote ref must be protected against update and
-deletion. The final required `merge_group` validation and host ordering must
-establish those properties through the protected canonical transition; a
-point-in-time read or successful check alone is insufficient. Missing or
-unverifiable source evidence before handoff, tag content, tag-ref protection,
-policy, or transition ordering leaves B `INCOMPLETE`. A queue check rerun by
-itself does not establish evidence validity through transition. A fresh
-completed `BLOCK` requires B's AmendmentRecord and tag to be rebound to that
-new evidence. The first BLOCK-triggered deployment must demonstrate the
-complete A → BLOCK → tag handoff → B → canonical → A fresh-review cycle before
-reporting `OWNER_AMENDMENT / G0` for that case. This is necessary but
-insufficient for v0.6.0: the OWNER_DECISION-triggered self contract-update
-case must also complete the protected path. This profile selects no
-private-repository provenance adapter, linear-history rewrite binding, or
-squash/rebase adoption route. G0 still reports principal authentication as
-`not_verified`.
-
-Dogfooding means exercising every major path the repository requires of
-consumers, not merely invoking the reusable CI workflow. Before broader rollout
-of a path, at least one representative repository must exercise, as applicable:
-
-- local pre-push and explicit manual review;
-- configuration and committed-authority selection;
-- packaged installation and real executable entrypoints;
-- all structured decisions and deterministic validation;
-- evidence creation and invalidation;
-- protected-policy acceptance verification;
-- CI model review and reporting.
-
-Architecture-changing work follows this order:
-
-1. state the owner decision in this contract or another named canonical owner;
-2. review the conceptual responsibility and trust boundary locally;
-3. implement the smallest conforming mechanism;
-4. dogfood the affected path before push;
-5. use CI as an independent acceptance check, not as the first design review.
+The self contract may be split, preserving meaning, into `docs/architecture.md`
+and `docs/architecture/{authority-set,owner-addition,owner-amendment,review-execution,self-profile}.md`.
+All six are required selected authority, with stable IDs and no implicit
+precedence. Adopt this migration authorization before moving binding clauses.
+Then review the complete move, manifest, prompts, references and distribution
+under the predecessor selection; the new selection applies only after adoption.
+Preserve every requirement, exception, applicability, affected-member scope,
+assurance, freshness, compatibility and historical result. Verify clause
+coverage and complete local/CI inputs. Existing lifecycle T3/T5/T6 and acceptance
+govern each stage. This permits no limit increase, route activation or fallback;
+splitting does not extend the policy-selected self amendment target.
 
 ## Relationship to tracked work
 
-- Issue #1 rolls the mechanism out per consumer. Each adoption selects its own
-  authority and assurance policy under this contract.
-- Issue #19 improves latency and routing without weakening these invariants.
-- Issue #20 specifies the evidence format, attestation choice, protected-policy
-  routes and model-free CI verification needed to fully separate review
-  execution from acceptance verification.
-- Issue #111 defines missing-decision adoption under the
-  [OWNER_ADDITION / G0 contract](#owner_addition--g0-route-for-missing-decisions-issue-111).
-- Issue #75 defines the owner-amendment governance route. Issue #78 develops
-  its core and explicit `G0` policy path; Issue #79 investigates a later
-  production attestation adapter for a higher grade.
+The [documentation map](README.md#tracked-work) lists the related Issues.
 
 Those Issues may refine implementation choices, measurements and rollout. They
 must not be used as implicit amendments to this contract.

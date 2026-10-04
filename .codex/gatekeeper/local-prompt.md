@@ -17,8 +17,8 @@ value choice unresolved. The top-level decision must be `BLOCK` when either
 reviewed scope follows the recorded authority and does not claim a stronger
 guarantee than its execution path supplies.
 
-Report every selected source ID exactly once in `authorityIds`. For the current
-self selection, report `architecture-contract`; also report its path
-`docs/architecture.md` in `authorityFiles`. Describe the responsibility,
+Report every selected source ID exactly once in `authorityIds`. For the self
+selection, report the complete six-member Set and each selected path in
+`authorityFiles`; `architecture-contract` alone is incomplete. Describe the responsibility,
 reviewed scope, prohibited changes and both gate results concisely. Remain
 read-only and return only the JSON decision.

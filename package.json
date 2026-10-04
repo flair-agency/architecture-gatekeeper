@@ -29,6 +29,7 @@
     "src",
     "docs/README.md",
     "docs/architecture.md",
+    "docs/architecture",
     "docs/development.md",
     "docs/release.md",
     "docs/issue-pr-workflow.md",
