@@ -307,3 +307,31 @@ The endpoint was a loopback canned server using dummy credentials, so this
 confirms outbound configuration rather than model support, WIF authentication
 or review quality. Authenticated route evidence, quality, cost, latency and
 decision consistency remain required before activation.
+
+## Trusted-parent CLI/proxy composition
+
+The internal composition keeps the explicit bearer credential in the trusted
+parent. The parent starts the scoped Vertex proxy, passes only its loopback
+endpoint to the controlled CLI session, and closes the proxy on success or
+failure. Model, project and region come from one selected execution input; the
+caller cannot independently override the proxy scope or endpoint. One bounded
+deadline covers proxy startup and CLI execution. The result remains response
+text for the existing protected CI validators, not a local review decision or
+new acceptance format.
+
+This composition does not discover authentication from environment variables,
+install a runtime, select a deployment, activate a workflow, or add fallback.
+Protected CI retains exact-base policy/authority selection and its existing
+ordinary and enabled governance validation paths. Public workflow integration
+and authenticated Vertex/WIF cases remain subsequent work.
+
+### Protected CI integration seam
+
+The existing prepared review context, exact-base authority snapshots/provenance,
+decision schema and validators remain the CI contract. The trusted CI parent
+supplies those already selected inputs to the internal proxy/session composition
+and validates its raw response with the existing protected CI checks. It must
+not route the result through the local committed-config review contract. An
+ordinary review probe does not establish enabled OWNER_ADDITION or
+OWNER_AMENDMENT route coverage; each requires its existing downstream semantic
+pipeline. No CI workflow or acceptance route is activated by this composition.

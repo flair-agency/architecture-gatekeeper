@@ -11,7 +11,7 @@
  * 1. Strict loopback binding (127.0.0.1:ephemeral)
  * 2. Strict method (POST only) and route allowlist (*:generateContent)
  * 3. In-flight credential injection (x-goog-api-key or Authorization: Bearer)
- * 4. Pinned upstream provider hosts (generativelanguage.googleapis.com or *-aiplatform.googleapis.com)
+ * 4. Pinned upstream provider hosts (generativelanguage.googleapis.com or selected Vertex location)
  * 5. Fail-closed on redirects, non-allowlisted routes, malformed URLs, or upstream errors
  */
 import { createServer } from 'node:http';
@@ -28,7 +28,16 @@ export function remainingDeadlineMs(deadlineAt, now = Date.now()) {
 const ALLOWED_AI_STUDIO_PATH = /^\/v1beta\/models\/([a-zA-Z0-9._-]+):generateContent$/;
 const ALLOWED_VERTEX_PATH = /^\/v1\/projects\/([a-zA-Z0-9._-]+)\/locations\/([a-zA-Z0-9._-]+)\/publishers\/google\/models\/([a-zA-Z0-9._-]+):generateContent$/;
 const ALLOWED_VERTEX_STREAM_PATH = /^\/v1\/publishers\/google\/models\/([a-zA-Z0-9._-]+):streamGenerateContent\?alt=sse$/;
-const ALLOWED_VERTEX_HOST = /^[a-z0-9-]+-aiplatform\.googleapis\.com$/;
+const ALLOWED_VERTEX_REGIONAL_HOST = /^[a-z0-9-]+-aiplatform\.googleapis\.com$/;
+const VERTEX_LOCATION_HOSTS = Object.freeze({
+  global: 'aiplatform.googleapis.com',
+  us: 'aiplatform.us.rep.googleapis.com',
+  eu: 'aiplatform.eu.rep.googleapis.com',
+});
+const hasVertexLocationHost = location => Object.hasOwn(VERTEX_LOCATION_HOSTS, location);
+const vertexHostForLocation = location => hasVertexLocationHost(location)
+  ? VERTEX_LOCATION_HOSTS[location]
+  : `${location}-aiplatform.googleapis.com`;
 const ALLOWED_AI_STUDIO_HOST = 'generativelanguage.googleapis.com';
 
 /**
@@ -63,6 +72,7 @@ export function validateGeminiRoute(pathname) {
  * @param {string} [config.upstreamHost] Override upstream host (e.g., for testing or Vertex regional endpoint)
  * @param {boolean} [config.allowStreaming] Explicitly enable the scoped Vertex SSE route.
  * @param {number} [config.deadlineMs] Max server lifetime before auto-shutdown
+ * @param {AbortSignal} [config.signal] Cancels startup or shuts down the proxy
  * @returns {Promise<{ endpointUrl: string, shutdown: () => Promise<void> }>}
  */
 export async function startGeminiSecurityProxy(config) {
@@ -82,10 +92,64 @@ export async function startGeminiSecurityProxy(config) {
   }
   const upstreamHostOverride = config.upstreamHost || null;
 
+  if (config.signal !== undefined && !(config.signal instanceof AbortSignal)) {
+    throw new Error('GeminiSecurityProxy signal must be an AbortSignal.');
+  }
+  if (config.signal?.aborted) throw new Error('GeminiSecurityProxy startup cancelled.');
+
   return new Promise((resolve, reject) => {
     let timer = null;
-    let deadlineAt = null;
+    let deadlineAt = Number.isSafeInteger(config.deadlineMs) && config.deadlineMs > 0
+      ? Date.now() + config.deadlineMs
+      : null;
+    let startupSettled = false;
+    let shutdownRequested = false;
+    let shutdownPromise = null;
+    let onAbort = null;
     const activeRequests = new Set();
+
+    const clearStartupControls = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      if (onAbort) {
+        config.signal?.removeEventListener('abort', onAbort);
+        onAbort = null;
+      }
+    };
+
+    const closeServer = () => new Promise(resolveClose => {
+      for (const request of activeRequests) request.destroy();
+      server.closeAllConnections?.();
+      if (!server.listening) {
+        // A listen callback may still arrive later. It checks shutdownRequested
+        // and closes the server again if the pending listen subsequently binds.
+        resolveClose();
+        return;
+      }
+      server.close(() => resolveClose());
+    });
+
+    const shutdown = () => {
+      shutdownRequested = true;
+      clearStartupControls();
+      shutdownPromise ??= closeServer();
+      return shutdownPromise;
+    };
+
+    const failStartup = error => {
+      if (startupSettled) return;
+      startupSettled = true;
+      shutdown();
+      reject(error);
+    };
+
+    const closeLateServer = () => {
+      for (const request of activeRequests) request.destroy();
+      server.closeAllConnections?.();
+      server.close(() => {});
+    };
 
     const server = createServer(async (req, res) => {
       // 1. Only POST method is permitted
@@ -144,11 +208,14 @@ export async function startGeminiSecurityProxy(config) {
           targetHost = upstreamHostOverride;
         } else {
           const region = reqRegion || 'us-central1';
-          targetHost = `${region}-aiplatform.googleapis.com`;
+          targetHost = vertexHostForLocation(region);
         }
 
         const isLoopbackTest = Boolean(config.allowLoopbackUpstream && (targetHost === '127.0.0.1' || targetHost === 'localhost'));
-        if ((!ALLOWED_VERTEX_HOST.test(targetHost) || targetHost !== `${config.allowedRegion}-aiplatform.googleapis.com`) && !isLoopbackTest) {
+        const expectedHost = vertexHostForLocation(config.allowedRegion);
+        const isExpectedVertexHost = targetHost === expectedHost &&
+          (hasVertexLocationHost(config.allowedRegion) || ALLOWED_VERTEX_REGIONAL_HOST.test(targetHost));
+        if (!isExpectedVertexHost && !isLoopbackTest) {
           res.writeHead(403, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: `Forbidden: unverified Vertex host ${targetHost}` }));
           return;
@@ -270,36 +337,47 @@ export async function startGeminiSecurityProxy(config) {
       });
     });
 
+    if (deadlineAt !== null) {
+      timer = setTimeout(() => {
+        const error = new Error('GeminiSecurityProxy startup or session deadline expired.');
+        if (!startupSettled) failStartup(error);
+        else shutdown();
+      }, remainingDeadlineMs(deadlineAt));
+    }
+    if (config.signal) {
+      onAbort = () => {
+        const error = new Error('GeminiSecurityProxy startup or session cancelled.');
+        if (!startupSettled) failStartup(error);
+        else shutdown();
+      };
+      config.signal.addEventListener('abort', onAbort, { once: true });
+      if (config.signal.aborted) onAbort();
+    }
+    if (startupSettled) return;
+
     // Bind strictly to 127.0.0.1 with ephemeral port (0)
     server.listen(0, '127.0.0.1', () => {
+      if (shutdownRequested) {
+        // Cancellation/deadline may have fired while listen was pending.
+        // Close a late successful bind so it cannot escape cleanup.
+        if (server.listening) closeLateServer();
+        return;
+      }
+      if (startupSettled) {
+        return;
+      }
+      if (deadlineAt !== null && remainingDeadlineMs(deadlineAt) === 0) {
+        failStartup(new Error('GeminiSecurityProxy startup deadline expired.'));
+        return;
+      }
       const address = server.address();
       const endpointUrl = `http://127.0.0.1:${address.port}`;
-
-      if (config.deadlineMs && Number.isSafeInteger(config.deadlineMs) && config.deadlineMs > 0) {
-        deadlineAt = Date.now() + config.deadlineMs;
-        timer = setTimeout(() => {
-          shutdown();
-        }, remainingDeadlineMs(deadlineAt));
-        timer.unref?.();
-      }
-
-      const shutdown = () => {
-        if (timer) {
-          clearTimeout(timer);
-          timer = null;
-        }
-        return new Promise((resolveClose) => {
-          for (const request of activeRequests) request.destroy();
-          server.closeAllConnections?.();
-          server.close(() => resolveClose());
-        });
-      };
-
+      startupSettled = true;
       resolve({ endpointUrl, shutdown });
     });
 
     server.on('error', err => {
-      reject(err);
+      if (!startupSettled) failStartup(err);
     });
   });
 }

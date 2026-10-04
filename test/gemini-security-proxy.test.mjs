@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import http, { createServer, request } from 'node:http';
+import http, { createServer, request, Server } from 'node:http';
+import https from 'node:https';
+import { EventEmitter } from 'node:events';
+import { Readable } from 'node:stream';
 import { syncBuiltinESMExports } from 'node:module';
 import { validateGeminiRoute, startGeminiSecurityProxy, MAX_PROXY_REQUEST_BYTES, remainingDeadlineMs } from '../src/gemini-security-proxy.mjs';
 import { validateLoopbackEndpoint } from '../src/review-security-proxy.mjs';
@@ -339,11 +342,106 @@ test('proxy rejects absent or credential-incompatible scope before listening', a
   ]) await assert.rejects(startGeminiSecurityProxy(config), /complete credential-compatible/);
 });
 
+test('proxy startup deadline and cancellation reject stalled listen and close a late callback', async () => {
+  const originalListen = Server.prototype.listen;
+  const originalClose = Server.prototype.close;
+  const pending = [];
+  let closeCalls = 0;
+  Server.prototype.listen = function (...args) {
+    pending.push({ server: this, callback: args.at(-1) });
+    Object.defineProperty(this, 'listening', { configurable: true, get: () => true });
+    return this;
+  };
+  Server.prototype.close = function (callback) {
+    closeCalls += 1;
+    callback?.();
+    return this;
+  };
+
+  try {
+    const timed = startGeminiSecurityProxy({
+      credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex',
+      allowedProject: 'p', allowedRegion: 'us', allowedModel: 'gemini-3.8-flash', deadlineMs: 25,
+    });
+    await assert.rejects(timed, /deadline expired/);
+    assert.equal(pending.length, 1);
+    assert.equal(closeCalls, 1, 'timeout closes the server while listen is stalled');
+    pending[0].callback();
+    assert.equal(closeCalls, 2, 'a late successful bind is closed after the first cleanup');
+
+    const controller = new AbortController();
+    const cancelled = startGeminiSecurityProxy({
+      credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex',
+      allowedProject: 'p', allowedRegion: 'us', allowedModel: 'gemini-3.8-flash', signal: controller.signal,
+    });
+    assert.equal(pending.length, 2);
+    controller.abort();
+    await assert.rejects(cancelled, /cancelled/);
+    assert.equal(closeCalls, 3, 'cancellation closes the pending server');
+    pending[1].callback();
+    assert.equal(closeCalls, 4, 'a late successful bind after cancellation is closed');
+  } finally {
+    Server.prototype.listen = originalListen;
+    Server.prototype.close = originalClose;
+  }
+});
+
 
 test('Vertex proxy rejects an official host outside the selected region', async () => {
   const proxy = await startGeminiSecurityProxy({ credentials: { type: 'bearer', value: 'fixture-token' }, allowedMode: 'vertex', allowedProject: 'p', allowedRegion: 'us-central1', allowedModel: 'gemini-2.5-flash', upstreamHost: 'europe-west1-aiplatform.googleapis.com' });
   try {
     const response = await fetch(`${proxy.endpointUrl}/v1/projects/p/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`, { method: 'POST', body: '{}' });
+    assert.equal(response.status, 403);
+    assert.match(await response.text(), /unverified Vertex host/);
+  } finally { await proxy.shutdown(); }
+});
+
+test('Vertex proxy dispatches to exact official location hosts and preserves regional hosts', async t => {
+  for (const [location, expectedHost] of [
+    ['global', 'aiplatform.googleapis.com'],
+    ['us', 'aiplatform.us.rep.googleapis.com'],
+    ['eu', 'aiplatform.eu.rep.googleapis.com'],
+    ['us-central1', 'us-central1-aiplatform.googleapis.com'],
+  ]) await t.test(location, async () => {
+    const realHttpsRequest = https.request;
+    const observedHosts = [];
+    https.request = (options, callback) => {
+      observedHosts.push(options.hostname);
+      const upstreamResponse = new Readable({ read() { this.push('{}'); this.push(null); } });
+      upstreamResponse.statusCode = 200;
+      upstreamResponse.headers = { 'content-type': 'application/json' };
+      const upstreamRequest = new EventEmitter();
+      upstreamRequest.write = () => {};
+      upstreamRequest.end = () => queueMicrotask(() => callback(upstreamResponse));
+      upstreamRequest.destroy = () => {};
+      return upstreamRequest;
+    };
+    syncBuiltinESMExports();
+    let proxy;
+    try {
+      proxy = await startGeminiSecurityProxy({
+        credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex',
+        allowedProject: 'p', allowedRegion: location, allowedModel: 'gemini-2.5-flash',
+      });
+      const response = await fetch(`${proxy.endpointUrl}/v1/projects/p/locations/${location}/publishers/google/models/gemini-2.5-flash:generateContent`, { method: 'POST', body: '{}' });
+      assert.equal(response.status, 200);
+      assert.deepEqual(observedHosts, [expectedHost]);
+    } finally {
+      if (proxy) await proxy.shutdown();
+      https.request = realHttpsRequest;
+      syncBuiltinESMExports();
+    }
+  });
+});
+
+test('Vertex proxy rejects a mismatched official host override for the selected location', async () => {
+  const proxy = await startGeminiSecurityProxy({
+    credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex',
+    allowedProject: 'p', allowedRegion: 'us', allowedModel: 'gemini-2.5-flash',
+    upstreamHost: 'aiplatform.eu.rep.googleapis.com',
+  });
+  try {
+    const response = await fetch(`${proxy.endpointUrl}/v1/projects/p/locations/us/publishers/google/models/gemini-2.5-flash:generateContent`, { method: 'POST', body: '{}' });
     assert.equal(response.status, 403);
     assert.match(await response.text(), /unverified Vertex host/);
   } finally { await proxy.shutdown(); }
