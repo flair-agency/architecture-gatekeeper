@@ -40,8 +40,115 @@ test('validateGeminiRoute allowlists only valid generateContent endpoints', () =
   assert.equal(validateGeminiRoute('/v1/models'), null);
   assert.equal(validateGeminiRoute('/v1beta/models/gemini-2.5-flash:countTokens'), null);
   assert.equal(validateGeminiRoute('/v1/projects/p/locations/l/operations/op123'), null);
+  assert.deepEqual(validateGeminiRoute('/v1/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse'), {
+    mode: 'vertex', path: '/v1/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse', streaming: true,
+  });
+  assert.equal(validateGeminiRoute('/v1/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=json'), null);
   assert.equal(validateGeminiRoute('/v1/responses'), null);
   assert.equal(validateGeminiRoute('/arbitrary/path'), null);
+});
+
+test('Vertex SSE opt-in rewrites fixed scope, strips client credentials, and forwards stream', async () => {
+  let captured;
+  const upstream = createServer((req, res) => {
+    captured = { url: req.url, headers: req.headers };
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    res.write('data: {"chunk":1}\n\n');
+    setTimeout(() => res.end('data: [DONE]\n\n'), 10);
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const proxy = await startGeminiSecurityProxy({
+    credentials: { type: 'bearer', value: 'proxy-token' }, allowedMode: 'vertex', allowedProject: 'fixed-p',
+    allowedRegion: 'us-central1', allowedModel: 'gemini-2.5-flash', allowStreaming: true,
+    upstreamHost: '127.0.0.1', upstreamPort: upstream.address().port, upstreamHttp: true, allowLoopbackUpstream: true,
+  });
+  try {
+    const response = await fetch(proxy.endpointUrl + '/v1/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse', {
+      method: 'POST', headers: { Authorization: 'Bearer client-token', 'x-goog-api-key': 'client-key', 'X-Custom': 'discard-me' }, body: '{}',
+    });
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /data: \[DONE\]/);
+    assert.equal(captured.url, '/v1/projects/fixed-p/locations/us-central1/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse');
+    assert.equal(captured.headers.authorization, 'Bearer proxy-token');
+    assert.equal(captured.headers['x-goog-api-key'], undefined);
+    assert.equal(captured.headers['x-custom'], undefined);
+  } finally { await proxy.shutdown(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('Vertex SSE is disabled by default and rejects unselected model and malformed query', async () => {
+  let calls = 0;
+  const upstream = createServer((_req, res) => { calls++; res.end('{}'); });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const proxy = await startGeminiSecurityProxy({ credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex', allowedProject: 'p', allowedRegion: 'us-central1', allowedModel: 'gemini-2.5-flash', upstreamHost: '127.0.0.1', upstreamPort: upstream.address().port, upstreamHttp: true, allowLoopbackUpstream: true });
+  try {
+    for (const path of ['/v1/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse', '/v1/publishers/google/models/other:streamGenerateContent?alt=sse', '/v1/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=json', '/v1/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse&x=1', '/v1beta/models/gemini-2.5-flash:generateContent']) {
+      const res = await fetch(proxy.endpointUrl + path, { method: 'POST', body: '{}' });
+      assert.equal(res.status, 403);
+    }
+    assert.equal(calls, 0);
+  } finally { await proxy.shutdown(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('Vertex SSE requires the literal true opt-in and rejects cross-mode dispatch', async () => {
+  let calls = 0;
+  const upstream = createServer((_req, res) => { calls++; res.end('{}'); });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const url = '/v1/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse';
+  const configs = [
+    { credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex', allowedProject: 'p', allowedRegion: 'us-central1', allowedModel: 'gemini-2.5-flash', allowStreaming: 1 },
+    { credentials: { type: 'apiKey', value: 'fixture' }, allowedMode: 'studio', allowedModel: 'gemini-2.5-flash' },
+  ];
+  const proxies = [];
+  try {
+    for (const config of configs) proxies.push(await startGeminiSecurityProxy({ ...config, upstreamHost: '127.0.0.1', upstreamPort: upstream.address().port, upstreamHttp: true, allowLoopbackUpstream: true }));
+    for (const proxy of proxies) assert.equal((await fetch(proxy.endpointUrl + url, { method: 'POST', body: '{}' })).status, 403);
+    assert.equal(calls, 0);
+  } finally { await Promise.all(proxies.map(proxy => proxy.shutdown())); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('Vertex SSE downstream cancellation destroys the upstream request', async () => {
+  let upstreamClosed = false;
+  let markStarted;
+  let markClosed;
+  const started = new Promise(resolve => { markStarted = resolve; });
+  const closed = new Promise(resolve => { markClosed = resolve; });
+  const upstream = createServer((_req, res) => {
+    markStarted();
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    res.write('data: start\n\n');
+    res.on('close', () => { upstreamClosed = true; markClosed(); });
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const proxy = await startGeminiSecurityProxy({ credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex', allowedProject: 'p', allowedRegion: 'us-central1', allowedModel: 'gemini-2.5-flash', allowStreaming: true, upstreamHost: '127.0.0.1', upstreamPort: upstream.address().port, upstreamHttp: true, allowLoopbackUpstream: true });
+  try {
+    const controller = new AbortController();
+    const pending = fetch(proxy.endpointUrl + '/v1/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse', { method: 'POST', body: '{}', signal: controller.signal }).then(response => response.body?.cancel()).catch(() => {});
+    await started;
+    controller.abort();
+    await pending;
+    let timeout;
+    await Promise.race([closed, new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('Timed out waiting for upstream cancellation.')), 1000); })]).finally(() => clearTimeout(timeout));
+    assert.equal(upstreamClosed, true);
+  } finally { await proxy.shutdown(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('Vertex SSE upstream stream errors terminate the downstream response', async () => {
+  let began;
+  const started = new Promise(resolve => { began = resolve; });
+  const upstream = createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    res.write('data: partial\n\n');
+    began();
+    setImmediate(() => res.destroy(new Error('fixture stream failure')));
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const proxy = await startGeminiSecurityProxy({ credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex', allowedProject: 'p', allowedRegion: 'us-central1', allowedModel: 'gemini-2.5-flash', allowStreaming: true, upstreamHost: '127.0.0.1', upstreamPort: upstream.address().port, upstreamHttp: true, allowLoopbackUpstream: true });
+  try {
+    const responsePromise = fetch(proxy.endpointUrl + '/v1/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse', { method: 'POST', body: '{}' });
+    await started;
+    const response = await responsePromise;
+    await assert.rejects(response.text());
+  } finally { await proxy.shutdown(); await new Promise(resolve => upstream.close(resolve)); }
 });
 
 test('upstream timeout tracks the remaining selected session deadline without a 60-second cap', () => {

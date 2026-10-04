@@ -1,6 +1,7 @@
 # Reviewer execution options for Gemini CI: Vertex AI with WIF
 
-Status: proposed delivery plan. This document records the user's selection of
+Status: staged delivery; execution profile selected by the owner on 2026-10-04.
+This document records the user's selection of
 Vertex AI with Google Cloud Workload Identity Federation (WIF) as the provider
 and authentication direction for Issue #252. It is not canonical architecture,
 consumer CI policy, implementation, route activation, or acceptance evidence.
@@ -101,10 +102,11 @@ inferred from an adapter's name or an operating mode.
 
 ## Revised delivery sequence
 
-1. Compare the options above and propose the smallest execution/context profile
-   that meets the consumer's review requirements. Record required owner
-   decisions in canonical authority before activation. Existing runtime work
-   and this optional helper do not settle that choice.
+1. Implement the owner-selected Gemini CLI profile with a controlled,
+   revision-bound review workspace and explicit read-tool allowlist. Candidate
+   control files remain evidence with original path/revision identity rather
+   than automatically loaded configuration. The selection is recorded in
+   canonical authority; it activates no route.
 2. Implement protected selection of the chosen provider, runtime, context
    strategy, model/settings and limits. Preserve old Codex policy versions;
    candidate inputs cannot select their own reviewer or raise bounds.
@@ -142,10 +144,43 @@ authentication, timeout, refusal, partial and invalid-output failures. Verify
 Gemini with Codex absent and OpenAI credentials unset. Preserve fail-closed
 acceptance and independently verify any required host protection.
 
-Still open: execution/context profile; adopting consumer and branch; exact
+Still open: adopting consumer and branch; exact
 Google identity bindings, project/region, model/thinking settings, quotas and
 billing limits, credential lifetime/renewal, supported file classes, complete
 prompt limits, retention/cleanup and route-specific governance evidence.
 Standby/fallback or parallel result adoption stays with #259. Vertex AI with
 WIF remains the selected authentication direction. #252 remains open until
 its CI adoption criteria are met; this work adds no release gate.
+
+## Internal CLI delivery slice
+
+The CLI profile has three internal building blocks. The optional snapshot helper
+can feed `materialize-review-workspace.mjs`: it writes fixed ordinal text files
+and a manifest retaining original paths, exact revisions, modes, object IDs and
+content digests. Candidate filenames never select a filesystem destination or
+CLI configuration name. Every selected snapshot is retained; absent sides remain
+explicit. This helper verifies packet consistency and bounds, not origin identity,
+complete repository context, protected reference selection or host confinement.
+The trusted orchestrator remains responsible for those inputs and coverage.
+
+`gemini-cli-response.mjs` extracts the JSON output envelope only after successful
+process completion within explicit output limits. Response text then passes the
+existing request-bound decision validation. CLI exit zero alone is insufficient.
+
+The proxy accepts the fixed CLI streaming alias only with explicit opt-in and
+maps it to the selected Vertex project, region and model. It discards client
+credential headers and injects the parent-owned Bearer credential upstream.
+Ordinary non-streaming routes retain their existing scope checks. This slice
+provides no CLI installer, process supervisor, protected CI selection or workflow
+activation. It does not assert that a read-tool configuration is host isolation.
+
+Offline validation used npm Gemini CLI 0.62.0, an isolated fixture HOME,
+controlled workspace and a loopback canned SSE server. The CLI performed a
+`read_file` call through the actual streaming proxy; the upstream received only
+the parent dummy Bearer header on the protected-scope route. A shell request was
+rejected by the configured tool inventory. Dummy credentials are not WIF evidence.
+Malformed decision text still produced CLI exit zero; HTTP 401 produced failure;
+a nonresponding server required an external watchdog. Further implementation
+must verify cancellation with descendants, complete context selection, CLI
+version/configuration control, thinking settings and authenticated governance
+cases before route activation.

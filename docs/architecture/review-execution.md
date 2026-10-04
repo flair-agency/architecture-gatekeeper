@@ -170,6 +170,20 @@ selection and verification before activation. Codex remains supported; standby
 or parallel result adoption is separate work. This decision does not activate
 Gemini CI, establish semantic quality, or change acceptance and release gates.
 
+#### Target Gemini CI execution selection (Issue #252 owner decision, 2026-10-04)
+
+Use Gemini CLI with a controlled, revision-bound workspace, launcher-owned
+configuration and explicit read-tool allowlist. Candidate control/instruction
+files remain complete evidence with original path/revision identity, never
+automatically loaded CLI configuration or protected instructions. Candidate
+workspace configuration cannot enable tools, hooks, skills, extensions or MCP.
+The launcher/proxy retains Vertex WIF credentials under the boundary above.
+CLI exit zero alone is insufficient: schema/authority validation is mandatory;
+timeout, cancellation, authentication or invalid output leaves review incomplete.
+This claims no candidate-code execution, Codex equivalence or host isolation,
+and activates no acceptance route. Provider settings and authenticated evidence
+remain prerequisites.
+
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
 The GitHub-specific step-output adapter treats `GITHUB_OUTPUT` as a trusted
