@@ -389,8 +389,21 @@ remain the branch's existing protected selections. Caller timeout inputs and
 the self Flex probe do not override a policy-selected execution object.
 Unsupported, partial or invalid execution objects fail during policy resolution;
 this Codex selection cannot be applied to a Gemini branch. Governance-job
-settings remain separate. This repository has not yet adopted the object, and
-this staging mechanism does not activate Gemini or prove physical process termination.
+settings remain separate. The candidate self policy selects its existing effective
+7-minute job, 5-minute step and standard Codex profile for staged verification.
+Protected adoption and a subsequent opted-in hosted run remain required;
+configuration alone proves neither backend identity nor process termination.
+Consumer adoption stays unavailable pending representative hosted verification.
+Gemini remains unwired.
+
+Opted-in staged ordinary reviews pass the exact Action final-message source
+through shared execution normalization before existing semantic validators.
+Only a fixed execution status is appended through the validated runner-provided
+output sink; raw reviewer bytes are never re-published by this bridge. Failure,
+cancellation, missing or oversized material leaves execution incomplete. A
+completed observation, including malformed response text, is not a validated
+decision or acceptance. Whole-job cancellation may prevent observation; a
+requested timeout proves no descendant termination.
 
 For branches without this object, existing compatibility behavior is retained.
 The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)
