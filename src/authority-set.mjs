@@ -37,7 +37,13 @@ function validPath(value) {
 }
 
 // JSON.parse accepts duplicate object keys. Reject them before trusting a selector.
-export function rejectDuplicateJsonKeys(source, label = 'manifest') {
+export function rejectDuplicateJsonKeys(source, label = 'manifest', options = {}) {
+  if (!options || typeof options !== 'object' || Array.isArray(options) ||
+      Object.keys(options).some(key => key !== 'maxDepth')) fail(`${label} duplicate-key parser options are invalid.`);
+  const maxDepth = options.maxDepth ?? 8;
+  if (!Number.isSafeInteger(maxDepth) || maxDepth < 1 || maxDepth > 514) {
+    fail(`${label} duplicate-key parser depth must be within 1..514.`);
+  }
   let position = 0;
   const white = () => { while (/\s/.test(source[position] ?? '')) position++; };
   const string = () => {
@@ -49,7 +55,7 @@ export function rejectDuplicateJsonKeys(source, label = 'manifest') {
     fail('manifest contains unterminated JSON string.');
   };
   const value = depth => {
-    if (depth > 8) fail('manifest nesting is too deep.');
+    if (depth > maxDepth) fail(`${label} nesting is too deep.`);
     white();
     if (source[position] === '"') { string(); return; }
     if (source[position] === '{') {
