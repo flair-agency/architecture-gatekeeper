@@ -187,7 +187,7 @@ jobs:
       legacy_authority_provenance: ${{ steps.legacy-authority.outputs.provenance }}
     steps:
       - name: Confine optional Flex probe to the self reviewer
-        if: inputs.self-flex-probe
+        if: inputs.self-flex-probe && needs.policy.outputs.codex_args == ''
         env:
           REPOSITORY: ${{ github.repository }}
           WORKFLOW_REF: ${{ github.workflow_ref }}
