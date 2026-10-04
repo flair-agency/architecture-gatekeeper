@@ -103,3 +103,42 @@ test('accepts the exact selected byte boundary and rejects a multibyte overflow'
   assert.equal(over.status, 'incomplete');
   assert.equal(over.observations.rawResponse.status, 'oversized');
 });
+
+test('rejects nested lossy JSON settings instead of silently changing the expected selection', () => {
+  const circular = {}; circular.self = circular;
+  const sparse = new Array(1);
+  const decorated = [1]; decorated.extra = 2;
+  const hidden = {}; Object.defineProperty(hidden, 'secret', { value: 1 });
+  const symbolKey = { [Symbol('setting')]: 1 };
+  for (const value of [undefined, NaN, Infinity, -Infinity, -0, Symbol('value'), 1n,
+    () => 1, new Date(), circular, sparse, decorated, hidden, symbolKey]) {
+    assert.throws(() => normalizeCiExecutionResult(input({ expectedExecution: {
+      ...expectedExecution, requestedSettings: { nested: { value } },
+    } })), /lossless JSON/);
+  }
+});
+
+test('rejects executable settings properties without invoking their code', () => {
+  let called = false;
+  const getter = {}; Object.defineProperty(getter, 'value', {
+    enumerable: true, get() { called = true; return 1; },
+  });
+  const toJSON = { toJSON() { called = true; return {}; } };
+  for (const requestedSettings of [getter, toJSON]) {
+    assert.throws(() => normalizeCiExecutionResult(input({ expectedExecution: {
+      ...expectedExecution, requestedSettings,
+    } })), /lossless JSON/);
+  }
+  assert.equal(called, false);
+});
+
+test('preserves nested JSON settings and fails finitely on excessive structure', () => {
+  const requestedSettings = { nested: [null, true, 'é', 1.25, { value: 0 }] };
+  const result = normalizeCiExecutionResult(input({ expectedExecution: { ...expectedExecution, requestedSettings } }));
+  assert.deepEqual(result.expectedExecution.requestedSettings, requestedSettings);
+  assert.notEqual(result.expectedExecution.requestedSettings, requestedSettings);
+  let deep = {}; for (let i = 0; i < 70; i++) deep = { nested: deep };
+  assert.throws(() => normalizeCiExecutionResult(input({ expectedExecution: {
+    ...expectedExecution, requestedSettings: deep,
+  } })), /bounded lossless JSON/);
+});
