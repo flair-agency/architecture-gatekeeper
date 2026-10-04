@@ -35,7 +35,7 @@ function validateRunContext(context, repository, baseSha, bSha) {
 export async function orchestrateOwnerAmendmentBlockHandoff({
   repository, policy, manifest, baseSha, bSha, changedFiles,
   baseAuthorityBytes, headAuthorityBytes, blockRun, purpose,
-  token, runGh, rulesetId, tagger, fetchImpl = fetch,
+  token, runGh, rulesetId, tagger, rulesetReadback, fetchImpl = fetch,
 }) {
   try {
     if (typeof repository !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/.test(repository)) {
@@ -69,7 +69,7 @@ export async function orchestrateOwnerAmendmentBlockHandoff({
     const tagNamespace = policy.ownerAmendmentTagNamespace;
     const tagRef = `${tagNamespace}/${bSha}`;
     const tag = await createAndReadOwnerAmendmentTag({ repository, tagRef, bSha,
-      tagMessage: composed.tagMessage, tagNamespace, rulesetId, token, tagger, fetchImpl });
+      tagMessage: composed.tagMessage, tagNamespace, rulesetId, token, tagger, rulesetReadback, fetchImpl });
     return Object.freeze({ status: 'TAG_TRANSPORTED_AND_READ_BACK', transportStatus: tag.transportStatus,
       repository, tagRef, bSha, tagObjectSha: tag.tagReadback.sha,
       reviewRecordSha256: composed.reviewRecordSha256,

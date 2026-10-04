@@ -14,6 +14,7 @@ permissions:
 jobs:
   handoff:
     if: github.ref == 'refs/heads/main' && github.event.action == 'owner-amendment-owner-decision-handoff-v1'
+    environment: github-ruleset-readback
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -25,6 +26,13 @@ jobs:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: 22
+      - name: Isolated complete ruleset readback
+        env:
+          RULESET_READBACK_APP_ID: ${{ vars.RULESET_READBACK_APP_ID }}
+          RULESET_READBACK_INSTALLATION_ID: ${{ vars.RULESET_READBACK_INSTALLATION_ID }}
+          RULESET_READBACK_PRIVATE_KEY: ${{ secrets.RULESET_READBACK_PRIVATE_KEY }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+        run: env -u GH_TOKEN -u GITHUB_TOKEN node src/github-ruleset-readback-cli.mjs
       - name: Verify trigger evidence and transport exact-B tag
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -36,6 +44,7 @@ jobs:
           OWNER_DECISION_RUN_ID: ${{ github.event.client_payload.run_id }}
           OWNER_DECISION_RUN_ATTEMPT: ${{ github.event.client_payload.run_attempt }}
           AMENDMENT_PURPOSE: ${{ github.event.client_payload.purpose }}
+          OWNER_AMENDMENT_RULESET_READBACK_FILE: ${{ runner.temp }}/owner-amendment-ruleset-readback/snapshot.json
           OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
           GH_TOKEN: ${{ github.token }}
         run: node src/owner-amendment-owner-decision-handoff-cli.mjs
