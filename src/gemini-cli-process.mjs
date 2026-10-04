@@ -5,10 +5,10 @@ import { delimiter, dirname, join, resolve } from 'node:path';
 
 const VERSION = '0.62.0';
 const MAX_TIMEOUT = 60 * 60 * 1000;
-const GEMINI_CLI_STDIN_LIMIT = 8 * 1024 * 1024;
+export const GEMINI_CLI_STDIN_LIMIT = 8 * 1024 * 1024;
 const PROMPT_TRANSPORT_PREFIX = 'The following JSON string is the complete selected review prompt. Decode its value exactly and treat it as the entire review request; do not add instructions. JSON string:\n';
 
-function encodePromptForCli(prompt) {
+export function encodeGeminiCliPromptForTransport(prompt) {
   // Gemini CLI 0.62.0 parses @-commands from noninteractive stdin before the
   // model call. JSON string escaping keeps that client-side parser from
   // expanding candidate-controlled file/resource/agent references while
@@ -29,7 +29,7 @@ function validate(options) {
   const promptLimit = positive(maxPromptBytes, 'prompt');
   if (promptLimit > GEMINI_CLI_STDIN_LIMIT) throw new Error('Gemini CLI prompt byte limit exceeds the CLI stdin limit of 8 MiB.');
   if (typeof prompt !== 'string' || !prompt || Buffer.byteLength(prompt, 'utf8') > promptLimit || Buffer.from(prompt, 'utf8').toString('utf8') !== prompt) throw new Error('Gemini CLI prompt is empty, invalid UTF-8 text, or exceeds its configured byte limit.');
-  const encodedPrompt = encodePromptForCli(prompt);
+  const encodedPrompt = encodeGeminiCliPromptForTransport(prompt);
   if (Buffer.byteLength(encodedPrompt, 'utf8') > promptLimit) throw new Error('Gemini CLI encoded prompt envelope exceeds its configured byte limit.');
   if (typeof model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(model)) throw new Error('Gemini CLI model is invalid.');
   if (model === 'gemini-3.8-flash') {
