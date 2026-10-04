@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import http, { createServer, request } from 'node:http';
+import http, { createServer, request, Server } from 'node:http';
 import https from 'node:https';
 import { EventEmitter } from 'node:events';
 import { Readable } from 'node:stream';
@@ -340,6 +340,50 @@ test('proxy rejects absent or credential-incompatible scope before listening', a
     { credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex', allowedModel: 'gemini-2.5-flash' },
     { credentials: { type: 'apiKey', value: 'fixture' }, allowedMode: 'vertex', allowedModel: 'gemini-2.5-flash', allowedProject: 'p', allowedRegion: 'r' }
   ]) await assert.rejects(startGeminiSecurityProxy(config), /complete credential-compatible/);
+});
+
+test('proxy startup deadline and cancellation reject stalled listen and close a late callback', async () => {
+  const originalListen = Server.prototype.listen;
+  const originalClose = Server.prototype.close;
+  const pending = [];
+  let closeCalls = 0;
+  Server.prototype.listen = function (...args) {
+    pending.push({ server: this, callback: args.at(-1) });
+    Object.defineProperty(this, 'listening', { configurable: true, get: () => true });
+    return this;
+  };
+  Server.prototype.close = function (callback) {
+    closeCalls += 1;
+    callback?.();
+    return this;
+  };
+
+  try {
+    const timed = startGeminiSecurityProxy({
+      credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex',
+      allowedProject: 'p', allowedRegion: 'us', allowedModel: 'gemini-3.8-flash', deadlineMs: 25,
+    });
+    await assert.rejects(timed, /deadline expired/);
+    assert.equal(pending.length, 1);
+    assert.equal(closeCalls, 1, 'timeout closes the server while listen is stalled');
+    pending[0].callback();
+    assert.equal(closeCalls, 2, 'a late successful bind is closed after the first cleanup');
+
+    const controller = new AbortController();
+    const cancelled = startGeminiSecurityProxy({
+      credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex',
+      allowedProject: 'p', allowedRegion: 'us', allowedModel: 'gemini-3.8-flash', signal: controller.signal,
+    });
+    assert.equal(pending.length, 2);
+    controller.abort();
+    await assert.rejects(cancelled, /cancelled/);
+    assert.equal(closeCalls, 3, 'cancellation closes the pending server');
+    pending[1].callback();
+    assert.equal(closeCalls, 4, 'a late successful bind after cancellation is closed');
+  } finally {
+    Server.prototype.listen = originalListen;
+    Server.prototype.close = originalClose;
+  }
 });
 
 

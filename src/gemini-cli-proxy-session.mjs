@@ -65,6 +65,7 @@ export async function runGeminiCliProxySession(input) {
       allowedModel: processOptions.model,
       allowStreaming: true,
       deadlineMs: beforeProxy,
+      signal,
     });
     const remaining = remainingDeadlineMs(deadlineAt);
     if (remaining === 0 || deadlineController.signal.aborted) {

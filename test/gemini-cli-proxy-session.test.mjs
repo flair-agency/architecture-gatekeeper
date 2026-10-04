@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { request as httpRequest } from 'node:http';
+import { Server } from 'node:http';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { runGeminiCliProxySession } from '../src/gemini-cli-proxy-session.mjs';
@@ -106,6 +107,39 @@ test('rejects proxy overrides, unselected credential types, and missing finite s
   await assert.rejects(runGeminiCliProxySession(args(preAborted, { signal: controller.signal })), /cancelled before startup/);
   assert.deepEqual(readdirSync(preAborted.workspaceParentDirectory), []);
   assert.deepEqual(readdirSync(preAborted.privateParentDirectory), []);
+});
+
+test('caller cancellation reaches a stalled proxy startup through the shared signal', async t => {
+  const f = fixture(t);
+  const originalListen = Server.prototype.listen;
+  const originalClose = Server.prototype.close;
+  let listenCallback;
+  let closeCalls = 0;
+  Server.prototype.listen = function (...args) {
+    listenCallback = args.at(-1);
+    Object.defineProperty(this, 'listening', { configurable: true, get: () => true });
+    return this;
+  };
+  Server.prototype.close = function (callback) {
+    closeCalls += 1;
+    callback?.();
+    return this;
+  };
+  const controller = new AbortController();
+  try {
+    const pending = runGeminiCliProxySession(args(f, { timeoutMs: 5000, signal: controller.signal }));
+    assert.equal(typeof listenCallback, 'function');
+    controller.abort();
+    await assert.rejects(pending, /cancelled/);
+    assert.equal(closeCalls, 1, 'shared cancellation closes the pending proxy');
+    listenCallback();
+    assert.equal(closeCalls, 2, 'a late successful bind after cancellation is closed');
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  } finally {
+    Server.prototype.listen = originalListen;
+    Server.prototype.close = originalClose;
+  }
 });
 
 test('shared deadline and caller cancellation fail closed and close both session workspaces and proxy', async t => {
