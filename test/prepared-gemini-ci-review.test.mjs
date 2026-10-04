@@ -118,7 +118,9 @@ test('normalizes and validates prepared Gemini execution before exposing PASS or
     { name: 'PASS', response: { decision: 'PASS', authorityIds }, expected: 'PASS' },
     { name: 'BLOCK', response: { decision: 'BLOCK', authorityIds, summary: 'documented' }, expected: 'BLOCK' },
     { name: 'invalid JSON', responseText: 'not JSON', error: /decision is invalid JSON/ },
-    { name: 'missing authority ID', response: { decision: 'PASS', authorityIds: authorityIds.slice(1) }, error: /authority/ },
+    { name: 'too few authority IDs', response: { decision: 'PASS', authorityIds: authorityIds.slice(1) }, error: /authorityIds has too few items/ },
+    { name: 'duplicate authority ID', response: { decision: 'PASS', authorityIds: [authorityIds[0], ...authorityIds.slice(0, 5)] }, error: /decision has an invalid, duplicate or extra Authority ID/ },
+    { name: 'unexpected authority ID', response: { decision: 'PASS', authorityIds: [...authorityIds.slice(0, 5), 'unexpected-authority'] }, error: /decision has an invalid, duplicate or extra Authority ID/ },
     { name: 'consumer rule violation', response: { decision: 'BLOCK', authorityIds }, error: /BLOCK requires its reason/ },
   ];
   for (const item of cases) {
