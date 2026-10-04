@@ -353,3 +353,36 @@ complete context and evidence instructions, packet binding, and downstream
 protected schema, authority and consumer-rule validation. Its result remains
 raw response text. Unsupported schema dialects fail closed. No workflow,
 provider selector, installer, authentication discovery or fallback is added.
+
+## Historical PoC authentication evidence correction
+
+The successful run `36921176825` at
+`d63b46279c21ccf9ce27ede8368f88841483a068` obtained a Google WIF access token
+and reported project `architecture-gatekeeper`. That establishes the historical
+identity exchange/project metadata, not a Vertex model call. Its review-step log
+also shows a populated (masked) `GEMINI_API_KEY`. The historical CI runner passed
+that key as `options.apiKey`, and the historical transport selects this explicit
+API key before `options.accessToken`, routing it to Google AI Studio. Therefore
+that successful review is not authenticated Vertex evidence for the selected
+CLI/proxy route or its model/thinking/location settings. A new verification must
+supply only the parent WIF bearer, with API-key fallback absent. No credential
+values are included in this investigation.
+
+## Provider-neutral prepared Authority Set decision validation
+
+The internal result validator composes the existing JSON Schema,
+prepared Authority Set and consumer-rule validators using explicit
+caller-prepared materials. It rejects malformed or duplicate-key JSON and
+invalid UTF-8, bounds response and schema bytes before parsing, and preserves
+valid PASS, BLOCK and OWNER_DECISION results. The caller explicitly supplies a
+rules object or `null`; `null` means its protected selection has no additional
+rules, not a fallback. The response ceiling uses the existing ordinary CI
+decision bound of 64 KiB; the schema ceiling is 1 MiB.
+
+This helper covers prepared Authority Set provenance versions already
+supported by the existing validator, not legacy authority-file selection. It
+reads no local reviewer configuration and selects no provider or policy.
+Protected provenance, exact revisions, complete context and route-specific
+receipt or evidence requirements remain orchestration responsibilities.
+Validation remains separate from acceptance: BLOCK and OWNER_DECISION are not
+rewritten or discarded. No workflow or acceptance route is activated.
