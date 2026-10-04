@@ -51,6 +51,23 @@ test('caller-qualified successful exact-B signer completed before queue entry ma
   assert.throws(() => assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(result), /successful pre-queue semantic eligibility signer/);
 });
 
+test('selects a compact exact-B association and keeps malformed metadata ambiguous/nonaccepting', async () => {
+  const compactRun = run();
+  compactRun.repository.id = 1379218762;
+  compactRun.head_repository.id = 1379218762;
+  for (const side of ['base', 'head']) compactRun.pull_requests[0][side].repo = {
+    id: 1379218762, name: 'architecture-gatekeeper', url: `https://api.github.com/repos/${repository}` };
+  const selected = await inspect({ runs: [compactRun], jobs: [{ jobs: [signer()] }] });
+  assert.equal(selected.latestSignerAttempt.run.id, compactRun.id);
+  assert.equal(selected.hasSuccessfulSignerBeforeQueue, true);
+  assert.equal(selected.hasAmbiguousSuccessfulSignerBeforeQueue, false);
+  compactRun.pull_requests[0].head.repo.id++;
+  const wrongIdentity = await inspect({ runs: [compactRun], jobs: [{ jobs: [signer()] }] });
+  assert.equal(wrongIdentity.latestSignerAttempt, null);
+  assert.equal(wrongIdentity.hasAmbiguousSuccessfulSignerBeforeQueue, true);
+  assert.throws(() => assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(wrongIdentity), /without a unique exact pull-request association/);
+});
+
 test('empty pull-request association plus successful protected-base signer fails closed when the tag is missing', async () => {
   const protectedTrigger = run({ head_sha: bBaseSha, pull_requests: [] });
   const result = await inspect({ runs: [protectedTrigger], jobs: [{ jobs: [signer({ head_sha: bBaseSha })] }] });
