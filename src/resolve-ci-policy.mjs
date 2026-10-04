@@ -13,6 +13,34 @@ const ADOPTION_JOB_NAME = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63} \/ [A-Za-z0-9_][A-Z
 const AMENDMENT_TAG_NAMESPACE = 'refs/tags/architecture-gatekeeper/amendments';
 const OWNER_AMENDMENT_TRIGGER_PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1']);
 const LEGACY_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
+const REVIEW_JOB_TIMEOUT_MAX = 360;
+const REVIEW_STEP_TIMEOUT_MAX = 359;
+
+function validateCodexExecutionSelection(selection, label) {
+  requireOnlyKeys(selection, new Set(['reviewJobTimeoutMinutes', 'reviewStepTimeoutMinutes', 'codexProfile']), `${label} execution`);
+  if (Object.keys(selection).length !== 3 ||
+      !Number.isSafeInteger(selection.reviewJobTimeoutMinutes) || selection.reviewJobTimeoutMinutes < 1 ||
+      selection.reviewJobTimeoutMinutes > REVIEW_JOB_TIMEOUT_MAX ||
+      !Number.isSafeInteger(selection.reviewStepTimeoutMinutes) || selection.reviewStepTimeoutMinutes < 1 ||
+      selection.reviewStepTimeoutMinutes > REVIEW_STEP_TIMEOUT_MAX ||
+      selection.reviewJobTimeoutMinutes <= selection.reviewStepTimeoutMinutes ||
+      !['standard', 'flex'].includes(selection.codexProfile)) {
+    throw new Error(`Invalid ${label} Codex execution selection`);
+  }
+}
+
+function resolvedCodexExecutionSelection(selection) {
+  if (!selection) return {};
+  const args = ['--ephemeral', '-c', 'project_doc_max_bytes=0'];
+  if (selection.codexProfile === 'flex') args.push('-c', "service_tier='flex'");
+  args.push('--json');
+  return {
+    executionSelection: 'policy',
+    reviewJobTimeoutMinutes: selection.reviewJobTimeoutMinutes,
+    reviewStepTimeoutMinutes: selection.reviewStepTimeoutMinutes,
+    codexArgs: JSON.stringify(args),
+  };
+}
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -34,11 +62,12 @@ function validateV6Branch(branch, label) {
   if (branch.mode !== 'enforced') throw new Error(`${label} v6 supports only enforced or local-only mode`);
   if (branch.provider !== 'codex' && branch.provider !== 'gemini') throw new Error(`${label} v6 requires provider codex or gemini`);
 
-  const common = ['mode', 'provider', 'model', 'authorityManifestPath', 'authorityLimits'];
+  const common = ['mode', 'provider', 'model', 'authorityManifestPath', 'authorityLimits', 'execution'];
   const providerSetting = branch.provider === 'codex' ? 'reasoningEffort' : 'thinkingLevel';
   const allowed = new Set([...common, providerSetting]);
   requireOnlyKeys(branch, allowed, label);
-  if (Object.keys(branch).length !== allowed.size) throw new Error(`${label} v6 requires its complete provider and Authority Set selection`);
+  const expectedSize = allowed.size - (Object.hasOwn(branch, 'execution') ? 0 : 1);
+  if (Object.keys(branch).length !== expectedSize) throw new Error(`${label} v6 requires its complete provider and Authority Set selection`);
   if (typeof branch.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(branch.model)) {
     throw new Error(`Enforced ${label} requires a valid model`);
   }
@@ -46,8 +75,11 @@ function validateV6Branch(branch, label) {
     if (/^gemini(?:-|$)/i.test(branch.model) || !EFFORTS.has(branch.reasoningEffort)) {
       throw new Error(`Invalid Codex model or reasoning effort for ${label}`);
     }
+    if (Object.hasOwn(branch, 'execution')) validateCodexExecutionSelection(branch.execution, label);
   } else if (branch.model !== 'gemini-3.8-flash' || branch.thinkingLevel !== 'MEDIUM') {
     throw new Error(`Invalid Gemini model or thinking level for ${label}`);
+  } else if (Object.hasOwn(branch, 'execution')) {
+    throw new Error(`${label} execution selection is only supported for Codex`);
   }
   if (typeof branch.authorityManifestPath !== 'string' || branch.authorityManifestPath.length > 240 ||
       !AUTHORITY_PATH.test(branch.authorityManifestPath) || branch.authorityManifestPath.split('/').some(part => part === '.' || part === '..')) {
@@ -58,8 +90,8 @@ function validateV6Branch(branch, label) {
 
 function validateBranch(branch, label, version) {
   if (version === 6) return validateV6Branch(branch, label);
-  const allowed = version === 1 ? ['mode', 'model', 'reasoningEffort', 'authorityFiles', 'promptPath', 'schemaPath', 'validationPath'] :
-    ['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition', ...(version === 2 ? ['ownerAmendment'] : []), ...(version === 5 ? ['adoptionEvidence'] : [])];
+  const allowed = version === 1 ? ['mode', 'model', 'reasoningEffort', 'authorityFiles', 'promptPath', 'schemaPath', 'validationPath', 'execution'] :
+    ['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'execution', 'ownerAddition', ...(version === 2 ? ['ownerAmendment'] : []), ...(version === 5 ? ['adoptionEvidence'] : [])];
   requireOnlyKeys(branch, new Set(allowed), label);
   if (!MODES.has(branch.mode)) throw new Error(`Invalid ${label} mode`);
   if (branch.mode === 'local-only') {
@@ -68,6 +100,7 @@ function validateBranch(branch, label, version) {
   }
   if (version === 5 && branch.mode !== 'procedural') throw new Error(`${label} v5 requires procedural mode`);
   if (version !== 5 && branch.mode === 'procedural') throw new Error(`${label} procedural mode requires CI policy v5`);
+  if (Object.hasOwn(branch, 'execution')) validateCodexExecutionSelection(branch.execution, label);
   if (typeof branch.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(branch.model)) {
     throw new Error(`${branch.mode === 'procedural' ? 'Procedural' : 'Enforced'} ${label} requires a valid model`);
   }
@@ -184,6 +217,7 @@ export function resolveCiPolicy(policy, baseBranch) {
       ...(selected.provider === 'codex' ? { reasoningEffort: selected.reasoningEffort } : { thinkingLevel: selected.thinkingLevel }),
       authorityManifestPath: selected.authorityManifestPath,
       authorityLimitsBase64: Buffer.from(JSON.stringify(validateAuthorityLimits(selected.authorityLimits))).toString('base64'),
+      ...(selected.provider === 'codex' ? resolvedCodexExecutionSelection(selected.execution) : {}),
     };
   }
   const result = selected.mode === 'local-only'
@@ -231,6 +265,7 @@ export function resolveCiPolicy(policy, baseBranch) {
       result.ownerAmendmentMaxPromptBytes = selected.ownerAmendment.maxPromptBytes;
     }
   }
+  if (selected.mode !== 'local-only') Object.assign(result, resolvedCodexExecutionSelection(selected.execution));
   return result;
 }
 

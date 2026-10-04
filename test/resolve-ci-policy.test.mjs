@@ -181,3 +181,123 @@ test('adding v6 leaves existing v2 policy output byte-for-byte in its legacy sha
   assert.equal(Object.hasOwn(selected, 'provider'), false);
   assert.equal(Object.hasOwn(selected, 'policyVersion'), false);
 });
+
+const execution = Object.freeze({
+  reviewJobTimeoutMinutes: 7,
+  reviewStepTimeoutMinutes: 5,
+  codexProfile: 'standard',
+});
+
+function codexBranchForVersion(version, selectedExecution = execution) {
+  if (version === 1) return {
+    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+    authorityFiles: ['docs/architecture.md'], promptPath: '.codex/gatekeeper/prompt.md',
+    schemaPath: '.codex/gatekeeper/schema.json', validationPath: null,
+    ...(selectedExecution ? { execution: selectedExecution } : {}),
+  };
+  if (version === 6) return {
+    mode: 'enforced', provider: 'codex', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: limits,
+    ...(selectedExecution ? { execution: selectedExecution } : {}),
+  };
+  const branch = {
+    mode: version === 5 ? 'procedural' : 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: limits,
+    ownerAddition: { ...(version === 2 ? {} : { version: 2, authorityId: 'architecture' }), grade: 'G0',
+      authorityPath: 'docs/architecture.md', promptPath: '.codex/gatekeeper/owner-addition.md',
+      schemaPath: '.codex/gatekeeper/owner-addition.schema.json' },
+    ...(version === 2 ? { ownerAmendment: amendment } : {}),
+    ...(version === 5 ? { adoptionEvidence: {
+      producer: 'github-actions', workflowPath: '.github/workflows/architecture-gate.yml',
+      jobName: 'architecture-gate / report',
+    } } : {}),
+    ...(selectedExecution ? { execution: selectedExecution } : {}),
+  };
+  return branch;
+}
+
+function policyForVersion(version, branch) {
+  return { version, default: { mode: 'local-only' }, branches: { main: branch } };
+}
+
+function executionOutputs(profile = 'standard') {
+  const args = ['--ephemeral', '-c', 'project_doc_max_bytes=0'];
+  if (profile === 'flex') args.push('-c', "service_tier='flex'");
+  args.push('--json');
+  return {
+    executionSelection: 'policy', reviewJobTimeoutMinutes: 7, reviewStepTimeoutMinutes: 5,
+    codexArgs: JSON.stringify(args),
+  };
+}
+
+test('optional Codex execution selection resolves bounds and exact standard/flex Action args for policies v1, v2, v4, v5, and v6', () => {
+  for (const version of [1, 2, 4, 5, 6]) {
+    for (const codexProfile of ['standard', 'flex']) {
+      const selected = resolveCiPolicy(policyForVersion(version,
+        codexBranchForVersion(version, { ...execution, codexProfile })), 'main');
+      assert.deepEqual({
+        executionSelection: selected.executionSelection,
+        reviewJobTimeoutMinutes: selected.reviewJobTimeoutMinutes,
+        reviewStepTimeoutMinutes: selected.reviewStepTimeoutMinutes,
+        codexArgs: selected.codexArgs,
+      }, executionOutputs(codexProfile), `v${version} ${codexProfile}`);
+    }
+  }
+});
+
+test('execution selection preserves v2 owner amendment outputs and is absent from legacy resolved output when omitted', () => {
+  const legacy = resolveCiPolicy(policyForVersion(2, codexBranchForVersion(2, null)), 'main');
+  assert.equal(Object.hasOwn(legacy, 'executionSelection'), false);
+  assert.equal(Object.hasOwn(legacy, 'reviewJobTimeoutMinutes'), false);
+  assert.equal(Object.hasOwn(legacy, 'codexArgs'), false);
+  assert.equal(legacy.ownerAmendmentVersion, 1);
+  assert.equal(legacy.ownerAmendmentAuthorityId, 'architecture');
+
+  const selected = resolveCiPolicy(policyForVersion(2, codexBranchForVersion(2)), 'main');
+  assert.equal(selected.ownerAmendmentVersion, 1);
+  assert.equal(selected.ownerAmendmentAuthorityId, 'architecture');
+  assert.deepEqual({
+    executionSelection: selected.executionSelection,
+    reviewJobTimeoutMinutes: selected.reviewJobTimeoutMinutes,
+    reviewStepTimeoutMinutes: selected.reviewStepTimeoutMinutes,
+    codexArgs: selected.codexArgs,
+  }, executionOutputs());
+
+  const legacyV6 = codexBranchForVersion(6, null);
+  const resolvedV6 = resolveCiPolicy(policyForVersion(6, legacyV6), 'main');
+  assert.equal(Object.hasOwn(resolvedV6, 'executionSelection'), false);
+  assert.equal(Object.hasOwn(resolvedV6, 'codexArgs'), false);
+});
+
+test('execution selections reject partial, unknown, invalid, out-of-range, or non-effective limits', () => {
+  const invalid = [
+    {},
+    { ...execution, extra: true },
+    { ...execution, reviewJobTimeoutMinutes: '7' },
+    { ...execution, reviewJobTimeoutMinutes: 0 },
+    { ...execution, reviewJobTimeoutMinutes: 361 },
+    { ...execution, reviewStepTimeoutMinutes: 0 },
+    { ...execution, reviewStepTimeoutMinutes: 360 },
+    { ...execution, reviewJobTimeoutMinutes: 5, reviewStepTimeoutMinutes: 5 },
+    { ...execution, reviewJobTimeoutMinutes: 4, reviewStepTimeoutMinutes: 5 },
+    { ...execution, codexProfile: 'turbo' },
+  ];
+  for (const selectedExecution of invalid) {
+    for (const version of [1, 2, 4, 5, 6]) {
+      assert.throws(() => resolveCiPolicy(policyForVersion(version,
+        codexBranchForVersion(version, selectedExecution)), 'main'), undefined, `v${version}: ${JSON.stringify(selectedExecution)}`);
+    }
+  }
+  for (const version of [1, 2, 4, 5, 6]) {
+    assert.throws(() => resolveCiPolicy(policyForVersion(version,
+      { mode: 'local-only', execution }), 'main'));
+  }
+});
+
+test('v6 rejects a Codex execution selection on the Gemini branch', () => {
+  const gemini = {
+    mode: 'enforced', provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: limits, execution,
+  };
+  assert.throws(() => resolveCiPolicy(policyForVersion(6, gemini), 'main'), /only supported for Codex/);
+});
