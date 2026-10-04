@@ -360,6 +360,8 @@ and `final-message` through the trusted runner-provided canonical existing file,
 link and opened-identity checks, including from a checkout working directory. Required output publication failure fails the
 command. CI adoption must separately select a trusted runtime and acceptance policy.
 
+### Protected Codex execution selection
+
 An opted-in Codex policy branch may include an exact `execution` object:
 
 ```json
