@@ -112,6 +112,11 @@ policy, prompt, schema, and optional validation policy in the consuming
 repository. See the [integration reference](docs/integration-reference.md) for
 the complete workflow example and protected-base behavior.
 
+For host-triggered callers, see the
+[caller authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
+The consumer owns authorization; Gatekeeper preserves its selected review and
+credential boundaries. Consult host documentation for platform-specific signals.
+
 On the protected Authority Set and legacy v1 consumer routes, the reviewer
 receives the exact event base/head revisions, verified merge revision and the
 base-to-merge committed diff as untrusted task data. Untracked helper checkouts

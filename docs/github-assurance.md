@@ -49,6 +49,32 @@ flowchart TD
 This diagram describes the current **protected** amendment target. A future
 procedural route for private GitHub Free would need a separate owner decision.
 
+## Caller authorization and host integration boundary
+
+Gatekeeper's host integration preserves its selected review, evidence,
+credential and acceptance guarantees. The consumer owns caller authorization
+and permission to initiate secret-bearing work under its canonical authority.
+Gatekeeper does not infer that permission from host identity or membership
+signals, choose an allowlist, or provide a caller-authorization helper.
+
+An unavailable or disagreeing host signal does not authorize dynamically
+weakening an adopted consumer policy. The consumer selects the relevant
+principals, evidence sources and disagreement/failure rules; this guide selects
+none. Caller authorization does not make candidate code safe to execute:
+privileged credentials remain isolated from pull-request code and package
+lifecycle scripts.
+
+These boundaries follow the existing
+[consumer authority](architecture.md#consumer-authority),
+[CI credential boundary](architecture/review-execution.md#ci-model-review) and
+[normative invariants](architecture.md#normative-invariants).
+For GitHub integration, consult
+[GitHub's official security guidance](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target)
+for current platform behavior and risks. Host semantics and their discrepancies
+belong to the platform; consumer-specific authorization choices require that
+consumer's own decision. This guide maintains the Gatekeeper integration
+boundary rather than a catalog of host identity signals or authorization recipes.
+
 ## GitHub.com plan and visibility limits
 
 These are *available host capabilities*, not proof that a repository enabled
