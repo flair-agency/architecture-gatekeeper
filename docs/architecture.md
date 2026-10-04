@@ -332,9 +332,14 @@ the exact target ref, integration and observed target commits and reports only
 observed procedure completion and the Git facts checked. Candidate configuration
 cannot authorize itself; this adds no authentication or enforcement assurance.
 
-Versioned preview receipts bind exact repository/base/A/B, records, full Set,
-policy/review inputs, runtime/model/settings, decision, computed byte digests and
-completion time. Integrity and semantic validation are required even when
+Migration uses one exact candidate M (`headSha`), not a separate authority-only
+B. Its ordinary PASS, pre-integration receipt, integration second parent and
+resulting tree, and readback must bind that same M.
+
+Versioned preview receipts bind exact repository/base and route-specific
+candidate identities: A/B for addition or amendment, A for ordinary review, and
+M for migration, together with records, full Set, policy/review inputs,
+runtime/model/settings, decision, computed byte digests and completion time. Integrity and semantic validation are required even when
 producer identity, execution origin, owner authentication, custody, policy
 protection or host enforcement are UNVERIFIED. Reports state each assurance
 separately; local byte consistency supplies no authentication claim. Missing,
