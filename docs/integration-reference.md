@@ -502,6 +502,12 @@ result remain available and comment delivery is reported as a warning. Do not
 switch to `pull_request_target` merely to make comments writable while checking
 out or executing pull-request code.
 
+A caller initiating secret-bearing work follows the consumer's adopted
+authorization policy and preserves credential isolation. See the
+[caller authorization boundary](github-assurance.md#caller-authorization-and-host-integration-boundary)
+for the division of responsibility; host-specific identity signals and
+consumer authorization recipes are not selected by Gatekeeper.
+
 A consumer may add an optional `findings` array to its output schema. Each
 finding has a short `title`, actionable `body`, and optional `location` with a
 repository-relative `path`, `line`, and `side` (`RIGHT` for an added new-file
