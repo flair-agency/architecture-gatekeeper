@@ -124,9 +124,13 @@ Owner trusts `openai/codex-action` at the workflow pin; retires integrity jobs
 #### Target provider-independent CI execution boundary (Issue #332 owner decision, 2026-10-04)
 
 Prioritize a narrow shared CI execution boundary before provider-specific
-activation. The protected caller owns complete revision-bound review inputs,
-provider/model/settings selection, selected finite limits, runtime identity and
-credential provisioning. A selected execution adapter applies those inputs and
+activation. Protected consumer policy at the recorded protected revision owns
+reviewer/provider, model, provider-specific settings and applicable execution
+limit selection. The protected caller materializes and applies that exact
+selection with complete revision-bound inputs and verifies agreement before
+execution; it cannot substitute its own selection. Runtime identity and
+credential provisioning retain their existing protected host responsibilities.
+A selected execution adapter applies those inputs and
 exposes bounded response material or an incomplete execution outcome. It does
 not select authority, translate settings, switch providers, validate semantic
 decisions or authorize acceptance. Shared validation owns schema, selected
