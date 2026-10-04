@@ -5,16 +5,36 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { request as httpRequest } from 'node:http';
 import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { runPreparedGeminiCiReview } from '../src/prepared-gemini-ci-review.mjs';
 import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from '../src/gemini-cli-process.mjs';
+import { normalizeCiExecutionResult } from '../src/ci-execution-result.mjs';
+import { validatePreparedCiDecision } from '../src/prepared-ci-decision.mjs';
 
 const oid = char => char.repeat(40);
 const workspaceLimits = { maxFiles: 2, maxFileBytes: 2048, maxTotalBytes: 4096 };
 const decisionSchema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
-  type: 'object', required: ['decision'], additionalProperties: false,
-  properties: { decision: { type: 'string', enum: ['PASS', 'BLOCK'] } },
+  type: 'object', required: ['decision', 'authorityIds'], additionalProperties: false,
+  properties: {
+    decision: { type: 'string', enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] },
+    authorityIds: { type: 'array', minItems: 6, items: { type: 'string' } },
+    summary: { type: 'string' },
+  },
 };
+const authorityIds = [
+  'architecture-contract', 'architecture-authority-set', 'architecture-owner-addition',
+  'architecture-owner-amendment', 'architecture-review-execution', 'architecture-self-profile',
+];
+const authorityProvenance = {
+  version: 1, manifestSha256: 'a'.repeat(64), setDigest: 'b'.repeat(64),
+  members: authorityIds.map(id => ({ id })),
+};
+const validationRules = { version: 1, rules: [{
+  when: { path: '/decision', equals: 'BLOCK' },
+  require: { path: '/summary', equals: 'documented' },
+  message: 'BLOCK requires its reason to be documented.',
+}] };
 
 function packet() {
   const text = 'protected CI fixture';
@@ -27,7 +47,7 @@ function packet() {
   };
 }
 
-function fixture(t, mode = 'success') {
+function fixture(t, mode = 'success', responseText = 'raw protected-CI response text') {
   const root = mkdtempSync(join(tmpdir(), 'prepared-gemini-ci-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const workspaceParentDirectory = join(root, 'workspace-parent'); mkdirSync(workspaceParentDirectory);
@@ -37,12 +57,14 @@ function fixture(t, mode = 'success') {
   writeFileSync(cliEntrypoint, `
 import { writeFileSync } from 'node:fs';
 const mode = ${JSON.stringify(mode)};
+const responseText = ${JSON.stringify(responseText)};
 if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); process.exit(0); }
 let prompt = '';
 for await (const chunk of process.stdin) prompt += chunk;
 writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env }));
 if (mode === 'failure') { process.stderr.write('fixture execution failure'); process.exit(7); }
-process.stdout.write(JSON.stringify({ response: 'raw protected-CI response text' }));
+if (mode === 'hang') { setInterval(() => {}, 1000); }
+process.stdout.write(JSON.stringify({ response: responseText }));
 `);
   return { root, workspaceParentDirectory, privateParentDirectory, reportPath, cliEntrypoint };
 }
@@ -86,6 +108,55 @@ test('composes the protected schema into the bounded prompt and returns raw resp
   assert.equal(JSON.parse(observed.prompt.slice(observed.prompt.lastIndexOf('\n') + 1)), completePrompt);
   assert.match(observed.endpoint, /^http:\/\/127\.0\.0\.1:\d+$/);
   assert.equal(JSON.stringify(observed.env).includes('parent-only-ci-fixture-token'), false);
+  await assertProxyClosed(observed.endpoint);
+  assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+  assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+});
+
+test('normalizes and validates prepared Gemini execution before exposing PASS or BLOCK semantics', async t => {
+  const cases = [
+    { name: 'PASS', response: { decision: 'PASS', authorityIds }, expected: 'PASS' },
+    { name: 'BLOCK', response: { decision: 'BLOCK', authorityIds, summary: 'documented' }, expected: 'BLOCK' },
+    { name: 'invalid JSON', responseText: 'not JSON', error: /decision is invalid JSON/ },
+    { name: 'missing authority ID', response: { decision: 'PASS', authorityIds: authorityIds.slice(1) }, error: /authority/ },
+    { name: 'consumer rule violation', response: { decision: 'BLOCK', authorityIds }, error: /BLOCK requires its reason/ },
+  ];
+  for (const item of cases) {
+    const responseText = item.responseText ?? JSON.stringify(item.response);
+    const f = fixture(t, 'success', responseText);
+    const rawResponse = await runPreparedGeminiCiReview(input(f));
+    const execution = normalizeCiExecutionResult({
+      expectedExecution: { provider: 'gemini', requestedModel: 'gemini-3.8-flash', requestedSettings: { thinkingLevel: 'MEDIUM' } },
+      hostStepOutcome: 'success', rawResponse, maxResponseBytes: 65_536,
+    });
+    assert.equal(execution.status, 'completed', item.name);
+    assert.ok(execution.responseBytes.length > 0, item.name);
+    const validationInput = {
+      responseBytes: execution.responseBytes,
+      schemaBytes: Buffer.from(JSON.stringify(decisionSchema)),
+      authorityProvenance, validationRules,
+      maxResponseBytes: 65_536, maxSchemaBytes: 1_048_576,
+    };
+    if (item.error) assert.throws(() => validatePreparedCiDecision(validationInput), item.error, item.name);
+    else assert.equal(validatePreparedCiDecision(validationInput).decision, item.expected, item.name);
+    const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+    await assertProxyClosed(observed.endpoint);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), [], `${item.name}: workspace cleanup`);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), [], `${item.name}: private cleanup`);
+  }
+});
+
+test('prepared wrapper cancellation after CLI start rejects and cleans session resources', async t => {
+  const f = fixture(t, 'hang');
+  const controller = new AbortController();
+  const value = input(f);
+  value.proxySessionOptions.processOptions.signal = controller.signal;
+  const pending = runPreparedGeminiCiReview(value);
+  for (let attempt = 0; attempt < 500 && !existsSync(f.reportPath); attempt += 1) await delay(10);
+  assert.equal(existsSync(f.reportPath), true, 'fake CLI must signal that it started');
+  const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+  controller.abort();
+  await assert.rejects(pending, /cancelled|did not complete successfully/i);
   await assertProxyClosed(observed.endpoint);
   assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
   assert.deepEqual(readdirSync(f.privateParentDirectory), []);
