@@ -193,6 +193,39 @@ See the [full normative section](architecture/review-execution.md#target-gemini-
 
 See the [full normative section](architecture/review-execution.md#github-step-output-sink-owner-decision-2026-10-03).
 
+#### GitHub self-repository ruleset-readback capability (owner decision, 2026-10-04)
+
+For `flair-agency/architecture-gatekeeper` only, the owner selects a separate
+GitHub App with repository `administration:write` and mandatory `metadata:read`
+to obtain complete readback of the selected amendment-tag ruleset. Install it
+only on this repository; reduced installation tokens must select only this
+repository and these permissions. This is a GitHub-specific host capability,
+not a shared Core requirement or a requirement for consumer UNVERIFIED preview.
+
+Administration write technically permits ruleset and other repository
+administration mutations. The owner permits this producer only to verify the
+selected repository installation, mint its reduced token, GET the fixed selected
+ruleset, and revoke the token. This dispatch constraint does not make the
+credential read-only or eliminate its compromise blast radius. Issue #326
+tracks future privilege reduction without weakening complete readback checks.
+
+The App private key, JWT and installation token remain inside a separate
+protected-main readback process selected by committed protected source and a
+`main`-only Environment. They must not reach candidate code, package lifecycle
+scripts, ordinary PR/artifact/attestation/tag processing, or queue jobs. Ordinary
+handoff operations retain their ordinary token. No dispatch input may choose an
+arbitrary privileged destination, repository, capability or filesystem sink.
+Complete restriction validation and successful token revocation precede release
+of a nonsecret snapshot; failures stop the selected operation without fallback.
+
+A local snapshot may be consumed only in the same protected job, with exact
+repository, workflow/revision, run/attempt, ruleset and namespace bindings and
+bounded freshness. It is not portable authenticated evidence. Provisioning and
+Environment protection remain host/admin responsibilities; recording this target
+does not establish configuration, host enforcement or adoption. Queue transport
+and its protected receiver remain separate work under Issue #210; this capability
+grants no queue acceptance authority and does not activate an amendment route.
+
 #### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
 
 See the [full normative section](architecture/self-profile.md#target-self-only-github-freepublic-reporter-issue-210-a-owner-decision).
