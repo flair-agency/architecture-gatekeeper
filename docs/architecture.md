@@ -288,12 +288,14 @@ Bootstrap only for absent-ever root or genuine first activation lacking authoriz
 
 ### Explicit unverified consumer preview procedure (owner direction, 2026-10-04)
 
-A separately versioned, explicitly owner-selected preview procedure may support
-actual consumer addition, amendment and control-plane migration before producer
-authentication or trusted custody is available. Its records identify this
-unverified preview profile and never substitute for existing trusted
-OWNER_ADDITION, OWNER_AMENDMENT, G0 or enforced acceptance evidence. No failure
-selects it automatically. Existing profiles retain every assurance requirement.
+A separately versioned, explicitly owner-selected UNVERIFIED preview
+procedure (`preview-unverified-procedure-v1`) may support actual consumer
+addition, amendment and control-plane migration before producer authentication
+or trusted custody is available. It is a distinct profile outside existing
+trusted profiles, the Gatekeeper lifecycle-v1 `ACTIVE` claim, `OWNER_ADDITION`,
+`OWNER_AMENDMENT`, G0 and enforced acceptance claims. Its records never
+substitute for those claims. No failure selects it automatically; existing
+profiles retain every assurance requirement.
 
 Consumer governance must authorize use and record the preview selection before
 the change it governs. Prior selection and every route receipt bind the same
@@ -342,7 +344,21 @@ resulting tree, and readback must bind that same M.
 Versioned preview receipts bind exact repository/base and route-specific
 candidate identities: A/B for addition or amendment, A for ordinary review, and
 M for migration, together with records, full Set, policy/review inputs,
-runtime/model/settings, decision, computed byte digests and completion time. Integrity and semantic validation are required even when
+runtime/model/settings, decision, computed byte digests and completion time.
+The final addition or amendment record binds the raw-byte SHA-256 digest of the
+exact completed eligibility receipt and identities of its trigger decision and
+receipt, AdditionRecord or AmendmentRecord, predecessor policy, full selected
+Authority Set, reviewer inputs, runtime and dependent records.
+The pre-integration migration receipt binds the ordinary PASS for the same M,
+predecessor policy, full selected Set, candidate policy/configuration, complete
+successor Set and runtime/reviewer inputs. The final migration record binds the
+raw-byte SHA-256 digest of that single completed pre-integration receipt for the
+same M, and separately binds the observed integration and readback identities.
+A record may embed its exact receipt instead of storing only its digest, but it
+must retain the receipt's exact digest and dependency identities. Missing or
+mismatched bytes or identities leave the procedure incomplete. These integrity
+bindings require no external trusted backend and provide no producer
+authentication. Integrity and semantic validation are required even when
 producer identity, execution origin, owner authentication, custody, policy
 protection or host enforcement are UNVERIFIED. Reports state each assurance
 separately; local byte consistency supplies no authentication claim. Missing,
@@ -375,6 +391,18 @@ publication, disclosure or credential permission. No trusted backend is required
 for this explicitly unverified profile. Actual consumer selection and use remain
 consumer-owned; this decision authorizes implementation of that preview path,
 not automatic selection, existing-route activation or readiness claims.
+
+For this repository, numbered previews may provide preview.3 with usable
+consumer UNVERIFIED addition, amendment and compatible-migration procedures,
+including those new preview routes, after implementation review, a real consumer
+fixture exercises every advertised path with negative verification for each
+path, and package/release gates pass. This specifically refines the
+existing-supported-path numbered-preview restriction in the self reference
+profile for this separate UNVERIFIED procedure only. This limited preview scope
+does not satisfy or waive the trusted/enforced acceptance and lifecycle gates:
+Issue #210/App trusted reporting and formal Issues #272, #211 and #137 remain
+required for their respective claims, as do the lifecycle-v1 `ACTIVE` criteria.
+It makes no claim that those formal cases are complete.
 
 ## Normative invariants
 
