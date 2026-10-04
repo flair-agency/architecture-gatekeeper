@@ -354,6 +354,23 @@ predecessor policy, full selected Set, candidate policy/configuration, complete
 successor Set and runtime/reviewer inputs. The final migration record binds the
 raw-byte SHA-256 digest of that single completed pre-integration receipt for the
 same M, and separately binds the observed integration and readback identities.
+Before normal integration, complete and validate the exact route receipt: the
+eligibility receipt for addition/amendment or the pre-integration migration
+receipt for migration. The integration commit message must contain exactly one
+versioned Git trailer of this form, bound to that receipt's exact raw bytes:
+
+`AGK-Preview-Receipt-v1: sha256:<64 lowercase hex digits>`
+
+The receipt does not contain the later integration or final-record identities,
+so this commitment introduces no circular binding. Finalization and every
+fresh review validate the complete receipt, the single well-formed trailer and
+its recomputed digest, the required ordered parents and resulting tree, and the
+exact target readback. Missing, malformed, duplicate or mismatched trailers or
+receipts leave the procedure incomplete even when placement was observed. This
+shows only that the integration Git object commits to the receipt digest; it
+does not authenticate reviewer execution, the receipt's completion time, owner
+action, host chronology or custody. Existing trusted-profile requirements
+remain unchanged.
 A record may embed its exact receipt instead of storing only its digest, but it
 must retain the receipt's exact digest and dependency identities. Missing or
 mismatched bytes or identities leave the procedure incomplete. These integrity
