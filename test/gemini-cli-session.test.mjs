@@ -30,12 +30,14 @@ function fixture(t, mode = 'success') {
   const cliEntrypoint = join(root, 'fake-cli.mjs');
   writeFileSync(cliEntrypoint, `
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 const mode = ${JSON.stringify(mode)};
 if (process.argv.includes('--version')) { process.stdout.write(mode === 'wrong-version' ? '0.63.0' : '0.62.0'); process.exit(0); }
 const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
+const settings = JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8'));
 const names = [...manifest.files.flatMap(file => [file.before?.filename, file.after?.filename]), ...manifest.references.map(ref => ref.filename)].filter(Boolean);
 const snapshots = names.map(name => [name, readFileSync(name, 'utf8')]);
-writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ cwd: process.cwd(), manifest, snapshots, candidateSettingsLoaded: existsSync('.gemini/settings.json'), candidateInstructionsLoaded: existsSync('GEMINI.md'), argv: process.argv.slice(2) }));
+writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ cwd: process.cwd(), manifest, snapshots, settings, candidateSettingsLoaded: existsSync('.gemini/settings.json'), candidateInstructionsLoaded: existsSync('GEMINI.md'), argv: process.argv.slice(2) }));
 if (mode === 'hang') { setInterval(() => {}, 1000); }
 if (mode === 'oversize') { process.stdout.write('x'.repeat(4096)); setInterval(() => {}, 1000); }
 if (mode === 'nonzero') { process.stderr.write('failed'); process.exit(7); }
@@ -73,6 +75,17 @@ test('materializes complete evidence, runs only in that workspace, returns respo
   assert.equal(observed.candidateSettingsLoaded, false);
   assert.equal(observed.candidateInstructionsLoaded, false);
   assert.deepEqual(observed.argv, ['--model=gemini-2.5-flash', '--output-format', 'json']);
+  assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+  assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+});
+
+test('passes the adopted 3.8 thinking level through session settings without a budget', async t => {
+  const f = fixture(t);
+  await runGeminiCliSession(args(f, { model: 'gemini-3.8-flash', thinkingBudget: undefined, thinkingLevel: 'MEDIUM' }));
+  const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+  const config = observed.settings.modelConfigs.customOverrides[0].modelConfig.generateContentConfig.thinkingConfig;
+  assert.deepEqual(config, { thinkingLevel: 'MEDIUM', includeThoughts: false });
+  assert.equal(Object.hasOwn(config, 'thinkingBudget'), false);
   assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
   assert.deepEqual(readdirSync(f.privateParentDirectory), []);
 });

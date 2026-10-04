@@ -21,7 +21,7 @@ function encodePromptForCli(prompt) {
 
 function validate(options) {
   if (process.platform === 'win32') throw new Error('Gemini CLI process supervisor supports POSIX platforms only.');
-  const { cliEntrypoint, workspaceDirectory, privateParentDirectory, prompt, model, thinkingBudget,
+  const { cliEntrypoint, workspaceDirectory, privateParentDirectory, prompt, model, thinkingBudget, thinkingLevel,
     project, region, proxyUrl, timeoutMs, maxPromptBytes, maxStdoutBytes, maxStderrBytes } = options ?? {};
   for (const [value, label] of [[cliEntrypoint, 'CLI entrypoint'], [workspaceDirectory, 'workspace directory'], [privateParentDirectory, 'private parent directory']]) {
     if (typeof value !== 'string' || !value || !value.startsWith('/')) throw new Error(`Gemini CLI ${label} must be an absolute path.`);
@@ -32,7 +32,13 @@ function validate(options) {
   const encodedPrompt = encodePromptForCli(prompt);
   if (Buffer.byteLength(encodedPrompt, 'utf8') > promptLimit) throw new Error('Gemini CLI encoded prompt envelope exceeds its configured byte limit.');
   if (typeof model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(model)) throw new Error('Gemini CLI model is invalid.');
-  if (!Number.isSafeInteger(thinkingBudget) || thinkingBudget < 0) throw new Error('Gemini CLI thinking budget must be a nonnegative safe integer.');
+  if (model === 'gemini-3.8-flash') {
+    if (thinkingBudget !== undefined) throw new Error('Gemini CLI gemini-3.8-flash does not support thinkingBudget.');
+    if (!['LOW', 'MEDIUM', 'HIGH'].includes(thinkingLevel)) throw new Error('Gemini CLI gemini-3.8-flash requires thinkingLevel LOW, MEDIUM, or HIGH.');
+  } else {
+    if (thinkingLevel !== undefined) throw new Error('Gemini CLI thinkingLevel is supported only for gemini-3.8-flash.');
+    if (!Number.isSafeInteger(thinkingBudget) || thinkingBudget < 0) throw new Error('Gemini CLI thinking budget must be a nonnegative safe integer.');
+  }
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_TIMEOUT) throw new Error('Gemini CLI timeout is invalid.');
   positive(maxStdoutBytes, 'stdout'); positive(maxStderrBytes, 'stderr');
   if (typeof project !== 'string' || !/^[A-Za-z0-9._:-]+$/.test(project)) throw new Error('Gemini CLI project is required and must be valid.');
@@ -134,6 +140,9 @@ function controlledEnv(home, options) {
 }
 
 function settings(options) {
+  const thinkingConfig = options.model === 'gemini-3.8-flash'
+    ? { thinkingLevel: options.thinkingLevel, includeThoughts: false }
+    : { thinkingBudget: options.thinkingBudget, includeThoughts: false };
   return {
     tools: { core: ['read_file', 'list_directory', 'glob', 'grep_search'] },
     context: { fileFiltering: { respectGitIgnore: false, respectGeminiIgnore: false } },
@@ -144,7 +153,7 @@ function settings(options) {
     security: { auth: { selectedType: 'vertex-ai' } },
     modelConfigs: {
       customOverrides: [{ match: { model: options.model }, modelConfig: {
-        generateContentConfig: { thinkingConfig: { thinkingBudget: options.thinkingBudget, includeThoughts: false } },
+        generateContentConfig: { thinkingConfig },
       } }],
     },
   };

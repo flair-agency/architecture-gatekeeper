@@ -197,7 +197,7 @@ private parent, controlled workspace, protected scope/settings, request prefligh
 and final `gemini-cli-response.mjs` validation. This is not a standalone review
 or acceptance entrypoint.
 
-The selected model and thinking budget are explicit. The prompt is sent through
+The selected model and thinking setting are explicit. The prompt is sent through
 stdin as a lossless JSON string envelope and the model is a literal option
 value, so prompt text cannot become CLI flags or exceed the OS single-argument
 limit. Literal at-signs are JSON Unicode escapes: the pinned CLI cannot interpret
@@ -287,3 +287,51 @@ review contract and must not substitute for protected CI prompt/schema, authorit
 and consumer-rule validation. CI integration must use the same protected checks
 as Codex. No public launcher, policy selector or workflow invokes this internal
 session yet. Actual WIF and enabled governance runs remain required for adoption.
+
+## Adopted model-setting implementation
+
+The owner selected `gemini-3.8-flash` with `thinkingLevel: MEDIUM` on 2026-10-04;
+canonical authority records that selection. The internal process/session path
+sends exactly that level setting without a simultaneous `thinkingBudget`.
+Legacy budget-based model fixtures remain separately supported; no budget is
+added as a default or combined with the selected level setting.
+
+Focused process and session tests verify the generated CLI configuration contains
+`thinkingLevel: MEDIUM` and no `thinkingBudget`. They also verify that LOW and HIGH
+are explicit valid levels, invalid/mixed settings fail before process startup,
+and legacy budget selection remains intact. A pinned CLI 0.62.0 offline run through
+the actual supervisor and scoped proxy confirmed both the initial request and
+after-tool request carried `thinkingLevel: MEDIUM`, `includeThoughts: false`,
+and no `thinkingBudget`. Only the four selected read tools were advertised.
+The endpoint was a loopback canned server using dummy credentials, so this
+confirms outbound configuration rather than model support, WIF authentication
+or review quality. Authenticated route evidence, quality, cost, latency and
+decision consistency remain required before activation.
+
+## Trusted-parent CLI/proxy composition
+
+The internal composition keeps the explicit bearer credential in the trusted
+parent. The parent starts the scoped Vertex proxy, passes only its loopback
+endpoint to the controlled CLI session, and closes the proxy on success or
+failure. Model, project and region come from one selected execution input; the
+caller cannot independently override the proxy scope or endpoint. One bounded
+deadline covers proxy startup and CLI execution. The result remains response
+text for the existing protected CI validators, not a local review decision or
+new acceptance format.
+
+This composition does not discover authentication from environment variables,
+install a runtime, select a deployment, activate a workflow, or add fallback.
+Protected CI retains exact-base policy/authority selection and its existing
+ordinary and enabled governance validation paths. Public workflow integration
+and authenticated Vertex/WIF cases remain subsequent work.
+
+### Protected CI integration seam
+
+The existing prepared review context, exact-base authority snapshots/provenance,
+decision schema and validators remain the CI contract. The trusted CI parent
+supplies those already selected inputs to the internal proxy/session composition
+and validates its raw response with the existing protected CI checks. It must
+not route the result through the local committed-config review contract. An
+ordinary review probe does not establish enabled OWNER_ADDITION or
+OWNER_AMENDMENT route coverage; each requires its existing downstream semantic
+pipeline. No CI workflow or acceptance route is activated by this composition.
