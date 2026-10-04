@@ -148,6 +148,55 @@ verified with negative fixtures and controlled Fork A (unapproved) → A
 authorization-record mechanism, adds no API-key onboarding or WIF activation,
 and does not change Issues #218, #219, or #20.
 
+#### Owner-selected initial public-Fork Environment profile target (Issue #331, 2026-10-04)
+
+The owner selects the initial funding and lifecycle bounds for a public-Fork
+profile: one ordinary semantic review execution per grant, restricted to run
+attempt 1. Additional `OWNER_ADDITION` or `OWNER_AMENDMENT` eligibility
+dispatch is outside this scope and leaves required review incomplete; it cannot
+be skipped or neutralized into success. Every retry requires a new workflow
+run and new authorization, even for the same HEAD. When cancellation or the
+consumer-selected expiry is observed, stop further admission and paid dispatch.
+This offers no atomic revocation-versus-spend ordering, cannot undo an already
+dispatched request, and does not guarantee descendant termination. No default
+expiry or consumer dollar limit is selected; missing protected prior-policy
+values leave execution incomplete.
+
+The initial Environment-based design target is a credential-free approval
+workflow, a trusted verifier that produces a same-run grant bound to the exact
+repository, PR, full HEAD, run/attempt and protected review snapshot, and a
+separate credential-capable launcher that may acquire credentials or dispatch
+only after validating that grant. Environment approval alone is not
+authorization. The approval job receives no provider/source secrets, inherited
+secrets or OIDC issuance capability. Keep the pinned upstream Codex Action and
+its safeguards; any external-actor override must be protected,
+grant-verified and limited to the exact single login, never a wildcard or
+candidate-selected value. Publicly readable review inputs are in scope; private
+sources requiring credentials remain unsupported and fail closed.
+
+The last trusted admission check must occur after any job-queue delay but
+before provider credentials or issuance capabilities become available to the
+credential-capable job/launcher, and be repeated immediately before paid
+dispatch. A first workflow step after GitHub has supplied credentials is too
+late. If the selected host cannot provide this ordering, the profile remains
+unsupported and inactive.
+
+This target does not select consumer principals or numeric actor IDs, a
+snapshot lifetime, Environment configuration, bypass or required-check policy.
+The protected prior policy must provide the required authorization and profile
+selections, including a snapshot lifetime. A numeric dollar limit remains
+consumer-owned and is not a new universal requirement of this target. It also
+does not select an additional App, PAT or other
+credential-bearing metadata-readback capability. Before support or activation,
+prove the effective job token can read the required approval and Environment
+metadata, and verify protected caller/check producer identity, delayed Fork
+check association, immutable merge/input freshness, credential non-inheritance
+and lifecycle negatives, including controlled Fork A (unapproved) → A
+(authorized) → B (unapproved) evidence. If any required readback is unavailable,
+or a candidate can spoof the selected required check, remain inactive; a new
+capability or reporter route needs a separate owner decision and canonical
+boundary. Selecting this target proves none of these conditions.
+
 The reusable workflow currently retains a compatibility input that can read the
 prompt and schema from the reviewed checkout while a consumer bootstraps its
 first base-owned instructions. That route provides model review but does not
