@@ -49,6 +49,9 @@ jobs:
       legacy_validation_path: ${{ steps.resolve.outputs.legacyValidationPath }}
       model: ${{ steps.resolve.outputs.model }}
       effort: ${{ steps.resolve.outputs.reasoningEffort }}
+      provider: ${{ steps.resolve.outputs.provider || 'codex' }}
+      execution_selection: ${{ steps.resolve.outputs.executionSelection }}
+      execution_settings_base64: ${{ steps.resolve.outputs.executionSettingsBase64 }}
       codex_args: ${{ steps.resolve.outputs.codexArgs }}
       authority_manifest_path: ${{ steps.resolve.outputs.authorityManifestPath }}
       authority_limits_base64: ${{ steps.resolve.outputs.authorityLimitsBase64 }}
@@ -182,7 +185,7 @@ jobs:
           VALIDATION_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path || inputs.validation-path }}
         run: git show "$BASE_SHA:$VALIDATION_PATH" > "$RUNNER_TEMP/architecture-gate-decision.validation.json"
       - name: Check out the pinned validation runtime
-        if: inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
+        if: needs.policy.outputs.execution_selection == 'policy' || inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
         uses: actions/checkout@v5
         with:
           repository: ${{ job.workflow_repository }}
@@ -285,6 +288,16 @@ jobs:
           output-schema-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
           # PR-owned AGENTS.md files are review evidence, never reviewer instructions.
           codex-args: ${{ needs.policy.outputs.codex_args || '["--ephemeral","-c","project_doc_max_bytes=0","--json"]' }}
+      - name: Record ordinary execution observation
+        id: execution
+        if: always() && !cancelled() && needs.policy.outputs.execution_selection == 'policy'
+        env:
+          REVIEW_PROVIDER: ${{ needs.policy.outputs.provider }}
+          REVIEW_MODEL: ${{ needs.policy.outputs.model }}
+          REVIEW_SETTINGS_BASE64: ${{ needs.policy.outputs.execution_settings_base64 }}
+          REVIEW_OUTCOME: ${{ steps.codex.outcome }}
+          REVIEW_RESPONSE: ${{ steps.codex.outputs.final-message }}
+        run: node .architecture-gatekeeper-validation-runtime/src/ci-execution-observation.mjs --github
       - name: Diagnose architecture reviewer completion
         if: always()
         timeout-minutes: 1

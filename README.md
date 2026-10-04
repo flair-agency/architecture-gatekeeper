@@ -109,7 +109,9 @@ Protected policy execution selection under #332 is implementation-stage work,
 not a supported consumer option. Consumers must not configure `execution` until
 a representative protected policy-selected hosted review and reporting path has
 been verified. Current supported caller timeout inputs remain documented in the
-[integration reference](docs/integration-reference.md#protected-codex-execution-selection).
+[integration reference](docs/integration-reference.md#protected-codex-execution-selection). Staged
+self-verification also checks bounded execution status before semantic validation;
+this status grants no acceptance.
 
 The reusable workflow is
 [`architecture-gate-consumer.yml`](.github/workflows/architecture-gate-consumer.yml). Consumers

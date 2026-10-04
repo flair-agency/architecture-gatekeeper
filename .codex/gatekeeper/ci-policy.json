@@ -26,6 +26,11 @@
         "evidenceProducer": "github-actions-attestation",
         "tagNamespace": "refs/tags/architecture-gatekeeper/amendments",
         "maxPromptBytes": 524288
+      },
+      "execution": {
+        "reviewJobTimeoutMinutes": 7,
+        "reviewStepTimeoutMinutes": 5,
+        "codexProfile": "standard"
       }
     }
   }

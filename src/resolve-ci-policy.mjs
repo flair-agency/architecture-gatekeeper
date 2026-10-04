@@ -29,7 +29,7 @@ function validateCodexExecutionSelection(selection, label) {
   }
 }
 
-function resolvedCodexExecutionSelection(selection) {
+function resolvedCodexExecutionSelection(selection, reasoningEffort) {
   if (!selection) return {};
   const args = ['--ephemeral', '-c', 'project_doc_max_bytes=0'];
   if (selection.codexProfile === 'flex') args.push('-c', "service_tier='flex'");
@@ -39,6 +39,11 @@ function resolvedCodexExecutionSelection(selection) {
     reviewJobTimeoutMinutes: selection.reviewJobTimeoutMinutes,
     reviewStepTimeoutMinutes: selection.reviewStepTimeoutMinutes,
     codexArgs: JSON.stringify(args),
+    executionSettingsBase64: Buffer.from(JSON.stringify({
+      reasoningEffort, codexArgs: args,
+      reviewJobTimeoutMinutes: selection.reviewJobTimeoutMinutes,
+      reviewStepTimeoutMinutes: selection.reviewStepTimeoutMinutes,
+    }), 'utf8').toString('base64'),
   };
 }
 
@@ -217,7 +222,7 @@ export function resolveCiPolicy(policy, baseBranch) {
       ...(selected.provider === 'codex' ? { reasoningEffort: selected.reasoningEffort } : { thinkingLevel: selected.thinkingLevel }),
       authorityManifestPath: selected.authorityManifestPath,
       authorityLimitsBase64: Buffer.from(JSON.stringify(validateAuthorityLimits(selected.authorityLimits))).toString('base64'),
-      ...(selected.provider === 'codex' ? resolvedCodexExecutionSelection(selected.execution) : {}),
+      ...(selected.provider === 'codex' ? resolvedCodexExecutionSelection(selected.execution, selected.reasoningEffort) : {}),
     };
   }
   const result = selected.mode === 'local-only'
@@ -265,7 +270,7 @@ export function resolveCiPolicy(policy, baseBranch) {
       result.ownerAmendmentMaxPromptBytes = selected.ownerAmendment.maxPromptBytes;
     }
   }
-  if (selected.mode !== 'local-only') Object.assign(result, resolvedCodexExecutionSelection(selected.execution));
+  if (selected.mode !== 'local-only') Object.assign(result, resolvedCodexExecutionSelection(selected.execution, selected.reasoningEffort));
   return result;
 }
 

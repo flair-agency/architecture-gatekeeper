@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { runCiExecutionObservationCli } from '../src/ci-execution-observation.mjs';
@@ -23,6 +26,36 @@ function run(input) {
     timeout: 5_000,
     maxBuffer: 1024 * 1024,
   });
+}
+
+const githubEnvironment = (overrides = {}) => ({
+  REVIEW_PROVIDER: 'codex',
+  REVIEW_MODEL: 'gpt-6.1-sol',
+  REVIEW_SETTINGS_BASE64: Buffer.from(JSON.stringify({ reasoningEffort: 'medium' })).toString('base64'),
+  REVIEW_OUTCOME: 'success',
+  REVIEW_RESPONSE: '{"decision":"PASS"}',
+  ...overrides,
+});
+
+function runGithub(overrides = {}, { sink = 'regular', args = ['--github'] } = {}) {
+  const directory = mkdtempSync(join(tmpdir(), 'agk-ci-observation-'));
+  try {
+    const output = join(directory, 'github-output');
+    writeFileSync(output, '');
+    let outputPath = realpathSync(output);
+    if (sink === 'symlink') {
+      const link = join(directory, 'github-output-link');
+      symlinkSync(output, link);
+      outputPath = link;
+    }
+    const result = spawnSync(process.execPath, [cli, ...args], {
+      env: { PATH: process.env.PATH, GITHUB_OUTPUT: outputPath, ...githubEnvironment(overrides) },
+      encoding: 'utf8', timeout: 5_000, maxBuffer: 1024 * 1024,
+    });
+    return { ...result, output: readFileSync(output, 'utf8') };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 test('reports only completed status for bounded bytes, without interpreting malformed decisions', () => {
@@ -133,4 +166,78 @@ test('importing the module has no process I/O side effects', () => {
   assert.equal(result.status, 0);
   assert.equal(result.stdout, '');
   assert.equal(result.stderr, '');
+});
+
+test('GitHub mode publishes only fixed completed status through the trusted runner sink', () => {
+  const result = runGithub({ REVIEW_RESPONSE: 'secret malformed response, not JSON' });
+  assert.equal(result.status, 0);
+  assert.equal(result.output, 'execution_status=completed\n');
+  assert.equal(result.stdout, '');
+  assert.equal(result.stderr, '');
+  assert.equal(`${result.output}${result.stdout}${result.stderr}`.includes('secret'), false);
+});
+
+test('GitHub mode reports unsuccessful, missing, and oversized responses as incomplete without exposing bytes', () => {
+  const cases = [
+    ...['failure', 'cancelled', 'skipped', 'unknown'].map(REVIEW_OUTCOME => ({ REVIEW_OUTCOME, REVIEW_RESPONSE: 'secret response' })),
+    { REVIEW_RESPONSE: undefined },
+    { REVIEW_RESPONSE: 'x'.repeat(65_537) },
+  ];
+  for (const overrides of cases) {
+    const result = runGithub(overrides);
+    assert.equal(result.status, 1);
+    assert.equal(result.output, 'execution_status=incomplete\n');
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, '');
+    assert.equal(`${result.output}${result.stdout}${result.stderr}`.includes('secret'), false);
+  }
+});
+
+test('GitHub mode rejects malformed metadata and settings without publishing status', () => {
+  const encode = value => Buffer.from(value).toString('base64');
+  for (const overrides of [
+    { REVIEW_PROVIDER: '../invalid' },
+    { REVIEW_MODEL: 'bad model' },
+    { REVIEW_SETTINGS_BASE64: undefined },
+    { REVIEW_SETTINGS_BASE64: 'not base64' },
+    { REVIEW_SETTINGS_BASE64: encode('{') },
+    { REVIEW_SETTINGS_BASE64: encode('{"x":1,"x":2}') },
+    { REVIEW_SETTINGS_BASE64: encode('[]') },
+    { REVIEW_SETTINGS_BASE64: encode(JSON.stringify({ secret: 'x'.repeat(4096) })) },
+    { REVIEW_SETTINGS_BASE64: Buffer.from([0xc3, 0x28]).toString('base64') },
+  ]) {
+    const result = runGithub(overrides);
+    assert.equal(result.status, 1);
+    assert.equal(result.output, '');
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, 'Invalid CI execution observation input.\n');
+  }
+  const extraArgs = runGithub({}, { args: ['--github', 'output.txt'] });
+  assert.equal(extraArgs.status, 1);
+  assert.equal(extraArgs.output, '');
+  assert.equal(extraArgs.stderr, 'Invalid CI execution observation input.\n');
+});
+
+test('GitHub bridge records provider-specific settings as opaque expected metadata', () => {
+  const result = runGithub({
+    REVIEW_PROVIDER: 'gemini', REVIEW_MODEL: 'gemini-3.8-flash',
+    REVIEW_SETTINGS_BASE64: Buffer.from(JSON.stringify({ thinkingLevel: 'MEDIUM' })).toString('base64'),
+  });
+  assert.equal(result.status, 0);
+  assert.equal(result.output, 'execution_status=completed\n');
+  assert.equal(result.stdout, '');
+});
+
+test('GitHub mode fails with a fixed diagnostic when the runner sink is absent or linked', () => {
+  const missingSink = spawnSync(process.execPath, [cli, '--github'], {
+    env: { PATH: process.env.PATH, ...githubEnvironment() }, encoding: 'utf8', timeout: 5_000,
+  });
+  assert.equal(missingSink.status, 1);
+  assert.equal(missingSink.stdout, '');
+  assert.equal(missingSink.stderr, 'Invalid CI execution observation input.\n');
+  const linkedSink = runGithub({}, { sink: 'symlink' });
+  assert.equal(linkedSink.status, 1);
+  assert.equal(linkedSink.output, '');
+  assert.equal(linkedSink.stdout, '');
+  assert.equal(linkedSink.stderr, 'Invalid CI execution observation input.\n');
 });
