@@ -94,6 +94,7 @@ function controlledEnv(home, options) {
 function settings(options) {
   return {
     tools: { core: ['read_file', 'list_directory', 'glob', 'grep_search'] },
+    context: { fileFiltering: { respectGitIgnore: false, respectGeminiIgnore: false } },
     hooksConfig: { enabled: false },
     skills: { enabled: false },
     telemetry: { enabled: false },
