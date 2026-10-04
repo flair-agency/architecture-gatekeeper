@@ -173,6 +173,10 @@ See the [full normative section](architecture/review-execution.md#target-local-p
 
 See the [full normative section](architecture/review-execution.md#ci-model-review).
 
+#### Target provider-independent CI execution boundary (Issue #332 owner decision, 2026-10-04)
+
+See the [full normative section](architecture/review-execution.md#target-provider-independent-ci-execution-boundary-issue-332-owner-decision-2026-10-04).
+
 #### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)
 
 See the [full normative section](architecture/review-execution.md#target-api-wif-ci-authentication-boundary-issue-218-owner-decision-2026-09-30).

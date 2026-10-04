@@ -121,6 +121,44 @@ repository's self-review does.
 Owner trusts `openai/codex-action` at the workflow pin; retires integrity jobs
 (#40, 2026-10-02).
 
+#### Target provider-independent CI execution boundary (Issue #332 owner decision, 2026-10-04)
+
+Prioritize a narrow shared CI execution boundary before provider-specific
+activation. Protected consumer policy at the recorded protected revision owns
+reviewer/provider, model, provider-specific settings and applicable execution
+limit selection. The protected caller materializes and applies that exact
+selection with complete revision-bound inputs and verifies agreement before
+execution; it cannot substitute its own selection. Runtime identity and
+credential provisioning retain their existing protected host responsibilities.
+A selected execution adapter applies those inputs and
+exposes bounded response material or an incomplete execution outcome. It does
+not select authority, translate settings, switch providers, validate semantic
+decisions or authorize acceptance. Shared validation owns schema, selected
+authority and consumer rules; reporting, protected evidence binding and
+acceptance remain outside the execution adapter.
+
+The invoking host owns deadline and cancellation dispatch. Adapters own only
+processes and resources under their actual control. Record observed completion
+or failure and bounded nonsecret diagnostics; missing lifecycle facts remain
+unknown. A requested cancellation, Action step outcome or cooperative deadline
+is not proof of descendant termination, runner recovery or exact kill time.
+Execution completion is separate from validated semantic completion: exit zero,
+a response file or an execution receipt alone grants no PASS or acceptance.
+Required review remains incomplete after failed/cancelled execution, missing
+response or failed decision validation.
+
+Preserve the immutable upstream Codex Action and its existing timeout, sandbox,
+credential and cleanup safeguards. A workflow `uses:` Action remains a
+host-specific adapter; the shared boundary need not invoke it through a Node.js
+function or claim that a wrapper can kill its descendants. Connect common
+input/result handling first, then the already-selected Gemini execution profile.
+
+This target adopts no generic host framework, new credential privilege,
+portable acceptance evidence, automatic fallback, parallel result adoption,
+Gemini/governance activation or release gate. It does not declare the hung
+incident fixed. Concrete integrations require verification before route-support
+claims; this owner decision does not itself activate them.
+
 #### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)
 
 GitHub Actions may use OpenAI API WIF for API auth only; it differs from managed-workspace Codex WIF (ChatGPT auth). OIDC request capability, assertion and exchanged API token stay in trusted CI, isolated from reviewer/tools, PR code and package lifecycle scripts. Only prior protected policy may select WIF; candidates cannot select or enable it. Missing/invalid/unavailable selection leaves review incomplete: no API-key fallback or weaker acceptance. Keys remain until WIF is implemented, verified and policy-selected. No reviewer/input/decision/evidence/acceptance/v0.6.0 change; inactive.
