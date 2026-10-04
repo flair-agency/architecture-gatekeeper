@@ -142,3 +142,35 @@ test('preserves nested JSON settings and fails finitely on excessive structure',
     ...expectedExecution, requestedSettings: deep,
   } })), /bounded lossless JSON/);
 });
+
+test('serializes the validated snapshot without inherited object or array hooks', () => {
+  const objectHook = Object.getOwnPropertyDescriptor(Object.prototype, 'toJSON');
+  const arrayHook = Object.getOwnPropertyDescriptor(Array.prototype, 'toJSON');
+  let invoked = false;
+  let result;
+  const requestedSettings = { reasoningEffort: 'medium', nested: [1, { value: true }] };
+  try {
+    Object.defineProperty(Object.prototype, 'toJSON', { configurable: true, value() { invoked = true; return {}; } });
+    Object.defineProperty(Array.prototype, 'toJSON', { configurable: true, value() { invoked = true; return []; } });
+    result = normalizeCiExecutionResult(input({ expectedExecution: { ...expectedExecution, requestedSettings } }));
+  } finally {
+    if (objectHook) Object.defineProperty(Object.prototype, 'toJSON', objectHook);
+    else delete Object.prototype.toJSON;
+    if (arrayHook) Object.defineProperty(Array.prototype, 'toJSON', arrayHook);
+    else delete Array.prototype.toJSON;
+  }
+  assert.equal(invoked, false);
+  assert.deepEqual(result.expectedExecution.requestedSettings, requestedSettings);
+});
+
+test('rejects proxies and root accessors without observing changing live selections', () => {
+  let invoked = false;
+  const dynamic = new Proxy({ value: 'medium' }, { get() { invoked = true; return null; } });
+  const accessor = { provider: 'codex', requestedModel: 'gpt-6.1-sol' };
+  Object.defineProperty(accessor, 'requestedSettings', { enumerable: true, get() { invoked = true; return {}; } });
+  for (const selection of [
+    { ...expectedExecution, requestedSettings: dynamic },
+    new Proxy(expectedExecution, { get() { invoked = true; return null; } }), accessor,
+  ]) assert.throws(() => normalizeCiExecutionResult(input({ expectedExecution: selection })), /lossless JSON/);
+  assert.equal(invoked, false);
+});

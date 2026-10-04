@@ -1,4 +1,5 @@
 /** Normalize host-observed CI execution status without interpreting a decision. */
+import { types } from 'node:util';
 
 const INPUT_KEYS = new Set(['expectedExecution', 'hostStepOutcome', 'rawResponse', 'maxResponseBytes']);
 const EXECUTION_KEYS = new Set(['provider', 'requestedModel', 'requestedSettings']);
@@ -13,14 +14,15 @@ function isRecord(value) {
 
 // Settings are trusted selection data, but their JS representation must not
 // change when recorded as JSON. Inspect descriptors without invoking getters.
-function requireLosslessJson(value, ancestors = new Set(), budget = { nodes: 0 }, depth = 0) {
+function snapshotLosslessJson(value, ancestors = new Set(), budget = { nodes: 0 }, depth = 0) {
   const invalid = () => { throw new Error('CI execution result settings must be bounded lossless JSON data.'); };
   if (++budget.nodes > 4096 || depth > 64) invalid();
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
   if (typeof value === 'number') {
     if (!Number.isFinite(value) || Object.is(value, -0)) invalid();
-    return;
+    return value;
   }
+  if (types.isProxy(value)) invalid();
   if (typeof value !== 'object' || (!Array.isArray(value) && !isRecord(value)) || ancestors.has(value)) invalid();
   const descriptors = Object.getOwnPropertyDescriptors(value);
   const keys = Reflect.ownKeys(descriptors);
@@ -31,17 +33,22 @@ function requireLosslessJson(value, ancestors = new Set(), budget = { nodes: 0 }
       if (!Object.hasOwn(descriptors, String(index))) invalid();
     }
   }
+  const snapshot = Array.isArray(value) ? [] : Object.create(null);
+  // Array identity survives removing its inherited serialization hooks.
+  if (Array.isArray(snapshot)) Object.setPrototypeOf(snapshot, null);
   ancestors.add(value);
   for (const key of keys) {
     if (Array.isArray(value) && key === 'length') continue;
     const descriptor = descriptors[key];
     if (!descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) invalid();
-    requireLosslessJson(descriptor.value, ancestors, budget, depth + 1);
+    snapshot[key] = snapshotLosslessJson(descriptor.value, ancestors, budget, depth + 1);
   }
   ancestors.delete(value);
+  return snapshot;
 }
 
 function cloneExpectedExecution(value) {
+  value = snapshotLosslessJson(value);
   if (!isRecord(value) || Object.keys(value).length !== EXECUTION_KEYS.size ||
       Object.keys(value).some(key => !EXECUTION_KEYS.has(key)) ||
       typeof value.provider !== 'string' || !/^[a-z][a-z0-9_-]{0,31}$/.test(value.provider) ||
@@ -49,7 +56,6 @@ function cloneExpectedExecution(value) {
       !isRecord(value.requestedSettings)) {
     throw new Error('CI execution result requires explicit trusted provider, model, and settings.');
   }
-  requireLosslessJson(value.requestedSettings);
   let serialized;
   try { serialized = JSON.stringify(value.requestedSettings); }
   catch { throw new Error('CI execution result settings must be bounded JSON data.'); }
