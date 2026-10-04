@@ -302,11 +302,15 @@ candidate content cannot replace them. Missing members, invalid selectors,
 exceeded limits or unavailable required review leave the step incomplete.
 
 Record originally reviewed A and its exact completed semantic result. Addition
-requires the identified missing decision; amendment requires the selected
-completed BLOCK or OWNER_DECISION trigger and separately supplied record binding
-its target existing decision. Authority-only B is reviewed against the complete
+requires a completed ordinary OWNER_DECISION identifying the missing decision;
+its record must bind that exact result and the missing decision's ID to A's
+ownerDecisionId. PASS or BLOCK cannot trigger addition. Addition B adds only
+that identified missing decision: no existing-rule edits, contradictions or
+unrelated unresolved choices. Amendment requires the selected completed BLOCK
+or OWNER_DECISION trigger and separately supplied record binding its target
+existing decision. Authority-only B is reviewed against the complete
 predecessor authority and exact proposed bytes/diff. Semantic eligibility must
-check trigger resolution, eligible scope, absence of unrelated implementation,
+check trigger resolution, eligible scope, absence of all implementation,
 workflow or executable-policy changes, coherent resulting authority and no
 unsupported completion claims. Report B eligibility as a dedicated ELIGIBLE or
 INELIGIBLE result, never semantic PASS or acceptance of originally reviewed A.
