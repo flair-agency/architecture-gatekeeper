@@ -305,3 +305,22 @@ confirms the exact host mapping: `global` uses `aiplatform.googleapis.com`,
 CLI settings and route propagation against a dummy server; it did not verify
 the real official upstream host. Correct the proxy mapping and retain exact
 selected project/location/model checks before treating a real call as evidence.
+
+## Prepared protected-CI transport adapter
+
+An internal adapter now accepts the already-prepared protected complete prompt
+and decision-schema JSON text, preserving their bytes while adding explicit
+output-schema instructions. It checks the effective UTF-8 prompt limit before
+proxy/CLI startup and reuses the generic supported schema-definition validator.
+It neither reads local committed reviewer configuration nor builds a local
+review request. The return value remains raw response text; the trusted CI
+orchestrator still owns exact-base policy, revision/authority provenance, full
+context and manifest/evidence instructions, and downstream protected schema,
+authority and consumer-rule validation. Schema-definition preflight is not
+result validation or acceptance. Unsupported schema dialects fail closed.
+
+The focused fake-CLI fixtures cover prompt/schema transport, unsupported inputs,
+prompt overrides, malformed schemas, pre-execution overflow, raw output,
+execution failures and cleanup. They do not establish real WIF authentication,
+provider quality or ordinary/governance route activation. No workflow, provider
+selector, installer, authentication discovery or fallback is added.
