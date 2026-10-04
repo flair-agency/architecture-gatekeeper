@@ -184,3 +184,104 @@ a nonresponding server required an external watchdog. Further implementation
 must verify cancellation with descendants, complete context selection, CLI
 version/configuration control, thinking settings and authenticated governance
 cases before route activation.
+
+## Internal CLI process supervisor
+
+`gemini-cli-process.mjs` runs an already provisioned CLI under a fresh private
+HOME, a fixed operational environment and generated read-tool configuration.
+It accepts only the reported CLI version 0.62.0; that consistency check does not
+attest installed bytes. The trusted caller owns the installer/runtime identity,
+private parent, controlled workspace, protected scope/settings, request preflight
+and final `gemini-cli-response.mjs` validation. This is not a standalone review
+or acceptance entrypoint.
+
+The selected model and thinking budget are explicit. The prompt is sent through
+stdin as a lossless JSON string envelope and the model is a literal option
+value, so prompt text cannot become CLI flags or exceed the OS single-argument
+limit. Literal at-signs are JSON Unicode escapes: the pinned CLI cannot interpret
+candidate tokens as client-side file references. The fixed transport prefix asks
+the reviewer to decode the complete selected prompt; exact decode roundtrip is
+checked before execution. This does not attest that the model followed the prompt.
+The same prompt bound covers the entire encoded stdin, including the prefix;
+encoding overflow fails closed without truncation or raw-input fallback. The prompt limit cannot exceed the
+pinned CLI stdin limit of 8 MiB; oversized input fails before execution. Ambient credentials, renewal selectors, `NODE_OPTIONS` and default HOME
+configuration are not forwarded. The SDK's fixed non-secret placeholder enables
+Vertex client mode only; the proxy replaces it with its parent-owned Bearer
+credential upstream. Missing system settings/default paths inside the private
+HOME prevent ambient system configuration. Gemini CLI requires root ownership
+for system settings, so generated user-owned files cannot enforce that layer;
+no ownership check is bypassed. Instead, the physical workspace and every
+ancestor, and all directories below the workspace must contain no operational
+`.gemini`, `.agents`, `.env` or `GEMINI.md`. Descendant symbolic links are rejected
+rather than following an unchecked subtree; symbolic links or unreadable
+subdirectories leave execution incomplete.
+Rejection precedes launch: candidate control bytes belong only in ordinal
+evidence snapshots, not auto-loaded paths. This prevents workspace overrides
+and avoids relying on an empty MCP map to erase entries during deep merge.
+The trusted caller must keep those directories stable throughout execution.
+
+One deadline covers setup, version probe and review. Explicit prompt/stdout/stderr
+byte limits reject overflow without returning a truncated decision. Output is
+strict UTF-8. Cancellation, timeout and overflow kill the POSIX process group;
+cleanup also handles descendants after main-process exit and removes the private
+HOME. This implementation rejects Windows and claims neither host confinement nor
+an absolute kernel termination guarantee. OS-level uninterruptible processes
+remain outside that guarantee.
+
+Focused fixtures exercise a mismatched/hung version probe, hung review, abort,
+output overflow, split/invalid UTF-8, option-shaped prompts, and descendants with
+inherited or closed output pipes. An additional fixed-CLI offline run used the
+actual supervisor and proxy with test-only network interception: `read_file`
+succeeded, only the four selected tools were advertised, both model requests
+carried thinkingBudget 1024, and the upstream saw only the fixed scope and parent
+dummy Bearer. No real WIF exchange or semantic-quality proof is supplied. Protected
+CI wiring, complete context composition and authenticated governance evidence
+remain #252 work.
+
+### Nested context regression (PR #310)
+
+A pinned CLI 0.62.0 offline reproduction put a marker in `src/GEMINI.md` and
+requested only `read_file` of `src/sentinel.txt`. The marker was absent from the
+first model request but appeared automatically in the second request's contents.
+This verifies the just-in-time context path, not merely startup discovery.
+The launcher rejects operational controls throughout the descendant tree before
+allocating HOME or running the version probe. Descendant control names are
+case-folded to cover case-insensitive filesystems. Ordinal evidence remains available
+to explicit read tools. Tree stability still belongs to the trusted caller; this
+check neither monitors later writes nor establishes host confinement. No real
+credential exchange or semantic-quality evidence is supplied by the offline probe.
+
+### Client-side prompt expansion regression (PR #310)
+
+Gemini CLI 0.62.0 processes headless input through its at-command parser before
+the first provider request. It directly invokes file reading even though
+`read_many_files` is absent from the selected model tool inventory. An offline
+probe sent a 62-byte prompt with a file-reference token and observed a 12 KB
+fixture marker automatically included in the first request. Interactive paste
+escaping does not control this headless path.
+
+The supervisor therefore encodes the complete selected prompt as one JSON string,
+with every literal at-sign represented as `\u0040`. Decoding recovers original
+diff hunk markers, scoped package names, quoted text, Unicode and backslashes.
+The wire framing changes; selected authority and candidate bytes do not. The
+fixed prefix explains only decoding, supplies no replacement review policy, and
+also avoids leading slash-command dispatch. The same pinned offline probe with
+encoded input observed no fixture expansion. This proves client-side preprocessing
+control and encoding reversibility, not model compliance or semantic quality.
+
+## Internal controlled-workspace session
+
+The next internal composition owns only materialization, CLI execution, envelope
+extraction and workspace cleanup. The trusted caller supplies a protected prompt
+that directs the CLI to the fixed `manifest.json` and selected evidence, explicit
+workspace/process limits, selected scope/settings and an already provisioned CLI.
+It retains ownership of exact revision/policy binding, context completeness,
+proxy/WIF lifecycle and deterministic CI decision validation. Candidate paths
+remain manifest data rather than operational configuration names.
+
+The session returns response text, not a validated decision or acceptance result.
+In particular, `validateGeminiCliResponse` delegates to the local committed-config
+review contract and must not substitute for protected CI prompt/schema, authority
+and consumer-rule validation. CI integration must use the same protected checks
+as Codex. No public launcher, policy selector or workflow invokes this internal
+session yet. Actual WIF and enabled governance runs remain required for adoption.
