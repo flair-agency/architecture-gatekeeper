@@ -81,12 +81,12 @@ function validateTagReadback(tagReadback, { tagObjectSha, tagName, tagMessage, b
  * assert adoption, canonical placement, eligibility, or acceptance.
  */
 export async function createAndReadOwnerAmendmentTag({
-  repository, tagRef, bSha, tagMessage, tagNamespace, rulesetId, token, tagger, fetchImpl = fetch,
+  repository, tagRef, bSha, tagMessage, tagNamespace, rulesetId, token, tagger, rulesetReadback: suppliedRulesetReadback, fetchImpl = fetch,
 }) {
   if (typeof fetchImpl !== 'function') fail('fetch implementation is invalid.');
   const { owner, repo, tagName } = validateInput({ repository, tagRef, bSha, tagMessage, tagNamespace, rulesetId, token, tagger });
   const baseUrl = `${API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
-  const rulesetReadback = await requestJson(fetchImpl, `${baseUrl}/rulesets/${rulesetId}`, { token });
+  const rulesetReadback = suppliedRulesetReadback ?? await requestJson(fetchImpl, `${baseUrl}/rulesets/${rulesetId}`, { token });
   validateRuleset(rulesetReadback, { rulesetId, tagNamespace });
 
   const encodedTagPath = tagName.split('/').map(encodeURIComponent).join('/');

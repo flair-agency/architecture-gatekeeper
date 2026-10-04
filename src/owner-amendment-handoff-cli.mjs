@@ -1,3 +1,4 @@
+import { readLocalRulesetReadback } from './github-ruleset-readback.mjs';
 import { execFileSync } from 'node:child_process';
 import { selectOwnerAmendmentHandoffPrRunContext } from './owner-amendment-handoff-pr-run-context.mjs';
 import { resolveOwnerAmendmentHandoffGitContext } from './owner-amendment-handoff-git-context.mjs';
@@ -66,6 +67,9 @@ export async function runOwnerAmendmentHandoff({ env = process.env, fetchImpl = 
     // The selector authenticated the exact pull_request_target attempt and A
     // head. The attestation verifier below binds its signer and caller to the
     // protected-base workflow revision and main ref.
+    const rulesetReadback = env.OWNER_AMENDMENT_RULESET_READBACK_FILE ? readLocalRulesetReadback(
+      env.OWNER_AMENDMENT_RULESET_READBACK_FILE, env, { baseSha: selected.baseSha,
+        rulesetId: RULESET_ID, tagNamespace: gitContext.policy.ownerAmendmentTagNamespace }) : undefined;
     const workflowRef = 'refs/heads/main';
     const blockRun = { runId: selected.runId, runAttempt: selected.runAttempt,
       headSha: selected.aHeadSha, aPrNumber: Number(selected.aPrNumber),
@@ -91,7 +95,7 @@ export async function runOwnerAmendmentHandoff({ env = process.env, fetchImpl = 
       changedFiles: gitContext.changedFiles, baseAuthorityBytes: gitContext.authorityBytes.base,
       headAuthorityBytes: gitContext.authorityBytes.head, blockRun,
       purpose: 'Amend canonical architecture authority under the previous protected main policy.',
-      token, runGh, rulesetId: RULESET_ID, tagger, fetchImpl: guardedFetch });
+      token, runGh, rulesetId: RULESET_ID, tagger, rulesetReadback, fetchImpl: guardedFetch });
     if (result.status !== 'TAG_TRANSPORTED_AND_READ_BACK') fail(result.reason ?? 'tag handoff did not complete.');
     // An existing exact tag takes a GET-only path and may never reach the
     // mutation guard above. Revalidate the selected B and previous-base pair

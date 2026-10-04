@@ -169,3 +169,13 @@ test('requires a canonical newline-terminated bounded message and explicit tagge
   await assert.rejects(createAndReadOwnerAmendmentTag(input(f, { tagger: undefined })), /tagger is invalid/);
   assert.equal(f.calls.length, 0);
 });
+
+// This response is injected by a same-job protected launcher, never an App token.
+test('supplied complete ruleset response keeps all tag operations on the ordinary token', async () => {
+  const f = fixture(); await createAndReadOwnerAmendmentTag(input(f, { rulesetReadback: ruleset() }));
+  assert.equal(f.calls.some(call => call.path.includes('/rulesets/')), false);
+  assert.ok(f.calls.every(call => call.headers.authorization === 'Bearer test-token'));
+  const rejected = fixture();
+  await assert.rejects(createAndReadOwnerAmendmentTag(input(rejected, { rulesetReadback: ruleset({ bypass_actors: undefined }) })), /ruleset/);
+  assert.equal(rejected.calls.length, 0);
+});

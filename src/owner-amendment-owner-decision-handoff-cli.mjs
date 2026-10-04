@@ -1,3 +1,4 @@
+import { readLocalRulesetReadback } from './github-ruleset-readback.mjs';
 import { execFileSync } from 'node:child_process';
 import { discoverOwnerAmendmentBlockArtifact } from './owner-amendment-artifact-discovery.mjs';
 import { selectOwnerAmendmentHandoffPrRunContext } from './owner-amendment-handoff-pr-run-context.mjs';
@@ -39,6 +40,9 @@ export async function runOwnerAmendmentOwnerDecisionHandoff({ env = process.env,
       runAttempt: selected.runAttempt, baseSha: selected.baseSha, headSha: selected.aHeadSha, profile: 'ownerDecision' },
     token, fetchImpl });
     if (artifact.status !== 'DISCOVERED_OWNER_AMENDMENT_OWNER_DECISION_ARTIFACT') fail(artifact.reason ?? 'exact OWNER_DECISION artifact discovery failed.');
+    const rulesetReadback = env.OWNER_AMENDMENT_RULESET_READBACK_FILE ? readLocalRulesetReadback(
+      env.OWNER_AMENDMENT_RULESET_READBACK_FILE, env, { baseSha: selected.baseSha,
+        rulesetId: Number(env.OWNER_AMENDMENT_TAG_RULESET_ID), tagNamespace: git.policy.ownerAmendmentTagNamespace }) : undefined;
     const tagger = { name: 'Architecture Gatekeeper', email: 'architecture-gatekeeper@users.noreply.github.com', date: now().toISOString() };
     const result = await handoff({ repository: selected.repository, policy: git.policy, manifest: git.manifest,
       baseSha: selected.baseSha, bSha: selected.bHeadSha, changedFiles: git.changedFiles,
@@ -50,7 +54,7 @@ export async function runOwnerAmendmentOwnerDecisionHandoff({ env = process.env,
         workflowSha: selected.baseSha, event: 'pull_request_target', artifactId: artifact.artifactId },
       authorityId: git.scope.authorityId, authorityPath: git.scope.authorityPath,
       purpose: env.AMENDMENT_PURPOSE, tagNamespace: git.policy.ownerAmendmentTagNamespace,
-      rulesetId: Number(env.OWNER_AMENDMENT_TAG_RULESET_ID), token, tagger, fetchImpl, runGh });
+      rulesetId: Number(env.OWNER_AMENDMENT_TAG_RULESET_ID), token, tagger, rulesetReadback, fetchImpl, runGh });
     if (result.status !== 'OWNER_DECISION_TAG_TRANSPORTED_AND_READ_BACK') fail(result.reason ?? 'OWNER_DECISION handoff did not complete.');
     return result;
   } catch (error) { return Object.freeze({ status: 'INCOMPLETE', reason: error.message }); }
