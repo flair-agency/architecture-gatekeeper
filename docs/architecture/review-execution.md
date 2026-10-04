@@ -111,6 +111,43 @@ cannot authorize its own weaker route. Review credentials remain isolated from
 untrusted or unverified executable code, and model/API/billing failure remains
 fail closed when CI model review is required.
 
+#### Target Fork PR review authorization (Issue #331 owner direction, 2026-10-04)
+
+For an explicitly selected public-repository profile, the original Fork PR
+remains directed at `main`; a maintainer's authorization permits a
+consumer-funded model review of that PR's exact HEAD. Architecture Gatekeeper's
+GitHub integration supplies the bounded authorization mechanism. The consumer
+selects the supported profile, approver and producer policy, and funding scope
+through its authorized prior configuration. Candidate event metadata,
+workflow changes, or submitted approval claims cannot select that policy or
+authorize credential use. The trusted integration verifies repository, PR,
+and exact HEAD bindings before provider-credential acquisition or issuance and
+renewal capabilities become available to the selected job or launcher
+interfaces, and before any paid model request is dispatched. A changed HEAD
+requires new authorization. After authorization, provider credentials and
+applicable issuance or renewal capabilities remain confined to the selected
+trusted launcher/proxy interfaces and are not supplied to the reviewer. These
+are interface-boundary claims for the selected profile, not a claim of
+universal same-user host isolation. The review and result remain on the
+original PR.
+
+Permission to spend on review is separate from approval of the change,
+authentication of an owner outcome, trust in candidate code, semantic review,
+evidence, and acceptance. Preserve protected input selection, consumer-selected
+authentication, and credential isolation, including credential issuance and
+renewal interfaces. Pending, denied, revoked, stale, or incomplete
+authorization produces no semantic review result and cannot satisfy a required
+review through skipped or neutral-success semantics; an explicitly selected
+`local-only` waiver retains its existing meaning. Make only profile-specific
+trust claims; service failure does not enable a weaker route. This target
+leaves existing routes unchanged and is inactive until a concrete host
+mechanism is selected, the open validity, revocation, retry/rerun, base-policy
+freshness, and caller-control decisions are resolved, and implementation is
+verified with negative fixtures and controlled Fork A (unapproved) → A
+(authorized) → B (unapproved) evidence. It selects no Environment or
+authorization-record mechanism, adds no API-key onboarding or WIF activation,
+and does not change Issues #218, #219, or #20.
+
 The reusable workflow currently retains a compatibility input that can read the
 prompt and schema from the reviewed checkout while a consumer bootstraps its
 first base-owned instructions. That route provides model review but does not
@@ -120,6 +157,44 @@ repository's self-review does.
 
 Owner trusts `openai/codex-action` at the workflow pin; retires integrity jobs
 (#40, 2026-10-02).
+
+#### Target provider-independent CI execution boundary (Issue #332 owner decision, 2026-10-04)
+
+Prioritize a narrow shared CI execution boundary before provider-specific
+activation. Protected consumer policy at the recorded protected revision owns
+reviewer/provider, model, provider-specific settings and applicable execution
+limit selection. The protected caller materializes and applies that exact
+selection with complete revision-bound inputs and verifies agreement before
+execution; it cannot substitute its own selection. Runtime identity and
+credential provisioning retain their existing protected host responsibilities.
+A selected execution adapter applies those inputs and
+exposes bounded response material or an incomplete execution outcome. It does
+not select authority, translate settings, switch providers, validate semantic
+decisions or authorize acceptance. Shared validation owns schema, selected
+authority and consumer rules; reporting, protected evidence binding and
+acceptance remain outside the execution adapter.
+
+The invoking host owns deadline and cancellation dispatch. Adapters own only
+processes and resources under their actual control. Record observed completion
+or failure and bounded nonsecret diagnostics; missing lifecycle facts remain
+unknown. A requested cancellation, Action step outcome or cooperative deadline
+is not proof of descendant termination, runner recovery or exact kill time.
+Execution completion is separate from validated semantic completion: exit zero,
+a response file or an execution receipt alone grants no PASS or acceptance.
+Required review remains incomplete after failed/cancelled execution, missing
+response or failed decision validation.
+
+Preserve the immutable upstream Codex Action and its existing timeout, sandbox,
+credential and cleanup safeguards. A workflow `uses:` Action remains a
+host-specific adapter; the shared boundary need not invoke it through a Node.js
+function or claim that a wrapper can kill its descendants. Connect common
+input/result handling first, then the already-selected Gemini execution profile.
+
+This target adopts no generic host framework, new credential privilege,
+portable acceptance evidence, automatic fallback, parallel result adoption,
+Gemini/governance activation or release gate. It does not declare the hung
+incident fixed. Concrete integrations require verification before route-support
+claims; this owner decision does not itself activate them.
 
 #### Target API WIF CI authentication boundary (Issue #218 owner decision, 2026-09-30)
 
