@@ -65,7 +65,7 @@ test('provides a committed self local review configuration', () => {
 
 test('CI reviewer excludes checkout-owned AGENTS.md instructions', () => {
   const workflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
-  const args = workflow.match(/^\s+codex-args: \$\{\{ inputs\.self-flex-probe && '(.+)' \|\| '([^']+)' \}\}$/mu);
+  const args = workflow.match(/^\s+codex-args: \$\{\{ needs\.policy\.outputs\.codex_args \|\| \(inputs\.self-flex-probe && '(.+)' \|\| '([^']+)'\) \}\}$/mu);
   assert.ok(args, 'CI review must set explicit default and self Flex Codex arguments');
   assert.deepEqual(JSON.parse(args[2]), [
     '--ephemeral',
@@ -85,6 +85,11 @@ test('CI reviewer excludes checkout-owned AGENTS.md instructions', () => {
   ]);
   assert.equal(JSON.parse(args[2]).includes('--json'), true);
   assert.match(workflow, /Confine optional Flex probe to the self reviewer/);
+  assert.match(workflow, /name: Confine optional Flex probe to the self reviewer\n\s+if: inputs\.self-flex-probe && needs\.policy\.outputs\.codex_args == ''/);
+  const flexProbeCheckRuns = (selfFlexProbe, policyCodexArgs) => selfFlexProbe && policyCodexArgs === '';
+  assert.equal(flexProbeCheckRuns(true, ''), true, 'legacy caller-selected Flex still receives confinement checks');
+  assert.equal(flexProbeCheckRuns(true, JSON.stringify(JSON.parse(args[2]))), false, 'policy-selected Codex args bypass the legacy probe check');
+  assert.equal(flexProbeCheckRuns(false, ''), false, 'the check remains opt-in for legacy callers');
   const selfWorkflow = readFileSync(new URL('../.github/workflows/self-architecture-gate.yml', import.meta.url), 'utf8');
   assert.match(selfWorkflow, /self-flex-probe: \$\{\{ vars\.ARCHITECTURE_GATE_SELF_FLEX == 'true'/);
   assert.match(selfWorkflow, /vars\.ARCHITECTURE_GATE_SELF_FLEX_PR == format\('\{0\}', github\.event\.pull_request\.number\)/);

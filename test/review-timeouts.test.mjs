@@ -36,3 +36,23 @@ test('wires only the primary review deadline from validated protected inputs', (
   assert.match(integration, /ARCHITECTURE_GATE_REVIEW_JOB_TIMEOUT_MINUTES/);
   assert.match(integration, /cancellation and process cleanup remain\s+best effort/);
 });
+
+
+test('policy-selected ordinary execution overrides only legacy caller timeout and Flex inputs', () => {
+  for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
+    const workflow = readFileSync(join(root, '.github/workflows', file), 'utf8');
+    const resolvePosition = workflow.indexOf('name: Resolve policy from protected base revision');
+    const legacyPosition = workflow.indexOf('name: Validate bounded reviewer timeouts');
+    assert.ok(resolvePosition >= 0 && resolvePosition < legacyPosition);
+    assert.match(workflow, /id: review-timeouts\n        if: steps\.resolve\.outputs\.executionSelection != 'policy'/);
+    assert.match(workflow, /review_job_timeout_minutes: \$\{\{ steps\.resolve\.outputs\.reviewJobTimeoutMinutes \|\| steps\.review-timeouts\.outputs\.jobTimeoutMinutes \}\}/);
+    assert.match(workflow, /review_step_timeout_minutes: \$\{\{ steps\.resolve\.outputs\.reviewStepTimeoutMinutes \|\| steps\.review-timeouts\.outputs\.stepTimeoutMinutes \}\}/);
+    assert.match(workflow, /codex_args: \$\{\{ steps\.resolve\.outputs\.codexArgs \}\}/);
+    assert.match(workflow, /codex-args: \$\{\{ needs\.policy\.outputs\.codex_args \|\|/);
+    assert.match(workflow, /model: \$\{\{ needs\.policy\.outputs\.model \}\}/);
+    assert.match(workflow, /effort: \$\{\{ needs\.policy\.outputs\.effort \}\}/);
+    assert.match(workflow, /uses: openai\/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e/);
+    assert.match(workflow, /sandbox: read-only/);
+    assert.match(workflow, /safety-strategy: drop-sudo/);
+  }
+});

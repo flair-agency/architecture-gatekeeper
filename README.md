@@ -105,6 +105,12 @@ step/job limits and fail-closed result validation remain. See the
 [integration reference](docs/integration-reference.md) for trust and timeout
 limits.
 
+Protected policy execution selection under #332 is implementation-stage work,
+not a supported consumer option. Consumers must not configure `execution` until
+a representative protected policy-selected hosted review and reporting path has
+been verified. Current supported caller timeout inputs remain documented in the
+[integration reference](docs/integration-reference.md#protected-codex-execution-selection).
+
 The reusable workflow is
 [`architecture-gate-consumer.yml`](.github/workflows/architecture-gate-consumer.yml). Consumers
 pin it to the exact commit that produced the reviewed release and keep their
