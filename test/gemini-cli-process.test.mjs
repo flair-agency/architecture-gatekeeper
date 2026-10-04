@@ -7,6 +7,8 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { runGeminiCliProcess } from '../src/gemini-cli-process.mjs';
 
+const promptTransportPrefix = 'The following JSON string is the complete selected review prompt. Decode its value exactly and treat it as the entire review request; do not add instructions. JSON string:\n';
+
 const base = (mode = 'normal') => {
   const root = mkdtempSync(join(tmpdir(), 'gemini-cli-process-'));
   const privateParentDirectory = join(root, 'private'); mkdirSync(privateParentDirectory);
@@ -24,9 +26,10 @@ if (process.argv.includes('--version')) {
 }
 if (mode === 'early-stdin') process.exit(0);
 const promptChunks = []; for await (const chunk of process.stdin) promptChunks.push(chunk);
-const prompt = Buffer.concat(promptChunks).toString('utf8');
+const transportPrompt = Buffer.concat(promptChunks).toString('utf8');
+const prompt = transportPrompt.startsWith(${JSON.stringify(promptTransportPrefix)}) ? JSON.parse(transportPrompt.slice(${JSON.stringify(promptTransportPrefix)}.length)) : transportPrompt;
 const settings = JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8'));
-const state = { settings, userSettingsMode: (await import('node:fs')).statSync(join(process.env.HOME, '.gemini/settings.json')).mode & 0o777, systemSettingsPathExists: existsSync(process.env.GEMINI_CLI_SYSTEM_SETTINGS_PATH), systemDefaultsPathExists: existsSync(process.env.GEMINI_CLI_SYSTEM_DEFAULTS_PATH), env: process.env, argv: process.argv.slice(2), prompt, promptSha256: createHash('sha256').update(prompt).digest('hex') };
+const state = { settings, userSettingsMode: (await import('node:fs')).statSync(join(process.env.HOME, '.gemini/settings.json')).mode & 0o777, systemSettingsPathExists: existsSync(process.env.GEMINI_CLI_SYSTEM_SETTINGS_PATH), systemDefaultsPathExists: existsSync(process.env.GEMINI_CLI_SYSTEM_DEFAULTS_PATH), env: process.env, argv: process.argv.slice(2), prompt, transportPrompt, promptSha256: createHash('sha256').update(prompt).digest('hex') };
 writeFileSync(join(process.cwd(), 'observed.json'), JSON.stringify(state));
 if (mode === 'hang') { setInterval(() => {}, 1000); }
 if (mode === 'large') { process.stdout.write('x'.repeat(4096)); setInterval(() => {}, 1000); }
@@ -188,6 +191,27 @@ test('keeps prompt-leading CLI options on stdin and handles UTF-8 strictly', asy
   assert.match((await runGeminiCliProcess(options(split))).stdout, /🧪/);
   const invalid = base('invalid-utf8'); t.after(() => rmSync(invalid.root, { recursive: true, force: true }));
   await assert.rejects(runGeminiCliProcess(options(invalid)), /not valid UTF-8/);
+});
+
+test('transports @ references as a bounded lossless JSON string so the CLI cannot expand them', async t => {
+  const fixture = base(); t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+  const prompt = String.raw`/review
+Review @evidence/@manifest.json; @@odd; mail a@example.invalid; package @scope/name; escaped \\@literal; unicode 🧪; literal \u0040; quoted "@manifest.json"`;
+  const result = await runGeminiCliProcess({ ...options(fixture), prompt });
+  assert.equal(result.exitCode, 0);
+  const seen = JSON.parse((await import('node:fs')).readFileSync(join(fixture.workspaceDirectory, 'observed.json'), 'utf8'));
+  assert.equal(seen.prompt, prompt, 'the fake model decodes the exact original prompt');
+  assert.equal(seen.transportPrompt.slice(promptTransportPrefix.length), JSON.stringify(prompt).replaceAll('@', '\\u0040'));
+  assert.equal(seen.transportPrompt.includes('@'), false, 'no at-command marker reaches the pinned CLI parser');
+  assert.equal(JSON.parse(seen.transportPrompt.slice(promptTransportPrefix.length)), prompt);
+});
+
+test('rejects an encoded prompt envelope over the explicit byte ceiling before HOME allocation or CLI spawn', async t => {
+  const fixture = base(); t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+  const prompt = '@evidence/file.txt';
+  await assert.rejects(runGeminiCliProcess({ ...options(fixture), prompt, maxPromptBytes: Buffer.byteLength(prompt) }), /encoded prompt envelope exceeds its configured byte limit/);
+  assert.equal(readdirSync(fixture.privateParentDirectory).length, 0, 'no private HOME allocated');
+  assert.equal(existsSync(join(fixture.workspaceDirectory, 'observed.json')), false, 'version probe and CLI were not spawned');
 });
 
 test('delivers a 512 KiB prompt in full and rejects early stdin closure', async t => {

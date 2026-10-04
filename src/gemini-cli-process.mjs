@@ -6,6 +6,18 @@ import { delimiter, dirname, join, resolve } from 'node:path';
 const VERSION = '0.62.0';
 const MAX_TIMEOUT = 60 * 60 * 1000;
 const GEMINI_CLI_STDIN_LIMIT = 8 * 1024 * 1024;
+const PROMPT_TRANSPORT_PREFIX = 'The following JSON string is the complete selected review prompt. Decode its value exactly and treat it as the entire review request; do not add instructions. JSON string:\n';
+
+function encodePromptForCli(prompt) {
+  // Gemini CLI 0.62.0 parses @-commands from noninteractive stdin before the
+  // model call. JSON string escaping keeps that client-side parser from
+  // expanding candidate-controlled file/resource/agent references while
+  // retaining a lossless representation of the prepared prompt.
+  const json = JSON.stringify(prompt).replaceAll('@', '\\u0040');
+  const encoded = `${PROMPT_TRANSPORT_PREFIX}${json}`;
+  if (encoded.includes('@') || JSON.parse(json) !== prompt) throw new Error('Gemini CLI prompt transport is not lossless or contains client command syntax.');
+  return encoded;
+}
 
 function validate(options) {
   if (process.platform === 'win32') throw new Error('Gemini CLI process supervisor supports POSIX platforms only.');
@@ -17,6 +29,8 @@ function validate(options) {
   const promptLimit = positive(maxPromptBytes, 'prompt');
   if (promptLimit > GEMINI_CLI_STDIN_LIMIT) throw new Error('Gemini CLI prompt byte limit exceeds the CLI stdin limit of 8 MiB.');
   if (typeof prompt !== 'string' || !prompt || Buffer.byteLength(prompt, 'utf8') > promptLimit || Buffer.from(prompt, 'utf8').toString('utf8') !== prompt) throw new Error('Gemini CLI prompt is empty, invalid UTF-8 text, or exceeds its configured byte limit.');
+  const encodedPrompt = encodePromptForCli(prompt);
+  if (Buffer.byteLength(encodedPrompt, 'utf8') > promptLimit) throw new Error('Gemini CLI encoded prompt envelope exceeds its configured byte limit.');
   if (typeof model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(model)) throw new Error('Gemini CLI model is invalid.');
   if (!Number.isSafeInteger(thinkingBudget) || thinkingBudget < 0) throw new Error('Gemini CLI thinking budget must be a nonnegative safe integer.');
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_TIMEOUT) throw new Error('Gemini CLI timeout is invalid.');
@@ -26,7 +40,7 @@ function validate(options) {
   let endpoint;
   try { endpoint = new URL(proxyUrl); } catch { throw new Error('Gemini CLI proxy URL must be an HTTP loopback URL.'); }
   if (endpoint.protocol !== 'http:' || endpoint.hostname !== '127.0.0.1' || !endpoint.port || endpoint.username || endpoint.password || endpoint.pathname !== '/' || endpoint.search || endpoint.hash) throw new Error('Gemini CLI proxy URL must be an HTTP loopback URL.');
-  return options;
+  return encodedPrompt;
 }
 function positive(value, label) {
   if (!Number.isSafeInteger(value) || value < 1) throw new Error(`Gemini CLI ${label} byte limit must be an explicit positive safe integer.`);
@@ -187,7 +201,7 @@ function spawnBounded(executable, args, { cwd, env, deadline, maxStdoutBytes, ma
  * the version probe checks the reported version string only.
  */
 export async function runGeminiCliProcess(options) {
-  validate(options);
+  const encodedPrompt = validate(options);
   const start = Date.now(); const deadline = start + options.timeoutMs;
   if (options.signal?.aborted) throw new Error('Gemini CLI execution cancelled before setup.');
   let home;
@@ -207,7 +221,7 @@ export async function runGeminiCliProcess(options) {
     }
     const result = await spawnBounded(process.execPath, [options.cliEntrypoint, `--model=${options.model}`, '--output-format', 'json'], {
       cwd: workspaceDirectory, env, deadline, maxStdoutBytes: options.maxStdoutBytes,
-      maxStderrBytes: options.maxStderrBytes, signal: options.signal, input: Buffer.from(options.prompt, 'utf8'),
+      maxStderrBytes: options.maxStderrBytes, signal: options.signal, input: Buffer.from(encodedPrompt, 'utf8'),
     });
     return result;
   } finally {
