@@ -129,6 +129,57 @@ test('accepts a single exact PR association when protected-base run metadata is 
   assert.equal(result.runHeadSha, baseSha);
 });
 
+test('accepts compact associated-repository metadata when exact id, name, and API URL match', async () => {
+  const f = fixture();
+  f.run.head_sha = baseSha;
+  const compact = { id: 1379218762, name: 'architecture-gatekeeper',
+    url: 'https://api.github.com/repos/flair-agency/architecture-gatekeeper' };
+  f.run.pull_requests = [{ number: 199,
+    base: { ref: 'main', sha: baseSha, repo: structuredClone(compact) },
+    head: { sha: aHeadSha, repo: structuredClone(compact) } }];
+  const result = await select(f);
+  assert.equal(result.status, 'SELECTED_OWNER_AMENDMENT_HANDOFF_PR_RUN_CONTEXT', result.reason);
+});
+
+test('retains full_name association matching when compact fields are absent', async () => {
+  const f = fixture();
+  f.run.pull_requests = [{ number: 199,
+    base: { ref: 'main', sha: baseSha, repo: { full_name: repository } },
+    head: { sha: aHeadSha, repo: { full_name: repository } } }];
+  const result = await select(f);
+  assert.equal(result.status, 'SELECTED_OWNER_AMENDMENT_HANDOFF_PR_RUN_CONTEXT', result.reason);
+});
+
+test('rejects invalid compact associated-repository metadata on either side', async t => {
+  const mutations = [
+    ['base wrong id', pr => { pr.base.repo.id++; }],
+    ['head wrong id', pr => { pr.head.repo.id++; }],
+    ['base wrong name', pr => { pr.base.repo.name = 'other'; }],
+    ['head wrong name', pr => { pr.head.repo.name = 'other'; }],
+    ['base wrong URL', pr => { pr.base.repo.url = 'https://api.github.com/repos/other/architecture-gatekeeper'; }],
+    ['head wrong URL', pr => { pr.head.repo.url = 'https://api.github.com/repos/flair-agency/other'; }],
+    ['base missing name', pr => { delete pr.base.repo.name; }],
+    ['head missing URL', pr => { delete pr.head.repo.url; }],
+    ['base malformed URL', pr => { pr.base.repo.url = 'https://api.github.com/repos/flair-agency/architecture-gatekeeper/'; }],
+    ['head foreign host', pr => { pr.head.repo.url = 'https://evil.example/repos/flair-agency/architecture-gatekeeper'; }],
+    ['base conflicting full name', pr => { pr.base.repo.full_name = 'other/repo'; }],
+    ['head conflicting full name', pr => { pr.head.repo.full_name = 'other/repo'; }],
+  ];
+  for (const [name, mutate] of mutations) await t.test(name, async () => {
+    const f = fixture();
+    f.run.head_sha = baseSha;
+    const compact = { id: 1379218762, name: 'architecture-gatekeeper',
+      url: 'https://api.github.com/repos/flair-agency/architecture-gatekeeper' };
+    const pr = { number: 199,
+      base: { ref: 'main', sha: baseSha, repo: structuredClone(compact) },
+      head: { sha: aHeadSha, repo: structuredClone(compact) } };
+    mutate(pr);
+    f.run.pull_requests = [pr];
+    const result = await select(f);
+    assert.equal(result.status, 'INCOMPLETE');
+  });
+});
+
 test('rejects a non-empty run PR association that does not match exact A', async () => {
   const f = fixture();
   f.run.head_sha = baseSha;

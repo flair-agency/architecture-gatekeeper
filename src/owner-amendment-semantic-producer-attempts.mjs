@@ -1,3 +1,4 @@
+import { matchesGitHubAssociatedRepository } from './github-associated-repository.mjs';
 const SELF_REPOSITORY = 'flair-agency/architecture-gatekeeper';
 const WORKFLOW_PATH = /^\.github\/workflows\/self-architecture-gate\.yml(?:@(?:refs\/heads\/main|main))?$/;
 const SHA1 = /^[a-f0-9]{40}$/;
@@ -22,11 +23,13 @@ function compareSignerAttempts(left, right) {
     right.run.id - left.run.id || Number(right.runAttempt) - Number(left.runAttempt);
 }
 
-function completePullRequestAssociation(pr) {
+function completePullRequestAssociation(pr, repositoryId) {
   return Number.isSafeInteger(pr?.number) && pr.number > 0 &&
     typeof pr?.base?.ref === 'string' && typeof pr.base.sha === 'string' && SHA1.test(pr.base.sha) &&
-    typeof pr.base.repo?.full_name === 'string' && typeof pr?.head?.sha === 'string' && SHA1.test(pr.head.sha) &&
-    typeof pr.head.repo?.full_name === 'string';
+    (typeof pr.base.repo?.full_name === 'string' || matchesGitHubAssociatedRepository(pr.base.repo,
+      { repository: SELF_REPOSITORY, repositoryId })) && typeof pr?.head?.sha === 'string' && SHA1.test(pr.head.sha) &&
+    (typeof pr.head.repo?.full_name === 'string' || matchesGitHubAssociatedRepository(pr.head.repo,
+      { repository: SELF_REPOSITORY, repositoryId }));
 }
 
 /** Refuse to treat a missing tag as ordinary when a protected signer ran before queue entry. */
@@ -99,11 +102,12 @@ export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository
       fail('protected producer pull-request association is malformed.');
     }
     const exactPullRequests = Array.isArray(associations) ? associations.filter(pr => pr?.base?.ref === 'main' &&
-      pr?.base?.sha === bBaseSha && pr?.base?.repo?.full_name === SELF_REPOSITORY && pr?.head?.sha === bHeadSha &&
-      pr?.head?.repo?.full_name === SELF_REPOSITORY) : [];
+      pr?.base?.sha === bBaseSha && matchesGitHubAssociatedRepository(pr?.base?.repo,
+        { repository: SELF_REPOSITORY, repositoryId: run.repository?.id }) && pr?.head?.sha === bHeadSha &&
+      matchesGitHubAssociatedRepository(pr?.head?.repo, { repository: SELF_REPOSITORY, repositoryId: run.repository?.id })) : [];
     const exact = exactPullRequests.length === 1;
     const unavailableAssociation = associations == null || (Array.isArray(associations) && associations.length === 0) ||
-      (Array.isArray(associations) && associations.some(pr => !completePullRequestAssociation(pr)));
+      (Array.isArray(associations) && associations.some(pr => !completePullRequestAssociation(pr, run.repository?.id)));
     const ambiguous = !exact && (exactPullRequests.length > 1 || (run.head_sha === bBaseSha && unavailableAssociation));
     if (!exact && !ambiguous) continue;
     const runAttemptCount = Number(run.run_attempt);

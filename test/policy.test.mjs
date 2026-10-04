@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -460,7 +460,7 @@ test('protected amendment Git commands pass the checkout through argv instead of
   assert.match(ownerDecision, /git\(\['ls-remote', 'origin', `refs\/pull\/\$\{context\.prNumber\}\/merge`\]/);
 });
 
-test('selects and materializes the protected self Authority Set for CI and local review', async () => {
+test('selects and materializes the protected self Authority Set for CI and local review', async t => {
   const selfPolicy = parseCiPolicyJson(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'), 'utf8'));
   const selected = resolveCiPolicy(selfPolicy, 'main');
   assert.equal(selfPolicy.version, 2);
@@ -478,11 +478,33 @@ test('selects and materializes the protected self Authority Set for CI and local
   assert.deepEqual(selectedLimits, { ...effectiveLimits, maxFileBytes: 81920 });
   const manifestBytes = readFileSync(join(root, selected.authorityManifestPath));
   const manifest = parseAuthorityManifest(manifestBytes, selectedLimits);
-  assert.deepEqual(manifest.authorities, [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }]);
-  const authorityRevision = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  const expectedMembers = [
+    ['architecture-contract', 'docs/architecture.md'],
+    ['architecture-authority-set', 'docs/architecture/authority-set.md'],
+    ['architecture-owner-addition', 'docs/architecture/owner-addition.md'],
+    ['architecture-owner-amendment', 'docs/architecture/owner-amendment.md'],
+    ['architecture-review-execution', 'docs/architecture/review-execution.md'],
+    ['architecture-self-profile', 'docs/architecture/self-profile.md'],
+  ].map(([id, path]) => ({ id, repository: 'self', revision: 'authority-revision', path }));
+  assert.deepEqual(manifest.authorities, expectedMembers);
+  // Commit the candidate inputs in a synthetic fixture so pre-commit checks
+  // exercise the new selection without treating working-tree files as authority.
+  const selfRoot = mkdtempSync(join(tmpdir(), 'gate-self-authority-'));
+  t.after(() => rmSync(selfRoot, { recursive: true, force: true }));
+  for (const member of manifest.authorities) {
+    const destination = join(selfRoot, member.path);
+    mkdirSync(dirname(destination), { recursive: true });
+    writeFileSync(destination, readFileSync(join(root, member.path)));
+  }
+  const git = (...args) => execFileSync('git', ['-C', selfRoot, ...args],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  git('init'); git('config', 'user.name', 'Fixture');
+  git('config', 'user.email', 'fixture@example.invalid');
+  git('add', '.'); git('commit', '-m', 'Synthetic self authority snapshot');
+  const authorityRevision = git('rev-parse', 'HEAD');
   const materialized = await materializeAuthoritySet({ manifestBytes, limits: selectedLimits,
-    selfRepository: 'flair-agency/architecture-gatekeeper', selfRoot: root, authorityRevision });
-  assert.deepEqual(materialized.members.map(member => member.id), ['architecture-contract']);
+    selfRepository: 'flair-agency/architecture-gatekeeper', selfRoot, authorityRevision });
+  assert.deepEqual(materialized.members.map(member => member.id), expectedMembers.map(member => member.id));
   const completePrompt = readFileSync(join(root, '.codex/gatekeeper/ci-prompt.md')) + materialized.prompt;
   assert.ok(Buffer.byteLength(completePrompt) <= selectedLimits.maxPromptBytes);
 
@@ -516,9 +538,9 @@ test('selects and materializes the protected self Authority Set for CI and local
   assert.deepEqual(localConfig.authorityLimits, selectedLimits);
   const localManifest = parseAuthorityManifest(manifestBytes, localConfig.authorityLimits);
   const localMaterialized = await materializeAuthoritySet({ manifestBytes, limits: localConfig.authorityLimits,
-    selfRepository: localConfig.selfRepository, selfRoot: root, authorityRevision });
+    selfRepository: localConfig.selfRepository, selfRoot, authorityRevision });
   assert.deepEqual(localManifest.authorities, manifest.authorities);
-  assert.deepEqual(localMaterialized.members.map(member => member.id), ['architecture-contract']);
+  assert.deepEqual(localMaterialized.members.map(member => member.id), expectedMembers.map(member => member.id));
   assert.equal(schema.required.includes('authorityIds'), true);
   const validation = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.validation.json'), 'utf8'));
   assert.equal(validation.version, 1);
@@ -528,7 +550,8 @@ test('selects and materializes the protected self Authority Set for CI and local
 test('keeps the protected self-review prompt aligned with canonical authority', () => {
   const prompt = readFileSync(join(root, '.codex/gatekeeper/ci-prompt.md'), 'utf8');
   assert.match(prompt, /protected-base Authority Set/);
-  assert.match(prompt, /`architecture-contract` member is the normative `docs\/architecture\.md` snapshot/);
+  assert.match(prompt, /All six selected members[\s\S]*form the normative self contract/);
+  assert.match(prompt, /`architecture-contract` is its shared core at\s+`docs\/architecture\.md`/);
   assert.match(prompt, /Report every selected source ID exactly once in `authorityIds`/);
   assert.match(prompt, /`README\.md`,\s+`package\.json`, workflows, tests[\s\S]*as evidence of conformance/);
   assert.match(prompt, /prompt,\s+manifest and authority snapshots are selected from the protected base/);

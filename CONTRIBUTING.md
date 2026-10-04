@@ -8,9 +8,10 @@ Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 1. Search the existing issues and pull requests.
 2. Open an issue before making a large change or changing public behavior.
-3. Read [`docs/architecture.md`](docs/architecture.md) before proposing a
+3. Read [`docs/architecture.md`](docs/architecture.md) and all of its required
+   normative members before proposing a
    change to architecture, trust boundaries, review decisions, evidence or
-   acceptance policy. It is the normative contract.
+   acceptance policy. Together they form the normative contract.
 4. Do not infer or add a consumer repository's architecture to this shared
    package. An unresolved owner decision must remain explicit until the owner
    records it in canonical authority.
