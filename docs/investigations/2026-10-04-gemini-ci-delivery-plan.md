@@ -197,7 +197,7 @@ private parent, controlled workspace, protected scope/settings, request prefligh
 and final `gemini-cli-response.mjs` validation. This is not a standalone review
 or acceptance entrypoint.
 
-The selected model and thinking budget are explicit. The prompt is sent through
+The selected model and thinking setting are explicit. The prompt is sent through
 stdin as a lossless JSON string envelope and the model is a literal option
 value, so prompt text cannot become CLI flags or exceed the OS single-argument
 limit. Literal at-signs are JSON Unicode escapes: the pinned CLI cannot interpret
@@ -287,3 +287,23 @@ review contract and must not substitute for protected CI prompt/schema, authorit
 and consumer-rule validation. CI integration must use the same protected checks
 as Codex. No public launcher, policy selector or workflow invokes this internal
 session yet. Actual WIF and enabled governance runs remain required for adoption.
+
+## Adopted model-setting implementation
+
+The owner selected `gemini-3.8-flash` with `thinkingLevel: MEDIUM` on 2026-10-04;
+canonical authority records that selection. The internal process/session path
+sends exactly that level setting without a simultaneous `thinkingBudget`.
+Legacy budget-based model fixtures remain separately supported; no budget is
+added as a default or combined with the selected level setting.
+
+Focused process and session tests verify the generated CLI configuration contains
+`thinkingLevel: MEDIUM` and no `thinkingBudget`. They also verify that LOW and HIGH
+are explicit valid levels, invalid/mixed settings fail before process startup,
+and legacy budget selection remains intact. A pinned CLI 0.62.0 offline run through
+the actual supervisor and scoped proxy confirmed both the initial request and
+after-tool request carried `thinkingLevel: MEDIUM`, `includeThoughts: false`,
+and no `thinkingBudget`. Only the four selected read tools were advertised.
+The endpoint was a loopback canned server using dummy credentials, so this
+confirms outbound configuration rather than model support, WIF authentication
+or review quality. Authenticated route evidence, quality, cost, latency and
+decision consistency remain required before activation.
