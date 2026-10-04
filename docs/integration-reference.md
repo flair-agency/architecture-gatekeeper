@@ -785,9 +785,10 @@ or replace configured prompt limits. It is not a whole-process memory guarantee.
 The owner approved a repository-limited GitHub App with `Administration: write`
 only because GitHub omits `bypass_actors` unless the requester can write the
 ruleset. This is a GitHub-specific host readback capability, not a universal
-Gatekeeper or unverified consumer-preview requirement. It grants no permission
-to change rulesets; the isolated implementation dispatches only the selected
-ruleset GET with the installation token, then DELETE to revoke that token.
+Gatekeeper or unverified consumer-preview requirement. Its Administration write
+token technically permits ruleset and other repository administration mutations. Owner-permitted operations and code dispatch are
+limited to the selected ruleset GET and token revocation; this constraint does
+not make the credential read-only or remove its compromise blast radius.
 The JWT is used only to verify the selected repository installation and mint
 its reduced token. No installation token, JWT or App key is written to disk,
 workflow output, ordinary handoff environment, PR code or package lifecycle.
