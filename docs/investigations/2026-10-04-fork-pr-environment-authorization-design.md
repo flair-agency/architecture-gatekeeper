@@ -54,8 +54,7 @@ The historical runtime/host baseline below was observed at
 for this proposal was `773217b3dcff225f69c3bda07079d61b49651e21`; changes since
 that Set read added #340 execution-result and #343 execution-observation
 source/tests, while the manifest and six members were byte-identical. The
-current PR base is `f7f6807524921111f53e800ed9855d2c8c77a35f`, where the #324
-update adds the consumer UNVERIFIED preview clause in `docs/architecture.md`.
+recorded review baseline for this proposal is `f7f6807524921111f53e800ed9855d2c8c77a35f`, where #324 had added the consumer UNVERIFIED preview clause in `docs/architecture.md`.
 The manifest and complete six-member Authority Set at f7 were read afresh
 before this update. The other five members remain byte-identical to the
 preparation baseline. AGENTS.md and the development guide were also read.
