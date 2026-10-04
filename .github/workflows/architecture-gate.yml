@@ -231,6 +231,7 @@ jobs:
           VALIDATION_PATH: ${{ needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path || inputs.validation-path }}
         run: git show "$BASE_SHA:$VALIDATION_PATH" > "$RUNNER_TEMP/architecture-gate-decision.validation.json"
       - name: Check out the pinned validation runtime
+        id: validation_runtime
         if: needs.policy.outputs.execution_selection == 'policy' || inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
         uses: actions/checkout@v5
         with:
@@ -325,7 +326,7 @@ jobs:
           codex-args: ${{ needs.policy.outputs.codex_args || (inputs.self-flex-probe && '["--ephemeral","-c","project_doc_max_bytes=0","-c","service_tier=''flex''","--json"]' || '["--ephemeral","-c","project_doc_max_bytes=0","--json"]') }}
       - name: Record ordinary execution observation
         id: execution
-        if: always() && !cancelled() && needs.policy.outputs.execution_selection == 'policy'
+        if: always() && !cancelled() && needs.policy.outputs.execution_selection == 'policy' && steps.validation_runtime.outcome == 'success'
         env:
           REVIEW_PROVIDER: ${{ needs.policy.outputs.provider }}
           REVIEW_MODEL: ${{ needs.policy.outputs.model }}
