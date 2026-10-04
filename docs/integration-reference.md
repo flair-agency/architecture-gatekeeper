@@ -502,6 +502,13 @@ result remain available and comment delivery is reported as a warning. Do not
 switch to `pull_request_target` merely to make comments writable while checking
 out or executing pull-request code.
 
+If the consumer selects a `pull_request_target` caller, review the
+[trusted-actor guidance](github-assurance.md#trusted-actor-gating-in-pull_request_target)
+before gating secret-bearing work. PR-author association and workflow-actor
+identity are different signals; a later PR API read cannot automatically
+replace an event denial. The consumer owns principal/source selection,
+disagreement and lookup-failure policy, and any permission changes.
+
 A consumer may add an optional `findings` array to its output schema. Each
 finding has a short `title`, actionable `body`, and optional `location` with a
 repository-relative `path`, `line`, and `side` (`RIGHT` for an added new-file

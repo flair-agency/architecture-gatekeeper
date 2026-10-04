@@ -12,6 +12,7 @@ directory separates binding rules from setup and operating guidance:
 | Scope and forecast a release, record owner agreement and retrospective | [Release planning issue form](../.github/ISSUE_TEMPLATE/release_planning.yml) and [planning procedure](release.md#plan-a-release) | Planning record; does not change publication or architecture gates |
 | Propose, split, deliver, and track work | [Issue and pull request workflow](issue-pr-workflow.md) | Issue criteria, partial delivery, and PR reporting |
 | Understand GitHub plan limits and this repository's example setup | [GitHub assurance](github-assurance.md) | Capability and claim guide; does not enable a route |
+| Design or diagnose `pull_request_target` actor authorization and event/API mismatch | [Trusted-actor gating](github-assurance.md#trusted-actor-gating-in-pull_request_target) | Consumer-owned policy guidance; no shared authorization helper |
 | Diagnose child-reviewer authorization | [Reviewer host permissions](reviewer-host-permissions.md) | Host boundary and failure modes |
 | Maintain this repository's `pull_request_target` event policy | [Self-gate Actions policy](self-gate-actions-policy.md) | Repository-specific operations |
 | Change the package or roll it out | [Development guide](development.md) | Maintainer workflow |

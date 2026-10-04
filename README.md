@@ -112,6 +112,12 @@ policy, prompt, schema, and optional validation policy in the consuming
 repository. See the [integration reference](docs/integration-reference.md) for
 the complete workflow example and protected-base behavior.
 
+For `pull_request_target` callers, use the
+[trusted-actor integration guide](docs/github-assurance.md#trusted-actor-gating-in-pull_request_target)
+to distinguish PR-author association from workflow actors and handle event/API
+disagreement or lookup failures under the consumer's adopted trust policy.
+Gatekeeper supplies guidance; actor authorization remains consumer-owned.
+
 On the protected Authority Set and legacy v1 consumer routes, the reviewer
 receives the exact event base/head revisions, verified merge revision and the
 base-to-merge committed diff as untrusted task data. Untracked helper checkouts
