@@ -55,7 +55,14 @@ Gatekeeper's host integration preserves its selected review, evidence,
 credential and acceptance guarantees. The consumer owns caller authorization
 and permission to initiate secret-bearing work under its canonical authority.
 Gatekeeper does not infer that permission from host identity or membership
-signals, choose an allowlist, or provide a caller-authorization helper.
+signals, or choose an allowlist or consumer policy.
+
+Issue #331 records an inactive target for a shared GitHub mechanism that checks
+consumer-authorized maintainer approval of an original Fork PR's exact HEAD
+before consumer-funded review. Consumers retain control of approver policy and
+funding scope; the selected profile, approval producer, and exact bindings
+remain subject to implementation and verification. This target does not enable
+a caller-authorization helper or change current routes.
 
 An unavailable or disagreeing host signal does not authorize dynamically
 weakening an adopted consumer policy. The consumer selects the relevant

@@ -173,6 +173,10 @@ See the [full normative section](architecture/review-execution.md#target-local-p
 
 See the [full normative section](architecture/review-execution.md#ci-model-review).
 
+#### Target Fork PR review authorization (Issue #331 owner direction)
+
+See the [full normative section](architecture/review-execution.md#target-fork-pr-review-authorization-issue-331-owner-direction-2026-10-04).
+
 #### Target provider-independent CI execution boundary (Issue #332 owner decision, 2026-10-04)
 
 See the [full normative section](architecture/review-execution.md#target-provider-independent-ci-execution-boundary-issue-332-owner-decision-2026-10-04).
