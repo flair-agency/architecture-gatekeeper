@@ -294,6 +294,191 @@ Keep defined/implemented/released/selectable/prior-selected/eligible/owner actio
 
 Bootstrap only for absent-ever root or genuine first activation lacking authorized normal/staged path. T0/T7 share nonresettable repo/target lineage authorization (incl inseparable root/config); rename/backend/manifest/policy/profile changes/missing files cannot reset it. B1 proves absent-ever root or never-completed first activation (missing file/version/receipt is no proof). B2 inventories authorized normal/staged/migration/repair exits: any finite noncircular path bars bootstrap regardless of cost/deadline; missing code/tests/defect/outage do not prove absence. B3 independent existing/external governance authorizes exact scope; B4 binds candidate/paths/ops/actors/lineage; B5 verifies prep/limits/inputs/producer/host. Require implemented T8 plan before start; resulting policy must authorize it. B6 reads back first-operation target/policy/caller; B7 consumes lineage authorization; B8 later normal adoption/readback before ACTIVE, zero exception; commissioning until then. Bootstrap is external, not PASS/G0.
 
+### Explicit unverified consumer preview procedure (owner direction, 2026-10-04)
+
+A separately versioned, explicitly owner-selected UNVERIFIED preview
+procedure (`preview-unverified-procedure-v1`) may support actual consumer
+addition, amendment and control-plane migration before producer authentication
+or trusted custody is available. It is a distinct profile outside existing
+trusted profiles, the Gatekeeper lifecycle-v1 `ACTIVE` claim, `OWNER_ADDITION`,
+`OWNER_AMENDMENT`, G0 and enforced acceptance claims. Its records never
+substitute for those claims. No failure selects it automatically; existing
+profiles retain every assurance requirement.
+
+This procedure is a limited refinement of normative invariant 8 for a distinct
+consumer-governed transition. The routes named in invariant 8 retain their
+requirements, and its rejection-history and fresh-review rules apply across
+profiles. The refinement itself does not select a consumer architecture
+decision. For addition and amendment, only a preview B selected by predecessor
+governance and satisfying the exact trigger, complete predecessor-selected
+Authority Set, receipt, integration and readback requirements may receive this
+procedure's `OBSERVED` result; this does not restrict the separately specified
+migration `OBSERVED` path. Preview
+`OBSERVED` means only procedural adoption and verified placement. It does not
+constitute `OWNER_ADDITION`, `OWNER_AMENDMENT`, G0, protected acceptance or
+lifecycle-v1 `ACTIVE`, and cannot satisfy or waive a stronger selected policy
+requirement. A preview does not authorize ordinary reviewed-change B as
+preview B, expand the predecessor-selected authority scope, or permit
+migration to modify canonical architecture decisions.
+
+Consumer governance must authorize use and record the preview selection before
+the change it governs. Prior selection and every route receipt bind the same
+exact repository and target ref (`repository`/`targetBranch`) under predecessor
+governance. A shared base does not permit cross-target or cross-repository replay.
+Resolve its exact recorded predecessor policy, complete
+selected authority, prompt, schema, required validators and reviewer settings;
+candidate content cannot replace them. Missing members, invalid selectors,
+exceeded limits or unavailable required review leave the step incomplete.
+The predecessor-authorized route selects the eligible authority scope for each
+addition or amendment; B and its records cannot expand or replace that scope.
+Every completed ordinary or eligibility result identifies exactly the complete
+predecessor-selected members using the route's existing authority ID/path
+schema. Missing, duplicate or extra members invalidate the result. The receipt
+binds that same complete selected-set identity. These completeness checks do
+not change the predecessor's authority selector or its ID/path schema.
+
+Record originally reviewed A and its exact completed semantic result. Addition
+requires a completed ordinary OWNER_DECISION identifying the missing decision;
+its record must bind that exact result and the missing decision's ID to A's
+ownerDecisionId. PASS or BLOCK cannot trigger addition. Addition B adds only
+that identified missing decision: no existing-rule edits, contradictions or
+unrelated unresolved choices. For an OWNER_DECISION trigger, route
+classification uses the complete bound completed result's recorded content:
+addition applies only when it identifies a missing decision, while amendment
+applies only when it identifies a required owner choice to change an existing
+decision. For either amendment trigger profile, a separately supplied
+AmendmentRecord binds the exact completed trigger and its target existing
+decision. The result enum or a route record alone does not establish this
+classification. If the recorded content is missing, insufficient, conflicting,
+or identifies both kinds of change, neither route is ELIGIBLE. Amendment also
+applies to a BLOCK trigger only under its selected BLOCK profile. For both
+addition and amendment, semantic eligibility
+verifies the predecessor-selected scope, excludes all implementation, workflow
+and executable-policy changes and unsupported completion claims, and checks
+that the complete resulting authority is coherent. Authority-only B is reviewed
+against the complete predecessor authority and exact proposed bytes/diff.
+For amendment, eligibility additionally verifies that the AmendmentRecord's
+target is the existing decision changed by B, that B materially resolves the
+exact bound trigger, and that B changes only that target decision. It excludes
+unrelated authority changes, implementation,
+workflow and executable-policy changes, and unsupported completion claims. It
+assesses the resulting rules without requiring agreement with the superseded
+target and preserves unrelated decisions. The resulting authority must be
+coherent. Report B eligibility as a dedicated ELIGIBLE or INELIGIBLE result,
+never semantic PASS or acceptance of originally reviewed A.
+The ordinary review and compatible migration retain their predecessor semantic
+decision schema and meaning. A migration is distinct from authority-only B.
+
+A compatible control-plane migration becomes eligible only after a completed
+ordinary PASS under the unchanged predecessor schema and required validators,
+with semantic confirmation that predecessor governance permits that exact
+migration and preview selection. Incompatible migration remains unsupported by
+this preview; a future bridge requires separate prior authorization and versioned
+binding rules. Before integration, the compatible migration's versioned
+receipt binds the exact predecessor inputs, candidate policy/configuration and
+complete successor Authority Set identity and bytes. The selected ordinary
+integration verifies the same exact parent and resulting-tree bindings described
+below; subsequent target readback verifies that the observed target commit
+contains the exact integration commit in its ancestry and checks
+policy/configuration and the complete successor Set, including an unchanged
+selected manifest. The final record binds the exact target ref, integration
+and observed target commits, and reports only observed procedure completion and
+the Git facts checked. Candidate configuration
+cannot authorize itself; this adds no authentication or enforcement assurance.
+M remains within the control-plane scope authorized by predecessor governance
+and preserves canonical architecture decisions. If M requires a new or changed
+architecture decision, that decision must first become canonical through a
+separately authorized addition or amendment; M cannot self-select, introduce or
+bundle that decision into its migration.
+
+Migration uses one exact candidate M (`headSha`), not a separate authority-only
+B. Its ordinary PASS, pre-integration receipt, integration second parent and
+resulting tree, and readback must bind that same M.
+
+Versioned preview receipts bind exact repository/base and route-specific
+candidate identities: A/B for addition or amendment, A for ordinary review, and
+M for migration, together with records, full Set, policy/review inputs,
+runtime/model/settings, decision, computed byte digests and completion time.
+The final addition or amendment record binds the raw-byte SHA-256 digest of the
+exact completed eligibility receipt and identities of its trigger decision and
+receipt, AdditionRecord or AmendmentRecord, predecessor policy, full selected
+Authority Set, reviewer inputs, runtime and dependent records.
+The pre-integration migration receipt binds the ordinary PASS for the same M,
+predecessor policy, full selected Set, candidate policy/configuration, complete
+successor Set and runtime/reviewer inputs. The final migration record binds the
+raw-byte SHA-256 digest of that single completed pre-integration receipt for the
+same M, and separately binds the observed integration and readback identities.
+Before normal integration, complete and validate the exact route receipt: the
+eligibility receipt for addition/amendment or the pre-integration migration
+receipt for migration. The integration commit message must contain exactly one
+versioned Git trailer of this form, bound to that receipt's exact raw bytes:
+
+`AGK-Preview-Receipt-v1: sha256:<64 lowercase hex digits>`
+
+The receipt does not contain the later integration or final-record identities,
+so this commitment introduces no circular binding. Finalization and every
+fresh review validate the complete receipt, the single well-formed trailer and
+its recomputed digest, the required ordered parents and resulting tree, and the
+exact target readback. For addition, amendment and migration alike, readback
+verifies that the exact observed target commit contains the exact integration
+commit in its ancestry and matches the route's resulting authority state; a
+B-only byte comparison cannot substitute for that ancestry check. Missing,
+malformed, duplicate or mismatched trailers or
+receipts leave the procedure incomplete even when placement was observed. This
+shows only that the integration Git object commits to the receipt digest; it
+does not authenticate reviewer execution, the receipt's completion time, owner
+action, host chronology or custody. Existing trusted-profile requirements
+remain unchanged.
+A record may embed its exact receipt instead of storing only its digest, but it
+must retain the receipt's exact digest and dependency identities. Missing or
+mismatched bytes or identities leave the procedure incomplete. These integrity
+bindings require no external trusted backend and provide no producer
+authentication. Integrity and semantic validation are required even when
+producer identity, execution origin, owner authentication, custody, policy
+protection or host enforcement are UNVERIFIED. Reports state each assurance
+separately; local byte consistency supplies no authentication claim. Missing,
+changed or mismatched evidence stops the step rather than weakening it. Evidence
+freshness here means its bound input state still matches the required lifecycle
+boundary; this profile supplies no default age expiry or authenticated timestamp.
+Any consumer-selected required age validator remains mandatory: unavailable
+validation leaves the step incomplete rather than silently ignoring it.
+
+The owner may integrate eligible B through the explicitly selected ordinary
+procedure. For normal merge, verify recorded base as first parent, exact B as
+second parent and B's tree as resulting tree; the integration commit is distinct
+from B. Subsequent exact target readback verifies integration ancestry and
+expected authority bytes. Other integration forms remain unsupported until
+versioned binding rules exist. The final preview record binds the exact target
+ref, integration commit and observed target commit. It reports adoption OBSERVED
+when the bound procedure and integration/readback have completed, with
+canonical placement VERIFIED only for the Git facts actually checked and
+producer authentication/custody UNVERIFIED where not established. This is usable
+consumer procedural adoption with explicitly limited assurance, not verified
+trusted-profile adoption, G0, host prevention or principal authorization.
+Placement and procedural validity remain separate; readback cannot repair an
+ineligible or incomplete B. Preserve historical results and review A afresh
+against the resulting canonical inputs; fresh PASS is not guaranteed.
+
+CLI/API outputs must identify the preview profile/version and reject ambiguous
+version mixing. Production trusted-profile verifiers must reject these records;
+preview selection cannot weaken an enforced policy or infer an owner's business,
+publication, disclosure or credential permission. No trusted backend is required
+for this explicitly unverified profile. Actual consumer selection and use remain
+consumer-owned; this decision authorizes implementation of that preview path,
+not automatic selection, existing-route activation or readiness claims.
+
+For this repository, numbered previews may provide preview.3 with usable
+consumer UNVERIFIED addition, amendment and compatible-migration procedures,
+including those new preview routes, after implementation review, a real consumer
+fixture exercises every advertised path with negative verification for each
+path, and package/release gates pass. This specifically refines the
+existing-supported-path numbered-preview restriction in the self reference
+profile for this separate UNVERIFIED procedure only. This limited preview scope
+does not satisfy or waive the trusted/enforced acceptance and lifecycle gates:
+Issue #210/App trusted reporting and formal Issues #272, #211 and #137 remain
+required for their respective claims, as do the lifecycle-v1 `ACTIVE` criteria.
+It makes no claim that those formal cases are complete.
+
 ## Normative invariants
 
 Every implementation and rollout must preserve these invariants:
@@ -327,7 +512,14 @@ Every implementation and rollout must preserve these invariants:
    decision must change, an amendment may become canonical through a separately
    enabled and verified trigger profile, including a completed
    `OWNER_DECISION` profile once defined. The original reviewed change still
-   requires a fresh review and acceptable evidence where applicable.
+   requires a fresh review and acceptable evidence where applicable. A
+   separately versioned, consumer-governed UNVERIFIED preview may provide its
+   own addition or amendment procedure only when selected by predecessor
+   governance before the governed change, as specified in Explicit unverified
+   consumer preview procedure. That procedure's `OBSERVED` placement does not
+   satisfy or waive the named routes or their stronger assurance requirements;
+   the original `BLOCK` or `OWNER_DECISION` remains unchanged and the original
+   reviewed change still requires fresh review and applicable evidence.
 9. Privileged credentials are not exposed to pull-request code or package
    lifecycle scripts. Credential-bearing third-party actions remain part of the
    selected CI trust boundary and follow its explicit supply-chain policy; this
