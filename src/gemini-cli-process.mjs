@@ -1,6 +1,6 @@
 /** Internal POSIX supervisor for the pinned Gemini CLI execution profile. */
 import { spawn } from 'node:child_process';
-import { chmodSync, lstatSync, mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, lstatSync, mkdtempSync, mkdirSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { delimiter, dirname, join, resolve } from 'node:path';
 
 const VERSION = '0.62.0';
@@ -66,6 +66,34 @@ function rejectWorkspaceControls(workspaceDirectory) {
     const parent = dirname(directory);
     if (parent === directory) break;
     directory = parent;
+  }
+
+  // Gemini CLI 0.62.0 JIT memory discovery starts at a tool-accessed path's
+  // directory and searches upward to the workspace boundary. Accessing a file
+  // under src can therefore load src/GEMINI.md even when startup discovery
+  // found no workspace-root instructions. Ancestor checks alone miss these
+  // nested controls. Materialized review workspaces contain bounded ordinal
+  // evidence files; reject controls anywhere in that tree and fail closed on
+  // symlinks rather than following them.
+  const forbiddenNames = new Set(['.gemini', '.agents', '.env', 'gemini.md']);
+  const pending = [workspace];
+  while (pending.length) {
+    const current = pending.pop();
+    let entries;
+    try { entries = readdirSync(current, { withFileTypes: true }); }
+    catch { throw new Error(`Gemini CLI workspace descendants could not be checked: ${current}.`); }
+    for (const entry of entries) {
+      const child = join(current, entry.name);
+      // Case-fold names so a case-insensitive filesystem cannot hide controls.
+      if (forbiddenNames.has(entry.name.toLowerCase())) {
+        throw new Error(`Gemini CLI workspace contains a forbidden control path: ${child}.`);
+      }
+      let stat;
+      try { stat = lstatSync(child); }
+      catch { throw new Error(`Gemini CLI workspace descendant could not be checked: ${child}.`); }
+      if (stat.isSymbolicLink()) throw new Error(`Gemini CLI workspace contains an unsupported symbolic link: ${child}.`);
+      if (stat.isDirectory()) pending.push(child);
+    }
   }
   return workspace;
 }

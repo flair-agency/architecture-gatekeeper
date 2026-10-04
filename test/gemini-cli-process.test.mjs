@@ -87,21 +87,38 @@ test('rejects workspace and ancestor Gemini operational controls before HOME all
     ['workspace .agents directory', (f) => mkdirSync(join(f.workspaceDirectory, '.agents'))],
     ['workspace .env', (f) => writeFileSync(join(f.workspaceDirectory, '.env'), 'CONTROL=1')],
     ['workspace GEMINI.md', (f) => writeFileSync(join(f.workspaceDirectory, 'GEMINI.md'), 'instructions')],
+    ['nested src/GEMINI.md', (f) => { mkdirSync(join(f.workspaceDirectory, 'src')); writeFileSync(join(f.workspaceDirectory, 'src', 'GEMINI.md'), 'nested instructions'); }],
+    ['nested case-variant gemini.md', (f) => { mkdirSync(join(f.workspaceDirectory, 'src')); writeFileSync(join(f.workspaceDirectory, 'src', 'gemini.md'), 'nested instructions'); }],
+    ['nested case-variant .GEMINI', (f) => mkdirSync(join(f.workspaceDirectory, 'src', '.GEMINI'), { recursive: true })],
+    ['nested src/.gemini settings', (f) => { mkdirSync(join(f.workspaceDirectory, 'src', '.gemini'), { recursive: true }); writeFileSync(join(f.workspaceDirectory, 'src', '.gemini', 'settings.json'), '{}'); }],
+    ['nested src/.agents controls', (f) => mkdirSync(join(f.workspaceDirectory, 'src', '.agents'), { recursive: true })],
+    ['nested src/.env', (f) => { mkdirSync(join(f.workspaceDirectory, 'src')); writeFileSync(join(f.workspaceDirectory, 'src', '.env'), 'CONTROL=1'); }],
     ['ancestor .gemini directory', (f) => mkdirSync(join(f.root, '.gemini'))],
     ['ancestor .agents directory', (f) => mkdirSync(join(f.root, '.agents'))],
     ['ancestor .env', (f) => writeFileSync(join(f.root, '.env'), 'CONTROL=1')],
     ['ancestor GEMINI.md', (f) => writeFileSync(join(f.root, 'GEMINI.md'), 'instructions')],
     ['dangling workspace control symlink', (f) => symlinkSync(join(f.root, 'missing'), join(f.workspaceDirectory, '.env'))],
     ['dangling ancestor control symlink', (f) => symlinkSync(join(f.root, 'missing'), join(f.root, 'GEMINI.md'))],
+    ['nested symlink directory', (f) => {
+      const target = join(f.root, 'external'); mkdirSync(target); writeFileSync(join(target, 'GEMINI.md'), 'outside instructions');
+      symlinkSync(target, join(f.workspaceDirectory, 'src'));
+    }],
   ];
   for (const [label, createControl] of cases) {
     const fixture = base();
     t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
     createControl(fixture);
-    await assert.rejects(runGeminiCliProcess(options(fixture)), /forbidden control path/, label);
+    await assert.rejects(runGeminiCliProcess(options(fixture)), /forbidden control path|unsupported symbolic link/, label);
     assert.equal(readdirSync(fixture.privateParentDirectory).length, 0, `${label}: no private HOME allocated`);
     assert.equal(existsSync(join(fixture.workspaceDirectory, 'observed.json')), false, `${label}: CLI not spawned`);
   }
+});
+
+test('allows ordinary nested evidence paths after checking them for controls', async t => {
+  const fixture = base(); t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+  mkdirSync(join(fixture.workspaceDirectory, 'evidence', 'nested'), { recursive: true });
+  writeFileSync(join(fixture.workspaceDirectory, 'evidence', 'nested', 'file.txt'), 'ordinary evidence');
+  assert.equal((await runGeminiCliProcess(options(fixture))).exitCode, 0);
 });
 
 test('rejects a mismatched CLI version and removes its private HOME', async t => {

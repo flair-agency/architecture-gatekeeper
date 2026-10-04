@@ -205,7 +205,10 @@ credential upstream. Missing system settings/default paths inside the private
 HOME prevent ambient system configuration. Gemini CLI requires root ownership
 for system settings, so generated user-owned files cannot enforce that layer;
 no ownership check is bypassed. Instead, the physical workspace and every
-ancestor must contain no operational `.gemini`, `.agents`, `.env` or `GEMINI.md`.
+ancestor, and all directories below the workspace must contain no operational
+`.gemini`, `.agents`, `.env` or `GEMINI.md`. Descendant symbolic links are rejected
+rather than following an unchecked subtree; symbolic links or unreadable
+subdirectories leave execution incomplete.
 Rejection precedes launch: candidate control bytes belong only in ordinal
 evidence snapshots, not auto-loaded paths. This prevents workspace overrides
 and avoids relying on an empty MCP map to erase entries during deep merge.
@@ -228,3 +231,16 @@ carried thinkingBudget 1024, and the upstream saw only the fixed scope and paren
 dummy Bearer. No real WIF exchange or semantic-quality proof is supplied. Protected
 CI wiring, complete context composition and authenticated governance evidence
 remain #252 work.
+
+### Nested context regression (PR #310)
+
+A pinned CLI 0.62.0 offline reproduction put a marker in `src/GEMINI.md` and
+requested only `read_file` of `src/sentinel.txt`. The marker was absent from the
+first model request but appeared automatically in the second request's contents.
+This verifies the just-in-time context path, not merely startup discovery.
+The launcher rejects operational controls throughout the descendant tree before
+allocating HOME or running the version probe. Descendant control names are
+case-folded to cover case-insensitive filesystems. Ordinal evidence remains available
+to explicit read tools. Tree stability still belongs to the trusted caller; this
+check neither monitors later writes nor establishes host confinement. No real
+credential exchange or semantic-quality evidence is supplied by the offline probe.
