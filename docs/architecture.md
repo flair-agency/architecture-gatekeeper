@@ -315,9 +315,22 @@ workflow or executable-policy changes, coherent resulting authority and no
 unsupported completion claims. Report B eligibility as a dedicated ELIGIBLE or
 INELIGIBLE result, never semantic PASS or acceptance of originally reviewed A.
 The ordinary review and compatible migration retain their predecessor semantic
-decision schema and meaning. A distinct control-plane migration step is
-reviewed under its predecessor; candidate configuration cannot authorize its
-own selection, bypass failed semantics or masquerade as authority-only B.
+decision schema and meaning. A migration is distinct from authority-only B.
+
+A compatible control-plane migration becomes eligible only after a completed
+ordinary PASS under the unchanged predecessor schema and required validators,
+with semantic confirmation that predecessor governance permits that exact
+migration and preview selection. Incompatible migration remains unsupported by
+this preview; a future bridge requires separate prior authorization and versioned
+binding rules. Before integration, the compatible migration's versioned
+receipt binds the exact predecessor inputs, candidate policy/configuration and
+complete successor Authority Set identity and bytes. The selected ordinary
+integration verifies the same exact parent and resulting-tree bindings described
+below; subsequent target readback checks policy/configuration and the complete
+successor Set, including an unchanged selected manifest. The final record binds
+the exact target ref, integration and observed target commits and reports only
+observed procedure completion and the Git facts checked. Candidate configuration
+cannot authorize itself; this adds no authentication or enforcement assurance.
 
 Versioned preview receipts bind exact repository/base/A/B, records, full Set,
 policy/review inputs, runtime/model/settings, decision, computed byte digests and
