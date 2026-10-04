@@ -54,3 +54,13 @@ test('consumer adapter keeps protected policy resolution and selected OWNER_ADDI
   assert.match(consumer, /name: Materialize recorded-base legacy authority before review/);
   assert.match(consumer, /name: Require exact reported legacy authority files/);
 });
+
+test('unwired explicit providers fail before either protected workflow can launch Codex', () => {
+  for (const source of [consumer, self]) {
+    const policy = job(source, 'policy');
+    assert.match(policy, /SELECTED_PROVIDER: \$\{\{ steps\.resolve\.outputs\.provider \}\}/);
+    assert.match(policy, /test -n "\$SELECTED_PROVIDER" && test "\$SELECTED_PROVIDER" != codex/);
+    assert.match(policy, /Selected reviewer provider is not wired[\s\S]*?exit 1/);
+    assert.match(job(source, 'review'), /needs:.*policy/);
+  }
+});
