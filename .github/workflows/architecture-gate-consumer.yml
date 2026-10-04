@@ -49,6 +49,7 @@ jobs:
       legacy_validation_path: ${{ steps.resolve.outputs.legacyValidationPath }}
       model: ${{ steps.resolve.outputs.model }}
       effort: ${{ steps.resolve.outputs.reasoningEffort }}
+      codex_args: ${{ steps.resolve.outputs.codexArgs }}
       authority_manifest_path: ${{ steps.resolve.outputs.authorityManifestPath }}
       authority_limits_base64: ${{ steps.resolve.outputs.authorityLimitsBase64 }}
       authority_profile: ${{ steps.resolve.outputs.authorityProfile }}
@@ -61,8 +62,8 @@ jobs:
       adoption_evidence_producer: ${{ steps.resolve.outputs.adoptionEvidenceProducer }}
       adoption_evidence_workflow_path: ${{ steps.resolve.outputs.adoptionEvidenceWorkflowPath }}
       adoption_evidence_job_name: ${{ steps.resolve.outputs.adoptionEvidenceJobName }}
-      review_job_timeout_minutes: ${{ steps.review-timeouts.outputs.jobTimeoutMinutes }}
-      review_step_timeout_minutes: ${{ steps.review-timeouts.outputs.stepTimeoutMinutes }}
+      review_job_timeout_minutes: ${{ steps.resolve.outputs.reviewJobTimeoutMinutes || steps.review-timeouts.outputs.jobTimeoutMinutes }}
+      review_step_timeout_minutes: ${{ steps.resolve.outputs.reviewStepTimeoutMinutes || steps.review-timeouts.outputs.stepTimeoutMinutes }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -75,12 +76,6 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
-      - name: Validate bounded reviewer timeouts
-        id: review-timeouts
-        env:
-          REVIEW_JOB_TIMEOUT_MINUTES: ${{ inputs.review-job-timeout-minutes }}
-          REVIEW_STEP_TIMEOUT_MINUTES: ${{ inputs.review-step-timeout-minutes }}
-        run: node .architecture-gatekeeper-runtime/scripts/validate-review-timeouts.mjs >> "$GITHUB_OUTPUT"
       - name: Resolve policy from protected base revision
         id: resolve
         env:
@@ -106,6 +101,13 @@ jobs:
             echo "model=gpt-5.6-sol" >> "$GITHUB_OUTPUT"
             echo "reasoningEffort=medium" >> "$GITHUB_OUTPUT"
           fi
+      - name: Validate bounded reviewer timeouts
+        id: review-timeouts
+        if: steps.resolve.outputs.executionSelection != 'policy'
+        env:
+          REVIEW_JOB_TIMEOUT_MINUTES: ${{ inputs.review-job-timeout-minutes }}
+          REVIEW_STEP_TIMEOUT_MINUTES: ${{ inputs.review-step-timeout-minutes }}
+        run: node .architecture-gatekeeper-runtime/scripts/validate-review-timeouts.mjs >> "$GITHUB_OUTPUT"
       - name: Reject unwired reviewer providers
         env:
           SELECTED_PROVIDER: ${{ steps.resolve.outputs.provider }}
@@ -140,7 +142,7 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
-    # Values are range-checked in the protected policy job before this job starts.
+    # Policy-selected limits take precedence; legacy inputs are separately range-checked.
     timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_job_timeout_minutes) }}
     outputs:
       final_message: ${{ steps.codex.outputs.final-message }}
@@ -282,7 +284,7 @@ jobs:
           safety-strategy: drop-sudo
           output-schema-file: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.schema-path }}
           # PR-owned AGENTS.md files are review evidence, never reviewer instructions.
-          codex-args: '["--ephemeral","-c","project_doc_max_bytes=0","--json"]'
+          codex-args: ${{ needs.policy.outputs.codex_args || '["--ephemeral","-c","project_doc_max_bytes=0","--json"]' }}
       - name: Diagnose architecture reviewer completion
         if: always()
         timeout-minutes: 1

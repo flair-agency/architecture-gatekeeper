@@ -360,6 +360,30 @@ and `final-message` through the trusted runner-provided canonical existing file,
 link and opened-identity checks, including from a checkout working directory. Required output publication failure fails the
 command. CI adoption must separately select a trusted runtime and acceptance policy.
 
+An opted-in Codex policy branch may include an exact `execution` object:
+
+```json
+{
+  "reviewJobTimeoutMinutes": 7,
+  "reviewStepTimeoutMinutes": 5,
+  "codexProfile": "standard"
+}
+```
+
+These example values do not select a consumer profile. When the object is
+present, both reusable workflows use its protected-base values for the ordinary
+review job/step deadlines and Codex arguments. The job limit must strictly
+exceed the step limit, with integer ceilings of 360 and 359 minutes. No limit is
+silently increased. `standard` retains the existing ephemeral/read-only review
+arguments; `flex` additionally selects `service_tier='flex'`. Model and effort
+remain the branch's existing protected selections. Caller timeout inputs and
+the self Flex probe do not override a policy-selected execution object.
+Unsupported, partial or invalid execution objects fail during policy resolution;
+this Codex selection cannot be applied to a Gemini branch. Governance-job
+settings remain separate. This repository has not yet adopted the object, and
+this option does not activate Gemini or prove physical process termination.
+
+For branches without this object, existing compatibility behavior is retained.
 The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)
 and a `review-step-timeout-minutes` input (default 5). This repository's
 protected self-review caller reads the optional Actions repository variable
