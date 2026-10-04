@@ -1,9 +1,11 @@
 # PR author-association discrepancy investigation — 2026-10-04
 
 Scope: [Issue #194](https://github.com/flair-agency/architecture-gatekeeper/issues/194).
-This is supporting evidence for the
-[trusted-actor integration guide](../github-assurance.md#trusted-actor-gating-in-pull_request_target),
-not canonical authority or a consumer trust-policy decision.
+This dated case record supports the
+[caller authorization boundary](../github-assurance.md#caller-authorization-and-host-integration-boundary).
+It is not canonical authority, a maintained GitHub specification reference or a
+consumer authorization recipe. It remains repository investigation material,
+not part of the distributed package.
 
 ## Evidence inspected
 
@@ -68,20 +70,25 @@ success neither invalidates the original event nor authorizes rerunning it.
 Determining GitHub's internal cause would need additional historical evidence
 or a platform explanation; this guide does not depend on inventing one.
 
-## Shared-package outcome and consumer adoption
+## Responsibility boundary and limits of this case
 
-Deliver reusable documentation under the existing consumer-authority and CI
-credential boundaries. Do not add an authorization helper: the required
-principal, permission and source policy are consumer decisions, and this case
-shows no need for a new shared identity responsibility. No runtime, exported
-API, caller, allowlist, token permission or secret-bearing behavior changes;
-the issue's conditional shared-logic regression criterion is not applicable.
-The guide specifies existing event-policy preservation, an optional
-owner-adopted fail-closed comparison, required-lookup failure behavior,
-permissions, credential isolation and consumer verification cases.
+The shared-package outcome is a short explanation of the existing boundary:
+Gatekeeper preserves its review, evidence, credential and acceptance guarantees;
+the consumer owns caller authorization, and GitHub owns its platform semantics.
+No authorization helper is added. The issue's conditional shared-logic
+regression criterion does not apply. No runtime, exported API, caller, allowlist,
+token permission or secret-bearing behavior changes.
 
-Consumer owners still decide whether to adopt any source/principal, permission
-or secret-use change and record it in their complete canonical authority before
-implementation. This investigation resolves no such choice for
-`architecture-decision-authoring` or another consumer. The unknown platform
-cause is an explicit evidence limit, not a claim of a fixed GitHub defect.
+Consumer owners select the relevant principals, identity sources, permissions,
+disagreement/failure rules and permitted secret use in their own canonical
+authority before implementation. This record prescribes neither a primary
+signal nor a REST/event comparison design and resolves no such choice for
+`architecture-decision-authoring` or another consumer. Individual implementation
+advice can be assessed against that consumer's adopted policy and current host
+documentation when needed.
+
+This investigation did not measure prevalence. It establishes this case, not
+that the discrepancy is widespread or rare. The unknown platform cause remains
+an evidence limit, not a claim of a fixed GitHub defect. The observations and
+source review above describe this investigation date; they do not create an
+ongoing Gatekeeper guarantee about GitHub association behavior.

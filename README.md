@@ -112,11 +112,10 @@ policy, prompt, schema, and optional validation policy in the consuming
 repository. See the [integration reference](docs/integration-reference.md) for
 the complete workflow example and protected-base behavior.
 
-For `pull_request_target` callers, use the
-[trusted-actor integration guide](docs/github-assurance.md#trusted-actor-gating-in-pull_request_target)
-to distinguish PR-author association from workflow actors and handle event/API
-disagreement or lookup failures under the consumer's adopted trust policy.
-Gatekeeper supplies guidance; actor authorization remains consumer-owned.
+For host-triggered callers, see the
+[caller authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
+The consumer owns authorization; Gatekeeper preserves its selected review and
+credential boundaries. Consult host documentation for platform-specific signals.
 
 On the protected Authority Set and legacy v1 consumer routes, the reviewer
 receives the exact event base/head revisions, verified merge revision and the
