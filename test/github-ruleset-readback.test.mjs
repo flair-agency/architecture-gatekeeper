@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
-import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync, mkdirSync, chmodSync, symlinkSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { produceRulesetReadback, readLocalRulesetReadback } from '../src/github-ruleset-readback.mjs';
+import { produceRulesetReadback, readLocalRulesetReadback, rulesetStorageDirectory } from '../src/github-ruleset-readback.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const namespace = 'refs/tags/architecture-gatekeeper/amendments';
@@ -49,12 +49,24 @@ test('missing bypass actors, broader permission and failed revocation release no
 test('local snapshot rejects different run, base and stale readback; it is not a cross-run receipt', async t => {
   const root = mkdtempSync(join(tmpdir(), 'ruleset-readback-')); t.after(() => rmSync(root, { recursive: true, force: true }));
   const f = fixture(), snapshot = await produceRulesetReadback({ env, fetchImpl: f.fetchImpl, now: () => 1000 });
-  const file = join(root, 'snapshot.json'); writeFileSync(file, JSON.stringify(snapshot), { mode: 0o600 });
+  const cwd = join(root, 'repo', 'repo'); mkdirSync(cwd, { recursive: true });
+  const runnerTemp = join(root, '_temp'); mkdirSync(runnerTemp);
+  const storageEnv = { ...env, RUNNER_TEMP: realpathSync(runnerTemp) };
+  const directory = rulesetStorageDirectory(storageEnv, cwd); mkdirSync(directory, { mode: 0o700 });
+  const file = join(directory, 'snapshot.json'); writeFileSync(file, JSON.stringify(snapshot), { mode: 0o600 });
   const expected = { baseSha: env.GITHUB_SHA, rulesetId: 24072482, tagNamespace: namespace };
-  assert.deepEqual(readLocalRulesetReadback(file, env, expected, 1001), ruleset);
-  assert.throws(() => readLocalRulesetReadback(file, { ...env, GITHUB_RUN_ID: '101' }, expected, 1001));
-  assert.throws(() => readLocalRulesetReadback(file, env, { ...expected, baseSha: 'b'.repeat(40) }, 1001));
-  assert.throws(() => readLocalRulesetReadback(file, env, expected, 301001));
+  assert.deepEqual(readLocalRulesetReadback(file, storageEnv, expected, 1001, cwd), ruleset);
+  assert.throws(() => readLocalRulesetReadback(file, { ...storageEnv, GITHUB_RUN_ID: '101' }, expected, 1001, cwd));
+  assert.throws(() => readLocalRulesetReadback(file, storageEnv, { ...expected, baseSha: 'b'.repeat(40) }, 1001, cwd));
+  assert.throws(() => readLocalRulesetReadback(file, storageEnv, expected, 301001, cwd));
+  assert.throws(() => rulesetStorageDirectory({ ...storageEnv, RUNNER_TEMP: root }, cwd));
+  const link = join(root, 'linked-temp'); symlinkSync(runnerTemp, link);
+  assert.throws(() => rulesetStorageDirectory({ ...storageEnv, RUNNER_TEMP: link }, cwd));
+  assert.throws(() => readLocalRulesetReadback(join(root, 'outsider.json'), storageEnv, expected, 1001, cwd));
+  chmodSync(directory, 0o755); assert.throws(() => readLocalRulesetReadback(file, storageEnv, expected, 1001, cwd));
+  chmodSync(directory, 0o700); rmSync(file); const outside = join(root, 'outside.json');
+  writeFileSync(outside, JSON.stringify(snapshot), { mode: 0o600 }); symlinkSync(outside, file);
+  assert.throws(() => readLocalRulesetReadback(file, storageEnv, expected, 1001, cwd));
 });
 test('workflow App key exists only in isolated readback step; ordinary handoff retains GITHUB_TOKEN', () => {
   for (const name of ['block', 'owner-decision']) {

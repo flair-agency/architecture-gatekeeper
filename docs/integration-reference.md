@@ -808,7 +808,12 @@ verified merely by this document or workflow declaration.
 
 The App key exists only in the isolated readback step. It releases a private,
 nonsecret local snapshot only after complete restriction validation and successful
-revocation. Subsequent same-job handoff processing requires the exact repository,
+revocation. Storage is the fixed private snapshot below the hosted runner `_temp`
+directory derived from the actual checkout, rather than an arbitrary environment
+path. The launcher requires a matching real nonsymlink RUNNER_TEMP; the consumer
+requires a regular nonsymlink 0600 file in its nonsymlink 0700 directory. Outside
+paths and unsafe storage reject before use. Subsequent same-job handoff processing
+requires the exact repository,
 protected workflow/revision, run/attempt, ruleset and namespace and a readback no
 older than five minutes. It validates explicit empty bypass actors again; an
 omitted field never means empty. A snapshot is a trusted local launcher input,

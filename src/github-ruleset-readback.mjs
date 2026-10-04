@@ -1,5 +1,6 @@
 import { createSign } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync, lstatSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const namespace = 'refs/tags/architecture-gatekeeper/amendments';
@@ -70,10 +71,26 @@ export async function produceRulesetReadback({ env, fetchImpl = fetch, now = () 
   return { version: 1, kind: 'protected-main-local-ruleset-readback', context, observedAt: now(), ruleset };
 }
 
+/** Fixed hosted-runner storage anchored to the actual checkout, not an env path. */
+export function rulesetStorageDirectory(env, cwd = process.cwd()) {
+  const workspace = realpathSync(cwd);
+  const expectedTemp = join(dirname(dirname(workspace)), '_temp');
+  if (typeof env.RUNNER_TEMP !== 'string' || /[\u0000-\u001f\u007f]/.test(env.RUNNER_TEMP) ||
+      resolve(env.RUNNER_TEMP) !== expectedTemp) fail('runner storage does not match the actual hosted checkout.');
+  const info = lstatSync(expectedTemp);
+  if (!info.isDirectory() || info.isSymbolicLink() || realpathSync(expectedTemp) !== expectedTemp) fail('runner storage does not match the actual hosted checkout.');
+  return join(expectedTemp, 'owner-amendment-ruleset-readback');
+}
+
 /** Same-job protected launcher input, not a portable authenticated receipt. */
-export function readLocalRulesetReadback(file, env, { baseSha, rulesetId, tagNamespace }, now = Date.now()) {
+export function readLocalRulesetReadback(file, env, { baseSha, rulesetId, tagNamespace }, now = Date.now(), cwd = process.cwd()) {
   const context = rulesetReadbackContext(env);
-  const bytes = readFileSync(file);
+  const directory = rulesetStorageDirectory(env, cwd), expectedFile = join(directory, 'snapshot.json');
+  const info = lstatSync(directory), fileInfo = lstatSync(expectedFile);
+  if (!info.isDirectory() || info.isSymbolicLink() || (info.mode & 0o777) !== 0o700 ||
+      !fileInfo.isFile() || fileInfo.isSymbolicLink() || (fileInfo.mode & 0o777) !== 0o600 ||
+      typeof file !== 'string' || resolve(file) !== expectedFile) fail('local readback must be the fixed private regular snapshot.');
+  const bytes = readFileSync(expectedFile);
   if (bytes.length > 65_536) fail('local readback is oversized.');
   const snapshot = JSON.parse(bytes.toString('utf8'));
   if (snapshot.version !== 1 || snapshot.kind !== 'protected-main-local-ruleset-readback' ||
