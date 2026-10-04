@@ -145,9 +145,11 @@ Gemini with Codex absent and OpenAI credentials unset. Preserve fail-closed
 acceptance and independently verify any required host protection.
 
 Still open: adopting consumer and branch; exact
-Google identity bindings, project/region, model/thinking settings, quotas and
-billing limits, credential lifetime/renewal, supported file classes, complete
+Google identity bindings, project/region, quotas and billing limits, credential
+lifetime/renewal, supported file classes, complete
 prompt limits, retention/cleanup and route-specific governance evidence.
+The adopted model/thinking profile requires implementation and verification,
+not another selection.
 Standby/fallback or parallel result adoption stays with #259. Vertex AI with
 WIF remains the selected authentication direction. #252 remains open until
 its CI adoption criteria are met; this work adds no release gate.
