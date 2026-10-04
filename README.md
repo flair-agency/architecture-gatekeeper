@@ -188,7 +188,10 @@ feedback, without protected-authority assurance. Revision-bound requests must
 pass shared preflight and record `provider: "gemini"`; Codex selections are rejected.
 The shared request constructor supports committed Gemini settings for the
 asynchronous local route. The reusable CI workflows still select Codex;
-protected Gemini CI integration and adoption remain tracked in #252.
+protected Gemini CI integration and adoption remain tracked in #252. Policy v6
+can encode an explicit ordinary-review provider and its distinct settings, but
+the workflows reject an unwired Gemini selection before reviewer execution.
+It is not an activated Gemini CI route.
 Decision files default to a private temporary directory outside the checkout.
 Explicit output paths must be new files outside the reviewed repository, within
 `RUNNER_TEMP` or a recognized OS temporary root. Symlink escapes are rejected. If

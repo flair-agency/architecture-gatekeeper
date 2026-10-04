@@ -87,3 +87,97 @@ test('owner amendment selection is limited to v2 enforced branches with a select
     ...policy().branches.main, mode: 'procedural', ownerAmendment: amendment,
   } } }, 'main'));
 });
+
+test('v6 selects the owner-adopted Gemini profile and carries the base-selected provider settings', () => {
+  const branch = {
+    mode: 'enforced', provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: limits,
+  };
+  const resolved = resolveCiPolicy({ version: 6, default: { mode: 'local-only' }, branches: { main: branch } }, 'main');
+  assert.deepEqual(resolved, {
+    baseBranch: 'main', mode: 'enforced', policyVersion: 6,
+    provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json',
+    authorityLimitsBase64: Buffer.from(JSON.stringify(limits)).toString('base64'),
+  });
+  assert.equal(Object.hasOwn(resolved, 'authorityProfile'), false);
+  assert.deepEqual(resolveCiPolicy({ version: 6, default: { mode: 'local-only' }, branches: { main: branch } }, 'preview'), {
+    baseBranch: 'preview', mode: 'local-only', policyVersion: 6,
+  });
+});
+
+test('v6 supports explicit Codex provider settings without adding a default or Gemini field', () => {
+  const branch = {
+    mode: 'enforced', provider: 'codex', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: limits,
+  };
+  const selected = resolveCiPolicy({ version: 6, default: { mode: 'local-only' }, branches: { main: branch } }, 'main');
+  assert.equal(selected.provider, 'codex');
+  assert.equal(selected.reasoningEffort, 'medium');
+  assert.equal(Object.hasOwn(selected, 'thinkingLevel'), false);
+  assert.equal(Object.hasOwn(selected, 'ownerAdditionVersion'), false);
+  assert.equal(Object.hasOwn(selected, 'ownerAmendmentVersion'), false);
+  assert.equal(Object.hasOwn(selected, 'adoptionEvidenceProducer'), false);
+});
+
+test('v6 rejects Gemini model families under Codex for default and named branches', () => {
+  const branch = {
+    mode: 'enforced', provider: 'codex', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: limits,
+  };
+  for (const model of ['gemini', 'gemini-2.5-pro', 'gemini-3.8-pro', 'gemini-3.8-flash', 'Gemini-future']) {
+    const selection = { ...branch, model };
+    assert.throws(() => resolveCiPolicy({ version: 6, default: selection, branches: {} }, 'main'), /Invalid Codex model/);
+    assert.throws(() => resolveCiPolicy({ version: 6, default: { mode: 'local-only' }, branches: { main: selection } }, 'main'), /Invalid Codex model/);
+  }
+});
+
+test('v6 rejects mixed, incomplete, unknown, and governance route settings', () => {
+  const gemini = {
+    mode: 'enforced', provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: limits,
+  };
+  const codex = {
+    mode: 'enforced', provider: 'codex', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: limits,
+  };
+  const rejected = [
+    { ...gemini, reasoningEffort: 'medium' },
+    { ...gemini, thinkingLevel: 'LOW' },
+    { ...gemini, model: 'gemini-3.8-pro' },
+    { ...gemini, model: undefined },
+    { ...gemini, provider: 'gemini-cli' },
+    { ...codex, thinkingLevel: 'MEDIUM' },
+    { ...codex, reasoningEffort: undefined },
+    { ...codex, provider: 'unknown' },
+    { ...codex, model: 'gemini-3.8-flash' },
+    { ...codex, authorityLimits: undefined },
+    { ...codex, authorityManifestPath: undefined },
+    { ...codex, ownerAddition: { grade: 'G0' } },
+    { ...codex, ownerAmendment: { grade: 'G0' } },
+    { ...codex, adoptionEvidence: { producer: 'github-actions' } },
+    { ...codex, authorityLimits: { ...limits, maxMembers: 33 } },
+    { ...codex, authorityManifestPath: '../authorities.json' },
+    { ...codex, mode: 'procedural' },
+  ];
+  for (const branch of rejected) {
+    assert.throws(() => resolveCiPolicy({ version: 6, default: { mode: 'local-only' }, branches: { main: branch } }, 'main'));
+  }
+  for (const defaultPolicy of [
+    { mode: 'local-only', provider: 'gemini' },
+    { mode: 'local-only', model: 'gemini-3.8-flash' },
+    { mode: 'local-only', thinkingLevel: 'MEDIUM' },
+  ]) assert.throws(() => resolveCiPolicy({ version: 6, default: defaultPolicy, branches: {} }, 'main'));
+});
+
+test('adding v6 leaves existing v2 policy output byte-for-byte in its legacy shape', () => {
+  const legacy = policy();
+  const selected = resolveCiPolicy(legacy, 'main');
+  assert.deepEqual(selected, {
+    baseBranch: 'main', mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json',
+    authorityLimitsBase64: Buffer.from(JSON.stringify(limits)).toString('base64'),
+  });
+  assert.equal(Object.hasOwn(selected, 'provider'), false);
+  assert.equal(Object.hasOwn(selected, 'policyVersion'), false);
+});

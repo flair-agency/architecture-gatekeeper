@@ -106,6 +106,14 @@ jobs:
             echo "model=gpt-5.6-sol" >> "$GITHUB_OUTPUT"
             echo "reasoningEffort=medium" >> "$GITHUB_OUTPUT"
           fi
+      - name: Reject unwired reviewer providers
+        env:
+          SELECTED_PROVIDER: ${{ steps.resolve.outputs.provider }}
+        run: |
+          if test -n "$SELECTED_PROVIDER" && test "$SELECTED_PROVIDER" != codex; then
+            echo 'Selected reviewer provider is not wired into this workflow; review is incomplete.' >&2
+            exit 1
+          fi
       - name: Reject self-only OWNER_AMENDMENT policy on the consumer workflow
         env:
           OWNER_AMENDMENT_GRADE: ${{ steps.resolve.outputs.ownerAmendmentGrade }}
