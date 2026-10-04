@@ -111,7 +111,65 @@ cannot authorize its own weaker route. Review credentials remain isolated from
 untrusted or unverified executable code, and model/API/billing failure remains
 fail closed when CI model review is required.
 
-#### Target Fork PR review authorization (Issue #331 owner direction, 2026-10-04)
+#### Self-repository original Fork denial (Issue #350 owner decision, 2026-10-04)
+
+This decision applies only to Architecture Gatekeeper's self-repository. The
+repository accepts original Fork pull requests for contribution and review. It
+records the required responsibility but does not establish that the runtime
+implements or verifies it, and it changes no host settings. A workflow
+triggered by an original Fork pull request must not invoke privileged
+Architecture Gatekeeper execution, model review, provider/source-credential
+access, OIDC token issuance, privileged write capabilities (including
+attestation publication), or paid review dispatch, even when the triggering
+actor or a commenter is a trusted maintainer. Maintainer approval, a previously
+issued exact-HEAD grant, or Environment approval does not permit those
+operations. This decision selects no App, broker, Environment grant, or
+alternate authorization mechanism.
+
+This restriction applies to privileged and paid review paths. It does not
+prohibit credential-free CI or a credential-free diagnostic/check that reports
+that the Fork change is unreviewed. Candidate code remains untrusted. No
+unreviewed Fork may receive a semantic `PASS`, or satisfy a protected policy
+that requires a completed semantic review through a skipped or neutral-success
+check. When protected policy requires CI model review, the accept result is
+incomplete/fails closed if no completed valid review exists. The existing
+explicit `local-only` waiver retains its stated meaning; it is not a semantic
+result for the Fork change.
+
+Determine the base/head repository relationship from trusted host metadata
+bound to the exact repository and pull request, using the immutable numeric
+repository IDs. When the valid base and head repository IDs differ, classify
+the pull request as an original Fork (cross-repository) and deny the privileged
+path, regardless of actor. Do not substitute author association, usernames,
+repository-name strings, branch names, or candidate claims. Missing, null,
+malformed, inconsistent, or unavailable IDs produce an unknown/incomplete
+classification and never enable a privileged path. The Fork restriction cannot
+be disabled by pull-request content or event claims.
+
+A maintainer may inspect a Fork contribution and manually select or modify
+needed changes on a same-repository branch, then open a new ordinary
+same-repository pull request. The new pull request receives a separate review
+under its own exact base/head and the existing protected-base policy. This
+promotion is an admission choice for review, not evidence that candidate code
+is safe or trusted. No result, approval, or acceptance transfers to the
+original Fork pull request. A human-facing link to the source Fork pull
+request and a brief description of the selected changes are useful context;
+this decision requires no new promotion record format, storage, or retention
+rule.
+
+The detailed Issue #331 exact-HEAD authorization and Issue #345 Environment/
+grant designs below remain deferred, inactive targets. Their recorded choices
+and historical review results remain intact; they do not authorize
+implementation or operation under this self-only policy. A consumer's separate
+architecture and protected policy remain consumer-owned and are not changed by
+this self-repository decision.
+
+#### Deferred target Fork PR review authorization (Issue #331 owner direction, 2026-10-04; inactive)
+
+This detailed design remains a future, inactive target. It does not authorize
+privileged or paid execution for original Fork PRs in the self-repository under
+the current policy above. Other consumers require their own protected policy
+selection.
 
 For an explicitly selected public-repository profile, the original Fork PR
 remains directed at `main`; a maintainer's authorization permits a
@@ -147,7 +205,12 @@ consumer configuration, host proof, implementation, support and activation
 remain pending. This profile adds no API-key onboarding or WIF activation and
 does not change Issues #218, #219, or #20.
 
-#### Owner-selected initial public-Fork Environment profile target (Issue #331, 2026-10-04)
+#### Deferred owner-selected initial public-Fork Environment profile target (Issue #331, 2026-10-04; inactive)
+
+The detailed design and previously selected funding/lifecycle bounds below are
+retained as historical target detail. They are deferred for the self-repository
+by the current policy above and grant no current authorization to run this
+profile.
 
 The owner selects the initial funding and lifecycle bounds for a public-Fork
 profile: one ordinary semantic review execution per grant, restricted to run
