@@ -25,7 +25,39 @@ function requireOnlyKeys(value, allowed, label) {
   }
 }
 
+function validateV6Branch(branch, label) {
+  if (!isRecord(branch) || !MODES.has(branch.mode)) throw new Error(`Invalid ${label} mode`);
+  if (branch.mode === 'local-only') {
+    requireOnlyKeys(branch, new Set(['mode']), label);
+    return;
+  }
+  if (branch.mode !== 'enforced') throw new Error(`${label} v6 supports only enforced or local-only mode`);
+  if (branch.provider !== 'codex' && branch.provider !== 'gemini') throw new Error(`${label} v6 requires provider codex or gemini`);
+
+  const common = ['mode', 'provider', 'model', 'authorityManifestPath', 'authorityLimits'];
+  const providerSetting = branch.provider === 'codex' ? 'reasoningEffort' : 'thinkingLevel';
+  const allowed = new Set([...common, providerSetting]);
+  requireOnlyKeys(branch, allowed, label);
+  if (Object.keys(branch).length !== allowed.size) throw new Error(`${label} v6 requires its complete provider and Authority Set selection`);
+  if (typeof branch.model !== 'string' || !/^[A-Za-z0-9._-]+$/.test(branch.model)) {
+    throw new Error(`Enforced ${label} requires a valid model`);
+  }
+  if (branch.provider === 'codex') {
+    if (branch.model === 'gemini-3.8-flash' || !EFFORTS.has(branch.reasoningEffort)) {
+      throw new Error(`Invalid Codex model or reasoning effort for ${label}`);
+    }
+  } else if (branch.model !== 'gemini-3.8-flash' || branch.thinkingLevel !== 'MEDIUM') {
+    throw new Error(`Invalid Gemini model or thinking level for ${label}`);
+  }
+  if (typeof branch.authorityManifestPath !== 'string' || branch.authorityManifestPath.length > 240 ||
+      !AUTHORITY_PATH.test(branch.authorityManifestPath) || branch.authorityManifestPath.split('/').some(part => part === '.' || part === '..')) {
+    throw new Error(`Invalid Authority Set manifest path for ${label}`);
+  }
+  validateAuthorityLimits(branch.authorityLimits);
+}
+
 function validateBranch(branch, label, version) {
+  if (version === 6) return validateV6Branch(branch, label);
   const allowed = version === 1 ? ['mode', 'model', 'reasoningEffort', 'authorityFiles', 'promptPath', 'schemaPath', 'validationPath'] :
     ['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'ownerAddition', ...(version === 2 ? ['ownerAmendment'] : []), ...(version === 5 ? ['adoptionEvidence'] : [])];
   requireOnlyKeys(branch, new Set(allowed), label);
@@ -129,7 +161,7 @@ function validateBranch(branch, label, version) {
 }
 
 export function resolveCiPolicy(policy, baseBranch) {
-  if (!isRecord(policy) || ![1, 2, 4, 5].includes(policy.version)) throw new Error('Unsupported Architecture Gate CI policy version');
+  if (!isRecord(policy) || ![1, 2, 4, 5, 6].includes(policy.version)) throw new Error('Unsupported Architecture Gate CI policy version');
   requireOnlyKeys(policy, new Set(['version', 'default', 'branches']), 'CI policy');
   if (!baseBranch || typeof baseBranch !== 'string') throw new Error('A base branch is required');
   if (!isRecord(policy.default)) throw new Error('CI policy requires default');
@@ -141,6 +173,19 @@ export function resolveCiPolicy(policy, baseBranch) {
     validateBranch(branch, `CI policy branch ${branchName}`, policy.version);
   }
   const selected = Object.hasOwn(policy.branches, baseBranch) ? policy.branches[baseBranch] : policy.default;
+  if (policy.version === 6) {
+    if (selected.mode === 'local-only') return { baseBranch, mode: 'local-only', policyVersion: 6 };
+    return {
+      baseBranch,
+      mode: 'enforced',
+      policyVersion: 6,
+      provider: selected.provider,
+      model: selected.model,
+      ...(selected.provider === 'codex' ? { reasoningEffort: selected.reasoningEffort } : { thinkingLevel: selected.thinkingLevel }),
+      authorityManifestPath: selected.authorityManifestPath,
+      authorityLimitsBase64: Buffer.from(JSON.stringify(validateAuthorityLimits(selected.authorityLimits))).toString('base64'),
+    };
+  }
   const result = selected.mode === 'local-only'
     ? { baseBranch, mode: 'local-only', model: '', reasoningEffort: '' }
     : { baseBranch, mode: selected.mode, model: selected.model, reasoningEffort: selected.reasoningEffort };

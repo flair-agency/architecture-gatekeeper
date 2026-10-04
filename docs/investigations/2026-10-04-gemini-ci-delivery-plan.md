@@ -386,3 +386,29 @@ Protected provenance, exact revisions, complete context and route-specific
 receipt or evidence requirements remain orchestration responsibilities.
 Validation remains separate from acceptance: BLOCK and OWNER_DECISION are not
 rewritten or discarded. No workflow or acceptance route is activated.
+
+## Protected provider selection staging
+
+The next CI policy encoding uses an explicit new version rather than changing
+accepted input keys or resolved outputs for policy versions 1, 2, 4 and 5.
+The first new version covers ordinary enforced review and local-only branches.
+Codex reasoning effort and Gemini thinking level remain distinct settings;
+Gemini selects the adopted exact model/level, never a translated Codex effort.
+Ordinary review retains the existing `v1` Authority Set preparation profile,
+which supports multiple required members. The historical `owner-addition-v2`
+profile additionally requires an affected authority ID/path and must not be
+selected merely to request a multi-member ordinary review.
+
+Owner-addition, owner-amendment and procedural adoption are not silently routed
+to another provider under this staged profile. Unsupported selections fail
+policy validation until their invocations and producer evidence bind the
+provider-specific execution settings. Existing policy versions and their
+already-supported governance paths remain available. Adding this encoding is
+not a consumer adoption decision, workflow dispatch, authenticated Vertex
+verification, or authorization to rely on a new acceptance route.
+
+Until the Gemini workflow dispatcher is integrated and verified, the consumer
+workflow explicitly rejects a resolved non-Codex provider before review.
+Recognizing a policy encoding must never send a Gemini model selection through
+the existing Codex action. A parsed v6 policy is therefore not yet an executable
+Gemini CI route.
