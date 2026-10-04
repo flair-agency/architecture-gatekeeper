@@ -296,7 +296,10 @@ OWNER_ADDITION, OWNER_AMENDMENT, G0 or enforced acceptance evidence. No failure
 selects it automatically. Existing profiles retain every assurance requirement.
 
 Consumer governance must authorize use and record the preview selection before
-the change it governs. Resolve its exact recorded predecessor policy, complete
+the change it governs. Prior selection and every route receipt bind the same
+exact repository and target ref (`repository`/`targetBranch`) under predecessor
+governance. A shared base does not permit cross-target or cross-repository replay.
+Resolve its exact recorded predecessor policy, complete
 selected authority, prompt, schema, required validators and reviewer settings;
 candidate content cannot replace them. Missing members, invalid selectors,
 exceeded limits or unavailable required review leave the step incomplete.
@@ -343,7 +346,11 @@ runtime/model/settings, decision, computed byte digests and completion time. Int
 producer identity, execution origin, owner authentication, custody, policy
 protection or host enforcement are UNVERIFIED. Reports state each assurance
 separately; local byte consistency supplies no authentication claim. Missing,
-changed, stale or mismatched evidence stops the step rather than weakening it.
+changed or mismatched evidence stops the step rather than weakening it. Evidence
+freshness here means its bound input state still matches the required lifecycle
+boundary; this profile supplies no default age expiry or authenticated timestamp.
+Any consumer-selected required age validator remains mandatory: unavailable
+validation leaves the step incomplete rather than silently ignoring it.
 
 The owner may integrate eligible B through the explicitly selected ordinary
 procedure. For normal merge, verify recorded base as first parent, exact B as
