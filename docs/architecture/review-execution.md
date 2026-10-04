@@ -164,8 +164,8 @@ proxy boundary above. Authentication failure leaves the selected review
 incomplete; it does not enable API-key authentication or another provider.
 
 This selects the authentication direction, not a deployed consumer profile.
-Exact Google identity bindings, project, region, model, thinking settings,
-credential lifetime/renewal and operational limits still require explicit
+Exact Google identity bindings, project, region, credential lifetime/renewal
+and operational limits still require explicit
 selection and verification before activation. Codex remains supported; standby
 or parallel result adoption is separate work. This decision does not activate
 Gemini CI, establish semantic quality, or change acceptance and release gates.
@@ -181,8 +181,11 @@ The launcher/proxy retains Vertex WIF credentials under the boundary above.
 CLI exit zero alone is insufficient: schema/authority validation is mandatory;
 timeout, cancellation, authentication or invalid output leaves review incomplete.
 This claims no candidate-code execution, Codex equivalence or host isolation,
-and activates no acceptance route. Provider settings and authenticated evidence
-remain prerequisites.
+and activates no acceptance route. Owner adopts `gemini-3.8-flash` with
+`thinkingLevel: MEDIUM` as the initial CI profile, without `thinkingBudget`.
+Before activation, explicitly select and verify the remaining deployment settings
+and obtain authenticated route evidence for quality, cost, latency and decision
+consistency; determinism is not promised.
 
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
