@@ -305,6 +305,13 @@ Resolve its exact recorded predecessor policy, complete
 selected authority, prompt, schema, required validators and reviewer settings;
 candidate content cannot replace them. Missing members, invalid selectors,
 exceeded limits or unavailable required review leave the step incomplete.
+The predecessor-authorized route selects the eligible authority scope for each
+addition or amendment; B and its records cannot expand or replace that scope.
+Every completed ordinary or eligibility result identifies exactly the complete
+predecessor-selected members using the route's existing authority ID/path
+schema. Missing, duplicate or extra members invalidate the result. The receipt
+binds that same complete selected-set identity. These completeness checks do
+not change the predecessor's authority selector or its ID/path schema.
 
 Record originally reviewed A and its exact completed semantic result. Addition
 requires a completed ordinary OWNER_DECISION identifying the missing decision;
@@ -313,12 +320,20 @@ ownerDecisionId. PASS or BLOCK cannot trigger addition. Addition B adds only
 that identified missing decision: no existing-rule edits, contradictions or
 unrelated unresolved choices. Amendment requires the selected completed BLOCK
 or OWNER_DECISION trigger and separately supplied record binding its target
-existing decision. Authority-only B is reviewed against the complete
-predecessor authority and exact proposed bytes/diff. Semantic eligibility must
-check trigger resolution, eligible scope, absence of all implementation,
-workflow or executable-policy changes, coherent resulting authority and no
-unsupported completion claims. Report B eligibility as a dedicated ELIGIBLE or
-INELIGIBLE result, never semantic PASS or acceptance of originally reviewed A.
+existing decision. For both addition and amendment, semantic eligibility
+verifies the predecessor-selected scope, excludes all implementation, workflow
+and executable-policy changes and unsupported completion claims, and checks
+that the complete resulting authority is coherent. Authority-only B is reviewed
+against the complete predecessor authority and exact proposed bytes/diff.
+For amendment, eligibility additionally verifies that the AmendmentRecord's
+target is the existing decision changed by B, that B materially resolves the
+exact bound trigger, and that B changes only that target decision. It excludes
+unrelated authority changes, implementation,
+workflow and executable-policy changes, and unsupported completion claims. It
+assesses the resulting rules without requiring agreement with the superseded
+target and preserves unrelated decisions. The resulting authority must be
+coherent. Report B eligibility as a dedicated ELIGIBLE or INELIGIBLE result,
+never semantic PASS or acceptance of originally reviewed A.
 The ordinary review and compatible migration retain their predecessor semantic
 decision schema and meaning. A migration is distinct from authority-only B.
 
@@ -338,6 +353,11 @@ selected manifest. The final record binds the exact target ref, integration
 and observed target commits, and reports only observed procedure completion and
 the Git facts checked. Candidate configuration
 cannot authorize itself; this adds no authentication or enforcement assurance.
+M remains within the control-plane scope authorized by predecessor governance
+and preserves canonical architecture decisions. If M requires a new or changed
+architecture decision, that decision must first become canonical through a
+separately authorized addition or amendment; M cannot self-select, introduce or
+bundle that decision into its migration.
 
 Migration uses one exact candidate M (`headSha`), not a separate authority-only
 B. Its ordinary PASS, pre-integration receipt, integration second parent and
