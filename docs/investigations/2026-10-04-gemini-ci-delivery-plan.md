@@ -268,3 +268,20 @@ fixed prefix explains only decoding, supplies no replacement review policy, and
 also avoids leading slash-command dispatch. The same pinned offline probe with
 encoded input observed no fixture expansion. This proves client-side preprocessing
 control and encoding reversibility, not model compliance or semantic quality.
+
+## Internal controlled-workspace session
+
+The next internal composition owns only materialization, CLI execution, envelope
+extraction and workspace cleanup. The trusted caller supplies a protected prompt
+that directs the CLI to the fixed `manifest.json` and selected evidence, explicit
+workspace/process limits, selected scope/settings and an already provisioned CLI.
+It retains ownership of exact revision/policy binding, context completeness,
+proxy/WIF lifecycle and deterministic CI decision validation. Candidate paths
+remain manifest data rather than operational configuration names.
+
+The session returns response text, not a validated decision or acceptance result.
+In particular, `validateGeminiCliResponse` delegates to the local committed-config
+review contract and must not substitute for protected CI prompt/schema, authority
+and consumer-rule validation. CI integration must use the same protected checks
+as Codex. No public launcher, policy selector or workflow invokes this internal
+session yet. Actual WIF and enabled governance runs remain required for adoption.
