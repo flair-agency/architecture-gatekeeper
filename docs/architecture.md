@@ -331,10 +331,12 @@ binding rules. Before integration, the compatible migration's versioned
 receipt binds the exact predecessor inputs, candidate policy/configuration and
 complete successor Authority Set identity and bytes. The selected ordinary
 integration verifies the same exact parent and resulting-tree bindings described
-below; subsequent target readback checks policy/configuration and the complete
-successor Set, including an unchanged selected manifest. The final record binds
-the exact target ref, integration and observed target commits and reports only
-observed procedure completion and the Git facts checked. Candidate configuration
+below; subsequent target readback verifies that the observed target commit
+contains the exact integration commit in its ancestry and checks
+policy/configuration and the complete successor Set, including an unchanged
+selected manifest. The final record binds the exact target ref, integration
+and observed target commits, and reports only observed procedure completion and
+the Git facts checked. Candidate configuration
 cannot authorize itself; this adds no authentication or enforcement assurance.
 
 Migration uses one exact candidate M (`headSha`), not a separate authority-only
@@ -365,7 +367,11 @@ The receipt does not contain the later integration or final-record identities,
 so this commitment introduces no circular binding. Finalization and every
 fresh review validate the complete receipt, the single well-formed trailer and
 its recomputed digest, the required ordered parents and resulting tree, and the
-exact target readback. Missing, malformed, duplicate or mismatched trailers or
+exact target readback. For addition, amendment and migration alike, readback
+verifies that the exact observed target commit contains the exact integration
+commit in its ancestry and matches the route's resulting authority state; a
+B-only byte comparison cannot substitute for that ancestry check. Missing,
+malformed, duplicate or mismatched trailers or
 receipts leave the procedure incomplete even when placement was observed. This
 shows only that the integration Git object commits to the receipt digest; it
 does not authenticate reviewer execution, the receipt's completion time, owner
