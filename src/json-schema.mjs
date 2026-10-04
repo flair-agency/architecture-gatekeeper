@@ -85,7 +85,13 @@ function validateNodeUncached(value, schema, root, path, context, depth) {
 export function validateJsonSchema(value, schema, options = {}) {
   const maxOperations = options.maxOperations ?? DEFAULT_MAX_OPERATIONS; const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH;
   if (!Number.isInteger(maxOperations) || maxOperations < 1 || !Number.isInteger(maxDepth) || maxDepth < 1) fail('validation budgets must be positive integers.');
-  validateDefinition(schema, schema, '$');
+  validateJsonSchemaDefinition(schema);
   const context = { maxOperations, maxDepth, operations: 0, memo: new Map(), schemaIds: new WeakMap(), instanceIds: new WeakMap(), lastSchemaId: 0, lastInstanceId: 0 };
   validateNode(value, schema, schema, '$', context, 0); return value;
+}
+
+/** Validate the supported schema dialect without requiring an instance value. */
+export function validateJsonSchemaDefinition(schema) {
+  validateDefinition(schema, schema, '$');
+  return schema;
 }
