@@ -778,3 +778,186 @@ The Gemini loopback proxy rejects complete serialized request bodies exceeding
 16 MiB, including chunked uploads, before upstream dispatch. This implementation
 limit accommodates JSON expansion beyond prompt bytes; it does not truncate inputs
 or replace configured prompt limits. It is not a whole-process memory guarantee.
+
+
+## Unverified consumer lifecycle preview
+
+The explicit `preview-unverified-procedure-v1` profile supports actual owner-controlled
+addition, completed-BLOCK amendment, and initial repaired-v1 control-plane migration.
+It observes adoption and verifies local Git placement; execution origin, owner
+identity, custody, policy protection and host enforcement remain `UNVERIFIED`.
+It never supplies trusted G0 or enforced acceptance evidence. Continue satisfying
+any separately required CI/host checks. The consumer owner must authorize this
+profile under prior governance; it grants no publication or disclosure permission.
+
+This first version supports same-repository authority and normal two-parent merge
+only. External members, squash/rebase, new authority files, removal of files,
+OWNER_DECISION-triggered amendments and arbitrary policy bridges are unsupported.
+A missing source, rejected semantic result or unsupported tuple stops; no route
+or provider fallback occurs. Preview receipts are locally consistent records,
+not authentication of their author or signing of old historical logs.
+
+### Recorded selection and predecessor migration
+
+Commit the following selection at `.codex/gatekeeper/preview-lifecycle.json` under
+the consumer's governance before its authority B. Paths below are examples;
+select the actual committed prompt/schema/validators, full authority and caller.
+The governance path and every eligible authority path must belong to the complete
+previous CI Authority Set. `authorization` records the owner direction as an
+unverified declaration, not principal authorization.
+
+```json
+{
+  "version": 1,
+  "profile": "preview-unverified-procedure-v1",
+  "repository": "example/consumer",
+  "targetBranch": "main",
+  "governancePath": "docs/governance.md",
+  "authorization": "Owner explicitly selects this unverified preview procedure",
+  "policyPath": ".codex/gatekeeper/ci-policy.json",
+  "promptPath": ".codex/gatekeeper/ci-prompt.md",
+  "schemaPath": ".codex/gatekeeper/decision.schema.json",
+  "validationPath": null,
+  "callerPath": ".github/workflows/architecture-gate.yml",
+  "authorityPaths": ["docs/architecture.md"],
+  "migrationPaths": [".codex/gatekeeper/ci-policy.json"],
+  "maxPromptBytes": 524288
+}
+```
+
+An initial `mode=migration` spec needs no already adopted preview selection. It
+reviews the proposed selection, policy and caller with the **old enforced-v1**
+policy, old prompt/schema/validation and every old authority file. Only the
+selection path, existing CI policy and existing caller may change; no canonical
+authority can change in that step. Candidate selection is syntax-checked proposal
+data, never its own review authority. Ordinary predecessor `PASS` is required;
+owner governance and separately required acceptance still apply. Integrate and
+read back that control-plane step before a separate authority B resolves the newly
+adopted selection. The successor Set must retain exactly the predecessor repository/path members;
+new, omitted, duplicate or external members are rejected. Requests retain the
+exact candidate successor manifest bytes/digest and every resulting member
+descriptor/byte snapshot, even when those files predate the configuration change;
+final readback checks them as well as the old inputs and changed paths. Manifest stable IDs
+are explicit unique assignments for those same members, not additional authority.
+This initial bridge permits only v1 or v2 ordinary review configuration, preserving
+model/effort, prompt/schema/validator selection and legacy effective bounds
+(65,536 bytes/file, 262,144 total, 524,288 complete prompt). Explicit manifest/member
+bounds remain required and runtime ceilings apply. It rejects trusted addition,
+amendment or adoption-evidence activation and cannot drop an existing trusted
+selection. Bound increases or other policy versions require a separate supported
+migration; this tuple supplies no inferred bridge.
+
+### Commands and actual model responses
+
+Run from the consumer Git repository. Request/receipt/record files belong outside
+B (for example, a private temporary directory). Commands create output exclusively
+with mode 0600 and refuse overwriting it. They read committed objects; dirty files
+cannot replace selected inputs. The repository label and local object store are
+not authenticated. CLI/API reads no token, provisions no credential and writes
+no Git refs or hosting settings.
+
+A spec has exactly these fields. Use full immutable 40-character Git SHAs:
+
+```json
+{
+  "version": 1,
+  "repository": "example/consumer",
+  "targetBranch": "main",
+  "baseSha": "<recorded predecessor SHA>",
+  "headSha": "<exact proposed A, B or configuration SHA>",
+  "mode": "review",
+  "selectionPath": ".codex/gatekeeper/preview-lifecycle.json",
+  "trigger": null,
+  "record": null
+}
+```
+
+```sh
+architecture-preview-lifecycle prepare spec.json request.json
+architecture-preview-lifecycle complete request.json decision.json receipt.json
+```
+
+Supply `request.json`'s `prompt` and `schema` to a separate review-only reviewer,
+applying its `reviewer.model` and `reviewer.reasoningEffort`. Return the actual JSON
+response in `decision.json`. Preparation/completion are usable with a native host
+or explicitly chosen model transport; this CLI does not silently launch another
+provider or fabricate a response. Completion deterministically validates the
+predecessor schema, complete authority IDs/paths and every committed validator.
+Transport execution and model application remain unverified in this profile.
+Every response wraps the unchanged predecessor decision as `semanticDecision`,
+with `checks.predecessorAuthorized=true` only when prior governance permits the
+explicit selected preview procedure/stage. The declaration is unverified evidence,
+not permission by itself. Missing/false authorization rejects even an ordinary
+PASS. A `review` receipt preserves ordinary `PASS`, `BLOCK` or `OWNER_DECISION`.
+For ordinary review and migration, `checks` contains only `predecessorAuthorized`;
+authority B additionally requires the checks below.
+
+For `mode=amendment`, embed the exact completed ordinary BLOCK receipt as `trigger`.
+For `mode=addition`, embed a completed ordinary OWNER_DECISION receipt instead.
+Both require the same repository/base/complete Set and an external `record` with
+exact fields:
+
+```json
+{
+  "version": 1,
+  "kind": "preview-amendment-record",
+  "baseSha": "<same predecessor SHA>",
+  "bSha": "<exact authority-only B SHA>",
+  "triggerReceiptSha256": "<trigger.integritySha256>",
+  "target": "Existing decision that B changes",
+  "purpose": "Owner-directed resolution of the bound conflict"
+}
+```
+
+Addition uses `kind=preview-addition-record` and identifies the missing decision.
+The reviewer receives complete prior authority, exact B before/after bytes/diff,
+trigger and record as untrusted evidence. Its response has `semanticDecision`
+(the full predecessor decision schema) and `checks` with every boolean below.
+`semanticDecision.decision=PASS` plus all checks true is necessary for eligibility:
+
+```json
+{
+  "semanticDecision": { "decision": "PASS", "<other required predecessor fields>": "..." },
+  "checks": {
+    "addressesTrigger": true,
+    "withinSelectedScope": true,
+    "authorityOnly": true,
+    "noUnrelatedChanges": true,
+    "coherentResult": true,
+    "noUnsupportedClaims": true,
+    "predecessorAuthorized": true
+  }
+}
+```
+
+The abbreviated semantic decision above is explanatory, not a valid model fixture;
+use the full emitted schema. These judgments do not establish semantic correctness
+or owner authentication. Schema, validators, limits or any false check reject B.
+Ordinary v1 review rejects selected-authority edits; use the explicitly adopted
+preview B procedure instead of treating that preparation rejection as a BLOCK.
+
+After actual eligible integration under owner governance, identify its real normal
+merge commit (first parent recorded base, second parent exact B, tree equal to B):
+
+```sh
+architecture-preview-lifecycle observe receipt.json <integration-sha> final.json
+architecture-preview-lifecycle fresh-review final.json <new-A-head-sha> fresh-request.json
+architecture-preview-lifecycle complete fresh-request.json fresh-decision.json fresh-receipt.json
+```
+
+`observe` checks actual target ancestry and expected authority/control-plane bytes,
+then reports `adoption=OBSERVED`, `canonical=VERIFIED` and independent `UNVERIFIED`
+assurances. It verifies placement in the local repository, not GitHub origin or
+host protection. Invalid eligibility cannot be repaired by readback. `fresh-review`
+requires the target to retain those bindings and a new A head based on the observed
+successor; it resolves the new committed policy and complete Set. A fresh BLOCK
+remains possible; no historical result becomes PASS. For a migration receipt the
+same observe step establishes the proposed selection's placement before preparing
+separate B under it.
+
+API exports from `@flair-agency/architecture-gatekeeper/preview-lifecycle` are
+`preparePreviewLifecycle(spec, cwd)`, `completePreviewLifecycle(request, response,
+cwd)`, `validatePreviewReceipt(receipt, cwd)`, `observePreviewLifecycle(receipt,
+integrationSha, cwd)` and `prepareFreshPreviewReview(final, newAHeadSha, cwd)`.
+There is no default synthetic adapter or authentication upgrade; API callers must
+retain the profile/version and assurance fields when reporting results.

@@ -135,6 +135,12 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   if (multiProvenance.version !== 2 || multiProvenance.members.length !== 2) throw new Error('installed multi-document materialization omitted authority');
   execFileSync(process.execPath, [join(installedSrc, 'validate-authority-set-decision.mjs'), join(multiOutput, 'authority-provenance.json')],
     { cwd: root, input: JSON.stringify({ decision: 'PASS', authorityIds: ['architecture', 'large-authority'], authoritySetDigest: multiProvenance.setDigest }) });
+  // Exercise every preview command against the installed artifact, with explicitly
+  // synthetic model responses and real temporary Git integration/readback.
+  execFileSync(process.execPath, ['--test', new URL('./preview-lifecycle-cli.test.mjs', import.meta.url).pathname], {
+    env: { ...process.env, PREVIEW_LIFECYCLE_SMOKE_CLI: join(installedBin, 'architecture-preview-lifecycle') },
+    timeout: 120000, stdio: 'pipe',
+  });
 } finally {
   rmSync(parent, { recursive: true, force: true });
 }
