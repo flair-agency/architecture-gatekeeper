@@ -318,9 +318,17 @@ requires a completed ordinary OWNER_DECISION identifying the missing decision;
 its record must bind that exact result and the missing decision's ID to A's
 ownerDecisionId. PASS or BLOCK cannot trigger addition. Addition B adds only
 that identified missing decision: no existing-rule edits, contradictions or
-unrelated unresolved choices. Amendment requires the selected completed BLOCK
-or OWNER_DECISION trigger and separately supplied record binding its target
-existing decision. For both addition and amendment, semantic eligibility
+unrelated unresolved choices. For an OWNER_DECISION trigger, route
+classification uses the complete bound completed result's recorded content:
+addition applies only when it identifies a missing decision, while amendment
+applies only when it identifies a required owner choice to change an existing
+decision. For either amendment trigger profile, a separately supplied
+AmendmentRecord binds the exact completed trigger and its target existing
+decision. The result enum or a route record alone does not establish this
+classification. If the recorded content is missing, insufficient, conflicting,
+or identifies both kinds of change, neither route is ELIGIBLE. Amendment also
+applies to a BLOCK trigger only under its selected BLOCK profile. For both
+addition and amendment, semantic eligibility
 verifies the predecessor-selected scope, excludes all implementation, workflow
 and executable-policy changes and unsupported completion claims, and checks
 that the complete resulting authority is coherent. Authority-only B is reviewed
