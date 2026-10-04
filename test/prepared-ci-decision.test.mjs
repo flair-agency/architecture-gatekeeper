@@ -67,13 +67,20 @@ test('supports existing v2 prepared provenance validation without changing its b
   const setDigest = createHash('sha256').update(JSON.stringify(members)).digest('hex');
   const authorityProvenance = { version: 2, selfRepository: 'flair-agency/test', authorityRevision: baseSha,
     manifestSha256: 'e'.repeat(64), setDigest, members };
-  const decision = { decision: 'OWNER_DECISION', authorityIds: ids, authoritySetDigest: setDigest };
+  const decision = { decision: 'OWNER_DECISION', authorityIds: ids, authoritySetDigest: setDigest, ownerDecisionId: 'protected-owner-decision-id' };
   const v2SchemaText = JSON.stringify({ ...schema,
-    required: [...schema.required, 'authoritySetDigest'],
-    properties: { ...schema.properties, authoritySetDigest: { type: 'string' } },
+    required: [...schema.required, 'authoritySetDigest', 'ownerDecisionId'],
+    properties: { ...schema.properties, authoritySetDigest: { type: 'string' }, ownerDecisionId: { type: 'string', minLength: 1 } },
   });
   assert.deepEqual(validatePreparedCiDecision(input(decision, { authorityProvenance,
     schemaBytes: Buffer.from(v2SchemaText) })), decision);
+  const missingId = { ...decision };
+  delete missingId.ownerDecisionId;
+  assert.throws(() => validatePreparedCiDecision(input(missingId, { authorityProvenance, schemaBytes: v2SchemaText })), /ownerDecisionId is required/);
+  const unboundSchema = JSON.parse(v2SchemaText);
+  unboundSchema.required = unboundSchema.required.filter(key => key !== 'ownerDecisionId');
+  delete unboundSchema.properties.ownerDecisionId;
+  assert.throws(() => validatePreparedCiDecision(input(missingId, { authorityProvenance, schemaBytes: JSON.stringify(unboundSchema) })), /must require authoritySetDigest and ownerDecisionId/);
 });
 
 test('rejects malformed JSON, duplicate JSON keys, invalid schema and invalid UTF-8', () => {

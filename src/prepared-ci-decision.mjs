@@ -1,6 +1,7 @@
 /** Internal validation for one decision returned by an already-prepared CI review. */
 import { TextDecoder } from 'node:util';
-import { rejectDuplicateJsonKeys } from './authority-set.mjs';
+import { rejectDuplicateJsonKeys, MULTI_AUTHORITY_PROFILE } from './authority-set.mjs';
+import { validateAuthorityReviewSchema } from './preflight-authority-set-review.mjs';
 import { validatePreparedAuthorityDecision } from './validate-authority-set-decision.mjs';
 import { validateDecisionRules } from './validate-decision.mjs';
 import { validateJsonSchema } from './json-schema.mjs';
@@ -70,6 +71,7 @@ export function validatePreparedCiDecision(input) {
   } catch { throw new Error('Prepared CI decision is invalid JSON.'); }
 
   validateJsonSchema(decision, schema);
+  validateAuthorityReviewSchema(schema, input.authorityProvenance?.version === 2 ? MULTI_AUTHORITY_PROFILE : 'v1');
   validatePreparedAuthorityDecision(decision, input.authorityProvenance);
   if (input.validationRules !== null) validateDecisionRules(decision, input.validationRules);
   return decision;
