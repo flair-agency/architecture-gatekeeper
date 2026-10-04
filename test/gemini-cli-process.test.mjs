@@ -81,6 +81,31 @@ test('uses a fresh private HOME, minimal environment, and fixed CLI arguments', 
   assert.equal(readdirSync(fixture.privateParentDirectory).length, 0);
 });
 
+test('applies exactly one explicit thinking setting for each supported CLI model profile', async t => {
+  for (const thinkingLevel of ['LOW', 'MEDIUM', 'HIGH']) {
+    const fixture = base(); t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+    await runGeminiCliProcess({ ...options(fixture), model: 'gemini-3.8-flash', thinkingBudget: undefined, thinkingLevel });
+    const seen = JSON.parse((await import('node:fs')).readFileSync(join(fixture.workspaceDirectory, 'observed.json'), 'utf8'));
+    const config = seen.settings.modelConfigs.customOverrides[0].modelConfig.generateContentConfig.thinkingConfig;
+    assert.deepEqual(config, { thinkingLevel, includeThoughts: false });
+    assert.equal(Object.hasOwn(config, 'thinkingBudget'), false);
+    assert.equal(readdirSync(fixture.privateParentDirectory).length, 0);
+  }
+
+  const invalid = [
+    [{ model: 'gemini-3.8-flash', thinkingBudget: undefined }, /requires thinkingLevel/],
+    [{ model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM', thinkingBudget: 1024 }, /does not support thinkingBudget/],
+    [{ model: 'gemini-3.8-flash', thinkingBudget: undefined, thinkingLevel: 'MINIMAL' }, /requires thinkingLevel/],
+    [{ model: 'gemini-2.5-flash', thinkingLevel: 'MEDIUM' }, /supported only for gemini-3.8-flash/],
+    [{ model: 'gemini-2.5-flash', thinkingBudget: undefined }, /thinking budget must be a nonnegative safe integer/],
+  ];
+  for (const [override, pattern] of invalid) {
+    const fixture = base(); t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+    await assert.rejects(runGeminiCliProcess({ ...options(fixture), ...override }), pattern);
+    assert.equal(readdirSync(fixture.privateParentDirectory).length, 0);
+  }
+});
+
 test('rejects workspace and ancestor Gemini operational controls before HOME allocation or CLI spawn', async t => {
   const cases = [
     ['workspace .gemini directory', (f) => mkdirSync(join(f.workspaceDirectory, '.gemini'))],

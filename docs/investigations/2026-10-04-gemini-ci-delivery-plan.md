@@ -245,3 +245,19 @@ review contract and must not substitute for protected CI prompt/schema, authorit
 and consumer-rule validation. CI integration must use the same protected checks
 as Codex. No public launcher, policy selector or workflow invokes this internal
 session yet. Actual WIF and enabled governance runs remain required for adoption.
+
+## Adopted model-setting implementation
+
+The owner selected `gemini-3.8-flash` with `thinkingLevel: MEDIUM` on 2026-10-04;
+canonical authority records that selection. The internal process/session path
+must send exactly that level setting, without a simultaneous `thinkingBudget`.
+Legacy budget-based fixtures remain separate compatibility tests, not the chosen
+initial CI profile. LOW/HIGH are explicit supported settings, not an automatic
+fallback or a claim that Codex reasoning effort maps to Gemini levels.
+
+A fixed-CLI offline read-tool roundtrip sent two requests to the selected
+`gemini-3.8-flash` scope; both carried `thinkingLevel: MEDIUM` and neither
+contained `thinkingBudget`. The four read tools and parent-only upstream dummy
+Bearer remained unchanged. This proves configuration propagation only. Actual WIF authentication, protected CI input/authority binding,
+quality, cost, latency and decision consistency still need route-specific
+verification before activation.

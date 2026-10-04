@@ -4,7 +4,7 @@ import { runGeminiCliProcess } from './gemini-cli-process.mjs';
 import { extractGeminiCliResponseText } from './gemini-cli-response.mjs';
 
 const PROCESS_OPTION_KEYS = new Set([
-  'cliEntrypoint', 'privateParentDirectory', 'prompt', 'model', 'thinkingBudget',
+  'cliEntrypoint', 'privateParentDirectory', 'prompt', 'model', 'thinkingBudget', 'thinkingLevel',
   'project', 'region', 'proxyUrl', 'timeoutMs', 'maxPromptBytes',
   'maxStdoutBytes', 'maxStderrBytes', 'signal',
 ]);
