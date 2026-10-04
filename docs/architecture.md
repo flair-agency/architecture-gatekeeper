@@ -305,6 +305,22 @@ trusted profiles, the Gatekeeper lifecycle-v1 `ACTIVE` claim, `OWNER_ADDITION`,
 substitute for those claims. No failure selects it automatically; existing
 profiles retain every assurance requirement.
 
+This procedure is a limited refinement of normative invariant 8 for a distinct
+consumer-governed transition. The routes named in invariant 8 retain their
+requirements, and its rejection-history and fresh-review rules apply across
+profiles. The refinement itself does not select a consumer architecture
+decision. For addition and amendment, only a preview B selected by predecessor
+governance and satisfying the exact trigger, complete predecessor-selected
+Authority Set, receipt, integration and readback requirements may receive this
+procedure's `OBSERVED` result; this does not restrict the separately specified
+migration `OBSERVED` path. Preview
+`OBSERVED` means only procedural adoption and verified placement. It does not
+constitute `OWNER_ADDITION`, `OWNER_AMENDMENT`, G0, protected acceptance or
+lifecycle-v1 `ACTIVE`, and cannot satisfy or waive a stronger selected policy
+requirement. A preview does not authorize ordinary reviewed-change B as
+preview B, expand the predecessor-selected authority scope, or permit
+migration to modify canonical architecture decisions.
+
 Consumer governance must authorize use and record the preview selection before
 the change it governs. Prior selection and every route receipt bind the same
 exact repository and target ref (`repository`/`targetBranch`) under predecessor
@@ -496,7 +512,14 @@ Every implementation and rollout must preserve these invariants:
    decision must change, an amendment may become canonical through a separately
    enabled and verified trigger profile, including a completed
    `OWNER_DECISION` profile once defined. The original reviewed change still
-   requires a fresh review and acceptable evidence where applicable.
+   requires a fresh review and acceptable evidence where applicable. A
+   separately versioned, consumer-governed UNVERIFIED preview may provide its
+   own addition or amendment procedure only when selected by predecessor
+   governance before the governed change, as specified in Explicit unverified
+   consumer preview procedure. That procedure's `OBSERVED` placement does not
+   satisfy or waive the named routes or their stronger assurance requirements;
+   the original `BLOCK` or `OWNER_DECISION` remains unchanged and the original
+   reviewed change still requires fresh review and applicable evidence.
 9. Privileged credentials are not exposed to pull-request code or package
    lifecycle scripts. Credential-bearing third-party actions remain part of the
    selected CI trust boundary and follow its explicit supply-chain policy; this
