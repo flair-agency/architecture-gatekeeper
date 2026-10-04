@@ -91,6 +91,26 @@ test('self selects existing effective Codex limits without changing governance s
   assert.equal(resolved.reasoningEffort, 'medium');
 });
 
+test('self protected review binds the exact PR task context before Codex consumes it', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
+  const context = workflow.split('      - name: Attach exact pull request task context to protected review\n')[1]?.split('      - name:')[0];
+  assert.ok(context);
+  assert.match(context, /if: needs\.policy\.outputs\.authority_manifest_path != '' \|\| needs\.policy\.outputs\.policy_version == '1'/);
+  for (const [name, expression] of Object.entries({
+    BASE_SHA: 'github.event.pull_request.base.sha',
+    HEAD_SHA: 'github.event.pull_request.head.sha',
+    REVIEWED_SHA: 'steps.revision.outputs.sha',
+    AUTHORITY_LIMITS_BASE64: 'needs.policy.outputs.authority_limits_base64',
+    AUTHORITY_PROFILE: 'needs.policy.outputs.authority_profile || \'v1\'',
+    POLICY_VERSION: 'needs.policy.outputs.policy_version',
+  })) assert.ok(context.includes(`${name}: \${{ ${expression} }}`));
+  assert.match(context, /run: node \.architecture-gatekeeper-validation-runtime\/src\/prepare-review-context\.mjs/);
+  assert.match(workflow, /preflight-authority-set-review\.mjs \\\s*"\$RUNNER_TEMP\/architecture-gate-decision\.schema\.json" \\\s*"\$RUNNER_TEMP\/architecture-gate-review-prompt\.md"/);
+  assert.match(workflow, /prompt-file: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && format\('\{0\}\/architecture-gate-review-prompt\.md', runner\.temp\) \|\| needs\.policy\.outputs\.authority_manifest_path != '' && format\('\{0\}\/architecture-gate-review-prompt\.md', runner\.temp\)/);
+  assert.match(workflow, /prompt-file:[\s\S]*?inputs\.protected-review-instructions && format\('\{0\}\/architecture-gate-prompt\.md', runner\.temp\) \|\| inputs\.prompt-path/);
+  assert.ok(workflow.indexOf('name: Attach exact pull request task context to protected review') < workflow.indexOf('id: codex\n'));
+});
+
 
 test('encoded expected settings agree with the same resolved Action configuration', () => {
   const policy = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/ci-policy.json', import.meta.url), 'utf8'));
