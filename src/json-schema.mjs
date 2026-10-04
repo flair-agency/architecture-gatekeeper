@@ -28,7 +28,7 @@ function validateDefinition(schema, root, path, activeSchemas = new Set()) {
   if (activeSchemas.has(schema)) return;
   const next = new Set(activeSchemas).add(schema);
   for (const key of Object.keys(schema)) if (!SUPPORTED.has(key)) fail(`${path} uses unsupported keyword ${key}.`);
-  if (owns(schema, '$schema') && typeof schema.$schema !== 'string') fail(`${path}/$schema must be a string.`);
+  if (owns(schema, '$schema') && schema.$schema !== 'https://json-schema.org/draft/2020-12/schema') fail(`${path}/$schema uses an unsupported schema dialect.`);
   if (owns(schema, 'description') && typeof schema.description !== 'string') fail(`${path}/description must be a string.`);
   if (owns(schema, 'type')) validateTypeDefinition(schema.type, path);
   if (owns(schema, 'enum') && (!Array.isArray(schema.enum) || !schema.enum.length)) fail(`${path}/enum must be a nonempty array.`);
@@ -85,7 +85,13 @@ function validateNodeUncached(value, schema, root, path, context, depth) {
 export function validateJsonSchema(value, schema, options = {}) {
   const maxOperations = options.maxOperations ?? DEFAULT_MAX_OPERATIONS; const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH;
   if (!Number.isInteger(maxOperations) || maxOperations < 1 || !Number.isInteger(maxDepth) || maxDepth < 1) fail('validation budgets must be positive integers.');
-  validateDefinition(schema, schema, '$');
+  validateJsonSchemaDefinition(schema);
   const context = { maxOperations, maxDepth, operations: 0, memo: new Map(), schemaIds: new WeakMap(), instanceIds: new WeakMap(), lastSchemaId: 0, lastInstanceId: 0 };
   validateNode(value, schema, schema, '$', context, 0); return value;
+}
+
+/** Validate the supported schema dialect without requiring an instance value. */
+export function validateJsonSchemaDefinition(schema) {
+  validateDefinition(schema, schema, '$');
+  return schema;
 }

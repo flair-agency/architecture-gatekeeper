@@ -335,3 +335,21 @@ not route the result through the local committed-config review contract. An
 ordinary review probe does not establish enabled OWNER_ADDITION or
 OWNER_AMENDMENT route coverage; each requires its existing downstream semantic
 pipeline. No CI workflow or acceptance route is activated by this composition.
+
+## Prepared protected-CI transport adapter
+
+The internal adapter accepts an already-prepared protected complete prompt and
+decision-schema JSON text, preserving their bytes while appending explicit
+output-schema instructions. It bounds the complete encoded CLI stdin, including
+the fixed lossless JSON transport envelope, against the caller-selected prompt
+limit before starting the proxy or CLI. The schema is checked with the generic
+supported schema-definition validator; that preflight is not validation of a
+model response.
+
+The adapter does not read local committed reviewer configuration, construct a
+local review request, or establish prompt, schema, packet, revision or authority
+provenance. The trusted CI orchestrator retains exact-base policy selection,
+complete context and evidence instructions, packet binding, and downstream
+protected schema, authority and consumer-rule validation. Its result remains
+raw response text. Unsupported schema dialects fail closed. No workflow,
+provider selector, installer, authentication discovery or fallback is added.
