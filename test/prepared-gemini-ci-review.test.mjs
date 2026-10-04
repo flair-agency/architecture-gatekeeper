@@ -11,6 +11,7 @@ import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from '../sr
 const oid = char => char.repeat(40);
 const workspaceLimits = { maxFiles: 2, maxFileBytes: 2048, maxTotalBytes: 4096 };
 const decisionSchema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object', required: ['decision'], additionalProperties: false,
   properties: { decision: { type: 'string', enum: ['PASS', 'BLOCK'] } },
 };
@@ -147,4 +148,22 @@ test('preserves proxy-session execution failures without returning a decision', 
   await assert.rejects(runPreparedGeminiCiReview(input(f)), /exited unsuccessfully \(7\)/);
   const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
   await assertProxyClosed(observed.endpoint);
+});
+
+
+test('rejects unsupported root and nested schema dialects before dispatch', async t => {
+  for (const uri of ['https://example.invalid/custom', 'http://json-schema.org/draft-07/schema#', 42]) {
+    for (const schema of [
+      { ...decisionSchema, $schema: uri },
+      { ...decisionSchema, properties: { decision: { type: 'string', $schema: uri } } },
+    ]) {
+      const f = fixture(t);
+      const value = input(f);
+      value.protectedDecisionSchemaText = JSON.stringify(schema);
+      await assert.rejects(runPreparedGeminiCiReview(value), /unsupported schema dialect/);
+      assert.equal(existsSync(f.reportPath), false);
+      assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+      assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+    }
+  }
 });

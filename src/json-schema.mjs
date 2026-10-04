@@ -28,7 +28,7 @@ function validateDefinition(schema, root, path, activeSchemas = new Set()) {
   if (activeSchemas.has(schema)) return;
   const next = new Set(activeSchemas).add(schema);
   for (const key of Object.keys(schema)) if (!SUPPORTED.has(key)) fail(`${path} uses unsupported keyword ${key}.`);
-  if (owns(schema, '$schema') && typeof schema.$schema !== 'string') fail(`${path}/$schema must be a string.`);
+  if (owns(schema, '$schema') && schema.$schema !== 'https://json-schema.org/draft/2020-12/schema') fail(`${path}/$schema uses an unsupported schema dialect.`);
   if (owns(schema, 'description') && typeof schema.description !== 'string') fail(`${path}/description must be a string.`);
   if (owns(schema, 'type')) validateTypeDefinition(schema.type, path);
   if (owns(schema, 'enum') && (!Array.isArray(schema.enum) || !schema.enum.length)) fail(`${path}/enum must be a nonempty array.`);
