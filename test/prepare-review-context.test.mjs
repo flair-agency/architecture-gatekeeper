@@ -137,6 +137,61 @@ test('fails closed when exact merge parents or protected prompt limit cannot be 
   assert.throws(() => prepareReviewContext({ ...context.input, reviewedSha: 'f'.repeat(40) }), /all exist in the checkout/);
 });
 
+test('rejects real reviewed merges with reversed or mismatched event parents', t => {
+  t.after(() => { delete process.env.RUNNER_TEMP; });
+  const cases = [
+    {
+      name: 'reversed parents',
+      makeReviewed(context) {
+        git(context.root, 'checkout', '-q', '--detach', context.input.headSha);
+        git(context.root, 'merge', '--no-ff', '-qm', 'reversed review merge', context.input.baseSha);
+        return git(context.root, 'rev-parse', 'HEAD');
+      },
+    },
+    {
+      name: 'different head parent',
+      makeReviewed(context) {
+        git(context.root, 'checkout', '-q', '--detach', context.input.headSha);
+        writeFileSync(join(context.root, 'extra-candidate.md'), 'different candidate head\n');
+        git(context.root, 'add', 'extra-candidate.md');
+        git(context.root, 'commit', '-qm', 'different candidate head');
+        const differentHead = git(context.root, 'rev-parse', 'HEAD');
+        git(context.root, 'checkout', '-q', '--detach', context.input.baseSha);
+        git(context.root, 'merge', '--no-ff', '-qm', 'mismatched review merge', differentHead);
+        return git(context.root, 'rev-parse', 'HEAD');
+      },
+    },
+  ];
+
+  for (const fixture of cases) {
+    const context = makeReview(t);
+    process.env.RUNNER_TEMP = context.runnerTemp;
+    const reviewedSha = fixture.makeReviewed(context);
+    context.input.reviewedSha = reviewedSha;
+    const parents = git(context.root, 'rev-list', '--parents', '-n', '1', reviewedSha).split(' ');
+    assert.equal(parents.length, 3, `${fixture.name} fixture must be a real two-parent merge`);
+    assert.notDeepEqual(parents.slice(1), [context.input.baseSha, context.input.headSha],
+      `${fixture.name} fixture must differ from the event parent binding`);
+    assert.throws(() => prepareReviewContext(context.input), /reviewed merge parents do not match/);
+    assert.equal(existsSync(context.outputPath), false);
+  }
+});
+
+test('rejects a real one-parent reviewed commit', t => {
+  const context = makeReview(t);
+  process.env.RUNNER_TEMP = context.runnerTemp;
+  t.after(() => { delete process.env.RUNNER_TEMP; });
+  git(context.root, 'checkout', '-q', '--detach', context.input.baseSha);
+  writeFileSync(join(context.root, 'ordinary-commit.md'), 'not a merge commit\n');
+  git(context.root, 'add', 'ordinary-commit.md');
+  git(context.root, 'commit', '-qm', 'ordinary reviewed commit');
+  context.input.reviewedSha = git(context.root, 'rev-parse', 'HEAD');
+  const parents = git(context.root, 'rev-list', '--parents', '-n', '1', context.input.reviewedSha).split(' ');
+  assert.equal(parents.length, 2, 'fixture must be a real one-parent commit');
+  assert.throws(() => prepareReviewContext(context.input), /reviewed merge parents do not match/);
+  assert.equal(existsSync(context.outputPath), false);
+});
+
 test('forces textual diffs despite binary attributes and never invokes candidate diff drivers', t => {
   const context = makeReview(t, { maliciousDiffConfig: true });
   process.env.RUNNER_TEMP = context.runnerTemp;
