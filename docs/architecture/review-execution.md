@@ -139,14 +139,13 @@ renewal interfaces. Pending, denied, revoked, stale, or incomplete
 authorization produces no semantic review result and cannot satisfy a required
 review through skipped or neutral-success semantics; an explicitly selected
 `local-only` waiver retains its existing meaning. Make only profile-specific
-trust claims; service failure does not enable a weaker route. This target
-leaves existing routes unchanged and is inactive until a concrete host
-mechanism is selected, the open validity, revocation, retry/rerun, base-policy
-freshness, and caller-control decisions are resolved, and implementation is
-verified with negative fixtures and controlled Fork A (unapproved) → A
-(authorized) → B (unapproved) evidence. It selects no Environment or
-authorization-record mechanism, adds no API-key onboarding or WIF activation,
-and does not change Issues #218, #219, or #20.
+trust claims; service failure does not enable a weaker route. This high-level
+target leaves existing routes unchanged. The initial public-Fork Environment
+profile target below explicitly refines this high-level target by selecting its
+Environment design direction and initial funding/lifecycle bounds. Concrete
+consumer configuration, host proof, implementation, support and activation
+remain pending. This profile adds no API-key onboarding or WIF activation and
+does not change Issues #218, #219, or #20.
 
 #### Owner-selected initial public-Fork Environment profile target (Issue #331, 2026-10-04)
 
@@ -158,9 +157,10 @@ be skipped or neutralized into success. Every retry requires a new workflow
 run and new authorization, even for the same HEAD. When cancellation or the
 consumer-selected expiry is observed, stop further admission and paid dispatch.
 This offers no atomic revocation-versus-spend ordering, cannot undo an already
-dispatched request, and does not guarantee descendant termination. No default
-expiry or consumer dollar limit is selected; missing protected prior-policy
-values leave execution incomplete.
+dispatched request, and does not guarantee descendant termination. Missing
+required authorization/profile selections, including snapshot lifetime, leave
+execution incomplete. A numeric dollar cap is optional; omitting it does not
+make authorization incomplete, and any configured cap remains consumer-owned.
 
 The initial Environment-based design target is a credential-free approval
 workflow, a trusted verifier that produces a same-run grant bound to the exact
@@ -184,8 +184,10 @@ unsupported and inactive.
 This target does not select consumer principals or numeric actor IDs, a
 snapshot lifetime, Environment configuration, bypass or required-check policy.
 The protected prior policy must provide the required authorization and profile
-selections, including a snapshot lifetime. A numeric dollar limit remains
-consumer-owned and is not a new universal requirement of this target. It also
+selections, including snapshot lifetime; missing these required values leaves
+execution incomplete. A numeric dollar cap is optional; omitting it does not
+make authorization incomplete. Any configured cap remains consumer-owned and
+is not a new universal requirement of this target. It also
 does not select an additional App, PAT or other
 credential-bearing metadata-readback capability. Before support or activation,
 prove the effective job token can read the required approval and Environment

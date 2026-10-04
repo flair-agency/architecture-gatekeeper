@@ -6,14 +6,14 @@ this document records conditions and evidence gaps; it is not implementation,
 support evidence, or permission to configure or activate a route. [PR #341](https://github.com/flair-agency/architecture-gatekeeper/pull/341)
 merged at `2026-10-04T07:34:30Z` as
 `2bdc1fedf51df729823b595e1eb2af03fc3a10db`, recording the inactive high-level
-target. The owner has authorized the following initial profile choices for the
-proposed canonical clause; adoption of this additional clause is pending: one
-ordinary semantic review execution per grant; no additional eligibility
-dispatch; retries use a new run and new approval; and observed cancellation or
-expiry stops further admission/dispatch. Required authorization/profile choices,
-including snapshot lifetime, must come from protected consumer policy; any
-numeric dollar limit remains consumer-owned and is not a new universal target
-requirement. The Environment-backed approval,
+target. This change records the owner-selected initial profile choices in
+canonical authority; the target remains inactive pending implementation and
+verification: one ordinary semantic review execution per grant; no additional
+eligibility dispatch; retries use a new run and new approval; and observed
+cancellation or expiry stops further admission/dispatch. Required
+authorization/profile choices, including snapshot lifetime, must come from
+protected consumer policy; any numeric dollar limit remains consumer-owned and
+is not a new universal target requirement. The Environment-backed approval,
 verified same-run grant, and separate credential-capable launcher remain an
 inactive, verification-conditional target. Consumer-selected numeric approvers,
 snapshot lifetime, budget amount, and host policy remain unset; an additional
@@ -47,12 +47,18 @@ Action safeguards.
 
 ## Read-only baseline and limits
 
-The historical runtime/host baseline below was observed at `bc4c5ea264b4db2c8aad860af4a97eb35ba605e3`, including adopted #332. After
+The historical runtime/host baseline below was observed at
+`bc4c5ea264b4db2c8aad860af4a97eb35ba605e3`, including adopted #332. After
 #341 integration, the complete six-member Authority Set was read from
-`2bdc1fedf51df729823b595e1eb2af03fc3a10db`. Latest main for this proposal is
-`773217b3dcff225f69c3bda07079d61b49651e21`; its changes since that Set read
-add #340 execution-result and #343 execution-observation source/tests, and the
-manifest and six members are byte-identical. AGENTS.md and the development guide were also read.
+`2bdc1fedf51df729823b595e1eb2af03fc3a10db`. The initial preparation baseline
+for this proposal was `773217b3dcff225f69c3bda07079d61b49651e21`; changes since
+that Set read added #340 execution-result and #343 execution-observation
+source/tests, while the manifest and six members were byte-identical. The
+current PR base is `f7f6807524921111f53e800ed9855d2c8c77a35f`, where the #324
+update adds the consumer UNVERIFIED preview clause in `docs/architecture.md`.
+The manifest and complete six-member Authority Set at f7 were read afresh
+before this update. The other five members remain byte-identical to the
+preparation baseline. AGENTS.md and the development guide were also read.
 Target adoption and the new profile-direction record do not activate this proposal.
 
 - [PR #330 run 37175166014](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/37175166014),
