@@ -120,6 +120,18 @@ test('v6 supports explicit Codex provider settings without adding a default or G
   assert.equal(Object.hasOwn(selected, 'adoptionEvidenceProducer'), false);
 });
 
+test('v6 rejects Gemini model families under Codex for default and named branches', () => {
+  const branch = {
+    mode: 'enforced', provider: 'codex', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+    authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits: limits,
+  };
+  for (const model of ['gemini', 'gemini-2.5-pro', 'gemini-3.8-pro', 'gemini-3.8-flash', 'Gemini-future']) {
+    const selection = { ...branch, model };
+    assert.throws(() => resolveCiPolicy({ version: 6, default: selection, branches: {} }, 'main'), /Invalid Codex model/);
+    assert.throws(() => resolveCiPolicy({ version: 6, default: { mode: 'local-only' }, branches: { main: selection } }, 'main'), /Invalid Codex model/);
+  }
+});
+
 test('v6 rejects mixed, incomplete, unknown, and governance route settings', () => {
   const gemini = {
     mode: 'enforced', provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM',

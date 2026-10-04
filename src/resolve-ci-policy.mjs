@@ -43,7 +43,7 @@ function validateV6Branch(branch, label) {
     throw new Error(`Enforced ${label} requires a valid model`);
   }
   if (branch.provider === 'codex') {
-    if (branch.model === 'gemini-3.8-flash' || !EFFORTS.has(branch.reasoningEffort)) {
+    if (/^gemini(?:-|$)/i.test(branch.model) || !EFFORTS.has(branch.reasoningEffort)) {
       throw new Error(`Invalid Codex model or reasoning effort for ${label}`);
     }
   } else if (branch.model !== 'gemini-3.8-flash' || branch.thinkingLevel !== 'MEDIUM') {
