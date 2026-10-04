@@ -199,6 +199,18 @@ Explicit Gemini thinking budgets currently support `gemini-2.5-flash` and
 `gemini-2.5-pro`; direct endpoints must match the selected official provider scope.
 
 
+## Unverified consumer lifecycle preview
+
+`architecture-preview-lifecycle` prepares exact predecessor review inputs, validates
+completed responses, observes normal owner-controlled integration/readback, and
+prepares fresh A review for addition, BLOCK amendment and initial old-v1
+control-plane migration. It reports observed adoption and checked Git placement
+with producer authentication and custody explicitly `UNVERIFIED`. It supplies
+no trusted G0 or enforced acceptance evidence and uses no automatic fallback.
+See the [selection, inputs and commands](docs/integration-reference.md#unverified-consumer-lifecycle-preview)
+before using it in a consumer. Publication and business permissions remain
+separate owner decisions.
+
 ## Assurance boundary
 
 - Consumers own architecture and policy; this package only executes the

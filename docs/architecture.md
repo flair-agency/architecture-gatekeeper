@@ -249,6 +249,63 @@ Keep defined/implemented/released/selectable/prior-selected/eligible/owner actio
 
 Bootstrap only for absent-ever root or genuine first activation lacking authorized normal/staged path. T0/T7 share nonresettable repo/target lineage authorization (incl inseparable root/config); rename/backend/manifest/policy/profile changes/missing files cannot reset it. B1 proves absent-ever root or never-completed first activation (missing file/version/receipt is no proof). B2 inventories authorized normal/staged/migration/repair exits: any finite noncircular path bars bootstrap regardless of cost/deadline; missing code/tests/defect/outage do not prove absence. B3 independent existing/external governance authorizes exact scope; B4 binds candidate/paths/ops/actors/lineage; B5 verifies prep/limits/inputs/producer/host. Require implemented T8 plan before start; resulting policy must authorize it. B6 reads back first-operation target/policy/caller; B7 consumes lineage authorization; B8 later normal adoption/readback before ACTIVE, zero exception; commissioning until then. Bootstrap is external, not PASS/G0.
 
+### Explicit unverified consumer preview procedure (owner direction, 2026-10-04)
+
+A separately versioned, explicitly owner-selected preview procedure may support
+actual consumer addition, amendment and control-plane migration before producer
+authentication or trusted custody is available. Its records identify this
+unverified preview profile and never substitute for existing trusted
+OWNER_ADDITION, OWNER_AMENDMENT, G0 or enforced acceptance evidence. No failure
+selects it automatically. Existing profiles retain every assurance requirement.
+
+Consumer governance must authorize use and record the preview selection before
+the change it governs. Resolve its exact recorded predecessor policy, complete
+selected authority, prompt, schema, required validators and reviewer settings;
+candidate content cannot replace them. Missing members, invalid selectors,
+exceeded limits or unavailable required review leave the step incomplete.
+
+Record originally reviewed A and its exact completed semantic result. Addition
+requires the identified missing decision; amendment requires the selected
+completed BLOCK or OWNER_DECISION trigger and separately supplied record binding
+its target existing decision. Authority-only B is reviewed against the complete
+predecessor authority and exact proposed bytes/diff. Semantic eligibility must
+check trigger resolution, eligible scope, absence of unrelated implementation,
+workflow or executable-policy changes, coherent resulting authority and no
+unsupported completion claims. A distinct control-plane migration step is
+reviewed under its predecessor; candidate configuration cannot authorize its
+own selection, bypass failed semantics or masquerade as authority-only B.
+
+Versioned preview receipts bind exact repository/base/A/B, records, full Set,
+policy/review inputs, runtime/model/settings, decision, computed byte digests and
+completion time. Integrity and semantic validation are required even when
+producer identity, execution origin, owner authentication, custody, policy
+protection or host enforcement are UNVERIFIED. Reports state each assurance
+separately; local byte consistency supplies no authentication claim. Missing,
+changed, stale or mismatched evidence stops the step rather than weakening it.
+
+The owner may integrate eligible B through the explicitly selected ordinary
+procedure. For normal merge, verify recorded base as first parent, exact B as
+second parent and B's tree as resulting tree; the integration commit is distinct
+from B. Subsequent exact target readback verifies integration ancestry and
+expected authority bytes. Other integration forms remain unsupported until
+versioned binding rules exist. The final preview record reports adoption
+OBSERVED when the bound procedure and integration/readback have completed, with
+canonical placement VERIFIED only for the Git facts actually checked and
+producer authentication/custody UNVERIFIED where not established. This is usable
+consumer procedural adoption with explicitly limited assurance, not verified
+trusted-profile adoption, G0, host prevention or principal authorization.
+Placement and procedural validity remain separate; readback cannot repair an
+ineligible or incomplete B. Preserve historical results and review A afresh
+against the resulting canonical inputs; fresh PASS is not guaranteed.
+
+CLI/API outputs must identify the preview profile/version and reject ambiguous
+version mixing. Production trusted-profile verifiers must reject these records;
+preview selection cannot weaken an enforced policy or infer an owner's business,
+publication, disclosure or credential permission. No trusted backend is required
+for this explicitly unverified profile. Actual consumer selection and use remain
+consumer-owned; this decision authorizes implementation of that preview path,
+not automatic selection, existing-route activation or readiness claims.
+
 ## Normative invariants
 
 Every implementation and rollout must preserve these invariants:
