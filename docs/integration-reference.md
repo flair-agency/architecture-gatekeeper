@@ -362,7 +362,14 @@ command. CI adoption must separately select a trusted runtime and acceptance pol
 
 ### Protected Codex execution selection
 
-An opted-in Codex policy branch may include an exact `execution` object:
+**Implementation-stage only; consumer adoption is unavailable pending hosted
+verification.** Consumers must not configure this object until a representative
+protected policy-selected CI model review and reporting path has been exercised.
+The resolver and workflow wiring are retained for bounded dogfooding under #332;
+implementation and schema acceptance alone establish no supported route.
+
+For that staged verification, the implementation accepts an exact `execution`
+object on a Codex policy branch:
 
 ```json
 {
@@ -383,7 +390,7 @@ the self Flex probe do not override a policy-selected execution object.
 Unsupported, partial or invalid execution objects fail during policy resolution;
 this Codex selection cannot be applied to a Gemini branch. Governance-job
 settings remain separate. This repository has not yet adopted the object, and
-this option does not activate Gemini or prove physical process termination.
+this staging mechanism does not activate Gemini or prove physical process termination.
 
 For branches without this object, existing compatibility behavior is retained.
 The primary reviewer accepts a `review-job-timeout-minutes` input (default 7)

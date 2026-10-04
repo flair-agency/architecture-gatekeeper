@@ -105,11 +105,11 @@ step/job limits and fail-closed result validation remain. See the
 [integration reference](docs/integration-reference.md) for trust and timeout
 limits.
 
-A Codex branch's optional protected-base `execution` policy selects its ordinary
-review job/step deadlines and standard or Flex arguments. When present, these
-values override caller timeout inputs and the self Flex probe; without it,
-legacy behavior remains. See [protected execution selection](docs/integration-reference.md#protected-codex-execution-selection)
-for the exact fields and limits.
+Protected policy execution selection under #332 is implementation-stage work,
+not a supported consumer option. Consumers must not configure `execution` until
+a representative protected policy-selected hosted review and reporting path has
+been verified. Current supported caller timeout inputs remain documented in the
+[integration reference](docs/integration-reference.md#protected-codex-execution-selection).
 
 The reusable workflow is
 [`architecture-gate-consumer.yml`](.github/workflows/architecture-gate-consumer.yml). Consumers
