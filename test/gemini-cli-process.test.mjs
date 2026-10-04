@@ -68,6 +68,7 @@ test('uses a fresh private HOME, minimal environment, and fixed CLI arguments', 
   assert.equal(seen.env.GOOGLE_APPLICATION_CREDENTIALS, undefined);
   assert.equal(seen.env.NODE_OPTIONS, undefined);
   assert.deepEqual(seen.settings.tools.core, ['read_file', 'list_directory', 'glob', 'grep_search']);
+  assert.deepEqual(seen.settings.context.fileFiltering, { respectGitIgnore: false, respectGeminiIgnore: false });
   assert.equal(seen.settings.telemetry.enabled, false);
   assert.equal(seen.settings.general.enableAutoUpdate, false);
   assert.deepEqual(seen.settings.hooksConfig, { enabled: false });

@@ -103,6 +103,7 @@ function settings(options) {
     : { thinkingBudget: options.thinkingBudget, includeThoughts: false };
   return {
     tools: { core: ['read_file', 'list_directory', 'glob', 'grep_search'] },
+    context: { fileFiltering: { respectGitIgnore: false, respectGeminiIgnore: false } },
     hooksConfig: { enabled: false },
     skills: { enabled: false },
     telemetry: { enabled: false },
