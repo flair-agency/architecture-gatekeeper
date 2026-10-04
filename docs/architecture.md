@@ -332,8 +332,9 @@ procedure. For normal merge, verify recorded base as first parent, exact B as
 second parent and B's tree as resulting tree; the integration commit is distinct
 from B. Subsequent exact target readback verifies integration ancestry and
 expected authority bytes. Other integration forms remain unsupported until
-versioned binding rules exist. The final preview record reports adoption
-OBSERVED when the bound procedure and integration/readback have completed, with
+versioned binding rules exist. The final preview record binds the exact target
+ref, integration commit and observed target commit. It reports adoption OBSERVED
+when the bound procedure and integration/readback have completed, with
 canonical placement VERIFIED only for the Git facts actually checked and
 producer authentication/custody UNVERIFIED where not established. This is usable
 consumer procedural adoption with explicitly limited assurance, not verified
