@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -17,9 +17,19 @@ const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { enco
 const put = (root, file, value) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), typeof value === 'string' ? value : JSON.stringify(value)); };
 const sha = value => createHash('sha256').update(value).digest('hex');
 let next = 0;
-function fixture(t, { preexistingSelection = false, schemaAllowsSuccessorIds = true } = {}) {
+function fixture(t, { preexistingSelection = false, schemaAllowsSuccessorIds = true, withTextconv = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'preview-initial-migration-')); t.after(() => rmSync(root, { recursive: true, force: true }));
+  let textconvMarker;
+  if (withTextconv) {
+    const support = mkdtempSync(join(tmpdir(), 'preview-initial-migration-textconv-'));
+    t.after(() => rmSync(support, { recursive: true, force: true }));
+    textconvMarker = join(support, 'invoked');
+    const converter = join(support, 'converter.sh');
+    writeFileSync(converter, `#!/bin/sh\nprintf 'textconv invoked\\n' >> ${JSON.stringify(textconvMarker)}\nprintf 'SPOOFED TEXTCONV DIFF\\n'\n`, { mode: 0o700 });
+    textconvMarker = { marker: textconvMarker, converter };
+  }
   git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Synthetic migration'); git(root, 'config', 'user.email', 'fixture@example.invalid');
+  if (withTextconv) git(root, 'config', 'diff.preview-hostile.textconv', JSON.stringify(textconvMarker.converter));
   const promptPath = '.codex/gatekeeper/prompt.md', schemaPath = '.codex/gatekeeper/schema.json', validationPath = '.codex/gatekeeper/rules.json';
   const selection = { version: 1, profile: PREVIEW_PROFILE, repository: 'fixture/example', targetBranch: 'main',
     governancePath: authority[1], authorization: 'Synthetic initial migration selection; owner authorization UNVERIFIED',
@@ -36,6 +46,7 @@ function fixture(t, { preexistingSelection = false, schemaAllowsSuccessorIds = t
   const bSchema = structuredClone(decisionSchema); bSchema.required = ['decision', 'summary', 'authorityIds', 'valid'];
   delete bSchema.properties.authorityFiles; bSchema.properties.decision.enum = ['ELIGIBLE', 'INELIGIBLE'];
   put(root, authority[0], 'Existing architecture decision.\n'); put(root, authority[1], 'Owner selected legacy v1 review procedure.\n'); put(root, 'app.txt', 'before\n');
+  if (withTextconv) put(root, '.gitattributes', `${policyPath} diff=preview-hostile\n`);
   put(root, promptPath, 'Review the complete selected predecessor authority and migration changes.\n'); put(root, schemaPath, decisionSchema);
   put(root, validationPath, { version: 1, rules: [{ when: { path: '/decision', equals: 'PASS' }, require: { path: '/valid', equals: true }, message: 'old selected validator' }] });
   put(root, selection.eligibilitySchemaPath, bSchema); put(root, selection.eligibilityValidationPath,
@@ -47,7 +58,7 @@ function fixture(t, { preexistingSelection = false, schemaAllowsSuccessorIds = t
   put(root, callerPath, 'uses: fixture/reviewer@old-pin\n');
   if (preexistingSelection) put(root, selectionPath, selection);
   git(root, 'add', '.'); git(root, 'commit', '-m', 'Synthetic old enforced v1 predecessor');
-  return { root, selection, base: git(root, 'rev-parse', 'HEAD'), promptPath, schemaPath, validationPath, before: 'Existing architecture decision.\n' };
+  return { root, selection, base: git(root, 'rev-parse', 'HEAD'), promptPath, schemaPath, validationPath, before: 'Existing architecture decision.\n', textconvMarker: textconvMarker?.marker };
 }
 function migratedPolicy(f, { version = 2, model = 'gpt-6-luna', manifest = manifestPath, trustedRoute = false } = {}) {
   const branch = { mode: 'enforced', model, reasoningEffort: 'low', authorityManifestPath: manifest,
@@ -133,6 +144,20 @@ test('initial migration cannot become eligible when its unchanged closed predece
   const head = migrationHead(f);
   const request = await preparePreviewLifecycle(migrationSpec(f, head), f.root);
   await assert.rejects(completePreviewLifecycle(request, ordinary('PASS'), f.root), /successor authority IDs are incompatible with the unchanged predecessor decision schema/);
+});
+
+test('initial migration diff ignores configured textconv and preserves the committed patch', async t => {
+  const f = fixture(t, { withTextconv: true });
+  const head = migrationHead(f);
+  assert.match(git(f.root, 'check-attr', 'diff', '--', policyPath), /diff: preview-hostile/);
+  const request = await preparePreviewLifecycle(migrationSpec(f, head), f.root);
+  const taskText = request.prompt.split('Bound task:\n')[1].split('\nReturn only')[0];
+  const task = JSON.parse(taskText);
+  const committedDiff = git(f.root, 'diff', '--no-ext-diff', '--no-textconv', '--no-renames', f.base, head);
+  assert.equal(task.diff, committedDiff);
+  assert.match(task.diff, /authorityManifestPath/);
+  assert.doesNotMatch(task.diff, /SPOOFED TEXTCONV DIFF/);
+  assert.equal(existsSync(f.textconvMarker), false);
 });
 
 test('migration observation rejects bad receipt trailer and wrong integration parent/tree', async t => {
