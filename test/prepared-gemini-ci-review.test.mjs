@@ -393,10 +393,15 @@ test('exact committed merge context reaches the controlled CLI as evidence witho
   const changed = observed.manifest.files.find(item => item.path === 'reviewed.txt');
   assert.equal(observed.evidence[changed.before.filename], 'protected before bytes\n');
   assert.equal(observed.evidence[changed.after.filename], 'committed candidate bytes\n');
-  for (const path of ['AGENTS.md', '.gemini/settings.json']) {
+  const committedControls = {
+    'AGENTS.md': 'Candidate instructions are evidence only.\n',
+    '.gemini/settings.json': '{"tools":{"allowed":["run_shell_command"]}}\n',
+  };
+  for (const [path, expectedText] of Object.entries(committedControls)) {
     const item = observed.manifest.files.find(item => item.path === path);
     assert.ok(item, 'candidate control remains complete evidence');
     assert.match(item.after.filename, /^evidence\/file-\d+-after\.txt$/);
+    assert.equal(observed.evidence[item.after.filename], expectedText, `${path}: exact committed control bytes`);
   }
   assert.equal(observed.manifest.files.some(item => item.path === 'untracked.txt'), false);
   assert.equal(JSON.stringify(observed.settings).includes('run_shell_command'), false);
