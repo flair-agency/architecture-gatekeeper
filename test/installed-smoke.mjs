@@ -143,6 +143,10 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
     env: { ...process.env, PREVIEW_LIFECYCLE_SMOKE_CLI: join(installedBin, 'architecture-preview-lifecycle') },
     timeout: 120000, stdio: 'pipe',
   });
+  execFileSync(process.execPath, ['--test', new URL('./preview-amendment-owner.test.mjs', import.meta.url).pathname], {
+    env: { ...process.env, PREVIEW_LIFECYCLE_SMOKE_CLI: join(installedBin, 'architecture-preview-lifecycle') },
+    timeout: 120000, stdio: 'pipe',
+  });
 } finally {
   rmSync(parent, { recursive: true, force: true });
 }

@@ -106,11 +106,6 @@ test('addition rejects wrong trigger, ownerDecisionId, replacement or unrelated 
   const noIdReq = await preparePreviewLifecycle(spec(f, 'review', noIdAHead), f.root);
   const noIdReceipt = await completePreviewLifecycle(noIdReq, ordinaryResponse(decision('OWNER_DECISION', 'Missing but unbound id.')), f.root);
   await assert.rejects(preparePreviewLifecycle(spec(f, 'addition', changed, noIdReceipt, good.record), f.root), /exact ownerDecisionId/);
-  const ownerAmendment = fixture(t, 'completed-owner-decision-v1'); const existing = await trigger(ownerAmendment, 'existing-choice');
-  const ownerB = commit(ownerAmendment, { [authority]: 'Changed existing owner decision.\n' });
-  const ownerRecord = { version: 1, kind: 'preview-amendment-record', baseSha: ownerAmendment.base, bSha: ownerB,
-    triggerReceiptSha256: sha(previewReceiptBytes(existing.receipt)), target: 'existing-choice', purpose: 'Synthetic existing-choice change' };
-  await assert.rejects(preparePreviewLifecycle(spec(ownerAmendment, 'amendment', ownerB, existing.receipt, ownerRecord), ownerAmendment.root), /completed-block-v1/);
 });
 
 test('installed CLI executes synthetic addition through observe and fresh review', { skip: !process.env.PREVIEW_LIFECYCLE_SMOKE_CLI }, async t => {

@@ -902,10 +902,11 @@ before the reviewed change. Its policy, prompt, schema, validator and caller mus
 match the predecessor's model-backed Codex policy; governance and `authorityPaths`
 must belong to its complete Authority Set. `authorityPaths` and `migrationPaths`
 remain required compatibility fields; `migrationPaths` does not enable migration
-in this package slice. The eligibility schema and optional deterministic
-eligibility validator are required for B routes. The
-`amendmentTriggerProfile: "completed-block-v1"` declaration enables only the
-completed-`BLOCK` amendment route.
+in this package slice. B routes use the predecessor-selected eligibility schema
+and optional deterministic eligibility validator.
+`amendmentTriggerProfile` selects either `completed-block-v1` for an ordinary
+`BLOCK` or `completed-owner-decision-v1` for an ordinary `OWNER_DECISION` that
+identifies an existing decision requiring an owner choice to change.
 
 ```json
 {
@@ -965,14 +966,28 @@ preparation, and only when the predecessor selection explicitly names
 bound to the receipt and same predecessor/candidate pair, and reviews only the
 selected Authority Set scope.
 
+An existing-decision amendment is triggered only by a completed ordinary
+`OWNER_DECISION` and a predecessor selection naming
+`amendmentTriggerProfile: "completed-owner-decision-v1"`. Its external
+`preview-amendment-record` must name the exact existing decision changed by B.
+The full completed trigger is supplied to the eligibility review; the model
+must classify it as an existing-choice change only (`triggerMissingDecision`
+false, `triggerExistingDecision` true). The record names a proposed target; it
+is not authenticated owner approval. B must materially resolve that target,
+preserve unrelated decisions, exclude unrelated authority, implementation,
+workflow and executable-policy changes and unsupported completion claims, and
+form a coherent resulting rule set. The selected schema may require
+`ownerDecisionId`; the shared route imposes no such field beyond that schema.
+
 A missing-decision addition is triggered only by a completed ordinary
 `OWNER_DECISION` containing a nonempty `ownerDecisionId`. Its external
 `preview-addition-record` must name that exact ID as its target. B is restricted
 to append-only changes in selected Authority Set scope, preserving existing
 authority bytes; replacement, deletion, mixed scope or a trigger that identifies
 an existing decision cannot qualify. The request is bound to the completed
-receipt and the same predecessor/candidate pair. Both B routes use the selected
-eligibility schema and validator and complete with `ELIGIBLE` or `INELIGIBLE`;
+receipt and the same predecessor/candidate pair. All B routes use the selected
+eligibility schema and any selected deterministic validator and complete with
+`ELIGIBLE` or `INELIGIBLE`;
 an ineligible result cannot be observed. For an eligible result, `observe`
 verifies the exact B record, ordered integration parents, resulting tree and
 canonical readback before `fresh-review` prepares a new ordinary request against
@@ -985,10 +1000,10 @@ execution, owner, custody, policy-protection and host-enforcement assurances are
 `preparePreviewLifecycle`, `completePreviewLifecycle`, `validatePreviewReceipt`
 and `previewReceiptBytes` from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
 
-Owner-decision amendment and migration are unsupported. Unsupported modes are
+Migration is unsupported. Unsupported modes are
 rejected before request creation, and receipt revalidation repeats the route
 checks so receipts from later procedures cannot be treated as supported results.
 Selection declarations for those routes do not enable them. The ordinary,
-completed-`BLOCK` amendment, and missing-decision addition surfaces remain
-unverified local previews, not adoption, canonical acceptance, owner custody or
-host-enforcement evidence.
+completed-`BLOCK` amendment, missing-decision addition, and existing-decision
+amendment surfaces remain unverified local previews, not adoption, canonical
+acceptance, owner custody or host-enforcement evidence.
