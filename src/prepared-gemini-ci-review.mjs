@@ -64,9 +64,13 @@ export async function runPreparedGeminiCiReview(input) {
   if (!schema || typeof schema !== 'object' || Array.isArray(schema)) throw new Error('Protected decision schema must be a JSON Schema object.');
   validateJsonSchemaDefinition(schema);
 
+  // Own exact evidence data before proxy startup can yield. The caller may
+  // retain and mutate its packet or limits while the session is pending.
+  const packet = structuredClone(proxySessionOptions.packet);
+  const workspaceLimits = structuredClone(proxySessionOptions.workspaceLimits);
   return runGeminiCliProxySession({
-    packet: proxySessionOptions.packet,
-    workspaceLimits: proxySessionOptions.workspaceLimits,
+    packet,
+    workspaceLimits,
     workspaceParentDirectory: proxySessionOptions.workspaceParentDirectory,
     credentials: proxySessionOptions.credentials,
     processOptions: {
