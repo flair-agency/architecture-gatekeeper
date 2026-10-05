@@ -937,13 +937,21 @@ this package slice. Eligibility and trigger declarations are inert here.
 }
 ```
 
-Run from the consumer repository. Keep request, response and receipt files
-outside the proposed change. The command creates outputs exclusively with mode
-0600 and refuses overwriting existing files.
+Run from the consumer repository and pass its root explicitly to both API calls.
+Preparation reads committed inputs only; it does not call a model or use
+credentials. The caller is responsible for obtaining an actual review response
+through its selected review-only process.
 
-```sh
-architecture-preview-lifecycle prepare spec.json request.json
-architecture-preview-lifecycle complete request.json decision.json receipt.json
+```js
+import {
+  preparePreviewLifecycle,
+  completePreviewLifecycle,
+} from '@flair-agency/architecture-gatekeeper/preview-lifecycle';
+
+const root = process.cwd();
+const request = await preparePreviewLifecycle(spec, root);
+// Send request.prompt and request.schema to the selected review-only reviewer.
+const receipt = await completePreviewLifecycle(request, actualResponse, root);
 ```
 
 Send the emitted prompt and response schema to a review-only reviewer using the
@@ -960,7 +968,7 @@ execution, owner, custody, policy-protection and host-enforcement assurances are
 and `previewReceiptBytes` from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
 
 Addition, amendment, migration, integration observation and fresh-review
-commands are unsupported by this ordinary-only package slice. Preparation rejects
+APIs are unsupported by this ordinary-only package slice. Preparation rejects
 non-review modes before creating a request, and receipt revalidation repeats that
 check so a later-route receipt cannot be treated as an ordinary result. No consumer
 should infer those routes from inert selection declarations.

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
-import { PREVIEW_PROFILE, preparePreviewLifecycle, completePreviewLifecycle, validatePreviewReceipt, previewReceiptBytes } from '../src/preview-lifecycle.mjs';
+import { PREVIEW_PROFILE, preparePreviewLifecycle, completePreviewLifecycle, validatePreviewReceipt, previewReceiptBytes } from '@flair-agency/architecture-gatekeeper/preview-lifecycle';
 
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args],
   { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();

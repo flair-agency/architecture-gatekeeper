@@ -14,8 +14,7 @@
     "architecture-review-native": "src/native-review.mjs",
     "architecture-review-gemini-ci": "src/gemini-launcher.mjs",
     "architecture-gate-policy": "src/resolve-ci-policy.mjs",
-    "architecture-owner-addition-finalize": "src/owner-addition-finalize.mjs",
-    "architecture-preview-lifecycle": "src/preview-lifecycle-cli.mjs"
+    "architecture-owner-addition-finalize": "src/owner-addition-finalize.mjs"
   },
   "exports": {
     ".": "./src/local-gate.mjs",
