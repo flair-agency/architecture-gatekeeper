@@ -263,9 +263,10 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 
 ## Unverified preview lifecycle API
 
-The `./preview-lifecycle` package API supports ordinary review and the
-predecessor-authorized completed-BLOCK amendment procedure. Both preserve
-`UNVERIFIED` assurance and do not integrate changes or supply trusted acceptance.
-Addition, owner-decision amendment and migration remain unsupported. See the
+The `./preview-lifecycle` package API supports ordinary review, the
+predecessor-authorized completed-BLOCK amendment procedure, and a missing-
+decision addition from a completed OWNER_DECISION. All preserve `UNVERIFIED`
+assurance and do not integrate changes or supply trusted acceptance. Owner-
+decision amendment and migration remain unsupported. See the
 [integration reference](docs/integration-reference.md#ordinary-review-preview)
 for the API sequence and boundaries.

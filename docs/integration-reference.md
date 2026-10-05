@@ -888,19 +888,22 @@ relax the current fail-closed restriction checks.
 ## Ordinary review preview
 
 The `preview-unverified-procedure-v1` package surface implements ordinary review
-(`mode: "review"`) and a completed-`BLOCK` amendment (`mode: "amendment"`). It resolves the committed selection and all
-review inputs from the exact predecessor, materializes the entire selected
-Authority Set, and creates a request using the unchanged predecessor semantic
-schema and validators. Preparation reads Git objects and returns model/reasoning
-settings with the request; it does not contact a model or use credentials.
+(`mode: "review"`), a completed-`BLOCK` amendment (`mode: "amendment"`), and
+missing-decision addition (`mode: "addition"`). It resolves the committed
+selection and all review inputs from the exact predecessor, materializes the
+entire selected Authority Set, and creates a request using the unchanged
+predecessor semantic schema and validators. Preparation reads Git objects and
+returns model/reasoning settings with the request; it does not contact a model
+or use credentials.
 
 Commit this version-1 selection at `.codex/gatekeeper/preview-lifecycle.json`
 before the reviewed change. Its policy, prompt, schema, validator and caller must
 match the predecessor's model-backed Codex policy; governance and `authorityPaths`
 must belong to its complete Authority Set. `authorityPaths` and `migrationPaths`
 remain required compatibility fields; `migrationPaths` does not enable migration.
-The selected eligibility schema and validator are used only when the
-predecessor explicitly selects `amendmentTriggerProfile: "completed-block-v1"`.
+The selected eligibility schema and validator are used for B routes. A
+completed-`BLOCK` amendment additionally requires the predecessor to select
+`amendmentTriggerProfile: "completed-block-v1"`.
 
 ```json
 {
@@ -973,6 +976,16 @@ merge parents and tree, and canonical readback. `prepareFreshPreviewReview`
 requires a new A based on the observed successor. These APIs validate records;
 they do not integrate changes or contact a reviewer.
 
+A missing-decision addition is triggered only by a completed ordinary
+`OWNER_DECISION` that carries a nonempty `ownerDecisionId`. Build a B spec with
+`mode: "addition"`, that receipt as `trigger`, and an external
+`preview-addition-record` whose target is the exact same ID. The B change must
+append only the missing decision to selected authority, preserving all existing
+authority bytes; replacement, deletion, unrelated or mixed-scope changes are
+rejected or ineligible. Complete the request with the selected eligibility
+schema and validator. Only `ELIGIBLE` may proceed through the same observation
+and fresh-review APIs described above.
+
 The receipt remains `adoption=PENDING` and `canonical=PENDING`; all producer,
 execution, owner, custody, policy-protection and host-enforcement assurances are
 `UNVERIFIED`. It is not trusted acceptance evidence. This package surface exposes
@@ -980,7 +993,7 @@ execution, owner, custody, policy-protection and host-enforcement assurances are
 `observePreviewLifecycle`, `prepareFreshPreviewReview` and `previewReceiptBytes`
 from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
 
-Addition, owner-decision amendment and migration are unsupported. Preparation
+Owner-decision amendment and migration are unsupported. Preparation
 rejects unsupported modes, and receipt revalidation repeats the route checks so
 later-route receipts cannot be treated as supported results. No consumer should
 infer unsupported routes from inert selection declarations.

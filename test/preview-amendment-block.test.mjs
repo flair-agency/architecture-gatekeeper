@@ -102,7 +102,7 @@ test('only a completed BLOCK trigger and predecessor-selected BLOCK profile can 
   const ownerFixture = fixture(t, 'completed-owner-decision-v1'); const owner = await makeTrigger(ownerFixture, 'OWNER_DECISION');
   const ownerB = commitOn(ownerFixture, 'owner-trigger-b', { [files[0]]: 'Changed\n' });
   await assert.rejects(preparePreviewLifecycle(spec(ownerFixture, 'amendment', ownerB, owner.receipt, recordFor(ownerFixture, ownerB, owner.receipt)), ownerFixture.root), /completed-block-v1/);
-  for (const mode of ['addition', 'migration']) await assert.rejects(preparePreviewLifecycle(spec(f, mode, bHead, {}, {}), f.root), /unsupported spec/);
+  await assert.rejects(preparePreviewLifecycle(spec(f, 'migration', bHead, {}, {}), f.root), /unsupported spec/);
 });
 
 test('INELIGIBLE B is recorded but cannot be observed; wrong record and stale runtime fail closed', async t => {
@@ -115,7 +115,7 @@ test('INELIGIBLE B is recorded but cannot be observed; wrong record and stale ru
   staleRuntime.integritySha256 = sha(Buffer.from(JSON.stringify(canonical(unsigned))));
   await assert.rejects(completePreviewLifecycle(staleRuntime, eligibleResponse(), f.root), /request differs from immutable predecessor inputs/);
   const receipt = await completePreviewLifecycle(b.request, eligibleResponse('INELIGIBLE', false), f.root);
-  await assert.rejects(observePreviewLifecycle(receipt, b.bHead, f.root), /not an eligible BLOCK amendment/);
+  await assert.rejects(observePreviewLifecycle(receipt, b.bHead, f.root), /not an eligible selected B procedure/);
 });
 
 test('receipt trailer, merge parent order/tree and target readback are exact', async t => {
