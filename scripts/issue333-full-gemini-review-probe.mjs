@@ -37,7 +37,7 @@ https.request=(options,callback)=>{
  request.write=(chunk,...args)=>{
   // Existing proxy forwards its already validated request body in one write.
   const payload=JSON.parse(Buffer.from(chunk).toString('utf8'));
-  payload.generationConfig={...payload.generationConfig,maxOutputTokens:8192};
+  payload.generationConfig={...payload.generationConfig,maxOutputTokens:16384};
   const boundedBody=Buffer.from(JSON.stringify(payload));
   request.setHeader('Content-Length',boundedBody.length);
   observation.requestBytes=boundedBody.length;
@@ -115,5 +115,5 @@ finally{
  https.request=originalRequest;syncBuiltinESMExports();
  }
 }
-console.log(JSON.stringify({kind:'historical-complete-input-review-investigation-not-acceptance',revision:process.env.GITHUB_SHA,reviewedMerge:reviewedSha,base:packet?.revisions.baseSha,head:packet?.revisions.headSha,authoritySetDigest:provenance?.setDigest,model:'gemini-3.8-flash',thinkingLevel:'MEDIUM',location:'global',maxModelRequests:6,maxOutputTokensPerRequest:8192,sessionDeadlineMs:180000,elapsedMs:Date.now()-start,packetBytes:packet?Buffer.byteLength(JSON.stringify(packet)):null,encodedSelectedPromptBytes:encodedPromptBytes,responseBytes,responseSha256,changedPaths:packet?.files.length,authorityMembers:packet?.references.length,expectedSnapshotCount:snapshots.length,observedSnapshotCount:observedSnapshots.size,validatedDecision:decision?.decision,gateDecisions:decision?{sharedMechanism:decision.gates.sharedMechanism.decision,trustBoundary:decision.gates.trustBoundary.decision}:null,findingCount:decision?.findings.length,completeValidatedReview:valid,failureStage,encryptedEvidenceRetained:evidenceRetained,sessionResourcesCleaned:clean,codexAbsentFromRunnerPath:codexAbsent,codexLookupStatus:codexCheck.status,openAiCredentialsAbsent:openAiAbsent,modelRequests:observations}));
+console.log(JSON.stringify({kind:'historical-complete-input-review-investigation-not-acceptance',revision:process.env.GITHUB_SHA,reviewedMerge:reviewedSha,base:packet?.revisions.baseSha,head:packet?.revisions.headSha,authoritySetDigest:provenance?.setDigest,model:'gemini-3.8-flash',thinkingLevel:'MEDIUM',location:'global',maxModelRequests:6,maxOutputTokensPerRequest:16384,sessionDeadlineMs:180000,elapsedMs:Date.now()-start,packetBytes:packet?Buffer.byteLength(JSON.stringify(packet)):null,encodedSelectedPromptBytes:encodedPromptBytes,responseBytes,responseSha256,changedPaths:packet?.files.length,authorityMembers:packet?.references.length,expectedSnapshotCount:snapshots.length,observedSnapshotCount:observedSnapshots.size,validatedDecision:decision?.decision,gateDecisions:decision?{sharedMechanism:decision.gates.sharedMechanism.decision,trustBoundary:decision.gates.trustBoundary.decision}:null,findingCount:decision?.findings.length,completeValidatedReview:valid,failureStage,encryptedEvidenceRetained:evidenceRetained,sessionResourcesCleaned:clean,codexAbsentFromRunnerPath:codexAbsent,codexLookupStatus:codexCheck.status,openAiCredentialsAbsent:openAiAbsent,modelRequests:observations}));
 if(!valid||!clean||!evidenceRetained)process.exitCode=1;
