@@ -42,24 +42,25 @@ jobs:
       - name: One bounded Vertex-only connectivity request
         env:
           PROBE_BEARER: ${{ steps.auth.outputs.access_token }}
-          PROBE_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          PROBE_PROJECT: ${{ steps.auth.outputs.project_id }}
         shell: bash
         run: |
           node --input-type=module <<'NODE'
           import { createHash } from 'node:crypto';
           const bearer = process.env.PROBE_BEARER;
-          const identity = process.env.PROBE_SERVICE_ACCOUNT;
+          const project = process.env.PROBE_PROJECT;
           delete process.env.PROBE_BEARER;
-          delete process.env.PROBE_SERVICE_ACCOUNT;
-          const match = /^[^@]+@([a-z][a-z0-9-]{4,28}[a-z0-9])\.iam\.gserviceaccount\.com$/.exec(identity ?? '');
-          if (!match || !bearer) throw new Error('Probe requires the existing WIF service account and exchanged bearer.');
+          delete process.env.PROBE_PROJECT;
+          if (!/^(?:[a-z][a-z0-9-]{4,28}[a-z0-9]|[0-9]+)$/.test(project ?? '') || !bearer) {
+            throw new Error('Probe requires the existing WIF project output and exchanged bearer.');
+          }
           const model = 'gemini-3.8-flash';
           const location = 'global';
           const body = JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: 'Connectivity probe only. Reply exactly with the text AGK_VERTEX_PROBE_OK. Do not use tools.' }] }],
             generationConfig: { maxOutputTokens: 128, thinkingConfig: { thinkingLevel: 'MEDIUM', includeThoughts: false } },
           });
-          const endpoint = `https://aiplatform.googleapis.com/v1/projects/${match[1]}/locations/${location}/publishers/google/models/${model}:generateContent`;
+          const endpoint = `https://aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:generateContent`;
           let response;
           try {
             response = await fetch(endpoint, {
