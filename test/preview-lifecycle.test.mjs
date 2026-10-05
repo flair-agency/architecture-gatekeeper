@@ -108,7 +108,8 @@ test('ordinary diff ignores configured textconv during preparation and receipt r
   git(f.root, 'diff', '--no-ext-diff', '--textconv', '--no-renames', f.base, head);
   assert.equal(existsSync(marker), true, 'fixture textconv driver must be active');
   rmSync(marker);
-  const expectedDiff = git(f.root, 'diff', '--no-ext-diff', '--no-textconv', '--no-renames', f.base, head);
+  const expectedDiff = execFileSync('git', ['-C', f.root, 'diff', '--no-ext-diff', '--no-textconv', '--no-renames', f.base, head],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   assert.equal(existsSync(marker), false);
 
   const request = await preparePreviewLifecycle(spec(f, 'review', head), f.root);
@@ -119,6 +120,22 @@ test('ordinary diff ignores configured textconv during preparation and receipt r
   assert.equal(existsSync(marker), false, 'completion request rebuilding must not invoke the converter');
   await validatePreviewReceipt(receipt, f.root);
   assert.equal(existsSync(marker), false, 'receipt revalidation must not invoke the converter');
+});
+
+test('ordinary diff preserves trailing whitespace and final newlines through receipt validation', async t => {
+  const f = fixture(t);
+  const reviewedBytes = 'Updated final line with meaningful trailing spaces   \n\n';
+  const head = commitOn(f, 'ordinary-trailing-whitespace', { 'app.txt': reviewedBytes });
+  const expectedDiff = execFileSync('git', ['-C', f.root, 'diff', '--no-ext-diff', '--no-textconv', '--no-renames', f.base, head],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  const request = await preparePreviewLifecycle(spec(f, 'review', head), f.root);
+  const taskPayload = JSON.parse(request.prompt.split('Bound task:\n')[1].split('\nReturn only')[0]);
+  assert.equal(taskPayload.changes.find(change => change.path === 'app.txt').after, reviewedBytes);
+  assert.equal(taskPayload.diff, expectedDiff);
+  assert.equal(taskPayload.diff.endsWith('\n'), true);
+  assert.match(taskPayload.diff, /\+Updated final line with meaningful trailing spaces   \n/);
+  const receipt = await completePreviewLifecycle(request, ordinary(decision()), f.root);
+  await validatePreviewReceipt(receipt, f.root);
 });
 
 test('ordinary instructions enumerate the complete selected authority without changing its schema or validator', async t => {
