@@ -64,7 +64,7 @@ const responseText = ${JSON.stringify(responseText)};
 if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); process.exit(0); }
 let prompt = '';
 for await (const chunk of process.stdin) prompt += chunk;
-writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')), manifest: JSON.parse(readFileSync('manifest.json', 'utf8')), evidence: Object.fromEntries(JSON.parse(readFileSync('manifest.json', 'utf8')).files.flatMap(item => ['before', 'after'].filter(side => item[side]).map(side => [item[side].filename, readFileSync(item[side].filename, 'utf8')]))) }));
+writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')), referenceText: readFileSync('evidence/reference-0001.txt', 'utf8'), manifest: JSON.parse(readFileSync('manifest.json', 'utf8')), evidence: Object.fromEntries(JSON.parse(readFileSync('manifest.json', 'utf8')).files.flatMap(item => ['before', 'after'].filter(side => item[side]).map(side => [item[side].filename, readFileSync(item[side].filename, 'utf8')])).concat(JSON.parse(readFileSync('manifest.json', 'utf8')).references.map(item => [item.filename, readFileSync(item.filename, 'utf8')]))) }));
 if (mode === 'delayed') { await new Promise(resolve => setTimeout(resolve, 250)); }
 if (mode === 'stale-failure') { process.stdout.write(JSON.stringify({ response: responseText })); process.exit(7); }
 if (mode === 'failure') { process.stderr.write('fixture execution failure'); process.exit(7); }
@@ -403,9 +403,37 @@ test('exact committed merge context reaches the controlled CLI as evidence witho
     assert.match(item.after.filename, /^evidence\/file-\d+-after\.txt$/);
     assert.equal(observed.evidence[item.after.filename], expectedText, `${path}: exact committed control bytes`);
   }
+  const protectedReference = observed.manifest.references.find(item => item.path === 'reference.md');
+  assert.ok(protectedReference);
+  assert.equal(observed.evidence[protectedReference.filename], 'protected reference\n');
   assert.equal(observed.manifest.files.some(item => item.path === 'untracked.txt'), false);
   assert.equal(JSON.stringify(observed.settings).includes('run_shell_command'), false);
   await assertProxyClosed(observed.endpoint);
   assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
   assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+});
+
+test('prepared execution snapshots caller packet and workspace limits before proxy startup yields', async t => {
+  for (const operation of [runPreparedGeminiCiReview, async reviewInput => (await runPreparedGeminiCiDecision({
+    reviewInput, authorityProvenance, validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576,
+  })).decision]) {
+    const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+    const supplied = input(f);
+    supplied.proxySessionOptions.workspaceLimits = structuredClone(workspaceLimits);
+    const pending = operation(supplied);
+    const reference = supplied.proxySessionOptions.packet.references[0];
+    reference.text = 'MUTATED';
+    reference.sha256 = createHash('sha256').update(reference.text).digest('hex');
+    supplied.proxySessionOptions.packet.revisions.reviewedMergeSha = oid('e');
+    supplied.proxySessionOptions.workspaceLimits.maxFiles = 1;
+    const result = await pending;
+    assert.ok(result);
+    const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+    assert.equal(observed.referenceText, 'protected CI fixture');
+    assert.equal(observed.manifest.revisions.reviewedMergeSha, oid('c'));
+    assert.deepEqual(observed.manifest.limits, workspaceLimits);
+    await assertProxyClosed(observed.endpoint);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
 });
