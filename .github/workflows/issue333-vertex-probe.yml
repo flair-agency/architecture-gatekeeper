@@ -1,0 +1,93 @@
+name: Issue 333 isolated Vertex WIF connectivity probe
+
+on:
+  push:
+    branches: [codex/issue333-vertex-verification]
+    paths: [.github/workflows/issue333-vertex-probe.yml]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  connectivity:
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/codex/issue333-vertex-verification'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Mask private deployment identifiers
+        env:
+          PROBE_IDENTITY: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          PROBE_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+        run: |
+          node --input-type=module <<'NODE'
+          const project = process.env.PROBE_IDENTITY?.split('@')[1]?.split('.iam.')[0];
+          const number = /^projects\/(\d+)\//.exec(process.env.PROBE_PROVIDER ?? '')?.[1];
+          for (const value of [project, number]) if (value && /^[a-z0-9-]+$/.test(value)) console.log(`::add-mask::${value}`);
+          NODE
+
+      # No repository checkout, package installation, or acceptance result.
+      - name: Exchange existing repository-scoped WIF identity
+        id: auth
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_lifetime: 300s
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          create_credentials_file: false
+          export_environment_variables: false
+
+      - name: One bounded Vertex-only connectivity request
+        env:
+          PROBE_BEARER: ${{ steps.auth.outputs.access_token }}
+          PROBE_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          const bearer = process.env.PROBE_BEARER;
+          const identity = process.env.PROBE_SERVICE_ACCOUNT;
+          delete process.env.PROBE_BEARER;
+          delete process.env.PROBE_SERVICE_ACCOUNT;
+          const match = /^[^@]+@([a-z][a-z0-9-]{4,28}[a-z0-9])\.iam\.gserviceaccount\.com$/.exec(identity ?? '');
+          if (!match || !bearer) throw new Error('Probe requires the existing WIF service account and exchanged bearer.');
+          const model = 'gemini-3.8-flash';
+          const location = 'global';
+          const body = JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: 'Connectivity probe only. Reply exactly with the text AGK_VERTEX_PROBE_OK. Do not use tools.' }] }],
+            generationConfig: { maxOutputTokens: 128, thinkingConfig: { thinkingLevel: 'MEDIUM', includeThoughts: false } },
+          });
+          const endpoint = `https://aiplatform.googleapis.com/v1/projects/${match[1]}/locations/${location}/publishers/google/models/${model}:generateContent`;
+          let response;
+          try {
+            response = await fetch(endpoint, {
+              method: 'POST', headers: { authorization: `Bearer ${bearer}`, 'content-type': 'application/json' },
+              body, redirect: 'error', signal: AbortSignal.timeout(30000),
+            });
+            if (!response.ok) { await response.body?.cancel(); throw new Error(`HTTP ${response.status}`); }
+            const reader = response.body.getReader(); const chunks = []; let total = 0;
+            for (;;) {
+              const { done, value } = await reader.read(); if (done) break;
+              total += value.byteLength;
+              if (total > 65536) { await reader.cancel(); throw new Error('response byte limit'); }
+              chunks.push(Buffer.from(value));
+            }
+            const bytes = Buffer.concat(chunks);
+            const payload = JSON.parse(bytes.toString('utf8'));
+            const text = payload.candidates?.[0]?.content?.parts?.filter(part => !part.thought).map(part => part.text ?? '').join('').trim();
+            if (text !== 'AGK_VERTEX_PROBE_OK') throw new Error('sentinel mismatch');
+            console.log(JSON.stringify({
+              kind: 'connectivity-only-not-review-or-acceptance', runtimeRevision: process.env.GITHUB_SHA,
+              model, thinkingLevel: 'MEDIUM', location, httpStatus: response.status,
+              requestSha256: createHash('sha256').update(body).digest('hex'),
+              responseSha256: createHash('sha256').update(bytes).digest('hex'), responseBytes: bytes.length,
+            }));
+          } catch (error) {
+            // Never publish provider error payloads, credentials, identifiers or response text.
+            const reason = /^HTTP [0-9]{3}$|^response byte limit$|^sentinel mismatch$/.test(error.message) ? error.message : 'transport or invalid response';
+            console.error(`Vertex connectivity incomplete: ${reason}; no fallback or retry.`);
+            process.exitCode = 1;
+          }
+          NODE
