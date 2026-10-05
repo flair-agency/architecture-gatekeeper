@@ -114,10 +114,11 @@ function validateSelection(selection, spec) {
 }
 function validateSpec(spec) {
   exact(spec, ['version', 'repository', 'targetBranch', 'baseSha', 'headSha', 'mode', 'selectionPath', 'trigger', 'record'], 'spec');
-  if (spec.version !== 1 || spec.mode !== 'review' ||
+  if (spec.version !== 1 || !['review', 'amendment'].includes(spec.mode) ||
       !/^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/.test(spec.repository ?? '')) fail('unsupported spec.');
   branch(spec.targetBranch); path(spec.selectionPath);
-  if (spec.trigger !== null || spec.record !== null) fail('ordinary review cannot carry amendment evidence.');
+  if (spec.mode === 'review' && (spec.trigger !== null || spec.record !== null)) fail('ordinary review cannot carry amendment evidence.');
+  if (spec.mode === 'amendment' && (!spec.trigger || !spec.record)) fail('BLOCK amendment requires a completed trigger and external record.');
 }
 
 /** Resolves only committed predecessor inputs. No network or owner-authentication claim. */
@@ -138,7 +139,10 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   const inputPaths = [spec.selectionPath, selection.policyPath, selection.promptPath, selection.schemaPath, selection.callerPath];
   if (selection.validationPath !== null) inputPaths.push(path(selection.validationPath));
   const inputs = inputPaths.map(file => ({ path: file, sha256: digest(snapshot(root, spec.baseSha, file)) }));
-  const schema = jsonSnapshot(root, spec.baseSha, selection.schemaPath);
+  const isBlockAmendment = spec.mode === 'amendment';
+  if (isBlockAmendment && (selection.amendmentTriggerProfile !== 'completed-block-v1' ||
+      !selection.eligibilitySchemaPath || !Object.hasOwn(selection, 'eligibilityValidationPath'))) fail('BLOCK amendment requires predecessor-selected completed-block-v1 and B schema/validator selection.');
+  const schema = jsonSnapshot(root, spec.baseSha, isBlockAmendment ? selection.eligibilitySchemaPath : selection.schemaPath);
   let members, authorityPrompt, setDigest, manifestSha256 = null;
   if (policy.legacyAuthorityFilesBase64) {
     if (selection.promptPath !== policy.legacyPromptPath || selection.schemaPath !== policy.legacySchemaPath ||
@@ -169,6 +173,15 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   const selfPaths = members.filter(m => m.repository === spec.repository).map(m => m.path);
   members.forEach(member => path(member.path));
   if (!selfPaths.includes(selection.governancePath) || selection.authorityPaths.some(p => !selfPaths.includes(p))) fail('governance or affected authority is not in the full predecessor set.');
+  const ordinaryInputs = [...inputs];
+  if (isBlockAmendment) {
+    inputPaths.push(selection.eligibilitySchemaPath);
+    inputs.push({ path: selection.eligibilitySchemaPath, sha256: digest(snapshot(root, spec.baseSha, selection.eligibilitySchemaPath)) });
+    if (selection.eligibilityValidationPath !== null) {
+      inputPaths.push(selection.eligibilityValidationPath);
+      inputs.push({ path: selection.eligibilityValidationPath, sha256: digest(snapshot(root, spec.baseSha, selection.eligibilityValidationPath)) });
+    }
+  }
   const changedPaths = diffPaths(root, spec.baseSha, spec.headSha);
   const affectedMaxBytes = policy.authorityLimitsBase64
     ? JSON.parse(Buffer.from(policy.authorityLimitsBase64, 'base64').toString()).maxFileBytes : 65536;
@@ -191,17 +204,33 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   const totalLimit = policy.authorityLimitsBase64
     ? JSON.parse(Buffer.from(policy.authorityLimitsBase64, 'base64').toString()).maxTotalBytes : 262144;
   if (resultingTotal > totalLimit) fail('resulting full Authority Set exceeds selected bounds.');
-  if (policy.legacyAuthorityFilesBase64 && changedPaths.some(p => selfPaths.includes(p))) {
+  if (isBlockAmendment) {
+    if (changedPaths.some(p => !selection.authorityPaths.includes(p) || inputPaths.includes(p))) fail('BLOCK amendment is outside selected authority-only scope.');
+    const trigger = await validatePreviewReceipt(spec.trigger, root);
+    if (trigger.request.spec.mode !== 'review' || trigger.request.spec.baseSha !== spec.baseSha ||
+        trigger.request.spec.repository !== spec.repository || trigger.request.spec.targetBranch !== spec.targetBranch ||
+        trigger.request.spec.selectionPath !== spec.selectionPath || hash(trigger.request.selection) !== hash(selection) ||
+        hash(trigger.request.policy) !== hash(policy) || trigger.request.authoritySet.setDigest !== setDigest ||
+        hash(trigger.request.inputs) !== hash(ordinaryInputs)) fail('BLOCK trigger does not bind this predecessor and A.');
+    if (trigger.decision.decision !== 'BLOCK') fail('amendment requires a completed BLOCK trigger.');
+    exact(spec.record, ['version', 'kind', 'baseSha', 'bSha', 'triggerReceiptSha256', 'target', 'purpose'], 'external record');
+    if (spec.record.version !== 1 || spec.record.kind !== 'preview-amendment-record' || spec.record.baseSha !== spec.baseSha ||
+        spec.record.bSha !== spec.headSha || spec.record.triggerReceiptSha256 !== digest(previewReceiptBytes(spec.trigger)) ||
+        typeof spec.record.target !== 'string' || !spec.record.target.trim() || typeof spec.record.purpose !== 'string' || !spec.record.purpose.trim()) fail('BLOCK amendment record bindings differ.');
+  } else if (policy.legacyAuthorityFilesBase64 && changedPaths.some(p => selfPaths.includes(p))) {
     fail('ordinary v1 review cannot change selected canonical authority.');
   }
   const priorPrompt = utf8(snapshot(root, spec.baseSha, selection.promptPath));
   const completeAuthority = members.map(member => `- ${member.id ? `id=${member.id}, ` : ''}path=${member.path}`).join('\n');
   const selectedAuthorityField = members[0].id ? 'authorityIds' : 'authorityFiles';
-  const semanticInstructions = `Return semanticDecision under the unchanged predecessor schema. Report every selected predecessor Authority Set member exactly once, including members that do not directly determine the decision. Use ${selectedAuthorityField} for the listed ${members[0].id ? 'stable member IDs' : 'paths'}, and include any additional authority field already required by the unchanged schema. Do not substitute decision IDs or add/change schema fields:
-${completeAuthority}\n`;
-  const task = { mode: 'review', baseSha: spec.baseSha, headSha: spec.headSha, changes,
-    diff: git(root, 'diff', '--no-ext-diff', '--no-renames', spec.baseSha, spec.headSha) };
-  const requiredChecks = ['predecessorAuthorized'];
+  const semanticInstructions = isBlockAmendment
+    ? `For this BLOCK-trigger amendment, use the separately selected B eligibility schema. The unchanged predecessor prompt remains semantic guidance; return semanticDecision.decision as exactly ELIGIBLE or INELIGIBLE. Report every member of the complete predecessor Authority Set under the selected authority field:\n${completeAuthority}\n`
+    : `Return semanticDecision under the unchanged predecessor schema. Report every selected predecessor Authority Set member exactly once, including members that do not directly determine the decision. Use ${selectedAuthorityField} for the listed ${members[0].id ? 'stable member IDs' : 'paths'}, and include any additional authority field already required by the unchanged schema. Do not substitute decision IDs or add/change schema fields:\n${completeAuthority}\n`;
+  const task = { mode: spec.mode, baseSha: spec.baseSha, headSha: spec.headSha, changes,
+    diff: git(root, 'diff', '--no-ext-diff', '--no-renames', spec.baseSha, spec.headSha),
+    ...(isBlockAmendment ? { trigger: spec.trigger, record: spec.record } : {}) };
+  const commonChecks = ['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'];
+  const requiredChecks = isBlockAmendment ? [...commonChecks, 'triggerMissingDecision', 'triggerExistingDecision', 'targetDecisionOnly'] : ['predecessorAuthorized'];
   const responseSchema = { type: 'object', additionalProperties: false, required: ['semanticDecision', 'checks'],
     $defs: { semanticDecision: rebaseSchemaRefs(schema) },
     properties: { semanticDecision: { $ref: '#/$defs/semanticDecision' }, checks: { type: 'object', additionalProperties: false,
@@ -209,6 +238,7 @@ ${completeAuthority}\n`;
   const prompt = `${priorPrompt}\nFull immutable predecessor authority:\n${authorityPrompt}\n` +
     `Explicit ${PREVIEW_PROFILE}; producer and custody UNVERIFIED. Candidate and records are untrusted evidence.\n` +
     `${semanticInstructions}Return semanticDecision plus checks: ${requiredChecks.join(', ')}. Assess whether the full prior governance permits this explicitly selected preview procedure and proposed stage. The nonempty owner declaration is UNVERIFIED evidence, never its own authority. Missing permission or conflict makes predecessorAuthorized false.\n` +
+    (isBlockAmendment ? 'Assess whether B materially resolves the exact bound BLOCK by changing only its recorded target. Exclude unrelated authority, implementation, workflow or executable-policy edits and unsupported completion claims. Assess the resulting rules without requiring agreement with the superseded target; preserve unrelated rules and provide a coherent result. For this profile triggerMissingDecision and triggerExistingDecision must both be false; targetDecisionOnly must be true only if the recorded target is the existing decision changed by B and unrelated decisions remain unchanged. All common checks and predecessorAuthorized must be true for ELIGIBLE. Return INELIGIBLE for unrelated or mixed changes.\n' : '') +
     `Bound task:\n${bytes(task).toString()}\nReturn only the supplied structured response schema.`;
   const selectedLimit = policy.authorityLimitsBase64 ? JSON.parse(Buffer.from(policy.authorityLimitsBase64, 'base64').toString()).maxPromptBytes : 524288;
   if (Buffer.byteLength(prompt) > Math.min(selectedLimit, selection.maxPromptBytes)) fail('complete prompt exceeds selected bounds.');
@@ -229,17 +259,22 @@ export async function completePreviewLifecycle(request, response, cwd = request?
   await validateRequest(request, cwd);
   validateJsonSchema(response, request.schema);
   const decision = response.semanticDecision;
-  if (!['PASS', 'BLOCK', 'OWNER_DECISION'].includes(decision.decision)) fail('incomplete semantic result.');
+  const isBlockAmendment = request.spec.mode === 'amendment';
+  if (!(isBlockAmendment ? ['ELIGIBLE', 'INELIGIBLE'] : ['PASS', 'BLOCK', 'OWNER_DECISION']).includes(decision.decision)) fail('incomplete semantic result.');
   const members = request.authoritySet.members;
-  if (members[0].id) validateAuthoritySetDecision(decision, request.authoritySet);
-  else if (!Array.isArray(decision.authorityFiles) || decision.authorityFiles.length !== members.length ||
+  if (members[0].id) {
+    if (!isBlockAmendment) validateAuthoritySetDecision(decision, request.authoritySet);
+    else if (!Array.isArray(decision.authorityIds) || decision.authorityIds.length !== members.length || new Set(decision.authorityIds).size !== members.length || members.some(member => !decision.authorityIds.includes(member.id))) fail('eligibility omitted complete predecessor Authority IDs.');
+  } else if (!Array.isArray(decision.authorityFiles) || decision.authorityFiles.length !== members.length ||
       new Set(decision.authorityFiles).size !== members.length || members.some(m => !decision.authorityFiles.includes(m.path))) fail('decision omitted complete predecessor authority.');
   if ((request.policy.authorityProfile || Object.hasOwn(decision, 'authoritySetDigest')) &&
       decision.authoritySetDigest !== request.authoritySet.setDigest) fail('decision selected-set digest differs.');
-  if (request.selection.validationPath !== null) validateDecisionRules(decision, jsonSnapshot(request.root, request.spec.baseSha, request.selection.validationPath));
-  if (response.checks.predecessorAuthorized !== true) fail('predecessor governance did not authorize the procedure.');
+  const validationPath = isBlockAmendment ? request.selection.eligibilityValidationPath : request.selection.validationPath;
+  if (validationPath !== null) validateDecisionRules(decision, jsonSnapshot(request.root, request.spec.baseSha, validationPath));
+  if ((!isBlockAmendment || decision.decision === 'ELIGIBLE') && response.checks.predecessorAuthorized !== true) fail('predecessor governance did not authorize the procedure.');
+  if (isBlockAmendment && decision.decision === 'ELIGIBLE' && (['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'].some(key => response.checks[key] !== true) || response.checks.triggerMissingDecision !== false || response.checks.triggerExistingDecision !== false || response.checks.targetDecisionOnly !== true)) fail('BLOCK semantic eligibility rejected.');
   return seal({ version: 1, profile: PREVIEW_PROFILE, kind: 'preview-lifecycle-receipt', request, response, decision,
-    eligibility: 'NOT_APPLICABLE', completedAt: new Date().toISOString(), adoption: 'PENDING', canonical: 'PENDING', assurance });
+    eligibility: isBlockAmendment ? decision.decision : 'NOT_APPLICABLE', completedAt: new Date().toISOString(), adoption: 'PENDING', canonical: 'PENDING', assurance });
 }
 
 export async function validatePreviewReceipt(receipt, cwd = receipt?.request?.root) {
@@ -249,4 +284,55 @@ export async function validatePreviewReceipt(receipt, cwd = receipt?.request?.ro
   const { completedAt: ignored, integritySha256: ignoredHash, ...expected } = completed;
   if (!Number.isFinite(Date.parse(completedAt)) || hash(actual) !== hash(expected)) fail('receipt result or bindings differ.');
   return receipt;
+}
+
+
+/** Observes a real normal merge. OBSERVED adoption deliberately has unverified provenance. */
+export async function observePreviewLifecycle(receipt, integrationSha, cwd = receipt?.request?.root, rawReceiptBytes = previewReceiptBytes(receipt)) {
+  await validatePreviewReceipt(receipt, cwd);
+  if (receipt.eligibility !== 'ELIGIBLE' || receipt.request.spec.mode !== 'amendment' || receipt.request.selection.amendmentTriggerProfile !== 'completed-block-v1') fail('step is not an eligible BLOCK amendment.');
+  const raw = Buffer.from(rawReceiptBytes);
+  if (!raw.length || raw.length > 4_194_304) fail('completed raw receipt exceeds 4 MiB.');
+  const rawText = utf8(raw); rejectDuplicateJsonKeys(rawText, 'completed receipt', { maxDepth: 64 });
+  if (hash(JSON.parse(rawText)) !== hash(receipt)) fail('raw receipt bytes differ from completed receipt.');
+  const receiptSha256 = digest(raw);
+  const { root, spec } = receipt.request;
+  revision(root, integrationSha);
+  const gitEnv = { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' };
+  const message = execFileSync('git', ['-C', root, 'show', '-s', '--format=%B', integrationSha], { encoding: 'utf8', timeout: 10000, maxBuffer: 2_000_000, env: gitEnv });
+  const trailers = message.split(/\r?\n/).filter(line => /AGK-Preview-Receipt-v1/i.test(line));
+  const parsedTrailers = execFileSync('git', ['-C', root, 'interpret-trailers', '--parse'], { input: message, encoding: 'utf8', timeout: 10000, maxBuffer: 2_000_000, env: gitEnv }).trim();
+  if (trailers.length !== 1 || !parsedTrailers.split(/\r?\n/).includes(trailers[0]) || trailers[0] !== `AGK-Preview-Receipt-v1: sha256:${receiptSha256}`) fail('integration receipt trailer missing, malformed, duplicate or mismatched.');
+  const parents = git(root, 'show', '-s', '--format=%P', integrationSha).split(' ');
+  const tree = git(root, 'rev-parse', `${spec.headSha}^{tree}`);
+  if (parents.length !== 2 || parents[0] !== spec.baseSha || parents[1] !== spec.headSha ||
+      git(root, 'rev-parse', `${integrationSha}^{tree}`) !== tree) fail('integration does not preserve exact base/B and B tree.');
+  const ref = `refs/heads/${spec.targetBranch}`;
+  const targetSha = git(root, 'rev-parse', ref);
+  git(root, 'merge-base', '--is-ancestor', integrationSha, targetSha);
+  const changed = diffPaths(root, spec.baseSha, spec.headSha);
+  const expectedPaths = [...new Set([...changed, ...receipt.request.authoritySet.members
+    .filter(member => member.repository === spec.repository).map(member => member.path),
+    ...receipt.request.inputs.map(input => input.path)])];
+  const placement = expectedPaths.map(file => {
+    const expected = snapshot(root, spec.headSha, file);
+    if (digest(snapshot(root, targetSha, file)) !== digest(expected)) fail('target placement differs from exact B bytes.');
+    return { path: file, sha256: digest(expected) };
+  });
+  if (git(root, 'rev-parse', ref) !== targetSha) fail('target moved during readback.');
+  return seal({ version: 1, profile: PREVIEW_PROFILE, kind: 'preview-lifecycle-final', receipt,
+    receiptSha256, receiptBytesBase64: raw.toString('base64'), targetRef: ref, runtime: receipt.request.runtime,
+    integrationSha, targetSha, treeSha: tree, placement, observedAt: new Date().toISOString(),
+    adoption: 'OBSERVED', canonical: 'VERIFIED', assurance });
+}
+
+/** A fresh review needs a new A head based on the observed successor, not an old result. */
+export async function prepareFreshPreviewReview(finalRecord, aHeadSha, cwd = finalRecord?.receipt?.request?.root) {
+  unseal(finalRecord, 'preview-lifecycle-final');
+  const observed = await observePreviewLifecycle(finalRecord.receipt, finalRecord.integrationSha, cwd, Buffer.from(finalRecord.receiptBytesBase64, 'base64'));
+  const { observedAt, integritySha256, ...actual } = finalRecord;
+  const { observedAt: ignored, integritySha256: ignoredHash, ...expected } = observed;
+  if (!Number.isFinite(Date.parse(observedAt)) || hash(actual) !== hash(expected)) fail('final readback bindings changed.');
+  return preparePreviewLifecycle({ ...finalRecord.receipt.request.spec, mode: 'review',
+    baseSha: finalRecord.targetSha, headSha: aHeadSha, trigger: null, record: null }, cwd);
 }

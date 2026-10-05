@@ -261,11 +261,11 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 
 [MIT](LICENSE)
 
-## Ordinary review preview
+## Unverified preview lifecycle API
 
-The `./preview-lifecycle` package API supports ordinary preparation and
-completion against exact predecessor-selected inputs and the complete Authority
-Set. It records `UNVERIFIED` assurance and a pending receipt; it does not
-integrate changes, prove adoption, or supply host acceptance. See the
+The `./preview-lifecycle` package API supports ordinary review and the
+predecessor-authorized completed-BLOCK amendment procedure. Both preserve
+`UNVERIFIED` assurance and do not integrate changes or supply trusted acceptance.
+Addition, owner-decision amendment and migration remain unsupported. See the
 [integration reference](docs/integration-reference.md#ordinary-review-preview)
-for an API example and boundaries.
+for the API sequence and boundaries.
