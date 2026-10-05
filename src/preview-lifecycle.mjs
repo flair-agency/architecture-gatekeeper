@@ -200,7 +200,7 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   const semanticInstructions = `Return semanticDecision under the unchanged predecessor schema. Report every selected predecessor Authority Set member exactly once, including members that do not directly determine the decision. Use ${selectedAuthorityField} for the listed ${members[0].id ? 'stable member IDs' : 'paths'}, and include any additional authority field already required by the unchanged schema. Do not substitute decision IDs or add/change schema fields:
 ${completeAuthority}\n`;
   const task = { mode: 'review', baseSha: spec.baseSha, headSha: spec.headSha, changes,
-    diff: git(root, 'diff', '--no-ext-diff', '--no-renames', spec.baseSha, spec.headSha) };
+    diff: git(root, 'diff', '--no-ext-diff', '--no-textconv', '--no-renames', spec.baseSha, spec.headSha) };
   const requiredChecks = ['predecessorAuthorized'];
   const responseSchema = { type: 'object', additionalProperties: false, required: ['semanticDecision', 'checks'],
     $defs: { semanticDecision: rebaseSchemaRefs(schema) },
