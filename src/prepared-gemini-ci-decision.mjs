@@ -20,13 +20,23 @@ export async function runPreparedGeminiCiDecision(input) {
       !Number.isSafeInteger(input.maxSchemaBytes) || input.maxSchemaBytes < 1 || input.maxSchemaBytes > 1_048_576) {
     throw new Error('Prepared Gemini CI decision requires explicit bounds within the shared response/schema ceilings.');
   }
+  // Capture caller-owned completion materials before the asynchronous session.
+  // These private copies cannot be replaced or mutated by the caller while the
+  // CLI runs. Structured cloning also rejects executable/non-data inputs.
+  const { maxResponseBytes, maxSchemaBytes } = input;
+  const authorityProvenance = structuredClone(input.authorityProvenance);
+  const validationRules = structuredClone(input.validationRules);
+  if (!authorityProvenance || typeof authorityProvenance !== 'object' || Array.isArray(authorityProvenance) ||
+      (validationRules !== null && (!validationRules || typeof validationRules !== 'object' || Array.isArray(validationRules)))) {
+    throw new Error('Prepared Gemini CI decision requires explicit authority and validation data.');
+  }
   const { reviewInput } = input;
   const options = reviewInput?.proxySessionOptions?.processOptions;
   if (!options || typeof reviewInput.protectedDecisionSchemaText !== 'string') {
     throw new Error('Prepared Gemini CI decision requires explicit prepared execution inputs.');
   }
   const schemaBytes = Buffer.from(reviewInput.protectedDecisionSchemaText, 'utf8');
-  if (schemaBytes.length === 0 || schemaBytes.length > input.maxSchemaBytes) {
+  if (schemaBytes.length === 0 || schemaBytes.length > maxSchemaBytes) {
     throw new Error('Prepared Gemini CI decision schema exceeds its selected byte bound.');
   }
   const expectedExecution = {
@@ -43,10 +53,10 @@ export async function runPreparedGeminiCiDecision(input) {
   };
   const rawResponse = await runPreparedGeminiCiReview(reviewInput);
   return completePreparedCiReview({
-    executionInput: { expectedExecution, hostStepOutcome: 'success', rawResponse, maxResponseBytes: input.maxResponseBytes },
+    executionInput: { expectedExecution, hostStepOutcome: 'success', rawResponse, maxResponseBytes },
     schemaBytes,
-    authorityProvenance: input.authorityProvenance,
-    validationRules: input.validationRules,
-    maxSchemaBytes: input.maxSchemaBytes,
+    authorityProvenance,
+    validationRules,
+    maxSchemaBytes,
   });
 }
