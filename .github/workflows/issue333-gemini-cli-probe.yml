@@ -43,6 +43,41 @@ jobs:
           const number = /^projects\/(\d+)\//.exec(process.env.PROBE_PROVIDER ?? '')?.[1];
           for (const value of [project, number]) if (value && /^[a-z0-9-]+$/.test(value)) console.log(`::add-mask::${value}`);
           NODE
+      - name: Issue short-lived credential for expiry investigation
+        id: expiring-auth
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_lifetime: 30s
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Verify expired bearer is denied without fallback
+        env:
+          PROBE_BEARER: ${{ steps.expiring-auth.outputs.access_token }}
+          PROBE_PROJECT: ${{ steps.expiring-auth.outputs.project_id }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { setTimeout } from 'node:timers/promises';
+          const bearer = process.env.PROBE_BEARER;
+          const project = process.env.PROBE_PROJECT;
+          delete process.env.PROBE_BEARER;
+          delete process.env.PROBE_PROJECT;
+          if (!bearer || !/^(?:[a-z][a-z0-9-]{4,28}[a-z0-9]|[0-9]+)$/.test(project ?? '')) throw new Error('Missing trusted probe configuration');
+          await setTimeout(35000);
+          try {
+            const response = await fetch(`https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/gemini-3.8-flash:generateContent`, {
+              method: 'POST', headers: { authorization: `Bearer ${bearer}`, 'content-type': 'application/json' },
+              body: JSON.stringify({contents:[{role:'user',parts:[{text:'Expiry investigation only. Reply OK.'}]}],generationConfig:{maxOutputTokens:128,thinkingConfig:{thinkingLevel:'MEDIUM',includeThoughts:false}}}),
+              redirect: 'error', signal: AbortSignal.timeout(15000),
+            });
+            await response.body?.cancel();
+            if (response.status !== 401) throw new Error('Expected expiry denial was not observed');
+            console.log(JSON.stringify({kind:'expired-bearer-denial-only',httpStatus:response.status,requestedLifetimeSeconds:30,waitedSeconds:35,fallback:false}));
+          } catch { console.error('Expiry investigation incomplete; no retry or fallback.'); process.exitCode = 1; }
+          NODE
       - name: Exchange existing WIF identity after installation
         id: auth
         uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
