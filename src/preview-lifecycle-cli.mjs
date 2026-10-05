@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { preparePreviewLifecycle, completePreviewLifecycle, previewReceiptBytes } from './preview-lifecycle.mjs';
+import { preparePreviewLifecycle, completePreviewLifecycle, observePreviewLifecycle, prepareFreshPreviewReview, previewReceiptBytes } from './preview-lifecycle.mjs';
 
-const usage = 'Usage: architecture-preview-lifecycle prepare <spec.json> <request.json> | complete <request.json> <decision.json> <receipt.json>';
+const usage = 'Usage: architecture-preview-lifecycle prepare <spec.json> <request.json> | complete <request.json> <decision.json> <receipt.json> | observe <receipt.json> <merge-sha> <final.json> | fresh-review <final.json> <new-A-sha> <request.json>';
 function read(path) {
   const bytes = readFileSync(path);
   if (bytes.length > 4_194_304) throw new Error('Preview input exceeds 4 MiB.');
@@ -33,6 +33,10 @@ export async function runPreviewLifecycleCli(args = process.argv.slice(2), cwd =
     result = await preparePreviewLifecycle(read(input), cwd); destination = extra;
   } else if (command === 'complete' && args.length === 4) {
     result = await completePreviewLifecycle(read(input), read(extra), cwd); destination = output;
+  } else if (command === 'observe' && args.length === 4) {
+    result = await observePreviewLifecycle(read(input), extra, cwd, readFileSync(input)); destination = output;
+  } else if (command === 'fresh-review' && args.length === 4) {
+    result = await prepareFreshPreviewReview(read(input), extra, cwd); destination = output;
   } else throw new Error(usage);
   writeFileSync(destination, result.kind === 'preview-lifecycle-receipt' ? previewReceiptBytes(result) : `${JSON.stringify(result, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
   process.stdout.write(`${JSON.stringify({ profile: result.profile, kind: result.kind,

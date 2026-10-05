@@ -887,19 +887,22 @@ relax the current fail-closed restriction checks.
 
 ## Ordinary review preview
 
-The `preview-unverified-procedure-v1` package surface currently implements only
-ordinary review (`mode: "review"`). It resolves the committed selection and all
-review inputs from the exact predecessor, materializes the entire selected
-Authority Set, and creates a request using the unchanged predecessor semantic
-schema and validators. Preparation reads Git objects and returns model/reasoning
-settings with the request; it does not contact a model or use credentials.
+The `preview-unverified-procedure-v1` package surface implements ordinary review
+(`mode: "review"`) and the narrowly selected completed-`BLOCK` amendment
+preview (`mode: "amendment"`). It resolves the committed selection and inputs
+from the exact predecessor, materializes the entire selected Authority Set, and
+creates requests using the unchanged predecessor semantic schema and validators.
+Preparation reads Git objects and returns model/reasoning settings with the
+request; it does not contact a model or use credentials.
 
 Commit this version-1 selection at `.codex/gatekeeper/preview-lifecycle.json`
 before the reviewed change. Its policy, prompt, schema, validator and caller must
 match the predecessor's model-backed Codex policy; governance and `authorityPaths`
 must belong to its complete Authority Set. `authorityPaths` and `migrationPaths`
-remain required compatibility fields but do not enable those later procedures in
-this package slice. Eligibility and trigger declarations are inert here.
+remain required compatibility fields; `migrationPaths` does not enable migration
+in this package slice. The eligibility schema/validator and
+`amendmentTriggerProfile: "completed-block-v1"` are used only for the supported
+completed-`BLOCK` amendment route.
 
 ```json
 {
@@ -950,8 +953,20 @@ Send the emitted prompt and response schema to a review-only reviewer using the
 recorded `reviewer.model` and `reviewer.reasoningEffort`, then save its actual
 structured response as `decision.json`. Completion rechecks the exact committed
 inputs, predecessor decision schema, full selected authority IDs or paths, and
-every selected deterministic validator. It accepts only ordinary `PASS`, `BLOCK`
-or `OWNER_DECISION`; unresolved owner choices remain escalations.
+every selected deterministic validator. Ordinary completion accepts `PASS`,
+`BLOCK` or `OWNER_DECISION`; unresolved owner choices remain escalations.
+
+Only a successfully completed ordinary `BLOCK` receipt can trigger amendment
+preparation, and only when the predecessor selection explicitly names
+`amendmentTriggerProfile: "completed-block-v1"`. The amendment request is bound
+to that receipt and the same predecessor/candidate pair. It reviews only the
+selected Authority Set scope with the selected eligibility schema and validator.
+Completion records `ELIGIBLE` or `INELIGIBLE`; an ineligible result cannot be
+observed. For an eligible result, `observe` verifies the exact amendment record,
+ordered integration parents, resulting tree and canonical readback before
+`fresh-review` prepares a new ordinary request against the observed successor.
+These commands validate supplied records; they do not integrate a change or
+contact a reviewer.
 
 The receipt remains `adoption=PENDING` and `canonical=PENDING`; all producer,
 execution, owner, custody, policy-protection and host-enforcement assurances are
@@ -959,8 +974,9 @@ execution, owner, custody, policy-protection and host-enforcement assurances are
 `preparePreviewLifecycle`, `completePreviewLifecycle`, `validatePreviewReceipt`
 and `previewReceiptBytes` from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
 
-Addition, amendment, migration, integration observation and fresh-review
-commands are unsupported by this ordinary-only package slice. Preparation rejects
-non-review modes before creating a request, and receipt revalidation repeats that
-check so a later-route receipt cannot be treated as an ordinary result. No consumer
-should infer those routes from inert selection declarations.
+Addition, owner-decision amendment and migration are unsupported. Unsupported
+modes are rejected before request creation, and receipt revalidation repeats the
+route checks so receipts from later procedures cannot be treated as supported
+results. Selection declarations for those routes do not enable them. Both the
+ordinary and completed-`BLOCK` amendment surfaces remain unverified local previews,
+not adoption, canonical acceptance, owner custody or host-enforcement evidence.

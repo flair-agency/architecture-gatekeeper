@@ -263,10 +263,9 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 
 ## Ordinary review preview
 
-The installed `architecture-preview-lifecycle` command supports only ordinary
-preparation and completion against the exact predecessor-selected policy,
-prompt, schema, validators and complete Authority Set. It records local
-`UNVERIFIED` assurance and a pending receipt; it does not integrate changes,
-prove adoption, or supply host acceptance. Unsupported lifecycle modes and later
-route records are rejected. The selection and command contract is documented in
+The installed `architecture-preview-lifecycle` command supports ordinary
+preparation/completion and the completed-`BLOCK` amendment preview described in
 the [integration reference](docs/integration-reference.md#ordinary-review-preview).
+Both record local `UNVERIFIED` assurance and pending receipts; neither proves
+adoption or supplies host acceptance. Addition, owner-decision amendment and
+migration routes remain unsupported.
