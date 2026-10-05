@@ -381,6 +381,15 @@ export async function completePreviewLifecycle(request, response, cwd = request?
   if (isOwnerAmendment && decision.decision === 'ELIGIBLE' && (['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'].some(key => response.checks[key] !== true) || response.checks.triggerMissingDecision !== false || response.checks.triggerExistingDecision !== true || response.checks.targetDecisionOnly !== true)) fail('OWNER_DECISION amendment semantic eligibility rejected.');
   if (isAddition && decision.decision === 'ELIGIBLE' && (['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'].some(key => response.checks[key] !== true) || response.checks.triggerMissingDecision !== true || response.checks.triggerExistingDecision !== false || response.checks.targetDecisionOnly !== true)) fail('OWNER_DECISION addition semantic eligibility rejected.');
   if (request.spec.mode === 'migration' && decision.decision !== 'PASS') fail('initial migration requires predecessor ordinary PASS.');
+  if (request.spec.mode === 'migration' && decision.decision === 'PASS' && request.successorAuthoritySet?.manifest) {
+    const authorityIds = request.successorAuthoritySet.members.map(member => member.id);
+    if (authorityIds.some(id => typeof id !== 'string')) fail('initial migration successor Authority Set is incomplete.');
+    try {
+      validateJsonSchema({ ...response, semanticDecision: { ...decision, authorityIds } }, request.schema);
+    } catch {
+      fail('initial migration successor authority IDs are incompatible with the unchanged predecessor decision schema.');
+    }
+  }
   return seal({ version: 1, profile: PREVIEW_PROFILE, kind: 'preview-lifecycle-receipt', request, response, decision,
     eligibility: isEligibility ? decision.decision : request.spec.mode === 'migration' ? 'ELIGIBLE' : 'NOT_APPLICABLE', completedAt: new Date().toISOString(), adoption: 'PENDING', canonical: 'PENDING', assurance });
 }

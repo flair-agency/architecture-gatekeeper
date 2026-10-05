@@ -17,7 +17,7 @@ const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { enco
 const put = (root, file, value) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), typeof value === 'string' ? value : JSON.stringify(value)); };
 const sha = value => createHash('sha256').update(value).digest('hex');
 let next = 0;
-function fixture(t, { preexistingSelection = false } = {}) {
+function fixture(t, { preexistingSelection = false, schemaAllowsSuccessorIds = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'preview-initial-migration-')); t.after(() => rmSync(root, { recursive: true, force: true }));
   git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Synthetic migration'); git(root, 'config', 'user.email', 'fixture@example.invalid');
   const promptPath = '.codex/gatekeeper/prompt.md', schemaPath = '.codex/gatekeeper/schema.json', validationPath = '.codex/gatekeeper/rules.json';
@@ -27,9 +27,12 @@ function fixture(t, { preexistingSelection = false } = {}) {
     eligibilitySchemaPath: '.codex/gatekeeper/b-eligibility.schema.json', eligibilityValidationPath: '.codex/gatekeeper/b-rules.json',
     amendmentTriggerProfile: 'completed-block-v1', callerPath, authorityPaths: [authority[0]],
     migrationPaths: [selectionPath, policyPath, callerPath], maxPromptBytes: 524288 };
-  const decisionSchema = { type: 'object', additionalProperties: false, required: ['decision', 'summary', 'authorityFiles', 'valid'], properties: {
+  const decisionProperties = {
     decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] }, summary: { type: 'string' },
-    authorityFiles: { type: 'array', items: { type: 'string' } }, authorityIds: { type: 'array', items: { type: 'string' } }, valid: { type: 'boolean' } } };
+    authorityFiles: { type: 'array', items: { type: 'string' } }, valid: { type: 'boolean' } };
+  if (schemaAllowsSuccessorIds) decisionProperties.authorityIds = { type: 'array', items: { type: 'string' } };
+  const decisionSchema = { type: 'object', additionalProperties: false,
+    required: ['decision', 'summary', 'authorityFiles', 'valid'], properties: decisionProperties };
   const bSchema = structuredClone(decisionSchema); bSchema.required = ['decision', 'summary', 'authorityIds', 'valid'];
   delete bSchema.properties.authorityFiles; bSchema.properties.decision.enum = ['ELIGIBLE', 'INELIGIBLE'];
   put(root, authority[0], 'Existing architecture decision.\n'); put(root, authority[1], 'Owner selected legacy v1 review procedure.\n'); put(root, 'app.txt', 'before\n');
@@ -123,6 +126,13 @@ test('initial migration fails closed on existing selector, changed reviewer sett
   }
   const changed = migrationHead(f, { extra: { [authority[0]]: 'Candidate changed canonical authority bytes.\n' } });
   await assert.rejects(preparePreviewLifecycle(migrationSpec(f, changed), f.root), /three control-plane paths|changes, reorders, omits or replaces predecessor authority/);
+});
+
+test('initial migration cannot become eligible when its unchanged closed predecessor schema rejects successor authority IDs', async t => {
+  const f = fixture(t, { schemaAllowsSuccessorIds: false });
+  const head = migrationHead(f);
+  const request = await preparePreviewLifecycle(migrationSpec(f, head), f.root);
+  await assert.rejects(completePreviewLifecycle(request, ordinary('PASS'), f.root), /successor authority IDs are incompatible with the unchanged predecessor decision schema/);
 });
 
 test('migration observation rejects bad receipt trailer and wrong integration parent/tree', async t => {
