@@ -148,6 +148,16 @@ review path. It does not publish raw Codex JSONL, per-request API cost, or proof
 of the provider's effective service tier; missing or malformed usage remains
 unavailable for cost attribution.
 
+#### Self-repository Fork contributions
+
+Original Fork pull requests remain welcome, but the self-review workflow does
+not run privileged or paid review for them. A maintainer may manually select
+needed changes onto a same-repository branch and open a new pull request; link
+the source Fork and briefly describe the selected changes for human context.
+The candidate remains untrusted until separately reviewed. The new pull
+request receives its own review, and no result or acceptance transfers from
+the new pull request back to the source Fork.
+
 #### Self-review credential migration
 
 The self-review workflow keeps using the repository `OPENAI_API_KEY` secret

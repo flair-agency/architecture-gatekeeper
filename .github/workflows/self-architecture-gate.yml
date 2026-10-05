@@ -6,9 +6,59 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
+  classify-self-repository:
+    name: classify-self-repository
+    permissions:
+      contents: none
+      id-token: none
+    outputs:
+      classification: ${{ steps.classify.outputs.classification }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Classify trusted base and head repository IDs
+        id: classify
+        env:
+          EXPECTED_REPOSITORY_ID: ${{ github.repository_id }}
+          EXPECTED_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+
+          const validId = value => Number.isSafeInteger(value) && value > 0;
+          let classification = 'unknown';
+          try {
+            const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+            const rawExpected = process.env.EXPECTED_REPOSITORY_ID;
+            const expected = /^[1-9][0-9]*$/.test(rawExpected) ? Number(rawExpected) : NaN;
+            const rawPullRequestNumber = process.env.EXPECTED_PULL_REQUEST_NUMBER;
+            const expectedPullRequestNumber = /^[1-9][0-9]*$/.test(rawPullRequestNumber)
+              ? Number(rawPullRequestNumber) : NaN;
+            const pullRequest = event.pull_request;
+            const eventRepositoryId = event.repository?.id;
+            const baseRepositoryId = pullRequest?.base?.repo?.id;
+            const headRepositoryId = pullRequest?.head?.repo?.id;
+            const validCommit = value => typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
+            if (process.env.GITHUB_EVENT_NAME === 'pull_request_target' &&
+                validId(expected) && validId(expectedPullRequestNumber) &&
+                validId(eventRepositoryId) &&
+                validId(baseRepositoryId) && validId(headRepositoryId) &&
+                validId(pullRequest?.number) && pullRequest.number === expectedPullRequestNumber &&
+                validCommit(pullRequest?.base?.sha) &&
+                validCommit(pullRequest?.head?.sha) && expected === eventRepositoryId &&
+                expected === baseRepositoryId) {
+              classification = headRepositoryId === baseRepositoryId
+                ? 'same-repository' : 'cross-repository';
+            }
+          } catch {
+            classification = 'unknown';
+          }
+          appendFileSync(process.env.GITHUB_OUTPUT, `classification=${classification}\n`);
+          NODE
+
   architecture-gate:
     name: architecture-gate
-    if: github.event_name == 'pull_request_target' && github.event.pull_request.draft == false
+    needs: classify-self-repository
+    if: needs.classify-self-repository.outputs.classification == 'same-repository' && github.event_name == 'pull_request_target' && github.event.pull_request.draft == false
     permissions:
       contents: read
       pull-requests: write
@@ -32,3 +82,20 @@ jobs:
       # legacy repository secret. The called reviewer jobs then require their
       # Environment-scoped OPENAI_API_KEY.
       OPENAI_API_KEY: ${{ vars.ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT != 'true' && secrets.OPENAI_API_KEY || '' }}
+
+  deny-unreviewed-fork:
+    name: architecture-gate / accept
+    needs: classify-self-repository
+    if: always() && needs.classify-self-repository.outputs.classification != 'same-repository' && github.event.pull_request.draft == false
+    permissions:
+      contents: none
+      id-token: none
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail required acceptance closed before privileged admission
+        env:
+          CLASSIFICATION: ${{ needs.classify-self-repository.outputs.classification }}
+        run: |
+          echo "::error::Architecture Gate acceptance is incomplete: unreviewed pull request classification is ${CLASSIFICATION:-unknown}."
+          echo "No privileged review, provider/source credential, OIDC capability, or paid review was admitted."
+          exit 1

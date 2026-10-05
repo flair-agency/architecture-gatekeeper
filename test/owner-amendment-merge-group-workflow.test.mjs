@@ -9,10 +9,11 @@ test('merge-group amendment verifier remains inactive in the self workflow', () 
   assert.match(workflow, /branches: \[main\]/);
   assert.doesNotMatch(workflow, /^  merge_group:/m);
   assert.match(workflow, /architecture-gate:/);
-  assert.match(workflow, /if: github\.event_name == 'pull_request_target' && github\.event\.pull_request\.draft == false/);
+  assert.match(workflow, /if: needs\.classify-self-repository\.outputs\.classification == 'same-repository' && github\.event_name == 'pull_request_target' && github\.event\.pull_request\.draft == false/);
   assert.match(workflow, /uses: \.\/\.github\/workflows\/architecture-gate\.yml/);
+  assert.match(workflow, /deny-unreviewed-fork:[\s\S]*?name: architecture-gate \/ accept[\s\S]*?exit 1/);
   assert.doesNotMatch(workflow, /merge-group-(?:accept|codex-action-integrity):/);
-  assert.doesNotMatch(workflow, /architecture-gate \/ accept/);
+  assert.match(workflow, /architecture-gate \/ accept/);
   assert.doesNotMatch(workflow, /owner-amendment-merge-group-gate\.mjs/);
   assert.doesNotMatch(workflow, /secrets\.OPENAI_API_KEY[\s\S]*merge_group/);
   assert.doesNotMatch(workflow, /OWNER_AMENDMENT_TAG_RULESET_ID/);

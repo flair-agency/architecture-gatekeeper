@@ -164,6 +164,8 @@ implementation or operation under this self-only policy. A consumer's separate
 architecture and protected policy remain consumer-owned and are not changed by
 this self-repository decision.
 
+<a id="target-fork-pr-review-authorization-issue-331-owner-direction-2026-10-04"></a>
+
 #### Deferred target Fork PR review authorization (Issue #331 owner direction, 2026-10-04; inactive)
 
 This detailed design remains a future, inactive target. It does not authorize
@@ -204,6 +206,8 @@ Environment design direction and initial funding/lifecycle bounds. Concrete
 consumer configuration, host proof, implementation, support and activation
 remain pending. This profile adds no API-key onboarding or WIF activation and
 does not change Issues #218, #219, or #20.
+
+<a id="owner-selected-initial-public-fork-environment-profile-target-issue-331-2026-10-04"></a>
 
 #### Deferred owner-selected initial public-Fork Environment profile target (Issue #331, 2026-10-04; inactive)
 
