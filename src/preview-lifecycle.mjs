@@ -227,7 +227,7 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
     ? `For this BLOCK-trigger amendment, use the separately selected B eligibility schema. The unchanged predecessor prompt remains semantic guidance; return semanticDecision.decision as exactly ELIGIBLE or INELIGIBLE. Report every member of the complete predecessor Authority Set under the selected authority field:\n${completeAuthority}\n`
     : `Return semanticDecision under the unchanged predecessor schema. Report every selected predecessor Authority Set member exactly once, including members that do not directly determine the decision. Use ${selectedAuthorityField} for the listed ${members[0].id ? 'stable member IDs' : 'paths'}, and include any additional authority field already required by the unchanged schema. Do not substitute decision IDs or add/change schema fields:\n${completeAuthority}\n`;
   const task = { mode: spec.mode, baseSha: spec.baseSha, headSha: spec.headSha, changes,
-    diff: git(root, 'diff', '--no-ext-diff', '--no-renames', spec.baseSha, spec.headSha),
+    diff: git(root, 'diff', '--no-ext-diff', '--no-textconv', '--no-renames', spec.baseSha, spec.headSha),
     ...(isBlockAmendment ? { trigger: spec.trigger, record: spec.record } : {}) };
   const commonChecks = ['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'];
   const requiredChecks = isBlockAmendment ? [...commonChecks, 'triggerMissingDecision', 'triggerExistingDecision', 'targetDecisionOnly'] : ['predecessorAuthorized'];

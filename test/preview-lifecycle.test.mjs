@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, unlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, unlinkSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import test from 'node:test';
@@ -90,6 +90,35 @@ test('ordinary materializes added, deleted and empty files with exact null-versu
   assert.equal(task.changes.find(change => change.path === 'app.txt').before, 'Original application\n');
   assert.equal(task.changes.find(change => change.path === 'app.txt').after, null);
   await completePreviewLifecycle(request, ordinary(decision()), f.root);
+});
+
+test('ordinary diff ignores configured textconv during preparation and receipt revalidation', async t => {
+  const f = fixture(t);
+  put(f.root, '.gitattributes', 'app.txt diff=poison\n');
+  git(f.root, 'add', '.gitattributes'); git(f.root, 'commit', '-m', 'Configure a synthetic textconv driver');
+  f.base = git(f.root, 'rev-parse', 'HEAD');
+  const converterDir = mkdtempSync(join(tmpdir(), 'preview-textconv-'));
+  t.after(() => rmSync(converterDir, { recursive: true, force: true }));
+  const marker = join(converterDir, 'converter-invoked');
+  const converter = join(converterDir, 'converter.cjs');
+  writeFileSync(converter, `const fs = require('node:fs');\nfs.appendFileSync(${JSON.stringify(marker)}, 'called\\n');\nprocess.stdout.write(fs.readFileSync(process.argv.at(-1)));\n`);
+  git(f.root, 'config', 'diff.poison.textconv', `${JSON.stringify(process.execPath)} ${JSON.stringify(converter)}`);
+  const head = commitOn(f, 'ordinary-no-textconv', { 'app.txt': 'Candidate reviewed as committed bytes\n' });
+
+  git(f.root, 'diff', '--no-ext-diff', '--textconv', '--no-renames', f.base, head);
+  assert.equal(existsSync(marker), true, 'fixture textconv driver must be active');
+  rmSync(marker);
+  const expectedDiff = git(f.root, 'diff', '--no-ext-diff', '--no-textconv', '--no-renames', f.base, head);
+  assert.equal(existsSync(marker), false);
+
+  const request = await preparePreviewLifecycle(spec(f, 'review', head), f.root);
+  const taskPayload = JSON.parse(request.prompt.split('Bound task:\n')[1].split('\nReturn only')[0]);
+  assert.equal(taskPayload.diff, expectedDiff);
+  assert.equal(existsSync(marker), false, 'preparation must not invoke the configured converter');
+  const receipt = await completePreviewLifecycle(request, ordinary(decision()), f.root);
+  assert.equal(existsSync(marker), false, 'completion request rebuilding must not invoke the converter');
+  await validatePreviewReceipt(receipt, f.root);
+  assert.equal(existsSync(marker), false, 'receipt revalidation must not invoke the converter');
 });
 
 test('ordinary instructions enumerate the complete selected authority without changing its schema or validator', async t => {
