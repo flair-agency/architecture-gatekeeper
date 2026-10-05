@@ -1,5 +1,6 @@
 /** Internal adapter from caller-prepared protected CI inputs to the CLI proxy session. */
 import { types } from 'node:util';
+import { snapshotPreparedReviewData } from './prepared-review-data.mjs';
 import { runGeminiCliProxySession } from './gemini-cli-proxy-session.mjs';
 import { validateJsonSchemaDefinition } from './json-schema.mjs';
 import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from './gemini-cli-process.mjs';
@@ -93,8 +94,8 @@ export async function runPreparedGeminiCiReview(suppliedInput) {
 
   // Own exact evidence data before proxy startup can yield. The caller may
   // retain and mutate its packet or limits while the session is pending.
-  const packet = structuredClone(proxySessionOptions.packet);
-  const workspaceLimits = structuredClone(proxySessionOptions.workspaceLimits);
+  const packet = snapshotPreparedReviewData(proxySessionOptions.packet);
+  const workspaceLimits = snapshotPreparedReviewData(proxySessionOptions.workspaceLimits);
   return runGeminiCliProxySession({
     packet,
     workspaceLimits,

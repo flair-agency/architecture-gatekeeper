@@ -440,3 +440,33 @@ test('completion rejects self-replacing configuration getters before recording e
     assert.deepEqual(readdirSync(f.privateParentDirectory), []);
   }
 });
+
+
+test('prepared review data rejects nested accessors and proxies without executing them', async t => {
+  for (const kind of ['authority getter', 'rule getter', 'packet getter', 'limits getter', 'authority proxy', 'nested rule proxy']) {
+    const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+    const supplied = { reviewInput: input(f), authorityProvenance: structuredClone(authorityProvenance),
+      validationRules: structuredClone(validationRules), maxResponseBytes: 65536, maxSchemaBytes: 1048576 };
+    let reads = 0;
+    const getter = (object, key) => Object.defineProperty(object, key, { enumerable: true, get() {
+      reads += 1;
+      supplied.reviewInput.proxySessionOptions.packet.references[0].text = 'MUTATED';
+      return [];
+    } });
+    const proxy = value => new Proxy(value, { ownKeys() { reads += 1; return Reflect.ownKeys(value); } });
+    if (kind === 'authority getter') getter(supplied.authorityProvenance, 'members');
+    if (kind === 'rule getter') getter(supplied.validationRules.rules[0].when, 'equals');
+    if (kind === 'packet getter') getter(supplied.reviewInput.proxySessionOptions.packet.references[0], 'text');
+    if (kind === 'limits getter') {
+      supplied.reviewInput.proxySessionOptions.workspaceLimits = { ...workspaceLimits };
+      getter(supplied.reviewInput.proxySessionOptions.workspaceLimits, 'maxFiles');
+    }
+    if (kind === 'authority proxy') supplied.authorityProvenance = proxy(supplied.authorityProvenance);
+    if (kind === 'nested rule proxy') supplied.validationRules.rules[0].when = proxy(supplied.validationRules.rules[0].when);
+    await assert.rejects(runPreparedGeminiCiDecision(supplied), /non-executable data/);
+    assert.equal(reads, 0);
+    assert.equal(existsSync(f.reportPath), false);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
