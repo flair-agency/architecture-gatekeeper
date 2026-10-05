@@ -224,3 +224,36 @@ test('ordinary completion enforces schema and selected deterministic validator',
   await assert.rejects(completePreviewLifecycle(request, ordinary({ ...decision(), authorityFiles: [files[0]] }), f.root), /complete predecessor authority/);
   await assert.rejects(completePreviewLifecycle(request, { semanticDecision: decision(), checks: { predecessorAuthorized: false } }, f.root), /did not authorize/);
 });
+
+test('Git replacement refs cannot change the exact predecessor or candidate diff snapshot', async t => {
+  const f = fixture(t);
+  const head = commitOn(f, 'ordinary-original-diff', { 'app.txt': 'Candidate under original base\n' });
+  const replacement = commitOn(f, 'replace-predecessor-commit', { [files[0]]: 'Spoofed replacement authority\n' }, f.base);
+  git(f.root, 'replace', f.base, replacement);
+  const request = await preparePreviewLifecycle(spec(f, 'review', head), f.root);
+  const task = JSON.parse(request.prompt.split('Bound task:\n')[1].split('\nReturn only')[0]);
+  assert.deepEqual(task.changes.map(change => change.path), ['app.txt']);
+  const authorities = JSON.parse(request.prompt.split('Full immutable predecessor authority:\n')[1].split('\nExplicit ')[0]);
+  assert.match(authorities.find(member => member.path === files[0]).content, /Existing rule: keep selected predecessor rules/);
+  assert.doesNotMatch(authorities.find(member => member.path === files[0]).content, /Spoofed replacement/);
+});
+
+test('manifested resulting Authority Set byte limit counts candidate BOM bytes', async t => {
+  const f = fixture(t);
+  const selectedBytes = files.map(file => readFileSync(join(f.root, file)));
+  const maxTotalBytes = selectedBytes.reduce((total, bytes) => total + bytes.length, 0);
+  const manifestPath = '.codex/gatekeeper/authorities.json';
+  put(f.root, manifestPath, { version: 1, authorities: files.map((path, index) => ({ id: index ? 'governance' : 'contract', repository: 'self', revision: 'authority-revision', path })) });
+  put(f.root, f.selection.schemaPath, { type: 'object', additionalProperties: false, required: ['decision', 'summary', 'authorityIds', 'valid'], properties: {
+    decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] }, summary: { type: 'string' }, authorityIds: { type: 'array', items: { type: 'string' } }, valid: { type: 'boolean' } } });
+  put(f.root, f.selection.policyPath, { version: 2, default: { mode: 'local-only' }, branches: { main: {
+    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authorityManifestPath: manifestPath,
+    authorityLimits: { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536, maxTotalBytes, maxPromptBytes: 524288 },
+  } } });
+  git(f.root, 'add', '.'); git(f.root, 'commit', '-m', 'Select manifested byte limit'); f.base = git(f.root, 'rev-parse', 'HEAD');
+  git(f.root, 'switch', '-c', 'manifested-bom-overflow', f.base);
+  writeFileSync(join(f.root, files[0]), Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), selectedBytes[0]]));
+  git(f.root, 'add', files[0]); git(f.root, 'commit', '-m', 'Exceed raw authority total by BOM bytes');
+  const head = git(f.root, 'rev-parse', 'HEAD');
+  await assert.rejects(preparePreviewLifecycle(spec(f, 'review', head), f.root), /resulting full Authority Set exceeds selected bounds/);
+});

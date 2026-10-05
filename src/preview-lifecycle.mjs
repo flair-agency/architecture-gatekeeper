@@ -54,18 +54,18 @@ function path(value) {
 }
 function git(root, ...args) {
   return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 10000,
-    maxBuffer: 2_000_000, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    maxBuffer: 2_000_000, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' } }).trim();
 }
 function diffPaths(root, base, head) {
   return execFileSync('git', ['-C', root, 'diff', '--name-only', '-z', '--no-renames', base, head], {
-    encoding: 'utf8', timeout: 10000, maxBuffer: 2_000_000, stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8', timeout: 10000, maxBuffer: 2_000_000, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' },
   }).split('\0').filter(Boolean);
 }
 function snapshot(root, revision, file, limit = 1_048_576) {
   return readCommittedAuthorityFile(root, revision, path(file), limit);
 }
 function optionalSnapshot(root, revision, file, limit = 1_048_576) {
-  const entries = execFileSync('git', ['-C', root, 'ls-tree', '-z', '--full-tree', revision, '--', path(file)], { encoding: 'utf8', timeout: 10000, maxBuffer: 4096 }).split('\0').filter(Boolean);
+  const entries = execFileSync('git', ['-C', root, 'ls-tree', '-z', '--full-tree', revision, '--', path(file)], { encoding: 'utf8', timeout: 10000, maxBuffer: 4096, env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' } }).split('\0').filter(Boolean);
   if (!entries.length) return null;
   if (entries.length !== 1) fail('changed Git path is ambiguous.');
   const entry = entries[0];
@@ -172,18 +172,22 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   const changedPaths = diffPaths(root, spec.baseSha, spec.headSha);
   const affectedMaxBytes = policy.authorityLimitsBase64
     ? JSON.parse(Buffer.from(policy.authorityLimitsBase64, 'base64').toString()).maxFileBytes : 65536;
+  const changedAuthorityByteLengths = new Map();
   const changes = changedPaths.map(file => {
     path(file);
     const beforeBytes = optionalSnapshot(root, spec.baseSha, file);
     const afterBytes = optionalSnapshot(root, spec.headSha, file, selfPaths.includes(file) ? affectedMaxBytes : 1_048_576);
-    if (selfPaths.includes(file) && afterBytes === null) fail('selected authority member was deleted.');
-    return { path: file, before: beforeBytes === null ? null : utf8(beforeBytes), after: afterBytes === null ? null : utf8(afterBytes),
+    if (selfPaths.includes(file)) {
+      if (afterBytes === null) fail('selected authority member was deleted.');
+      changedAuthorityByteLengths.set(file, afterBytes.length);
+    }
+    return { path: file, before: beforeBytes === null ? null : selfPaths.includes(file) ? preserveAuthorityText(beforeBytes) : utf8(beforeBytes),
+      after: afterBytes === null ? null : selfPaths.includes(file) ? preserveAuthorityText(afterBytes) : utf8(afterBytes),
       beforeSha256: beforeBytes === null ? null : digest(beforeBytes), afterSha256: afterBytes === null ? null : digest(afterBytes) };
   });
   if (!changes.length) fail('change has no file diff.');
   const resultingTotal = members.reduce((total, member) => total +
-    (changes.find(change => change.path === member.path)?.after !== undefined ?
-      Buffer.byteLength(changes.find(change => change.path === member.path).after) : member.byteLength), 0);
+    (changedAuthorityByteLengths.has(member.path) ? changedAuthorityByteLengths.get(member.path) : member.byteLength), 0);
   const totalLimit = policy.authorityLimitsBase64
     ? JSON.parse(Buffer.from(policy.authorityLimitsBase64, 'base64').toString()).maxTotalBytes : 262144;
   if (resultingTotal > totalLimit) fail('resulting full Authority Set exceeds selected bounds.');
