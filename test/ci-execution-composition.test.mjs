@@ -20,7 +20,7 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
       REVIEW_RESPONSE: 'steps.codex.outputs.final-message',
     })) assert.ok(block.includes(`${name}: \${{ ${expression} }}`));
     assert.match(text, /execution_settings_base64: \$\{\{ steps\.resolve\.outputs\.executionSettingsBase64 \}\}/);
-    assert.match(block, /run: node \.architecture-gatekeeper-validation-runtime\/src\/ci-execution-observation\.mjs --github/);
+    assert.match(block, /run: node \.architecture-gatekeeper-validation-runtime\/src\/ci-execution-observation\.mjs --github-response/);
     const checkout = text.split('name: Check out the pinned validation runtime')[1]?.split('      - name:')[0];
     assert.match(checkout, /id: validation_runtime/);
     assert.match(checkout, /execution_selection == 'policy'/);
@@ -29,7 +29,7 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
     const observationPosition = text.indexOf('name: Record ordinary execution observation');
     const validationPosition = text.indexOf('name: Identify the completed ordinary decision');
     assert.ok(actionPosition < observationPosition && observationPosition < validationPosition);
-    assert.match(text, /DECISION: \$\{\{ steps\.codex\.outputs\.final-message \}\}/);
+    assert.ok(text.includes("DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}"));
     assert.doesNotMatch(block, /printf|>>|final_message:|continue-on-error/);
   });
 }
