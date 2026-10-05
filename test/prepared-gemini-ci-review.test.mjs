@@ -437,3 +437,44 @@ test('prepared execution snapshots caller packet and workspace limits before pro
     assert.deepEqual(readdirSync(f.privateParentDirectory), []);
   }
 });
+
+
+test('prepared execution rejects accessor and proxy settings before any CLI dispatch', async t => {
+  for (const kind of ['accessor', 'proxy', 'inherited accessor']) {
+    for (const operation of [runPreparedGeminiCiReview, async reviewInput => runPreparedGeminiCiDecision({
+      reviewInput, authorityProvenance, validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576,
+    })]) {
+      const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+      const supplied = input(f);
+      const options = supplied.proxySessionOptions.processOptions;
+      let reads = 0;
+      if (kind === 'accessor') Object.defineProperty(options, 'thinkingLevel', {
+        enumerable: true, get() { return ++reads <= 2 ? 'MEDIUM' : 'LOW'; },
+      });
+      if (kind === 'proxy') supplied.proxySessionOptions.processOptions = new Proxy(options, {
+        get(target, name) { if (name === 'thinkingLevel') return ++reads <= 2 ? 'MEDIUM' : 'LOW'; return target[name]; },
+      });
+      if (kind === 'inherited accessor') {
+        delete options.thinkingLevel;
+        Object.setPrototypeOf(options, { get thinkingLevel() { return ++reads <= 2 ? 'MEDIUM' : 'LOW'; } });
+      }
+      await assert.rejects(operation(supplied), /unsupported process options/);
+      assert.equal(existsSync(f.reportPath), false);
+      assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+      assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+    }
+  }
+});
+
+
+test('completion rejects executable wrapper fields without reading a changing selected limit', async t => {
+  const f = fixture(t);
+  const supplied = { reviewInput: input(f), authorityProvenance, validationRules,
+    maxResponseBytes: 65536, maxSchemaBytes: 1048576 };
+  let reads = 0;
+  Object.defineProperty(supplied, 'maxResponseBytes', { enumerable: true,
+    get() { reads += 1; return reads < 4 ? 1 : 65536; } });
+  await assert.rejects(runPreparedGeminiCiDecision(supplied), /complete explicit input set/);
+  assert.equal(reads, 0);
+  assert.equal(existsSync(f.reportPath), false);
+});
