@@ -8,8 +8,7 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { runPreparedGeminiCiReview } from '../src/prepared-gemini-ci-review.mjs';
 import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from '../src/gemini-cli-process.mjs';
-import { normalizeCiExecutionResult } from '../src/ci-execution-result.mjs';
-import { validatePreparedCiDecision } from '../src/prepared-ci-decision.mjs';
+import { completePreparedCiReview } from '../src/complete-prepared-ci-review.mjs';
 
 const oid = char => char.repeat(40);
 const workspaceLimits = { maxFiles: 2, maxFileBytes: 2048, maxTotalBytes: 4096 };
@@ -127,20 +126,21 @@ test('normalizes and validates prepared Gemini execution before exposing PASS or
     const responseText = item.responseText ?? JSON.stringify(item.response);
     const f = fixture(t, 'success', responseText);
     const rawResponse = await runPreparedGeminiCiReview(input(f));
-    const execution = normalizeCiExecutionResult({
-      expectedExecution: { provider: 'gemini', requestedModel: 'gemini-3.8-flash', requestedSettings: { thinkingLevel: 'MEDIUM' } },
-      hostStepOutcome: 'success', rawResponse, maxResponseBytes: 65_536,
-    });
-    assert.equal(execution.status, 'completed', item.name);
-    assert.ok(execution.responseBytes.length > 0, item.name);
-    const validationInput = {
-      responseBytes: execution.responseBytes,
+    const completionInput = {
+      executionInput: {
+        expectedExecution: { provider: 'gemini', requestedModel: 'gemini-3.8-flash', requestedSettings: { thinkingLevel: 'MEDIUM' } },
+        hostStepOutcome: 'success', rawResponse, maxResponseBytes: 65_536,
+      },
       schemaBytes: Buffer.from(JSON.stringify(decisionSchema)),
-      authorityProvenance, validationRules,
-      maxResponseBytes: 65_536, maxSchemaBytes: 1_048_576,
+      authorityProvenance, validationRules, maxSchemaBytes: 1_048_576,
     };
-    if (item.error) assert.throws(() => validatePreparedCiDecision(validationInput), item.error, item.name);
-    else assert.equal(validatePreparedCiDecision(validationInput).decision, item.expected, item.name);
+    if (item.error) assert.throws(() => completePreparedCiReview(completionInput), item.error, item.name);
+    else {
+      const result = completePreparedCiReview(completionInput);
+      assert.equal(result.execution.status, 'completed', item.name);
+      assert.equal(result.execution.responseBytes.toString('utf8'), rawResponse, item.name);
+      assert.equal(result.decision.decision, item.expected, item.name);
+    }
     const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
     await assertProxyClosed(observed.endpoint);
     assert.deepEqual(readdirSync(f.workspaceParentDirectory), [], `${item.name}: workspace cleanup`);
@@ -237,6 +237,23 @@ test('rejects unsupported root and nested schema dialects before dispatch', asyn
       assert.equal(existsSync(f.reportPath), false);
       assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
       assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+    }
+  }
+});
+
+ test('shared completion cannot adopt stale provider output after host failure or cancellation', () => {
+  for (const provider of ['codex', 'gemini']) {
+    for (const hostStepOutcome of ['failure', 'cancelled', 'skipped', 'unknown']) {
+      const result = completePreparedCiReview({
+        executionInput: {
+          expectedExecution: { provider, requestedModel: provider === 'codex' ? 'gpt-6.1-sol' : 'gemini-3.8-flash', requestedSettings: {} },
+          hostStepOutcome, rawResponse: JSON.stringify({ decision: 'PASS', authorityIds }), maxResponseBytes: 65_536,
+        },
+        schemaBytes: JSON.stringify(decisionSchema), authorityProvenance, validationRules, maxSchemaBytes: 1_048_576,
+      });
+      assert.equal(result.execution.status, 'incomplete');
+      assert.equal(Object.hasOwn(result, 'decision'), false);
+      assert.equal(Object.hasOwn(result.execution, 'responseBytes'), false);
     }
   }
 });
