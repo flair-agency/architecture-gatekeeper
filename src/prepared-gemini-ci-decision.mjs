@@ -1,6 +1,6 @@
 /** Internal orchestration; protected input production and acceptance remain external. */
 import { types } from 'node:util';
-import { runPreparedGeminiCiReview } from './prepared-gemini-ci-review.mjs';
+import { runPreparedGeminiCiReview, snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mjs';
 import { completePreparedCiReview } from './complete-prepared-ci-review.mjs';
 
 const KEYS = ['reviewInput', 'authorityProvenance', 'validationRules', 'maxResponseBytes', 'maxSchemaBytes'];
@@ -34,7 +34,7 @@ export async function runPreparedGeminiCiDecision(input) {
       (validationRules !== null && (!validationRules || typeof validationRules !== 'object' || Array.isArray(validationRules)))) {
     throw new Error('Prepared Gemini CI decision requires explicit authority and validation data.');
   }
-  const { reviewInput } = input;
+  const reviewInput = snapshotPreparedGeminiCiReviewInput(input.reviewInput);
   const options = reviewInput?.proxySessionOptions?.processOptions;
   if (!options || typeof reviewInput.protectedDecisionSchemaText !== 'string') {
     throw new Error('Prepared Gemini CI decision requires explicit prepared execution inputs.');

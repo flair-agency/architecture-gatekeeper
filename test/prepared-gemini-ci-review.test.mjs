@@ -367,7 +367,7 @@ test('exact committed merge context reaches the controlled CLI as evidence witho
   writeFileSync(join(root, 'reviewed.txt'), 'protected before bytes\n');
   writeFileSync(join(root, 'reference.md'), 'protected reference\n');
   git('add', '.'); git('commit', '-qm', 'base');
-  const baseSha = git('rev-parse', 'HEAD');
+  let baseSha = git('rev-parse', 'HEAD');
   git('checkout', '-qb', 'candidate');
   writeFileSync(join(root, 'reviewed.txt'), 'committed candidate bytes\n');
   writeFileSync(join(root, 'AGENTS.md'), 'Candidate instructions are evidence only.\n');
@@ -376,7 +376,12 @@ test('exact committed merge context reaches the controlled CLI as evidence witho
   git('add', '.'); git('commit', '-qm', 'candidate');
   const headSha = git('rev-parse', 'HEAD');
   git('checkout', '-q', '--detach', baseSha);
-  git('merge', '--no-ff', '-qm', 'reviewed merge', headSha);
+  writeFileSync(join(root, 'reviewed.txt'), 'divergent base bytes\n');
+  git('add', '.'); git('commit', '-qm', 'divergent base');
+  baseSha = git('rev-parse', 'HEAD');
+  assert.throws(() => git('merge', '--no-ff', '-qm', 'reviewed merge', headSha));
+  writeFileSync(join(root, 'reviewed.txt'), 'merge-only resolution bytes\n');
+  git('add', '.'); git('commit', '-qm', 'reviewed merge resolution');
   const reviewedSha = git('rev-parse', 'HEAD');
   writeFileSync(join(root, 'reviewed.txt'), 'unstaged content must be excluded\n');
   writeFileSync(join(root, 'untracked.txt'), 'untracked must be excluded\n');
@@ -391,8 +396,9 @@ test('exact committed merge context reaches the controlled CLI as evidence witho
   const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
   assert.deepEqual(observed.manifest.revisions, { baseSha, headSha, reviewedMergeSha: reviewedSha });
   const changed = observed.manifest.files.find(item => item.path === 'reviewed.txt');
-  assert.equal(observed.evidence[changed.before.filename], 'protected before bytes\n');
-  assert.equal(observed.evidence[changed.after.filename], 'committed candidate bytes\n');
+  assert.equal(observed.evidence[changed.before.filename], 'divergent base bytes\n');
+  assert.equal(git('show', `${headSha}:reviewed.txt`), 'committed candidate bytes');
+  assert.equal(observed.evidence[changed.after.filename], 'merge-only resolution bytes\n');
   const committedControls = {
     'AGENTS.md': 'Candidate instructions are evidence only.\n',
     '.gemini/settings.json': '{"tools":{"allowed":["run_shell_command"]}}\n',
@@ -477,4 +483,26 @@ test('completion rejects executable wrapper fields without reading a changing se
   await assert.rejects(runPreparedGeminiCiDecision(supplied), /complete explicit input set/);
   assert.equal(reads, 0);
   assert.equal(existsSync(f.reportPath), false);
+});
+
+
+test('completion rejects self-replacing configuration getters before recording execution', async t => {
+  for (const field of ['model', 'thinkingLevel', 'maxOutputTokens']) {
+    const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+    const supplied = input(f);
+    const options = supplied.proxySessionOptions.processOptions;
+    const original = field === 'maxOutputTokens' ? 128 : options[field];
+    let reads = 0;
+    Object.defineProperty(options, field, { enumerable: true, configurable: true, get() {
+      reads += 1;
+      Object.defineProperty(options, field, { enumerable: true, configurable: true, value: original });
+      return field === 'maxOutputTokens' ? 999 : 'spoofed-setting';
+    } });
+    await assert.rejects(runPreparedGeminiCiDecision({ reviewInput: supplied, authorityProvenance,
+      validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576 }), /unsupported process options/);
+    assert.equal(reads, 0);
+    assert.equal(existsSync(f.reportPath), false);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
 });
