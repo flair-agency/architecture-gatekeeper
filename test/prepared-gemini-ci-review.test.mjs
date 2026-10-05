@@ -63,6 +63,7 @@ if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); proces
 let prompt = '';
 for await (const chunk of process.stdin) prompt += chunk;
 writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')) }));
+if (mode === 'delayed') { await new Promise(resolve => setTimeout(resolve, 250)); }
 if (mode === 'stale-failure') { process.stdout.write(JSON.stringify({ response: responseText })); process.exit(7); }
 if (mode === 'failure') { process.stderr.write('fixture execution failure'); process.exit(7); }
 if (mode === 'hang') { setInterval(() => {}, 1000); }
@@ -317,6 +318,35 @@ test('rejects unsupported root and nested schema dialects before dispatch', asyn
       maxResponseBytes: 65536, maxSchemaBytes: 1048576, ...overrides,
     }), /explicit input set|explicit bounds|schema exceeds/);
     assert.equal(existsSync(f.reportPath), false);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
+
+
+test('completion retains pre-dispatch validation inputs despite caller mutation while CLI is pending', async t => {
+  for (const kind of ['replace rules', 'mutate nested rules', 'mutate authority', 'raise response bound', 'raise schema bound']) {
+    const response = kind.includes('rules') ? { decision: 'BLOCK', authorityIds } : { decision: 'PASS', authorityIds };
+    const responseText = JSON.stringify(response);
+    const f = fixture(t, 'delayed', responseText);
+    const supplied = { reviewInput: input(f), authorityProvenance: structuredClone(authorityProvenance),
+      validationRules: structuredClone(validationRules), maxResponseBytes: kind === 'raise response bound' ? 1 : 65536,
+      maxSchemaBytes: 1048576 };
+    const pending = runPreparedGeminiCiDecision(supplied);
+    const checked = kind.includes('rules') ? assert.rejects(pending, /BLOCK requires its reason/) : pending;
+    for (let i = 0; i < 500 && !existsSync(f.reportPath); i += 1) await delay(10);
+    assert.equal(existsSync(f.reportPath), true);
+    if (kind === 'replace rules') supplied.validationRules = null;
+    if (kind === 'mutate nested rules') supplied.validationRules.rules[0].when.equals = 'PASS';
+    if (kind === 'mutate authority') supplied.authorityProvenance.members[0].id = 'caller-mutated-id';
+    if (kind === 'raise response bound') supplied.maxResponseBytes = 65536;
+    if (kind === 'raise schema bound') supplied.maxSchemaBytes = 1;
+    const result = await checked;
+    if (kind === 'raise response bound') {
+      assert.equal(result.execution.status, 'incomplete');
+      assert.equal(Object.hasOwn(result, 'decision'), false);
+    } else if (!kind.includes('rules')) assert.equal(result.decision.decision, 'PASS');
+    await assertProxyClosed(JSON.parse(readFileSync(f.reportPath, 'utf8')).endpoint);
     assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
     assert.deepEqual(readdirSync(f.privateParentDirectory), []);
   }
