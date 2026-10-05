@@ -21,6 +21,26 @@ function hasOnlyKeys(value, keys) {
     Object.hasOwn(descriptors[key], 'value'));
 }
 
+/** Capture supported configuration records before any field value is read. */
+export function snapshotPreparedGeminiCiReviewInput(input) {
+  if (!hasOnlyKeys(input, INPUT_KEYS) || !hasOnlyKeys(input.proxySessionOptions, SESSION_KEYS)) {
+    throw new Error('Prepared Gemini CI review requires a protected prompt, schema, and explicit proxy-session options.');
+  }
+  const options = input.proxySessionOptions.processOptions;
+  if (options && typeof options === 'object' && !types.isProxy(options) && Object.hasOwn(options, 'prompt')) {
+    throw new Error('Prepared Gemini CI review does not accept process prompt overrides.');
+  }
+  if (!hasOnlyKeys(input.proxySessionOptions.processOptions, PROCESS_KEYS)) {
+    throw new Error('Prepared Gemini CI review received unsupported process options.');
+  }
+  if (!hasOnlyKeys(input.protectedReviewer, REVIEWER_KEYS)) {
+    throw new Error('Prepared Gemini CI review requires the complete supported protected reviewer selection.');
+  }
+  return { ...input, protectedReviewer: { ...input.protectedReviewer },
+    proxySessionOptions: { ...input.proxySessionOptions,
+      processOptions: { ...input.proxySessionOptions.processOptions } } };
+}
+
 function composePrompt(protectedPromptText, schemaText) {
   return `${protectedPromptText}\n\nProtected output schema (follow this schema exactly; downstream CI validation remains authoritative):\n${schemaText}\n`;
 }
@@ -32,7 +52,8 @@ function composePrompt(protectedPromptText, schemaText) {
  * its resolved reviewer selection separately; this adapter verifies agreement
  * before starting any proxy or CLI, without authenticating that selection.
  */
-export async function runPreparedGeminiCiReview(input) {
+export async function runPreparedGeminiCiReview(suppliedInput) {
+  const input = snapshotPreparedGeminiCiReviewInput(suppliedInput);
   if (!hasOnlyKeys(input, INPUT_KEYS) || typeof input.protectedPromptText !== 'string' ||
       !input.protectedPromptText.trim() || typeof input.protectedDecisionSchemaText !== 'string' ||
       !hasOnlyKeys(input.proxySessionOptions, SESSION_KEYS)) {
