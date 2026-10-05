@@ -1,4 +1,5 @@
 /** Internal orchestration; protected input production and acceptance remain external. */
+import { types } from 'node:util';
 import { runPreparedGeminiCiReview } from './prepared-gemini-ci-review.mjs';
 import { completePreparedCiReview } from './complete-prepared-ci-review.mjs';
 
@@ -12,7 +13,10 @@ const KEYS = ['reviewInput', 'authorityProvenance', 'validationRules', 'maxRespo
  * or provider fallback; this operation grants no reporting/acceptance authority.
  */
 export async function runPreparedGeminiCiDecision(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+  if (!input || typeof input !== 'object' || Array.isArray(input) || types.isProxy(input) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(input)) ||
+      Reflect.ownKeys(Object.getOwnPropertyDescriptors(input)).some(key => typeof key !== 'string' ||
+        !Object.hasOwn(Object.getOwnPropertyDescriptor(input, key), 'value')) ||
       Object.keys(input).length !== KEYS.length || KEYS.some(key => !Object.hasOwn(input, key))) {
     throw new Error('Prepared Gemini CI decision requires the complete explicit input set.');
   }
