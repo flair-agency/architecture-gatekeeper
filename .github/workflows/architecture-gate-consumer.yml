@@ -148,7 +148,7 @@ jobs:
     # Policy-selected limits take precedence; legacy inputs are separately range-checked.
     timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_job_timeout_minutes) }}
     outputs:
-      final_message: ${{ steps.codex.outputs.final-message }}
+      final_message: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
       decision_kind: ${{ steps.decision.outputs.kind }}
       reviewed_sha: ${{ steps.revision.outputs.sha }}
       authority_provenance: ${{ steps.authority.outputs.provenance }}
@@ -298,7 +298,7 @@ jobs:
           REVIEW_SETTINGS_BASE64: ${{ needs.policy.outputs.execution_settings_base64 }}
           REVIEW_OUTCOME: ${{ steps.codex.outcome }}
           REVIEW_RESPONSE: ${{ steps.codex.outputs.final-message }}
-        run: node .architecture-gatekeeper-validation-runtime/src/ci-execution-observation.mjs --github
+        run: node .architecture-gatekeeper-validation-runtime/src/ci-execution-observation.mjs --github-response
       - name: Diagnose architecture reviewer completion
         if: always()
         timeout-minutes: 1
@@ -328,23 +328,23 @@ jobs:
         if: needs.policy.outputs.mode == 'procedural' || (needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_addition_grade == 'G0')
         id: decision
         env:
-          DECISION: ${{ steps.codex.outputs.final-message }}
+          DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
         run: node .architecture-gatekeeper-validation-runtime/src/ci-decision-kind.mjs
       - name: Apply consumer-owned decision validation
         if: (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '')
         env:
-          DECISION: ${{ steps.codex.outputs.final-message }}
+          DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
         run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-decision.mjs "$RUNNER_TEMP/architecture-gate-decision.validation.json"
       - name: Require exact reported legacy authority files
         if: needs.policy.outputs.policy_version == '1'
         env:
-          DECISION: ${{ steps.codex.outputs.final-message }}
+          DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
         run: node .architecture-gatekeeper-validation-runtime/src/prepare-legacy-ci-authority.mjs validate
       - name: Require exact reported Authority IDs
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
-          DECISION: ${{ steps.codex.outputs.final-message }}
+          DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
         run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
   owner-addition:

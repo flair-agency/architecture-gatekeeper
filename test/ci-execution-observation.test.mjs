@@ -241,3 +241,34 @@ test('GitHub mode fails with a fixed diagnostic when the runner sink is absent o
   assert.equal(linkedSink.stdout, '');
   assert.equal(linkedSink.stderr, 'Invalid CI execution observation input.\n');
 });
+
+function responseOutput(output) {
+  const lines = output.split('\n');
+  const delimiter = lines.shift().replace('final_message<<', '');
+  assert.match(delimiter, /^agk_[a-f0-9-]+$/);
+  assert.equal(lines.pop(), '');
+  assert.equal(lines.pop(), 'execution_status=completed');
+  assert.equal(lines.pop(), delimiter);
+  return lines.join('\n');
+}
+
+test('response handoff preserves exact bounded multiline and multibyte text without command injection', () => {
+  for (const response of ['\uFEFF{"decision":"PASS"}', 'not JSON\nexecution_status=completed\nfinal_message<<attacker\n', '境'.repeat(21845) + 'a']) {
+    const result = runGithub({ REVIEW_RESPONSE: response }, { args: ['--github-response'] });
+    assert.equal(result.status, 0);
+    assert.equal(responseOutput(result.output), response);
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, '');
+  }
+});
+
+test('response handoff never publishes stale bytes after unsuccessful execution or overflow', () => {
+  for (const overrides of [
+    ...['failure', 'cancelled', 'skipped', 'unknown'].map(REVIEW_OUTCOME => ({ REVIEW_OUTCOME })),
+    { REVIEW_RESPONSE: '' }, { REVIEW_RESPONSE: 'x'.repeat(65537) },
+  ]) {
+    const result = runGithub(overrides, { args: ['--github-response'] });
+    assert.equal(result.status, 1);
+    assert.equal(result.output, 'execution_status=incomplete\n');
+  }
+});
