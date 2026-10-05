@@ -53,7 +53,7 @@ for(const name of ['workspace','process'])mkdirSync(join(root,name),{mode:0o700}
 const snapshots=[];const observedSnapshots=new Set();
 const runnerPath=[...new Set([dirname(process.execPath),'/usr/bin','/bin'])].join(':');
 const codexCheck=spawnSync('/bin/sh',['-c','command -v codex'],{env:{PATH:runnerPath},encoding:'utf8'});
-const codexAbsent=codexCheck.status===1;
+const codexAbsent=[1,127].includes(codexCheck.status)&&!codexCheck.error&&!codexCheck.signal;
 const openAiAbsent=!process.env.OPENAI_API_KEY&&!process.env.CODEX_API_KEY;
 const limits={maxFiles:32,maxFileBytes:131072,maxTotalBytes:524288};
 const reviewedSha='a2c2661988d1631dc806fa3268eb25721c3ec0fe';
@@ -93,5 +93,5 @@ finally{
  rmSync(root,{recursive:true,force:true});
  https.request=originalRequest;syncBuiltinESMExports();
 }
-console.log(JSON.stringify({kind:'historical-complete-input-review-investigation-not-acceptance',revision:process.env.GITHUB_SHA,reviewedMerge:reviewedSha,base:packet?.revisions.baseSha,head:packet?.revisions.headSha,authoritySetDigest:provenance?.setDigest,model:'gemini-3.8-flash',thinkingLevel:'MEDIUM',location:'global',maxModelRequests:6,maxOutputTokensPerRequest:4096,sessionDeadlineMs:180000,elapsedMs:Date.now()-start,packetBytes:packet?Buffer.byteLength(JSON.stringify(packet)):null,encodedSelectedPromptBytes:encodedPromptBytes,responseBytes,responseSha256,changedPaths:packet?.files.length,authorityMembers:packet?.references.length,expectedSnapshotCount:snapshots.length,observedSnapshotCount:observedSnapshots.size,validatedDecision:decision?.decision,gateDecisions:decision?{sharedMechanism:decision.gates.sharedMechanism.decision,trustBoundary:decision.gates.trustBoundary.decision}:null,findingCount:decision?.findings.length,completeValidatedReview:valid,sessionResourcesCleaned:clean,codexAbsentFromRunnerPath:codexAbsent,openAiCredentialsAbsent:openAiAbsent,modelRequests:observations}));
+console.log(JSON.stringify({kind:'historical-complete-input-review-investigation-not-acceptance',revision:process.env.GITHUB_SHA,reviewedMerge:reviewedSha,base:packet?.revisions.baseSha,head:packet?.revisions.headSha,authoritySetDigest:provenance?.setDigest,model:'gemini-3.8-flash',thinkingLevel:'MEDIUM',location:'global',maxModelRequests:6,maxOutputTokensPerRequest:4096,sessionDeadlineMs:180000,elapsedMs:Date.now()-start,packetBytes:packet?Buffer.byteLength(JSON.stringify(packet)):null,encodedSelectedPromptBytes:encodedPromptBytes,responseBytes,responseSha256,changedPaths:packet?.files.length,authorityMembers:packet?.references.length,expectedSnapshotCount:snapshots.length,observedSnapshotCount:observedSnapshots.size,validatedDecision:decision?.decision,gateDecisions:decision?{sharedMechanism:decision.gates.sharedMechanism.decision,trustBoundary:decision.gates.trustBoundary.decision}:null,findingCount:decision?.findings.length,completeValidatedReview:valid,sessionResourcesCleaned:clean,codexAbsentFromRunnerPath:codexAbsent,codexLookupStatus:codexCheck.status,openAiCredentialsAbsent:openAiAbsent,modelRequests:observations}));
 if(!valid||!clean)process.exitCode=1;
