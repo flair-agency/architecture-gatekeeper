@@ -153,8 +153,10 @@ test('initial migration diff ignores configured textconv and preserves the commi
   const request = await preparePreviewLifecycle(migrationSpec(f, head), f.root);
   const taskText = request.prompt.split('Bound task:\n')[1].split('\nReturn only')[0];
   const task = JSON.parse(taskText);
-  const committedDiff = git(f.root, 'diff', '--no-ext-diff', '--no-textconv', '--no-renames', f.base, head);
+  const committedDiff = execFileSync('git', ['-C', f.root, 'diff', '--no-ext-diff', '--no-textconv', '--no-renames', f.base, head],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   assert.equal(task.diff, committedDiff);
+  assert.equal(task.diff.endsWith('\n'), true);
   assert.match(task.diff, /authorityManifestPath/);
   assert.doesNotMatch(task.diff, /SPOOFED TEXTCONV DIFF/);
   assert.equal(existsSync(f.textconvMarker), false);
