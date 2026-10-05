@@ -15,7 +15,11 @@ for (const line of runLines) {
   if (line && !line.startsWith('          ')) break;
   scriptLines.push(line ? line.slice(10) : '');
 }
-const script = scriptLines.join('\n');
+const workflowScript = scriptLines.join('\n');
+assert.equal(workflowScript.split('\n')[0], "node --input-type=module <<'NODE'");
+assert.equal(workflowScript.trimEnd().split('\n').at(-1), 'NODE');
+const script = workflowScript.match(/^node --input-type=module <<'NODE'\n([\s\S]*?)\nNODE\s*$/)?.[1];
+assert.ok(script, 'classifier step must contain its fixed Node script');
 
 function event({ repositoryId = 123, baseId = 123, headId = 123, number = 45,
   baseSha = 'a'.repeat(40), headSha = 'b'.repeat(40), sender = {} } = {}) {
@@ -54,8 +58,11 @@ test('classifier distinguishes same-repository PRs from every cross-repository h
       const outputPath = join(directory, 'output');
       await writeFile(eventPath, JSON.stringify(fixture));
       await writeFile(outputPath, '');
-      const result = spawnSync('bash', ['-euo', 'pipefail', '-c', script], {
+      // Run the workflow's fixed Node step through the Node executable's stdin.
+      // No fixture-controlled value is placed in a shell or process argument.
+      const result = spawnSync(process.execPath, ['--input-type=module'], {
         encoding: 'utf8',
+        input: script,
         env: { ...process.env, GITHUB_EVENT_PATH: eventPath, GITHUB_OUTPUT: outputPath,
           GITHUB_EVENT_NAME: 'pull_request_target', EXPECTED_REPOSITORY_ID: expected,
           EXPECTED_PULL_REQUEST_NUMBER: expectedPullRequest },
