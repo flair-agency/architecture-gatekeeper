@@ -885,13 +885,15 @@ adoption, queue acceptance, host enforcement, or preview activation. #326 tracks
 future reduction of GitHub write privilege required for readback; it does not
 relax the current fail-closed restriction checks.
 
-## Ordinary review preview
+## Unverified preview lifecycle API
 
 The `preview-unverified-procedure-v1` package surface implements ordinary review
-(`mode: "review"`), a completed-`BLOCK` amendment (`mode: "amendment"`), and
-missing-decision addition (`mode: "addition"`). Existing-choice amendment also
-uses `mode: "amendment"` when the predecessor selects
-`amendmentTriggerProfile: "completed-owner-decision-v1"`. It resolves the committed
+(`mode: "review"`), a completed-`BLOCK` amendment (`mode: "amendment"`),
+missing-decision addition (`mode: "addition"`), existing-choice amendment
+(`mode: "amendment"` with predecessor-selected
+`amendmentTriggerProfile: "completed-owner-decision-v1"`), and one initial
+compatible legacy v1-to-v1/v2 control-plane migration (`mode: "migration"`).
+It resolves the committed
 selection and all review inputs from the exact predecessor, materializes the
 entire selected Authority Set, and creates a request using the unchanged
 predecessor semantic schema and validators. Preparation reads Git objects and
@@ -902,7 +904,10 @@ Commit this version-1 selection at `.codex/gatekeeper/preview-lifecycle.json`
 before the reviewed change. Its policy, prompt, schema, validator and caller must
 match the predecessor's model-backed Codex policy; governance and `authorityPaths`
 must belong to its complete Authority Set. `authorityPaths` and `migrationPaths`
-remain required compatibility fields; `migrationPaths` does not enable migration.
+remain required compatibility fields. For review and B routes, `migrationPaths`
+is inert. The initial migration alone requires it to name exactly the selection
+file, `.codex/gatekeeper/ci-policy.json`, and
+`.github/workflows/architecture-gate.yml`.
 The selected eligibility schema and validator are used for B routes. A
 completed-`BLOCK` amendment additionally requires the predecessor to select
 `amendmentTriggerProfile: "completed-block-v1"`; existing-choice amendment
@@ -968,6 +973,52 @@ committed inputs, predecessor decision schema, full selected authority IDs or
 paths, and every selected deterministic validator. Ordinary completion accepts
 `PASS`, `BLOCK` or `OWNER_DECISION`; unresolved owner choices remain escalations.
 
+The initial migration is available only when the exact predecessor has an
+enforced legacy v1 policy, no committed preview selection, no trusted
+acceptance selection and compatible self-authority inputs. Prepare M with
+`mode: "migration"`, `trigger: null`, and `record: null`, using the exact old
+and proposed commits. M must receive `PASS` under the predecessor's unchanged
+prompt, schema, validator, reviewer settings and complete Authority Set. The
+proposed policy/configuration and successor selection are untrusted M inputs;
+they may change only the selected control-plane paths. The successor must
+preserve every predecessor-selected authority member in the same order with
+identical raw bytes, preserve reviewer settings and limits, and not select a
+trusted acceptance route. The successor selects an explicit B eligibility
+schema and validator. The migration receipt is ordinary M evidence marked
+`ELIGIBLE` only for the later migration procedure; it is not B eligibility.
+
+After validating the completed receipt, integrate the exact M using the
+supported normal merge form: recorded base first parent, exact M second parent,
+and M's tree as the result. Include exactly one
+`AGK-Preview-Receipt-v1: sha256:<digest>` trailer over the receipt's exact raw
+bytes. `observePreviewLifecycle` verifies that binding and exact target
+readback before `prepareFreshPreviewReview` can prepare a separate successor A.
+Later migrations, incompatible authority bridges, changed/omitted authority,
+changed review settings, and trusted-route activation remain unsupported.
+This procedure reports only observed placement and Git facts; producer,
+execution, owner, custody, policy-protection and host-enforcement assurances
+remain `UNVERIFIED`.
+
+The M request uses the same exported lifecycle API; its mode does not itself
+authorize or apply the proposed policy:
+
+```js
+const migrationSpec = {
+  version: 1,
+  repository: 'example/consumer',
+  targetBranch: 'main',
+  baseSha: '<exact legacy-v1 predecessor commit>',
+  headSha: '<exact proposed migration commit M>',
+  mode: 'migration',
+  selectionPath: '.codex/gatekeeper/preview-lifecycle.json',
+  trigger: null,
+  record: null,
+};
+const request = await preparePreviewLifecycle(migrationSpec, root);
+// Obtain the actual predecessor-schema review response, then:
+const receipt = await completePreviewLifecycle(request, actualResponse, root);
+```
+
 Only a completed ordinary `BLOCK` receipt can trigger the selected amendment
 route. Build a B spec with `mode: "amendment"`, the completed receipt as
 `trigger`, and the exact externally recorded amendment record as `record`.
@@ -1007,7 +1058,7 @@ execution, owner, custody, policy-protection and host-enforcement assurances are
 `observePreviewLifecycle`, `prepareFreshPreviewReview` and `previewReceiptBytes`
 from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
 
-Migration is unsupported. Preparation
-rejects unsupported modes, and receipt revalidation repeats the route checks so
-later-route receipts cannot be treated as supported results. No consumer should
-infer unsupported routes from inert selection declarations.
+Preparation rejects other unsupported modes, and receipt revalidation repeats
+the route checks so unsupported receipts cannot be treated as supported
+results. No consumer should infer route support from inert selection
+declarations.
