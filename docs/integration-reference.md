@@ -1062,3 +1062,90 @@ Preparation rejects other unsupported modes, and receipt revalidation repeats
 the route checks so unsupported receipts cannot be treated as supported
 results. No consumer should infer route support from inert selection
 declarations.
+
+### Preview support and recovery status
+
+The `0.6.0-preview.3` candidate implements these five API procedures. Support
+is limited to the exact predecessor-selected tuple and trigger described
+above; it does not follow from installing the package or adding inert fields to
+a selection.
+
+| Procedure | Required predecessor state | Candidate boundary |
+| --- | --- | --- |
+| Ordinary review | Complete selected Authority Set and matching version-1 preview selection | `review` may return `PASS`, `BLOCK` or `OWNER_DECISION`; the receipt remains unverified evidence. |
+| BLOCK amendment | Ordinary completed `BLOCK` and predecessor-selected `completed-block-v1` | B must resolve only the exact bound trigger; unsupported or mixed changes are ineligible. |
+| Missing-decision addition | Ordinary completed `OWNER_DECISION` naming a missing decision ID | B appends only that decision and preserves existing authority bytes. |
+| Existing-choice amendment | Ordinary completed `OWNER_DECISION` plus predecessor-selected `completed-owner-decision-v1` | B proposes a material resolution of the exact existing target; the record is not authenticated owner approval. |
+| Initial legacy migration | Enforced legacy v1 policy, no preview selection or trusted acceptance selection, and a predecessor `PASS` | One compatible v1/v2 successor only; preserve the complete selected authority bytes and reviewer settings and limit changes to the selected control-plane paths. |
+
+The candidate and its installed-package fixtures exercise all five
+procedures, including negative eligibility cases. The local synthetic
+consumer packet records a model-reviewed migration M `PASS`, successor A
+positive and negative reviews, B positive `ELIGIBLE` and negative
+`INELIGIBLE` reviews, and a fresh successor A `PASS`. It records successful
+normal integration and readback for the positive M and B transitions. These
+results show more than graph construction, but do not show that a downstream
+consumer selected the route, that its protected caller ran the package, or
+that a protected acceptance check passed. The candidate's six assurance
+dimensions remain `UNVERIFIED`; preview receipts do not supply trusted
+acceptance.
+
+The migration procedure does not support later migrations, incompatible
+bridges, changed or omitted authority members, changed reviewer settings,
+trusted-route or recovery activation, root or host enforcement, or an
+external/backend enforcement claim. If the exact predecessor tuple does not
+meet the stated conditions, stop with the existing policy and treat migration
+as unsupported. Do not infer a fallback, bootstrap, or recovery exception.
+
+#### Package and pin recovery
+
+Recovery is a compatibility check over an exact package, workflow, Skill,
+protected policy and caller tuple. Package installation alone changes none of
+those protected consumer inputs. Before recommending an update or pin change,
+record and test each component against the same committed fixture and preserve
+the authority and receipt history.
+
+The available preview.2-to-preview.3 rehearsal has limited results. The
+preview.2 source is [`c6c45da24d755ddd51b3a595e614242f869ec3ad`](https://github.com/flair-agency/architecture-gatekeeper/tree/c6c45da24d755ddd51b3a595e614242f869ec3ad); its offline archive SHA-256 is
+`997f34c8a73826fffe1800bedddb29f8c2b6a62bba3f3adbd9d37dd46bd6cbea`, and
+all 87 packed files matched that source. The preview.3 candidate source is
+[`9822ab915d63faadd8b2671f3a2f2507cb09e29d`](https://github.com/flair-agency/architecture-gatekeeper/tree/9822ab915d63faadd8b2671f3a2f2507cb09e29d); its local archive SHA-256 is
+`68cffc5aa9580560d59cdf64506011001a7d10c88f16d7793c57a09e53244ad0`, with
+all 115 packed files matching that source. These are local source-matched
+archives; no registry artifact readback is recorded.
+
+The synthetic fixture was `fixture/migration`, with unchanged legacy-v1 base
+`019b82513a2cf2a40fc8478af9a48766c445f417`. The old package resolved its
+enforced Luna/low legacy selection and materialized its selected authority
+with provenance. Using that same old runtime, a separate check also resolved
+the proposed v2 policy and materialized the full two-member successor
+Authority Set; exact member-ID validation accepted the complete set and
+rejected an omitted ID. The deterministic validator accepted mechanical
+synthetic inputs; these were not model reviews. The old package does not export
+`@flair-agency/architecture-gatekeeper/preview-lifecycle`. This establishes
+resolver/materializer compatibility for that fixture only. It does not verify
+the old workflow or Skill execution, hosted execution, a full old-pin
+acceptance run, or an actual consumer's pin set. It also does not establish
+that rolling back the package after migration readback is safe or unsafe.
+
+The fixture packet records source blob identities for
+`.github/workflows/architecture-gate-consumer.yml` and
+`skills/architecture-review/SKILL.md` at both commits. Those blobs were not
+executed as the fixture's selected pins: the fixture caller used synthetic
+`fixture/runtime@1111111111111111111111111111111111111111` and
+`fixture/runtime@2222222222222222222222222222222222222222` references. The
+recorded workflow and Skill identities therefore do not demonstrate their
+runtime compatibility or an actual consumer pin set.
+
+| Recovery question | Evidence required before guidance | Current result |
+| --- | --- | --- |
+| Can the previous runtime still resolve the migrated policy and read its full Authority Set? | Exact old package archive, unchanged fixture policy and caller, resolver result, and complete materializer identity | Resolver and two-member materializer succeeded in the synthetic v1 fixture; broader compatibility is unverified. |
+| Can the previous package/workflow/Skill pin set run the consumer's required review and acceptance checks? | Exact package, immutable workflow and Skill revisions; protected fixture run; ordinary positive and required negative outcomes | Not verified. Source blob identities are recorded but were not executed as selected pins; the previous package lacks the preview API export. |
+| Is a pin change or rollback safe after migration adoption/readback? | Consumer-owned recovery procedure and a fixture run against the exact adopted successor policy, with adoption and canonical placement recorded separately | No recommendation established. Do not infer either compatibility or incompatibility from resolver/materializer success alone. |
+| Has a real consumer adopted the candidate or passed protected acceptance? | Exact consumer base and pin set, protected hosted run, acceptance result and canonical readback | Not established by package-fixture evidence. |
+
+Until the relevant row has exact evidence, make no recovery recommendation.
+A package pin alone cannot reverse adopted authority; any recovery must
+preserve history and follow the consumer's already-authorized procedure. If no
+compatible procedure is demonstrated, stop and escalate the unresolved
+consumer decision rather than inventing a downgrade or exception.
