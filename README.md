@@ -260,3 +260,13 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 ## License
 
 [MIT](LICENSE)
+
+## Ordinary review preview
+
+The installed `architecture-preview-lifecycle` command supports only ordinary
+preparation and completion against the exact predecessor-selected policy,
+prompt, schema, validators and complete Authority Set. It records local
+`UNVERIFIED` assurance and a pending receipt; it does not integrate changes,
+prove adoption, or supply host acceptance. Unsupported lifecycle modes and later
+route records are rejected. The selection and command contract is documented in
+the [integration reference](docs/integration-reference.md#ordinary-review-preview).

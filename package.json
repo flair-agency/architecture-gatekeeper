@@ -14,7 +14,8 @@
     "architecture-review-native": "src/native-review.mjs",
     "architecture-review-gemini-ci": "src/gemini-launcher.mjs",
     "architecture-gate-policy": "src/resolve-ci-policy.mjs",
-    "architecture-owner-addition-finalize": "src/owner-addition-finalize.mjs"
+    "architecture-owner-addition-finalize": "src/owner-addition-finalize.mjs",
+    "architecture-preview-lifecycle": "src/preview-lifecycle-cli.mjs"
   },
   "exports": {
     ".": "./src/local-gate.mjs",
@@ -23,7 +24,8 @@
     "./gemini-ci-runner": "./src/gemini-ci-runner.mjs",
     "./policy": "./src/resolve-ci-policy.mjs",
     "./owner-addition-adoption": "./src/owner-addition-adoption.mjs",
-    "./owner-addition-finalize": "./src/owner-addition-finalize.mjs"
+    "./owner-addition-finalize": "./src/owner-addition-finalize.mjs",
+    "./preview-lifecycle": "./src/preview-lifecycle.mjs"
   },
   "files": [
     "src",

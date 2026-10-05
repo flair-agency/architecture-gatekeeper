@@ -884,3 +884,83 @@ separate work tracked by #210. This slice does not establish full amendment
 adoption, queue acceptance, host enforcement, or preview activation. #326 tracks
 future reduction of GitHub write privilege required for readback; it does not
 relax the current fail-closed restriction checks.
+
+## Ordinary review preview
+
+The `preview-unverified-procedure-v1` package surface currently implements only
+ordinary review (`mode: "review"`). It resolves the committed selection and all
+review inputs from the exact predecessor, materializes the entire selected
+Authority Set, and creates a request using the unchanged predecessor semantic
+schema and validators. Preparation reads Git objects and returns model/reasoning
+settings with the request; it does not contact a model or use credentials.
+
+Commit this version-1 selection at `.codex/gatekeeper/preview-lifecycle.json`
+before the reviewed change. Its policy, prompt, schema, validator and caller must
+match the predecessor's model-backed Codex policy; governance and `authorityPaths`
+must belong to its complete Authority Set. `authorityPaths` and `migrationPaths`
+remain required compatibility fields but do not enable those later procedures in
+this package slice. Eligibility and trigger declarations are inert here.
+
+```json
+{
+  "version": 1,
+  "profile": "preview-unverified-procedure-v1",
+  "repository": "example/consumer",
+  "targetBranch": "main",
+  "governancePath": "docs/governance.md",
+  "authorization": "Owner selected ordinary unverified review preview",
+  "policyPath": ".codex/gatekeeper/ci-policy.json",
+  "promptPath": ".codex/gatekeeper/ci-prompt.md",
+  "schemaPath": ".codex/gatekeeper/decision.schema.json",
+  "validationPath": null,
+  "eligibilitySchemaPath": ".codex/gatekeeper/preview-eligibility.schema.json",
+  "eligibilityValidationPath": null,
+  "amendmentTriggerProfile": "completed-block-v1",
+  "callerPath": ".github/workflows/architecture-gate.yml",
+  "authorityPaths": ["docs/architecture.md"],
+  "migrationPaths": [".codex/gatekeeper/ci-policy.json"],
+  "maxPromptBytes": 524288
+}
+```
+
+```json
+{
+  "version": 1,
+  "repository": "example/consumer",
+  "targetBranch": "main",
+  "baseSha": "<exact predecessor commit>",
+  "headSha": "<exact proposed review commit>",
+  "mode": "review",
+  "selectionPath": ".codex/gatekeeper/preview-lifecycle.json",
+  "trigger": null,
+  "record": null
+}
+```
+
+Run from the consumer repository. Keep request, response and receipt files
+outside the proposed change. The command creates outputs exclusively with mode
+0600 and refuses overwriting existing files.
+
+```sh
+architecture-preview-lifecycle prepare spec.json request.json
+architecture-preview-lifecycle complete request.json decision.json receipt.json
+```
+
+Send the emitted prompt and response schema to a review-only reviewer using the
+recorded `reviewer.model` and `reviewer.reasoningEffort`, then save its actual
+structured response as `decision.json`. Completion rechecks the exact committed
+inputs, predecessor decision schema, full selected authority IDs or paths, and
+every selected deterministic validator. It accepts only ordinary `PASS`, `BLOCK`
+or `OWNER_DECISION`; unresolved owner choices remain escalations.
+
+The receipt remains `adoption=PENDING` and `canonical=PENDING`; all producer,
+execution, owner, custody, policy-protection and host-enforcement assurances are
+`UNVERIFIED`. It is not trusted acceptance evidence. This package surface exposes
+`preparePreviewLifecycle`, `completePreviewLifecycle`, `validatePreviewReceipt`
+and `previewReceiptBytes` from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
+
+Addition, amendment, migration, integration observation and fresh-review
+commands are unsupported by this ordinary-only package slice. Preparation rejects
+non-review modes before creating a request, and receipt revalidation repeats that
+check so a later-route receipt cannot be treated as an ordinary result. No consumer
+should infer those routes from inert selection declarations.
