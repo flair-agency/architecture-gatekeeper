@@ -61,6 +61,14 @@ jobs:
           PROBE_PROJECT: ${{ steps.auth.outputs.project_id }}
           PROBE_CLI_ENTRYPOINT: ${{ runner.temp }}/agk333-cli-runtime/node_modules/@google/gemini-cli/bundle/gemini.js
         run: node scripts/issue333-full-gemini-review-probe.mjs
+      - name: Retain encrypted private diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: issue333-private-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/agk333-retained-evidence-*/review.enc.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Remove investigation CLI runtime
         if: always()
-        run: rm -rf -- "$RUNNER_TEMP/agk333-cli-runtime"
+        run: rm -rf -- "$RUNNER_TEMP/agk333-cli-runtime" "$RUNNER_TEMP"/agk333-retained-evidence-*
