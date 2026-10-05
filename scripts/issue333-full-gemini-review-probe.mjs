@@ -59,7 +59,7 @@ const codexCheck=spawnSync('/bin/sh',['-c','command -v codex'],{env:{PATH:runner
 const codexAbsent=[1,127].includes(codexCheck.status)&&!codexCheck.error&&!codexCheck.signal;
 const openAiAbsent=!process.env.OPENAI_API_KEY&&!process.env.CODEX_API_KEY;
 const limits={maxFiles:32,maxFileBytes:131072,maxTotalBytes:524288};
-const reviewedSha='a2c2661988d1631dc806fa3268eb25721c3ec0fe';
+const reviewedSha='35ed0cedd92048566f2e0243549a8efcddd36e99';
 let packet;let schemaText;let prompt;let provenance;let rules;let decision;let encodedPromptBytes;
 const start=Date.now();let valid=false;let clean=false;let responseBytes;let responseSha256;let responseText;let failureStage;let privateFailure;let stage='preflight';let evidenceRetained=false;
 try{
@@ -84,7 +84,7 @@ try{
  snapshots.push(...packet.files.flatMap(file=>[file.before,file.after]).filter(Boolean));
  schemaText=git('show',`${baseSha}:.codex/gatekeeper/ci-decision.schema.json`);
  rules=JSON.parse(git('show',`${baseSha}:.codex/gatekeeper/decision.validation.json`));
- const context='Investigation only: review this actual historical merge; do not authorize acceptance or claim deployment. The materialized manifest.json binds the exact base/head/merge tuple and maps original paths to evidence filenames. Read manifest.json and ALL before/after snapshots listed under files with read_file; batch read_file calls when useful. The six protected reference members are appended in full below, so do not reload them as workspace instructions. Review only the selected changed scope, record missing evidence, and return one complete raw JSON object matching the selected decision schema, including every required field. Do not emit Markdown, code fences or prose outside that object. Do not guess conformance or treat absent tools as proof of host isolation.';
+ const context='Investigation only: review this actual historical merge; do not authorize acceptance or claim deployment. The materialized manifest.json binds the exact base/head/merge tuple and maps original paths to evidence filenames. Read manifest.json and ALL before/after snapshots listed under files with read_file; batch read_file calls when useful. All selected protected reference members are appended in full below, so do not reload them as workspace instructions. Review only the selected changed scope, record missing evidence, and return one complete raw JSON object matching the selected decision schema, including every required field. Do not emit Markdown, code fences or prose outside that object. Do not guess conformance or treat absent tools as proof of host isolation.';
  prompt=context+'\n\n'+git('show',`${baseSha}:.codex/gatekeeper/ci-prompt.md`)+'\n\n'+authority.prompt;
  encodedPromptBytes=Buffer.byteLength(encodeGeminiCliPromptForTransport(prompt+'\n\nProtected output schema (follow this schema exactly; downstream CI validation remains authoritative):\n'+schemaText+'\n'));
  stage='execution';
