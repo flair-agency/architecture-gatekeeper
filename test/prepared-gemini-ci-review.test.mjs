@@ -418,3 +418,25 @@ test('completion rejects executable wrapper fields without reading a changing se
   assert.equal(reads, 0);
   assert.equal(existsSync(f.reportPath), false);
 });
+
+
+test('completion rejects self-replacing configuration getters before recording execution', async t => {
+  for (const field of ['model', 'thinkingLevel', 'maxOutputTokens']) {
+    const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+    const supplied = input(f);
+    const options = supplied.proxySessionOptions.processOptions;
+    const original = field === 'maxOutputTokens' ? 128 : options[field];
+    let reads = 0;
+    Object.defineProperty(options, field, { enumerable: true, configurable: true, get() {
+      reads += 1;
+      Object.defineProperty(options, field, { enumerable: true, configurable: true, value: original });
+      return field === 'maxOutputTokens' ? 999 : 'spoofed-setting';
+    } });
+    await assert.rejects(runPreparedGeminiCiDecision({ reviewInput: supplied, authorityProvenance,
+      validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576 }), /unsupported process options/);
+    assert.equal(reads, 0);
+    assert.equal(existsSync(f.reportPath), false);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
