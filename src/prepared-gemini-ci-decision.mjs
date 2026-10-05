@@ -1,5 +1,6 @@
 /** Internal orchestration; protected input production and acceptance remain external. */
 import { types } from 'node:util';
+import { snapshotPreparedReviewData } from './prepared-review-data.mjs';
 import { runPreparedGeminiCiReview, snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mjs';
 import { completePreparedCiReview } from './complete-prepared-ci-review.mjs';
 
@@ -26,10 +27,10 @@ export async function runPreparedGeminiCiDecision(input) {
   }
   // Capture caller-owned completion materials before the asynchronous session.
   // These private copies cannot be replaced or mutated by the caller while the
-  // CLI runs. Structured cloning also rejects executable/non-data inputs.
+  // CLI runs. Descriptor validation rejects executable inputs before cloning.
   const { maxResponseBytes, maxSchemaBytes } = input;
-  const authorityProvenance = structuredClone(input.authorityProvenance);
-  const validationRules = structuredClone(input.validationRules);
+  const authorityProvenance = snapshotPreparedReviewData(input.authorityProvenance);
+  const validationRules = snapshotPreparedReviewData(input.validationRules);
   if (!authorityProvenance || typeof authorityProvenance !== 'object' || Array.isArray(authorityProvenance) ||
       (validationRules !== null && (!validationRules || typeof validationRules !== 'object' || Array.isArray(validationRules)))) {
     throw new Error('Prepared Gemini CI decision requires explicit authority and validation data.');
