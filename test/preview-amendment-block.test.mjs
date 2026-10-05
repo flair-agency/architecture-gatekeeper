@@ -132,3 +132,16 @@ test('receipt trailer, merge parent order/tree and target readback are exact', a
   git(f.root, 'branch', '-f', 'main', changed);
   await assert.rejects(observePreviewLifecycle(receipt, good, f.root), /target does not contain|placement differs/);
 });
+
+test('observer reads the original integration message when a Git replacement ref exists', async t => {
+  const f = fixture(t); const a = await makeTrigger(f, 'BLOCK'); const b = await makeB(f, a.receipt);
+  const receipt = await completePreviewLifecycle(b.request, eligibleResponse(), f.root);
+  const integration = integrate(f, b.bHead, receipt);
+  const replacement = git(f.root, 'commit-tree', `${b.bHead}^{tree}`, '-p', f.base, '-p', b.bHead, '-m', 'Synthetic replacement without receipt trailer');
+  git(f.root, 'replace', integration, replacement);
+  const replacedMessage = execFileSync('git', ['-C', f.root, 'show', '-s', '--format=%B', integration], { encoding: 'utf8' });
+  assert.match(replacedMessage, /replacement without receipt trailer/);
+  const observed = await observePreviewLifecycle(receipt, integration, f.root);
+  assert.equal(observed.integrationSha, integration);
+  assert.equal(observed.treeSha, git(f.root, 'rev-parse', `${integration}^{tree}`));
+});
