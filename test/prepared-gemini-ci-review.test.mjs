@@ -62,7 +62,7 @@ const responseText = ${JSON.stringify(responseText)};
 if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); process.exit(0); }
 let prompt = '';
 for await (const chunk of process.stdin) prompt += chunk;
-writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')) }));
+writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')), referenceText: readFileSync('evidence/reference-0001.txt', 'utf8'), manifest: JSON.parse(readFileSync('manifest.json', 'utf8')) }));
 if (mode === 'delayed') { await new Promise(resolve => setTimeout(resolve, 250)); }
 if (mode === 'stale-failure') { process.stdout.write(JSON.stringify({ response: responseText })); process.exit(7); }
 if (mode === 'failure') { process.stderr.write('fixture execution failure'); process.exit(7); }
@@ -347,6 +347,32 @@ test('completion retains pre-dispatch validation inputs despite caller mutation 
       assert.equal(Object.hasOwn(result, 'decision'), false);
     } else if (!kind.includes('rules')) assert.equal(result.decision.decision, 'PASS');
     await assertProxyClosed(JSON.parse(readFileSync(f.reportPath, 'utf8')).endpoint);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
+
+
+test('prepared execution snapshots caller packet and workspace limits before proxy startup yields', async t => {
+  for (const operation of [runPreparedGeminiCiReview, async reviewInput => (await runPreparedGeminiCiDecision({
+    reviewInput, authorityProvenance, validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576,
+  })).decision]) {
+    const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+    const supplied = input(f);
+    supplied.proxySessionOptions.workspaceLimits = structuredClone(workspaceLimits);
+    const pending = operation(supplied);
+    const reference = supplied.proxySessionOptions.packet.references[0];
+    reference.text = 'MUTATED';
+    reference.sha256 = createHash('sha256').update(reference.text).digest('hex');
+    supplied.proxySessionOptions.packet.revisions.reviewedMergeSha = oid('e');
+    supplied.proxySessionOptions.workspaceLimits.maxFiles = 1;
+    const result = await pending;
+    assert.ok(result);
+    const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+    assert.equal(observed.referenceText, 'protected CI fixture');
+    assert.equal(observed.manifest.revisions.reviewedMergeSha, oid('c'));
+    assert.deepEqual(observed.manifest.limits, workspaceLimits);
+    await assertProxyClosed(observed.endpoint);
     assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
     assert.deepEqual(readdirSync(f.privateParentDirectory), []);
   }
