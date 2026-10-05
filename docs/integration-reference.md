@@ -889,8 +889,10 @@ relax the current fail-closed restriction checks.
 
 The `preview-unverified-procedure-v1` package surface implements ordinary review
 (`mode: "review"`), the narrowly selected completed-`BLOCK` amendment preview
-(`mode: "amendment"`), and a missing-decision addition preview
-(`mode: "addition"`). It resolves the committed selection and inputs from the
+(`mode: "amendment"`), a missing-decision addition preview
+(`mode: "addition"`), a predecessor-selected existing-decision amendment, and
+the narrowly scoped initial compatible migration (`mode: "migration"`). It
+resolves the committed selection and inputs from the
 exact predecessor, materializes the entire selected Authority Set, and creates
 requests using the unchanged predecessor semantic schema and selected B
 eligibility schema/validators.
@@ -901,9 +903,10 @@ Commit this version-1 selection at `.codex/gatekeeper/preview-lifecycle.json`
 before the reviewed change. Its policy, prompt, schema, validator and caller must
 match the predecessor's model-backed Codex policy; governance and `authorityPaths`
 must belong to its complete Authority Set. `authorityPaths` and `migrationPaths`
-remain required compatibility fields; `migrationPaths` does not enable migration
-in this package slice. B routes use the predecessor-selected eligibility schema
-and optional deterministic eligibility validator.
+remain required compatibility fields; `migrationPaths` selects control-plane
+paths only for the initial migration procedure below and remains inert for
+ordinary and B requests. B routes use the predecessor-selected eligibility
+schema and optional deterministic eligibility validator.
 `amendmentTriggerProfile` selects either `completed-block-v1` for an ordinary
 `BLOCK` or `completed-owner-decision-v1` for an ordinary `OWNER_DECISION` that
 identifies an existing decision requiring an owner choice to change.
@@ -1000,10 +1003,35 @@ execution, owner, custody, policy-protection and host-enforcement assurances are
 `preparePreviewLifecycle`, `completePreviewLifecycle`, `validatePreviewReceipt`
 and `previewReceiptBytes` from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
 
-Migration is unsupported. Unsupported modes are
-rejected before request creation, and receipt revalidation repeats the route
-checks so receipts from later procedures cannot be treated as supported results.
-Selection declarations for those routes do not enable them. The ordinary,
-completed-`BLOCK` amendment, missing-decision addition, and existing-decision
-amendment surfaces remain unverified local previews, not adoption, canonical
-acceptance, owner custody or host-enforcement evidence.
+## Initial compatible migration preview
+
+This procedure is limited to an initial transition from a recorded,
+model-backed enforced v1 policy that has no predecessor preview selection. It
+requires `mode: "migration"`, with `trigger` and `record` set to `null`. The
+request is prepared against the predecessor's v1 policy, prompt, decision
+schema, validator, and complete Authority Set. The reviewer must return ordinary
+`PASS` under that predecessor schema and enumerate every predecessor authority
+member exactly once. The candidate's successor files are proposed inputs; they
+do not select or replace the review inputs for this migration.
+
+The proposed successor may use only policy version 1 or 2. It must preserve the
+existing reviewer/provider/model/settings, prompt/schema/validator selectors,
+and the complete ordered predecessor Authority Set byte-for-byte. The successor
+must select a B eligibility schema and an explicit validator field, and its
+`migrationPaths` must name exactly the preview selection, policy, and caller
+workflow. The transition rejects an existing predecessor preview selector,
+authority edits or membership changes, changed reviewer settings, external
+authority, unrelated branch policy changes, and trusted acceptance routes.
+General v3-v6 or later migrations are unsupported. This is an unverified local
+control-plane preview, not authorization to adopt or activate the successor.
+
+After completion, `observe` binds the migration receipt to its exact trailer,
+ordered integration parents, resulting tree, and canonical readback of the
+successor selection, policy, complete authority and B inputs. The ordinary M
+receipt retains the established `eligibility: "ELIGIBLE"` field for its PASS
+result, but migration mode is admitted explicitly and cannot qualify as a B
+eligibility result. A separate `fresh-review` request against the observed
+successor can then begin ordinary review. All five procedures remain local
+unverified previews with adoption and canonical status pending; none establishes
+owner custody, trusted acceptance or host enforcement. Unsupported modes and
+receipt routes continue to fail closed.
