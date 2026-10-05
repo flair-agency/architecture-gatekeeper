@@ -1,4 +1,5 @@
 /** Internal adapter from caller-prepared protected CI inputs to the CLI proxy session. */
+import { types } from 'node:util';
 import { runGeminiCliProxySession } from './gemini-cli-proxy-session.mjs';
 import { validateJsonSchemaDefinition } from './json-schema.mjs';
 import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from './gemini-cli-process.mjs';
@@ -12,7 +13,12 @@ const PROCESS_KEYS = new Set([
 ]);
 
 function hasOnlyKeys(value, keys) {
-  return value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).every(key => keys.has(key));
+  if (!value || typeof value !== 'object' || Array.isArray(value) || types.isProxy(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return false;
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  return Reflect.ownKeys(descriptors).every(key => typeof key === 'string' && keys.has(key) &&
+    Object.hasOwn(descriptors[key], 'value'));
 }
 
 function composePrompt(protectedPromptText, schemaText) {
