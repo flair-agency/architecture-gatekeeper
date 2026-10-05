@@ -3,7 +3,7 @@ import { remainingDeadlineMs, startGeminiSecurityProxy } from './gemini-security
 import { runGeminiCliSession } from './gemini-cli-session.mjs';
 
 const OPTION_KEYS = new Set([
-  'cliEntrypoint', 'privateParentDirectory', 'prompt', 'model', 'thinkingBudget', 'thinkingLevel',
+  'cliEntrypoint', 'privateParentDirectory', 'prompt', 'model', 'thinkingBudget', 'thinkingLevel', 'maxOutputTokens',
   'project', 'region', 'timeoutMs', 'maxPromptBytes', 'maxStdoutBytes', 'maxStderrBytes', 'signal',
 ]);
 const INPUT_KEYS = new Set(['packet', 'workspaceLimits', 'workspaceParentDirectory', 'processOptions', 'credentials']);

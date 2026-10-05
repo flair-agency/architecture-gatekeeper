@@ -54,13 +54,14 @@ function fixture(t, mode = 'success', responseText = 'raw protected-CI response 
   const reportPath = join(root, 'observation.json');
   const cliEntrypoint = join(root, 'fake-cli.mjs');
   writeFileSync(cliEntrypoint, `
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 const mode = ${JSON.stringify(mode)};
 const responseText = ${JSON.stringify(responseText)};
 if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); process.exit(0); }
 let prompt = '';
 for await (const chunk of process.stdin) prompt += chunk;
-writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env }));
+writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')) }));
 if (mode === 'failure') { process.stderr.write('fixture execution failure'); process.exit(7); }
 if (mode === 'hang') { setInterval(() => {}, 1000); }
 process.stdout.write(JSON.stringify({ response: responseText }));
@@ -256,4 +257,19 @@ test('rejects unsupported root and nested schema dialects before dispatch', asyn
       assert.equal(Object.hasOwn(result.execution, 'responseBytes'), false);
     }
   }
+});
+
+ test('prepared CI forwards the exact optional output-token setting through the isolated proxy session', async t => {
+  const f = fixture(t);
+  const value = input(f);
+  value.proxySessionOptions.processOptions.maxOutputTokens = 16384;
+  await runPreparedGeminiCiReview(value);
+  const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+  const config = observed.settings.modelConfigs.customOverrides[0].modelConfig.generateContentConfig;
+  assert.equal(config.maxOutputTokens, 16384);
+  assert.deepEqual(config.thinkingConfig, { thinkingLevel: 'MEDIUM', includeThoughts: false });
+  assert.equal(JSON.stringify(observed.env).includes('parent-only-ci-fixture-token'), false);
+  await assertProxyClosed(observed.endpoint);
+  assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+  assert.deepEqual(readdirSync(f.privateParentDirectory), []);
 });
