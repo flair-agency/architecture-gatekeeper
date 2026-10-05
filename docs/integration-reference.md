@@ -1078,16 +1078,17 @@ a selection.
 | Existing-choice amendment | Ordinary completed `OWNER_DECISION` plus predecessor-selected `completed-owner-decision-v1` | B proposes a material resolution of the exact existing target; the record is not authenticated owner approval. |
 | Initial legacy migration | Enforced legacy v1 policy, no preview selection or trusted acceptance selection, and a predecessor `PASS` | One compatible v1/v2 successor only; preserve the complete selected authority bytes and reviewer settings and limit changes to the selected control-plane paths. |
 
-The candidate and its installed-package fixtures exercise all five
-procedures, including negative eligibility cases. The local synthetic
-consumer packet records a model-reviewed migration M `PASS`, successor A
-positive and negative reviews, B positive `ELIGIBLE` and negative
-`INELIGIBLE` reviews, and a fresh successor A `PASS`. It records successful
-normal integration and readback for the positive M and B transitions. These
-local fixture results do not establish that a downstream consumer selected
-the route, that its protected caller ran the package, or that a protected
-acceptance check passed. The candidate's six assurance dimensions remain
-`UNVERIFIED`; preview receipts do not supply trusted acceptance.
+The documented source-matched archive at
+`9822ab915d63faadd8b2671f3a2f2507cb09e29d` and its installed-package fixtures exercise all five procedures,
+including negative eligibility cases. The local synthetic consumer packet
+records a model-reviewed migration M `PASS`, successor A positive and negative
+reviews, B positive `ELIGIBLE` and negative `INELIGIBLE` reviews, and a fresh
+successor A `PASS`. It records successful normal integration and readback for
+the positive M and B transitions. These local fixture results do not establish
+that a downstream consumer selected the route, that its protected caller ran
+the package, or that a protected acceptance check passed. The candidate's six
+assurance dimensions remain `UNVERIFIED`; preview receipts do not supply
+trusted acceptance.
 
 The migration procedure does not support later migrations, incompatible
 bridges, changed or omitted authority members, changed reviewer settings,
