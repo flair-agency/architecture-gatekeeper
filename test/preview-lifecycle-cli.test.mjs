@@ -47,13 +47,13 @@ test('installed ordinary CLI prepares and completes a private, exclusive receipt
   assert.equal(statSync(receiptPath).mode & 0o777, 0o600);
   const receipt = read(receiptPath); assert.equal(receipt.decision.decision, 'PASS'); assert.equal(receipt.eligibility, 'NOT_APPLICABLE');
   const repeat = invoke('complete', requestPath, responsePath, receiptPath); assert.equal(repeat.status, 2); assert.match(repeat.stderr, /EEXIST/);
-  for (const mode of ['addition', 'migration']) {
+  for (const mode of ['migration']) {
     const unsupportedPath = join(parent, `${mode}-spec.json`), outputPath = join(parent, `${mode}-request.json`);
     put(parent, `${mode}-spec.json`, { ...spec, mode, trigger: {}, record: {} });
     const rejected = invoke('prepare', unsupportedPath, outputPath); assert.equal(rejected.status, 2); assert.match(rejected.stderr, /unsupported spec/);
   }
   const rejectedObserve = invoke('observe', receiptPath, 'deadbeef', join(parent, 'ordinary-final.json'));
-  assert.equal(rejectedObserve.status, 2); assert.match(rejectedObserve.stderr, /eligible BLOCK amendment/);
+  assert.equal(rejectedObserve.status, 2); assert.match(rejectedObserve.stderr, /eligible selected B procedure/);
 });
 
 

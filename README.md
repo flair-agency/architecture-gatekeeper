@@ -264,8 +264,9 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 ## Ordinary review preview
 
 The installed `architecture-preview-lifecycle` command supports ordinary
-preparation/completion and the completed-`BLOCK` amendment preview described in
+preparation/completion, completed-`BLOCK` amendment, and missing-decision
+addition previews described in
 the [integration reference](docs/integration-reference.md#ordinary-review-preview).
 Both record local `UNVERIFIED` assurance and pending receipts; neither proves
-adoption or supplies host acceptance. Addition, owner-decision amendment and
-migration routes remain unsupported.
+adoption or supplies host acceptance. Owner-decision amendment and migration
+routes remain unsupported.
