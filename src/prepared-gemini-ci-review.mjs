@@ -3,7 +3,8 @@ import { runGeminiCliProxySession } from './gemini-cli-proxy-session.mjs';
 import { validateJsonSchemaDefinition } from './json-schema.mjs';
 import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from './gemini-cli-process.mjs';
 
-const INPUT_KEYS = new Set(['protectedPromptText', 'protectedDecisionSchemaText', 'proxySessionOptions']);
+const INPUT_KEYS = new Set(['protectedPromptText', 'protectedDecisionSchemaText', 'protectedReviewer', 'proxySessionOptions']);
+const REVIEWER_KEYS = new Set(['provider', 'model', 'thinkingLevel']);
 const SESSION_KEYS = new Set(['packet', 'workspaceLimits', 'workspaceParentDirectory', 'processOptions', 'credentials']);
 const PROCESS_KEYS = new Set([
   'cliEntrypoint', 'privateParentDirectory', 'model', 'thinkingBudget', 'thinkingLevel', 'maxOutputTokens', 'project', 'region',
@@ -21,7 +22,9 @@ function composePrompt(protectedPromptText, schemaText) {
 /**
  * Run a decision-only review from inputs already selected and bound by the
  * trusted protected-CI orchestrator. This adapter does not establish their
- * provenance or validate the resulting decision.
+ * provenance or validate the resulting decision. The protected caller supplies
+ * its resolved reviewer selection separately; this adapter verifies agreement
+ * before starting any proxy or CLI, without authenticating that selection.
  */
 export async function runPreparedGeminiCiReview(input) {
   if (!hasOnlyKeys(input, INPUT_KEYS) || typeof input.protectedPromptText !== 'string' ||
@@ -36,6 +39,16 @@ export async function runPreparedGeminiCiReview(input) {
   }
   if (!hasOnlyKeys(candidateProcessOptions, PROCESS_KEYS)) throw new Error('Prepared Gemini CI review received unsupported process options.');
   const processOptions = candidateProcessOptions;
+  const reviewer = input.protectedReviewer;
+  if (!hasOnlyKeys(reviewer, REVIEWER_KEYS) || Object.keys(reviewer).length !== REVIEWER_KEYS.size ||
+      reviewer.provider !== 'gemini' || reviewer.model !== 'gemini-3.8-flash' || reviewer.thinkingLevel !== 'MEDIUM') {
+    throw new Error('Prepared Gemini CI review requires the complete supported protected reviewer selection.');
+  }
+  if (processOptions.model !== reviewer.model || processOptions.thinkingLevel !== reviewer.thinkingLevel ||
+      processOptions.thinkingBudget !== undefined) {
+    throw new Error('Prepared Gemini CI process settings disagree with the protected reviewer selection.');
+  }
+
   if (!Number.isSafeInteger(processOptions.maxPromptBytes) || processOptions.maxPromptBytes < 1 || processOptions.maxPromptBytes > GEMINI_CLI_STDIN_LIMIT) {
     throw new Error('Prepared Gemini CI review requires an explicit positive prompt byte limit no larger than the pinned CLI stdin limit.');
   }

@@ -71,6 +71,7 @@ process.stdout.write(JSON.stringify({ response: responseText }));
 
 function input(f, overrides = {}) {
   return {
+    protectedReviewer: { provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM' },
     protectedPromptText: 'Review only the protected inputs and supplied evidence.  \n',
     protectedDecisionSchemaText: JSON.stringify(decisionSchema, null, 2),
     proxySessionOptions: {
@@ -272,4 +273,26 @@ test('rejects unsupported root and nested schema dialects before dispatch', asyn
   await assertProxyClosed(observed.endpoint);
   assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
   assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+});
+
+ test('rejects absent, unsupported or mismatched protected reviewer selections before dispatch', async t => {
+  const cases = [
+    value => { delete value.protectedReviewer; },
+    value => { value.protectedReviewer.provider = 'codex'; },
+    value => { value.protectedReviewer.model = 'gemini-2.5-flash'; },
+    value => { value.protectedReviewer.thinkingLevel = 'HIGH'; },
+    value => { value.protectedReviewer.unexpected = true; },
+    value => { delete value.protectedReviewer.thinkingLevel; },
+    value => { value.proxySessionOptions.processOptions.model = 'gemini-2.5-flash'; },
+    value => { value.proxySessionOptions.processOptions.thinkingLevel = 'LOW'; },
+    value => { value.proxySessionOptions.processOptions.thinkingBudget = 1024; },
+  ];
+  for (const change of cases) {
+    const f = fixture(t);
+    const value = input(f); change(value);
+    await assert.rejects(runPreparedGeminiCiReview(value), /protected reviewer selection/);
+    assert.equal(existsSync(f.reportPath), false);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
 });
