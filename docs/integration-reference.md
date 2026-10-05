@@ -1128,11 +1128,10 @@ consumer packet records a model-reviewed migration M `PASS`, successor A
 positive and negative reviews, B positive `ELIGIBLE` and negative
 `INELIGIBLE` reviews, and a fresh successor A `PASS`. It records successful
 normal integration and readback for the positive M and B transitions. These
-results show more than graph construction, but do not show that a downstream
-consumer selected the route, that its protected caller ran the package, or
-that a protected acceptance check passed. The candidate's six assurance
-dimensions remain `UNVERIFIED`; preview receipts do not supply trusted
-acceptance.
+local fixture results do not establish that a downstream consumer selected
+the route, that its protected caller ran the package, or that a protected
+acceptance check passed. The candidate's six assurance dimensions remain
+`UNVERIFIED`; preview receipts do not supply trusted acceptance.
 
 The migration procedure does not support later migrations, incompatible
 bridges, changed or omitted authority members, changed reviewer settings,
@@ -1183,7 +1182,7 @@ runtime compatibility or an actual consumer pin set.
 
 | Recovery question | Evidence required before guidance | Current result |
 | --- | --- | --- |
-| Can the previous runtime still resolve the migrated policy and read its full Authority Set? | Exact old package archive, unchanged fixture policy and caller, resolver result, and complete materializer identity | Resolver and two-member materializer succeeded in the synthetic v1 fixture; broader compatibility is unverified. |
+| Can the previous runtime still resolve the migrated policy and read its full Authority Set? | Exact old package archive, unchanged fixture policy and caller, resolver result, and complete materializer identity | The old runtime resolved the proposed successor v2 policy and materialized its complete two-member set in the synthetic fixture; broader compatibility is unverified. |
 | Can the previous package/workflow/Skill pin set run the consumer's required review and acceptance checks? | Exact package, immutable workflow and Skill revisions; protected fixture run; ordinary positive and required negative outcomes | Not verified. Source blob identities are recorded but were not executed as selected pins; the previous package lacks the preview API export. |
 | Is a pin change or rollback safe after migration adoption/readback? | Consumer-owned recovery procedure and a fixture run against the exact adopted successor policy, with adoption and canonical placement recorded separately | No recommendation established. Do not infer either compatibility or incompatibility from resolver/materializer success alone. |
 | Has a real consumer adopted the candidate or passed protected acceptance? | Exact consumer base and pin set, protected hosted run, acceptance result and canonical readback | Not established by package-fixture evidence. |
