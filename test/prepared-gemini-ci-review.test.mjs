@@ -9,6 +9,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { runPreparedGeminiCiReview } from '../src/prepared-gemini-ci-review.mjs';
 import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from '../src/gemini-cli-process.mjs';
 import { completePreparedCiReview } from '../src/complete-prepared-ci-review.mjs';
+import { runPreparedGeminiCiDecision } from '../src/prepared-gemini-ci-decision.mjs';
 
 const oid = char => char.repeat(40);
 const workspaceLimits = { maxFiles: 2, maxFileBytes: 2048, maxTotalBytes: 4096 };
@@ -62,6 +63,7 @@ if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); proces
 let prompt = '';
 for await (const chunk of process.stdin) prompt += chunk;
 writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')) }));
+if (mode === 'stale-failure') { process.stdout.write(JSON.stringify({ response: responseText })); process.exit(7); }
 if (mode === 'failure') { process.stderr.write('fixture execution failure'); process.exit(7); }
 if (mode === 'hang') { setInterval(() => {}, 1000); }
 process.stdout.write(JSON.stringify({ response: responseText }));
@@ -116,6 +118,7 @@ test('composes the protected schema into the bounded prompt and returns raw resp
 
 test('normalizes and validates prepared Gemini execution before exposing PASS or BLOCK semantics', async t => {
   const cases = [
+    { name: 'OWNER_DECISION', response: { decision: 'OWNER_DECISION', authorityIds }, expected: 'OWNER_DECISION' },
     { name: 'PASS', response: { decision: 'PASS', authorityIds }, expected: 'PASS' },
     { name: 'BLOCK', response: { decision: 'BLOCK', authorityIds, summary: 'documented' }, expected: 'BLOCK' },
     { name: 'invalid JSON', responseText: 'not JSON', error: /decision is invalid JSON/ },
@@ -127,20 +130,17 @@ test('normalizes and validates prepared Gemini execution before exposing PASS or
   for (const item of cases) {
     const responseText = item.responseText ?? JSON.stringify(item.response);
     const f = fixture(t, 'success', responseText);
-    const rawResponse = await runPreparedGeminiCiReview(input(f));
     const completionInput = {
-      executionInput: {
-        expectedExecution: { provider: 'gemini', requestedModel: 'gemini-3.8-flash', requestedSettings: { thinkingLevel: 'MEDIUM' } },
-        hostStepOutcome: 'success', rawResponse, maxResponseBytes: 65_536,
-      },
-      schemaBytes: Buffer.from(JSON.stringify(decisionSchema)),
-      authorityProvenance, validationRules, maxSchemaBytes: 1_048_576,
+      reviewInput: input(f), authorityProvenance, validationRules,
+      maxResponseBytes: 65_536, maxSchemaBytes: 1_048_576,
     };
-    if (item.error) assert.throws(() => completePreparedCiReview(completionInput), item.error, item.name);
+    if (item.error) await assert.rejects(runPreparedGeminiCiDecision(completionInput), item.error, item.name);
     else {
-      const result = completePreparedCiReview(completionInput);
+      const result = await runPreparedGeminiCiDecision(completionInput);
       assert.equal(result.execution.status, 'completed', item.name);
-      assert.equal(result.execution.responseBytes.toString('utf8'), rawResponse, item.name);
+      assert.equal(result.execution.responseBytes.toString('utf8'), responseText, item.name);
+      assert.equal(result.execution.expectedExecution.provider, 'gemini');
+      assert.equal(result.execution.expectedExecution.requestedSettings.thinkingLevel, 'MEDIUM');
       assert.equal(result.decision.decision, item.expected, item.name);
     }
     const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
@@ -291,6 +291,31 @@ test('rejects unsupported root and nested schema dialects before dispatch', asyn
     const f = fixture(t);
     const value = input(f); change(value);
     await assert.rejects(runPreparedGeminiCiReview(value), /protected reviewer selection/);
+    assert.equal(existsSync(f.reportPath), false);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
+
+ test('decision orchestration refuses stale PASS after CLI failure and cleans the session', async t => {
+  const f = fixture(t, 'stale-failure', JSON.stringify({ decision: 'PASS', authorityIds }));
+  await assert.rejects(runPreparedGeminiCiDecision({
+    reviewInput: input(f), authorityProvenance, validationRules,
+    maxResponseBytes: 65_536, maxSchemaBytes: 1_048_576,
+  }), /exited unsuccessfully \(7\)/);
+  const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+  await assertProxyClosed(observed.endpoint);
+  assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+  assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+});
+
+ test('decision orchestration rejects invalid response/schema limits before execution', async t => {
+  for (const overrides of [{ maxResponseBytes: 65537 }, { maxSchemaBytes: 0 }, { maxSchemaBytes: 4 }, { unexpected: true }]) {
+    const f = fixture(t);
+    await assert.rejects(runPreparedGeminiCiDecision({
+      reviewInput: input(f), authorityProvenance, validationRules,
+      maxResponseBytes: 65536, maxSchemaBytes: 1048576, ...overrides,
+    }), /explicit input set|explicit bounds|schema exceeds/);
     assert.equal(existsSync(f.reportPath), false);
     assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
     assert.deepEqual(readdirSync(f.privateParentDirectory), []);
