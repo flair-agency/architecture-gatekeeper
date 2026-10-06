@@ -997,19 +997,23 @@ as an `INELIGIBLE` completed receipt, including a rejection that reports missing
 predecessor authorization. Such a receipt preserves the result for validation
 and history; it cannot be integrated or used as a B trigger. Only an authorized
 `PASS` makes M eligible for integration.
-For the initial v1-to-v2 conversion, the selected successor B schema must be a
-simple top-level object schema with a required, self-contained `authorityIds`
-property. The exact successor IDs are checked against that property at
-preparation time; required B-only fields are validated only when an actual B
-response is completed. A schema that requires `authorityFiles`, uses schema
-composition or references for the ID representation, or couples the IDs to a
-conditional rule is unsupported by this conversion. A B validator may require
-an exact known ID at a fixed `/authorityIds/<index>` path; other authority-field
-conditions are unsupported. These checks establish structural compatibility,
-not that a future B result will be eligible. Separately, M's proposed successor
-ID view must validate against both the unchanged predecessor schema and
-validator; closed predecessor schemas may use paths-only or IDs-only
-alternatives. The stored M response remains unchanged.
+For the initial v1-to-v2 conversion, M checks a narrow B-core projection: the
+successor B schema must be a simple top-level object requiring self-contained
+`decision` and `authorityIds` properties, the decision schema must admit both
+`ELIGIBLE` and `INELIGIBLE`, and the IDs property must admit the exact successor
+IDs. Core schema forms outside this bounded grammar, including references,
+composition, and core-field constraints that cannot be checked from the known
+decision and IDs, are unsupported. A B validator may require an exact known ID
+at a fixed `/authorityIds/<index>` path or require the same decision value
+under a known `decision` condition. Other authority-field rules and
+unknown-condition rules on core fields are unsupported. These checks do not
+establish that arbitrary B-only schema or validator requirements are
+satisfiable. M never supplies B-only values; the full selected schema and
+validator run against the actual B response. A schema that requires legacy
+`authorityFiles` is unsupported. Separately, M's proposed successor ID view
+must validate against both the unchanged predecessor schema and validator;
+closed predecessor schemas may use paths-only or IDs-only alternatives. The
+stored M response remains unchanged.
 
 Digest-bearing schemas and validators are unsupported for initial v1-to-v2
 migration, as are digest-bearing M `PASS` decisions. A digest-bearing `BLOCK`

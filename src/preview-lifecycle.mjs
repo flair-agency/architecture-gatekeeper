@@ -90,21 +90,44 @@ function containsAuthoritySetDigest(value) {
   return Object.entries(value).some(([key, child]) => key === 'authoritySetDigest' ||
     (typeof child === 'string' && child.split('/').includes('authoritySetDigest')) || containsAuthoritySetDigest(child));
 }
+const initialV2BDecisions = ['ELIGIBLE', 'INELIGIBLE'];
+const initialV2BRootKeys = new Set(['type', 'properties', 'required', 'additionalProperties', '$schema', 'description', '$defs']);
+const initialV2BDecisionKeys = new Set(['type', 'enum', 'minLength', 'description']);
+const initialV2BAuthorityIdsKeys = new Set(['type', 'enum', 'minItems', 'items', 'description']);
+const initialV2BIdItemKeys = new Set(['type', 'enum', 'minLength', 'description']);
 function validateInitialSuccessorEligibility(root, revision, schemaPath, validationPath, authorityIds) {
   const schema = jsonSnapshot(root, revision, schemaPath);
   validateJsonSchemaDefinition(schema);
   const properties = schema?.properties;
   if (schema.type !== 'object' || !properties || Array.isArray(properties) ||
       !Object.hasOwn(properties, 'authorityIds') || !Array.isArray(schema.required) || !schema.required.includes('authorityIds') ||
-      schema.required.includes('authorityFiles')) {
-    fail('initial v1-to-v2 migration requires a successor B schema with required authorityIds and no required authorityFiles.');
+      !Object.hasOwn(properties, 'decision') || !schema.required.includes('decision') || schema.required.includes('authorityFiles')) {
+    fail('initial v1-to-v2 migration requires a successor B schema with required decision and authorityIds and no required authorityFiles.');
   }
   const composed = value => Array.isArray(value) ? value.some(composed) : value && typeof value === 'object' &&
     (['$ref', 'anyOf', 'oneOf', 'allOf', 'not', 'if', 'then', 'else'].some(key => Object.hasOwn(value, key)) ||
       Object.values(value).some(composed));
-  if (['$ref', 'anyOf', 'oneOf', 'allOf', 'not', 'if', 'then', 'else', 'enum', 'const'].some(key => Object.hasOwn(schema, key)) ||
+  if (Object.keys(schema).some(key => !initialV2BRootKeys.has(key)) ||
+      ['anyOf', 'oneOf', 'allOf', 'not', 'if', 'then', 'else', 'enum', 'const'].some(key => Object.hasOwn(schema, key)) ||
       composed(properties.authorityIds) || containsAuthoritySetDigest(schema)) {
     fail('initial v1-to-v2 migration does not support composed or digest-coupled successor B schemas.');
+  }
+  const decisionSchema = properties.decision;
+  const authorityIdsSchema = properties.authorityIds;
+  const idItemSchema = authorityIdsSchema?.items;
+  if (!decisionSchema || typeof decisionSchema !== 'object' || Array.isArray(decisionSchema) ||
+      Object.keys(decisionSchema).some(key => !initialV2BDecisionKeys.has(key)) ||
+      (decisionSchema.type !== undefined && decisionSchema.type !== 'string') ||
+      !authorityIdsSchema || typeof authorityIdsSchema !== 'object' || Array.isArray(authorityIdsSchema) ||
+      Object.keys(authorityIdsSchema).some(key => !initialV2BAuthorityIdsKeys.has(key)) || authorityIdsSchema.type !== 'array' ||
+      !idItemSchema || typeof idItemSchema !== 'object' || Array.isArray(idItemSchema) ||
+      Object.keys(idItemSchema).some(key => !initialV2BIdItemKeys.has(key)) ||
+      (idItemSchema.type !== undefined && idItemSchema.type !== 'string')) {
+    fail('initial v1-to-v2 migration requires self-contained successor B decision and authorityIds schemas.');
+  }
+  for (const decision of initialV2BDecisions) {
+    try { validateJsonSchema(decision, decisionSchema); }
+    catch { fail('initial v1-to-v2 migration successor B decision schema must admit ELIGIBLE and INELIGIBLE.'); }
   }
   validateJsonSchema(authorityIds, properties.authorityIds);
   if (validationPath === null) return;
@@ -115,8 +138,20 @@ function validateInitialSuccessorEligibility(root, revision, schemaPath, validat
     if (['/authorityIds', '/authorityFiles'].some(prefix => rule.when.path === prefix || rule.when.path.startsWith(`${prefix}/`))) {
       fail('initial v1-to-v2 migration does not support successor B rules coupled to predecessor authority fields.');
     }
+    if ([rule.when.path, rule.require.path].some(path => path.startsWith('/decision/'))) {
+      fail('initial v1-to-v2 migration does not support successor B rules coupled to decision subfields.');
+    }
+    const decisionIsCondition = rule.when.path === '/decision' && initialV2BDecisions.includes(rule.when.equals);
+    const decisionIsRequired = rule.require.path === '/decision';
     const match = /^\/authorityIds\/(0|[1-9][0-9]*)$/.exec(rule.require.path);
-    if (['/authorityIds', '/authorityFiles'].some(prefix => rule.require.path === prefix || rule.require.path.startsWith(`${prefix}/`))) {
+    const authorityIdIsRequired = ['/authorityIds', '/authorityFiles'].some(prefix => rule.require.path === prefix || rule.require.path.startsWith(`${prefix}/`));
+    if ((decisionIsRequired || authorityIdIsRequired) && !decisionIsCondition) {
+      fail('initial v1-to-v2 migration does not support successor B core-field rules with unknown conditions.');
+    }
+    if (decisionIsRequired && rule.require.equals !== rule.when.equals) {
+      fail('initial v1-to-v2 migration successor B decision rule excludes a required eligibility outcome.');
+    }
+    if (authorityIdIsRequired) {
       if (!match) fail('initial v1-to-v2 migration does not support this successor B authority-field rule.');
       const index = Number(match[1]);
       if (index >= authorityIds.length || rule.require.equals !== authorityIds[index]) {
