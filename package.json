@@ -23,7 +23,8 @@
     "./gemini-ci-runner": "./src/gemini-ci-runner.mjs",
     "./policy": "./src/resolve-ci-policy.mjs",
     "./owner-addition-adoption": "./src/owner-addition-adoption.mjs",
-    "./owner-addition-finalize": "./src/owner-addition-finalize.mjs"
+    "./owner-addition-finalize": "./src/owner-addition-finalize.mjs",
+    "./preview-lifecycle": "./src/preview-lifecycle.mjs"
   },
   "files": [
     "src",
