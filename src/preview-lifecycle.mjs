@@ -134,22 +134,25 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   // Candidate bytes cannot select their own review instructions.
   let selection, successorAuthoritySet = null, successorInputs = [];
   if (spec.mode === 'migration') {
-    if (optionalSnapshot(root, spec.baseSha, spec.selectionPath) !== null) fail('initial migration requires an absent predecessor preview selection; later migration is unsupported.');
+    const predecessorSelectionBytes = snapshot(root, spec.baseSha, spec.selectionPath);
+    selection = jsonSnapshot(root, spec.baseSha, spec.selectionPath);
+    validateSelection(selection, spec);
     const policyPath = '.codex/gatekeeper/ci-policy.json';
     const callerPath = '.github/workflows/architecture-gate.yml';
     const parsedOldPolicy = parseCiPolicyJson(utf8(snapshot(root, spec.baseSha, policyPath)));
     const oldPolicy = resolveCiPolicy(parsedOldPolicy, spec.targetBranch);
-    if (parsedOldPolicy.version !== 1 || !oldPolicy.legacyAuthorityFilesBase64 || oldPolicy.ownerAdditionAuthorityPath) fail('initial migration supports recorded enforced v1 without a trusted acceptance selection only.');
+    if (parsedOldPolicy.version !== 1 || !oldPolicy.legacyAuthorityFilesBase64 || oldPolicy.ownerAdditionAuthorityPath ||
+        selection.policyPath !== policyPath || selection.callerPath !== callerPath ||
+        selection.promptPath !== oldPolicy.legacyPromptPath || selection.schemaPath !== oldPolicy.legacySchemaPath ||
+        selection.validationPath !== (oldPolicy.legacyValidationPath || null)) fail('initial migration requires a compatible predecessor-recorded v1 preview selection.');
     const oldPaths = JSON.parse(Buffer.from(oldPolicy.legacyAuthorityFilesBase64, 'base64').toString());
-    selection = { version: 1, profile: PREVIEW_PROFILE, repository: spec.repository, targetBranch: spec.targetBranch,
-      governancePath: oldPaths[0], authorization: 'Ordinary predecessor review; owner authorization UNVERIFIED',
-      policyPath, promptPath: oldPolicy.legacyPromptPath, schemaPath: oldPolicy.legacySchemaPath,
-      validationPath: oldPolicy.legacyValidationPath || null, callerPath, authorityPaths: oldPaths,
-      migrationPaths: [spec.selectionPath, policyPath, callerPath], maxPromptBytes: 524288 };
+    const controlPaths = [spec.selectionPath, policyPath, callerPath];
+    if (!oldPaths.includes(selection.governancePath) || selection.authorityPaths.some(file => !oldPaths.includes(file)) ||
+        hash([...selection.migrationPaths].sort()) !== hash([...controlPaths].sort())) fail('predecessor selection does not authorize this exact migration scope.');
     const proposed = jsonSnapshot(root, spec.headSha, spec.selectionPath);
     validateSelection(proposed, spec);
+    if (!predecessorSelectionBytes.equals(snapshot(root, spec.headSha, spec.selectionPath))) fail('migration cannot replace or expand the predecessor-recorded preview selection.');
     if (!proposed.eligibilitySchemaPath || !Object.hasOwn(proposed, 'eligibilityValidationPath')) fail('initial migration requires a selected successor B eligibility schema and explicit validator selection.');
-    const controlPaths = [spec.selectionPath, policyPath, callerPath];
     if (hash([...proposed.migrationPaths].sort()) !== hash([...controlPaths].sort())) fail('initial migration must select only its three control-plane paths.');
     const selectedSuccessorInputs = [proposed.eligibilitySchemaPath, proposed.eligibilityValidationPath]
       .filter(file => file !== undefined && file !== null);
@@ -216,7 +219,6 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   if (policy.mode === 'local-only') fail('preview requires explicit model-backed predecessor inputs.');
   if (policy.provider && policy.provider !== 'codex') fail('preview does not support this predecessor reviewer provider.');
   const inputPaths = [spec.selectionPath, selection.policyPath, selection.promptPath, selection.schemaPath, selection.callerPath];
-  if (spec.mode === 'migration') inputPaths.shift();
   if (selection.validationPath !== null) inputPaths.push(path(selection.validationPath));
   const inputs = inputPaths.map(file => ({ path: file, sha256: digest(snapshot(root, spec.baseSha, file)) }));
   const isMigration = spec.mode === 'migration';

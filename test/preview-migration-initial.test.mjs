@@ -17,7 +17,7 @@ const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { enco
 const put = (root, file, value) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), typeof value === 'string' ? value : JSON.stringify(value)); };
 const sha = value => createHash('sha256').update(value).digest('hex');
 let next = 0;
-function fixture(t, { preexistingSelection = false, schemaAllowsSuccessorIds = true, withTextconv = false,
+function fixture(t, { preexistingSelection = true, selectionOverrides = {}, schemaAllowsSuccessorIds = true, withTextconv = false,
   constrainLegacyAuthorityId = false, successorIds = ['architecture', 'governance'] } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'preview-initial-migration-')); t.after(() => rmSync(root, { recursive: true, force: true }));
   let textconvMarker;
@@ -37,7 +37,7 @@ function fixture(t, { preexistingSelection = false, schemaAllowsSuccessorIds = t
     policyPath, promptPath, schemaPath, validationPath,
     eligibilitySchemaPath: '.codex/gatekeeper/b-eligibility.schema.json', eligibilityValidationPath: '.codex/gatekeeper/b-rules.json',
     amendmentTriggerProfile: 'completed-block-v1', callerPath, authorityPaths: [authority[0]],
-    migrationPaths: [selectionPath, policyPath, callerPath], maxPromptBytes: 524288 };
+    migrationPaths: [selectionPath, policyPath, callerPath], maxPromptBytes: 524288, ...selectionOverrides };
   const decisionProperties = {
     decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] }, summary: { type: 'string' },
     authorityFiles: { type: 'array', items: { type: 'string' } }, valid: { type: 'boolean' } };
@@ -95,7 +95,7 @@ test('initial compatible v1→v2 M passes old review, binds raw unchanged author
   const f = fixture(t); const head = migrationHead(f);
   const request = await preparePreviewLifecycle(migrationSpec(f, head), f.root);
   assert.equal(request.policy.policyVersion, 1); assert.match(request.prompt, /only the predecessor's legacy v1 policy/);
-  assert.equal(request.inputs.some(input => input.path === selectionPath), false);
+  assert.equal(request.inputs.some(input => input.path === selectionPath), true);
   assert.equal(request.successorAuthoritySet.members.length, 2);
   assert.equal(request.successorAuthoritySet.manifest.path, manifestPath);
   assert.equal(request.successorInputs.length, 2);
@@ -127,9 +127,28 @@ function commit(f, base, changes) {
   git(f.root, 'add', '.'); git(f.root, 'commit', '-m', 'Synthetic post-migration change'); return git(f.root, 'rev-parse', 'HEAD');
 }
 
-test('initial migration fails closed on existing selector, changed reviewer settings, v3, omitted set, authority edits and trusted route', async t => {
-  const existed = fixture(t, { preexistingSelection: true });
-  await assert.rejects(preparePreviewLifecycle(migrationSpec(existed, migrationHead(existed)), existed.root), /absent predecessor preview selection/);
+test('initial migration requires a predecessor-recorded selection bound to the exact repository, target, scope and reviewer inputs', async t => {
+  const missing = fixture(t, { preexistingSelection: false });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(missing, migrationHead(missing)), missing.root), /not a regular Git file|does not exist|missing/i);
+
+  const replay = fixture(t);
+  const replayHead = migrationHead(replay);
+  await assert.rejects(preparePreviewLifecycle({ ...migrationSpec(replay, replayHead), targetBranch: 'release' }, replay.root), /previous selection is invalid/);
+  await assert.rejects(preparePreviewLifecycle({ ...migrationSpec(replay, replayHead), repository: 'other/repository' }, replay.root), /previous selection is invalid/);
+
+  const wrongScope = fixture(t, { selectionOverrides: { migrationPaths: [selectionPath, policyPath, callerPath, 'unselected.txt'] } });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(wrongScope, migrationHead(wrongScope)), wrongScope.root), /exact migration scope/);
+  const wrongReviewer = fixture(t, { selectionOverrides: { promptPath: '.codex/gatekeeper/candidate-prompt.md' } });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(wrongReviewer, migrationHead(wrongReviewer)), wrongReviewer.root), /compatible predecessor-recorded v1 preview selection/);
+  const changedSelection = fixture(t);
+  const changedHead = migrationHead(changedSelection, { selection: { ...changedSelection.selection, authorization: 'Candidate-added authorization' } });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(changedSelection, changedHead), changedSelection.root), /cannot replace or expand/);
+  const reformattedSelection = fixture(t);
+  const reformattedHead = migrationHead(reformattedSelection, { selection: `${JSON.stringify(reformattedSelection.selection, null, 2)}\n` });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(reformattedSelection, reformattedHead), reformattedSelection.root), /cannot replace or expand/);
+});
+
+test('initial migration also fails closed on changed reviewer settings, v3, omitted set, authority edits and trusted route', async t => {
   const f = fixture(t);
   for (const [name, policy, pattern] of [
     ['reviewer-settings', migratedPolicy(f, { model: 'different-model' }), /settings/],

@@ -974,8 +974,15 @@ paths, and every selected deterministic validator. Ordinary completion accepts
 `PASS`, `BLOCK` or `OWNER_DECISION`; unresolved owner choices remain escalations.
 
 The initial migration is available only when the exact predecessor has an
-enforced legacy v1 policy, no committed preview selection, no trusted
-acceptance selection and compatible self-authority inputs. Prepare M with
+enforced legacy v1 policy and a compatible preview selection already recorded
+under predecessor governance. That selection must bind the exact repository
+and target, governance and authority scope, migration control-plane paths, and
+the v1 policy and instruction inputs. The selected policy snapshot binds the
+reviewer settings. The candidate must retain the recorded selection
+byte-for-byte; it cannot replace or expand that authorization. The predecessor
+must not select a trusted
+acceptance route, and the authority inputs must be compatible and self-owned.
+Prepare M with
 `mode: "migration"`, `trigger: null`, and `record: null`, using the exact old
 and proposed commits. M must receive `PASS` under the predecessor's unchanged
 prompt, schema, validator, reviewer settings and complete Authority Set. The
