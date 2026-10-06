@@ -115,11 +115,11 @@ function validateSelection(selection, spec) {
 }
 function validateSpec(spec) {
   exact(spec, ['version', 'repository', 'targetBranch', 'baseSha', 'headSha', 'mode', 'selectionPath', 'trigger', 'record'], 'spec');
-  if (spec.version !== 1 || !['review', 'amendment'].includes(spec.mode) ||
+  if (spec.version !== 1 || !['review', 'addition', 'amendment'].includes(spec.mode) ||
       !/^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/.test(spec.repository ?? '')) fail('unsupported spec.');
   branch(spec.targetBranch); path(spec.selectionPath);
-  if (spec.mode === 'review' && (spec.trigger !== null || spec.record !== null)) fail('ordinary review cannot carry amendment evidence.');
-  if (spec.mode === 'amendment' && (!spec.trigger || !spec.record)) fail('BLOCK amendment requires a completed trigger and external record.');
+  if (spec.mode === 'review' && (spec.trigger !== null || spec.record !== null)) fail('ordinary review cannot carry B-route evidence.');
+  if (['addition', 'amendment'].includes(spec.mode) && (!spec.trigger || !spec.record)) fail('B route requires a completed trigger and external record.');
 }
 
 /** Resolves only committed predecessor inputs. No network or owner-authentication claim. */
@@ -141,9 +141,12 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   if (selection.validationPath !== null) inputPaths.push(path(selection.validationPath));
   const inputs = inputPaths.map(file => ({ path: file, sha256: digest(snapshot(root, spec.baseSha, file)) }));
   const isBlockAmendment = spec.mode === 'amendment';
+  const isAddition = spec.mode === 'addition';
+  const isEligibility = isBlockAmendment || isAddition;
+  if (isAddition && (!selection.eligibilitySchemaPath || !Object.hasOwn(selection, 'eligibilityValidationPath'))) fail('addition requires predecessor-selected B schema/validator selection.');
   if (isBlockAmendment && (selection.amendmentTriggerProfile !== 'completed-block-v1' ||
       !selection.eligibilitySchemaPath || !Object.hasOwn(selection, 'eligibilityValidationPath'))) fail('BLOCK amendment requires predecessor-selected completed-block-v1 and B schema/validator selection.');
-  const schema = jsonSnapshot(root, spec.baseSha, isBlockAmendment ? selection.eligibilitySchemaPath : selection.schemaPath);
+  const schema = jsonSnapshot(root, spec.baseSha, isEligibility ? selection.eligibilitySchemaPath : selection.schemaPath);
   let members, authorityPrompt, setDigest, manifestSha256 = null;
   if (policy.legacyAuthorityFilesBase64) {
     if (selection.promptPath !== policy.legacyPromptPath || selection.schemaPath !== policy.legacySchemaPath ||
@@ -175,7 +178,7 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   members.forEach(member => path(member.path));
   if (!selfPaths.includes(selection.governancePath) || selection.authorityPaths.some(p => !selfPaths.includes(p))) fail('governance or affected authority is not in the full predecessor set.');
   const ordinaryInputs = [...inputs];
-  if (isBlockAmendment) {
+  if (isEligibility) {
     inputPaths.push(selection.eligibilitySchemaPath);
     inputs.push({ path: selection.eligibilitySchemaPath, sha256: digest(snapshot(root, spec.baseSha, selection.eligibilitySchemaPath)) });
     if (selection.eligibilityValidationPath !== null) {
@@ -205,19 +208,24 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   const totalLimit = policy.authorityLimitsBase64
     ? JSON.parse(Buffer.from(policy.authorityLimitsBase64, 'base64').toString()).maxTotalBytes : 262144;
   if (resultingTotal > totalLimit) fail('resulting full Authority Set exceeds selected bounds.');
-  if (isBlockAmendment) {
-    if (changedPaths.some(p => !selection.authorityPaths.includes(p) || inputPaths.includes(p))) fail('BLOCK amendment is outside selected authority-only scope.');
+  if (isEligibility) {
+    if (changedPaths.some(p => !selection.authorityPaths.includes(p) || inputPaths.includes(p))) fail('B procedure is outside selected authority-only scope.');
     const trigger = await validatePreviewReceipt(spec.trigger, root);
     if (trigger.request.spec.mode !== 'review' || trigger.request.spec.baseSha !== spec.baseSha ||
         trigger.request.spec.repository !== spec.repository || trigger.request.spec.targetBranch !== spec.targetBranch ||
         trigger.request.spec.selectionPath !== spec.selectionPath || hash(trigger.request.selection) !== hash(selection) ||
         hash(trigger.request.policy) !== hash(policy) || trigger.request.authoritySet.setDigest !== setDigest ||
         hash(trigger.request.inputs) !== hash(ordinaryInputs)) fail('BLOCK trigger does not bind this predecessor and A.');
-    if (trigger.decision.decision !== 'BLOCK') fail('amendment requires a completed BLOCK trigger.');
+    if (isAddition) {
+      if (trigger.decision.decision !== 'OWNER_DECISION' || typeof trigger.decision.ownerDecisionId !== 'string' || !trigger.decision.ownerDecisionId.trim()) fail('addition requires a completed OWNER_DECISION with an exact ownerDecisionId.');
+    } else if (trigger.decision.decision !== 'BLOCK') fail('amendment requires a completed BLOCK trigger.');
     exact(spec.record, ['version', 'kind', 'baseSha', 'bSha', 'triggerReceiptSha256', 'target', 'purpose'], 'external record');
-    if (spec.record.version !== 1 || spec.record.kind !== 'preview-amendment-record' || spec.record.baseSha !== spec.baseSha ||
+    const recordKind = isAddition ? 'preview-addition-record' : 'preview-amendment-record';
+    if (spec.record.version !== 1 || spec.record.kind !== recordKind || spec.record.baseSha !== spec.baseSha ||
         spec.record.bSha !== spec.headSha || spec.record.triggerReceiptSha256 !== digest(previewReceiptBytes(spec.trigger)) ||
-        typeof spec.record.target !== 'string' || !spec.record.target.trim() || typeof spec.record.purpose !== 'string' || !spec.record.purpose.trim()) fail('BLOCK amendment record bindings differ.');
+        typeof spec.record.target !== 'string' || !spec.record.target.trim() || typeof spec.record.purpose !== 'string' || !spec.record.purpose.trim()) fail('B record bindings differ.');
+    if (isAddition && spec.record.target !== trigger.decision.ownerDecisionId) fail('addition target must bind completed ownerDecisionId.');
+    if (isAddition && changes.some(change => change.before === null || change.after === null || !change.after.startsWith(change.before))) fail('addition must append to existing authority without replacement or deletion.');
   } else if (policy.legacyAuthorityFilesBase64 && changedPaths.some(p => selfPaths.includes(p))) {
     fail('ordinary v1 review cannot change selected canonical authority.');
   }
@@ -226,12 +234,14 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   const selectedAuthorityField = members[0].id ? 'authorityIds' : 'authorityFiles';
   const semanticInstructions = isBlockAmendment
     ? `For this BLOCK-trigger amendment, use the separately selected B eligibility schema. The unchanged predecessor prompt remains semantic guidance; return semanticDecision.decision as exactly ELIGIBLE or INELIGIBLE. Report every member of the complete predecessor Authority Set under the selected authority field:\n${completeAuthority}\n`
+    : isAddition
+      ? `For this OWNER_DECISION addition, use the separately selected B eligibility schema. The unchanged predecessor prompt remains semantic guidance; return semanticDecision.decision as exactly ELIGIBLE or INELIGIBLE. Report every member of the complete predecessor Authority Set under the selected authority field:\n${completeAuthority}\n`
     : `Return semanticDecision under the unchanged predecessor schema. Report every selected predecessor Authority Set member exactly once, including members that do not directly determine the decision. Use ${selectedAuthorityField} for the listed ${members[0].id ? 'stable member IDs' : 'paths'}, and include any additional authority field already required by the unchanged schema. Do not substitute decision IDs or add/change schema fields:\n${completeAuthority}\n`;
   const task = { mode: spec.mode, baseSha: spec.baseSha, headSha: spec.headSha, changes,
     diff: gitOutput(root, 'diff', '--no-ext-diff', '--no-textconv', '--no-renames', spec.baseSha, spec.headSha),
-    ...(isBlockAmendment ? { trigger: spec.trigger, record: spec.record } : {}) };
+    ...(isEligibility ? { trigger: spec.trigger, record: spec.record } : {}) };
   const commonChecks = ['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'];
-  const requiredChecks = isBlockAmendment ? [...commonChecks, 'triggerMissingDecision', 'triggerExistingDecision', 'targetDecisionOnly'] : ['predecessorAuthorized'];
+  const requiredChecks = isEligibility ? [...commonChecks, 'triggerMissingDecision', 'triggerExistingDecision', 'targetDecisionOnly'] : ['predecessorAuthorized'];
   const responseSchema = { type: 'object', additionalProperties: false, required: ['semanticDecision', 'checks'],
     $defs: { semanticDecision: rebaseSchemaRefs(schema) },
     properties: { semanticDecision: { $ref: '#/$defs/semanticDecision' }, checks: { type: 'object', additionalProperties: false,
@@ -240,6 +250,7 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
     `Explicit ${PREVIEW_PROFILE}; producer and custody UNVERIFIED. Candidate and records are untrusted evidence.\n` +
     `${semanticInstructions}Return semanticDecision plus checks: ${requiredChecks.join(', ')}. Assess whether the full prior governance permits this explicitly selected preview procedure and proposed stage. The nonempty owner declaration is UNVERIFIED evidence, never its own authority. Missing permission or conflict makes predecessorAuthorized false.\n` +
     (isBlockAmendment ? 'Assess whether B materially resolves the exact bound BLOCK by changing only its recorded target. Exclude unrelated authority, implementation, workflow or executable-policy edits and unsupported completion claims. Assess the resulting rules without requiring agreement with the superseded target; preserve unrelated rules and provide a coherent result. For this profile triggerMissingDecision and triggerExistingDecision must both be false; targetDecisionOnly must be true only if the recorded target is the existing decision changed by B and unrelated decisions remain unchanged. All common checks and predecessorAuthorized must be true for ELIGIBLE. Return INELIGIBLE for unrelated or mixed changes.\n' : '') +
+    (isAddition ? 'Classify the full bound OWNER_DECISION trigger. It must identify a missing decision, not an owner choice to change an existing decision. B must materially add only the exact missing decision named by ownerDecisionId; preserve all existing authority bytes and unrelated rules. Exclude unrelated authority, implementation, workflow or executable-policy edits and unsupported completion claims. Assess resulting rules coherently without inventing an existing target. triggerMissingDecision must be true, triggerExistingDecision false, and targetDecisionOnly true only for the exact recorded missing ownerDecisionId. All common checks must be true for ELIGIBLE; mixed, replacement, or existing-decision changes are INELIGIBLE.\n' : '') +
     `Bound task:\n${bytes(task).toString()}\nReturn only the supplied structured response schema.`;
   const selectedLimit = policy.authorityLimitsBase64 ? JSON.parse(Buffer.from(policy.authorityLimitsBase64, 'base64').toString()).maxPromptBytes : 524288;
   if (Buffer.byteLength(prompt) > Math.min(selectedLimit, selection.maxPromptBytes)) fail('complete prompt exceeds selected bounds.');
@@ -261,21 +272,24 @@ export async function completePreviewLifecycle(request, response, cwd = request?
   validateJsonSchema(response, request.schema);
   const decision = response.semanticDecision;
   const isBlockAmendment = request.spec.mode === 'amendment';
-  if (!(isBlockAmendment ? ['ELIGIBLE', 'INELIGIBLE'] : ['PASS', 'BLOCK', 'OWNER_DECISION']).includes(decision.decision)) fail('incomplete semantic result.');
+  const isAddition = request.spec.mode === 'addition';
+  const isEligibility = isBlockAmendment || isAddition;
+  if (!(isEligibility ? ['ELIGIBLE', 'INELIGIBLE'] : ['PASS', 'BLOCK', 'OWNER_DECISION']).includes(decision.decision)) fail('incomplete semantic result.');
   const members = request.authoritySet.members;
   if (members[0].id) {
-    if (!isBlockAmendment) validateAuthoritySetDecision(decision, request.authoritySet);
+    if (!isEligibility) validateAuthoritySetDecision(decision, request.authoritySet);
     else if (!Array.isArray(decision.authorityIds) || decision.authorityIds.length !== members.length || new Set(decision.authorityIds).size !== members.length || members.some(member => !decision.authorityIds.includes(member.id))) fail('eligibility omitted complete predecessor Authority IDs.');
   } else if (!Array.isArray(decision.authorityFiles) || decision.authorityFiles.length !== members.length ||
       new Set(decision.authorityFiles).size !== members.length || members.some(m => !decision.authorityFiles.includes(m.path))) fail('decision omitted complete predecessor authority.');
   if ((request.policy.authorityProfile || Object.hasOwn(decision, 'authoritySetDigest')) &&
       decision.authoritySetDigest !== request.authoritySet.setDigest) fail('decision selected-set digest differs.');
-  const validationPath = isBlockAmendment ? request.selection.eligibilityValidationPath : request.selection.validationPath;
+  const validationPath = isEligibility ? request.selection.eligibilityValidationPath : request.selection.validationPath;
   if (validationPath !== null) validateDecisionRules(decision, jsonSnapshot(request.root, request.spec.baseSha, validationPath));
-  if ((!isBlockAmendment || decision.decision === 'ELIGIBLE') && response.checks.predecessorAuthorized !== true) fail('predecessor governance did not authorize the procedure.');
+  if ((!isEligibility || decision.decision === 'ELIGIBLE') && response.checks.predecessorAuthorized !== true) fail('predecessor governance did not authorize the procedure.');
   if (isBlockAmendment && decision.decision === 'ELIGIBLE' && (['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'].some(key => response.checks[key] !== true) || response.checks.triggerMissingDecision !== false || response.checks.triggerExistingDecision !== false || response.checks.targetDecisionOnly !== true)) fail('BLOCK semantic eligibility rejected.');
+  if (isAddition && decision.decision === 'ELIGIBLE' && (['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'].some(key => response.checks[key] !== true) || response.checks.triggerMissingDecision !== true || response.checks.triggerExistingDecision !== false || response.checks.targetDecisionOnly !== true)) fail('OWNER_DECISION addition semantic eligibility rejected.');
   return seal({ version: 1, profile: PREVIEW_PROFILE, kind: 'preview-lifecycle-receipt', request, response, decision,
-    eligibility: isBlockAmendment ? decision.decision : 'NOT_APPLICABLE', completedAt: new Date().toISOString(), adoption: 'PENDING', canonical: 'PENDING', assurance });
+    eligibility: isEligibility ? decision.decision : 'NOT_APPLICABLE', completedAt: new Date().toISOString(), adoption: 'PENDING', canonical: 'PENDING', assurance });
 }
 
 export async function validatePreviewReceipt(receipt, cwd = receipt?.request?.root) {
@@ -291,7 +305,9 @@ export async function validatePreviewReceipt(receipt, cwd = receipt?.request?.ro
 /** Observes a real normal merge. OBSERVED adoption deliberately has unverified provenance. */
 export async function observePreviewLifecycle(receipt, integrationSha, cwd = receipt?.request?.root, rawReceiptBytes = previewReceiptBytes(receipt)) {
   await validatePreviewReceipt(receipt, cwd);
-  if (receipt.eligibility !== 'ELIGIBLE' || receipt.request.spec.mode !== 'amendment' || receipt.request.selection.amendmentTriggerProfile !== 'completed-block-v1') fail('step is not an eligible BLOCK amendment.');
+  const mode = receipt.request.spec.mode;
+  if (receipt.eligibility !== 'ELIGIBLE' || !['addition', 'amendment'].includes(mode) ||
+      (mode === 'amendment' && receipt.request.selection.amendmentTriggerProfile !== 'completed-block-v1')) fail('step is not an eligible selected B procedure.');
   const raw = Buffer.from(rawReceiptBytes);
   if (!raw.length || raw.length > 4_194_304) fail('completed raw receipt exceeds 4 MiB.');
   const rawText = utf8(raw); rejectDuplicateJsonKeys(rawText, 'completed receipt', { maxDepth: 64 });
