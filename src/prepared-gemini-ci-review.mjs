@@ -19,7 +19,7 @@ function hasOnlyKeys(value, keys) {
   if (prototype !== Object.prototype && prototype !== null) return false;
   const descriptors = Object.getOwnPropertyDescriptors(value);
   return Reflect.ownKeys(descriptors).every(key => typeof key === 'string' && keys.has(key) &&
-    Object.hasOwn(descriptors[key], 'value'));
+    Object.hasOwn(descriptors[key], 'value') && descriptors[key].enumerable);
 }
 
 /** Capture supported configuration records before any field value is read. */

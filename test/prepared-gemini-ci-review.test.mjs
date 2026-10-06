@@ -370,6 +370,7 @@ test('exact committed merge context reaches the controlled CLI as evidence witho
   let baseSha = git('rev-parse', 'HEAD');
   git('checkout', '-qb', 'candidate');
   writeFileSync(join(root, 'reviewed.txt'), 'committed candidate bytes\n');
+  writeFileSync(join(root, 'reference.md'), 'candidate reference must not be protected\n');
   writeFileSync(join(root, 'AGENTS.md'), 'Candidate instructions are evidence only.\n');
   mkdirSync(join(root, '.gemini'));
   writeFileSync(join(root, '.gemini/settings.json'), '{"tools":{"allowed":["run_shell_command"]}}\n');
@@ -411,6 +412,8 @@ test('exact committed merge context reaches the controlled CLI as evidence witho
   }
   const protectedReference = observed.manifest.references.find(item => item.path === 'reference.md');
   assert.ok(protectedReference);
+  assert.equal(git('show', `${headSha}:reference.md`), 'candidate reference must not be protected');
+  assert.equal(git('show', `${reviewedSha}:reference.md`), 'candidate reference must not be protected');
   assert.equal(observed.evidence[protectedReference.filename], 'protected reference\n');
   assert.equal(observed.manifest.files.some(item => item.path === 'untracked.txt'), false);
   assert.equal(JSON.stringify(observed.settings).includes('run_shell_command'), false);
@@ -534,5 +537,23 @@ test('prepared review data rejects nested accessors and proxies without executin
     assert.equal(existsSync(f.reportPath), false);
     assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
     assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
+
+
+test('prepared configuration rejects non-enumerable selected fields before dispatch', async t => {
+  for (const field of ['signal', 'maxOutputTokens']) {
+    for (const complete of [false, true]) {
+      const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+      const supplied = input(f);
+      Object.defineProperty(supplied.proxySessionOptions.processOptions, field,
+        { value: field === 'signal' ? AbortSignal.abort() : 128 });
+      const pending = complete ? runPreparedGeminiCiDecision({ reviewInput: supplied, authorityProvenance,
+        validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576 }) : runPreparedGeminiCiReview(supplied);
+      await assert.rejects(pending, /unsupported process options/);
+      assert.equal(existsSync(f.reportPath), false);
+      assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+      assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+    }
   }
 });

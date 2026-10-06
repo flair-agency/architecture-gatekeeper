@@ -18,7 +18,8 @@ export function snapshotPreparedReviewData(value) {
     const descriptors = Object.getOwnPropertyDescriptors(item);
     for (const key of Reflect.ownKeys(descriptors)) {
       const descriptor = descriptors[key];
-      if (typeof key !== 'string' || !Object.hasOwn(descriptor, 'value')) {
+      if (typeof key !== 'string' || !Object.hasOwn(descriptor, 'value') ||
+          (!descriptor.enumerable && !(Array.isArray(item) && key === 'length'))) {
         throw new Error('Prepared review materials require non-executable data.');
       }
       pending.push(descriptor.value);
