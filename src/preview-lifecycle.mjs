@@ -229,6 +229,8 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
     const proposed = jsonSnapshot(root, spec.headSha, spec.selectionPath);
     validateSelection(proposed, spec);
     if (!predecessorSelectionBytes.equals(snapshot(root, spec.headSha, spec.selectionPath))) fail('migration cannot replace or expand the predecessor-recorded preview selection.');
+    // The predecessor-selected caller must still exist as a regular file at the migration head.
+    snapshot(root, spec.headSha, callerPath);
     if (!proposed.eligibilitySchemaPath || !Object.hasOwn(proposed, 'eligibilityValidationPath')) fail('initial migration requires a selected successor B eligibility schema and explicit validator selection.');
     if (hash([...proposed.migrationPaths].sort()) !== hash([...controlPaths].sort())) fail('initial migration must select only its three control-plane paths.');
     const selectedSuccessorInputs = [proposed.eligibilitySchemaPath, proposed.eligibilityValidationPath]
