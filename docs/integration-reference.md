@@ -997,10 +997,28 @@ as an `INELIGIBLE` completed receipt, including a rejection that reports missing
 predecessor authorization. Such a receipt preserves the result for validation
 and history; it cannot be integrated or used as a B trigger. Only an authorized
 `PASS` makes M eligible for integration.
-For a successor Authority Set, compatibility is checked by validating an
-ID-bearing successor view against both the unchanged predecessor schema and
-validator. Closed schemas may use a paths-only or IDs-only alternative; the
-stored reviewer response remains unchanged.
+For the initial v1-to-v2 conversion, the selected successor B schema must be a
+simple top-level object schema with a required, self-contained `authorityIds`
+property. The exact successor IDs are checked against that property at
+preparation time; required B-only fields are validated only when an actual B
+response is completed. A schema that requires `authorityFiles`, uses schema
+composition or references for the ID representation, or couples the IDs to a
+conditional rule is unsupported by this conversion. A B validator may require
+an exact known ID at a fixed `/authorityIds/<index>` path; other authority-field
+conditions are unsupported. These checks establish structural compatibility,
+not that a future B result will be eligible. Separately, M's proposed successor
+ID view must validate against both the unchanged predecessor schema and
+validator; closed predecessor schemas may use paths-only or IDs-only
+alternatives. The stored M response remains unchanged.
+
+Digest-bearing schemas and validators are unsupported for initial v1-to-v2
+migration, as are digest-bearing M `PASS` decisions. A digest-bearing `BLOCK`
+or `OWNER_DECISION` can still be retained as an ineligible historical receipt
+when it validates under the predecessor inputs. The successor set digest binds
+the candidate revision; after integration, the set digest binds the different
+integration revision. The migration cannot predict or substitute that later
+digest. A fresh ordinary review after integration uses the materialized
+successor set and its actual digest.
 The proposed policy/configuration and successor selection are untrusted M inputs;
 they may change only the selected control-plane paths. The successor must
 preserve every predecessor-selected authority member in the same order with

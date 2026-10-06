@@ -5,6 +5,7 @@ import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
+import { materializeAuthoritySet } from '../src/authority-set.mjs';
 import { PREVIEW_PROFILE, preparePreviewLifecycle, completePreviewLifecycle,
   observePreviewLifecycle, prepareFreshPreviewReview, previewReceiptBytes, validatePreviewReceipt } from '@flair-agency/architecture-gatekeeper/preview-lifecycle';
 
@@ -19,7 +20,8 @@ const sha = value => createHash('sha256').update(value).digest('hex');
 let next = 0;
 function fixture(t, { preexistingSelection = true, selectionOverrides = {}, schemaAllowsSuccessorIds = true, withTextconv = false,
   constrainLegacyAuthorityId = false, successorIds = ['architecture', 'governance'],
-  closedAuthorityAlternatives = false, otherLegacyBranches = {} } = {}) {
+  closedAuthorityAlternatives = false, otherLegacyBranches = {}, successorSchema = null, successorRules = null,
+  legacySchemaDigest = false, legacyRulesDigest = false, legacySchemaOpen = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'preview-initial-migration-')); t.after(() => rmSync(root, { recursive: true, force: true }));
   let textconvMarker;
   if (withTextconv) {
@@ -42,8 +44,9 @@ function fixture(t, { preexistingSelection = true, selectionOverrides = {}, sche
   const decisionProperties = {
     decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] }, summary: { type: 'string' },
     authorityFiles: { type: 'array', items: { type: 'string' } }, valid: { type: 'boolean' } };
+  if (legacySchemaDigest) decisionProperties.authoritySetDigest = { type: 'string' };
   if (schemaAllowsSuccessorIds) decisionProperties.authorityIds = { type: 'array', items: { type: 'string' } };
-  const filesDecisionSchema = { type: 'object', additionalProperties: false,
+  const filesDecisionSchema = { type: 'object', additionalProperties: legacySchemaOpen ? true : false,
     required: ['decision', 'summary', 'authorityFiles', 'valid'], properties: decisionProperties };
   const decisionSchema = closedAuthorityAlternatives ? { anyOf: [
     { ...filesDecisionSchema, properties: Object.fromEntries(Object.entries(decisionProperties).filter(([key]) => key !== 'authorityIds')) },
@@ -58,11 +61,13 @@ function fixture(t, { preexistingSelection = true, selectionOverrides = {}, sche
   if (withTextconv) put(root, '.gitattributes', `${policyPath} diff=preview-hostile\n`);
   put(root, promptPath, 'Review the complete selected predecessor authority and migration changes.\n'); put(root, schemaPath, decisionSchema);
   const legacyRules = [{ when: { path: '/decision', equals: 'PASS' }, require: { path: '/valid', equals: true }, message: 'old selected validator' }];
+  if (legacyRulesDigest) legacyRules.push({ when: { path: '/decision', equals: 'PASS' },
+    require: { path: '/authoritySetDigest', equals: 'old-digest' }, message: 'old digest equality' });
   if (constrainLegacyAuthorityId) legacyRules.push({ when: { path: '/decision', equals: 'PASS' },
     require: { path: '/authorityIds/0', equals: 'architecture' }, message: 'old selected authority ID validator' });
   put(root, validationPath, { version: 1, rules: legacyRules });
-  put(root, selection.eligibilitySchemaPath, bSchema); put(root, selection.eligibilityValidationPath,
-    { version: 1, rules: [{ when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/valid', equals: true }, message: 'successor B validator' }] });
+  put(root, selection.eligibilitySchemaPath, successorSchema ?? bSchema); put(root, selection.eligibilityValidationPath,
+    successorRules ?? { version: 1, rules: [{ when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/valid', equals: true }, message: 'successor B validator' }] });
   const authorities = authority.map((path, index) => ({ id: successorIds[index], repository: 'self', revision: 'authority-revision', path }));
   put(root, manifestPath, { version: 1, authorities }); put(root, '.codex/gatekeeper/omitted.json', { version: 1, authorities: [authorities[0]] });
   const legacyMain = { mode: 'enforced', model: 'gpt-6-luna', reasoningEffort: 'low',
@@ -107,13 +112,22 @@ function integrate(f, head, receipt, trailer) {
 }
 
 test('initial compatible v1→v2 M passes old review, binds raw unchanged authority, then fresh successor B works', async t => {
-  const f = fixture(t); const head = migrationHead(f);
+  const successorSchema = { type: 'object', additionalProperties: false,
+    required: ['decision', 'summary', 'authorityIds', 'valid', 'successorOnlyField'],
+    properties: { decision: { enum: ['ELIGIBLE', 'INELIGIBLE'] }, summary: { type: 'string' },
+      authorityIds: { type: 'array', items: { type: 'string' } }, valid: { type: 'boolean' },
+      successorOnlyField: { enum: ['B-only value'] } } };
+  const f = fixture(t, { successorSchema }); const head = migrationHead(f);
   const request = await preparePreviewLifecycle(migrationSpec(f, head), f.root);
   assert.equal(request.policy.policyVersion, 1); assert.match(request.prompt, /only the predecessor's legacy v1 policy/);
   assert.equal(request.inputs.some(input => input.path === selectionPath), true);
   assert.equal(request.successorAuthoritySet.members.length, 2);
   assert.equal(request.successorAuthoritySet.manifest.path, manifestPath);
   assert.equal(request.successorInputs.length, 2);
+  const materialized = await materializeAuthoritySet({ manifestBytes: Buffer.from(request.successorAuthoritySet.manifest.bytesBase64, 'base64'),
+    limits: migratedPolicy(f).branches.main.authorityLimits, selfRepository: request.spec.repository,
+    selfRoot: f.root, authorityRevision: head, profile: request.policy.authorityProfile ?? 'v1' });
+  assert.equal(request.successorAuthoritySet.setDigest, materialized.setDigest);
   for (const member of request.successorAuthoritySet.members) {
     const predecessor = request.authoritySet.members.find(item => item.path === member.path);
     assert.equal(member.sha256, predecessor.sha256); assert.equal(member.byteLength, predecessor.byteLength);
@@ -129,12 +143,15 @@ test('initial compatible v1→v2 M passes old review, binds raw unchanged author
   const aHead = commit(f, final.targetSha, { 'app.txt': 'Successor A under migrated selector\n' });
   const fresh = await prepareFreshPreviewReview(final, aHead, f.root);
   assert.equal(fresh.spec.baseSha, final.targetSha); assert.equal(fresh.selection.profile, PREVIEW_PROFILE);
+  assert.notEqual(fresh.authoritySet.setDigest, request.successorAuthoritySet.setDigest);
   const trigger = await completePreviewLifecycle(fresh, ordinary('BLOCK', true), f.root);
   const bHead = commit(f, final.targetSha, { [authority[0]]: 'Existing architecture decision amended under successor rules.\n' });
   const record = { version: 1, kind: 'preview-amendment-record', baseSha: final.targetSha, bSha: bHead,
     triggerReceiptSha256: sha(previewReceiptBytes(trigger)), target: 'existing decision', purpose: 'Synthetic successor BLOCK resolution' };
   const bRequest = await preparePreviewLifecycle({ ...fresh.spec, baseSha: final.targetSha, headSha: bHead, mode: 'amendment', trigger, record }, f.root);
   const bResponse = B(); bResponse.semanticDecision = { decision: 'ELIGIBLE', summary: 'Synthetic successor B classification; no model execution claim.', authorityIds: ['architecture', 'governance'], valid: true };
+  await assert.rejects(completePreviewLifecycle(bRequest, bResponse, f.root), /successorOnlyField is required/);
+  bResponse.semanticDecision.successorOnlyField = 'B-only value';
   const bReceipt = await completePreviewLifecycle(bRequest, bResponse, f.root);
   assert.equal(bReceipt.eligibility, 'ELIGIBLE');
 });
@@ -226,11 +243,73 @@ test('initial v1-to-v2 migration supports only the named-target v1 shape while v
   assert.equal((await completePreviewLifecycle(localOtherRequest, ordinary('PASS'), localOther.root)).eligibility, 'ELIGIBLE');
 });
 
-test('initial migration cannot become eligible when its unchanged closed predecessor schema rejects successor authority IDs', async t => {
+test('initial migration rejects a successor B schema that cannot represent the complete v2 authority IDs', async t => {
   const f = fixture(t, { schemaAllowsSuccessorIds: false });
   const head = migrationHead(f);
-  const request = await preparePreviewLifecycle(migrationSpec(f, head), f.root);
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(f, head), f.root), /requires a successor B schema with required authorityIds/);
+});
+
+test('a supported successor B schema does not weaken unchanged predecessor schema compatibility', async t => {
+  const successorSchema = { type: 'object', additionalProperties: false, required: ['decision', 'summary', 'authorityIds', 'valid'],
+    properties: { decision: { enum: ['ELIGIBLE', 'INELIGIBLE'] }, summary: { type: 'string' },
+      authorityIds: { type: 'array', items: { type: 'string' } }, valid: { type: 'boolean' } } };
+  const f = fixture(t, { schemaAllowsSuccessorIds: false, successorSchema });
+  const request = await preparePreviewLifecycle(migrationSpec(f, migrationHead(f)), f.root);
   await assert.rejects(completePreviewLifecycle(request, ordinary('PASS'), f.root), /successor authority IDs are incompatible with the unchanged predecessor schema or required validators/);
+});
+
+test('initial v1-to-v2 B schema check is structural and does not synthesize B-only values', async t => {
+  const filesOnly = fixture(t, { successorSchema: { type: 'object', additionalProperties: false, required: ['authorityFiles'],
+    properties: { authorityFiles: { type: 'array', items: { type: 'string' } } } } });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(filesOnly, migrationHead(filesOnly)), filesOnly.root), /requires a successor B schema/);
+
+  const composed = fixture(t, { successorSchema: { type: 'object', required: ['authorityIds'],
+    properties: { authorityIds: { type: 'array', items: { type: 'string' } } },
+    anyOf: [{ required: ['authorityIds'] }] } });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(composed, migrationHead(composed)), composed.root), /does not support composed/);
+  const enumRoot = fixture(t, { successorSchema: { type: 'object', enum: [{ authorityIds: ['architecture', 'governance'] }],
+    required: ['authorityIds'], properties: { authorityIds: { type: 'array', items: { type: 'string' } } } } });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(enumRoot, migrationHead(enumRoot)), enumRoot.root), /does not support composed/);
+});
+
+test('initial v1-to-v2 rejects digest-coupled predecessor and successor B inputs', async t => {
+  for (const options of [{ legacySchemaDigest: true }, { legacyRulesDigest: true }]) {
+    const f = fixture(t, options);
+    await assert.rejects(preparePreviewLifecycle(migrationSpec(f, migrationHead(f)), f.root), /does not support digest-coupled predecessor/);
+  }
+  const bDigestSchema = fixture(t, { successorSchema: { type: 'object', required: ['authorityIds', 'authoritySetDigest'],
+    properties: { authorityIds: { type: 'array', items: { type: 'string' } }, authoritySetDigest: { type: 'string' } } } });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(bDigestSchema, migrationHead(bDigestSchema)), bDigestSchema.root), /digest-coupled successor B schemas/);
+  const bDigestRules = fixture(t, { successorRules: { version: 1, rules: [{ when: { path: '/decision', equals: 'ELIGIBLE' },
+    require: { path: '/authoritySetDigest', equals: 'future-integration-digest' }, message: 'digest coupling' }] } });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(bDigestRules, migrationHead(bDigestRules)), bDigestRules.root), /digest-coupled successor B validators/);
+
+  const actualM = fixture(t, { legacySchemaOpen: true });
+  const actualMRequest = await preparePreviewLifecycle(migrationSpec(actualM, migrationHead(actualM)), actualM.root);
+  const actualMResponse = ordinary('PASS');
+  actualMResponse.semanticDecision.authoritySetDigest = actualMRequest.authoritySet.setDigest;
+  await assert.rejects(completePreviewLifecycle(actualMRequest, actualMResponse, actualM.root), /does not support digest-bearing M PASS decisions/);
+  for (const kind of ['BLOCK', 'OWNER_DECISION']) {
+    const rejected = ordinary(kind);
+    rejected.semanticDecision.authoritySetDigest = actualMRequest.authoritySet.setDigest;
+    const original = structuredClone(rejected);
+    const receipt = await completePreviewLifecycle(actualMRequest, rejected, actualM.root);
+    assert.equal(receipt.eligibility, 'INELIGIBLE');
+    assert.deepEqual(receipt.response, original);
+    await validatePreviewReceipt(receipt, actualM.root);
+    await assert.rejects(observePreviewLifecycle(receipt, actualMRequest.spec.headSha, actualM.root), /not an eligible selected B procedure/);
+  }
+});
+
+test('initial v1-to-v2 rejects unsupported successor B authority rules but ignores unrelated B-only requirements at M', async t => {
+  for (const rule of [
+    { when: { path: '/authorityIds/0', equals: 'architecture' }, require: { path: '/valid', equals: true }, message: 'ID condition' },
+    { when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/authorityIds/0', equals: 'wrong-id' }, message: 'wrong ID' },
+    { when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/authorityFiles/0', equals: 'docs/architecture.md' }, message: 'legacy path condition' },
+  ]) {
+    const f = fixture(t, { successorRules: { version: 1, rules: [rule] } });
+    await assert.rejects(preparePreviewLifecycle(migrationSpec(f, migrationHead(f)), f.root), /successor B rules|successor B authority-ID rule|successor B authority-field rule/);
+  }
 });
 
 test('initial migration checks successor authority IDs against unchanged predecessor decision rules', async t => {
