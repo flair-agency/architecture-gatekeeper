@@ -264,9 +264,16 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 ## Unverified preview lifecycle API
 
 The `./preview-lifecycle` package API supports ordinary review, the
-predecessor-authorized completed-BLOCK amendment procedure, and a missing-
-decision addition and existing-choice amendment from completed OWNER_DECISION
-results. All preserve `UNVERIFIED` assurance and do not integrate changes or
-supply trusted acceptance. Migration remains unsupported. See the
-[integration reference](docs/integration-reference.md#ordinary-review-preview)
+predecessor-authorized completed-BLOCK amendment procedure, missing-decision
+addition and existing-choice amendment from completed OWNER_DECISION results,
+and the narrow initial compatible migration from legacy v1 policy to a v1/v2
+successor. Migration requires predecessor PASS under unchanged legacy review
+inputs, exact preservation of the complete selected authority bytes and
+reviewer settings, and control-plane-only changes. Every route preserves
+`UNVERIFIED` assurance and does not integrate changes or supply trusted
+acceptance. For v1-to-v2 migration, M checks only the B runtime's core decision
+and complete authority IDs; B-only constraints are checked against the actual
+B response and are not proven satisfiable during M. Later or incompatible
+migrations remain unsupported. See the
+[integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api)
 for the API sequence and boundaries.

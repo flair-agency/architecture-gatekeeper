@@ -148,7 +148,8 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   copyFileSync(new URL('./preview-amendment-block.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-block.test.mjs'));
   copyFileSync(new URL('./preview-addition.test.mjs', import.meta.url), join(apiTests, 'preview-addition.test.mjs'));
   copyFileSync(new URL('./preview-amendment-owner.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-owner.test.mjs'));
-  execFileSync(process.execPath, ['--test', join(apiTests, 'preview-lifecycle.test.mjs'), join(apiTests, 'preview-amendment-block.test.mjs'), join(apiTests, 'preview-addition.test.mjs'), join(apiTests, 'preview-amendment-owner.test.mjs')], {
+  copyFileSync(new URL('./preview-migration-initial.test.mjs', import.meta.url), join(apiTests, 'preview-migration-initial.test.mjs'));
+  execFileSync(process.execPath, ['--test', join(apiTests, 'preview-lifecycle.test.mjs'), join(apiTests, 'preview-amendment-block.test.mjs'), join(apiTests, 'preview-addition.test.mjs'), join(apiTests, 'preview-amendment-owner.test.mjs'), join(apiTests, 'preview-migration-initial.test.mjs')], {
     cwd: root, timeout: 120000, stdio: 'pipe',
   });
 } finally {
