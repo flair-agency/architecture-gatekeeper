@@ -9,6 +9,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { runPreparedGeminiCiReview } from '../src/prepared-gemini-ci-review.mjs';
 import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from '../src/gemini-cli-process.mjs';
 import { completePreparedCiReview } from '../src/complete-prepared-ci-review.mjs';
+import { runPreparedGeminiCiDecision } from '../src/prepared-gemini-ci-decision.mjs';
 
 const oid = char => char.repeat(40);
 const workspaceLimits = { maxFiles: 2, maxFileBytes: 2048, maxTotalBytes: 4096 };
@@ -61,7 +62,9 @@ const responseText = ${JSON.stringify(responseText)};
 if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); process.exit(0); }
 let prompt = '';
 for await (const chunk of process.stdin) prompt += chunk;
-writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')) }));
+writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')), referenceText: readFileSync('evidence/reference-0001.txt', 'utf8'), manifest: JSON.parse(readFileSync('manifest.json', 'utf8')) }));
+if (mode === 'delayed') { await new Promise(resolve => setTimeout(resolve, 250)); }
+if (mode === 'stale-failure') { process.stdout.write(JSON.stringify({ response: responseText })); process.exit(7); }
 if (mode === 'failure') { process.stderr.write('fixture execution failure'); process.exit(7); }
 if (mode === 'hang') { setInterval(() => {}, 1000); }
 process.stdout.write(JSON.stringify({ response: responseText }));
@@ -71,6 +74,7 @@ process.stdout.write(JSON.stringify({ response: responseText }));
 
 function input(f, overrides = {}) {
   return {
+    protectedReviewer: { provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM' },
     protectedPromptText: 'Review only the protected inputs and supplied evidence.  \n',
     protectedDecisionSchemaText: JSON.stringify(decisionSchema, null, 2),
     proxySessionOptions: {
@@ -115,6 +119,7 @@ test('composes the protected schema into the bounded prompt and returns raw resp
 
 test('normalizes and validates prepared Gemini execution before exposing PASS or BLOCK semantics', async t => {
   const cases = [
+    { name: 'OWNER_DECISION', response: { decision: 'OWNER_DECISION', authorityIds }, expected: 'OWNER_DECISION' },
     { name: 'PASS', response: { decision: 'PASS', authorityIds }, expected: 'PASS' },
     { name: 'BLOCK', response: { decision: 'BLOCK', authorityIds, summary: 'documented' }, expected: 'BLOCK' },
     { name: 'invalid JSON', responseText: 'not JSON', error: /decision is invalid JSON/ },
@@ -126,20 +131,17 @@ test('normalizes and validates prepared Gemini execution before exposing PASS or
   for (const item of cases) {
     const responseText = item.responseText ?? JSON.stringify(item.response);
     const f = fixture(t, 'success', responseText);
-    const rawResponse = await runPreparedGeminiCiReview(input(f));
     const completionInput = {
-      executionInput: {
-        expectedExecution: { provider: 'gemini', requestedModel: 'gemini-3.8-flash', requestedSettings: { thinkingLevel: 'MEDIUM' } },
-        hostStepOutcome: 'success', rawResponse, maxResponseBytes: 65_536,
-      },
-      schemaBytes: Buffer.from(JSON.stringify(decisionSchema)),
-      authorityProvenance, validationRules, maxSchemaBytes: 1_048_576,
+      reviewInput: input(f), authorityProvenance, validationRules,
+      maxResponseBytes: 65_536, maxSchemaBytes: 1_048_576,
     };
-    if (item.error) assert.throws(() => completePreparedCiReview(completionInput), item.error, item.name);
+    if (item.error) await assert.rejects(runPreparedGeminiCiDecision(completionInput), item.error, item.name);
     else {
-      const result = completePreparedCiReview(completionInput);
+      const result = await runPreparedGeminiCiDecision(completionInput);
       assert.equal(result.execution.status, 'completed', item.name);
-      assert.equal(result.execution.responseBytes.toString('utf8'), rawResponse, item.name);
+      assert.equal(result.execution.responseBytes.toString('utf8'), responseText, item.name);
+      assert.equal(result.execution.expectedExecution.provider, 'gemini');
+      assert.equal(result.execution.expectedExecution.requestedSettings.thinkingLevel, 'MEDIUM');
       assert.equal(result.decision.decision, item.expected, item.name);
     }
     const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
@@ -272,4 +274,217 @@ test('rejects unsupported root and nested schema dialects before dispatch', asyn
   await assertProxyClosed(observed.endpoint);
   assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
   assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+});
+
+ test('rejects absent, unsupported or mismatched protected reviewer selections before dispatch', async t => {
+  const cases = [
+    value => { delete value.protectedReviewer; },
+    value => { value.protectedReviewer.provider = 'codex'; },
+    value => { value.protectedReviewer.model = 'gemini-2.5-flash'; },
+    value => { value.protectedReviewer.thinkingLevel = 'HIGH'; },
+    value => { value.protectedReviewer.unexpected = true; },
+    value => { delete value.protectedReviewer.thinkingLevel; },
+    value => { value.proxySessionOptions.processOptions.model = 'gemini-2.5-flash'; },
+    value => { value.proxySessionOptions.processOptions.thinkingLevel = 'LOW'; },
+    value => { value.proxySessionOptions.processOptions.thinkingBudget = 1024; },
+  ];
+  for (const change of cases) {
+    const f = fixture(t);
+    const value = input(f); change(value);
+    await assert.rejects(runPreparedGeminiCiReview(value), /protected reviewer selection/);
+    assert.equal(existsSync(f.reportPath), false);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
+
+ test('decision orchestration refuses stale PASS after CLI failure and cleans the session', async t => {
+  const f = fixture(t, 'stale-failure', JSON.stringify({ decision: 'PASS', authorityIds }));
+  await assert.rejects(runPreparedGeminiCiDecision({
+    reviewInput: input(f), authorityProvenance, validationRules,
+    maxResponseBytes: 65_536, maxSchemaBytes: 1_048_576,
+  }), /exited unsuccessfully \(7\)/);
+  const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+  await assertProxyClosed(observed.endpoint);
+  assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+  assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+});
+
+ test('decision orchestration rejects invalid response/schema limits before execution', async t => {
+  for (const overrides of [{ maxResponseBytes: 65537 }, { maxSchemaBytes: 0 }, { maxSchemaBytes: 4 }, { unexpected: true }]) {
+    const f = fixture(t);
+    await assert.rejects(runPreparedGeminiCiDecision({
+      reviewInput: input(f), authorityProvenance, validationRules,
+      maxResponseBytes: 65536, maxSchemaBytes: 1048576, ...overrides,
+    }), /explicit input set|explicit bounds|schema exceeds/);
+    assert.equal(existsSync(f.reportPath), false);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
+
+
+test('completion retains pre-dispatch validation inputs despite caller mutation while CLI is pending', async t => {
+  for (const kind of ['replace rules', 'mutate nested rules', 'mutate authority', 'raise response bound', 'raise schema bound']) {
+    const response = kind.includes('rules') ? { decision: 'BLOCK', authorityIds } : { decision: 'PASS', authorityIds };
+    const responseText = JSON.stringify(response);
+    const f = fixture(t, 'delayed', responseText);
+    const supplied = { reviewInput: input(f), authorityProvenance: structuredClone(authorityProvenance),
+      validationRules: structuredClone(validationRules), maxResponseBytes: kind === 'raise response bound' ? 1 : 65536,
+      maxSchemaBytes: 1048576 };
+    const pending = runPreparedGeminiCiDecision(supplied);
+    const checked = kind.includes('rules') ? assert.rejects(pending, /BLOCK requires its reason/) : pending;
+    for (let i = 0; i < 500 && !existsSync(f.reportPath); i += 1) await delay(10);
+    assert.equal(existsSync(f.reportPath), true);
+    if (kind === 'replace rules') supplied.validationRules = null;
+    if (kind === 'mutate nested rules') supplied.validationRules.rules[0].when.equals = 'PASS';
+    if (kind === 'mutate authority') supplied.authorityProvenance.members[0].id = 'caller-mutated-id';
+    if (kind === 'raise response bound') supplied.maxResponseBytes = 65536;
+    if (kind === 'raise schema bound') supplied.maxSchemaBytes = 1;
+    const result = await checked;
+    if (kind === 'raise response bound') {
+      assert.equal(result.execution.status, 'incomplete');
+      assert.equal(Object.hasOwn(result, 'decision'), false);
+    } else if (!kind.includes('rules')) assert.equal(result.decision.decision, 'PASS');
+    await assertProxyClosed(JSON.parse(readFileSync(f.reportPath, 'utf8')).endpoint);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
+
+
+test('prepared execution snapshots caller packet and workspace limits before proxy startup yields', async t => {
+  for (const operation of [runPreparedGeminiCiReview, async reviewInput => (await runPreparedGeminiCiDecision({
+    reviewInput, authorityProvenance, validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576,
+  })).decision]) {
+    const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+    const supplied = input(f);
+    supplied.proxySessionOptions.workspaceLimits = structuredClone(workspaceLimits);
+    const pending = operation(supplied);
+    const reference = supplied.proxySessionOptions.packet.references[0];
+    reference.text = 'MUTATED';
+    reference.sha256 = createHash('sha256').update(reference.text).digest('hex');
+    supplied.proxySessionOptions.packet.revisions.reviewedMergeSha = oid('e');
+    supplied.proxySessionOptions.workspaceLimits.maxFiles = 1;
+    const result = await pending;
+    assert.ok(result);
+    const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+    assert.equal(observed.referenceText, 'protected CI fixture');
+    assert.equal(observed.manifest.revisions.reviewedMergeSha, oid('c'));
+    assert.deepEqual(observed.manifest.limits, workspaceLimits);
+    await assertProxyClosed(observed.endpoint);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
+
+
+test('prepared execution rejects accessor and proxy settings before any CLI dispatch', async t => {
+  for (const kind of ['accessor', 'proxy', 'inherited accessor']) {
+    for (const operation of [runPreparedGeminiCiReview, async reviewInput => runPreparedGeminiCiDecision({
+      reviewInput, authorityProvenance, validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576,
+    })]) {
+      const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+      const supplied = input(f);
+      const options = supplied.proxySessionOptions.processOptions;
+      let reads = 0;
+      if (kind === 'accessor') Object.defineProperty(options, 'thinkingLevel', {
+        enumerable: true, get() { return ++reads <= 2 ? 'MEDIUM' : 'LOW'; },
+      });
+      if (kind === 'proxy') supplied.proxySessionOptions.processOptions = new Proxy(options, {
+        get(target, name) { if (name === 'thinkingLevel') return ++reads <= 2 ? 'MEDIUM' : 'LOW'; return target[name]; },
+      });
+      if (kind === 'inherited accessor') {
+        delete options.thinkingLevel;
+        Object.setPrototypeOf(options, { get thinkingLevel() { return ++reads <= 2 ? 'MEDIUM' : 'LOW'; } });
+      }
+      await assert.rejects(operation(supplied), /unsupported process options/);
+      assert.equal(existsSync(f.reportPath), false);
+      assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+      assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+    }
+  }
+});
+
+
+test('completion rejects executable wrapper fields without reading a changing selected limit', async t => {
+  const f = fixture(t);
+  const supplied = { reviewInput: input(f), authorityProvenance, validationRules,
+    maxResponseBytes: 65536, maxSchemaBytes: 1048576 };
+  let reads = 0;
+  Object.defineProperty(supplied, 'maxResponseBytes', { enumerable: true,
+    get() { reads += 1; return reads < 4 ? 1 : 65536; } });
+  await assert.rejects(runPreparedGeminiCiDecision(supplied), /complete explicit input set/);
+  assert.equal(reads, 0);
+  assert.equal(existsSync(f.reportPath), false);
+});
+
+
+test('completion rejects self-replacing configuration getters before recording execution', async t => {
+  for (const field of ['model', 'thinkingLevel', 'maxOutputTokens']) {
+    const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+    const supplied = input(f);
+    const options = supplied.proxySessionOptions.processOptions;
+    const original = field === 'maxOutputTokens' ? 128 : options[field];
+    let reads = 0;
+    Object.defineProperty(options, field, { enumerable: true, configurable: true, get() {
+      reads += 1;
+      Object.defineProperty(options, field, { enumerable: true, configurable: true, value: original });
+      return field === 'maxOutputTokens' ? 999 : 'spoofed-setting';
+    } });
+    await assert.rejects(runPreparedGeminiCiDecision({ reviewInput: supplied, authorityProvenance,
+      validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576 }), /unsupported process options/);
+    assert.equal(reads, 0);
+    assert.equal(existsSync(f.reportPath), false);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
+
+
+test('prepared review data rejects nested accessors and proxies without executing them', async t => {
+  for (const kind of ['authority getter', 'rule getter', 'packet getter', 'limits getter', 'authority proxy', 'nested rule proxy']) {
+    const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+    const supplied = { reviewInput: input(f), authorityProvenance: structuredClone(authorityProvenance),
+      validationRules: structuredClone(validationRules), maxResponseBytes: 65536, maxSchemaBytes: 1048576 };
+    let reads = 0;
+    const getter = (object, key) => Object.defineProperty(object, key, { enumerable: true, get() {
+      reads += 1;
+      supplied.reviewInput.proxySessionOptions.packet.references[0].text = 'MUTATED';
+      return [];
+    } });
+    const proxy = value => new Proxy(value, { ownKeys() { reads += 1; return Reflect.ownKeys(value); } });
+    if (kind === 'authority getter') getter(supplied.authorityProvenance, 'members');
+    if (kind === 'rule getter') getter(supplied.validationRules.rules[0].when, 'equals');
+    if (kind === 'packet getter') getter(supplied.reviewInput.proxySessionOptions.packet.references[0], 'text');
+    if (kind === 'limits getter') {
+      supplied.reviewInput.proxySessionOptions.workspaceLimits = { ...workspaceLimits };
+      getter(supplied.reviewInput.proxySessionOptions.workspaceLimits, 'maxFiles');
+    }
+    if (kind === 'authority proxy') supplied.authorityProvenance = proxy(supplied.authorityProvenance);
+    if (kind === 'nested rule proxy') supplied.validationRules.rules[0].when = proxy(supplied.validationRules.rules[0].when);
+    await assert.rejects(runPreparedGeminiCiDecision(supplied), /non-executable data/);
+    assert.equal(reads, 0);
+    assert.equal(existsSync(f.reportPath), false);
+    assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+    assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+  }
+});
+
+
+test('prepared configuration rejects non-enumerable selected fields before dispatch', async t => {
+  for (const field of ['signal', 'maxOutputTokens']) {
+    for (const complete of [false, true]) {
+      const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+      const supplied = input(f);
+      Object.defineProperty(supplied.proxySessionOptions.processOptions, field,
+        { value: field === 'signal' ? AbortSignal.abort() : 128 });
+      const pending = complete ? runPreparedGeminiCiDecision({ reviewInput: supplied, authorityProvenance,
+        validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576 }) : runPreparedGeminiCiReview(supplied);
+      await assert.rejects(pending, /unsupported process options/);
+      assert.equal(existsSync(f.reportPath), false);
+      assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+      assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+    }
+  }
 });
