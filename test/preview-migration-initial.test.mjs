@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { PREVIEW_PROFILE, preparePreviewLifecycle, completePreviewLifecycle,
-  observePreviewLifecycle, prepareFreshPreviewReview, previewReceiptBytes } from '@flair-agency/architecture-gatekeeper/preview-lifecycle';
+  observePreviewLifecycle, prepareFreshPreviewReview, previewReceiptBytes, validatePreviewReceipt } from '@flair-agency/architecture-gatekeeper/preview-lifecycle';
 
 const authority = ['docs/architecture.md', 'docs/governance.md'];
 const selectionPath = '.codex/gatekeeper/preview-lifecycle.json';
@@ -106,7 +106,9 @@ test('initial compatible v1→v2 M passes old review, binds raw unchanged author
   }
   const receipt = await completePreviewLifecycle(request, ordinary('PASS'), f.root);
   assert.equal(receipt.eligibility, 'ELIGIBLE');
-  await assert.rejects(completePreviewLifecycle(request, ordinary('BLOCK'), f.root), /requires predecessor ordinary PASS/);
+  const rejected = await completePreviewLifecycle(request, ordinary('BLOCK'), f.root);
+  assert.equal(rejected.eligibility, 'INELIGIBLE');
+  assert.equal(rejected.decision.decision, 'BLOCK');
   const integration = integrate(f, head, receipt); const final = await observePreviewLifecycle(receipt, integration, f.root);
   assert.equal(final.adoption, 'OBSERVED'); assert.equal(final.canonical, 'VERIFIED');
   assert.equal(final.assurance.hostEnforcement, 'UNVERIFIED');
@@ -121,6 +123,28 @@ test('initial compatible v1→v2 M passes old review, binds raw unchanged author
   const bResponse = B(); bResponse.semanticDecision = { decision: 'ELIGIBLE', summary: 'Synthetic successor B classification; no model execution claim.', authorityIds: ['architecture', 'governance'], valid: true };
   const bReceipt = await completePreviewLifecycle(bRequest, bResponse, f.root);
   assert.equal(bReceipt.eligibility, 'ELIGIBLE');
+});
+
+test('initial migration retains valid non-PASS decisions as ineligible receipts, including missing authorization', async t => {
+  const f = fixture(t); const head = migrationHead(f);
+  const request = await preparePreviewLifecycle(migrationSpec(f, head), f.root);
+  for (const kind of ['BLOCK', 'OWNER_DECISION']) {
+    for (const predecessorAuthorized of [true, false]) {
+      const response = ordinary(kind);
+      response.checks.predecessorAuthorized = predecessorAuthorized;
+      const originalResponse = structuredClone(response);
+      const receipt = await completePreviewLifecycle(request, response, f.root);
+      assert.equal(receipt.eligibility, 'INELIGIBLE');
+      assert.deepEqual(receipt.decision, originalResponse.semanticDecision);
+      assert.deepEqual(receipt.response, originalResponse);
+      await validatePreviewReceipt(receipt, f.root);
+      await assert.rejects(observePreviewLifecycle(receipt, head, f.root), /not an eligible selected B procedure/);
+    }
+  }
+
+  const unauthorizedPass = ordinary('PASS');
+  unauthorizedPass.checks.predecessorAuthorized = false;
+  await assert.rejects(completePreviewLifecycle(request, unauthorizedPass, f.root), /predecessor governance did not authorize/);
 });
 function commit(f, base, changes) {
   git(f.root, 'switch', '-c', `after-migration-${++next}`, base);

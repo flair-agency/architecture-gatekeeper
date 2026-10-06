@@ -988,6 +988,11 @@ Prepare M with
 `mode: "migration"`, `trigger: null`, and `record: null`, using the exact old
 and proposed commits. M must receive `PASS` under the predecessor's unchanged
 prompt, schema, validator, reviewer settings and complete Authority Set. The
+same predecessor semantics retain a schema-valid `BLOCK` or `OWNER_DECISION`
+as an `INELIGIBLE` completed receipt, including a rejection that reports missing
+predecessor authorization. Such a receipt preserves the result for validation
+and history; it cannot be integrated or used as a B trigger. Only an authorized
+`PASS` makes M eligible for integration.
 proposed policy/configuration and successor selection are untrusted M inputs;
 they may change only the selected control-plane paths. The successor must
 preserve every predecessor-selected authority member in the same order with

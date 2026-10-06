@@ -380,11 +380,13 @@ export async function completePreviewLifecycle(request, response, cwd = request?
       decision.authoritySetDigest !== request.authoritySet.setDigest) fail('decision selected-set digest differs.');
   const validationPath = isEligibility ? request.selection.eligibilityValidationPath : request.selection.validationPath;
   if (validationPath !== null) validateDecisionRules(decision, jsonSnapshot(request.root, request.spec.baseSha, validationPath));
-  if ((!isEligibility || decision.decision === 'ELIGIBLE') && response.checks.predecessorAuthorized !== true) fail('predecessor governance did not authorize the procedure.');
+  const requiresPredecessorAuthorization = request.spec.mode === 'migration'
+    ? decision.decision === 'PASS'
+    : !isEligibility || decision.decision === 'ELIGIBLE';
+  if (requiresPredecessorAuthorization && response.checks.predecessorAuthorized !== true) fail('predecessor governance did not authorize the procedure.');
   if (isBlockAmendment && decision.decision === 'ELIGIBLE' && (['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'].some(key => response.checks[key] !== true) || response.checks.triggerMissingDecision !== false || response.checks.triggerExistingDecision !== false || response.checks.targetDecisionOnly !== true)) fail('BLOCK semantic eligibility rejected.');
   if (isOwnerAmendment && decision.decision === 'ELIGIBLE' && (['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'].some(key => response.checks[key] !== true) || response.checks.triggerMissingDecision !== false || response.checks.triggerExistingDecision !== true || response.checks.targetDecisionOnly !== true)) fail('OWNER_DECISION amendment semantic eligibility rejected.');
   if (isAddition && decision.decision === 'ELIGIBLE' && (['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'].some(key => response.checks[key] !== true) || response.checks.triggerMissingDecision !== true || response.checks.triggerExistingDecision !== false || response.checks.targetDecisionOnly !== true)) fail('OWNER_DECISION addition semantic eligibility rejected.');
-  if (request.spec.mode === 'migration' && decision.decision !== 'PASS') fail('initial migration requires predecessor ordinary PASS.');
   if (request.spec.mode === 'migration' && decision.decision === 'PASS' && request.successorAuthoritySet?.manifest) {
     const authorityIds = request.successorAuthoritySet.members.map(member => member.id);
     if (authorityIds.some(id => typeof id !== 'string')) fail('initial migration successor Authority Set is incomplete.');
@@ -398,7 +400,7 @@ export async function completePreviewLifecycle(request, response, cwd = request?
     }
   }
   return seal({ version: 1, profile: PREVIEW_PROFILE, kind: 'preview-lifecycle-receipt', request, response, decision,
-    eligibility: isEligibility ? decision.decision : request.spec.mode === 'migration' ? 'ELIGIBLE' : 'NOT_APPLICABLE', completedAt: new Date().toISOString(), adoption: 'PENDING', canonical: 'PENDING', assurance });
+    eligibility: isEligibility ? decision.decision : request.spec.mode === 'migration' ? (decision.decision === 'PASS' ? 'ELIGIBLE' : 'INELIGIBLE') : 'NOT_APPLICABLE', completedAt: new Date().toISOString(), adoption: 'PENDING', canonical: 'PENDING', assurance });
 }
 
 export async function validatePreviewReceipt(receipt, cwd = receipt?.request?.root) {
