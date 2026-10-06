@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -210,6 +210,22 @@ test('initial migration requires a predecessor-recorded selection bound to the e
   const reformattedSelection = fixture(t);
   const reformattedHead = migrationHead(reformattedSelection, { selection: `${JSON.stringify(reformattedSelection.selection, null, 2)}\n` });
   await assert.rejects(preparePreviewLifecycle(migrationSpec(reformattedSelection, reformattedHead), reformattedSelection.root), /cannot replace or expand/);
+});
+
+test('initial migration requires the predecessor-selected caller to remain a regular candidate file', async t => {
+  const deleted = fixture(t);
+  migrationHead(deleted);
+  git(deleted.root, 'rm', '--', callerPath);
+  git(deleted.root, 'commit', '-m', 'Delete selected candidate caller');
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(deleted, git(deleted.root, 'rev-parse', 'HEAD')), deleted.root), /missing or ambiguous|not a regular file/);
+
+  const symlinked = fixture(t);
+  migrationHead(symlinked);
+  rmSync(join(symlinked.root, callerPath));
+  symlinkSync('other-workflow.yml', join(symlinked.root, callerPath));
+  git(symlinked.root, 'add', '-A');
+  git(symlinked.root, 'commit', '-m', 'Replace selected candidate caller with symlink');
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(symlinked, git(symlinked.root, 'rev-parse', 'HEAD')), symlinked.root), /missing or ambiguous|not a regular file/);
 });
 
 test('initial migration also fails closed on changed reviewer settings, v3, omitted set, authority edits and trusted route', async t => {
