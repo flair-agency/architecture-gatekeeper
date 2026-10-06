@@ -155,6 +155,13 @@ test('initial compatible v1→v2 M passes old review, binds raw unchanged author
   bResponse.semanticDecision.successorOnlyField = 'B-only value';
   const bReceipt = await completePreviewLifecycle(bRequest, bResponse, f.root);
   assert.equal(bReceipt.eligibility, 'ELIGIBLE');
+  const bIneligible = structuredClone(bResponse);
+  bIneligible.semanticDecision.decision = 'INELIGIBLE';
+  const ineligibleReceipt = await completePreviewLifecycle(bRequest, bIneligible, f.root);
+  assert.equal(ineligibleReceipt.eligibility, 'INELIGIBLE');
+  assert.deepEqual(ineligibleReceipt.response, bIneligible);
+  await validatePreviewReceipt(ineligibleReceipt, f.root);
+  await assert.rejects(observePreviewLifecycle(ineligibleReceipt, integration, f.root), /not an eligible selected B procedure/);
 });
 
 test('initial migration retains valid non-PASS decisions as ineligible receipts, including missing authorization', async t => {
@@ -247,7 +254,7 @@ test('initial v1-to-v2 migration supports only the named-target v1 shape while v
 test('initial migration rejects a successor B schema that cannot represent the complete v2 authority IDs', async t => {
   const f = fixture(t, { schemaAllowsSuccessorIds: false });
   const head = migrationHead(f);
-  await assert.rejects(preparePreviewLifecycle(migrationSpec(f, head), f.root), /requires a successor B schema with required authorityIds/);
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(f, head), f.root), /requires a successor B schema with required decision and authorityIds/);
 });
 
 test('a supported successor B schema does not weaken unchanged predecessor schema compatibility', async t => {
@@ -264,13 +271,36 @@ test('initial v1-to-v2 B schema check is structural and does not synthesize B-on
     properties: { authorityFiles: { type: 'array', items: { type: 'string' } } } } });
   await assert.rejects(preparePreviewLifecycle(migrationSpec(filesOnly, migrationHead(filesOnly)), filesOnly.root), /requires a successor B schema/);
 
-  const composed = fixture(t, { successorSchema: { type: 'object', required: ['authorityIds'],
-    properties: { authorityIds: { type: 'array', items: { type: 'string' } } },
-    anyOf: [{ required: ['authorityIds'] }] } });
+  const coreSchema = { type: 'object', additionalProperties: false, required: ['decision', 'authorityIds'],
+    properties: { decision: { enum: ['ELIGIBLE', 'INELIGIBLE'] }, authorityIds: { type: 'array', items: { type: 'string' } } } };
+  const missingDecision = fixture(t, { successorSchema: { ...coreSchema, required: ['authorityIds'],
+    properties: { authorityIds: coreSchema.properties.authorityIds } } });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(missingDecision, migrationHead(missingDecision)), missingDecision.root), /requires a successor B schema/);
+  for (const status of ['PASS', 'ELIGIBLE', 'INELIGIBLE']) {
+    const oneDecision = fixture(t, { successorSchema: { ...coreSchema, properties: { ...coreSchema.properties,
+      decision: { enum: [status] } } } });
+    await assert.rejects(preparePreviewLifecycle(migrationSpec(oneDecision, migrationHead(oneDecision)), oneDecision.root), /must admit ELIGIBLE and INELIGIBLE/);
+  }
+
+  const composed = fixture(t, { successorSchema: { ...coreSchema, anyOf: [{ required: ['authorityIds'] }] } });
   await assert.rejects(preparePreviewLifecycle(migrationSpec(composed, migrationHead(composed)), composed.root), /does not support composed/);
-  const enumRoot = fixture(t, { successorSchema: { type: 'object', enum: [{ authorityIds: ['architecture', 'governance'] }],
-    required: ['authorityIds'], properties: { authorityIds: { type: 'array', items: { type: 'string' } } } } });
+  const composedIds = fixture(t, { successorSchema: { ...coreSchema, properties: { ...coreSchema.properties,
+    authorityIds: { anyOf: [{ type: 'array', items: { type: 'string' } }] } } } });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(composedIds, migrationHead(composedIds)), composedIds.root), /does not support composed/);
+  const referencedDecision = fixture(t, { successorSchema: { ...coreSchema, properties: { ...coreSchema.properties,
+    decision: { $ref: '#/$defs/decision' } }, $defs: { decision: { enum: ['ELIGIBLE', 'INELIGIBLE'] } } } });
+  await assert.rejects(preparePreviewLifecycle(migrationSpec(referencedDecision, migrationHead(referencedDecision)), referencedDecision.root), /self-contained successor B/);
+  const enumRoot = fixture(t, { successorSchema: { ...coreSchema, enum: [{ authorityIds: ['architecture', 'governance'], decision: 'ELIGIBLE' }] } });
   await assert.rejects(preparePreviewLifecycle(migrationSpec(enumRoot, migrationHead(enumRoot)), enumRoot.root), /does not support composed/);
+  for (const authorityIds of [
+    { type: 'string' },
+    { type: 'array', items: { type: 'boolean' } },
+    { type: 'array', minItems: 3, items: { type: 'string' } },
+    { type: 'array', enum: [['different-id']], items: { type: 'string' } },
+  ]) {
+    const invalidIds = fixture(t, { successorSchema: { ...coreSchema, properties: { ...coreSchema.properties, authorityIds } } });
+    await assert.rejects(preparePreviewLifecycle(migrationSpec(invalidIds, migrationHead(invalidIds)), invalidIds.root), /self-contained successor B|does not match its schema|too few items|outside its enum/);
+  }
 });
 
 test('initial v1-to-v2 rejects digest-coupled predecessor and successor B inputs', async t => {
@@ -278,8 +308,9 @@ test('initial v1-to-v2 rejects digest-coupled predecessor and successor B inputs
     const f = fixture(t, options);
     await assert.rejects(preparePreviewLifecycle(migrationSpec(f, migrationHead(f)), f.root), /does not support digest-coupled predecessor/);
   }
-  const bDigestSchema = fixture(t, { successorSchema: { type: 'object', required: ['authorityIds', 'authoritySetDigest'],
-    properties: { authorityIds: { type: 'array', items: { type: 'string' } }, authoritySetDigest: { type: 'string' } } } });
+  const bDigestSchema = fixture(t, { successorSchema: { type: 'object', required: ['decision', 'authorityIds', 'authoritySetDigest'],
+    properties: { decision: { enum: ['ELIGIBLE', 'INELIGIBLE'] }, authorityIds: { type: 'array', items: { type: 'string' } },
+      authoritySetDigest: { type: 'string' } } } });
   await assert.rejects(preparePreviewLifecycle(migrationSpec(bDigestSchema, migrationHead(bDigestSchema)), bDigestSchema.root), /digest-coupled successor B schemas/);
   const bDigestRules = fixture(t, { successorRules: { version: 1, rules: [{ when: { path: '/decision', equals: 'ELIGIBLE' },
     require: { path: '/authoritySetDigest', equals: 'future-integration-digest' }, message: 'digest coupling' }] } });
@@ -307,10 +338,50 @@ test('initial v1-to-v2 rejects unsupported successor B authority rules but ignor
     { when: { path: '/authorityIds/0', equals: 'architecture' }, require: { path: '/valid', equals: true }, message: 'ID condition' },
     { when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/authorityIds/0', equals: 'wrong-id' }, message: 'wrong ID' },
     { when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/authorityFiles/0', equals: 'docs/architecture.md' }, message: 'legacy path condition' },
+    { when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/decision', equals: 'INELIGIBLE' }, message: 'contradictory status' },
+    { when: { path: '/futureOnly', equals: 'value' }, require: { path: '/decision', equals: 'ELIGIBLE' }, message: 'unknown core condition' },
+    { when: { path: '/decision/0', equals: 'E' }, require: { path: '/valid', equals: true }, message: 'decision subfield' },
+    { when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/decision/0', equals: 'E' }, message: 'required decision subfield' },
   ]) {
     const f = fixture(t, { successorRules: { version: 1, rules: [rule] } });
-    await assert.rejects(preparePreviewLifecycle(migrationSpec(f, migrationHead(f)), f.root), /successor B rules|successor B authority-ID rule|successor B authority-field rule/);
+    await assert.rejects(preparePreviewLifecycle(migrationSpec(f, migrationHead(f)), f.root), /successor B rules|successor B authority-ID rule|successor B authority-field rule|decision subfields|excludes a required eligibility outcome|unknown conditions/);
   }
+
+  const exactId = fixture(t, { successorRules: { version: 1, rules: [
+    { when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/authorityIds/0', equals: 'architecture' }, message: 'known ID condition' },
+  ] } });
+  const exactIdRequest = await preparePreviewLifecycle(migrationSpec(exactId, migrationHead(exactId)), exactId.root);
+  assert.equal((await completePreviewLifecycle(exactIdRequest, ordinary('PASS', true), exactId.root)).eligibility, 'ELIGIBLE');
+});
+
+test('initial migration does not solve unrelated B-only constraints; actual B validation still applies them', async t => {
+  const successorSchema = { type: 'object', additionalProperties: false,
+    required: ['decision', 'summary', 'authorityIds', 'valid', 'futureOnly'],
+    properties: { decision: { enum: ['ELIGIBLE', 'INELIGIBLE'] }, summary: { type: 'string' },
+      authorityIds: { type: 'array', items: { type: 'string' } }, valid: { type: 'boolean' },
+      futureOnly: { enum: ['schema value'] } } };
+  const successorRules = { version: 1, rules: [
+    { when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/valid', equals: true }, message: 'B-only ordinary rule' },
+    { when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/futureOnly', equals: 'different rule value' }, message: 'B-only rule conflict' },
+  ] };
+  const f = fixture(t, { successorSchema, successorRules });
+  const head = migrationHead(f); const request = await preparePreviewLifecycle(migrationSpec(f, head), f.root);
+  const migrationReceipt = await completePreviewLifecycle(request, ordinary('PASS'), f.root);
+  assert.equal(migrationReceipt.eligibility, 'ELIGIBLE');
+  const integration = integrate(f, head, migrationReceipt);
+  const observed = await observePreviewLifecycle(migrationReceipt, integration, f.root);
+  const aHead = commit(f, observed.targetSha, { 'app.txt': 'Successor A\n' });
+  const fresh = await prepareFreshPreviewReview(observed, aHead, f.root);
+  const trigger = await completePreviewLifecycle(fresh, ordinary('BLOCK', true), f.root);
+  const bHead = commit(f, observed.targetSha, { [authority[0]]: 'Amended decision\n' });
+  const record = { version: 1, kind: 'preview-amendment-record', baseSha: observed.targetSha, bSha: bHead,
+    triggerReceiptSha256: sha(previewReceiptBytes(trigger)), target: 'existing decision', purpose: 'Synthetic B validation fixture' };
+  const bRequest = await preparePreviewLifecycle({ ...fresh.spec, baseSha: observed.targetSha, headSha: bHead,
+    mode: 'amendment', trigger, record }, f.root);
+  const bResponse = B();
+  bResponse.semanticDecision = { decision: 'ELIGIBLE', summary: 'Synthetic B validation fixture.',
+    authorityIds: ['architecture', 'governance'], valid: true, futureOnly: 'schema value' };
+  await assert.rejects(completePreviewLifecycle(bRequest, bResponse, f.root), /B-only rule conflict/);
 });
 
 test('initial migration checks successor authority IDs against unchanged predecessor decision rules', async t => {

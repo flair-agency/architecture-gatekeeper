@@ -271,6 +271,9 @@ successor. Migration requires predecessor PASS under unchanged legacy review
 inputs, exact preservation of the complete selected authority bytes and
 reviewer settings, and control-plane-only changes. Every route preserves
 `UNVERIFIED` assurance and does not integrate changes or supply trusted
-acceptance. Later or incompatible migrations remain unsupported. See the
+acceptance. For v1-to-v2 migration, M checks only the B runtime's core decision
+and complete authority IDs; B-only constraints are checked against the actual
+B response and are not proven satisfiable during M. Later or incompatible
+migrations remain unsupported. See the
 [integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api)
 for the API sequence and boundaries.
