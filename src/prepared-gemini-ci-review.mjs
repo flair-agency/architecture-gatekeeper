@@ -6,7 +6,7 @@ import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from './gem
 const INPUT_KEYS = new Set(['protectedPromptText', 'protectedDecisionSchemaText', 'proxySessionOptions']);
 const SESSION_KEYS = new Set(['packet', 'workspaceLimits', 'workspaceParentDirectory', 'processOptions', 'credentials']);
 const PROCESS_KEYS = new Set([
-  'cliEntrypoint', 'privateParentDirectory', 'model', 'thinkingBudget', 'thinkingLevel', 'project', 'region',
+  'cliEntrypoint', 'privateParentDirectory', 'model', 'thinkingBudget', 'thinkingLevel', 'maxOutputTokens', 'project', 'region',
   'timeoutMs', 'maxPromptBytes', 'maxStdoutBytes', 'maxStderrBytes', 'signal',
 ]);
 
@@ -63,6 +63,7 @@ export async function runPreparedGeminiCiReview(input) {
       model: processOptions.model,
       ...(Object.hasOwn(processOptions, 'thinkingBudget') ? { thinkingBudget: processOptions.thinkingBudget } : {}),
       ...(Object.hasOwn(processOptions, 'thinkingLevel') ? { thinkingLevel: processOptions.thinkingLevel } : {}),
+      ...(Object.hasOwn(processOptions, 'maxOutputTokens') ? { maxOutputTokens: processOptions.maxOutputTokens } : {}),
       project: processOptions.project,
       region: processOptions.region,
       timeoutMs: processOptions.timeoutMs,
