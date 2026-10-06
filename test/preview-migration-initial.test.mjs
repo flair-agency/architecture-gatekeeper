@@ -5,7 +5,8 @@ import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
-import { materializeAuthoritySet } from '../src/authority-set.mjs';
+const authoritySetModule = await import(new URL('./authority-set.mjs', import.meta.resolve('@flair-agency/architecture-gatekeeper/preview-lifecycle')));
+const { materializeAuthoritySet } = authoritySetModule;
 import { PREVIEW_PROFILE, preparePreviewLifecycle, completePreviewLifecycle,
   observePreviewLifecycle, prepareFreshPreviewReview, previewReceiptBytes, validatePreviewReceipt } from '@flair-agency/architecture-gatekeeper/preview-lifecycle';
 
