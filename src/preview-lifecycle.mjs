@@ -134,22 +134,25 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   // Candidate bytes cannot select their own review instructions.
   let selection, successorAuthoritySet = null, successorInputs = [];
   if (spec.mode === 'migration') {
-    if (optionalSnapshot(root, spec.baseSha, spec.selectionPath) !== null) fail('initial migration requires an absent predecessor preview selection; later migration is unsupported.');
+    const predecessorSelectionBytes = snapshot(root, spec.baseSha, spec.selectionPath);
+    selection = jsonSnapshot(root, spec.baseSha, spec.selectionPath);
+    validateSelection(selection, spec);
     const policyPath = '.codex/gatekeeper/ci-policy.json';
     const callerPath = '.github/workflows/architecture-gate.yml';
     const parsedOldPolicy = parseCiPolicyJson(utf8(snapshot(root, spec.baseSha, policyPath)));
     const oldPolicy = resolveCiPolicy(parsedOldPolicy, spec.targetBranch);
-    if (parsedOldPolicy.version !== 1 || !oldPolicy.legacyAuthorityFilesBase64 || oldPolicy.ownerAdditionAuthorityPath) fail('initial migration supports recorded enforced v1 without a trusted acceptance selection only.');
+    if (parsedOldPolicy.version !== 1 || !oldPolicy.legacyAuthorityFilesBase64 || oldPolicy.ownerAdditionAuthorityPath ||
+        selection.policyPath !== policyPath || selection.callerPath !== callerPath ||
+        selection.promptPath !== oldPolicy.legacyPromptPath || selection.schemaPath !== oldPolicy.legacySchemaPath ||
+        selection.validationPath !== (oldPolicy.legacyValidationPath || null)) fail('initial migration requires a compatible predecessor-recorded v1 preview selection.');
     const oldPaths = JSON.parse(Buffer.from(oldPolicy.legacyAuthorityFilesBase64, 'base64').toString());
-    selection = { version: 1, profile: PREVIEW_PROFILE, repository: spec.repository, targetBranch: spec.targetBranch,
-      governancePath: oldPaths[0], authorization: 'Ordinary predecessor review; owner authorization UNVERIFIED',
-      policyPath, promptPath: oldPolicy.legacyPromptPath, schemaPath: oldPolicy.legacySchemaPath,
-      validationPath: oldPolicy.legacyValidationPath || null, callerPath, authorityPaths: oldPaths,
-      migrationPaths: [spec.selectionPath, policyPath, callerPath], maxPromptBytes: 524288 };
+    const controlPaths = [spec.selectionPath, policyPath, callerPath];
+    if (!oldPaths.includes(selection.governancePath) || selection.authorityPaths.some(file => !oldPaths.includes(file)) ||
+        hash([...selection.migrationPaths].sort()) !== hash([...controlPaths].sort())) fail('predecessor selection does not authorize this exact migration scope.');
     const proposed = jsonSnapshot(root, spec.headSha, spec.selectionPath);
     validateSelection(proposed, spec);
+    if (!predecessorSelectionBytes.equals(snapshot(root, spec.headSha, spec.selectionPath))) fail('migration cannot replace or expand the predecessor-recorded preview selection.');
     if (!proposed.eligibilitySchemaPath || !Object.hasOwn(proposed, 'eligibilityValidationPath')) fail('initial migration requires a selected successor B eligibility schema and explicit validator selection.');
-    const controlPaths = [spec.selectionPath, policyPath, callerPath];
     if (hash([...proposed.migrationPaths].sort()) !== hash([...controlPaths].sort())) fail('initial migration must select only its three control-plane paths.');
     const selectedSuccessorInputs = [proposed.eligibilitySchemaPath, proposed.eligibilityValidationPath]
       .filter(file => file !== undefined && file !== null);
@@ -188,7 +191,8 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
       const manifestPath = nextPolicy.authorityManifestPath;
       const manifestBytes = snapshot(root, spec.headSha, manifestPath);
       const limits = JSON.parse(Buffer.from(nextPolicy.authorityLimitsBase64, 'base64').toString());
-      if (limits.maxFileBytes > 65536 || limits.maxTotalBytes > 262144 || limits.maxPromptBytes > 524288) fail('migration raises legacy authority bounds.');
+      if (limits.maxMembers > 16 || limits.maxFileBytes > 65536 ||
+          limits.maxTotalBytes > 262144 || limits.maxPromptBytes > 524288) fail('migration raises legacy authority bounds.');
       if (parseAuthorityManifest(manifestBytes, limits, nextPolicy.authorityProfile ?? 'v1').authorities.some(member => member.repository !== 'self')) fail('migration cannot add external authority.');
       const nextSet = await materializeAuthoritySet({ manifestBytes, limits, selfRepository: spec.repository,
         selfRoot: root, authorityRevision: spec.headSha, profile: nextPolicy.authorityProfile ?? 'v1' });
@@ -216,7 +220,6 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   if (policy.mode === 'local-only') fail('preview requires explicit model-backed predecessor inputs.');
   if (policy.provider && policy.provider !== 'codex') fail('preview does not support this predecessor reviewer provider.');
   const inputPaths = [spec.selectionPath, selection.policyPath, selection.promptPath, selection.schemaPath, selection.callerPath];
-  if (spec.mode === 'migration') inputPaths.shift();
   if (selection.validationPath !== null) inputPaths.push(path(selection.validationPath));
   const inputs = inputPaths.map(file => ({ path: file, sha256: digest(snapshot(root, spec.baseSha, file)) }));
   const isMigration = spec.mode === 'migration';
@@ -377,11 +380,13 @@ export async function completePreviewLifecycle(request, response, cwd = request?
       decision.authoritySetDigest !== request.authoritySet.setDigest) fail('decision selected-set digest differs.');
   const validationPath = isEligibility ? request.selection.eligibilityValidationPath : request.selection.validationPath;
   if (validationPath !== null) validateDecisionRules(decision, jsonSnapshot(request.root, request.spec.baseSha, validationPath));
-  if ((!isEligibility || decision.decision === 'ELIGIBLE') && response.checks.predecessorAuthorized !== true) fail('predecessor governance did not authorize the procedure.');
+  const requiresPredecessorAuthorization = request.spec.mode === 'migration'
+    ? decision.decision === 'PASS'
+    : !isEligibility || decision.decision === 'ELIGIBLE';
+  if (requiresPredecessorAuthorization && response.checks.predecessorAuthorized !== true) fail('predecessor governance did not authorize the procedure.');
   if (isBlockAmendment && decision.decision === 'ELIGIBLE' && (['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'].some(key => response.checks[key] !== true) || response.checks.triggerMissingDecision !== false || response.checks.triggerExistingDecision !== false || response.checks.targetDecisionOnly !== true)) fail('BLOCK semantic eligibility rejected.');
   if (isOwnerAmendment && decision.decision === 'ELIGIBLE' && (['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'].some(key => response.checks[key] !== true) || response.checks.triggerMissingDecision !== false || response.checks.triggerExistingDecision !== true || response.checks.targetDecisionOnly !== true)) fail('OWNER_DECISION amendment semantic eligibility rejected.');
   if (isAddition && decision.decision === 'ELIGIBLE' && (['addressesTrigger', 'withinSelectedScope', 'authorityOnly', 'noUnrelatedChanges', 'coherentResult', 'noUnsupportedClaims', 'predecessorAuthorized'].some(key => response.checks[key] !== true) || response.checks.triggerMissingDecision !== true || response.checks.triggerExistingDecision !== false || response.checks.targetDecisionOnly !== true)) fail('OWNER_DECISION addition semantic eligibility rejected.');
-  if (request.spec.mode === 'migration' && decision.decision !== 'PASS') fail('initial migration requires predecessor ordinary PASS.');
   if (request.spec.mode === 'migration' && decision.decision === 'PASS' && request.successorAuthoritySet?.manifest) {
     const authorityIds = request.successorAuthoritySet.members.map(member => member.id);
     if (authorityIds.some(id => typeof id !== 'string')) fail('initial migration successor Authority Set is incomplete.');
@@ -390,9 +395,12 @@ export async function completePreviewLifecycle(request, response, cwd = request?
     } catch {
       fail('initial migration successor authority IDs are incompatible with the unchanged predecessor decision schema.');
     }
+    if (validationPath !== null) {
+      validateDecisionRules({ ...decision, authorityIds }, jsonSnapshot(request.root, request.spec.baseSha, validationPath));
+    }
   }
   return seal({ version: 1, profile: PREVIEW_PROFILE, kind: 'preview-lifecycle-receipt', request, response, decision,
-    eligibility: isEligibility ? decision.decision : request.spec.mode === 'migration' ? 'ELIGIBLE' : 'NOT_APPLICABLE', completedAt: new Date().toISOString(), adoption: 'PENDING', canonical: 'PENDING', assurance });
+    eligibility: isEligibility ? decision.decision : request.spec.mode === 'migration' ? (decision.decision === 'PASS' ? 'ELIGIBLE' : 'INELIGIBLE') : 'NOT_APPLICABLE', completedAt: new Date().toISOString(), adoption: 'PENDING', canonical: 'PENDING', assurance });
 }
 
 export async function validatePreviewReceipt(receipt, cwd = receipt?.request?.root) {
