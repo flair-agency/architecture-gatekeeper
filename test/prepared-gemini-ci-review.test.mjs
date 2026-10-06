@@ -470,3 +470,21 @@ test('prepared review data rejects nested accessors and proxies without executin
     assert.deepEqual(readdirSync(f.privateParentDirectory), []);
   }
 });
+
+
+test('prepared configuration rejects non-enumerable selected fields before dispatch', async t => {
+  for (const field of ['signal', 'maxOutputTokens']) {
+    for (const complete of [false, true]) {
+      const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+      const supplied = input(f);
+      Object.defineProperty(supplied.proxySessionOptions.processOptions, field,
+        { value: field === 'signal' ? AbortSignal.abort() : 128 });
+      const pending = complete ? runPreparedGeminiCiDecision({ reviewInput: supplied, authorityProvenance,
+        validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576 }) : runPreparedGeminiCiReview(supplied);
+      await assert.rejects(pending, /unsupported process options/);
+      assert.equal(existsSync(f.reportPath), false);
+      assert.deepEqual(readdirSync(f.workspaceParentDirectory), []);
+      assert.deepEqual(readdirSync(f.privateParentDirectory), []);
+    }
+  }
+});
