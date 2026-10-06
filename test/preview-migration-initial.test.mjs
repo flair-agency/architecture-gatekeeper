@@ -17,7 +17,8 @@ const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { enco
 const put = (root, file, value) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), typeof value === 'string' ? value : JSON.stringify(value)); };
 const sha = value => createHash('sha256').update(value).digest('hex');
 let next = 0;
-function fixture(t, { preexistingSelection = false, schemaAllowsSuccessorIds = true, withTextconv = false } = {}) {
+function fixture(t, { preexistingSelection = false, schemaAllowsSuccessorIds = true, withTextconv = false,
+  constrainLegacyAuthorityId = false, successorIds = ['architecture', 'governance'] } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'preview-initial-migration-')); t.after(() => rmSync(root, { recursive: true, force: true }));
   let textconvMarker;
   if (withTextconv) {
@@ -48,10 +49,13 @@ function fixture(t, { preexistingSelection = false, schemaAllowsSuccessorIds = t
   put(root, authority[0], 'Existing architecture decision.\n'); put(root, authority[1], 'Owner selected legacy v1 review procedure.\n'); put(root, 'app.txt', 'before\n');
   if (withTextconv) put(root, '.gitattributes', `${policyPath} diff=preview-hostile\n`);
   put(root, promptPath, 'Review the complete selected predecessor authority and migration changes.\n'); put(root, schemaPath, decisionSchema);
-  put(root, validationPath, { version: 1, rules: [{ when: { path: '/decision', equals: 'PASS' }, require: { path: '/valid', equals: true }, message: 'old selected validator' }] });
+  const legacyRules = [{ when: { path: '/decision', equals: 'PASS' }, require: { path: '/valid', equals: true }, message: 'old selected validator' }];
+  if (constrainLegacyAuthorityId) legacyRules.push({ when: { path: '/decision', equals: 'PASS' },
+    require: { path: '/authorityIds/0', equals: 'architecture' }, message: 'old selected authority ID validator' });
+  put(root, validationPath, { version: 1, rules: legacyRules });
   put(root, selection.eligibilitySchemaPath, bSchema); put(root, selection.eligibilityValidationPath,
     { version: 1, rules: [{ when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/valid', equals: true }, message: 'successor B validator' }] });
-  const authorities = authority.map((path, index) => ({ id: index ? 'governance' : 'architecture', repository: 'self', revision: 'authority-revision', path }));
+  const authorities = authority.map((path, index) => ({ id: successorIds[index], repository: 'self', revision: 'authority-revision', path }));
   put(root, manifestPath, { version: 1, authorities }); put(root, '.codex/gatekeeper/omitted.json', { version: 1, authorities: [authorities[0]] });
   put(root, policyPath, { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-6-luna', reasoningEffort: 'low',
     authorityFiles: authority, promptPath, schemaPath, validationPath } } });
@@ -144,6 +148,23 @@ test('initial migration cannot become eligible when its unchanged closed predece
   const head = migrationHead(f);
   const request = await preparePreviewLifecycle(migrationSpec(f, head), f.root);
   await assert.rejects(completePreviewLifecycle(request, ordinary('PASS'), f.root), /successor authority IDs are incompatible with the unchanged predecessor decision schema/);
+});
+
+test('initial migration checks successor authority IDs against unchanged predecessor decision rules', async t => {
+  const compatible = fixture(t, { constrainLegacyAuthorityId: true });
+  const compatibleHead = migrationHead(compatible);
+  const compatibleRequest = await preparePreviewLifecycle(migrationSpec(compatible, compatibleHead), compatible.root);
+  const compatibleResponse = ordinary('PASS', true);
+  const compatibleReceipt = await completePreviewLifecycle(compatibleRequest, compatibleResponse, compatible.root);
+  assert.equal(compatibleReceipt.eligibility, 'ELIGIBLE');
+  assert.deepEqual(compatibleResponse.semanticDecision.authorityIds, ['architecture', 'governance']);
+
+  const incompatible = fixture(t, { constrainLegacyAuthorityId: true, successorIds: ['successor-architecture', 'successor-governance'] });
+  const incompatibleHead = migrationHead(incompatible);
+  const incompatibleRequest = await preparePreviewLifecycle(migrationSpec(incompatible, incompatibleHead), incompatible.root);
+  const actualResponse = ordinary('PASS', true);
+  await assert.rejects(completePreviewLifecycle(incompatibleRequest, actualResponse, incompatible.root), /old selected authority ID validator/);
+  assert.deepEqual(actualResponse.semanticDecision.authorityIds, ['architecture', 'governance']);
 });
 
 test('initial migration diff ignores configured textconv and preserves the committed patch', async t => {

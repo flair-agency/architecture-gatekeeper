@@ -390,6 +390,9 @@ export async function completePreviewLifecycle(request, response, cwd = request?
     } catch {
       fail('initial migration successor authority IDs are incompatible with the unchanged predecessor decision schema.');
     }
+    if (validationPath !== null) {
+      validateDecisionRules({ ...decision, authorityIds }, jsonSnapshot(request.root, request.spec.baseSha, validationPath));
+    }
   }
   return seal({ version: 1, profile: PREVIEW_PROFILE, kind: 'preview-lifecycle-receipt', request, response, decision,
     eligibility: isEligibility ? decision.decision : request.spec.mode === 'migration' ? 'ELIGIBLE' : 'NOT_APPLICABLE', completedAt: new Date().toISOString(), adoption: 'PENDING', canonical: 'PENDING', assurance });
