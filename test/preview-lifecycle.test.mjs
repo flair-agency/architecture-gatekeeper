@@ -244,7 +244,7 @@ test('ordinary mode records PASS, BLOCK and OWNER_DECISION without promoting esc
 test('ordinary mode rejects later routes before request creation and on receipt revalidation', async t => {
   const f = fixture(t);
   const head = commitOn(f, 'unsupported-route', { 'app.txt': 'Candidate\n' });
-  for (const mode of ['addition', 'amendment', 'migration']) {
+  for (const mode of ['addition', 'migration']) {
     await assert.rejects(preparePreviewLifecycle(spec(f, mode, head, {}, {}), f.root), /unsupported spec/);
   }
   const request = await preparePreviewLifecycle(spec(f, 'review', head), f.root);
@@ -259,7 +259,7 @@ test('ordinary mode rejects later routes before request creation and on receipt 
   laterRequest.spec.mode = 'amendment';
   const sealedRequest = seal(laterRequest);
   const laterReceipt = seal({ ...receipt, request: sealedRequest });
-  await assert.rejects(validatePreviewReceipt(laterReceipt, f.root), /unsupported spec/);
+  await assert.rejects(validatePreviewReceipt(laterReceipt, f.root), /completed trigger and external record/);
 });
 
 test('ordinary completion enforces schema and selected deterministic validator', async t => {

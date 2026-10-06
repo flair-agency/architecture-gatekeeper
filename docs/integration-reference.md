@@ -887,8 +887,8 @@ relax the current fail-closed restriction checks.
 
 ## Ordinary review preview
 
-The `preview-unverified-procedure-v1` package surface currently implements only
-ordinary review (`mode: "review"`). It resolves the committed selection and all
+The `preview-unverified-procedure-v1` package surface implements ordinary review
+(`mode: "review"`) and a completed-`BLOCK` amendment (`mode: "amendment"`). It resolves the committed selection and all
 review inputs from the exact predecessor, materializes the entire selected
 Authority Set, and creates a request using the unchanged predecessor semantic
 schema and validators. Preparation reads Git objects and returns model/reasoning
@@ -898,8 +898,9 @@ Commit this version-1 selection at `.codex/gatekeeper/preview-lifecycle.json`
 before the reviewed change. Its policy, prompt, schema, validator and caller must
 match the predecessor's model-backed Codex policy; governance and `authorityPaths`
 must belong to its complete Authority Set. `authorityPaths` and `migrationPaths`
-remain required compatibility fields but do not enable those later procedures in
-this package slice. Eligibility and trigger declarations are inert here.
+remain required compatibility fields; `migrationPaths` does not enable migration.
+The selected eligibility schema and validator are used only when the
+predecessor explicitly selects `amendmentTriggerProfile: "completed-block-v1"`.
 
 ```json
 {
@@ -937,7 +938,7 @@ this package slice. Eligibility and trigger declarations are inert here.
 }
 ```
 
-Run from the consumer repository and pass its root explicitly to both API calls.
+Run from the consumer repository and pass its root explicitly to the API calls.
 Preparation reads committed inputs only; it does not call a model or use
 credentials. The caller is responsible for obtaining an actual review response
 through its selected review-only process.
@@ -955,20 +956,31 @@ const receipt = await completePreviewLifecycle(request, actualResponse, root);
 ```
 
 Send the emitted prompt and response schema to a review-only reviewer using the
-recorded `reviewer.model` and `reviewer.reasoningEffort`, then save its actual
-structured response as `decision.json`. Completion rechecks the exact committed
-inputs, predecessor decision schema, full selected authority IDs or paths, and
-every selected deterministic validator. It accepts only ordinary `PASS`, `BLOCK`
-or `OWNER_DECISION`; unresolved owner choices remain escalations.
+recorded `reviewer.model` and `reviewer.reasoningEffort`, then pass its actual
+structured response to `completePreviewLifecycle`. Completion rechecks the exact
+committed inputs, predecessor decision schema, full selected authority IDs or
+paths, and every selected deterministic validator. Ordinary completion accepts
+`PASS`, `BLOCK` or `OWNER_DECISION`; unresolved owner choices remain escalations.
+
+Only a completed ordinary `BLOCK` receipt can trigger the selected amendment
+route. Build a B spec with `mode: "amendment"`, the completed receipt as
+`trigger`, and the exact externally recorded amendment record as `record`.
+Preparation rejects other trigger outcomes and profiles, and scopes B to selected
+authority paths. Send its prompt and eligibility schema to the recorded reviewer
+and complete it with the actual response; only `ELIGIBLE` may proceed to
+`observePreviewLifecycle`. Observation verifies the exact receipt trailer, normal
+merge parents and tree, and canonical readback. `prepareFreshPreviewReview`
+requires a new A based on the observed successor. These APIs validate records;
+they do not integrate changes or contact a reviewer.
 
 The receipt remains `adoption=PENDING` and `canonical=PENDING`; all producer,
 execution, owner, custody, policy-protection and host-enforcement assurances are
 `UNVERIFIED`. It is not trusted acceptance evidence. This package surface exposes
-`preparePreviewLifecycle`, `completePreviewLifecycle`, `validatePreviewReceipt`
-and `previewReceiptBytes` from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
+`preparePreviewLifecycle`, `completePreviewLifecycle`, `validatePreviewReceipt`,
+`observePreviewLifecycle`, `prepareFreshPreviewReview` and `previewReceiptBytes`
+from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
 
-Addition, amendment, migration, integration observation and fresh-review
-APIs are unsupported by this ordinary-only package slice. Preparation rejects
-non-review modes before creating a request, and receipt revalidation repeats that
-check so a later-route receipt cannot be treated as an ordinary result. No consumer
-should infer those routes from inert selection declarations.
+Addition, owner-decision amendment and migration are unsupported. Preparation
+rejects unsupported modes, and receipt revalidation repeats the route checks so
+later-route receipts cannot be treated as supported results. No consumer should
+infer unsupported routes from inert selection declarations.

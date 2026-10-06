@@ -145,7 +145,8 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   mkdirSync(apiTests);
   symlinkSync(packageNodeModules, join(root, 'node_modules'), 'dir');
   copyFileSync(new URL('./preview-lifecycle.test.mjs', import.meta.url), join(apiTests, 'preview-lifecycle.test.mjs'));
-  execFileSync(process.execPath, ['--test', join(apiTests, 'preview-lifecycle.test.mjs')], {
+  copyFileSync(new URL('./preview-amendment-block.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-block.test.mjs'));
+  execFileSync(process.execPath, ['--test', join(apiTests, 'preview-lifecycle.test.mjs'), join(apiTests, 'preview-amendment-block.test.mjs')], {
     cwd: root, timeout: 120000, stdio: 'pipe',
   });
 } finally {
