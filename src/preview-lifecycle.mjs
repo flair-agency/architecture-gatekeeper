@@ -4,7 +4,7 @@ import { realpathSync, readFileSync, readdirSync } from 'node:fs';
 import { readCommittedAuthorityFile, materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys,
   validateAuthoritySetDecision } from './authority-set.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
-import { validateJsonSchema } from './json-schema.mjs';
+import { validateJsonSchema, validateJsonSchemaDefinition } from './json-schema.mjs';
 import { validateDecisionRules } from './validate-decision.mjs';
 
 // This profile intentionally has no production acceptance adapter or credential flow.
@@ -82,6 +82,48 @@ export function previewReceiptBytes(receipt) { return bytes(receipt); }
 function jsonSnapshot(root, revision, file) {
   const source = new TextDecoder('utf-8', { fatal: true }).decode(snapshot(root, revision, file));
   rejectDuplicateJsonKeys(source, file); return JSON.parse(source);
+}
+function containsAuthoritySetDigest(value) {
+  if (Array.isArray(value)) return value.some(containsAuthoritySetDigest);
+  if (typeof value === 'string') return value.split('/').includes('authoritySetDigest');
+  if (!value || typeof value !== 'object') return false;
+  return Object.entries(value).some(([key, child]) => key === 'authoritySetDigest' ||
+    (typeof child === 'string' && child.split('/').includes('authoritySetDigest')) || containsAuthoritySetDigest(child));
+}
+function validateInitialSuccessorEligibility(root, revision, schemaPath, validationPath, authorityIds) {
+  const schema = jsonSnapshot(root, revision, schemaPath);
+  validateJsonSchemaDefinition(schema);
+  const properties = schema?.properties;
+  if (schema.type !== 'object' || !properties || Array.isArray(properties) ||
+      !Object.hasOwn(properties, 'authorityIds') || !Array.isArray(schema.required) || !schema.required.includes('authorityIds') ||
+      schema.required.includes('authorityFiles')) {
+    fail('initial v1-to-v2 migration requires a successor B schema with required authorityIds and no required authorityFiles.');
+  }
+  const composed = value => Array.isArray(value) ? value.some(composed) : value && typeof value === 'object' &&
+    (['$ref', 'anyOf', 'oneOf', 'allOf', 'not', 'if', 'then', 'else'].some(key => Object.hasOwn(value, key)) ||
+      Object.values(value).some(composed));
+  if (['$ref', 'anyOf', 'oneOf', 'allOf', 'not', 'if', 'then', 'else', 'enum', 'const'].some(key => Object.hasOwn(schema, key)) ||
+      composed(properties.authorityIds) || containsAuthoritySetDigest(schema)) {
+    fail('initial v1-to-v2 migration does not support composed or digest-coupled successor B schemas.');
+  }
+  validateJsonSchema(authorityIds, properties.authorityIds);
+  if (validationPath === null) return;
+  const rules = jsonSnapshot(root, revision, validationPath);
+  validateDecisionRules({}, rules);
+  if (containsAuthoritySetDigest(rules)) fail('initial v1-to-v2 migration does not support digest-coupled successor B validators.');
+  for (const rule of rules.rules) {
+    if (['/authorityIds', '/authorityFiles'].some(prefix => rule.when.path === prefix || rule.when.path.startsWith(`${prefix}/`))) {
+      fail('initial v1-to-v2 migration does not support successor B rules coupled to predecessor authority fields.');
+    }
+    const match = /^\/authorityIds\/(0|[1-9][0-9]*)$/.exec(rule.require.path);
+    if (['/authorityIds', '/authorityFiles'].some(prefix => rule.require.path === prefix || rule.require.path.startsWith(`${prefix}/`))) {
+      if (!match) fail('initial v1-to-v2 migration does not support this successor B authority-field rule.');
+      const index = Number(match[1]);
+      if (index >= authorityIds.length || rule.require.equals !== authorityIds[index]) {
+        fail('initial v1-to-v2 migration successor B authority-ID rule is incompatible.');
+      }
+    }
+  }
 }
 function seal(value) { return { ...value, integritySha256: hash(value) }; }
 function unseal(value, kind) {
@@ -167,6 +209,10 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
         proposed.authorityPaths.some(file => !oldPaths.includes(file))) fail('migration proposed inputs are incompatible with this predecessor bridge.');
     const nextPolicyBytes = snapshot(root, spec.headSha, policyPath);
     const parsedNextPolicy = parseCiPolicyJson(utf8(nextPolicyBytes));
+    if (parsedNextPolicy.version === 2 && (containsAuthoritySetDigest(jsonSnapshot(root, spec.baseSha, selection.schemaPath)) ||
+        (selection.validationPath !== null && containsAuthoritySetDigest(jsonSnapshot(root, spec.baseSha, selection.validationPath))))) {
+      fail('initial v1-to-v2 migration does not support digest-coupled predecessor schemas or validators.');
+    }
     if (parsedNextPolicy.version === 2) {
       const enforcedBranches = Object.entries(parsedOldPolicy.branches).filter(([, branch]) => branch.mode === 'enforced');
       if (parsedOldPolicy.default.mode !== 'local-only' || enforcedBranches.length !== 1 ||
@@ -186,7 +232,7 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
     for (const key of ['mode', 'provider', 'model', 'reasoningEffort', 'executionSettingsBase64', 'executionSelection', 'reviewJobTimeoutMinutes', 'reviewStepTimeoutMinutes']) {
       if (nextPolicy[key] !== oldPolicy[key]) fail('migration changes selected review assurance or settings.');
     }
-    let nextMembers, nextManifest = null;
+    let nextMembers, nextManifest = null, nextSetDigest = null;
     if (nextPolicy.legacyAuthorityFilesBase64) {
       if (nextPolicy.legacyPromptPath !== oldPolicy.legacyPromptPath || nextPolicy.legacySchemaPath !== oldPolicy.legacySchemaPath ||
           nextPolicy.legacyValidationPath !== oldPolicy.legacyValidationPath) fail('migration changes predecessor instruction selectors.');
@@ -205,6 +251,7 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
       const nextSet = await materializeAuthoritySet({ manifestBytes, limits, selfRepository: spec.repository,
         selfRoot: root, authorityRevision: spec.headSha, profile: nextPolicy.authorityProfile ?? 'v1' });
       nextMembers = nextSet.members;
+      nextSetDigest = nextSet.setDigest;
       nextManifest = { path: manifestPath, sha256: digest(manifestBytes), bytesBase64: manifestBytes.toString('base64') };
     }
     const oldMembers = oldPaths.map(file => {
@@ -214,8 +261,12 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
     if (nextMembers.length !== oldMembers.length || oldMembers.some((member, index) =>
         nextMembers[index].repository !== member.repository || nextMembers[index].path !== member.path ||
         nextMembers[index].byteLength !== member.byteLength || nextMembers[index].sha256 !== member.sha256)) fail('migration changes, reorders, omits or replaces predecessor authority.');
+    if (nextManifest) {
+      validateInitialSuccessorEligibility(root, spec.headSha, proposed.eligibilitySchemaPath,
+        proposed.eligibilityValidationPath, nextMembers.map(member => member.id));
+    }
     successorAuthoritySet = { manifest: nextManifest, members: nextMembers.map(({ content, ...member }) => member),
-      setDigest: hash(nextMembers.map(({ content, ...member }) => member)) };
+      setDigest: nextManifest ? nextSetDigest : hash(nextMembers.map(({ content, ...member }) => member)) };
     for (const [name, value] of [['maxFileBytes', nextPolicy.authorityLimitsBase64 ? JSON.parse(Buffer.from(nextPolicy.authorityLimitsBase64, 'base64').toString()).maxFileBytes : 65536],
       ['maxTotalBytes', nextPolicy.authorityLimitsBase64 ? JSON.parse(Buffer.from(nextPolicy.authorityLimitsBase64, 'base64').toString()).maxTotalBytes : 262144]]) {
       const oldLimit = name === 'maxFileBytes' ? 65536 : 262144;
@@ -386,6 +437,10 @@ export async function completePreviewLifecycle(request, response, cwd = request?
       new Set(decision.authorityFiles).size !== members.length || members.some(m => !decision.authorityFiles.includes(m.path))) fail('decision omitted complete predecessor authority.');
   if ((request.policy.authorityProfile || Object.hasOwn(decision, 'authoritySetDigest')) &&
       decision.authoritySetDigest !== request.authoritySet.setDigest) fail('decision selected-set digest differs.');
+  if (request.spec.mode === 'migration' && decision.decision === 'PASS' && request.successorAuthoritySet?.manifest &&
+      Object.hasOwn(decision, 'authoritySetDigest')) {
+    fail('initial v1-to-v2 migration does not support digest-bearing M PASS decisions.');
+  }
   const validationPath = isEligibility ? request.selection.eligibilityValidationPath : request.selection.validationPath;
   if (validationPath !== null) validateDecisionRules(decision, jsonSnapshot(request.root, request.spec.baseSha, validationPath));
   const requiresPredecessorAuthorization = request.spec.mode === 'migration'
