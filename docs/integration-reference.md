@@ -1094,31 +1094,31 @@ a selection.
 
 | Procedure | Required predecessor state | Candidate boundary |
 | --- | --- | --- |
-| Ordinary review | Complete selected Authority Set and matching version-1 preview selection | `review` may return `PASS`, `BLOCK` or `OWNER_DECISION`; the receipt remains unverified evidence. |
-| BLOCK amendment | Ordinary completed `BLOCK` and predecessor-selected `completed-block-v1` | B must resolve only the exact bound trigger; unsupported or mixed changes are ineligible. |
-| Missing-decision addition | Ordinary completed `OWNER_DECISION` naming a missing decision ID | B appends only that decision and preserves existing authority bytes. |
-| Existing-choice amendment | Ordinary completed `OWNER_DECISION` plus predecessor-selected `completed-owner-decision-v1` | B proposes a material resolution of the exact existing target; the record is not authenticated owner approval. |
-| Initial legacy migration | Enforced legacy v1 policy, a compatible preview selection recorded in the exact predecessor, no trusted acceptance selection, and a predecessor `PASS` | One compatible v1/v2 successor only; preserve the complete selected authority bytes and reviewer settings and limit changes to the selected control-plane paths. |
+| Ordinary review | Enforced v1 review policy and a committed version-1 preview selection binding the exact repository, target, governance and authority scope, and review inputs | `review` may return `PASS`, `BLOCK` or `OWNER_DECISION`; the receipt remains unverified evidence. |
+| BLOCK amendment | Ordinary completed `BLOCK`; the same exact predecessor selection must select `completed-block-v1` and the B schema/validator | B must resolve only the exact bound trigger; unsupported or mixed changes are ineligible. |
+| Missing-decision addition | Ordinary completed `OWNER_DECISION` naming a missing decision ID; exact predecessor selection includes B schema/validator | B appends only that decision and preserves existing authority bytes. |
+| Existing-choice amendment | Ordinary completed `OWNER_DECISION`; exact predecessor selection chooses `completed-owner-decision-v1` and the B schema/validator | B proposes a material resolution of the exact existing target; the record is not authenticated owner approval. |
+| Initial legacy migration | Enforced legacy v1 policy, a compatible preview selection already recorded in the exact predecessor and binding repository, target, governance, authority scope, migration paths and v1 review inputs; no trusted acceptance selection | M must receive predecessor-schema `PASS`. One compatible v1/v2 successor only; preserve the selection, complete authority bytes, reviewer settings and limits, and change only the selected control-plane paths. |
 
 The previously documented source-matched archive at
-`9822ab915d63faadd8b2671f3a2f2507cb09e29d` and its installed-package fixtures exercise all five procedures,
-including negative eligibility cases under an earlier implementation. That
-cycle predates the requirement for a predecessor-recorded migration selection;
+`9822ab915d63faadd8b2671f3a2f2507cb09e29d` and its installed-package fixtures
+exercise all five procedures, including negative eligibility cases under an
+earlier implementation. That cycle predates the requirement for a predecessor-recorded migration selection;
 it does not verify that requirement or the current runtime. Its local synthetic
 consumer packet records a model-reviewed migration M `PASS`, successor A
 positive and negative reviews, B positive `ELIGIBLE` and negative `INELIGIBLE`
 reviews, and a fresh successor A `PASS`. It records successful normal
 integration and readback for the positive M and B transitions. These local
-fixture results do not establish
-that a downstream consumer selected the route, that its protected caller ran
+fixture results do not establish that a downstream consumer selected the route,
+that its protected caller ran
 the package, or that a protected acceptance check passed. The candidate's six
 assurance dimensions remain `UNVERIFIED`; preview receipts do not supply
 trusted acceptance.
 
 The current candidate must complete a fresh migration cycle using its exact
-installed runtime before this route's current predecessor-selection requirement
-can be claimed as covered. The earlier cycle and archive remain historical
-evidence and are not relabeled as verification of that requirement.
+installed runtime before this route's current predecessor-selection
+requirement can be claimed as covered. The earlier cycle and archive remain
+historical evidence and are not relabeled as verification of that requirement.
 
 The migration procedure does not support later migrations, incompatible
 bridges, changed or omitted authority members, changed reviewer settings,
