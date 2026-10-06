@@ -191,7 +191,8 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
       const manifestPath = nextPolicy.authorityManifestPath;
       const manifestBytes = snapshot(root, spec.headSha, manifestPath);
       const limits = JSON.parse(Buffer.from(nextPolicy.authorityLimitsBase64, 'base64').toString());
-      if (limits.maxFileBytes > 65536 || limits.maxTotalBytes > 262144 || limits.maxPromptBytes > 524288) fail('migration raises legacy authority bounds.');
+      if (limits.maxMembers > 16 || limits.maxFileBytes > 65536 ||
+          limits.maxTotalBytes > 262144 || limits.maxPromptBytes > 524288) fail('migration raises legacy authority bounds.');
       if (parseAuthorityManifest(manifestBytes, limits, nextPolicy.authorityProfile ?? 'v1').authorities.some(member => member.repository !== 'self')) fail('migration cannot add external authority.');
       const nextSet = await materializeAuthoritySet({ manifestBytes, limits, selfRepository: spec.repository,
         selfRoot: root, authorityRevision: spec.headSha, profile: nextPolicy.authorityProfile ?? 'v1' });

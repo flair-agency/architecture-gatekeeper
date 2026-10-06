@@ -64,9 +64,10 @@ function fixture(t, { preexistingSelection = true, selectionOverrides = {}, sche
   git(root, 'add', '.'); git(root, 'commit', '-m', 'Synthetic old enforced v1 predecessor');
   return { root, selection, base: git(root, 'rev-parse', 'HEAD'), promptPath, schemaPath, validationPath, before: 'Existing architecture decision.\n', textconvMarker: textconvMarker?.marker };
 }
-function migratedPolicy(f, { version = 2, model = 'gpt-6-luna', manifest = manifestPath, trustedRoute = false } = {}) {
+function migratedPolicy(f, { version = 2, model = 'gpt-6-luna', manifest = manifestPath, trustedRoute = false,
+  maxMembers = 16 } = {}) {
   const branch = { mode: 'enforced', model, reasoningEffort: 'low', authorityManifestPath: manifest,
-    authorityLimits: { maxManifestBytes: 16384, maxMembers: 8, maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 } };
+    authorityLimits: { maxManifestBytes: 16384, maxMembers, maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 } };
   if (trustedRoute) branch.ownerAmendment = { version: 1, grade: 'G0' };
   return { version, default: { mode: 'local-only' }, branches: { main: branch } };
 }
@@ -154,6 +155,7 @@ test('initial migration also fails closed on changed reviewer settings, v3, omit
     ['reviewer-settings', migratedPolicy(f, { model: 'different-model' }), /settings/],
     ['general-v3', migratedPolicy(f, { version: 3 }), /Unsupported|unrelated branch acceptance policy/],
     ['omitted-authority', migratedPolicy(f, { manifest: '.codex/gatekeeper/omitted.json' }), /changes, reorders, omits or replaces predecessor authority/],
+    ['expanded-member-limit', migratedPolicy(f, { maxMembers: 17 }), /legacy authority bounds/],
     ['trusted-route', migratedPolicy(f, { trustedRoute: true }), /owner amendment selection|trusted acceptance route/],
   ]) {
     const head = migrationHead(f, { policy }); await assert.rejects(preparePreviewLifecycle(migrationSpec(f, head), f.root), pattern, name);
