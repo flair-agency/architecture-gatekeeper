@@ -99,9 +99,6 @@ test('BLOCK-only amendment completes exact A→B→integration/readback→fresh 
 test('only a completed BLOCK trigger and predecessor-selected BLOCK profile can prepare B', async t => {
   const f = fixture(t); const pass = await makeTrigger(f, 'PASS'); const bHead = commitOn(f, 'b-after-pass', { [files[0]]: 'Changed\n' });
   await assert.rejects(preparePreviewLifecycle(spec(f, 'amendment', bHead, pass.receipt, recordFor(f, bHead, pass.receipt)), f.root), /completed BLOCK/);
-  const ownerFixture = fixture(t, 'completed-owner-decision-v1'); const owner = await makeTrigger(ownerFixture, 'OWNER_DECISION');
-  const ownerB = commitOn(ownerFixture, 'owner-trigger-b', { [files[0]]: 'Changed\n' });
-  await assert.rejects(preparePreviewLifecycle(spec(ownerFixture, 'amendment', ownerB, owner.receipt, recordFor(ownerFixture, ownerB, owner.receipt)), ownerFixture.root), /completed-block-v1/);
   await assert.rejects(preparePreviewLifecycle(spec(f, 'migration', bHead, {}, {}), f.root), /unsupported spec/);
 });
 

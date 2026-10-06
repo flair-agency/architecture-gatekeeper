@@ -889,7 +889,9 @@ relax the current fail-closed restriction checks.
 
 The `preview-unverified-procedure-v1` package surface implements ordinary review
 (`mode: "review"`), a completed-`BLOCK` amendment (`mode: "amendment"`), and
-missing-decision addition (`mode: "addition"`). It resolves the committed
+missing-decision addition (`mode: "addition"`). Existing-choice amendment also
+uses `mode: "amendment"` when the predecessor selects
+`amendmentTriggerProfile: "completed-owner-decision-v1"`. It resolves the committed
 selection and all review inputs from the exact predecessor, materializes the
 entire selected Authority Set, and creates a request using the unchanged
 predecessor semantic schema and validators. Preparation reads Git objects and
@@ -903,7 +905,8 @@ must belong to its complete Authority Set. `authorityPaths` and `migrationPaths`
 remain required compatibility fields; `migrationPaths` does not enable migration.
 The selected eligibility schema and validator are used for B routes. A
 completed-`BLOCK` amendment additionally requires the predecessor to select
-`amendmentTriggerProfile: "completed-block-v1"`.
+`amendmentTriggerProfile: "completed-block-v1"`; existing-choice amendment
+requires `completed-owner-decision-v1`.
 
 ```json
 {
@@ -986,6 +989,17 @@ rejected or ineligible. Complete the request with the selected eligibility
 schema and validator. Only `ELIGIBLE` may proceed through the same observation
 and fresh-review APIs described above.
 
+An existing-choice amendment requires a completed ordinary `OWNER_DECISION`
+and the predecessor-selected `completed-owner-decision-v1` profile. Its
+external `preview-amendment-record` names the existing target decision. The
+trigger must require an owner choice to change an existing decision; a missing,
+mixed, insufficient or unrelated trigger is ineligible. The record identifies
+a proposed target and is not authenticated owner approval. B must materially
+resolve only that target while preserving unrelated decisions and rules. An
+`ownerDecisionId` is required only if the unchanged predecessor schema requires
+one. Complete with the selected eligibility schema and validator; only
+`ELIGIBLE` may proceed through observation and a fresh successor review.
+
 The receipt remains `adoption=PENDING` and `canonical=PENDING`; all producer,
 execution, owner, custody, policy-protection and host-enforcement assurances are
 `UNVERIFIED`. It is not trusted acceptance evidence. This package surface exposes
@@ -993,7 +1007,7 @@ execution, owner, custody, policy-protection and host-enforcement assurances are
 `observePreviewLifecycle`, `prepareFreshPreviewReview` and `previewReceiptBytes`
 from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
 
-Owner-decision amendment and migration are unsupported. Preparation
+Migration is unsupported. Preparation
 rejects unsupported modes, and receipt revalidation repeats the route checks so
 later-route receipts cannot be treated as supported results. No consumer should
 infer unsupported routes from inert selection declarations.
