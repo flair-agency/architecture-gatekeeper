@@ -1094,7 +1094,7 @@ a selection.
 
 | Procedure | Required predecessor state | Candidate boundary |
 | --- | --- | --- |
-| Ordinary review | Enforced v1 review policy and a committed version-1 preview selection binding the exact repository, target, governance and authority scope, and review inputs | `review` may return `PASS`, `BLOCK` or `OWNER_DECISION`; the receipt remains unverified evidence. |
+| Ordinary review | Supported model-backed predecessor policy, complete selected Authority Set, and committed version-1 preview selection binding the exact repository, target, governance and authority scope, and review inputs | `review` may return `PASS`, `BLOCK` or `OWNER_DECISION`; the receipt remains unverified evidence. |
 | BLOCK amendment | Ordinary completed `BLOCK`; the same exact predecessor selection must select `completed-block-v1` and the B schema/validator | B must resolve only the exact bound trigger; unsupported or mixed changes are ineligible. |
 | Missing-decision addition | Ordinary completed `OWNER_DECISION` naming a missing decision ID; exact predecessor selection includes B schema/validator | B appends only that decision and preserves existing authority bytes. |
 | Existing-choice amendment | Ordinary completed `OWNER_DECISION`; exact predecessor selection chooses `completed-owner-decision-v1` and the B schema/validator | B proposes a material resolution of the exact existing target; the record is not authenticated owner approval. |
@@ -1103,9 +1103,10 @@ a selection.
 The previously documented source-matched archive at
 `9822ab915d63faadd8b2671f3a2f2507cb09e29d` and its installed-package fixtures
 exercise all five procedures, including negative eligibility cases under an
-earlier implementation. That cycle predates the requirement for a predecessor-recorded migration selection;
-it does not verify that requirement or the current runtime. Its local synthetic
-consumer packet records a model-reviewed migration M `PASS`, successor A
+earlier implementation. That implementation did not enforce the
+already-required predecessor-recorded migration selection, so its cycle does
+not verify that contract or the current runtime. Its local synthetic consumer
+packet records a model-reviewed migration M `PASS`, successor A
 positive and negative reviews, B positive `ELIGIBLE` and negative `INELIGIBLE`
 reviews, and a fresh successor A `PASS`. It records successful normal
 integration and readback for the positive M and B transitions. These local
@@ -1138,7 +1139,8 @@ the authority and receipt history.
 The available preview.2-to-preview.3 rehearsal has limited results. The
 preview.2 source is [`c6c45da24d755ddd51b3a595e614242f869ec3ad`](https://github.com/flair-agency/architecture-gatekeeper/tree/c6c45da24d755ddd51b3a595e614242f869ec3ad); its offline archive SHA-256 is
 `997f34c8a73826fffe1800bedddb29f8c2b6a62bba3f3adbd9d37dd46bd6cbea`, and
-all 87 packed files matched that source. The preview.3 candidate source is
+all 87 packed files matched that source. The historical preview.3
+implementation source is
 [`9822ab915d63faadd8b2671f3a2f2507cb09e29d`](https://github.com/flair-agency/architecture-gatekeeper/tree/9822ab915d63faadd8b2671f3a2f2507cb09e29d); its local archive SHA-256 is
 `68cffc5aa9580560d59cdf64506011001a7d10c88f16d7793c57a09e53244ad0`, with
 all 115 packed files matching that source. These are local source-matched
