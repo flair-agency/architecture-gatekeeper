@@ -984,6 +984,10 @@ must not select a trusted
 acceptance route, and the authority inputs must be compatible and self-owned.
 The migration retains the legacy ceiling of 16 authority members and the
 legacy per-file, total-authority and prompt bounds.
+The v1-to-v2 conversion supports only a local-only default, exactly one named
+enforced target, and unchanged local-only settings on any other named branches.
+It cannot introduce an enforced default or convert multiple named enforced
+branches; a same-version v1 migration does not use this conversion limit.
 Prepare M with
 `mode: "migration"`, `trigger: null`, and `record: null`, using the exact old
 and proposed commits. M must receive `PASS` under the predecessor's unchanged
@@ -993,7 +997,11 @@ as an `INELIGIBLE` completed receipt, including a rejection that reports missing
 predecessor authorization. Such a receipt preserves the result for validation
 and history; it cannot be integrated or used as a B trigger. Only an authorized
 `PASS` makes M eligible for integration.
-proposed policy/configuration and successor selection are untrusted M inputs;
+For a successor Authority Set, compatibility is checked by validating an
+ID-bearing successor view against both the unchanged predecessor schema and
+validator. Closed schemas may use a paths-only or IDs-only alternative; the
+stored reviewer response remains unchanged.
+The proposed policy/configuration and successor selection are untrusted M inputs;
 they may change only the selected control-plane paths. The successor must
 preserve every predecessor-selected authority member in the same order with
 identical raw bytes, preserve reviewer settings and limits, and not select a

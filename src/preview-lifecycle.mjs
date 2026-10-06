@@ -167,6 +167,14 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
         proposed.authorityPaths.some(file => !oldPaths.includes(file))) fail('migration proposed inputs are incompatible with this predecessor bridge.');
     const nextPolicyBytes = snapshot(root, spec.headSha, policyPath);
     const parsedNextPolicy = parseCiPolicyJson(utf8(nextPolicyBytes));
+    if (parsedNextPolicy.version === 2) {
+      const enforcedBranches = Object.entries(parsedOldPolicy.branches).filter(([, branch]) => branch.mode === 'enforced');
+      if (parsedOldPolicy.default.mode !== 'local-only' || enforcedBranches.length !== 1 ||
+          enforcedBranches[0][0] !== spec.targetBranch ||
+          Object.entries(parsedOldPolicy.branches).some(([name, branch]) => name !== spec.targetBranch && branch.mode !== 'local-only')) {
+        fail('initial v1-to-v2 migration supports only one named enforced target with an unchanged local-only default and local-only other branches.');
+      }
+    }
     const nextPolicy = resolveCiPolicy(parsedNextPolicy, spec.targetBranch);
     if (![1, 2].includes(parsedNextPolicy.version) || hash(parsedNextPolicy.default) !== hash(parsedOldPolicy.default) ||
         Object.keys(parsedNextPolicy.branches).sort().join() !== Object.keys(parsedOldPolicy.branches).sort().join() ||
@@ -390,13 +398,22 @@ export async function completePreviewLifecycle(request, response, cwd = request?
   if (request.spec.mode === 'migration' && decision.decision === 'PASS' && request.successorAuthoritySet?.manifest) {
     const authorityIds = request.successorAuthoritySet.members.map(member => member.id);
     if (authorityIds.some(id => typeof id !== 'string')) fail('initial migration successor Authority Set is incomplete.');
-    try {
-      validateJsonSchema({ ...response, semanticDecision: { ...decision, authorityIds } }, request.schema);
-    } catch {
-      fail('initial migration successor authority IDs are incompatible with the unchanged predecessor decision schema.');
-    }
-    if (validationPath !== null) {
-      validateDecisionRules({ ...decision, authorityIds }, jsonSnapshot(request.root, request.spec.baseSha, validationPath));
+    const successorDecisions = [
+      { ...decision, authorityIds },
+      { ...Object.fromEntries(Object.entries(decision).filter(([key]) => key !== 'authorityFiles')), authorityIds },
+    ];
+    const predecessorValidator = validationPath === null ? null : jsonSnapshot(request.root, request.spec.baseSha, validationPath);
+    const compatible = successorDecisions.some(successorDecision => {
+      try {
+        validateJsonSchema({ ...response, semanticDecision: successorDecision }, request.schema);
+        if (predecessorValidator !== null) validateDecisionRules(successorDecision, predecessorValidator);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    if (!compatible) {
+      fail('initial migration successor authority IDs are incompatible with the unchanged predecessor schema or required validators.');
     }
   }
   return seal({ version: 1, profile: PREVIEW_PROFILE, kind: 'preview-lifecycle-receipt', request, response, decision,
