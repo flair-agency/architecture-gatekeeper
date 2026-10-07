@@ -584,7 +584,7 @@ test('prepared decision forwards parent-only reservation and leaves rejection in
 function verificationInput(f) {
   const reviewInput = input(f);
   Object.assign(reviewInput.proxySessionOptions.processOptions, {
-    timeoutMs: 180000, maxOutputTokens: 16384, maxPromptBytes: 131072,
+    timeoutMs: 180000, maxOutputTokens: 16384, maxPromptBytes: 196608,
   });
   return { reviewInput, authorityProvenance, validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576 };
 }
@@ -606,7 +606,7 @@ test('selected verification connects adopted settings, complete shared validatio
     assert.equal(result.decision.decision, decision);
     assert.equal(result.execution.expectedExecution.requestedSettings.timeoutMs, 180000);
     assert.equal(result.execution.expectedExecution.requestedSettings.maxOutputTokens, 16384);
-    assert.equal(result.execution.expectedExecution.requestedSettings.maxPromptBytes, 131072);
+    assert.equal(result.execution.expectedExecution.requestedSettings.maxPromptBytes, 196608);
     assert.equal(readFileSync(ledger.path, 'utf8'), 'AGK334-V1\n');
     await assertProxyClosed(JSON.parse(readFileSync(f.reportPath, 'utf8')).endpoint);
   }
@@ -615,7 +615,7 @@ test('selected verification connects adopted settings, complete shared validatio
 test('selected verification rejects settings, injected reservation, missing ledger and incomplete authority', async t => {
   const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds: authorityIds.slice(1) }));
   const ledger = verificationLedger(t, f);
-  for (const [field, value] of [['timeoutMs', 180001], ['maxOutputTokens', 16385], ['maxPromptBytes', 131073], ['thinkingBudget', 1]]) {
+  for (const [field, value] of [['timeoutMs', 180001], ['maxOutputTokens', 16385], ['maxPromptBytes', 196609], ['maxPromptBytes', 131072], ['thinkingBudget', 1]]) {
     const supplied = verificationInput(f);
     supplied.reviewInput.proxySessionOptions.processOptions[field] = value;
     await assert.rejects(runPreparedGeminiCiVerification(supplied, ledger.fd), /settings disagree/);
