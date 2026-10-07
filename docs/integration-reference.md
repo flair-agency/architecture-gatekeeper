@@ -172,57 +172,13 @@ When an authority is inside a Git submodule, the local runtime reads it from the
 parent revision's pinned gitlink. It never fetches a missing component;
 unavailable pinned objects fail closed.
 
+<a id="adopt-the-protected-selection-before-relying-on-the-new-gate"></a>
+
 ## Upgrading legacy v1 consumers
 
-Check the installed package version and the caller's immutable workflow pin
-before choosing an upgrade procedure. A consumer still on 0.5.0 is not a
-0.5.1-compatible consumer merely because a newer package is installed locally.
-The 0.5.1 legacy v1 repair intentionally rejects enforced policies that lack
-base-selected authority and instruction paths.
-
-The ordinary reusable `architecture-gate-consumer.yml` needs `contents: read` and
-`pull-requests: write` from its caller. It contains no self-only OIDC or
-attestation signer. This repository's existing `architecture-gate.yml`
-retains those signing jobs and its attestation signer identity; ordinary consumers must not add `id-token: write`
-or `attestations: write` to work around a self-only permission requirement.
-This source change does not modify the already published 0.6.0-preview.1;
-consume it only through a separately verified corrected release and exact pin.
-
-### Adopt the protected selection before relying on the new gate
-
-1. Inventory the existing consumer-owned canonical authority files, CI prompt,
-   decision schema and optional validation file at the recorded base. Check
-   the proposed selectors against those exact bytes; copying this repository's
-   policy is not consumer adoption.
-2. Prepare explicit v1 `authorityFiles`, `promptPath`, `schemaPath`, and
-   `validationPath` (`null` if no additional validation is selected). Keep
-   the existing model, effort and authority meaning. The caller must use
-   protected review instructions and select the matching `validation-path`
-   (empty when the recorded selection is `null`).
-3. Check whether the previous consumer policy already authorizes an adoption
-   process that can make this selection and its base-owned caller canonical.
-   An owner must authorize the exact adoption under that consumer's governance;
-   package installation, a PR comment, and this runbook do not grant that power.
-4. If the old resolver rejects the new fields and the new resolver rejects the
-   old base, stop the normal upgrade PR at this adoption boundary. There is no
-   automatic bridge in this implementation, and this procedure authorizes no
-   administrative bypass or exception. The consumer owner must identify an
-   adoption process already permitted by its canonical governance and record
-   the exact authorized scope and failed/incomplete Gate result. If no such
-   process exists, the owner must settle that governance decision before
-   proceeding. Do not temporarily drop the
-   required check, enable an unselected owner route, infer selectors from the
-   candidate, or convert the failure to PASS.
-5. After actual adoption, read back the target branch and exact authority,
-   policy and caller identities. Refresh the upgrade PR against that base and
-   run the new gate. Verify least-privilege startup, protected snapshots,
-   decision validation and required acceptance on the exact refreshed head.
-   Local/native preparation alone is not successful CI acceptance.
-
-Update package/lockfile and any used Skill/workflow pins consistently with the
-selected corrected release. Preserve unsuccessful runs as history and report
-consumer adoption and host enforcement separately. This procedure enables no
-OWNER_AMENDMENT, App, merge queue, Environment migration or new owner route.
+The operator procedure now lives in [Owner intervention](owner-intervention.md#legacy-v1-consumer-upgrade).
+This reference retains the old heading and subsection fragments for links from
+release and consumer documentation.
 
 ## Local integration
 
@@ -342,7 +298,7 @@ deduplicated. Read Hook context in the active turn or a later user turn; an
 idle session does not wake to deliver it. Treat all results as after-the-fact
 development feedback and check the revision, request, and snapshot identities
 before relating them to a candidate. The actual ordinary-checkout CLI loop is
-recorded in the [dogfood investigation](investigations/2026-10-01-local-screening-adapter-dogfood.md).
+recorded in the [dogfood investigation](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-01-local-screening-adapter-dogfood.md).
 Linked-worktree discovery remains unresolved in [Issue #250](https://github.com/flair-agency/architecture-gatekeeper/issues/250); it does not block an ordinary-checkout trial.
 
 ## Codex Skill installation
@@ -439,36 +395,9 @@ unavailable for cost attribution.
 
 #### Self-review credential migration
 
-This procedure applies only to this repository's self-review workflow. It does
-not configure credentials for ordinary reusable-workflow consumers.
-
-The self-review workflow keeps using the repository `OPENAI_API_KEY` secret
-unless the repository variable `ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT` is
-set to the exact string `true`. Stage the migration by first creating the
-`architecture-gate-self-protected` GitHub Actions Environment, limiting its
-deployment branch to `main`, and adding its `OPENAI_API_KEY` secret. Then set
-the variable to `true`. The workflow validates that the opt-in comes from this
-repository's `main` self-review workflow and only assigns the Environment to
-the three jobs that call OpenAI: ordinary review, OWNER_ADDITION eligibility,
-and OWNER_AMENDMENT semantic eligibility.
-
-On opt-in, the caller deliberately passes an empty repository key. A missing
-Environment key therefore fails review without falling back to the repository
-secret. Keep the repository secret until every workflow consumer has migrated;
-remove it only after those consumers are verified on their Environment-backed
-route. Reusable workflow users are unchanged because Environment selection
-defaults off.
-
-The repository variable is an opt-in selector, not proof of host configuration.
-Until the Environment is provisioned and its `main` deployment restriction and
-secret access are read back, this procedure makes no claim of verified
-credential isolation or successful Environment-backed execution.
-
-This variable stages credential selection for the existing self workflow. It
-does not create the separate protected App receiver or complete its rollout.
-That receiver still needs its own `main`-only Environment and App credentials,
-minimal App installation permissions, required-check source configuration,
-and host readback before any receiver activation.
+This repository-only procedure now lives in [GitHub assurance](github-assurance.md#self-review-credential-migration).
+It describes self-review Environment credential selection; ordinary consumers
+are unaffected.
 
 ### Gemini CI Review Runner
 
@@ -689,7 +618,7 @@ jobs on each review. This reduces repeated work and adopts upstream dependency
 trust; it does not preserve the previous source/bundle verification claim.
 Review jobs retain policy dependencies and credential isolation. A revision
 update remains a reviewed workflow change. Git history retains the retired fork manifests. The
-[Issue #45 trust investigation](investigations/2026-09-23-codex-action-integrity-trust-design.md)
+[Issue #45 trust investigation](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-09-23-codex-action-integrity-trust-design.md)
 documents the retired mechanism, not active authorization.
 
 To enforce consumer-owned cross-field invariants in CI, pass
@@ -1328,48 +1257,15 @@ those protected consumer inputs. Before recommending an update or pin change,
 record and test each component against the same committed fixture and preserve
 the authority and receipt history.
 
-The available preview.2-to-preview.3 rehearsal has limited results. The
-preview.2 source is [`c6c45da24d755ddd51b3a595e614242f869ec3ad`](https://github.com/flair-agency/architecture-gatekeeper/tree/c6c45da24d755ddd51b3a595e614242f869ec3ad); its offline archive SHA-256 is
-`997f34c8a73826fffe1800bedddb29f8c2b6a62bba3f3adbd9d37dd46bd6cbea`, and
-all 87 packed files matched that source. The historical preview.3
-implementation source is
-[`9822ab915d63faadd8b2671f3a2f2507cb09e29d`](https://github.com/flair-agency/architecture-gatekeeper/tree/9822ab915d63faadd8b2671f3a2f2507cb09e29d); its local archive SHA-256 is
-`68cffc5aa9580560d59cdf64506011001a7d10c88f16d7793c57a09e53244ad0`, with
-all 115 packed files matching that source. These are local source-matched
-archives; no registry artifact readback is recorded.
+Until exact evidence for the relevant recovery question is recorded, make no
+recovery recommendation. A package pin alone cannot reverse adopted authority;
+any recovery must preserve history and follow the consumer's already-authorized
+procedure. If no compatible procedure is demonstrated, stop and escalate the
+unresolved consumer decision rather than inventing a downgrade or exception.
 
-The synthetic fixture was `fixture/migration`, with unchanged legacy-v1 base
-`019b82513a2cf2a40fc8478af9a48766c445f417`. The old package resolved its
-enforced Luna/low legacy selection and materialized its selected authority
-with provenance. Using that same old runtime, a separate check also resolved
-the proposed v2 policy and materialized the full two-member successor
-Authority Set; exact member-ID validation accepted the complete set and
-rejected an omitted ID. The deterministic validator accepted mechanical
-synthetic inputs; these were not model reviews. The old package does not export
-`@flair-agency/architecture-gatekeeper/preview-lifecycle`. This establishes
-resolver/materializer compatibility for that fixture only. It does not verify
-the old workflow or Skill execution, hosted execution, a full old-pin
-acceptance run, or an actual consumer's pin set. It also does not establish
-that rolling back the package after migration readback is safe or unsafe.
-
-The fixture packet records source blob identities for
-`.github/workflows/architecture-gate-consumer.yml` and
-`skills/architecture-review/SKILL.md` at both commits. Those blobs were not
-executed as the fixture's selected pins: the fixture caller used synthetic
-`fixture/runtime@1111111111111111111111111111111111111111` and
-`fixture/runtime@2222222222222222222222222222222222222222` references. The
-recorded workflow and Skill identities therefore do not demonstrate their
-runtime compatibility or an actual consumer pin set.
-
-| Recovery question | Evidence required before guidance | Current result |
-| --- | --- | --- |
-| Can the previous runtime still resolve the migrated policy and read its full Authority Set? | Exact old package archive, unchanged fixture policy and caller, resolver result, and complete materializer identity | The old runtime resolved the proposed successor v2 policy and materialized its complete two-member set in the synthetic fixture; broader compatibility is unverified. |
-| Can the previous package/workflow/Skill pin set run the consumer's required review and acceptance checks? | Exact package, immutable workflow and Skill revisions; protected fixture run; ordinary positive and required negative outcomes | Not verified. Source blob identities are recorded but were not executed as selected pins; the previous package lacks the preview API export. |
-| Is a pin change or rollback safe after migration adoption/readback? | Consumer-owned recovery procedure and a fixture run against the exact adopted successor policy, with adoption and canonical placement recorded separately | No recommendation established. Do not infer either compatibility or incompatibility from resolver/materializer success alone. |
-| Has a real consumer adopted the candidate or passed protected acceptance? | Exact consumer base and pin set, protected hosted run, acceptance result and canonical readback | Not established by package-fixture evidence. |
-
-Until the relevant row has exact evidence, make no recovery recommendation.
-A package pin alone cannot reverse adopted authority; any recovery must
-preserve history and follow the consumer's already-authorized procedure. If no
-compatible procedure is demonstrated, stop and escalate the unresolved
-consumer decision rather than inventing a downgrade or exception.
+The historical preview.2-to-preview.3 rehearsal, including its limits and
+source-matched fixture results, is preserved in the [repository investigation
+record](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-07-preview-package-pin-recovery-history.md).
+For present package support boundaries, see [preview support and recovery
+status](#preview-support-and-recovery-status). The investigation filename date
+marks its 2026-10-07 extraction; the rehearsal event date was not recorded.

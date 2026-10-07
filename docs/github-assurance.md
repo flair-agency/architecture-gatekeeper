@@ -182,6 +182,40 @@ provenance under the current contract.
 
 ## This repository as a reference
 
+### Self-review credential migration
+
+This procedure applies only to this repository's self-review workflow. It does
+not configure credentials for ordinary reusable-workflow consumers.
+
+The self-review workflow keeps using the repository `OPENAI_API_KEY` secret
+unless the repository variable `ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT` is
+set to the exact string `true`. Stage the migration by first creating the
+`architecture-gate-self-protected` GitHub Actions Environment, limiting its
+deployment branch to `main`, and adding its `OPENAI_API_KEY` secret. Then set
+the variable to `true`. The workflow validates that the opt-in comes from this
+repository's `main` self-review workflow and only assigns the Environment to
+the three jobs that call OpenAI: ordinary review, OWNER_ADDITION eligibility,
+and OWNER_AMENDMENT semantic eligibility.
+
+On opt-in, the caller deliberately passes an empty repository key. A missing
+Environment key therefore fails review without falling back to the repository
+secret. Keep the repository secret until every workflow consumer has migrated;
+remove it only after those consumers are verified on their Environment-backed
+route. Reusable workflow users are unchanged because Environment selection
+defaults off.
+
+The repository variable is an opt-in selector, not proof of host configuration.
+Until the Environment is provisioned and its `main` deployment restriction and
+secret access are read back, this procedure makes no claim of verified
+credential isolation or successful Environment-backed execution.
+
+This variable stages credential selection for the existing self workflow. It
+does not create the separate protected App receiver or complete its rollout.
+That receiver still needs its own `main`-only Environment and App credentials,
+minimal App installation permissions, required-check source configuration,
+and host readback before any receiver activation.
+
+
 The following is a historical host-configuration snapshot recorded in the
 documentation at baseline commit `3f71fece350c`, reviewed on 2026-10-07. Its
 original API observation timestamp was not preserved, so these values are not
@@ -214,7 +248,7 @@ a live verification and are not permanent hosting guarantees or proof of
   opt-in does not enable `OWNER_AMENDMENT / G0` acceptance; a successful ordinary `PASS` check
   or a produced trigger record alone does not establish adoption.
 - #83 exercised test-only real-PR BLOCK production and GitHub artifact
-  attestation. Its [investigation report](investigations/2026-09-25-real-pr-block-probe-implementation.md)
+  attestation. Its [investigation report](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-09-25-real-pr-block-probe-implementation.md)
   and test-only verifier remain. An [isolated merge-queue probe](https://github.com/flair-agency/architecture-gatekeeper/pull/155)
   also reran a required check on `merge_group` and preserved the exact PR head
   as a merge commit parent. A later [isolated tag probe](https://github.com/flair-agency/architecture-gatekeeper/issues/83#issuecomment-5854459496)
