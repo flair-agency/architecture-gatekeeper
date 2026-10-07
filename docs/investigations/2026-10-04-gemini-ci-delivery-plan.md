@@ -412,3 +412,19 @@ workflow explicitly rejects a resolved non-Codex provider before review.
 Recognizing a policy encoding must never send a Gemini model selection through
 the existing Codex action. A parsed v6 policy is therefore not yet an executable
 Gemini CI route.
+
+## Verification dispatch reservation seam
+
+The internal prepared Gemini path may receive a trusted-parent synchronous
+`reserveDispatch` capability. The proxy invokes it after local route/body
+validation and immediately before creating each upstream request, including
+streaming calls. Only literal `true` permits dispatch; failure exposes a fixed
+nonsecret response and sends nothing. Failed/uncertain upstream requests do not
+refund a reservation. No budget data or capability is forwarded to the CLI.
+
+This seam does not itself allocate the five-attempt ledger, prove durable
+accounting, or activate ordinary CI. The selected verification launcher must
+supply the private durable reservation capability across its sessions before
+any authenticated #334 verification. Omitting this optional seam preserves
+existing unselected callers; it is not a permissible omission by that selected
+verification launcher. No request JSON can select or replace the capability.
