@@ -438,3 +438,9 @@ and descriptor closure after proxy shutdown; it must not reset the allocation
 by selecting a fresh file. Basic regular-file/ownership/mode/link checks are
 integrity checks, not authentication of hostile host custody. This does not
 provide cross-job ledger transport or enable hosted verification by itself.
+
+Initialization is a separate operation, permitted only after the launcher has
+successfully created the fixed allocation file exclusively. Empty state alone
+is never evidence of creation: the resume/reservation operation rejects empty
+or truncated records without writing a header. The launcher must never invoke
+initialization while reopening a prior allocation.

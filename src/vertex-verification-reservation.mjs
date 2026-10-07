@@ -37,6 +37,18 @@ function append(fd, text, offset) {
 }
 
 /**
+ * Initialize only after the trusted launcher successfully creates the fixed
+ * allocation file exclusively (for example, openSync(path, 'wx+', 0o600)).
+ * An empty reopened file is not proof of creation and must never use this path.
+ */
+export function initializeVertexVerificationLedger(fd) {
+  if (!Number.isSafeInteger(fd) || fd < 3) throw new Error('Verification counter requires a caller-owned file descriptor.');
+  const stat = inspect(fd);
+  if (stat.size !== 0) throw new Error('Verification counter initialization requires a newly created empty file.');
+  append(fd, HEADER, 0);
+}
+
+/**
  * The trusted launcher owns one fixed, private, exclusively accessed ledger
  * file for this allocation. It creates/opens the file, durably establishes its
  * directory entry, retains it across sessions/restarts, and closes the fd only
@@ -50,11 +62,7 @@ function append(fd, text, offset) {
  */
 export function createVertexVerificationReservation(fd) {
   if (!Number.isSafeInteger(fd) || fd < 3) throw new Error('Verification counter requires a caller-owned file descriptor.');
-  let initial = inspect(fd);
-  if (initial.size === 0) {
-    append(fd, HEADER, 0);
-    initial = inspect(fd);
-  }
+  const initial = inspect(fd);
   readCount(fd, initial);
   const identity = { dev: initial.dev, ino: initial.ino };
   return () => {

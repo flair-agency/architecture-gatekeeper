@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, closeSync, linkSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, closeSync, ftruncateSync, linkSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { createVertexVerificationReservation } from '../src/vertex-verification-reservation.mjs';
+import { createVertexVerificationReservation, initializeVertexVerificationLedger } from '../src/vertex-verification-reservation.mjs';
 
 function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), 'vertex-verification-ledger-'));
@@ -15,6 +15,7 @@ function fixture(t) {
 test('five reservations persist across sessions and a new supervisor process', t => {
   const path = fixture(t);
   let fd = openSync(path, 'wx+', 0o600);
+  initializeVertexVerificationLedger(fd);
   try {
     const reserve = createVertexVerificationReservation(fd);
     assert.equal(reserve(), true);
@@ -65,6 +66,7 @@ test('missing, malformed and nonprivate descriptors are rejected', t => {
 test('world-accessible, hardlinked and unlinked ledgers cannot authorize sends', t => {
   const path = fixture(t);
   let fd = openSync(path, 'wx+', 0o600);
+  initializeVertexVerificationLedger(fd);
   try {
     const reserve = createVertexVerificationReservation(fd);
     chmodSync(path, 0o644);
@@ -76,5 +78,26 @@ test('world-accessible, hardlinked and unlinked ledgers cannot authorize sends',
     rmSync(path + '-alias');
     rmSync(path);
     assert.equal(reserve(), false);
+  } finally { closeSync(fd); }
+});
+
+
+test('empty or truncated reopened state never initializes or refunds a spent allocation', t => {
+  const path = fixture(t);
+  let fd = openSync(path, 'wx+', 0o600);
+  try {
+    assert.throws(() => createVertexVerificationReservation(fd), /invalid/);
+    assert.equal(readFileSync(path, 'utf8'), '');
+    initializeVertexVerificationLedger(fd);
+    const reserve = createVertexVerificationReservation(fd);
+    assert.equal(reserve(), true);
+    assert.throws(() => initializeVertexVerificationLedger(fd), /newly created/);
+    ftruncateSync(fd, 0);
+    assert.equal(reserve(), false);
+  } finally { closeSync(fd); }
+  fd = openSync(path, 'r+');
+  try {
+    assert.throws(() => createVertexVerificationReservation(fd), /invalid/);
+    assert.equal(readFileSync(path, 'utf8'), '');
   } finally { closeSync(fd); }
 });
