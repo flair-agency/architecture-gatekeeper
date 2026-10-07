@@ -31,7 +31,7 @@ function digest(bytes) { return createHash('sha256').update(bytes).digest('hex')
 
 function exactInput(input) {
   const keys = ['root', 'repository', 'baseBranch', 'baseSha', 'headSha', 'reviewedSha',
-    'policyPath', 'promptPath', 'schemaPath', 'validationPath'];
+    'policyPath', 'promptPath', 'schemaPath', 'validationPath', 'referencePaths'];
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
       Object.getPrototypeOf(input) !== Object.prototype || Object.keys(input).length !== keys.length ||
       keys.some(key => !Object.hasOwn(input, key) || !Object.getOwnPropertyDescriptor(input, key)?.enumerable ||
@@ -91,6 +91,10 @@ export async function prepareGeminiCiVerificationInput(supplied) {
   if (!Object.hasOwn(input, 'validationPath') || (input.validationPath !== null && !validPath(input.validationPath))) {
     fail('validationPath must be an explicit canonical path or null.');
   }
+  if (!Array.isArray(input.referencePaths) || input.referencePaths.length > WORKSPACE_LIMITS.maxFiles ||
+      input.referencePaths.some(path => !validPath(path))) {
+    fail('referencePaths must be an explicit array of at most 32 canonical protected paths.');
+  }
   const selectedPaths = [input.policyPath, input.promptPath, input.schemaPath,
     ...(input.validationPath === null ? [] : [input.validationPath])];
   if (new Set(selectedPaths).size !== selectedPaths.length) fail('protected configuration paths must be distinct.');
@@ -134,7 +138,7 @@ export async function prepareGeminiCiVerificationInput(supplied) {
   const protectedPromptText = `${decode(promptBytes, 'base review prompt')}${materialized.prompt}`;
   const packetReferencePaths = [...new Set([input.policyPath, input.promptPath, input.schemaPath, manifestPath,
     ...(input.validationPath === null ? [] : [input.validationPath]),
-    ...manifest.authorities.map(member => member.path)])];
+    ...manifest.authorities.map(member => member.path), ...input.referencePaths])];
   const packet = prepareReviewFileContext({
     root: input.root, baseSha: input.baseSha, headSha: input.headSha, reviewedSha: input.reviewedSha,
     referencePaths: packetReferencePaths, limits: WORKSPACE_LIMITS,
