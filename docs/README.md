@@ -19,7 +19,7 @@ changing its authority or implementation status.
 | Find normative responsibilities and assurance rules | [Architecture contract](architecture.md) and its six members listed at the top | Binding consumer and package contract; owner decisions belong in canonical authority |
 | Read adopted Fork authorization boundaries | [Review execution contract](architecture/review-execution.md#target-fork-pr-review-authorization-issue-331-owner-direction-2026-10-04) | Inactive shared target, separate from this repository's self-only Fork rule |
 | Use or assess the explicitly selected preview API | [Unverified preview lifecycle API](integration-reference.md#unverified-preview-lifecycle-api) and [recovery status](integration-reference.md#preview-support-and-recovery-status) | Predecessor-selected preview procedures; assurance remains `UNVERIFIED` |
-| Inspect dated experiments and historical evidence | [Investigation archive](investigations/) | Non-normative evidence and proposal history |
+| Inspect dated experiments and historical evidence | [Repository-only investigation index](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/index.md) | Non-normative evidence and proposal history |
 
 ## Contract navigation
 
@@ -36,7 +36,7 @@ route's conditions and exceptions together with the shared invariants.
 | Existing-decision governance | [Owner amendment and self trigger profiles](architecture/owner-amendment.md#target-owner-amendment-governance-issue-75-owner-decision), [procedural BLOCK amendment target](architecture/owner-amendment.md#target-procedural-block-amendment-profile-issue-147-owner-decision), [exact-claim authorization and revocation](architecture/owner-amendment.md#separate-exact-claim-authorization-and-revocation-owner-decision) |
 | Development and rollout | [Dogfooding and change discipline](architecture/self-profile.md#dogfooding-and-change-discipline), [tracked work](architecture.md#relationship-to-tracked-work) |
 
-[Investigations](investigations/) preserve dated experiments and proposals.
+[Investigations index in the repository](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/index.md) preserves dated experiments and proposals.
 They do not replace the primary operational guides or amend the architecture
 contract.
 
