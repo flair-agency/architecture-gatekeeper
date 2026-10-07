@@ -44,6 +44,11 @@ export function rejectDuplicateJsonKeys(source, label = 'manifest', options = {}
   if (!Number.isSafeInteger(maxDepth) || maxDepth < 1 || maxDepth > 514) {
     fail(`${label} duplicate-key parser depth must be within 1..514.`);
   }
+  if (typeof source !== 'string') fail(`${label} JSON source must be a string.`);
+  // Validate the grammar before the duplicate-key scanner relies on separators
+  // and closing delimiters. Several callers also parse first, but this shared
+  // entrypoint must remain safe when they do not.
+  try { JSON.parse(source); } catch { fail(`${label} is not valid JSON.`); }
   let position = 0;
   const white = () => { while (/\s/.test(source[position] ?? '')) position++; };
   const string = () => {
