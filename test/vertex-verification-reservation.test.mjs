@@ -4,7 +4,7 @@ import { chmodSync, closeSync, ftruncateSync, linkSync, mkdtempSync, openSync, r
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { createVertexVerificationReservation, initializeVertexVerificationLedger } from '../src/vertex-verification-reservation.mjs';
+import { createVertexVerificationReservation, initializeVertexVerificationLedger, readVertexVerificationReservationCount } from '../src/vertex-verification-reservation.mjs';
 
 function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), 'vertex-verification-ledger-'));
@@ -18,8 +18,10 @@ test('five reservations persist across sessions and a new supervisor process', t
   initializeVertexVerificationLedger(fd);
   try {
     const reserve = createVertexVerificationReservation(fd);
+    assert.equal(readVertexVerificationReservationCount(fd), 0);
     assert.equal(reserve(), true);
     assert.equal(reserve(), true);
+    assert.equal(readVertexVerificationReservationCount(fd), 2);
   } finally { closeSync(fd); }
   const child = spawnSync(process.execPath, ['--input-type=module', '-e', `
     import { openSync, closeSync } from 'node:fs';
@@ -33,7 +35,11 @@ test('five reservations persist across sessions and a new supervisor process', t
   assert.deepEqual(JSON.parse(child.stdout), [true, true, true, false]);
   assert.equal(readFileSync(path, 'utf8'), 'AGK334-V1\n1\n2\n3\n4\n5\n');
   fd = openSync(path, 'r+');
-  try { assert.equal(createVertexVerificationReservation(fd)(), false); }
+  try {
+    assert.equal(readVertexVerificationReservationCount(fd), 5);
+    assert.equal(createVertexVerificationReservation(fd)(), false);
+    assert.equal(readVertexVerificationReservationCount(fd), 5);
+  }
   finally { closeSync(fd); }
 });
 
@@ -48,6 +54,7 @@ test('corruption after startup and read-only reservation fail closed without res
     writeFileSync(path, 'AGK334-V1\n1\n3\n');
     assert.equal(reserve(), false);
     assert.throws(() => createVertexVerificationReservation(fd), /invalid/);
+    assert.throws(() => readVertexVerificationReservationCount(fd), /invalid/);
   } finally { closeSync(fd); }
 });
 

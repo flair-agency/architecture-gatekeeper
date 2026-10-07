@@ -48,6 +48,12 @@ export function initializeVertexVerificationLedger(fd) {
   append(fd, HEADER, 0);
 }
 
+/** Read consumed slots for private diagnostics; this does not reserve or refund. */
+export function readVertexVerificationReservationCount(fd) {
+  if (!Number.isSafeInteger(fd) || fd < 3) throw new Error('Verification counter requires a caller-owned file descriptor.');
+  return readCount(fd, inspect(fd));
+}
+
 /**
  * The trusted launcher owns one fixed, private, exclusively accessed ledger
  * file for this allocation. It creates/opens the file, durably establishes its
