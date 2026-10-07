@@ -42,7 +42,7 @@ export function snapshotPreparedGeminiCiReviewInput(input) {
       processOptions: { ...input.proxySessionOptions.processOptions } } };
 }
 
-function composePrompt(protectedPromptText, schemaText) {
+export function composePreparedGeminiCiPrompt(protectedPromptText, schemaText) {
   return `${protectedPromptText}\n\nProtected output schema (follow this schema exactly; downstream CI validation remains authoritative):\n${schemaText}\n`;
 }
 
@@ -80,7 +80,7 @@ export async function runPreparedGeminiCiReview(suppliedInput) {
   if (!Number.isSafeInteger(processOptions.maxPromptBytes) || processOptions.maxPromptBytes < 1 || processOptions.maxPromptBytes > GEMINI_CLI_STDIN_LIMIT) {
     throw new Error('Prepared Gemini CI review requires an explicit positive prompt byte limit no larger than the pinned CLI stdin limit.');
   }
-  const prompt = composePrompt(input.protectedPromptText, protectedDecisionSchemaText);
+  const prompt = composePreparedGeminiCiPrompt(input.protectedPromptText, protectedDecisionSchemaText);
   if (Buffer.from(prompt, 'utf8').toString('utf8') !== prompt) {
     throw new Error('Prepared Gemini CI complete prompt is not valid UTF-8 text.');
   }
