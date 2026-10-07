@@ -20,18 +20,24 @@ const POLICY_PATH = '.codex/gatekeeper/gemini-verification-policy.json';
 const PROMPT_PATH = '.codex/gatekeeper/ci-prompt.md';
 const SCHEMA_PATH = '.codex/gatekeeper/ci-decision.schema.json';
 const VALIDATION_PATH = '.codex/gatekeeper/decision.validation.json';
-const EXPECTED_PREDECESSOR_SHA = '39966c75995e8ce75ef9b014e795eb32a13436e2';
+const RUNTIME_LOCK_PATH = '.codex/gatekeeper/gemini-verification-package-lock.json';
+const EXPECTED_PREDECESSOR_SHA = '21731bf98e998cddf13c085cc4a02bb51bfda498';
 const PUBLIC_KEY_PEM='-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAnZVHMkUmRdmwVbfIAhb+\nQAAIezgXahPDeOGtQvy6P2kn97TIhekWCYTO7krC3aUUpk1MvRzdxnkpJ/Z5sPXt\nrvmdwvWKcjXrtPVyd3zDJ6wJWuQigblUET+qAjZ1+YIdJnj+pRl4LM+nzHvEryX1\navwoZcL52CUh9LwiR+N8knGJMYOCFTUv5NMdx0esEk5UaadaoJquKY+iJKnExGK3\n6hbrR1KlItgRj+vBBImcwTpsJx6d6NkUSkPX2TnVqLtTQljqqBFViCTxK64pvSPW\nAbpXBNn4RJEFiTTfQczaQ9RAo1txJonYhaSX4iIAqEG1FYHm00Q6wN7tKiHdzpW7\nsXfqQ5PZWmKCkJCiMiHAx4XbRGbPxNKqclCkJRVJ4ZOGHtVzB7Btu7hI3LQFyoyK\nTEvzi+reS+xUvMd/XKmGFlXreATQqZwWP1E0m4Yv6GQsmOhSV+nmTQXdX31qe4B9\nB+/SQO4EhyCopV7ZbtwbgKtFj6TV7dkMUinpcXdXps2BAgMBAAE=\n-----END PUBLIC KEY-----\n';
 const PUBLIC_KEY_SHA256 = '635e87fee174aaca8b86ae9863fdc26926f969171c67d9678b96176388e80ba3';
 const CLI_TARBALL_INTEGRITY = 'sha512-A1rw0Tf2sHLpGncfYdaq5WaJIufKAP8il4BmHD5Yw4ewmB/Wo0vRQb2bEvx7OqyaPFPZCh0hVhcMKsICZyIBww==';
 const RUNTIME_PACKAGE_NAME = '@google/gemini-cli';
 const RUNTIME_VERSION = '0.62.0';
+const AUTHORIZED_RUNTIME_LOCK_SHA256 = 'ffc6d0296558b2bcd12278f45c48151cf720d4cdfcbdb06a09ee87b24cf97b42';
 const MAX_RESERVATIONS = 5;
+const VERIFICATION_START_CLAIM = 'verification-start.claim';
+const VERIFICATION_START_CLAIM_BYTES = Buffer.from('AGK334-VERIFICATION-START-V1\n');
 const REFERENCE_PATHS = Object.freeze([
   'README.md', 'package.json', 'docs/architecture.md', 'docs/README.md',
   'src/prepared-gemini-ci-verification.mjs', 'src/gemini-cli-proxy-session.mjs',
   'src/gemini-security-proxy.mjs', 'src/gemini-cli-process.mjs',
   '.github/workflows/architecture-gate-consumer.yml',
+  'scripts/issue334-gemini-verification.mjs',
+  '.codex/gatekeeper/gemini-verification-package-lock.json',
 ]);
 const WIF_ENV = Object.freeze({ token: 'AGK_VERTEX_ACCESS_TOKEN', project: 'AGK_VERTEX_PROJECT', region: 'AGK_VERTEX_LOCATION' });
 const DENIED_CREDENTIAL_NAMES = Object.freeze(['OPENAI_API_KEY', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN']);
@@ -46,8 +52,29 @@ const MAX_STDIO_BYTES = 65_536;
 function fail(message) { throw new Error(`Issue334 verification: ${message}`); }
 function sha256(value) { return createHash('sha256').update(value).digest('hex'); }
 
-/** The pinned workflow guards event.before; Git verifies its fixed predecessor.
- * Returns non-secret run/revision observations, not a parsed event-file claim. */
+export function validateAuthorizedRuntimeLock(lockBytes) {
+  if (!Buffer.isBuffer(lockBytes) || sha256(lockBytes) !== AUTHORIZED_RUNTIME_LOCK_SHA256) {
+    fail('runtime package lock does not match the pinned complete dependency graph.');
+  }
+  let lock;
+  try { lock = JSON.parse(lockBytes.toString('utf8')); }
+  catch { fail('pinned runtime package lock is invalid JSON.'); }
+  const rootDependencies = lock.packages?.['']?.dependencies;
+  const packages = lock.packages;
+  if (lock.lockfileVersion !== 3 || !packages || Object.keys(packages).length !== 13 ||
+      !rootDependencies || Object.keys(rootDependencies).length !== 1 ||
+      rootDependencies[RUNTIME_PACKAGE_NAME] !== RUNTIME_VERSION ||
+      packages[`node_modules/${RUNTIME_PACKAGE_NAME}`]?.version !== RUNTIME_VERSION ||
+      packages[`node_modules/${RUNTIME_PACKAGE_NAME}`]?.integrity !== CLI_TARBALL_INTEGRITY ||
+      !Object.values(packages).filter(pkg => pkg?.resolved).every(pkg => typeof pkg.integrity === 'string' && /^sha[0-9]+-[A-Za-z0-9+/=]+$/.test(pkg.integrity))) {
+    fail('pinned runtime package lock does not contain the verified Gemini CLI dependency graph.');
+  }
+  return lock;
+}
+
+/** Checks consistency among observed runner metadata and Git revisions only.
+ * These candidate-loaded values do not authenticate source or authorize a merge;
+ * trusted coordinator admission is a separate external responsibility. */
 export function validateHostedPushContext({ env, actualHeadSha, orderedParents,
   expectedPredecessorSha = EXPECTED_PREDECESSOR_SHA } = {}) {
   const workflowRef = `${REPOSITORY}/${WORKFLOW_PATH}@refs/heads/${BRANCH}`;
@@ -60,7 +87,7 @@ export function validateHostedPushContext({ env, actualHeadSha, orderedParents,
       !Array.isArray(orderedParents) || orderedParents.length !== 2 ||
       orderedParents[0] !== expectedPredecessorSha || !/^[a-f0-9]{40}$/.test(orderedParents[1] || '') ||
       orderedParents[1] === expectedPredecessorSha) {
-    fail('trusted single-run feature push context is incomplete or mismatched.');
+    fail('observed single-run feature push context is incomplete or mismatched.');
   }
   return Object.freeze({ repository: REPOSITORY, branch: BRANCH, workflowRef,
     runId: env.GITHUB_RUN_ID, runNumber: env.GITHUB_RUN_NUMBER, runAttempt: 1,
@@ -122,6 +149,34 @@ export function createFreshLedger(runnerTemp) {
     rmSync(directory, { recursive: true, force: true });
     throw error;
   }
+}
+
+/** Durably claim the one permitted verification invocation before provider dispatch. */
+export function claimSingleVerificationInvocation(runtimeDirectory) {
+  assertPrivateDirectory(runtimeDirectory, 'private runtime directory is not private.');
+  const claimPath = join(runtimeDirectory, VERIFICATION_START_CLAIM);
+  let fd;
+  try { fd = openSync(claimPath, 'wx', 0o600); }
+  catch (error) {
+    if (error?.code === 'EEXIST') fail('verification invocation was already claimed; refusing another run.');
+    throw error;
+  }
+  try {
+    const opened = fstatSync(fd);
+    if (!opened.isFile() || opened.nlink !== 1 || (opened.mode & 0o777) !== 0o600 ||
+        (typeof process.getuid === 'function' && opened.uid !== process.getuid())) fail('verification claim is not a private regular file.');
+    writeFileSync(fd, VERIFICATION_START_CLAIM_BYTES);
+    fsyncSync(fd);
+    const written = fstatSync(fd);
+    if (!written.isFile() || written.dev !== opened.dev || written.ino !== opened.ino ||
+        written.size !== VERIFICATION_START_CLAIM_BYTES.length || written.nlink !== 1 ||
+        (written.mode & 0o777) !== 0o600 || (typeof process.getuid === 'function' && written.uid !== process.getuid())) {
+      fail('verification claim changed while being written.');
+    }
+  } finally { closeSync(fd); }
+  const directoryFd = openSync(runtimeDirectory, 'r');
+  try { fsyncSync(directoryFd); } finally { closeSync(directoryFd); }
+  return Object.freeze({ claimed: true });
 }
 
 /** Wrap raw private evidence with the existing public-key hybrid envelope. */
@@ -351,12 +406,7 @@ function runtimeEntryPoint(root) {
   if (!runtimeStat.isDirectory() || runtimeStat.isSymbolicLink() || (runtimeStat.mode & 0o777) !== 0o700 ||
       (typeof process.getuid === 'function' && runtimeStat.uid !== process.getuid())) fail('private runtime directory is not protected.');
   const installedLockBytes = readFileSync(join(runtimeRoot, 'package-lock.json'));
-  const lock = JSON.parse(installedLockBytes);
-  if (lock.packages?.['node_modules/@google/gemini-cli']?.version !== RUNTIME_VERSION ||
-      lock.packages?.['node_modules/@google/gemini-cli']?.integrity !== CLI_TARBALL_INTEGRITY ||
-      !Object.values(lock.packages ?? {}).filter(pkg => pkg?.resolved).every(pkg => typeof pkg.integrity === 'string' && /^sha[0-9]+-[A-Za-z0-9+/=]+$/.test(pkg.integrity))) {
-    fail('installed npm lock does not contain the pinned CLI tarball and dependency integrity metadata.');
-  }
+  validateAuthorizedRuntimeLock(installedLockBytes);
   const packageRoot = join(runtimeRoot, 'node_modules', '@google', 'gemini-cli');
   const packageJson = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
   if (packageJson.name !== RUNTIME_PACKAGE_NAME || packageJson.version !== RUNTIME_VERSION) fail('installed Gemini CLI package does not match the pinned runtime version.');
@@ -368,8 +418,8 @@ function runtimeEntryPoint(root) {
     packageJsonSha256: sha256(readFileSync(join(packageRoot, 'package.json'))), entrySha256: sha256(readFileSync(entry)) };
 }
 
-function readTrustedPushContext(root, env) {
-  if (resolve(env.GITHUB_WORKSPACE || '') !== root) fail('workspace must be the trusted checked-out source root.');
+function readPushContextConsistency(root, env) {
+  if (resolve(env.GITHUB_WORKSPACE || '') !== root) fail('workspace must match the checked-out source root.');
   const actualHeadSha = git(root, ['rev-parse', 'HEAD']);
   const orderedParents = git(root, ['rev-list', '--parents', '-n', '1', actualHeadSha]).split(/\s+/).slice(1);
   return validateHostedPushContext({ env, actualHeadSha, orderedParents });
@@ -386,27 +436,21 @@ export function installPinnedRuntime(root, env = process.env) {
   mkdirSync(target, { mode: 0o700 });
   try {
     if ((lstatSync(target).mode & 0o777) !== 0o700) fail('private runtime directory permissions are not 0700.');
-    writeFileSync(join(target, 'package.json'), JSON.stringify({ private: true, dependencies: { [RUNTIME_PACKAGE_NAME]: RUNTIME_VERSION } }),
+    const lockBytes = readFileSync(join(root, RUNTIME_LOCK_PATH));
+    const authorizedLock = validateAuthorizedRuntimeLock(lockBytes);
+    writeFileSync(join(target, 'package.json'), JSON.stringify({ private: true, dependencies: authorizedLock.packages[''].dependencies }),
       { mode: 0o600, flag: 'wx' });
+    writeFileSync(join(target, 'package-lock.json'), lockBytes, { mode: 0o600, flag: 'wx' });
     writeFileSync(join(target, '.npmrc'), 'registry=https://registry.npmjs.org/\nignore-scripts=true\n', { mode: 0o600, flag: 'wx' });
     const npmEnv = { PATH: [...new Set([dirname(process.execPath), '/usr/bin', '/bin'])].join(delimiter),
       HOME: target, TMPDIR: target, CI: 'true', NO_COLOR: '1', npm_config_userconfig: join(target, '.npmrc'),
       npm_config_globalconfig: '/dev/null', npm_config_registry: 'https://registry.npmjs.org/' };
-    const generateLock = spawnSync('npm', ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund', '--save-exact'], {
-      cwd: target, encoding: 'utf8', timeout: 300_000, env: npmEnv, stdio: ['ignore', 'ignore', 'ignore'],
-    });
-    if (generateLock.error || generateLock.status !== 0) fail('private runtime lock generation failed.');
-    const lockBytes = readFileSync(join(target, 'package-lock.json'));
-    const lock = JSON.parse(lockBytes);
-    if (lock.packages?.['node_modules/@google/gemini-cli']?.version !== RUNTIME_VERSION ||
-        lock.packages?.['node_modules/@google/gemini-cli']?.integrity !== CLI_TARBALL_INTEGRITY ||
-        !Object.values(lock.packages ?? {}).filter(pkg => pkg?.resolved).every(pkg => typeof pkg.integrity === 'string' && /^sha[0-9]+-[A-Za-z0-9+/=]+$/.test(pkg.integrity))) {
-      fail('generated npm lock does not match the pinned CLI tarball integrity.');
-    }
     const install = spawnSync('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], {
       cwd: target, encoding: 'utf8', timeout: 300_000, env: npmEnv, stdio: ['ignore', 'ignore', 'ignore'],
     });
     if (install.error || install.status !== 0) fail('private runtime installation failed.');
+    const installedLockBytes = readFileSync(join(target, 'package-lock.json'));
+    if (!installedLockBytes.equals(lockBytes)) fail('installed runtime lock differs from the authorized complete dependency graph.');
     return Object.freeze(runtimeEntryPoint(root));
   } catch (error) {
     rmSync(target, { recursive: true, force: true });
@@ -435,9 +479,10 @@ export function buildPreparedVerificationCall({ prepared, credential, runtimeEnt
 /** One invocation; no retry path, ledger reset, rerun, fallback, or output-path selector. */
 export async function runOneHostedVerification({ env = process.env, cwd = process.cwd() } = {}) {
   const root = realpathSync(cwd);
-  const context = readTrustedPushContext(root, env);
-  if (context.beforeSha !== EXPECTED_PREDECESSOR_SHA) fail('trusted push predecessor does not match the fixed verification base.');
+  const context = readPushContextConsistency(root, env);
+  if (context.beforeSha !== EXPECTED_PREDECESSOR_SHA) fail('observed push predecessor does not match the fixed verification base.');
   const runtime = runtimeEntryPoint(root);
+  claimSingleVerificationInvocation(runtime.privateDirectory);
   assertNoCodexExecutable(env.PATH, [dirname(process.execPath), '/usr/bin', '/bin']);
   let credential = captureAndRemoveWifEnvironment(env);
   // This launcher owns the fixed private install directory; no environment
@@ -505,7 +550,7 @@ export async function main(argv = process.argv.slice(2)) {
   const mode = argv[0];
   if (argv.length !== 1 || !['install-runtime', 'verify', 'seal-checkpoint'].includes(mode)) fail('select exactly one supported command.');
   if (mode === 'install-runtime') {
-    readTrustedPushContext(root, process.env);
+    readPushContextConsistency(root, process.env);
     const result = installPinnedRuntime(root);
     process.stdout.write(`${JSON.stringify({ mode, version: result.version, lockSha256: result.lockSha256,
       packageJsonSha256: result.packageJsonSha256, entrySha256: result.entrySha256 })}\n`);

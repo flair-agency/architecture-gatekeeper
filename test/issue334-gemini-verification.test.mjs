@@ -1,19 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync, privateDecrypt, constants } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, closeSync, readFileSync, readdirSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, closeSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   assertNoCodexExecutable, captureAndRemoveWifEnvironment, createFreshLedger,
   assertCompletedDecisionResult, buildPreparedVerificationCall, encryptPrivateEvidence,
-  installPinnedRuntime, redactedSummary, sealPrivateEvidence, sealPrivateLedgerCheckpoint, validateHostedPushContext,
+  claimSingleVerificationInvocation, installPinnedRuntime, redactedSummary, sealPrivateEvidence, sealPrivateLedgerCheckpoint,
+  validateAuthorizedRuntimeLock, validateHostedPushContext,
 } from '../scripts/issue334-gemini-verification.mjs';
 import { createVertexVerificationReservation, readVertexVerificationReservationCount } from '../src/vertex-verification-reservation.mjs';
 import { snapshotPreparedGeminiCiReviewInput } from '../src/prepared-gemini-ci-review.mjs';
 
 const SHA = c => c.repeat(40);
+const AUTHORIZED_RUNTIME_LOCK = readFileSync(new URL('../.codex/gatekeeper/gemini-verification-package-lock.json', import.meta.url));
 function context() {
   const before = SHA('a'); const head = SHA('b'); const merge = SHA('c');
   return { before, head, merge,
@@ -90,6 +92,46 @@ test('creates one private fsynced ledger and reports consumed reservations witho
     if (ledger) { closeSync(ledger.fd); rmSync(ledger.directory, { recursive: true, force: true }); }
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('retains an exclusive verification start claim and rejects a second invocation before any fresh ledger', () => {
+  const runtime = mkdtempSync(join(tmpdir(), 'agk334-verification-claim-')); chmodSync(runtime, 0o700);
+  try {
+    assert.deepEqual(claimSingleVerificationInvocation(runtime), { claimed: true });
+    assert.equal(readFileSync(join(runtime, 'verification-start.claim'), 'utf8'), 'AGK334-VERIFICATION-START-V1\n');
+    assert.throws(() => claimSingleVerificationInvocation(runtime), /already claimed/i);
+    assert.equal(readdirSync(runtime).filter(name => name.startsWith('agk334-private-ledger-')).length, 0);
+  } finally { rmSync(runtime, { recursive: true, force: true }); }
+});
+
+test('allows only one concurrent verification start claim in the fixed private runtime', async () => {
+  const runtime = mkdtempSync(join(tmpdir(), 'agk334-verification-claim-race-')); chmodSync(runtime, 0o700);
+  const gate = join(runtime, 'start-claims');
+  const moduleUrl = new URL('../scripts/issue334-gemini-verification.mjs', import.meta.url).href;
+  const code = `import { existsSync } from 'node:fs';
+import { claimSingleVerificationInvocation } from ${JSON.stringify(moduleUrl)};
+while (!existsSync(${JSON.stringify(gate)})) await new Promise(resolve => setTimeout(resolve, 5));
+try { claimSingleVerificationInvocation(${JSON.stringify(runtime)}); process.stdout.write('claimed'); }
+catch { process.stdout.write('rejected'); }`;
+  const run = () => new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['--input-type=module', '-e', code], {
+      env: { PATH: process.env.PATH, HOME: process.env.HOME, TMPDIR: process.env.TMPDIR },
+    });
+    let output = '';
+    child.stdout.on('data', chunk => { output += chunk; });
+    child.once('error', reject);
+    child.once('close', code => resolve({ code, output }));
+  });
+  try {
+    const attempts = [run(), run()];
+    await new Promise(resolve => setTimeout(resolve, 50));
+    writeFileSync(gate, 'go');
+    const results = await Promise.all(attempts);
+    assert.deepEqual(results.map(result => result.code), [0, 0]);
+    assert.deepEqual(results.map(result => result.output).sort(), ['claimed', 'rejected']);
+    assert.equal(readFileSync(join(runtime, 'verification-start.claim'), 'utf8'), 'AGK334-VERIFICATION-START-V1\n');
+    assert.equal(readdirSync(runtime).filter(name => name.startsWith('agk334-private-ledger-')).length, 0);
+  } finally { rmSync(runtime, { recursive: true, force: true }); }
 });
 
 test('seals the exact durable ledger after a killed verifier process and preserves its journal', t => {
@@ -219,4 +261,16 @@ test('composes the exact shared-adapter call and fails closed on incomplete or i
 
 test('install mode refuses to run after WIF variables are present', () => {
   assert.throws(() => installPinnedRuntime('/missing', { AGK_VERTEX_ACCESS_TOKEN: 'x' }));
+});
+
+test('pins the complete committed Gemini CLI dependency graph, not only tarball integrity strings', () => {
+  const lock = validateAuthorizedRuntimeLock(AUTHORIZED_RUNTIME_LOCK);
+  assert.equal(lock.lockfileVersion, 3);
+  assert.equal(Object.keys(lock.packages).length, 13);
+  assert.equal(lock.packages['node_modules/@google/gemini-cli'].version, '0.62.0');
+  const changedGraph = structuredClone(lock);
+  changedGraph.packages['node_modules/@lydell/node-pty-linux-x64'].integrity = `sha512-${Buffer.alloc(64, 7).toString('base64')}`;
+  const mutation = Buffer.from(JSON.stringify(changedGraph));
+  assert.match(changedGraph.packages['node_modules/@lydell/node-pty-linux-x64'].integrity, /^sha512-[A-Za-z0-9+/=]+$/);
+  assert.throws(() => validateAuthorizedRuntimeLock(mutation), /pinned complete dependency graph/i);
 });

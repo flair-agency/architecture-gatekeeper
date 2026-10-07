@@ -1,3 +1,4 @@
+# This workflow and its condition are candidate-loaded consistency checks, not source authentication. Before a trusted coordinator merges this feature once, independently verify the exact external head/tree and WIF principal/permissions, durably consume all five reserved verification slots, and ensure there is no second merge, workflow submission, rerun, or replay. The hosted result is private post-merge evidence, never ordinary CI acceptance.
 name: Issue 334 single hosted Gemini verification
 on:
   push:
@@ -9,7 +10,7 @@ permissions:
   contents: read
 jobs:
   verify:
-    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == '39966c75995e8ce75ef9b014e795eb32a13436e2' && github.run_attempt == 1
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == '21731bf98e998cddf13c085cc4a02bb51bfda498' && github.run_attempt == 1
     permissions:
       contents: read
       id-token: write
