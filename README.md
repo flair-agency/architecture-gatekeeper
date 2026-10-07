@@ -6,230 +6,96 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/flair-agency?label=Sponsor&logo=github)](https://github.com/sponsors/flair-agency)
 
-Architecture Gatekeeper provides reusable, fail-closed architecture review
-mechanics for Codex repositories. It keeps repository-owned architecture,
-review instructions, schemas, model selection, and acceptance policy under the
-consumer's control.
+Architecture Gatekeeper supplies architecture-review mechanics while each
+consumer repository owns its architecture, review inputs and acceptance policy.
+The package returns structured review evidence; repository policy determines
+what that evidence permits.
 
-It supports three review paths:
+## Choose your goal
 
-- a fast, read-only local Codex hook;
-- an explicit manual architecture review;
-- a higher-assurance pull-request review from a clean GitHub checkout.
-
-The package does not define a consumer's architecture and does not grant
-filesystem, publication, deployment, credential, or service authority.
-[`docs/architecture.md`](docs/architecture.md) introduces the normative architecture
-and assurance contract, including all five required members in `docs/architecture/`.
+| Your goal | Start here | Route or boundary |
+| --- | --- | --- |
+| Run your first review as a consumer | [First manual review](docs/integration-reference.md#manual-review) | Exact package version, committed consumer inputs and a local Codex login |
+| Add local feedback | [Local integration](docs/integration-reference.md#local-integration) | Hook/manual; selected local provider settings apply |
+| Use a host-native review workflow | [Codex Skill](docs/integration-reference.md#codex-skill-installation) | Separately installed Skill and host reviewer |
+| Review pull requests | [CI integration](docs/integration-reference.md#ci-integration) | Protected-base policy and host-controlled execution |
+| Operate or troubleshoot a review | [Owner intervention](docs/owner-intervention.md) | `BLOCK`, `OWNER_DECISION`, incomplete results and recovery |
+| Change or release this package | [Development](docs/development.md) and [release guide](docs/release.md) | Maintainer procedures |
+| Read the rules and assurance limits | [Architecture contract](docs/architecture.md) and [documentation map](docs/README.md) | Normative contract and guide index |
 
 ## Requirements
 
-- Node.js 22 or later
-- GitHub Packages authentication with `read:packages`
-- an exact package version or exact Git commit
+- Node.js 22 or later.
+- GitHub Packages access with `read:packages` to install the package.
+- An authenticated local `codex` CLI for the first manual Codex review.
+- Consumer-owned authority, prompt, decision schema, reviewer settings and
+  configuration committed at the revision being reviewed.
 
 ## Quick start
 
-Install a fixed release from the `@flair-agency` GitHub Packages registry, then
-add a launcher owned by the consuming repository:
-
-```js
-#!/usr/bin/env node
-import { runHookCli } from '@flair-agency/architecture-gatekeeper';
-runHookCli();
-```
-
-The consumer records its committed inputs in
-`.codex/gatekeeper/config.json`. Start from
-[`examples/config.json`](examples/config.json), then select the repository's
-own authority, prompt, decision schema, reviewer settings, and timeout.
-
-For the complete installation contract, policy formats, Authority Set limits,
-CI example, distribution rules, and trust boundaries, see the
-[integration reference](docs/integration-reference.md).
+Follow the complete [first manual review walkthrough](docs/integration-reference.md#manual-review),
+which creates and commits a small consumer fixture, installs
+`@flair-agency/architecture-gatekeeper@0.6.0-preview.3`, and shows the command
+and observable outcomes. Its sample result is review evidence, not repository
+acceptance or implementation authority.
 
 ## Review paths
 
 ### Local hook
 
-The launcher imports the already-installed exact package version and invokes a
-selected reviewer adapter from committed settings. Codex remains the default,
-using a local `codex` binary with hooks disabled and a read-only sandbox. An
-explicit Gemini selection uses the asynchronous API adapter without starting
-Codex. It never uses `npx` or a registry fallback. See the
-[local provider configuration](docs/integration-reference.md#local-reviewer-execution-composition).
-
-Consumers may opt into an additional asynchronous `PostToolUse` change screen
-with a separate launcher that imports `runPostToolScreenHookCli`. Configure it
-only in the consumer's project-local Codex hooks. It reviews bounded tracked
-diffs after supported `Bash`, `exec_command`, `apply_patch`, `Edit`, and `Write`
-events, and returns informational context without blocking or changing the
-completed tool result. Untracked paths, diffs over 64 KiB, dirty submodules, or
-inconsistent snapshots are reported as incomplete. Set the Hook timeout above
-the consumer's configured reviewer timeout plus local preparation and cleanup
-time. This PostToolUse pilot is currently unsupported on native Windows because
-its current single-flight lock implementation excludes `win32` and assumes
-atomic hard-link support; there it returns informational `incomplete` before
-screening. This limitation applies only to the PostToolUse pilot; the existing
-local review, manual, Skill, and CI paths are unchanged. The pilot does not run
-by default and does not replace the explicit
-architecture-review Skill for design intent. See the
-[PostToolUse integration details](docs/integration-reference.md#optional-asynchronous-posttooluse-screen).
+The local Hook uses the provider selected by committed consumer settings. Codex
+uses a local child process; Gemini's local route uses its asynchronous API
+adapter. The optional `PostToolUse` screen is a separate, after-the-fact pilot
+and is not enabled by default. See [local provider execution](docs/integration-reference.md#local-reviewer-execution-composition)
+and [PostToolUse details](docs/integration-reference.md#optional-asynchronous-posttooluse-screen).
 
 ### Manual review
 
-Run the installed command with an architecture question or proposed change:
-
-```sh
-architecture-review 'Should this responsibility move from Runtime to the Provider?'
-```
-
-The command emits the repository-defined structured decision, such as `PASS`,
-`BLOCK`, or `OWNER_DECISION`. A result is review evidence; it is not repository
-acceptance or implementation authority.
+Use the [first review walkthrough](docs/integration-reference.md#manual-review).
+The CLI emits the consumer's structured decision and reviewed revision; results
+do not themselves accept a change.
 
 ### Codex Skill
 
-The separately distributed Skill is in
-[`skills/architecture-review/`](skills/architecture-review/). Keep its revision
-aligned with the runtime release. The Skill uses a separate host-native reviewer
-and the package-owned prepare/validate contract; it does not fall back to nested
-`codex exec`. Record end-to-end evidence with the
+The [Codex Skill](docs/integration-reference.md#codex-skill-installation) is
+distributed separately from the npm runtime and uses a host-native reviewer.
+Its host controls and evidence boundaries are documented in the integration
+reference. Record end-to-end evidence with the
 [native Skill E2E template](docs/investigations/native-skill-e2e-template.md).
 
 ### Pull-request gate
 
-CI pins upstream `openai/codex-action` v1.12 to an immutable commit and trusts
-its published Action bundle. Fork-specific per-run integrity jobs are retired;
-step/job limits and fail-closed result validation remain. See the
-[integration reference](docs/integration-reference.md) for trust and timeout
-limits.
-
-Protected policy execution selection under #332 remains unavailable as a
-consumer option pending representative hosted verification. This repository's
-committed `main` policy selects the exact 7-minute job, 5-minute step and
-standard Codex profile for staged self-verification; that self selection does
-not establish consumer support or acceptance. Current caller timeout inputs
-and their host limits are documented in the
-[integration reference](docs/integration-reference.md#protected-codex-execution-selection).
-
-The reusable workflow is
-[`architecture-gate-consumer.yml`](.github/workflows/architecture-gate-consumer.yml). Consumers
-pin it to the exact commit that produced the reviewed release and keep their
-policy, prompt, schema, and optional validation policy in the consuming
-repository. See the [integration reference](docs/integration-reference.md) for
-the complete workflow example and protected-base behavior.
-
-For host-triggered callers, see the
-[caller authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
-The consumer owns authorization; Gatekeeper preserves its selected review and
-credential boundaries. Consult host documentation for platform-specific signals.
-
-On the protected Authority Set and legacy v1 consumer routes, the reviewer
-receives the exact event base/head revisions, verified merge revision and the
-base-to-merge committed diff as untrusted task data. Untracked helper checkouts
-are excluded from that diff. The complete prompt, including task data, must fit
-the existing selected limit; missing revisions, mismatched merge parents or
-excess bytes leave review incomplete. These parent checks validate GitHub’s
-synthetic review checkout against the recorded event tuple; they do not restrict
-the eventual PR merge strategy or prove canonical transition or host enforcement.
-A stale or mismatched checkout requires a fresh review run. Other compatibility
-routes are unchanged.
-
-Ordinary consumers use this reusable workflow without self-only OIDC or
-attestation permissions. The self repository uses a separate internal workflow
-for its selected evidence producers. Consumers upgrading an old enforced v1
-policy must first follow the [legacy adoption procedure](docs/integration-reference.md#upgrading-legacy-v1-consumers);
-adding selectors to a candidate PR cannot adopt its protected-base policy.
-
-The reviewer job emits bounded numeric Codex usage and tool counts to its
-Actions log when the pinned Action supplies them. This includes the ordinary
-review path. It does not publish raw Codex JSONL, per-request API cost, or proof
-of the provider's effective service tier; missing or malformed usage remains
-unavailable for cost attribution.
+The reusable [CI workflow](docs/integration-reference.md#ci-integration) uses
+the consumer's protected-base policy. Gemini CI and other unwired provider
+targets are not activated consumer routes. This repository's self-only workflow
+settings do not establish consumer support or acceptance. See the [caller
+authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
 
 #### Self-repository Fork contributions
 
-Original Fork pull requests remain welcome, but the self-review workflow does
-not run privileged or paid review for them. A maintainer may manually select
-needed changes onto a same-repository branch and open a new pull request; link
-the source Fork and briefly describe the selected changes for human context.
-The candidate remains untrusted until separately reviewed. The new pull
-request receives its own review, and no result or acceptance transfers from
-the new pull request back to the source Fork.
+This repository's self-review policy does not run privileged or paid review for
+original Fork pull requests. A maintainer may select or modify needed changes
+onto a same-repository branch and open a separate ordinary pull request. Link
+the source Fork and summarize the selected changes; the new pull request gets
+its own review, and no result or acceptance transfers back to the original.
+See the [self Fork contract](docs/architecture/review-execution.md#self-repository-original-fork-denial-issue-350-owner-decision-2026-10-04)
+and [GitHub assurance](docs/github-assurance.md) for the boundary and inactive
+shared target.
 
 #### Self-review credential migration
 
-The self-review workflow keeps using the repository `OPENAI_API_KEY` secret
-unless the repository variable `ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT` is
-set to the exact string `true`. Stage the migration by first creating the
-`architecture-gate-self-protected` GitHub Actions Environment, limiting its
-deployment branch to `main`, and adding its `OPENAI_API_KEY` secret. Then set
-the variable to `true`. The workflow validates that the opt-in comes from this
-repository's `main` self-review workflow and only assigns the Environment to
-the three jobs that call OpenAI: ordinary review, OWNER_ADDITION eligibility,
-and OWNER_AMENDMENT semantic eligibility.
-
-On opt-in, the caller deliberately passes an empty repository key. A missing
-Environment key therefore fails review without falling back to the repository
-secret. Keep the repository secret until every workflow consumer has migrated;
-remove it only after those consumers are verified on their Environment-backed
-route. Reusable workflow users are unchanged because Environment selection
-defaults off.
-
-The repository variable is an opt-in selector, not proof of host configuration.
-Until the Environment is provisioned and its `main` deployment restriction and
-secret access are read back, this change makes no claim of verified credential
-isolation or successful Environment-backed execution.
-
-This variable stages credential selection for the existing self workflow. It
-does not create the separate protected App receiver or complete its rollout.
-That receiver still needs its own `main`-only Environment and App credentials,
-minimal App installation permissions, required-check source configuration,
-and host readback before any receiver activation.
-
-Consumers can optionally declare structured `findings` in their decision
-schema to receive verified added/deleted-line feedback in one non-accepting
-GitHub `COMMENT` review. Each inline comment identifies Architecture
-Gatekeeper, and the job summary/sticky report link to GitHub-returned inline
-comment URLs when available. The existing report remains the fallback. See the
-[CI integration reference](docs/integration-reference.md) for location
-validation, bounds and rerun behavior.
-
-In addition to Codex, repositories can run automated reviews with Google Gemini
-using the standalone runner `architecture-review-gemini-ci`. It supports keyless
-authentication via Google Cloud Workload Identity Federation (WIF) and Vertex AI,
-as well as Google AI Studio API keys.
-The launcher requires an explicit model scope (or the model in `--request-json`)
-and a project scope for Vertex. Standalone prompt/schema reviews are compatibility
-feedback, without protected-authority assurance. Revision-bound requests must
-pass shared preflight and record `provider: "gemini"`; Codex selections are rejected.
-The shared request constructor supports committed Gemini settings for the
-asynchronous local route. The reusable CI workflows still select Codex;
-protected Gemini CI integration and adoption remain tracked in #252. Policy v6
-can encode an explicit ordinary-review provider and its distinct settings, but
-the workflows reject an unwired Gemini selection before reviewer execution.
-It is not an activated Gemini CI route.
-Decision files default to a private temporary directory outside the checkout.
-Explicit output paths must be new files outside the reviewed repository, within
-`RUNNER_TEMP` or a recognized OS temporary root. Symlink escapes are rejected. If
-`GITHUB_OUTPUT` is present, publication failure fails the runner; normal checkout
-execution uses the trusted runner-provided canonical output file, with regular-file, link and opened-identity checks.
-The isolated launcher requires an explicit/environment key or access token and does
-not run local gcloud renewal. An authenticated same-user Cloud SDK installation
-is outside this isolation boundary: use a host without ambient credentials or a
-separate OS isolation boundary when those credentials must be inaccessible. It applies a bounded session deadline, shuts down the
-proxy and terminates the child on expiry (exit 124), escalating after 250 ms. This
-is not a guarantee against uninterruptible operating-system processes.
-Explicit Gemini thinking budgets currently support `gemini-2.5-flash` and
-`gemini-2.5-pro`; direct endpoints must match the selected official provider scope.
+Environment-backed credentials and receiver rollout are repository-specific
+operations. Follow the [self-review credential migration procedure](docs/integration-reference.md#self-review-credential-migration)
+and current [GitHub assurance guide](docs/github-assurance.md); these self-only
+settings do not apply to ordinary consumers.
 
 
 ## Assurance boundary
 
 - Consumers own architecture and policy; this package only executes the
   selected contract.
-- Review is read-only evidence. Protected repository policy decides acceptance.
+- The reviewer role is review-only; its result is evidence. Protected repository
+  policy decides acceptance.
 - Missing, malformed, unresolved, or oversized selected inputs fail closed.
 - A pull request cannot waive or replace the protected-base policy used to
   review itself.
@@ -238,8 +104,10 @@ Explicit Gemini thinking budgets currently support `gemini-2.5-flash` and
 
 ## Documentation
 
-Use the [documentation map](docs/README.md) to choose between the normative
-architecture contract, integration reference, and operational guides.
+Use the [documentation map](docs/README.md) to find the integration walkthrough,
+operations, development and release guides, or normative contract. See the
+[preview lifecycle API](docs/integration-reference.md#unverified-preview-lifecycle-api)
+for its predecessor-selection and `UNVERIFIED` limits.
 
 ## Project participation
 
@@ -263,20 +131,7 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 
 ## Unverified preview lifecycle API
 
-The `./preview-lifecycle` package API implements the explicitly selected
-`preview-unverified-procedure-v1` profile for ordinary review, a completed
-BLOCK amendment selected by the predecessor, addition of a missing decision,
-amendment of an existing choice after a completed `OWNER_DECISION`, and the
-narrow initial compatible migration from legacy v1 policy to a v1/v2 successor. A
-consumer must record the exact selection in its predecessor before the
-governed change. Every route remains `UNVERIFIED`: it does not satisfy trusted
-`OWNER_ADDITION` or `OWNER_AMENDMENT`, establish host enforcement, or supply
-trusted acceptance. Migration requires predecessor `PASS` under unchanged
-legacy review inputs, exact preservation of the complete selected authority
-bytes and reviewer settings, and control-plane-only changes. For v1-to-v2
-migration, M checks only the B runtime's core decision and complete authority
-IDs; B-only constraints are checked against the actual B response and are not
-proven satisfiable during M. Later or incompatible migrations remain
-unsupported. See the
-[integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api)
-for the API sequence and boundaries.
+The predecessor-selected `preview-unverified-procedure-v1` lifecycle API and
+its route-specific limits are documented in the [integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api).
+All preview procedures remain `UNVERIFIED` and do not provide protected
+acceptance.
