@@ -85,10 +85,10 @@ guide names as reader navigation; complete procedures stay in the named guide.
   and pointer while the full preview.2-to-preview.3 source section is preserved
   verbatim in the investigation. The current rule governs future questions;
   the archived rehearsal is evidence only.
-- Guides summarize the authority boundary and selected rules for orientation.
-  The complete normative meaning remains in the selected six-member Set; this
-  documentation work does not edit or reinterpret those files.
-- Normative lifecycle-document readability is deferred to Issue #384. Broader
-  Issue #272 final-release readback and Issue #116 synchronization/protected
-  acceptance remain open. This work does not establish protected acceptance,
-  downstream adoption, or route activation.
+- Supporting-guide summaries and this index provide orientation; they do not
+  amend the selected six-member authority Set. Issue #384 presents the existing
+  lifecycle clauses more readably in [the canonical section](../architecture.md#canonical-authority-lifecycle),
+  with clause correspondence in the [repository-only lifecycle map](2026-10-07-canonical-authority-lifecycle-editorial-map.json).
+- Broader Issue #272 final-release readback and Issue #116 synchronization and
+  protected acceptance remain open. This documentation work does not establish
+  protected acceptance, downstream adoption, or route activation.

@@ -332,9 +332,9 @@ An implemented T8 plan is required before bootstrap starts, and the resulting po
 
 #### Adoption, placement, and failure handling
 
-An eligible result does not itself perform owner action, adoption, or canonical placement. A pending lifecycle retains its predecessor. A failure before integration remains pending, ineligible, and incomplete. A failure after integration records placement and adoption separately; do not describe it as a rollback. Success requires valid adoption and verified placement. Preserve historical results; a fresh review is a new review.
+An eligible result does not itself perform owner action, adoption, or canonical placement. A pending lifecycle retains its predecessor. A failure before integration stays pending/ineligible/incomplete. A failure after integration records placement and adoption separately; do not describe it as a rollback. Success requires valid adoption and verified placement. Preserve historical results; a fresh review is a new review.
 
-A failed semantic result cannot force eligibility. If the selected lifecycle-v1 support conditions cannot be met, the result is `UNSUPPORTED` and the predecessor is retained. This permits no acceptance, fallback, false-addition split, or exception. The external-admin exception, if separately authorized by the consumer, does not establish Gatekeeper adoption or `ACTIVE`.
+A failed semantic result cannot force eligibility. If the selected lifecycle-v1 support conditions are not satisfied, the result is `UNSUPPORTED` and the predecessor is retained. This permits no acceptance, fallback, false-addition split, or exception. The external-admin exception, if separately authorized by the consumer, does not establish Gatekeeper adoption or `ACTIVE`.
 
 #### Lifecycle relationship diagram
 
@@ -363,7 +363,7 @@ flowchart LR
 
   adoption ---|separate lifecycle fact| placement
   adoption -->|normal T8; all selected lifecycle conditions still apply| active
-  transition -->|support conditions cannot be met| unsupported
+  transition -->|support conditions are unmet| unsupported
   preintegration -->|remains| pending
   bootstrap -->|B1–B7 controls| commissioning
   commissioning -->|B8: later normal adoption and readback; no exception| active
