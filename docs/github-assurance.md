@@ -14,13 +14,18 @@ that the architecture decision, implementation or product is correct.
 | Gatekeeper | Checks selected evidence against exact revisions, authority, policy and procedure; reports what passed, failed, remained unverified or was unavailable. It cannot authenticate an owner or producer from an author-supplied claim. |
 | Repository host and administrator | Configure access, branch/tag protection, required checks, bypass permissions, evidence availability and merge operation. Gatekeeper reports host enforcement only when independently verified. |
 
-`OWNER_AMENDMENT / G0` is a **target route, not a currently enabled self-policy**.
-Under the current contract it needs one completed, verifiable `BLOCK` for A,
-an exact authority-only B and annotated tag, previous protected-base opt-in,
-trusted producer provenance and validation through B's protected canonical
-transition. G0 does not verify that the tag actor is the owner. If an earlier
-BLOCK record disappears, a permitted fresh review can yield a new BLOCK, with
-new B bindings; the old bytes cannot be reconstructed from a digest. See
+`OWNER_AMENDMENT / G0` is a **target route, not a completed self acceptance
+cycle**. The v0.6.0 self contract has two separate trigger profiles:
+`completed-block-v1` requires one completed, verifiable `BLOCK` for A, while
+`completed-owner-decision-self-v1` requires the exact completed
+`OWNER_DECISION` record. The committed main policy selects the latter at the
+baseline documented below. Both profiles require exact authority-only B,
+previous protected-base opt-in, trusted producer provenance and validation
+through the selected protected canonical transition. Profile selection or
+trigger-record production alone does not complete the amendment route. G0 does
+not verify that the tag actor is the owner. If an earlier `BLOCK` record
+disappears, a permitted fresh review can yield a new `BLOCK` with new B
+bindings; the old bytes cannot be reconstructed from a digest. See
 [#78](https://github.com/flair-agency/architecture-gatekeeper/issues/78) and
 [#83](https://github.com/flair-agency/architecture-gatekeeper/issues/83).
 The owner has selected a compact
@@ -34,6 +39,8 @@ and a merge commit retain exact B identity. Selection is not E2E verification
 or permission to claim the route before final ordering and canonical readback
 are proven.
 
+The following sequence describes the BLOCK-triggered profile only.
+
 ```mermaid
 flowchart TD
     A[A reviewed] --> BR[Completed BLOCK record]
@@ -46,8 +53,15 @@ flowchart TD
     H -->|Yes| C[Read back canonical B, then review A afresh]
 ```
 
-This diagram describes the current **protected** amendment target. A future
-procedural route for private GitHub Free would need a separate owner decision.
+The other self trigger profile preserves the completed `OWNER_DECISION` as its
+own historical trigger. This diagram does not describe that profile. Issue #147
+already authorizes a separately versioned procedural `BLOCK` amendment profile,
+but its profile name, wire formats and trusted backend remain unselected; it is
+not an enabled route. The published preview API is separate: a consumer may
+select its `preview-unverified-procedure-v1` from predecessor governance for
+the bounded procedures in the [integration reference](integration-reference.md#unverified-preview-lifecycle-api).
+That preview remains `UNVERIFIED` and does not satisfy protected G0, host
+enforcement, or trusted producer requirements.
 
 ## Caller authorization and host integration boundary
 
@@ -109,17 +123,23 @@ are bound to the relevant commit, so routing and output must also be checked
 ([GitHub required-check behavior](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)).
 
 GitHub Free private is an explicit limit of the **current protected amendment
-contract**, not a claim that an owner cannot decide or merge. A different
-procedural amendment route would need its own owner decision, contract,
-assurance labels and validation; it is not an automatic fallback. A separate
+contract**, not a claim that an owner cannot decide or merge. The authorized
+Issue #147 procedural `BLOCK` profile still needs its own versioned contract,
+wire formats, trusted backend and validation before use. The explicitly
+selected preview procedure is a separate package path with `UNVERIFIED`
+assurance; it is not a fallback that meets the protected contract. A separate
 signing adapter could be investigated for Pro/Team private, but none is
 selected or proven by this guide. Unsupported producer provenance cannot be
 accepted merely by calling it G0.
 
 ### Candidate for private GitHub Free: Git evidence plus procedural adoption
 
-There is a possible route worth testing. It is a **proposal**, not supported
-`OWNER_AMENDMENT / G0` behavior under the current protected-transition contract:
+This is an earlier private GitHub Free design proposal, not a supported
+`OWNER_AMENDMENT / G0` behavior under the current protected-transition
+contract. Issue #147 now authorizes a procedural BLOCK profile but leaves its
+wire formats and trusted backend unselected. The package's current
+`preview-unverified-procedure-v1` is a distinct, implemented preview path; this
+older signing proposal is not that path:
 
 1. A trusted review producer emits the exact completed `BLOCK` ReviewRecord
    for A and signs those bytes. Keep the producer's signing capability outside
@@ -153,19 +173,20 @@ but this adapter has not been implemented or tested here. The signer, key or
 OIDC policy, Git object reachability, exact B merge/readback and negative
 cases all need a bounded proof.
 
-This candidate could support an **evidence-backed procedural adoption** with
-explicitly absent host merge enforcement. It cannot be called the current
-protected `OWNER_AMENDMENT / G0` merely because the owner accepts that risk;
-that outcome would require a new owner-authorized normative route, analogous
-in separation of adoption and host enforcement to the versioned
-`OWNER_ADDITION` procedure. A weaker alternative where the owner merely signs
-their own BLOCK assertion does not establish trusted review-producer provenance
-under the current contract.
+If separately specified and proven, this proposal could support an
+**evidence-backed procedural adoption** with explicitly absent host merge
+enforcement. It cannot be called the current protected `OWNER_AMENDMENT / G0`
+or substituted for the selected UNVERIFIED preview procedure. A signature over
+an owner-written BLOCK assertion does not establish trusted review-producer
+provenance under the current contract.
 
 ## This repository as a reference
 
-The following is a configuration observed through the GitHub API during this
-change. It is not a permanent hosting guarantee or proof of `OWNER_AMENDMENT`:
+The following is a historical host-configuration snapshot recorded in the
+documentation at baseline commit `3f71fece350c`, reviewed on 2026-10-07. Its
+original API observation timestamp was not preserved, so these values are not
+a live verification and are not permanent hosting guarantees or proof of
+`OWNER_AMENDMENT`:
 
 - `flair-agency/architecture-gatekeeper` is **public**. `main` has branch
   protection with `architecture-gate / accept` required from the GitHub Actions
@@ -182,11 +203,12 @@ change. It is not a permanent hosting guarantee or proof of `OWNER_AMENDMENT`:
   invokes [the reusable Gate](../.github/workflows/architecture-gate.yml) on
   non-draft pull requests. It requests protected review instructions and
   reads [self policy](../.codex/gatekeeper/ci-policy.json) from the base.
-- After the policy configuration is normally adopted and read back from
-  `main`, the self policy selects `enforced` v2 ordinary review and the
-  self-only `completed-owner-decision-self-v1` `ownerAmendment` evidence
-  producer, with `ownerAmendment.maxPromptBytes` explicitly set to 524,288.
-  Until that adoption, `completed-block-v1` remains the selected profile.
+- At baseline commit `3f71fece350c`, the committed self policy selects
+  `enforced` v2 ordinary review and the self-only
+  `completed-owner-decision-self-v1` `ownerAmendment` evidence producer, with
+  `ownerAmendment.maxPromptBytes` explicitly set to 524,288. A later protected
+  base may select a different profile; the profile used for any run must be
+  read from that run's protected base.
   Under that selected profile, a completed `OWNER_DECISION` can trigger
   production of a profile-specific ReviewRecord and GitHub attestation. This
   opt-in does not enable `OWNER_AMENDMENT / G0` acceptance; a successful ordinary `PASS` check

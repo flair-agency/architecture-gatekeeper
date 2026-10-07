@@ -41,10 +41,17 @@ accept the change.
    authority update (B) when protected CI selects authority from the base;
    authority written only in A's head cannot resolve A's current review.
 3. Determine whether B adds a missing decision or changes an existing one,
-   then check whether B can proceed under the repository's existing protected
-   policy. A separate B is not automatically eligible for `PASS`. The current
-   BLOCK-evidence `OWNER_AMENDMENT` profile does not cover `OWNER_DECISION`;
-   a distinct trigger profile requires its own protected evidence and opt-in.
+   then check whether B can proceed under the repository's existing policy. A
+   separate B is not automatically eligible for `PASS`. The v0.6.0 self
+   reference contract defines separate `completed-block-v1` and
+   `completed-owner-decision-self-v1` amendment trigger profiles; the committed
+   `main` policy selects the latter. Each profile has its own bound trigger
+   evidence and previous-policy selection, and profile selection alone does
+   not establish a completed amendment acceptance cycle. Issue #147 separately
+   authorizes a procedural BLOCK amendment profile, but its versioned wire
+   formats and trusted backend remain unselected. The package's
+   `preview-unverified-procedure-v1` is a distinct consumer-selected procedure
+   with `UNVERIFIED` assurance; see the [integration reference](integration-reference.md#unverified-preview-lifecycle-api).
    If B is unresolved or blocked, it remains so unless an applicable process
    in the consumer's existing policy permits otherwise. This runbook does not
    impose a universal file-scope rule on B.

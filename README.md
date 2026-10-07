@@ -105,13 +105,13 @@ step/job limits and fail-closed result validation remain. See the
 [integration reference](docs/integration-reference.md) for trust and timeout
 limits.
 
-Protected policy execution selection under #332 is implementation-stage work,
-not a supported consumer option. Consumers must not configure `execution` until
-a representative protected policy-selected hosted review and reporting path has
-been verified. Current supported caller timeout inputs remain documented in the
-[integration reference](docs/integration-reference.md#protected-codex-execution-selection). Staged
-self-verification also checks bounded execution status before semantic validation;
-this status grants no acceptance.
+Protected policy execution selection under #332 remains unavailable as a
+consumer option pending representative hosted verification. This repository's
+committed `main` policy selects the exact 7-minute job, 5-minute step and
+standard Codex profile for staged self-verification; that self selection does
+not establish consumer support or acceptance. Current caller timeout inputs
+and their host limits are documented in the
+[integration reference](docs/integration-reference.md#protected-codex-execution-selection).
 
 The reusable workflow is
 [`architecture-gate-consumer.yml`](.github/workflows/architecture-gate-consumer.yml). Consumers
@@ -263,17 +263,20 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 
 ## Unverified preview lifecycle API
 
-The `./preview-lifecycle` package API supports ordinary review, the
-predecessor-authorized completed-BLOCK amendment procedure, missing-decision
-addition and existing-choice amendment from completed OWNER_DECISION results,
-and the narrow initial compatible migration from legacy v1 policy to a v1/v2
-successor. Migration requires predecessor PASS under unchanged legacy review
-inputs, exact preservation of the complete selected authority bytes and
-reviewer settings, and control-plane-only changes. Every route preserves
-`UNVERIFIED` assurance and does not integrate changes or supply trusted
-acceptance. For v1-to-v2 migration, M checks only the B runtime's core decision
-and complete authority IDs; B-only constraints are checked against the actual
-B response and are not proven satisfiable during M. Later or incompatible
-migrations remain unsupported. See the
+The `./preview-lifecycle` package API implements the explicitly selected
+`preview-unverified-procedure-v1` profile for ordinary review, a completed
+BLOCK amendment selected by the predecessor, addition of a missing decision,
+amendment of an existing choice after a completed `OWNER_DECISION`, and the
+narrow initial compatible migration from legacy v1 policy to a v1/v2 successor. A
+consumer must record the exact selection in its predecessor before the
+governed change. Every route remains `UNVERIFIED`: it does not satisfy trusted
+`OWNER_ADDITION` or `OWNER_AMENDMENT`, establish host enforcement, or supply
+trusted acceptance. Migration requires predecessor `PASS` under unchanged
+legacy review inputs, exact preservation of the complete selected authority
+bytes and reviewer settings, and control-plane-only changes. For v1-to-v2
+migration, M checks only the B runtime's core decision and complete authority
+IDs; B-only constraints are checked against the actual B response and are not
+proven satisfiable during M. Later or incompatible migrations remain
+unsupported. See the
 [integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api)
 for the API sequence and boundaries.
