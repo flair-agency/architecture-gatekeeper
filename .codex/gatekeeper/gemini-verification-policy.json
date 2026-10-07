@@ -1,0 +1,22 @@
+{
+  "version": 6,
+  "default": {
+    "mode": "local-only"
+  },
+  "branches": {
+    "feature/gemini-ci": {
+      "mode": "enforced",
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "thinkingLevel": "MEDIUM",
+      "authorityManifestPath": ".codex/gatekeeper/authorities.json",
+      "authorityLimits": {
+        "maxManifestBytes": 16384,
+        "maxMembers": 16,
+        "maxFileBytes": 81920,
+        "maxTotalBytes": 262144,
+        "maxPromptBytes": 196608
+      }
+    }
+  }
+}
