@@ -1,0 +1,1858 @@
+{
+  "format": "agk384-clause-preservation-map-v1",
+  "title": "Canonical authority lifecycle editorial map",
+  "record_status": "Non-normative presentation and preservation record for Issue #384. It records the selected Authority Set snapshot, unchanged block identities, and clause-by-clause correspondence for the edited lifecycle section. It does not amend or rank the selected authorities and makes no owner, activation, acceptance, or support decision.",
+  "scope": {
+    "changed_normative_member": "docs/architecture.md; only the section headed “Canonical authority lifecycle” is edited.",
+    "other_selected_members": "All five other selected members remain byte-identical to baseline.",
+    "additional_files": [
+      "This repository-only JSON preservation map.",
+      "A row in docs/investigations/index.md."
+    ],
+    "explicit_exclusions": [
+      "No other normative section or member is edited.",
+      "No lifecycle status audit beyond this section.",
+      "No route is selected or activated; no owner decision is made."
+    ]
+  },
+  "baseline": {
+    "revision": "3f71fece350c3b5004cc81a7cb2253569a91e6b5",
+    "worktree_start_revision": "cd137b7423e04d7915d464f4a89b9dfdc8ee70e3",
+    "main_snapshot": "The coordinator independently verified GitHub main remained at the baseline revision before this work.",
+    "manifest": {
+      "path": ".codex/gatekeeper/authorities.json",
+      "sha256": "5514d77815330af2798c00e49421525127939567b5167eca1812a87db32d4527",
+      "bytes": 1077
+    },
+    "selected_authority_ids": [
+      "architecture-contract",
+      "architecture-authority-set",
+      "architecture-owner-addition",
+      "architecture-owner-amendment",
+      "architecture-review-execution",
+      "architecture-self-profile"
+    ],
+    "selected_members": [
+      {
+        "id": "architecture-contract",
+        "path": "docs/architecture.md",
+        "bytes": 37648,
+        "lines": 587,
+        "current_after_editorial_change": {
+          "bytes": 41419,
+          "sha256": "43185281e0da9730de0a43f7d0b7685953cc56aeb9b2a826617d97639b7b7b79",
+          "lines": 664
+        },
+        "baseline_verified_unchanged": null
+      },
+      {
+        "id": "architecture-authority-set",
+        "path": "docs/architecture/authority-set.md",
+        "bytes": 6863,
+        "lines": 108,
+        "current_after_editorial_change": {
+          "bytes": 6863,
+          "sha256": "7ae5930a76090c2c11f382ef7b5a432f136448e17bdb47e38babb2d31bd16b28",
+          "lines": 108
+        },
+        "baseline_verified_unchanged": true
+      },
+      {
+        "id": "architecture-owner-addition",
+        "path": "docs/architecture/owner-addition.md",
+        "bytes": 18063,
+        "lines": 291,
+        "current_after_editorial_change": {
+          "bytes": 18063,
+          "sha256": "c9e06a9c838f9aba6a18991b5b72729d6cfc49048beb05f163602912cb90d191",
+          "lines": 291
+        },
+        "baseline_verified_unchanged": true
+      },
+      {
+        "id": "architecture-owner-amendment",
+        "path": "docs/architecture/owner-amendment.md",
+        "bytes": 24531,
+        "lines": 372,
+        "current_after_editorial_change": {
+          "bytes": 24531,
+          "sha256": "35a3653f43e5bf4fdee83c8f8688a147e09d998a4cd3a132da762c7e0a556785",
+          "lines": 372
+        },
+        "baseline_verified_unchanged": true
+      },
+      {
+        "id": "architecture-review-execution",
+        "path": "docs/architecture/review-execution.md",
+        "bytes": 28901,
+        "lines": 450,
+        "current_after_editorial_change": {
+          "bytes": 28901,
+          "sha256": "0f871d515970c247a569379bfeb99616f466ee4a71e1cfcfc09ddee4b5ebe2cf",
+          "lines": 450
+        },
+        "baseline_verified_unchanged": true
+      },
+      {
+        "id": "architecture-self-profile",
+        "path": "docs/architecture/self-profile.md",
+        "bytes": 7150,
+        "lines": 100,
+        "current_after_editorial_change": {
+          "bytes": 7150,
+          "sha256": "58d7904651dda51a3b5cb49290bcb95a4ee7a958313a908472249efea8b2ca77",
+          "lines": 100
+        },
+        "baseline_verified_unchanged": true
+      }
+    ]
+  },
+  "changed_block": {
+    "id": "architecture-contract.canonical-authority-lifecycle",
+    "path": "docs/architecture.md",
+    "baseline_lines": [
+      287,
+      296
+    ],
+    "baseline_anchor": "#canonical-authority-lifecycle",
+    "baseline_bytes": 2957,
+    "baseline_sha256": "cd190b88038dfff0c503d8de54c6930e0d7b84593b27aeeeaf865c507b9007d2",
+    "baseline_line_count": 10,
+    "baseline_exact_text": "### Canonical authority lifecycle\n\nFor selected Gatekeeper lifecycle-v1 tuples (predecessor/profile, topology/bounds, host/merge, caller), support requires finite predecessor-authorized owner-choice → eligible scoped B (required services/evidence) → adoption/readback, production trace, matching fixture and fail-closed negatives. Unselected: inactive. No graph-only support; failed semantics cannot force eligibility. Else `UNSUPPORTED`; retain predecessor; no acceptance/fallback/false-addition split/exception. Legacy policy/artifact/acceptance meanings remain unchanged. B1–B8 govern only this Gatekeeper lifecycle/bootstrap and its `ACTIVE` claim. Consumer-authorized external-admin exceptions remain consumer-owned; they never establish Gatekeeper adoption/`ACTIVE`.\n\nExisting addition/amendment clauses govern B/Set/policy/evidence/freshness; bind repo/target lineage and runtime/caller. Track canonical snapshot, phase/kind, capability/assurance. `ABSENT_INITIAL`=never-existing root; missing decision=addition; lost member=recovery; T4=oversized Set. Pending retains predecessor; pre-integration failure stays pending/ineligible/incomplete; post-integration failure records placement/adoption separately (no fictitious rollback); success needs valid adoption + verified placement. Preserve history; fresh review is new.\n\nKeep defined/implemented/released/selectable/prior-selected/eligible/owner action/adopted/canonically placed/commissioning/active distinct. Normal transitions use no exception. T0 root; T1 missing-decision addition; T2 amend existing; normal, no bootstrap; T3 equivalent maintenance (selector→T5/T6); T4 preselected bounded oversized recovery; T5 prior-authorized compatible migration; T6 incompatible migration via prior-authorized bridge or unsupported; T7 first selection via normal route or guarded bootstrap; T8 normal adoption before active; T9 later profile-fresh use, no fallback/reset.\n\nBootstrap only for absent-ever root or genuine first activation lacking authorized normal/staged path. T0/T7 share nonresettable repo/target lineage authorization (incl inseparable root/config); rename/backend/manifest/policy/profile changes/missing files cannot reset it. B1 proves absent-ever root or never-completed first activation (missing file/version/receipt is no proof). B2 inventories authorized normal/staged/migration/repair exits: any finite noncircular path bars bootstrap regardless of cost/deadline; missing code/tests/defect/outage do not prove absence. B3 independent existing/external governance authorizes exact scope; B4 binds candidate/paths/ops/actors/lineage; B5 verifies prep/limits/inputs/producer/host. Require implemented T8 plan before start; resulting policy must authorize it. B6 reads back first-operation target/policy/caller; B7 consumes lineage authorization; B8 later normal adoption/readback before ACTIVE, zero exception; commissioning until then. Bootstrap is external, not PASS/G0.\n\n",
+    "presentation_constraints": [
+      "Retain heading and anchor #canonical-authority-lifecycle.",
+      "Restructure prose/tables/diagram only; do not change authority, applicability, conditions, exception scope, route status, or acceptance semantics.",
+      "No new glossary definitions that add requirements or state transitions; existing distinctions may be rendered as a term list without redefining them.",
+      "Diagram is explanatory only; prose remains normative.",
+      "Make decision, eligibility, owner action, canonical placement/readback, and ACTIVE visually distinct.",
+      "Show unsupported retains predecessor and commissioning continues until B8 normal adoption/readback.",
+      "B1–B8 are bootstrap controls and T0–T9 are transition cases; preserve their difference and their stated links.",
+      "No graph-only support claim, new precedence, activation, fallback, reset, or owner decision."
+    ],
+    "clauses": [
+      {
+        "id": "CAL-01",
+        "baseline_fragment": "For selected Gatekeeper lifecycle-v1 tuples (predecessor/profile, topology/bounds, host/merge, caller), support requires finite predecessor-authorized owner-choice → eligible scoped B (required services/evidence) → adoption/readback, production trace, matching fixture and fail-closed negatives.",
+        "preserve": [
+          "Tuple dimensions: predecessor/profile, topology/bounds, host/merge, caller",
+          "Finite predecessor-authorized path",
+          "Owner-choice precedes eligible scoped B",
+          "Required services/evidence",
+          "Adoption/readback",
+          "Production trace",
+          "Matching fixture",
+          "Fail-closed negative evidence"
+        ],
+        "presentation_locations": [
+          "#canonical-authority-lifecycle"
+        ]
+      },
+      {
+        "id": "CAL-02",
+        "baseline_fragment": "Unselected: inactive. No graph-only support; failed semantics cannot force eligibility. Else `UNSUPPORTED`; retain predecessor; no acceptance/fallback/false-addition split/exception.",
+        "preserve": [
+          "Unselected tuple remains inactive",
+          "A graph alone never establishes support",
+          "Semantic failure cannot create eligibility",
+          "Unsupported outcome retains predecessor",
+          "No acceptance, fallback, false addition split, or exception"
+        ],
+        "presentation_locations": [
+          "#adoption-placement-and-failure-handling",
+          "#lifecycle-relationship-diagram"
+        ],
+        "current_clause_fragment": "A failed semantic result cannot force eligibility. If the selected lifecycle-v1 support conditions cannot be met, the result is UNSUPPORTED and the predecessor is retained. This permits no acceptance, fallback, false-addition split, or exception."
+      },
+      {
+        "id": "CAL-03",
+        "baseline_fragment": "Legacy policy/artifact/acceptance meanings remain unchanged. B1–B8 govern only this Gatekeeper lifecycle/bootstrap and its `ACTIVE` claim. Consumer-authorized external-admin exceptions remain consumer-owned; they never establish Gatekeeper adoption/`ACTIVE`.",
+        "preserve": [
+          "Legacy policy/artifact/acceptance semantics unchanged",
+          "B1–B8 scope only this Gatekeeper lifecycle/bootstrap and its ACTIVE claim",
+          "Consumer external-admin exception remains consumer-owned",
+          "Such exception cannot establish Gatekeeper adoption or ACTIVE"
+        ],
+        "presentation_locations": [
+          "#lifecycle-scope-and-records",
+          "#guarded-bootstrap-controls-b1b8"
+        ]
+      },
+      {
+        "id": "CAL-04",
+        "baseline_fragment": "Existing addition/amendment clauses govern B/Set/policy/evidence/freshness; bind repo/target lineage and runtime/caller.",
+        "preserve": [
+          "Addition and amendment member clauses remain controlling for B, Set, policy, evidence, freshness",
+          "Bind repository and target lineage",
+          "Bind runtime and caller"
+        ],
+        "presentation_locations": [
+          "#lifecycle-scope-and-records"
+        ]
+      },
+      {
+        "id": "CAL-05",
+        "baseline_fragment": "Track canonical snapshot, phase/kind, capability/assurance.",
+        "preserve": [
+          "Track canonical snapshot",
+          "Track phase and kind",
+          "Track capability and assurance"
+        ],
+        "presentation_locations": [
+          "#lifecycle-scope-and-records"
+        ]
+      },
+      {
+        "id": "CAL-06",
+        "baseline_fragment": "`ABSENT_INITIAL`=never-existing root; missing decision=addition; lost member=recovery; T4=oversized Set.",
+        "preserve": [
+          "ABSENT_INITIAL means never-existing root",
+          "Missing decision is addition",
+          "Lost member is recovery",
+          "T4 is oversized Set"
+        ],
+        "presentation_locations": [
+          "#lifecycle-scope-and-records",
+          "#transition-cases-t0t9"
+        ]
+      },
+      {
+        "id": "CAL-07",
+        "baseline_fragment": "Pending retains predecessor; pre-integration failure stays pending/ineligible/incomplete; post-integration failure records placement/adoption separately (no fictitious rollback); success needs valid adoption + verified placement.",
+        "preserve": [
+          "Pending state retains predecessor",
+          "Pre-integration failure remains pending, ineligible, incomplete",
+          "Post-integration failure records placement separately from adoption",
+          "Do not imply rollback after integration",
+          "Success requires valid adoption and verified placement"
+        ],
+        "presentation_locations": [
+          "#adoption-placement-and-failure-handling",
+          "#lifecycle-relationship-diagram"
+        ]
+      },
+      {
+        "id": "CAL-08",
+        "baseline_fragment": "Preserve history; fresh review is new.",
+        "preserve": [
+          "Historical results remain intact",
+          "Fresh review is a new review/result"
+        ],
+        "presentation_locations": [
+          "#adoption-placement-and-failure-handling"
+        ]
+      },
+      {
+        "id": "CAL-09",
+        "baseline_fragment": "Keep defined/implemented/released/selectable/prior-selected/eligible/owner action/adopted/canonically placed/commissioning/active distinct.",
+        "preserve": [
+          "Do not conflate defined, implemented, released, selectable, prior-selected, eligible, owner action, adopted, canonically placed, commissioning, ACTIVE"
+        ],
+        "presentation_locations": [
+          "#lifecycle-scope-and-records"
+        ]
+      },
+      {
+        "id": "CAL-10",
+        "baseline_fragment": "Normal transitions use no exception.",
+        "preserve": [
+          "Normal transition paths do not use an exception"
+        ],
+        "presentation_locations": [
+          "#transition-cases-t0t9"
+        ]
+      },
+      {
+        "id": "CAL-11",
+        "baseline_fragment": "T0 root; T1 missing-decision addition; T2 amend existing; normal, no bootstrap; T3 equivalent maintenance (selector→T5/T6); T4 preselected bounded oversized recovery; T5 prior-authorized compatible migration; T6 incompatible migration via prior-authorized bridge or unsupported; T7 first selection via normal route or guarded bootstrap; T8 normal adoption before active; T9 later profile-fresh use, no fallback/reset.",
+        "preserve": [
+          "T0 root",
+          "T1 missing-decision addition",
+          "T2 existing-decision amendment; normal path and no bootstrap",
+          "T3 equivalent maintenance routes selector to T5 or T6",
+          "T4 preselected bounded oversized recovery",
+          "T5 prior-authorized compatible migration",
+          "T6 incompatible migration through prior-authorized bridge or unsupported",
+          "T7 first selection through normal route or guarded bootstrap",
+          "T8 normal adoption precedes ACTIVE",
+          "T9 later profile-fresh use, with no fallback/reset"
+        ],
+        "presentation_locations": [
+          "#transition-cases-t0t9"
+        ]
+      },
+      {
+        "id": "CAL-12",
+        "baseline_fragment": "Bootstrap only for absent-ever root or genuine first activation lacking authorized normal/staged path.",
+        "preserve": [
+          "Bootstrap is limited to absent-ever root or genuine first activation",
+          "Authorized normal/staged path must be absent"
+        ],
+        "presentation_locations": [
+          "#guarded-bootstrap-controls-b1b8"
+        ]
+      },
+      {
+        "id": "CAL-13",
+        "baseline_fragment": "T0/T7 share nonresettable repo/target lineage authorization (incl inseparable root/config); rename/backend/manifest/policy/profile changes/missing files cannot reset it.",
+        "preserve": [
+          "T0 and T7 share lineage authorization",
+          "Authorization binds repository/target and inseparable root/config",
+          "Lineage authorization cannot reset on rename, backend, manifest, policy, profile changes, or missing files"
+        ],
+        "presentation_locations": [
+          "#transition-cases-t0t9",
+          "#guarded-bootstrap-controls-b1b8"
+        ]
+      },
+      {
+        "id": "CAL-14",
+        "baseline_fragment": "B1 proves absent-ever root or never-completed first activation (missing file/version/receipt is no proof).",
+        "preserve": [
+          "B1 proves absent-ever root or never-completed first activation",
+          "Missing file/version/receipt alone proves neither"
+        ],
+        "presentation_locations": [
+          "#guarded-bootstrap-controls-b1b8"
+        ]
+      },
+      {
+        "id": "CAL-15",
+        "baseline_fragment": "B2 inventories authorized normal/staged/migration/repair exits: any finite noncircular path bars bootstrap regardless of cost/deadline; missing code/tests/defect/outage do not prove absence.",
+        "preserve": [
+          "B2 inventories authorized normal, staged, migration, repair exits",
+          "Any finite noncircular authorized path bars bootstrap, irrespective of cost/deadline",
+          "Missing code, tests, defect, or outage does not prove no path"
+        ],
+        "presentation_locations": [
+          "#guarded-bootstrap-controls-b1b8"
+        ]
+      },
+      {
+        "id": "CAL-16",
+        "baseline_fragment": "B3 independent existing/external governance authorizes exact scope; B4 binds candidate/paths/ops/actors/lineage; B5 verifies prep/limits/inputs/producer/host.",
+        "preserve": [
+          "B3 uses independent existing/external governance and exact scope",
+          "B4 binds candidate, paths, operations, actors, lineage",
+          "B5 verifies preparation, limits, inputs, producer, host"
+        ],
+        "presentation_locations": [
+          "#guarded-bootstrap-controls-b1b8"
+        ]
+      },
+      {
+        "id": "CAL-17",
+        "baseline_fragment": "Require implemented T8 plan before start; resulting policy must authorize it.",
+        "preserve": [
+          "Implemented T8 plan exists before bootstrap starts",
+          "Resulting policy authorizes the plan"
+        ],
+        "presentation_locations": [
+          "#guarded-bootstrap-controls-b1b8"
+        ]
+      },
+      {
+        "id": "CAL-18",
+        "baseline_fragment": "B6 reads back first-operation target/policy/caller; B7 consumes lineage authorization; B8 later normal adoption/readback before ACTIVE, zero exception; commissioning until then.",
+        "preserve": [
+          "B6 reads back first-operation target, policy, caller",
+          "B7 consumes lineage authorization",
+          "B8 later normal adoption/readback before ACTIVE",
+          "B8 permits zero exception",
+          "State remains commissioning until B8"
+        ],
+        "presentation_locations": [
+          "#guarded-bootstrap-controls-b1b8"
+        ]
+      },
+      {
+        "id": "CAL-19",
+        "baseline_fragment": "Bootstrap is external, not PASS/G0.",
+        "preserve": [
+          "Bootstrap is external to Gatekeeper semantic PASS and G0"
+        ],
+        "presentation_locations": [
+          "#guarded-bootstrap-controls-b1b8"
+        ]
+      }
+    ],
+    "current_lines": [
+      287,
+      373
+    ],
+    "current_bytes": 6728,
+    "current_sha256": "caae984707d6f6bf002453e91589c5714309f5e01e4ce9a25045dcd57270e5ef",
+    "current_line_count": 87,
+    "current_exact_text": "### Canonical authority lifecycle\n\nThis lifecycle applies to a selected Gatekeeper lifecycle-v1 tuple: predecessor/profile, topology/bounds, host/merge, and caller. For that tuple, support requires a finite predecessor-authorized owner-choice → eligible scoped B (with required services and evidence) → adoption/readback path, together with a production trace, matching fixture, and fail-closed negative evidence. The order in that path is material. A diagram or one successful stage alone does not establish support.\n\n#### Lifecycle scope and records\n\nThe existing OWNER_ADDITION and OWNER_AMENDMENT clauses continue to govern B, the selected Authority Set, policy, evidence, and freshness. Bind the lifecycle to its repository and target lineage and to its runtime and caller. Record the canonical authority snapshot, lifecycle phase and kind, and capability and assurance.\n\n`ABSENT_INITIAL` means a root that has never existed. A missing decision is an addition; a lost selected member is recovery; T4 is the preselected bounded recovery for an oversized Set. An unselected tuple remains inactive.\n\nKeep these states distinct: defined, implemented, released, selectable, prior-selected, eligible, owner action, adopted, canonically placed, commissioning, and `ACTIVE`. Legacy policy, artifact, and acceptance meanings remain unchanged. B1–B8 govern only this Gatekeeper lifecycle/bootstrap and its `ACTIVE` claim. Consumer-authorized external-admin exceptions remain consumer-owned and never establish Gatekeeper adoption or `ACTIVE`.\n\n#### Transition cases T0–T9\n\nNormal lifecycle transitions use no exception. T0 and T7 share non-resettable repository/target lineage authorization, including an inseparable root/configuration. Renaming, changing a backend, manifest, policy, or profile, or losing files does not reset that lineage.\n\n| Case | Lifecycle transition |\n| --- | --- |\n| T0 | Root. |\n| T1 | Addition for a missing decision. |\n| T2 | Amendment of an existing decision through the normal route; no bootstrap. |\n| T3 | Equivalent maintenance; a selector change proceeds through T5 or T6. |\n| T4 | Preselected, bounded recovery of an oversized Authority Set. |\n| T5 | Prior-authorized compatible migration. |\n| T6 | Incompatible migration through a prior-authorized bridge, or `UNSUPPORTED`. |\n| T7 | First selection through the normal route, or the guarded bootstrap described below. |\n| T8 | Normal adoption before `ACTIVE`. |\n| T9 | Later profile-fresh use; no fallback or reset. |\n\n#### Guarded bootstrap controls B1–B8\n\nBootstrap is available only for an absent-ever root or genuine first activation that lacks an authorized normal or staged path. T0/T7 lineage authorization is non-resettable as stated above. The following controls govern that bootstrap; they do not create a normal-transition exception.\n\n| Control | Required bootstrap condition |\n| --- | --- |\n| B1 | Prove an absent-ever root or a first activation that has never completed. A missing file, version, or receipt is not proof. |\n| B2 | Inventory authorized normal, staged, migration, and repair exits. Any finite, non-circular path bars bootstrap regardless of cost or deadline. Missing code or tests, a defect, or an outage does not prove that no path exists. |\n| B3 | Independent existing or external governance authorizes the exact scope. |\n| B4 | Bind the candidate, paths, operations, actors, and lineage. |\n| B5 | Verify preparation, limits, inputs, producer, and host. |\n| B6 | Read back the first-operation target, policy, and caller. |\n| B7 | Consume the lineage authorization. |\n| B8 | Complete later normal adoption and readback before `ACTIVE`; no exception is permitted. Until then the lifecycle remains in commissioning. |\n\nAn implemented T8 plan is required before bootstrap starts, and the resulting policy must authorize that plan. Bootstrap is external to Gatekeeper semantic `PASS` and G0.\n\n#### Adoption, placement, and failure handling\n\nAn eligible result does not itself perform owner action, adoption, or canonical placement. A pending lifecycle retains its predecessor. A failure before integration remains pending, ineligible, and incomplete. A failure after integration records placement and adoption separately; do not describe it as a rollback. Success requires valid adoption and verified placement. Preserve historical results; a fresh review is a new review.\n\nA failed semantic result cannot force eligibility. If the selected lifecycle-v1 support conditions cannot be met, the result is `UNSUPPORTED` and the predecessor is retained. This permits no acceptance, fallback, false-addition split, or exception. The external-admin exception, if separately authorized by the consumer, does not establish Gatekeeper adoption or `ACTIVE`.\n\n#### Lifecycle relationship diagram\n\nThe diagram distinguishes lifecycle facts and claims for navigation. Its only ordered support path is the owner-choice → eligible scoped B → adoption/readback sequence stated above; the separate placement fact is not ordered relative to adoption here. All other connections are limited to the specific lifecycle conditions labeled. The complete conditions above and elsewhere in the selected Authority Set control, and the graph alone is never support evidence.\n\n```mermaid\nflowchart LR\n  subgraph facts[\"Distinct lifecycle facts; no universal flow implied\"]\n    decision[\"Semantic decision\"]\n    owner[\"Owner action\"]\n  end\n  subgraph support[\"Ordered support path\"]\n    ownerchoice[\"Finite predecessor-authorized\\nowner-choice\"]\n    eligible[\"Eligible scoped B\\nwith required services and evidence\"]\n    adoption[\"Adoption and readback\"]\n    ownerchoice --> eligible --> adoption\n  end\n  placement[\"Canonical placement\\nverified separately\"]\n  transition[\"Lifecycle transition\"]\n  unsupported[\"UNSUPPORTED\\npredecessor retained\"]\n  preintegration[\"Pre-integration failure\"]\n  pending[\"Pending / ineligible / incomplete\\npredecessor retained\"]\n  bootstrap[\"Guarded bootstrap\\nB1–B7\"]\n  commissioning[\"Commissioning\"]\n  active[\"ACTIVE\"]\n\n  adoption ---|separate lifecycle fact| placement\n  adoption -->|normal T8; all selected lifecycle conditions still apply| active\n  transition -->|support conditions cannot be met| unsupported\n  preintegration -->|remains| pending\n  bootstrap -->|B1–B7 controls| commissioning\n  commissioning -->|B8: later normal adoption and readback; no exception| active\n```\n\nThe support claim also requires the finite predecessor-authorized path, production trace, matching fixture, and fail-closed negative evidence listed at the start of this section. Normal transition and `ACTIVE` requirements remain route-specific; this diagram adds no eligibility, adoption, placement, or activation rule.\n\n"
+  },
+  "unchanged_selected_set_inventory": [
+    {
+      "id": "architecture-contract.preamble-navigation",
+      "lines": [
+        1,
+        33
+      ],
+      "blocks": [
+        "contract status and conformance",
+        "documentation map pointer",
+        "six-member authority table and no implicit precedence",
+        "contract navigation index"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1923,
+          "sha256": "2ac14535627c8851bfec3617b9f0c856550598e57646d70ca4a8dc29652dd43a"
+        },
+        "head": {
+          "bytes": 1923,
+          "sha256": "2ac14535627c8851bfec3617b9f0c856550598e57646d70ca4a8dc29652dd43a"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        1,
+        33
+      ]
+    },
+    {
+      "id": "architecture-contract.why-consumer-authority-shared-mechanism",
+      "lines": [
+        34,
+        81
+      ],
+      "blocks": [
+        "purpose",
+        "consumer-owned authority and policy",
+        "distributed authority and initial CI/local bounds crossrefs",
+        "shared mechanism and PASS/BLOCK/OWNER_DECISION, OWNER_ADDITION, OWNER_AMENDMENT semantics"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 2338,
+          "sha256": "4240e9dbc910d594a1d39a7999d81a18ccc4b5c5740a0dde01b01d5a9f910b89"
+        },
+        "head": {
+          "bytes": 2338,
+          "sha256": "4240e9dbc910d594a1d39a7999d81a18ccc4b5c5740a0dde01b01d5a9f910b89"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        34,
+        81
+      ]
+    },
+    {
+      "id": "architecture-contract.acceptance-host-boundary",
+      "lines": [
+        82,
+        110
+      ],
+      "blocks": [
+        "responsibility/authority table",
+        "producer and host enforcement boundary",
+        "evidence limits and independent assurance dimensions",
+        "profiles/adapters and no-route-activation constraints",
+        "enforced-profile Mermaid"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1857,
+          "sha256": "a1aa19716f2063a158a7843b2f01f249e7774e00ca7f300b1dff5b92f80bf31e"
+        },
+        "head": {
+          "bytes": 1857,
+          "sha256": "a1aa19716f2063a158a7843b2f01f249e7774e00ca7f300b1dff5b92f80bf31e"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        82,
+        110
+      ]
+    },
+    {
+      "id": "architecture-contract.owner-addition-and-amendment-route-crossrefs",
+      "lines": [
+        111,
+        138
+      ],
+      "blocks": [
+        "Issue 111 G0 addition",
+        "Issue 119 multi-document addition",
+        "v0.5.1 fixture gate",
+        "Issue 75 amendment",
+        "self-v1 semantic receipt",
+        "exact-claim authorization/revocation",
+        "Issue 121 adoption/assurance dimensions"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1486,
+          "sha256": "216be3fcc7902b40369ea1269de3893765f7999858ae3412c0e8a3c0052959c1"
+        },
+        "head": {
+          "bytes": 1486,
+          "sha256": "216be3fcc7902b40369ea1269de3893765f7999858ae3412c0e8a3c0052959c1"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        111,
+        138
+      ]
+    },
+    {
+      "id": "architecture-contract.three-concepts-and-conceptual-operation",
+      "lines": [
+        139,
+        163
+      ],
+      "blocks": [
+        "review/evidence/acceptance separation",
+        "A/local/CI/evidence/policy acceptance flow",
+        "separate B procedure and fresh A review",
+        "no acceptance on incomplete/BLOCK/unresolved OWNER_DECISION"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 950,
+          "sha256": "7398475b70de10ed9f14b51c12ddfdde7dfe077680457d54dde34a7d10f68145"
+        },
+        "head": {
+          "bytes": 950,
+          "sha256": "7398475b70de10ed9f14b51c12ddfdde7dfe077680457d54dde34a7d10f68145"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        139,
+        163
+      ]
+    },
+    {
+      "id": "architecture-contract.execution-routes-and-self-ruleset-readback",
+      "lines": [
+        164,
+        244
+      ],
+      "blocks": [
+        "local/manual review crossref",
+        "Issue 265 local provider target",
+        "CI model review",
+        "Issue 331 Fork review target",
+        "Issue 332 execution boundary",
+        "Issue 218 WIF",
+        "Issue 252 proxy, Gemini authentication and execution",
+        "GitHub step-output sink",
+        "self-only ruleset readback capability with narrow permitted operations, credential boundaries, exact snapshot bindings, no adoption/queue authority",
+        "Issue 210 self reporter",
+        "Issue 120 legacy v1 repair"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 4679,
+          "sha256": "2b813cefdaba229f5283f4b1fe982e08879ce41d13b6495ca01cd14d4820a707"
+        },
+        "head": {
+          "bytes": 4679,
+          "sha256": "2b813cefdaba229f5283f4b1fe982e08879ce41d13b6495ca01cd14d4820a707"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        164,
+        244
+      ]
+    },
+    {
+      "id": "architecture-contract.current-acceptance",
+      "lines": [
+        245,
+        264
+      ],
+      "blocks": [
+        "current ci-enforced same-run behavior and non-standalone evidence",
+        "local-only protected-base waiver semantics",
+        "local/manual feedback only",
+        "Issue 20 unimplemented evidence contract"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1145,
+          "sha256": "94e1c65f17d80c47c3ae36b466d14927e0642794e5baf344cda3c926debb65bf"
+        },
+        "head": {
+          "bytes": 1145,
+          "sha256": "94e1c65f17d80c47c3ae36b466d14927e0642794e5baf344cda3c926debb65bf"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        245,
+        264
+      ]
+    },
+    {
+      "id": "architecture-contract.target-evidence-acceptance",
+      "lines": [
+        265,
+        286
+      ],
+      "blocks": [
+        "versioned structured evidence minimum bindings and invalidation",
+        "signing/trusted identity/CI selection are policy choices",
+        "current authoritative check scope",
+        "Issue 121 procedural route not implicitly host-required",
+        "G0 adoption pre/post evidence and no silent reinterpretation"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1309,
+          "sha256": "ae72c0f72795b418c72b41dee1684cc5dbe39ae85e4fab6c5211b0a5a4e30da1"
+        },
+        "head": {
+          "bytes": 1309,
+          "sha256": "ae72c0f72795b418c72b41dee1684cc5dbe39ae85e4fab6c5211b0a5a4e30da1"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        265,
+        286
+      ]
+    },
+    {
+      "id": "architecture-contract.unverified-consumer-preview",
+      "lines": [
+        297,
+        481
+      ],
+      "blocks": [
+        "separately versioned owner-selected UNVERIFIED procedure and distinct assurance scope",
+        "preview stages and applicability",
+        "normal consumer authority / predecessor selection",
+        "OBSERVED placement semantics",
+        "addition and amendment procedures",
+        "control-plane migration and lineage",
+        "fresh review and historical decision preservation",
+        "failure and no-fallback rules",
+        "route-specific custody/readback and status claims"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 12802,
+          "sha256": "c59ee0dc984296e972616f8faaf371ac41cab839183ea26924312ec97898c365"
+        },
+        "head": {
+          "bytes": 12802,
+          "sha256": "c59ee0dc984296e972616f8faaf371ac41cab839183ea26924312ec97898c365"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        374,
+        558
+      ]
+    },
+    {
+      "id": "architecture-contract.normative-invariants",
+      "lines": [
+        482,
+        533
+      ],
+      "blocks": [
+        "invariants 1–12: consumer ownership; execution/evidence/acceptance separation; local path; protected inputs; evidence invalidation; prior-policy selection; no dynamic downgrade; decisions/B lifecycle/fresh review/preview OBSERVED limits; credential isolation; distribution identity; claim only actual guarantees; dogfooding"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 3301,
+          "sha256": "8824fa496ca642bcf2993973aeaf5bbf79eece46ec803e27292c68ff3d5f1b2e"
+        },
+        "head": {
+          "bytes": 3301,
+          "sha256": "8824fa496ca642bcf2993973aeaf5bbf79eece46ec803e27292c68ff3d5f1b2e"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        559,
+        610
+      ]
+    },
+    {
+      "id": "architecture-contract.non-responsibilities",
+      "lines": [
+        534,
+        559
+      ],
+      "blocks": [
+        "explicit non-responsibility list",
+        "Gatekeeper/consumer/host boundary",
+        "no claim from green check/G0 alone"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1368,
+          "sha256": "69611029bf847cdc525e3235b525eadc67eba803ce0483239cb5390b52148e08"
+        },
+        "head": {
+          "bytes": 1368,
+          "sha256": "69611029bf847cdc525e3235b525eadc67eba803ce0483239cb5390b52148e08"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        611,
+        636
+      ]
+    },
+    {
+      "id": "architecture-contract.dogfooding-and-change",
+      "lines": [
+        560,
+        567
+      ],
+      "blocks": [
+        "self-profile crossrefs for change discipline and v0.6.0 profile"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 345,
+          "sha256": "ab81ffea5a19fbee19c4d02f0942a1c81db4e9fd77122793744845e804731bac"
+        },
+        "head": {
+          "bytes": 345,
+          "sha256": "ab81ffea5a19fbee19c4d02f0942a1c81db4e9fd77122793744845e804731bac"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        637,
+        644
+      ]
+    },
+    {
+      "id": "architecture-contract.canonical-organization",
+      "lines": [
+        568,
+        581
+      ],
+      "blocks": [
+        "authorized six-file split",
+        "must adopt migration authorization before moving clauses",
+        "review move/manifest/prompts/references/distribution under predecessor selection",
+        "preserve conditions/applicability/exception/scope/assurance/freshness/compatibility/history",
+        "T3/T5/T6 govern stages",
+        "no limit increase, activation, fallback, or policy extension"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 943,
+          "sha256": "73dd8a5f69a86c250abc0e1caa8a437a17f0a3a1c9f01fdd911a24f307877301"
+        },
+        "head": {
+          "bytes": 943,
+          "sha256": "73dd8a5f69a86c250abc0e1caa8a437a17f0a3a1c9f01fdd911a24f307877301"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        645,
+        658
+      ]
+    },
+    {
+      "id": "architecture-contract.tracked-work",
+      "lines": [
+        582,
+        587
+      ],
+      "blocks": [
+        "issues refine implementation only; no implicit amendments"
+      ],
+      "path": "docs/architecture.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 245,
+          "sha256": "755cb6411a55a8a8bcdd225f8833590e8919b516f59f634193e7a32bd9b90b5a"
+        },
+        "head": {
+          "bytes": 245,
+          "sha256": "755cb6411a55a8a8bcdd225f8833590e8919b516f59f634193e7a32bd9b90b5a"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        659,
+        664
+      ]
+    },
+    {
+      "id": "architecture-authority-set.distributed-target",
+      "lines": [
+        8,
+        64
+      ],
+      "blocks": [
+        "finite versioned Set, stable IDs/repo/path/revision",
+        "selector vs semantic authority; no link/dependency/submodule precedence",
+        "authorityIds vs authorityFiles",
+        "protected-base CI and local single-commit selection",
+        "selection-change review under prior Set",
+        "immutable complete bounded snapshots and credentials boundary",
+        "incomplete on missing/bad/oversized; no smaller-set fallback",
+        "exact reported member IDs and conflict OWNER_DECISION",
+        "full member provenance; same-run details not reusable acceptance evidence",
+        "activation only when implemented/selected; legacy routes otherwise"
+      ],
+      "path": "docs/architecture/authority-set.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 3646,
+          "sha256": "7c2867561abcdd83d01fe08149884db4f8c7d6da18b7503fa4fa02748f71e24f"
+        },
+        "head": {
+          "bytes": 3646,
+          "sha256": "7c2867561abcdd83d01fe08149884db4f8c7d6da18b7503fa4fa02748f71e24f"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        8,
+        64
+      ]
+    },
+    {
+      "id": "architecture-authority-set.initial-ci-bounds",
+      "lines": [
+        65,
+        83
+      ],
+      "blocks": [
+        "GitHub only initial CI support",
+        "five declared effective limits, no defaults, recommendations",
+        "runtime hard ceilings and no workflow/env raising",
+        "complete prompt counted",
+        "fail before materialization if invalid/over-ceiling"
+      ],
+      "path": "docs/architecture/authority-set.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1230,
+          "sha256": "17f18f68b7cb7d96f6bc728ae3b14770a565bee88920bf27102937b8a64ecbef"
+        },
+        "head": {
+          "bytes": 1230,
+          "sha256": "17f18f68b7cb7d96f6bc728ae3b14770a565bee88920bf27102937b8a64ecbef"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        65,
+        83
+      ]
+    },
+    {
+      "id": "architecture-authority-set.initial-local-bounds",
+      "lines": [
+        84,
+        108
+      ],
+      "blocks": [
+        "local same-repo self from one commit",
+        "explicit five limits and ceilings",
+        "repo name labels root; no GitHub-origin attestation",
+        "external member incomplete; no credential/source fallback",
+        "host credential inheritance limitation",
+        "local result feedback only; unselected consumers keep legacy behavior"
+      ],
+      "path": "docs/architecture/authority-set.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1640,
+          "sha256": "504d11de7788600dc121d92ca6c2639956ffecd48de12829395d006acbd57407"
+        },
+        "head": {
+          "bytes": 1640,
+          "sha256": "504d11de7788600dc121d92ca6c2639956ffecd48de12829395d006acbd57407"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        84,
+        108
+      ]
+    },
+    {
+      "id": "architecture-owner-addition.initial-g0-route",
+      "lines": [
+        8,
+        59
+      ],
+      "blocks": [
+        "missing-decision OWNER_DECISION rejects A; separate predecessor-B addition",
+        "exact prior policy scope and single self member",
+        "B limited to missing decision; no implementation/policy/unrelated issues",
+        "ownerDecisionId binding and semantic eligibility vs verifier",
+        "tag exact B/bindings and mutable-ref limitation",
+        "G0 not authentication or acceptance",
+        "after canonical B, fresh A review",
+        "inactive self route and one-time adoption/release fixture conditions",
+        "work completion not a missing decision"
+      ],
+      "path": "docs/architecture/owner-addition.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 3172,
+          "sha256": "1798ce79d8fd9691d26d721151bd3053fc01099199cfc69b24c67653b9ec0732"
+        },
+        "head": {
+          "bytes": 3172,
+          "sha256": "1798ce79d8fd9691d26d721151bd3053fc01099199cfc69b24c67653b9ec0732"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        8,
+        59
+      ]
+    },
+    {
+      "id": "architecture-owner-addition.multi-document-route",
+      "lines": [
+        60,
+        142
+      ],
+      "blocks": [
+        "versioned extension retains single-file B and no architecture/work-completion decision",
+        "previous base selects complete set/exact affected self member",
+        "ordinary and B eligibility get complete same Set; proposed bytes/diff are evidence",
+        "exact complete IDs and no omission/truncation/fallback",
+        "conflict stays OWNER_DECISION",
+        "versioned records/reports bind repo/base/B/policy/manifest/set/member/digests/decision/tag",
+        "stale mismatch incomplete",
+        "v0.5.1 limits and prompt accounting",
+        "G0 semantics/fresh A and old format nonreinterpretation"
+      ],
+      "path": "docs/architecture/owner-addition.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 5425,
+          "sha256": "390c2bbae13c15a950c489dbeb3ebf746ff533aeb2af1892f6a7278808239689"
+        },
+        "head": {
+          "bytes": 5425,
+          "sha256": "390c2bbae13c15a950c489dbeb3ebf746ff533aeb2af1892f6a7278808239689"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        60,
+        142
+      ]
+    },
+    {
+      "id": "architecture-owner-addition.fixture-gate",
+      "lines": [
+        143,
+        164
+      ],
+      "blocks": [
+        "A exact OWNER_DECISION",
+        "eligible exact authority-only B before merge",
+        "ordinary merge parent/tree topology",
+        "post-merge canonical readback",
+        "fresh A PASS; historical OWNER_DECISION preserved",
+        "fixture proves no actual consumer readiness or authorization"
+      ],
+      "path": "docs/architecture/owner-addition.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1105,
+          "sha256": "40c4221063612bfa817d53bee73d53cd8fbaa36cbb8436ff29c2b34482685c18"
+        },
+        "head": {
+          "bytes": 1105,
+          "sha256": "40c4221063612bfa817d53bee73d53cd8fbaa36cbb8436ff29c2b34482685c18"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        143,
+        164
+      ]
+    },
+    {
+      "id": "architecture-owner-addition.adoption-assurance-dimensions",
+      "lines": [
+        165,
+        291
+      ],
+      "blocks": [
+        "G0 compatibility only means actor identity not verified",
+        "separate eligibility/authentication/exact claim/quorum/policy protection/host enforcement/placement/freshness",
+        "unavailable vs unverified and bound evidence",
+        "no scalar assurance grade",
+        "Issue 121 recorded-base selection and no self enablement",
+        "no enforced-route downgrade",
+        "route-specific adoption and transition evidence"
+      ],
+      "path": "docs/architecture/owner-addition.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 8013,
+          "sha256": "695dcfee27e328a2cbe97fcc660269d6a8b8c9cd0dda7bc8169a638a4b7996ed"
+        },
+        "head": {
+          "bytes": 8013,
+          "sha256": "695dcfee27e328a2cbe97fcc660269d6a8b8c9cd0dda7bc8169a638a4b7996ed"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        165,
+        291
+      ]
+    },
+    {
+      "id": "architecture-owner-amendment.general-target",
+      "lines": [
+        8,
+        56
+      ],
+      "blocks": [
+        "amendment changes existing decision; distinct from semantic PASS and addition",
+        "A remains rejected until B canonical and fresh review",
+        "versioned trigger profiles and exact trigger evidence",
+        "completed-owner-decision-self-v1 and G0 semantics",
+        "common B eligibility against prior full set/policy",
+        "trigger-specific semantic questions",
+        "previous-base opt-in only",
+        "B1–B8 cross-reference; no activation"
+      ],
+      "path": "docs/architecture/owner-amendment.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 3326,
+          "sha256": "dcb22c2d4fb958bbedc5eca1ead455696a592f052142904b6e42ce02a77b5fa9"
+        },
+        "head": {
+          "bytes": 3326,
+          "sha256": "dcb22c2d4fb958bbedc5eca1ead455696a592f052142904b6e42ce02a77b5fa9"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        8,
+        56
+      ]
+    },
+    {
+      "id": "architecture-owner-amendment.self-v1-receipt",
+      "lines": [
+        57,
+        216
+      ],
+      "blocks": [
+        "closed semantic eligibility format is not PASS/authorization",
+        "prior policy selects profile/scope/producer/prompt ceiling",
+        "trusted producer validates exact raw inputs and records before prompt",
+        "complete Set and proposed diff plus trigger evidence",
+        "closed decision/check schema and exact receipt canonical JSON",
+        "digest algorithms and complete field sets",
+        "producer/runtime/model/effort verification",
+        "receipt not semantically self-proving and does not authorize B"
+      ],
+      "path": "docs/architecture/owner-amendment.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 10457,
+          "sha256": "bfa1d42b081e1f2c23bce5c58f7b6453efee84feaf5e2fc37a0a08690efc7a0f"
+        },
+        "head": {
+          "bytes": 10457,
+          "sha256": "bfa1d42b081e1f2c23bce5c58f7b6453efee84feaf5e2fc37a0a08690efc7a0f"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        57,
+        216
+      ]
+    },
+    {
+      "id": "architecture-owner-amendment.block-profile",
+      "lines": [
+        217,
+        285
+      ],
+      "blocks": [
+        "separately versioned BLOCK-only profile",
+        "consumer policy/governance selects scope/set/validators/producer/custody/readback",
+        "exact completed BLOCK/provenance and recover only by new BLOCK",
+        "authority-only B resolves bound conflict",
+        "AmendmentRecord separate; no record file inclusion without scope contract",
+        "trusted eligibility receipt and evidence freshness through owner procedure/adoption",
+        "integration metadata + canonical readback",
+        "placement distinct from valid adoption",
+        "fresh A review",
+        "no backend/activation by text alone"
+      ],
+      "path": "docs/architecture/owner-amendment.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 4738,
+          "sha256": "0d91cd8f35040355ac771a43d8eb4d89adab2cb5c3fb359df89a518d60db857b"
+        },
+        "head": {
+          "bytes": 4738,
+          "sha256": "0d91cd8f35040355ac771a43d8eb4d89adab2cb5c3fb359df89a518d60db857b"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        217,
+        285
+      ]
+    },
+    {
+      "id": "architecture-owner-amendment.exact-claim-auth-revocation",
+      "lines": [
+        286,
+        340
+      ],
+      "blocks": [
+        "exact owner claim auth is separate from G0 and tag actor authentication",
+        "policy selected and B cannot waive",
+        "bound exact claim requires reauthorization on changes",
+        "ordinary revoke before canonical transition blocks adoption; post transition does not erase historical acceptance",
+        "invalid-at-acceptance evidence is correction/incident matter",
+        "host ordering and adapter not selected; no route activation",
+        "no claim model beyond scope",
+        "required BLOCK evidence/tag/authority/current-state validations"
+      ],
+      "path": "docs/architecture/owner-amendment.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 3463,
+          "sha256": "a64155ff61105967ed1ca2edc95a0773951b8cae17e256823e4366ad2f328277"
+        },
+        "head": {
+          "bytes": 3463,
+          "sha256": "a64155ff61105967ed1ca2edc95a0773951b8cae17e256823e4366ad2f328277"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        286,
+        340
+      ]
+    },
+    {
+      "id": "architecture-owner-amendment.common-block-verifier",
+      "lines": [
+        341,
+        372
+      ],
+      "blocks": [
+        "BLOCK evidence profile binds exact review, AmendmentRecord, scope and state",
+        "B-only check cannot accept A",
+        "G0 null identity adapter still requires valid tag; higher-grade adapter cannot fallback",
+        "tag freshness enforceable before route enablement",
+        "separate attester count from authentication strength",
+        "inactive until format/verifier/routing/current checks implemented"
+      ],
+      "path": "docs/architecture/owner-amendment.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 2198,
+          "sha256": "649858c99096dabc47993c452f15862cc370c5197243271de1915fa647163ee8"
+        },
+        "head": {
+          "bytes": 2198,
+          "sha256": "649858c99096dabc47993c452f15862cc370c5197243271de1915fa647163ee8"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        341,
+        372
+      ]
+    },
+    {
+      "id": "architecture-review-execution.local-manual",
+      "lines": [
+        8,
+        81
+      ],
+      "blocks": [
+        "local first-class review and same-user boundary",
+        "revision-bound config/instructions/authority and review-only role",
+        "Codex Hook/CLI child sandbox+timeout",
+        "Gemini async adapter and distinct safeguards",
+        "native Skill host-managed paths/roles/host limits and refusal semantics",
+        "CI pinned workflow",
+        "no workstation integrity lock or physical write claim"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 4543,
+          "sha256": "4e87fce52c207d7763f0708af588bc730af350ac44a3f3ec5fc7da0fed551e81"
+        },
+        "head": {
+          "bytes": 4543,
+          "sha256": "4e87fce52c207d7763f0708af588bc730af350ac44a3f3ec5fc7da0fed551e81"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        8,
+        81
+      ]
+    },
+    {
+      "id": "architecture-review-execution.local-provider-target",
+      "lines": [
+        82,
+        105
+      ],
+      "blocks": [
+        "provider/model/settings/deadline explicit",
+        "no automatic fallback or parallel result adoption",
+        "async API vs sync compatibility behavior",
+        "requested/backend model identity distinction",
+        "shared schema/authority validation",
+        "timeout/cancel/credentials failure incomplete; local feedback only"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1577,
+          "sha256": "f494618427d255a0c2705e3e0e25d109044dd73b64dfe32d60b080a33a794634"
+        },
+        "head": {
+          "bytes": 1577,
+          "sha256": "f494618427d255a0c2705e3e0e25d109044dd73b64dfe32d60b080a33a794634"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        82,
+        105
+      ]
+    },
+    {
+      "id": "architecture-review-execution.ci-baseline-fork-denial",
+      "lines": [
+        106,
+        168
+      ],
+      "blocks": [
+        "CI independent boundary and protected policy",
+        "self-repo original Fork privileged/paid denial regardless actor/approvals",
+        "trusted numeric repository IDs; unknown IDs fail closed",
+        "credential-free diagnostic allowed; no semantic result for unreviewed Fork",
+        "same-repository promotion is a fresh separate review; no result transfer",
+        "deferred future designs do not authorize current operation"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 3797,
+          "sha256": "b9f6ff3b0131e51fe4123f3f3f6c95a84da49dc51062c6f889b96c100b3b4d4b"
+        },
+        "head": {
+          "bytes": 3797,
+          "sha256": "b9f6ff3b0131e51fe4123f3f3f6c95a84da49dc51062c6f889b96c100b3b4d4b"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        106,
+        168
+      ]
+    },
+    {
+      "id": "architecture-review-execution.deferred-fork-authorization",
+      "lines": [
+        169,
+        211
+      ],
+      "blocks": [
+        "inactive exact-HEAD consumer-funded review target",
+        "prior consumer policy/approver/funding selection",
+        "exact repo/PR/HEAD binding before credentials/spend",
+        "authorization distinct from approval/trust/acceptance",
+        "no fallback and no weaker route"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 2768,
+          "sha256": "6be35cf662ff71c8b0f6432bf17dcbbb0ad5cdfd76fc4bead179d7771f7c117f"
+        },
+        "head": {
+          "bytes": 2768,
+          "sha256": "6be35cf662ff71c8b0f6432bf17dcbbb0ad5cdfd76fc4bead179d7771f7c117f"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        169,
+        211
+      ]
+    },
+    {
+      "id": "architecture-review-execution.deferred-fork-environment",
+      "lines": [
+        212,
+        278
+      ],
+      "blocks": [
+        "inactive one-review/run-attempt-1 scope and retries",
+        "credential-free approval then trusted grant and separate launcher",
+        "credential issuance timing after queue and immediately before paid dispatch",
+        "required snapshot lifetime/readbacks/caller/check identity/freshness negatives",
+        "no unselected identity/App capability",
+        "compatibility input limitation and pinned Action trust"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 4267,
+          "sha256": "fdcacf8c00ed3d3eed2f2d8e25593d5b78683933f0b83078803ade64c165d527"
+        },
+        "head": {
+          "bytes": 4267,
+          "sha256": "fdcacf8c00ed3d3eed2f2d8e25593d5b78683933f0b83078803ade64c165d527"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        212,
+        278
+      ]
+    },
+    {
+      "id": "architecture-review-execution.provider-independent-ci",
+      "lines": [
+        279,
+        316
+      ],
+      "blocks": [
+        "protected policy controls execution selection; adapter only applies",
+        "host owns deadline/cancel; only actual process facts asserted",
+        "execution completion distinct from semantic validation/acceptance",
+        "preserve Codex action safeguards",
+        "no generic framework/fallback/activation/incident-fixed claim"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 2446,
+          "sha256": "2c80036dd9df64a8c750925f83ec307492b5c7577cff92b613fb246762dde272"
+        },
+        "head": {
+          "bytes": 2446,
+          "sha256": "2c80036dd9df64a8c750925f83ec307492b5c7577cff92b613fb246762dde272"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        279,
+        316
+      ]
+    },
+    {
+      "id": "architecture-review-execution.api-wif",
+      "lines": [
+        317,
+        320
+      ],
+      "blocks": [
+        "OpenAI API WIF distinct from managed-workspace Codex WIF",
+        "trusted CI confines OIDC and API token",
+        "prior protected policy selection only",
+        "no key fallback; inactive"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 683,
+          "sha256": "45d51bc1cf4fff7c310910ad4ece31969405d198e0fcc855ffa0d033709a2aef"
+        },
+        "head": {
+          "bytes": 683,
+          "sha256": "45d51bc1cf4fff7c310910ad4ece31969405d198e0fcc855ffa0d033709a2aef"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        317,
+        320
+      ]
+    },
+    {
+      "id": "architecture-review-execution.credential-proxy",
+      "lines": [
+        321,
+        347
+      ],
+      "blocks": [
+        "launcher credentials private to proxy; withhold tokens and renewal/selection capabilities",
+        "ephemeral loopback and strict provider/method/scope/redirect limits",
+        "claims limited to non-inheritance and constrained dispatch",
+        "host capabilities may remain accessible",
+        "consumer policy and route evidence still required"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1821,
+          "sha256": "26ca9cf88de56c2d59b9fb9e3903a8a0912b6b047c9e458a58476108d46c5cc1"
+        },
+        "head": {
+          "bytes": 1821,
+          "sha256": "26ca9cf88de56c2d59b9fb9e3903a8a0912b6b047c9e458a58476108d46c5cc1"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        321,
+        347
+      ]
+    },
+    {
+      "id": "architecture-review-execution.gemini-auth",
+      "lines": [
+        348,
+        365
+      ],
+      "blocks": [
+        "Vertex AI WIF authentication direction",
+        "runner does not inherit assertion/credential/renewal interfaces",
+        "failure incomplete/no fallback",
+        "exact bindings and limits remain before activation",
+        "no quality/semantic/acceptance claim"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1140,
+          "sha256": "7d95f6b16756fcae6ef061a85521f6e10e63ef7fed1f3218adad99f895942926"
+        },
+        "head": {
+          "bytes": 1140,
+          "sha256": "7d95f6b16756fcae6ef061a85521f6e10e63ef7fed1f3218adad99f895942926"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        348,
+        365
+      ]
+    },
+    {
+      "id": "architecture-review-execution.gemini-execution",
+      "lines": [
+        366,
+        382
+      ],
+      "blocks": [
+        "revision-bound workspace, launcher config, explicit read allowlist",
+        "candidate config remains evidence and cannot enable tools",
+        "schema/authority validation mandatory",
+        "timeout/cancel/auth/invalid output incomplete",
+        "model/thinking selection and remaining activation evidence",
+        "no route activation"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1135,
+          "sha256": "af152362f431023750487122f530f9e46cfe970d1de8683b9803b00a6e852a67"
+        },
+        "head": {
+          "bytes": 1135,
+          "sha256": "af152362f431023750487122f530f9e46cfe970d1de8683b9803b00a6e852a67"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        366,
+        382
+      ]
+    },
+    {
+      "id": "architecture-review-execution.github-output",
+      "lines": [
+        383,
+        399
+      ],
+      "blocks": [
+        "GITHUB_OUTPUT is trusted runner sink, no caller-selected destination",
+        "canonical absolute regular file, reject links, identity check, bounded protocol",
+        "no attacker env authentication/same-user isolation/acceptance claim"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1009,
+          "sha256": "e76fcef85a4df9c2b1016246d193d4f987afda5fa97bfb131681941ac9314f02"
+        },
+        "head": {
+          "bytes": 1009,
+          "sha256": "e76fcef85a4df9c2b1016246d193d4f987afda5fa97bfb131681941ac9314f02"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        383,
+        399
+      ]
+    },
+    {
+      "id": "architecture-review-execution.legacy-v1-repair",
+      "lines": [
+        400,
+        450
+      ],
+      "blocks": [
+        "authorized target and integration condition; historical reports unchanged",
+        "base-selected canonical authority/prompt/schema/validation and matching caller",
+        "complete base snapshots and candidate cannot choose authority",
+        "fail closed on changed/absent/mismatched/omitted/extra authority",
+        "compatibility break for old policies upon implementation",
+        "caller/check producer host proof separate",
+        "Issue 121 procedural route does not weaken target",
+        "local review remains available under its route"
+      ],
+      "path": "docs/architecture/review-execution.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 3365,
+          "sha256": "0038daab9afd9dc7f29dab43a2ba59e5a2b50ad3a62069e6bfb7676766d823ff"
+        },
+        "head": {
+          "bytes": 3365,
+          "sha256": "0038daab9afd9dc7f29dab43a2ba59e5a2b50ad3a62069e6bfb7676766d823ff"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        400,
+        450
+      ]
+    },
+    {
+      "id": "architecture-self-profile.self-only-reporter",
+      "lines": [
+        8,
+        13
+      ],
+      "blocks": [
+        "self-only public GitHub reporter target and protected receiver",
+        "candidate merge_group job only relays/wakes",
+        "receiver independently resolves queue, base, B, policy, Set, evidence",
+        "only protected producer gets review/App credentials",
+        "no route activated; adoption and two required protected E2Es before claims"
+      ],
+      "path": "docs/architecture/self-profile.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 1320,
+          "sha256": "7fd4c996533e262b66eec0206fd3d89e9b57a8dafe1f21088381fcbfcc7229ee"
+        },
+        "head": {
+          "bytes": 1320,
+          "sha256": "7fd4c996533e262b66eec0206fd3d89e9b57a8dafe1f21088381fcbfcc7229ee"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        8,
+        13
+      ]
+    },
+    {
+      "id": "architecture-self-profile.dogfooding-and-release",
+      "lines": [
+        14,
+        81
+      ],
+      "blocks": [
+        "v0.6.0 reference and BLOCK/OWNER_DECISION completion cases",
+        "artifact + verified attestation + exact-B protected tag",
+        "required merge_group and canonical readback topology",
+        "fresh A review",
+        "handoff retention/source-evidence rules",
+        "G0 not principal authentication",
+        "preview release does not complete target rollout"
+      ],
+      "path": "docs/architecture/self-profile.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 4548,
+          "sha256": "30d8a9ed04672626a0921d9298fe2eab12aacbb77cc77c1a38c5b0a335225e4f"
+        },
+        "head": {
+          "bytes": 4548,
+          "sha256": "30d8a9ed04672626a0921d9298fe2eab12aacbb77cc77c1a38c5b0a335225e4f"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        14,
+        81
+      ]
+    },
+    {
+      "id": "architecture-self-profile.dogfood-sequence",
+      "lines": [
+        82,
+        100
+      ],
+      "blocks": [
+        "representative path coverage list",
+        "ordered decision→local review→implementation→dogfood→CI discipline"
+      ],
+      "path": "docs/architecture/self-profile.md",
+      "byte_identity": {
+        "baseline": {
+          "bytes": 922,
+          "sha256": "99ead19a50df9b7cb151e997708b7b8c4a5e6e8d0f41c382805810a0f6c28b2e"
+        },
+        "head": {
+          "bytes": 922,
+          "sha256": "99ead19a50df9b7cb151e997708b7b8c4a5e6e8d0f41c382805810a0f6c28b2e"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        82,
+        100
+      ]
+    },
+    {
+      "id": "architecture-authority-set.preamble",
+      "path": "docs/architecture/authority-set.md",
+      "lines": [
+        1,
+        7
+      ],
+      "blocks": [
+        "required normative member designation",
+        "read-with-complete-Set/no-implicit-precedence-or-activation statement",
+        "documentation-map pointer"
+      ],
+      "byte_identity": {
+        "baseline": {
+          "bytes": 347,
+          "sha256": "0cc549278c2b540a8e5edf1d777a2e112c143375c28ad1df285057ab0469a282"
+        },
+        "head": {
+          "bytes": 347,
+          "sha256": "0cc549278c2b540a8e5edf1d777a2e112c143375c28ad1df285057ab0469a282"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        1,
+        7
+      ]
+    },
+    {
+      "id": "architecture-owner-addition.preamble",
+      "path": "docs/architecture/owner-addition.md",
+      "lines": [
+        1,
+        7
+      ],
+      "blocks": [
+        "required normative member designation",
+        "read-with-complete-Set/no-implicit-precedence-or-activation statement",
+        "documentation-map pointer"
+      ],
+      "byte_identity": {
+        "baseline": {
+          "bytes": 348,
+          "sha256": "51c940cb5789f5384d650bc5689a1db837263f04f664eec453e782af2e97d4e8"
+        },
+        "head": {
+          "bytes": 348,
+          "sha256": "51c940cb5789f5384d650bc5689a1db837263f04f664eec453e782af2e97d4e8"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        1,
+        7
+      ]
+    },
+    {
+      "id": "architecture-owner-amendment.preamble",
+      "path": "docs/architecture/owner-amendment.md",
+      "lines": [
+        1,
+        7
+      ],
+      "blocks": [
+        "required normative member designation",
+        "read-with-complete-Set/no-implicit-precedence-or-activation statement",
+        "documentation-map pointer"
+      ],
+      "byte_identity": {
+        "baseline": {
+          "bytes": 349,
+          "sha256": "3f4db57c9a73beff60652ab97f9480e963feded0d6822d11697e0e5dd51afd78"
+        },
+        "head": {
+          "bytes": 349,
+          "sha256": "3f4db57c9a73beff60652ab97f9480e963feded0d6822d11697e0e5dd51afd78"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        1,
+        7
+      ]
+    },
+    {
+      "id": "architecture-review-execution.preamble",
+      "path": "docs/architecture/review-execution.md",
+      "lines": [
+        1,
+        7
+      ],
+      "blocks": [
+        "required normative member designation",
+        "read-with-complete-Set/no-implicit-precedence-or-activation statement",
+        "documentation-map pointer"
+      ],
+      "byte_identity": {
+        "baseline": {
+          "bytes": 350,
+          "sha256": "ffa517d3b7f74e1f9e80d12c70c2ec970235c3d9b6ccba17d56b0c6530eff49a"
+        },
+        "head": {
+          "bytes": 350,
+          "sha256": "ffa517d3b7f74e1f9e80d12c70c2ec970235c3d9b6ccba17d56b0c6530eff49a"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        1,
+        7
+      ]
+    },
+    {
+      "id": "architecture-self-profile.preamble",
+      "path": "docs/architecture/self-profile.md",
+      "lines": [
+        1,
+        7
+      ],
+      "blocks": [
+        "required normative member designation",
+        "read-with-complete-Set/no-implicit-precedence-or-activation statement",
+        "documentation-map pointer"
+      ],
+      "byte_identity": {
+        "baseline": {
+          "bytes": 360,
+          "sha256": "60a976bf06294a98e04555aad9394e740341988aa331bbbee360a974e189d14e"
+        },
+        "head": {
+          "bytes": 360,
+          "sha256": "60a976bf06294a98e04555aad9394e740341988aa331bbbee360a974e189d14e"
+        }
+      },
+      "byte_identical": true,
+      "head_lines": [
+        1,
+        7
+      ]
+    }
+  ],
+  "cross_member_dependencies": [
+    {
+      "from": "architecture-contract.canonical-authority-lifecycle",
+      "to": [
+        "architecture-owner-addition",
+        "architecture-owner-amendment"
+      ],
+      "source": "lifecycle clause: existing addition/amendment clauses govern B, Set, policy, evidence and freshness; T1/T2 map to addition/amendment."
+    },
+    {
+      "from": "architecture-contract.canonical-authority-lifecycle",
+      "to": [
+        "architecture-authority-set"
+      ],
+      "source": "lifecycle clause: Set identity, selected-member loss/recovery, T4 oversized Set, and scoped B."
+    },
+    {
+      "from": "architecture-contract.canonical-authority-lifecycle",
+      "to": [
+        "architecture-review-execution"
+      ],
+      "source": "lifecycle clause: tuple includes host/merge and caller; T0/T7 lineage and B5/B6 readiness/readback intersect route execution/host constraints."
+    },
+    {
+      "from": "architecture-contract.canonical-authority-lifecycle",
+      "to": [
+        "architecture-self-profile"
+      ],
+      "source": "shared contract adoption/ACTIVE claims must remain distinct from self-only rollout and release gates; no self-profile gate may be implied as a universal consumer route."
+    },
+    {
+      "from": "architecture-owner-amendment.general-target",
+      "to": [
+        "architecture-contract.canonical-authority-lifecycle"
+      ],
+      "source": "existing explicit B1-B8 cross-reference; contract entry alone enables no route."
+    },
+    {
+      "guard": "The six members remain jointly selected with no implicit precedence; these are clause dependencies for preserving meaning, not authority ordering or new normative dependencies."
+    }
+  ],
+  "presentation_and_verification_scope": {
+    "stable_primary_anchor": "docs/architecture.md#canonical-authority-lifecycle",
+    "rendered_representation": [
+      "Readable lifecycle scope and record statements",
+      "T0–T9 transition table",
+      "B1–B8 bootstrap-control table",
+      "Mermaid relationship diagram explicitly labeled explanatory only",
+      "Separate failure, adoption, placement, pending, and claim-limit prose"
+    ],
+    "required_verification": [
+      "Exact clause coverage against all 19 CAL IDs and baseline fragments",
+      "Byte identity for all 46 unchanged selected-Set blocks",
+      "Five unchanged authority-member byte comparisons and complete six-member manifest confirmation",
+      "Stable local anchor and link resolution",
+      "Mermaid rendering",
+      "Exact-diff general and semantic review",
+      "Materialized package contents and applicable local CI checks"
+    ],
+    "semantic_constraints": [
+      "No new precedence between members or routes.",
+      "No activation, consumer route selection, owner decision, or protected acceptance claim.",
+      "Do not treat the diagram as support proof.",
+      "Bootstrap stays external to PASS/G0; T0/T7 lineage remains non-resettable.",
+      "Preserve every condition, failure, exception scope, route status, claim limit, and historical result from the source block."
+    ]
+  }
+}

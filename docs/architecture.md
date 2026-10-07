@@ -286,13 +286,90 @@ its selected policy and evidence explicitly. No route silently reinterprets
 
 ### Canonical authority lifecycle
 
-For selected Gatekeeper lifecycle-v1 tuples (predecessor/profile, topology/bounds, host/merge, caller), support requires finite predecessor-authorized owner-choice → eligible scoped B (required services/evidence) → adoption/readback, production trace, matching fixture and fail-closed negatives. Unselected: inactive. No graph-only support; failed semantics cannot force eligibility. Else `UNSUPPORTED`; retain predecessor; no acceptance/fallback/false-addition split/exception. Legacy policy/artifact/acceptance meanings remain unchanged. B1–B8 govern only this Gatekeeper lifecycle/bootstrap and its `ACTIVE` claim. Consumer-authorized external-admin exceptions remain consumer-owned; they never establish Gatekeeper adoption/`ACTIVE`.
+This lifecycle applies to a selected Gatekeeper lifecycle-v1 tuple: predecessor/profile, topology/bounds, host/merge, and caller. For that tuple, support requires a finite predecessor-authorized owner-choice → eligible scoped B (with required services and evidence) → adoption/readback path, together with a production trace, matching fixture, and fail-closed negative evidence. The order in that path is material. A diagram or one successful stage alone does not establish support.
 
-Existing addition/amendment clauses govern B/Set/policy/evidence/freshness; bind repo/target lineage and runtime/caller. Track canonical snapshot, phase/kind, capability/assurance. `ABSENT_INITIAL`=never-existing root; missing decision=addition; lost member=recovery; T4=oversized Set. Pending retains predecessor; pre-integration failure stays pending/ineligible/incomplete; post-integration failure records placement/adoption separately (no fictitious rollback); success needs valid adoption + verified placement. Preserve history; fresh review is new.
+#### Lifecycle scope and records
 
-Keep defined/implemented/released/selectable/prior-selected/eligible/owner action/adopted/canonically placed/commissioning/active distinct. Normal transitions use no exception. T0 root; T1 missing-decision addition; T2 amend existing; normal, no bootstrap; T3 equivalent maintenance (selector→T5/T6); T4 preselected bounded oversized recovery; T5 prior-authorized compatible migration; T6 incompatible migration via prior-authorized bridge or unsupported; T7 first selection via normal route or guarded bootstrap; T8 normal adoption before active; T9 later profile-fresh use, no fallback/reset.
+The existing OWNER_ADDITION and OWNER_AMENDMENT clauses continue to govern B, the selected Authority Set, policy, evidence, and freshness. Bind the lifecycle to its repository and target lineage and to its runtime and caller. Record the canonical authority snapshot, lifecycle phase and kind, and capability and assurance.
 
-Bootstrap only for absent-ever root or genuine first activation lacking authorized normal/staged path. T0/T7 share nonresettable repo/target lineage authorization (incl inseparable root/config); rename/backend/manifest/policy/profile changes/missing files cannot reset it. B1 proves absent-ever root or never-completed first activation (missing file/version/receipt is no proof). B2 inventories authorized normal/staged/migration/repair exits: any finite noncircular path bars bootstrap regardless of cost/deadline; missing code/tests/defect/outage do not prove absence. B3 independent existing/external governance authorizes exact scope; B4 binds candidate/paths/ops/actors/lineage; B5 verifies prep/limits/inputs/producer/host. Require implemented T8 plan before start; resulting policy must authorize it. B6 reads back first-operation target/policy/caller; B7 consumes lineage authorization; B8 later normal adoption/readback before ACTIVE, zero exception; commissioning until then. Bootstrap is external, not PASS/G0.
+`ABSENT_INITIAL` means a root that has never existed. A missing decision is an addition; a lost selected member is recovery; T4 is the preselected bounded recovery for an oversized Set. An unselected tuple remains inactive.
+
+Keep these states distinct: defined, implemented, released, selectable, prior-selected, eligible, owner action, adopted, canonically placed, commissioning, and `ACTIVE`. Legacy policy, artifact, and acceptance meanings remain unchanged. B1–B8 govern only this Gatekeeper lifecycle/bootstrap and its `ACTIVE` claim. Consumer-authorized external-admin exceptions remain consumer-owned and never establish Gatekeeper adoption or `ACTIVE`.
+
+#### Transition cases T0–T9
+
+Normal lifecycle transitions use no exception. T0 and T7 share non-resettable repository/target lineage authorization, including an inseparable root/configuration. Renaming, changing a backend, manifest, policy, or profile, or losing files does not reset that lineage.
+
+| Case | Lifecycle transition |
+| --- | --- |
+| T0 | Root. |
+| T1 | Addition for a missing decision. |
+| T2 | Amendment of an existing decision through the normal route; no bootstrap. |
+| T3 | Equivalent maintenance; a selector change proceeds through T5 or T6. |
+| T4 | Preselected, bounded recovery of an oversized Authority Set. |
+| T5 | Prior-authorized compatible migration. |
+| T6 | Incompatible migration through a prior-authorized bridge, or `UNSUPPORTED`. |
+| T7 | First selection through the normal route, or the guarded bootstrap described below. |
+| T8 | Normal adoption before `ACTIVE`. |
+| T9 | Later profile-fresh use; no fallback or reset. |
+
+#### Guarded bootstrap controls B1–B8
+
+Bootstrap is available only for an absent-ever root or genuine first activation that lacks an authorized normal or staged path. T0/T7 lineage authorization is non-resettable as stated above. The following controls govern that bootstrap; they do not create a normal-transition exception.
+
+| Control | Required bootstrap condition |
+| --- | --- |
+| B1 | Prove an absent-ever root or a first activation that has never completed. A missing file, version, or receipt is not proof. |
+| B2 | Inventory authorized normal, staged, migration, and repair exits. Any finite, non-circular path bars bootstrap regardless of cost or deadline. Missing code or tests, a defect, or an outage does not prove that no path exists. |
+| B3 | Independent existing or external governance authorizes the exact scope. |
+| B4 | Bind the candidate, paths, operations, actors, and lineage. |
+| B5 | Verify preparation, limits, inputs, producer, and host. |
+| B6 | Read back the first-operation target, policy, and caller. |
+| B7 | Consume the lineage authorization. |
+| B8 | Complete later normal adoption and readback before `ACTIVE`; no exception is permitted. Until then the lifecycle remains in commissioning. |
+
+An implemented T8 plan is required before bootstrap starts, and the resulting policy must authorize that plan. Bootstrap is external to Gatekeeper semantic `PASS` and G0.
+
+#### Adoption, placement, and failure handling
+
+An eligible result does not itself perform owner action, adoption, or canonical placement. A pending lifecycle retains its predecessor. A failure before integration remains pending, ineligible, and incomplete. A failure after integration records placement and adoption separately; do not describe it as a rollback. Success requires valid adoption and verified placement. Preserve historical results; a fresh review is a new review.
+
+A failed semantic result cannot force eligibility. If the selected lifecycle-v1 support conditions cannot be met, the result is `UNSUPPORTED` and the predecessor is retained. This permits no acceptance, fallback, false-addition split, or exception. The external-admin exception, if separately authorized by the consumer, does not establish Gatekeeper adoption or `ACTIVE`.
+
+#### Lifecycle relationship diagram
+
+The diagram distinguishes lifecycle facts and claims for navigation. Its only ordered support path is the owner-choice → eligible scoped B → adoption/readback sequence stated above; the separate placement fact is not ordered relative to adoption here. All other connections are limited to the specific lifecycle conditions labeled. The complete conditions above and elsewhere in the selected Authority Set control, and the graph alone is never support evidence.
+
+```mermaid
+flowchart LR
+  subgraph facts["Distinct lifecycle facts; no universal flow implied"]
+    decision["Semantic decision"]
+    owner["Owner action"]
+  end
+  subgraph support["Ordered support path"]
+    ownerchoice["Finite predecessor-authorized\nowner-choice"]
+    eligible["Eligible scoped B\nwith required services and evidence"]
+    adoption["Adoption and readback"]
+    ownerchoice --> eligible --> adoption
+  end
+  placement["Canonical placement\nverified separately"]
+  transition["Lifecycle transition"]
+  unsupported["UNSUPPORTED\npredecessor retained"]
+  preintegration["Pre-integration failure"]
+  pending["Pending / ineligible / incomplete\npredecessor retained"]
+  bootstrap["Guarded bootstrap\nB1–B7"]
+  commissioning["Commissioning"]
+  active["ACTIVE"]
+
+  adoption ---|separate lifecycle fact| placement
+  adoption -->|normal T8; all selected lifecycle conditions still apply| active
+  transition -->|support conditions cannot be met| unsupported
+  preintegration -->|remains| pending
+  bootstrap -->|B1–B7 controls| commissioning
+  commissioning -->|B8: later normal adoption and readback; no exception| active
+```
+
+The support claim also requires the finite predecessor-authorized path, production trace, matching fixture, and fail-closed negative evidence listed at the start of this section. Normal transition and `ACTIVE` requirements remain route-specific; this diagram adds no eligibility, adoption, placement, or activation rule.
 
 ### Explicit unverified consumer preview procedure (owner direction, 2026-10-04)
 
