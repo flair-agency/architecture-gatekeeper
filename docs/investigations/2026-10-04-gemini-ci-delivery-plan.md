@@ -444,3 +444,13 @@ successfully created the fixed allocation file exclusively. Empty state alone
 is never evidence of creation: the resume/reservation operation rejects empty
 or truncated records without writing a header. The launcher must never invoke
 initialization while reopening a prior allocation.
+
+
+The internal selected-verification composition requires the caller-owned ledger
+fd, installs its reservation capability itself, and rejects injected callbacks
+or execution settings inconsistent with the adopted Issue334 profile. It bounds
+context before session startup and delegates every decision to shared schema,
+Authority Set and consumer-rule validation. It never initializes the ledger.
+The trusted caller still owns runtime-pin verification, WIF acquisition, private
+allocation/retention across hosted execution and same-run producer bindings.
+This composition does not wire a workflow, publish evidence or enable acceptance.
