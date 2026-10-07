@@ -387,7 +387,11 @@ with the adopted `gemini-3.8-flash` / `MEDIUM` profile, no `thinkingBudget`,
 and the existing controlled-workspace and parent-only Vertex WIF boundary.
 The per-execution deadline is 180 seconds and `maxOutputTokens` is 16,384.
 The complete encoded stdin prompt, including protected instructions and output
-schema, is limited to 128 KiB. The committed review context is limited to
+schema, is limited to 192 KiB. On 2026-10-07 the owner refined the initial
+128 KiB verification stdin bound to 192 KiB after exact complete-input sizing;
+authority bytes remain included, without truncation or workspace-only accounting.
+All other verification bounds and the five-attempt allocation remain unchanged.
+The committed review context is limited to
 32 selected files, 128 KiB per file, and 512 KiB total serialized packet;
 these are separate bounds, not interchangeable prompt limits.
 
