@@ -21,6 +21,135 @@ The consumer owns its architecture and policy; this package supplies review
 mechanics. For plan limits and this repository's host setup, see
 [GitHub assurance](github-assurance.md).
 
+## Manual review
+
+This walkthrough creates a small consumer repository, installs the exact
+published runtime, commits every review input, and runs one local review. It
+uses the Codex provider selected by the sample settings. The CLI evaluates the
+task you supply against the committed authority; it does not automatically
+review an uncommitted working-tree diff. Describe the proposed change clearly
+in the task or include a concise diff summary.
+
+Before starting, use Node.js 22 or later and Git. Authenticate npm to GitHub
+Packages with `read:packages` outside the project, and sign in to the local
+Codex CLI with `codex login`; configure a Git author identity so the consumer
+inputs can be committed. Do not put a package token in the repository.
+The package entrypoint below is pinned to `0.6.0-preview.3`.
+
+Create the complete consumer input set and package lock:
+
+```sh
+set -eu
+mkdir -p architecture-review-demo/.codex/gatekeeper architecture-review-demo/docs
+cd architecture-review-demo
+git init -b main
+npm init --yes
+npm pkg set private=true --json
+npm pkg set type=module
+
+cat > docs/architecture.md <<'EOF'
+# Demo consumer architecture
+
+The API layer validates each request before storage. The storage layer persists
+validated records. The consumer repository owns this architecture.
+EOF
+
+cat > .codex/gatekeeper/config.json <<'EOF'
+{
+  "version": 1,
+  "authorityFiles": ["docs/architecture.md"],
+  "promptPath": ".codex/gatekeeper/prompt.md",
+  "schemaPath": ".codex/gatekeeper/decision.schema.json",
+  "reviewerConfigPath": ".codex/gatekeeper/reviewer.config.json",
+  "requiredReportedAuthorityFiles": ["docs/architecture.md"],
+  "requiredPassArrays": ["reviewedScope"],
+  "reviewTimeoutMs": 180000
+}
+EOF
+
+cat > .codex/gatekeeper/prompt.md <<'EOF'
+Review the proposed change only against the committed consumer architecture
+included in the request. Return PASS if it follows that design, BLOCK if it
+conflicts with an existing rule, or OWNER_DECISION if the architecture does not
+decide the question. Report docs/architecture.md in authorityFiles and briefly
+describe the reviewed scope. Do not implement changes.
+EOF
+
+cat > .codex/gatekeeper/decision.schema.json <<'EOF'
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "summary", "authorityFiles", "reviewedScope"],
+  "properties": {
+    "decision": { "enum": ["PASS", "BLOCK", "OWNER_DECISION"] },
+    "summary": { "type": "string", "minLength": 1 },
+    "authorityFiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "reviewedScope": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}
+EOF
+
+cat > .codex/gatekeeper/reviewer.config.json <<'EOF'
+{
+  "model": "gpt-6.1-sol",
+  "reasoningEffort": "low"
+}
+EOF
+
+cat > .gitignore <<'EOF'
+node_modules/
+EOF
+
+npm install --package-lock-only --save-exact @flair-agency/architecture-gatekeeper@0.6.0-preview.3 --registry=https://npm.pkg.github.com
+git add package.json package-lock.json docs/architecture.md .codex/gatekeeper .gitignore
+git commit -m "Add consumer architecture review inputs"
+npm ci
+git status --short
+```
+
+The status command should print no paths. The config, prompt, schema, reviewer
+settings, authority document and exact package pin are committed before the
+review starts. Run the installed CLI with a specific proposed decision:
+
+```sh
+./node_modules/.bin/architecture-review \
+  "For the proposed API change, should request validation stay in the API layer before storage persistence?"
+```
+
+The CLI prints a schema-validated JSON decision, the reported authority and
+scope, and `reviewedRevision`. That field must equal `git rev-parse HEAD` from
+the consumer repository. The process exits 0 for a schema-valid `PASS`,
+`BLOCK`, or `OWNER_DECISION`; these are semantic review outcomes, not acceptance.
+`PASS` means the described proposal fits this
+sample authority; `BLOCK` means it conflicts with a stated rule;
+`OWNER_DECISION` means the authority leaves that question open. The result is
+review evidence only and does not authorize implementation or repository
+acceptance. The semantic result depends on the actual proposal and consumer
+authority; the sample is not a test oracle.
+
+For other local provider settings, the terminal adapter follows the committed
+reviewer configuration: Codex uses child `codex exec`, while Gemini uses the
+asynchronous API transport without starting Codex. Both consume the committed
+configuration, prompt, schema, reviewer settings and authority files. This
+terminal route is separate from the Codex-hosted Skill and does not reuse Hook
+input, prior Hook context or CI policy. See [local execution composition](#local-reviewer-execution-composition)
+and [reviewer host permissions](reviewer-host-permissions.md) for provider
+boundaries.
+
+If authentication, configuration, authority files or reviewer execution fail,
+the command exits 2 without a valid decision. Resolve that input or host failure
+and rerun against the intended committed revision. A timeout or malformed
+response is incomplete review, not `PASS`. For CI and acceptance responsibilities,
+continue to [CI integration](#ci-integration); for escalation and recovery, see
+[owner intervention](owner-intervention.md).
+
 Consumers may also own an optional decision-validation policy. The output
 schema uses the following fail-closed subset of the JSON Schema constructs
 accepted by OpenAI Structured Outputs: `$schema`, `description`, `$defs`, local
@@ -216,29 +345,6 @@ before relating them to a candidate. The actual ordinary-checkout CLI loop is
 recorded in the [dogfood investigation](investigations/2026-10-01-local-screening-adapter-dogfood.md).
 Linked-worktree discovery remains unresolved in [Issue #250](https://github.com/flair-agency/architecture-gatekeeper/issues/250); it does not block an ordinary-checkout trial.
 
-## Manual review
-
-After installing a fixed package version, invoke the package-owned entrypoint
-with the architecture question or proposed change:
-
-```sh
-architecture-review 'Should this responsibility move from Runtime to the Provider?'
-```
-
-The task may instead be supplied on standard input. This standalone terminal
-adapter selects the provider from committed reviewer settings: Codex uses child
-`codex exec`, while Gemini uses the asynchronous API transport without starting
-Codex. It is separate from the Codex-hosted Skill. Provider configuration is
-specified in [local execution composition](#local-reviewer-execution-composition).
-The Codex child host boundary is described in
-[reviewer host permissions](reviewer-host-permissions.md).
-The command uses the same
-committed consumer-owned configuration, prompt, schema, reviewer settings and
-authority files as the local gate. It emits the structured `PASS`, `BLOCK` or
-`OWNER_DECISION` result with the reviewed Git revision. It does not reuse Hook
-input, prior Hook context or CI policy, and it does not turn a decision into
-repository acceptance or implementation authority.
-
 ## Codex Skill installation
 
 The npm package distributes the runtime and command-line entrypoints only. The
@@ -313,6 +419,56 @@ credential-bearing dependency under the
 The migration retires the temporary Flair fork and its additional lifecycle
 controls; it does not establish that hosted hangs are fixed. `local-only`
 records an explicit waiver and makes no OpenAI API call.
+
+On the protected Authority Set and legacy v1 consumer routes, the reviewer
+receives the exact event base/head revisions, verified merge revision and the
+base-to-merge committed diff as untrusted task data. Untracked helper checkouts
+are excluded from that diff. The complete prompt, including task data, must fit
+the selected limit; missing revisions, mismatched merge parents or excess bytes
+leave review incomplete. These parent checks validate GitHub's synthetic review
+checkout against the recorded event tuple; they do not restrict the eventual PR
+merge strategy or prove canonical transition or host enforcement. A stale or
+mismatched checkout requires a fresh review run. Other compatibility routes are
+unchanged.
+
+When the pinned Action supplies them, the reviewer job emits bounded numeric
+Codex usage and tool counts to its Actions log, including on the ordinary
+review path. It does not publish raw Codex JSONL, per-request API cost, or proof
+of the provider's effective service tier; missing or malformed usage remains
+unavailable for cost attribution.
+
+#### Self-review credential migration
+
+This procedure applies only to this repository's self-review workflow. It does
+not configure credentials for ordinary reusable-workflow consumers.
+
+The self-review workflow keeps using the repository `OPENAI_API_KEY` secret
+unless the repository variable `ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT` is
+set to the exact string `true`. Stage the migration by first creating the
+`architecture-gate-self-protected` GitHub Actions Environment, limiting its
+deployment branch to `main`, and adding its `OPENAI_API_KEY` secret. Then set
+the variable to `true`. The workflow validates that the opt-in comes from this
+repository's `main` self-review workflow and only assigns the Environment to
+the three jobs that call OpenAI: ordinary review, OWNER_ADDITION eligibility,
+and OWNER_AMENDMENT semantic eligibility.
+
+On opt-in, the caller deliberately passes an empty repository key. A missing
+Environment key therefore fails review without falling back to the repository
+secret. Keep the repository secret until every workflow consumer has migrated;
+remove it only after those consumers are verified on their Environment-backed
+route. Reusable workflow users are unchanged because Environment selection
+defaults off.
+
+The repository variable is an opt-in selector, not proof of host configuration.
+Until the Environment is provisioned and its `main` deployment restriction and
+secret access are read back, this procedure makes no claim of verified
+credential isolation or successful Environment-backed execution.
+
+This variable stages credential selection for the existing self workflow. It
+does not create the separate protected App receiver or complete its rollout.
+That receiver still needs its own `main`-only Environment and App credentials,
+minimal App installation permissions, required-check source configuration,
+and host readback before any receiver activation.
 
 ### Gemini CI Review Runner
 

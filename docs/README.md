@@ -1,23 +1,25 @@
 # Documentation map
 
-Start with the [project README](../README.md) for the product overview. This
-directory separates binding rules from setup and operating guidance:
+Choose a reader goal below. The [project README](../README.md) is the short
+consumer orientation; the [first manual review](integration-reference.md#manual-review)
+is the runnable onboarding path. Detailed reference, operations and package
+maintenance are separate reading paths. This index groups material without
+changing its authority or implementation status.
 
-| Read when you need to… | Document | Role |
+| Reader goal | Primary guide | Role |
 | --- | --- | --- |
-| Check responsibilities, review decisions, evidence, or acceptance rules | [Architecture contract](architecture.md) | All six selected members are normative; record owner decisions in the relevant member before implementation |
-| Configure local review, CI, policy versions, or distribution | [Integration reference](integration-reference.md) | Current implementation and setup |
-| Handle `OWNER_DECISION` or an unavailable CI review | [Owner intervention](owner-intervention.md) | Operational runbook |
-| Use the package's explicitly selected unverified review or authority-change preview | [Unverified preview lifecycle API](integration-reference.md#unverified-preview-lifecycle-api) and [preview support and recovery status](integration-reference.md#preview-support-and-recovery-status) | Preview-only procedures; all assurance dimensions remain `UNVERIFIED` |
-| Prepare, publish, and verify a package release | [Release runbook](release.md) | Maintainer release procedure |
-| Scope and forecast a release, record owner agreement and retrospective | [Release planning issue form](../.github/ISSUE_TEMPLATE/release_planning.yml) and [planning procedure](release.md#plan-a-release) | Planning record; does not change publication or architecture gates |
-| Propose, split, deliver, and track work | [Issue and pull request workflow](issue-pr-workflow.md) | Issue criteria, partial delivery, and PR reporting |
-| Understand GitHub plan limits and this repository's example setup | [GitHub assurance](github-assurance.md) | Capability and claim guide; does not enable a route |
-| Understand caller authorization and host integration responsibilities | [Caller authorization boundary](github-assurance.md#caller-authorization-and-host-integration-boundary) | Responsibility guide; consumer selects authorization policy |
-| Review the adopted Fork PR authorization target | [Fork PR review authorization](architecture/review-execution.md#target-fork-pr-review-authorization-issue-331-owner-direction-2026-10-04) | Inactive target; consumer selects approver policy and funding scope |
-| Diagnose child-reviewer authorization | [Reviewer host permissions](reviewer-host-permissions.md) | Host boundary and failure modes |
-| Maintain this repository's `pull_request_target` event policy | [Self-gate Actions policy](self-gate-actions-policy.md) | Repository-specific operations |
-| Change the package or roll it out | [Development guide](development.md) | Maintainer workflow |
+| Run a first consumer review or configure a route | [Integration reference](integration-reference.md#manual-review) | Version-pinned manual walkthrough, then local, Skill and CI setup details |
+| Operate a result or recover from a failed review | [Owner intervention](owner-intervention.md) | `OWNER_DECISION`, incomplete review and escalation runbook |
+| Understand current host capabilities and claim limits | [GitHub assurance](github-assurance.md) | GitHub capability boundaries and repository-specific observations |
+| Diagnose reviewer identity, credentials or host controls | [Reviewer host permissions](reviewer-host-permissions.md) | Child-reviewer and host boundary reference |
+| Maintain this repository's self-gate | [Self-gate Actions policy](self-gate-actions-policy.md) | Self-only `pull_request_target` workflow operations |
+| Change package code and verify a rollout | [Development guide](development.md) | Maintainer implementation and verification workflow |
+| Publish or plan a release | [Release runbook](release.md) and [release planning form](../.github/ISSUE_TEMPLATE/release_planning.yml) | Release execution and separate planning record |
+| Plan and report repository work | [Issue and pull request workflow](issue-pr-workflow.md) | Issue criteria, staged delivery and PR reporting |
+| Find normative responsibilities and assurance rules | [Architecture contract](architecture.md) and its six members listed at the top | Binding consumer and package contract; owner decisions belong in canonical authority |
+| Read adopted Fork authorization boundaries | [Review execution contract](architecture/review-execution.md#target-fork-pr-review-authorization-issue-331-owner-direction-2026-10-04) | Inactive shared target, separate from this repository's self-only Fork rule |
+| Use or assess the explicitly selected preview API | [Unverified preview lifecycle API](integration-reference.md#unverified-preview-lifecycle-api) and [recovery status](integration-reference.md#preview-support-and-recovery-status) | Predecessor-selected preview procedures; assurance remains `UNVERIFIED` |
+| Inspect dated experiments and historical evidence | [Investigation archive](investigations/) | Non-normative evidence and proposal history |
 
 ## Contract navigation
 
@@ -35,7 +37,8 @@ route's conditions and exceptions together with the shared invariants.
 | Development and rollout | [Dogfooding and change discipline](architecture/self-profile.md#dogfooding-and-change-discipline), [tracked work](architecture.md#relationship-to-tracked-work) |
 
 [Investigations](investigations/) preserve dated experiments and proposals.
-They are evidence and context, not amendments to the architecture contract.
+They do not replace the primary operational guides or amend the architecture
+contract.
 
 ## Why repeatable review
 
