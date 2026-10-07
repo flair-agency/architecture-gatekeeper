@@ -380,6 +380,33 @@ Before activation, explicitly select and verify the remaining deployment setting
 and obtain authenticated route evidence for quality, cost, latency and decision
 consistency; determinism is not promised.
 
+#### Gemini ordinary CI verification profile (Issue #334 owner decision, 2026-10-07)
+
+For verification on `feature/gemini-ci`, the owner selects Gemini CLI `0.62.0`
+with the adopted `gemini-3.8-flash` / `MEDIUM` profile, no `thinkingBudget`,
+and the existing controlled-workspace and parent-only Vertex WIF boundary.
+The per-execution deadline is 180 seconds and `maxOutputTokens` is 16,384.
+The complete encoded stdin prompt, including protected instructions and output
+schema, is limited to 128 KiB. The committed review context is limited to
+32 selected files, 128 KiB per file, and 512 KiB total serialized packet;
+these are separate bounds, not interchangeable prompt limits.
+
+Authenticated Vertex verification under this selection permits at most five
+model dispatch attempts in total, including failed attempts. No automatic
+retry or provider fallback is selected. Record dispatch before sending and
+retain a private durable count; an uncertain remote outcome consumes an attempt
+and does not authorize another dispatch beyond the ceiling. Earlier Issue #333
+investigation attempts are outside this new verification allocation.
+
+This selection authorizes bounded verification, not adoption of an active main
+or consumer acceptance route. Main CI provider selection requires separate
+owner approval. Runtime limits do not guarantee billing, review quality,
+deterministic output or physical process termination. Exact deployment bindings
+remain private evidence; verify selected execution, same-run/attempt/revisions,
+full Authority Set, schema, consumer rules and reporting/acceptance handoff
+before making any usable-route claim. Governance-provider activation and
+standby/parallel execution remain outside this verification scope.
+
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
 The GitHub-specific step-output adapter treats `GITHUB_OUTPUT` as a trusted
