@@ -35,6 +35,8 @@ test('the shared validator terminates on malformed JSON and representative produ
       '{"a":1,}', '[,1]', '[1,,2]', '"unterminated',
       '{"a":1} trailing', '{"a" 1}', '{"a":1 "b":2}',
       '{"a":"\\\\q"}', '{"a":"\\\\u12"}', '{"a":"\\\\x41"}',
+      '01', '-01', '+1', '.1', '1.', '1e', '1e+', '--1', 'True', 'undefined',
+      '[1 2]', '{"a"::1}', '{"a":1\u00a0}',
     ];
     for (const value of malformed) {
       assert.throws(() => rejectDuplicateJsonKeys(value, 'generated input'));
@@ -51,6 +53,7 @@ test('the shared validator terminates on malformed JSON and representative produ
     const validDocuments = [
       '[]', '[1, {"a":"value"}]', '{"false":false,"nested":[null,3]}',
       '{"unicode":"naïve 💡","array":[0,true,null]}', '"literal Unicode ☃"',
+      ' -0.25e+2 ', '\\t{"a" : [false, null, 42]}\\r\\n',
     ];
     for (const document of validDocuments) {
       assert.doesNotThrow(() => JSON.parse(document));
@@ -61,6 +64,41 @@ test('the shared validator terminates on malformed JSON and representative produ
           assert.throws(() => rejectDuplicateJsonKeys(truncated, 'truncated generated input'));
         }
       }
+    }
+    const grammarSeeds = [
+      'null', 'true', 'false', '-0', '1e309', '1.5e-12',
+      '"escaped \\\"quote\\\""', '"\\ud800"',
+      '[1,{"a":false,"b":[null,3]}]', '{"é":"💡","nested":{"x":0}}',
+      ' \\t[ true , -2.5E+4 ]\\n',
+    ];
+    const alphabet = '[]{}":,ntfalsru0123456789.eE+-\\ abc\\t\\n☃';
+    let randomState = 413;
+    const random = limit => {
+      randomState = (Math.imul(randomState, 1664525) + 1013904223) >>> 0;
+      return randomState % limit;
+    };
+    for (let index = 0; index < 5_000; index++) {
+      const seed = grammarSeeds[random(grammarSeeds.length)];
+      const offset = random(seed.length + 1);
+      const operation = random(3);
+      let candidate;
+      if (operation === 0) {
+        candidate = seed.slice(0, offset) + alphabet[random(alphabet.length)] + seed.slice(offset);
+      } else if (operation === 1 && seed.length) {
+        candidate = seed.slice(0, Math.min(offset, seed.length - 1)) + seed.slice(Math.min(offset, seed.length - 1) + 1);
+      } else if (seed.length) {
+        const replaceAt = Math.min(offset, seed.length - 1);
+        candidate = seed.slice(0, replaceAt) + alphabet[random(alphabet.length)] + seed.slice(replaceAt + 1);
+      } else {
+        candidate = seed;
+      }
+      let nativeAccepts = true;
+      try { JSON.parse(candidate); } catch { nativeAccepts = false; }
+      let scannerError;
+      try { rejectDuplicateJsonKeys(candidate, 'differential grammar mutation'); }
+      catch (error) { scannerError = error; }
+      if (scannerError?.message.includes('duplicate JSON key')) continue;
+      assert.equal(!scannerError, nativeAccepts, \`JSON grammar disagreement for \${JSON.stringify(candidate)}\`);
     }
 
     assert.throws(() => parseCiPolicyJson('{"version":1,"branches":['));
@@ -120,4 +158,19 @@ test('manifest byte boundary and malformed UTF-8 remain enforced', () => {
   assert.doesNotThrow(() => parseAuthorityManifest(manifest, exactLimit));
   assert.throws(() => parseAuthorityManifest(manifest, { ...exactLimit, maxManifestBytes: manifest.length - 1 }), /limit/);
   assert.throws(() => parseAuthorityManifest(Buffer.from([0xff]), MAX_AUTHORITY_LIMITS), /valid UTF-8 JSON/);
+});
+
+test('rejects extreme nesting before whole-document parsing in a low-heap child', () => {
+  const script = `
+    import assert from 'node:assert/strict';
+    import { rejectDuplicateJsonKeys } from ${JSON.stringify(helperUrl)};
+    const depth = 1_000_000;
+    const source = '['.repeat(depth) + '0' + ']'.repeat(depth);
+    assert.throws(() => rejectDuplicateJsonKeys(source, 'low-heap depth input'), /nesting is too deep/);
+  `;
+  const result = spawnSync(process.execPath, ['--max-old-space-size=32', '--input-type=module', '-e', script], {
+    cwd: sourcePath, encoding: 'utf8', timeout: 5_000, maxBuffer: 1_000_000,
+  });
+  assert.equal(result.error, undefined, `low-heap scanner child failed or timed out: ${result.stderr}`);
+  assert.equal(result.status, 0, `low-heap scanner child failed: ${result.stderr}`);
 });

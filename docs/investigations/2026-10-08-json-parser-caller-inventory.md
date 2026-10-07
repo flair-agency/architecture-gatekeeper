@@ -1,15 +1,17 @@
 # Shared JSON parser caller inventory
 
 Issue #413 hardens the shared `rejectDuplicateJsonKeys` entrypoint in
-`src/authority-set.mjs`. It now runs `JSON.parse` before its delimiter scanner,
-so malformed text fails before the scanner uses JSON grammar assumptions. A
-valid duplicate-key document still fails during scanning. Caller-owned byte
-limits, UTF-8 decoding, schema checks, and configured depth limits remain in
-their existing layers.
+`src/authority-set.mjs`. It now validates JSON grammar, configured depth and
+duplicate object keys in one pass. It uses `JSON.parse` only on an individual
+quoted token to validate string escapes and decode object keys; it does not
+parse the complete document before enforcing depth. A caller that invokes its
+own whole-document `JSON.parse` before this helper still materializes first;
+this work does not reorder those callers. Caller byte limits, UTF-8 decoding
+and schema checks remain in their existing layers.
 
 ## Callers and input contracts
 
-| Source caller | Input contract and limit owner | Call ordering before this change |
+| Source caller | Input contract and limit owner | Caller ordering around shared scan |
 | --- | --- | --- |
 | `authority-set.mjs` / `parseAuthorityManifest` | Buffer or string, then selected `maxManifestBytes`; fatal UTF-8 decode; manifest/member checks; default parser depth 8 | `JSON.parse`, then duplicate scan |
 | `ci-execution-observation.mjs` / observation | Stdin capped at 512 KiB; fatal UTF-8; parser depth 70 | `JSON.parse`, then duplicate scan |
@@ -34,13 +36,14 @@ their existing layers.
 | `github-owner-addition-provenance.mjs` | Artifact ZIP capped at 1 MiB and decoded JSON entry at 512 KiB; fatal UTF-8 | Duplicate scan, then parse |
 | `preview-lifecycle.mjs` | Committed JSON snapshot defaults to 1 MiB; raw completed receipt capped at 4 MiB; receipt depth 64 | Duplicate scan, then parse |
 
-The ordering column records the caller's local sequence, not a required API
-contract. The shared function now enforces syntax validity itself, so both
-orders have the same finite malformed-input behavior. A byte limit is listed
-only where the caller enforces one. Direct CI policy, committed
-configuration/reviewer text, owner-addition eligibility text, and the G0
-AdditionRecord message have no local byte cap at their parser call. This
-change adds no input source, assurance responsibility, or acceptance route.
+The ordering column records each caller's local sequence, not a required API
+contract. When a caller scans before its own whole-document parse, the scanner
+rejects malformed input and excessive depth before materialization. Parse-first
+callers retain that earlier parse step. A byte limit is listed only where the
+caller enforces one. Direct CI policy, committed configuration/reviewer text,
+owner-addition eligibility text, and the G0 AdditionRecord message have no
+local byte cap at their parser call. This change adds no input source,
+assurance responsibility, or acceptance route.
 
 ## Verification and release impact
 
@@ -48,15 +51,30 @@ change adds no input source, assurance responsibility, or acceptance route.
 limits, owner-addition, owner-amendment, and prepared-decision entrypoints in a
 five-second bounded child. Its generated corpus includes valid JSON and every
 syntactically invalid prefix of those documents, plus malformed separators,
-escapes and trailing text. It verifies a manifest at its exact byte limit,
+escapes and trailing text, with 5,000 deterministic insert/delete/replace
+mutations differentially checked against `JSON.parse`. It verifies a manifest at its exact byte limit,
 rejects one byte over and rejects malformed UTF-8. Existing
 `test/prepared-ci-decision.test.mjs` cases retain prepared decision/schema byte
 boundary coverage. Unicode-equivalent duplicate keys and depths 1 and 514 are
 also covered.
 
 The old hang is recorded as a manually executable reproduction instead of an
-always-hanging test fixture. Run from this checkout; the child is externally
-terminated after 500 ms:
+always-hanging test fixture. The actual helper blob at assigned base
+`82a45df3140f2973b09811465a9d0f01e178f79b` was
+`5d4309a30c8e95f7891a56a8fa23d18917f286c6`; child processes using `[`, `[1`,
+and `{"a":[1` each timed out at 750 ms. The issue cites the same failing
+helper at `6ca1c4a7b5afb32df4f0456d8d7896474bfcf181`. Reproduce those three
+observations from this checkout; each child is externally terminated after
+750 ms:
+
+```json
+{"input":"[","timedOut":true,"error":"ETIMEDOUT"}
+{"input":"[1","timedOut":true,"error":"ETIMEDOUT"}
+{"input":"{\"a\":[1","timedOut":true,"error":"ETIMEDOUT"}
+```
+
+The coordinator's reproduction output is retained at
+`/tmp/gatekeeper-quality-413-baseline-reproduction.json` for this task.
 
 ```js
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -71,14 +89,26 @@ try {
   writeFileSync(modulePath, execFileSync('git', [
     'show', '82a45df3140f2973b09811465a9d0f01e178f79b:src/authority-set.mjs',
   ], { encoding: 'utf8' }));
-  const script = `import { rejectDuplicateJsonKeys } from ${JSON.stringify(pathToFileURL(modulePath).href)}; rejectDuplicateJsonKeys('[');`;
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], { timeout: 500 });
-  console.log(result.error?.code === 'ETIMEDOUT' ? 'baseline hang reproduced' : 'baseline reproduction failed');
-  if (result.error?.code !== 'ETIMEDOUT') process.exitCode = 1;
+  for (const input of ['[', '[1', '{"a":[1']) {
+    const script = `import { rejectDuplicateJsonKeys } from ${JSON.stringify(pathToFileURL(modulePath).href)}; rejectDuplicateJsonKeys(${JSON.stringify(input)});`;
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], { timeout: 750 });
+    const timedOut = result.error?.code === 'ETIMEDOUT';
+    console.log(JSON.stringify({ input, timedOut, error: result.error?.code ?? null }));
+    if (!timedOut) process.exitCode = 1;
+  }
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }
 ```
+
+The low-heap regression runs the fixed scanner with a 32 MiB V8 heap and
+1,000,000 nested arrays under a five-second parent timeout. It must exit
+normally with the configured nesting error before a whole-document parse can
+allocate the nested array structure. The parse-first implementation at
+`19ccfe3cd1eb65950e3469ec18af55103405a4d6` aborts with a V8 heap-limit error
+on the same input and heap cap; the original baseline helper does not parse
+the whole document first. At this runtime, 500,000 levels fit in 32 MiB, so
+the regression uses one million.
 
 The affected source is present at worktree base
 `82a45df3140f2973b09811465a9d0f01e178f79b`; Issue #413's cited failing helper

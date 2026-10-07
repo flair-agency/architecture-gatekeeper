@@ -45,19 +45,32 @@ export function rejectDuplicateJsonKeys(source, label = 'manifest', options = {}
     fail(`${label} duplicate-key parser depth must be within 1..514.`);
   }
   if (typeof source !== 'string') fail(`${label} JSON source must be a string.`);
-  // Validate the grammar before the duplicate-key scanner relies on separators
-  // and closing delimiters. Several callers also parse first, but this shared
-  // entrypoint must remain safe when they do not.
-  try { JSON.parse(source); } catch { fail(`${label} is not valid JSON.`); }
   let position = 0;
-  const white = () => { while (/\s/.test(source[position] ?? '')) position++; };
+  // Parse the grammar directly so the depth bound applies before a nested JS
+  // object graph can be allocated. JSON.parse is used only for string tokens.
+  const syntax = () => fail(`${label} is not valid JSON.`);
+  const white = () => {
+    while (position < source.length && /[\u0020\u0009\u000a\u000d]/.test(source[position])) position++;
+  };
   const string = () => {
+    if (source[position] !== '"') syntax();
     const start = position++;
     while (position < source.length) {
-      if (source[position] === '\\') { position += 2; continue; }
-      if (source[position++] === '"') return JSON.parse(source.slice(start, position));
+      const code = source.charCodeAt(position);
+      if (code === 0x22) {
+        position++;
+        try { return JSON.parse(source.slice(start, position)); } catch { syntax(); }
+      }
+      if (code < 0x20) syntax();
+      if (code === 0x5c) position += 2;
+      else position++;
     }
-    fail('manifest contains unterminated JSON string.');
+    syntax();
+  };
+  const numberPattern = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
+  const literal = token => {
+    if (!source.startsWith(token, position)) syntax();
+    position += token.length;
   };
   const value = depth => {
     if (depth > maxDepth) fail(`${label} nesting is too deep.`);
@@ -68,20 +81,39 @@ export function rejectDuplicateJsonKeys(source, label = 'manifest', options = {}
       const seen = new Set();
       if (source[position] === '}') { position++; return; }
       while (true) {
-        white(); const key = string();
+        white();
+        if (source[position] !== '"') syntax();
+        const key = string();
         if (seen.has(key)) fail(`${label} has duplicate JSON key ${JSON.stringify(key)}.`);
-        seen.add(key); white(); position++; value(depth + 1); white();
-        if (source[position++] === '}') return;
+        seen.add(key); white();
+        if (source[position] !== ':') syntax();
+        position++; value(depth + 1); white();
+        if (source[position] === '}') { position++; return; }
+        if (source[position] !== ',') syntax();
+        position++;
       }
     }
     if (source[position] === '[') {
       position++; white();
       if (source[position] === ']') { position++; return; }
-      while (true) { value(depth + 1); white(); if (source[position++] === ']') return; }
+      while (true) {
+        value(depth + 1); white();
+        if (source[position] === ']') { position++; return; }
+        if (source[position] !== ',') syntax();
+        position++;
+      }
     }
-    while (position < source.length && !/[\s,}\]]/.test(source[position])) position++;
+    if (source[position] === 't') { literal('true'); return; }
+    if (source[position] === 'f') { literal('false'); return; }
+    if (source[position] === 'n') { literal('null'); return; }
+    numberPattern.lastIndex = position;
+    const match = numberPattern.exec(source);
+    if (!match) syntax();
+    position = numberPattern.lastIndex;
   };
   value(0);
+  white();
+  if (position !== source.length) syntax();
 }
 
 /** Parse an explicit v1 selector. The caller must obtain these bytes from its recorded authority revision. */
