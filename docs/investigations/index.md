@@ -43,10 +43,11 @@ Baseline values below are only those expressly recorded in the source record. `N
 | Date not stated in filename — [Issue #111 missing-decision adoption plan](issue111-owner-adoption-plan.md) | Issue #111 G0 consumer adoption plan; source baseline not recorded. | Plan says implementation exists but this is not enabled policy; current self policy was inactive when the record was written. It explicitly requires fresh Issue/PR readback before action. | [OWNER_ADDITION / G0 contract](../architecture/owner-addition.md#owner_addition--g0-route-for-missing-decisions-issue-111), [owner intervention](../owner-intervention.md), and current protected policy. |
 | Date not stated in filename — [Native Architecture Review Skill E2E template](native-skill-e2e-template.md) | Reusable record template for run identity, host-native invocation, returned decision, validation, and acceptance boundaries; baseline not applicable/not recorded. | Template, not execution evidence, signed artifact, or reusable merge evidence. | [Local/manual review contract](../architecture/review-execution.md#local-and-manual-review), [Skill instructions](../../skills/architecture-review/SKILL.md), and [integration reference](../integration-reference.md#codex-skill-installation). |
 | 2026-10-07 — [Preview package and pin recovery history](2026-10-07-preview-package-pin-recovery-history.md) | Verbatim extraction of the final section of `docs/integration-reference.md` at source commit `3f71fece350c`; the preserved section SHA-256 is `0ceb021e18438c5e1d66b66ae7a0151ee81bf2504fb18013a3960ee958aaa9f7`. The rehearsal event date was not recorded. | Historical rehearsal results and limits only; extraction date is not a new test. Registry artifact readback, selected consumer pins, protected execution, adoption and safe rollback are not established. | [Current preview support](../integration-reference.md#preview-support-and-recovery-status), [current recovery guidance](../integration-reference.md#package-and-pin-recovery), and [legacy v1 upgrade procedure](../owner-intervention.md#legacy-v1-consumer-upgrade). |
+| 2026-10-07 — [Canonical authority lifecycle editorial map](2026-10-07-canonical-authority-lifecycle-editorial-map.json) | Issue #384 presentation-only mapping from baseline `3f71fece350c`; records all 19 lifecycle clauses and the 46 unchanged selected-Set blocks, with exact source and member digests. | Preservation and verification record only; it does not change authority, select a route, activate lifecycle support, or establish acceptance. | [Canonical authority lifecycle](../architecture.md#canonical-authority-lifecycle) and the complete selected six-member Set in `.codex/gatekeeper/authorities.json`. This map is repository-only, not package-shipped. |
 
-## Non-Markdown source artifact
+## Non-Markdown source artifacts
 
-The [authority-split JSON map](2026-10-04-architecture-authority-split-map.json) is a machine-readable preservation companion, not a separate investigation or authority. Its embedded source revision, digest, and byte count are listed above; use the dated Markdown record for status and interpretation.
+The [authority-split JSON map](2026-10-04-architecture-authority-split-map.json) is a machine-readable preservation companion, not a separate investigation or authority. Its embedded source revision, digest, and byte count are listed above; use the dated Markdown record for status and interpretation. The [Issue #384 lifecycle editorial map](2026-10-07-canonical-authority-lifecycle-editorial-map.json) records baseline clause correspondence and byte identities; the canonical six-member Set remains authoritative.
 
 ## Current work record
 
@@ -84,10 +85,10 @@ guide names as reader navigation; complete procedures stay in the named guide.
   and pointer while the full preview.2-to-preview.3 source section is preserved
   verbatim in the investigation. The current rule governs future questions;
   the archived rehearsal is evidence only.
-- Guides summarize the authority boundary and selected rules for orientation.
-  The complete normative meaning remains in the selected six-member Set; this
-  documentation work does not edit or reinterpret those files.
-- Normative lifecycle-document readability is deferred to Issue #384. Broader
-  Issue #272 final-release readback and Issue #116 synchronization/protected
-  acceptance remain open. This work does not establish protected acceptance,
-  downstream adoption, or route activation.
+- Supporting-guide summaries and this index provide orientation; they do not
+  amend the selected six-member authority Set. Issue #384 presents the existing
+  lifecycle clauses more readably in [the canonical section](../architecture.md#canonical-authority-lifecycle),
+  with clause correspondence in the [repository-only lifecycle map](2026-10-07-canonical-authority-lifecycle-editorial-map.json).
+- Broader Issue #272 final-release readback and Issue #116 synchronization and
+  protected acceptance remain open. This documentation work does not establish
+  protected acceptance, downstream adoption, or route activation.
