@@ -8,6 +8,13 @@ to distinguish contract definition, source implementation, route selection,
 host/consumer connection and actual consumer proof. The six documents have no
 implicit precedence. Read their complete clauses when applying a row.
 
+The mapping baseline remains that historical commit. At current main
+`7232505f40beed37b61906ed61b42f6dc12371eb`, the selected manifest and five
+other authority members are byte-identical to the baseline. `docs/architecture.md`
+has since expanded its canonical lifecycle section. The baseline heading ledger
+below stays historical; the current-main lifecycle headings and their mapping
+are listed separately.
+
 This catalogue is intentionally thin: it records obligations and known route
 families, not a full assurance audit of every adapter or host configuration.
 “Implemented” below means source/test material exists at the baseline; it does
@@ -63,6 +70,20 @@ route.
 | `owner-amendment.md`: target governance; self-v1 semantic eligibility input/receipt; procedural BLOCK amendment profile (Issue #147); exact-claim authorization/revocation | C4 / T2 and applicable T7–T9; triggers, strict scope, evidence/producer, freshness, transition, revocation and recovery. |
 | `review-execution.md`: local/manual; local provider-independent target; CI model review; self-repository original Fork denial; deferred Fork PR authorization; deferred public-Fork Environment target; provider-independent execution; API WIF; credential-isolated proxy; Gemini authentication; Gemini execution; GitHub step-output sink; legacy v1 authority repair | C5 / A review at every applicable T; actor/credential/execution and selection boundaries. Deferred/inactive targets stay explicitly so. |
 | `self-profile.md`: self-only GitHub Free/public reporter target; Dogfooding and change discipline; v0.6.0 self-reference profile | C6 / self-only T7–T9 and release evidence gates; not consumer-generalized. |
+
+### Current-main lifecycle clause delta
+
+Current main adds these lifecycle subheadings under the existing canonical
+lifecycle clause. They refine its organization and make the same T/B
+obligations easier to locate; they do not add an exception or cardinality rule.
+
+| Current-main clause | Applicable transitions / guard coverage |
+| --- | --- |
+| [Lifecycle scope and records](../architecture.md#lifecycle-scope-and-records) | C1; all T/B: tuple scope, canonical snapshot, phase/kind, capability/assurance, `ABSENT_INITIAL`, addition, recovery and oversized-Set meanings. |
+| [Transition cases T0–T9](../architecture.md#transition-cases-t0t9) | C1; T0–T9: normal path categories and non-resettable repository/target lineage. |
+| [Guarded bootstrap controls B1–B8](../architecture.md#guarded-bootstrap-controls-b1b8) | C1; B1–B8: prerequisites, lineage, evidence, readback and later adoption; B7 consumes the lineage authorization without imposing a cardinality rule. |
+| [Adoption, placement, and failure handling](../architecture.md#adoption-placement-and-failure-handling) | C1; all T/B: pending predecessor, pre/post-integration failure, adoption and placement remain distinct; preserve history and require fresh review. |
+| [Lifecycle relationship diagram](../architecture.md#lifecycle-relationship-diagram) | C1; navigation only. Its labeled support path and separate placement fact do not establish support or add lifecycle conditions. |
 
 ### Clause-to-transition trace
 
@@ -158,7 +179,7 @@ first activation with no authorized normal/staged path (T7).
 | B4 | Bind candidate, paths, operations, actors and non-resettable lineage. | Mismatch or missing binding stops the path. |
 | B5 | Verify preparation, limits, inputs, producer and host conditions. | Unknown or failed check is incomplete; no implicit assurance. |
 | B6 | Read back first-operation target, policy and caller. | No verified readback means no successful first operation. |
-| B7 | Consume the lineage authorization exactly once/as specified by its contract. | Missing, reused or mismatched authorization prevents bootstrap completion. |
+| B7 | Consume the bound lineage authorization as required by its authorizing contract. | Missing or mismatched authorization, or failure to consume it as required by that contract, leaves bootstrap incomplete. |
 | B8 | Later complete normal adoption and readback before `ACTIVE`; zero exception. The claimed tuple still needs its predecessor-authorized production trace, matching fixture and fail-closed negatives. | Remain commissioning; bootstrap itself never makes the route active. |
 
 The bootstrap contract requires an implemented T8 plan before start, and the
