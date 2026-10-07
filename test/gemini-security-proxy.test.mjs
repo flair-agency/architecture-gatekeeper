@@ -4,6 +4,10 @@ import http, { createServer, request, Server } from 'node:http';
 import https from 'node:https';
 import { EventEmitter } from 'node:events';
 import { Readable } from 'node:stream';
+import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createVertexVerificationReservation } from '../src/vertex-verification-reservation.mjs';
 import { syncBuiltinESMExports } from 'node:module';
 import { validateGeminiRoute, startGeminiSecurityProxy, MAX_PROXY_REQUEST_BYTES, remainingDeadlineMs } from '../src/gemini-security-proxy.mjs';
 import { validateLoopbackEndpoint } from '../src/review-security-proxy.mjs';
@@ -467,13 +471,11 @@ test('proxy rejects declared and chunked oversized bodies before upstream dispat
 });
 
 test('parent dispatch reservation caps concurrent and failed upstream calls across sessions', async () => {
-  let reserved = 0;
   let sent = 0;
-  const reserveDispatch = () => {
-    if (reserved === 5) return false;
-    reserved++;
-    return true;
-  };
+  const directory = mkdtempSync(join(tmpdir(), 'proxy-verification-budget-'));
+  const ledger = join(directory, 'attempts');
+  const fd = openSync(ledger, 'wx+', 0o600);
+  const reserveDispatch = createVertexVerificationReservation(fd);
   const upstream = createServer((_req, res) => { sent++; res.writeHead(503); res.end('{}'); });
   await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
   const proxies = [];
@@ -486,7 +488,7 @@ test('parent dispatch reservation caps concurrent and failed upstream calls acro
     const route = '/v1/projects/p/locations/global/publishers/google/models/gemini-3.8-flash:generateContent';
     const rejected = await fetch(proxies[0].endpointUrl + '/invalid', { method: 'POST', body: '{}' });
     assert.equal(rejected.status, 403);
-    assert.equal(reserved, 0);
+    assert.equal(readFileSync(ledger, 'utf8'), 'AGK334-V1\n');
     const statuses = await Promise.all(Array.from({ length: 8 }, async (_, i) => {
       const response = await fetch(proxies[i % 2].endpointUrl + route, { method: 'POST', body: '{}' });
       await response.text();
@@ -494,11 +496,13 @@ test('parent dispatch reservation caps concurrent and failed upstream calls acro
     }));
     assert.equal(statuses.filter(status => status === 503).length, 5);
     assert.equal(statuses.filter(status => status === 429).length, 3);
-    assert.equal(reserved, 5);
+    assert.equal(readFileSync(ledger, 'utf8'), 'AGK334-V1\n1\n2\n3\n4\n5\n');
     assert.equal(sent, 5);
   } finally {
     await Promise.all(proxies.map(proxy => proxy.shutdown()));
     await new Promise(resolve => upstream.close(resolve));
+    closeSync(fd);
+    rmSync(directory, { recursive: true, force: true });
   }
 });
 
