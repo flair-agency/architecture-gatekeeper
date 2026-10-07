@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { prepareReviewFileContext } from '../src/prepare-review-file-context.mjs';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, openSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { request as httpRequest } from 'node:http';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { runPreparedGeminiCiVerification } from '../src/prepared-gemini-ci-verification.mjs';
+import { initializeVertexVerificationLedger, createVertexVerificationReservation } from '../src/vertex-verification-reservation.mjs';
 import { runPreparedGeminiCiReview } from '../src/prepared-gemini-ci-review.mjs';
 import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from '../src/gemini-cli-process.mjs';
 import { completePreparedCiReview } from '../src/complete-prepared-ci-review.mjs';
@@ -573,6 +575,75 @@ test('prepared decision forwards parent-only reservation and leaves rejection in
     reviewInput, authorityProvenance, validationRules, maxResponseBytes: 1024, maxSchemaBytes: 4096,
   }), /exit|failed/i);
   assert.equal(reservations, 1);
+  const observation = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+  assert.equal(observation.env.reserveDispatch, undefined);
+  await assertProxyClosed(observation.endpoint);
+});
+
+
+function verificationInput(f) {
+  const reviewInput = input(f);
+  Object.assign(reviewInput.proxySessionOptions.processOptions, {
+    timeoutMs: 180000, maxOutputTokens: 16384, maxPromptBytes: 131072,
+  });
+  return { reviewInput, authorityProvenance, validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576 };
+}
+
+function verificationLedger(t, f) {
+  const path = join(f.root, 'verification-ledger');
+  const fd = openSync(path, 'wx+', 0o600);
+  initializeVertexVerificationLedger(fd);
+  t.after(() => closeSync(fd));
+  return { fd, path };
+}
+
+test('selected verification connects adopted settings, complete shared validation and durable allocation', async t => {
+  for (const decision of ['PASS', 'BLOCK']) {
+    const response = { decision, authorityIds, ...(decision === 'BLOCK' ? { summary: 'documented' } : {}) };
+    const f = fixture(t, 'success', JSON.stringify(response));
+    const ledger = verificationLedger(t, f);
+    const result = await runPreparedGeminiCiVerification(verificationInput(f), ledger.fd);
+    assert.equal(result.decision.decision, decision);
+    assert.equal(result.execution.expectedExecution.requestedSettings.timeoutMs, 180000);
+    assert.equal(result.execution.expectedExecution.requestedSettings.maxOutputTokens, 16384);
+    assert.equal(result.execution.expectedExecution.requestedSettings.maxPromptBytes, 131072);
+    assert.equal(readFileSync(ledger.path, 'utf8'), 'AGK334-V1\n');
+    await assertProxyClosed(JSON.parse(readFileSync(f.reportPath, 'utf8')).endpoint);
+  }
+});
+
+test('selected verification rejects settings, injected reservation, missing ledger and incomplete authority', async t => {
+  const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds: authorityIds.slice(1) }));
+  const ledger = verificationLedger(t, f);
+  for (const [field, value] of [['timeoutMs', 180001], ['maxOutputTokens', 16385], ['maxPromptBytes', 131073], ['thinkingBudget', 1]]) {
+    const supplied = verificationInput(f);
+    supplied.reviewInput.proxySessionOptions.processOptions[field] = value;
+    await assert.rejects(runPreparedGeminiCiVerification(supplied, ledger.fd), /settings disagree/);
+  }
+  const injected = verificationInput(f);
+  injected.reviewInput.proxySessionOptions.reserveDispatch = () => true;
+  await assert.rejects(runPreparedGeminiCiVerification(injected, ledger.fd), /settings disagree/);
+  const excessive = verificationInput(f);
+  excessive.reviewInput.proxySessionOptions.workspaceLimits = { ...workspaceLimits, maxTotalBytes: 524289 };
+  await assert.rejects(runPreparedGeminiCiVerification(excessive, ledger.fd), /context exceeds/);
+  await assert.rejects(runPreparedGeminiCiVerification(verificationInput(f)), /file descriptor/);
+  const getter = verificationInput(f);
+  let reads = 0;
+  Object.defineProperty(getter, 'reviewInput', { enumerable: true, get() { reads++; return input(f); } });
+  await assert.rejects(runPreparedGeminiCiVerification(getter, ledger.fd), /complete explicit/);
+  assert.equal(reads, 0);
+  assert.equal(existsSync(f.reportPath), false);
+  await assert.rejects(runPreparedGeminiCiVerification(verificationInput(f), ledger.fd), /too few items/);
+});
+
+test('selected verification denies streaming dispatch when the allocation is exhausted without resetting it', async t => {
+  const f = fixture(t, 'budget');
+  const ledger = verificationLedger(t, f);
+  const reserve = createVertexVerificationReservation(ledger.fd);
+  for (let i = 0; i < 5; i++) assert.equal(reserve(), true);
+  const before = readFileSync(ledger.path, 'utf8');
+  await assert.rejects(runPreparedGeminiCiVerification(verificationInput(f), ledger.fd), /exit|failed/i);
+  assert.equal(readFileSync(ledger.path, 'utf8'), before);
   const observation = JSON.parse(readFileSync(f.reportPath, 'utf8'));
   assert.equal(observation.env.reserveDispatch, undefined);
   await assertProxyClosed(observation.endpoint);
