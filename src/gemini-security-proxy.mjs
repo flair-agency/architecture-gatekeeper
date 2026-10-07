@@ -16,6 +16,7 @@
  */
 import { createServer } from 'node:http';
 import { request as httpsRequest } from 'node:https';
+import { types } from 'node:util';
 
 // Implementation bound for the complete serialized request, not prompt truncation.
 export const MAX_PROXY_REQUEST_BYTES = 16 * 1024 * 1024;
@@ -73,6 +74,7 @@ export function validateGeminiRoute(pathname) {
  * @param {boolean} [config.allowStreaming] Explicitly enable the scoped Vertex SSE route.
  * @param {number} [config.deadlineMs] Max server lifetime before auto-shutdown
  * @param {AbortSignal} [config.signal] Cancels startup or shuts down the proxy
+ * @param {Function} [config.reserveDispatch] Trusted parent synchronous pre-send reservation; must return true.
  * @returns {Promise<{ endpointUrl: string, shutdown: () => Promise<void> }>}
  */
 export async function startGeminiSecurityProxy(config) {
@@ -91,6 +93,10 @@ export async function startGeminiSecurityProxy(config) {
     throw new Error('GeminiSecurityProxy requires complete credential-compatible selected scope.');
   }
   const upstreamHostOverride = config.upstreamHost || null;
+  const reserveDispatch = config.reserveDispatch;
+  if (reserveDispatch !== undefined && typeof reserveDispatch !== 'function') {
+    throw new Error('GeminiSecurityProxy dispatch reservation must be a trusted parent function.');
+  }
 
   if (config.signal !== undefined && !(config.signal instanceof AbortSignal)) {
     throw new Error('GeminiSecurityProxy signal must be an AbortSignal.');
@@ -297,6 +303,31 @@ export async function startGeminiSecurityProxy(config) {
         transport.then(({ request: makeRequest }) => {
           // The client may disconnect while the body is read or the transport is imported.
           if (res.destroyed || req.aborted) return;
+          // A selected verification budget belongs to the trusted parent, not
+          // to request JSON. Reserve synchronously before creating any upstream
+          // request: failed or uncertain requests retain their reservation.
+          // Do not disclose reservation errors (which may contain private paths).
+          if (reserveDispatch !== undefined) {
+            let reserved = false;
+            try {
+              const result = reserveDispatch();
+              // Unsupported async reservations must not leave a rejected promise
+              // unhandled or allow a later resolution to authorize this send.
+              if (types.isPromise(result)) Promise.prototype.then.call(result, () => {}, () => {});
+              reserved = result === true;
+            } catch { /* fail closed */ }
+            if (!reserved) {
+              res.writeHead(429, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Upstream dispatch reservation unavailable.' }));
+              return;
+            }
+          }
+          // Synchronous durable accounting may consume the remaining deadline.
+          if (shutdownRequested || (deadlineAt !== null && remainingDeadlineMs(deadlineAt) === 0)) {
+            res.writeHead(504, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Gateway Timeout: proxy session deadline expired.' }));
+            return;
+          }
           const upstreamReq = makeRequest(requestOptions, upstreamRes => {
             // Fail closed on redirect
             if (upstreamRes.statusCode >= 300 && upstreamRes.statusCode < 400) {
