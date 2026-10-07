@@ -465,3 +465,68 @@ test('proxy rejects declared and chunked oversized bodies before upstream dispat
     assert.equal(calls, 0);
   } finally { await proxy.shutdown(); await new Promise(resolve => upstream.close(resolve)); }
 });
+
+test('parent dispatch reservation caps concurrent and failed upstream calls across sessions', async () => {
+  let reserved = 0;
+  let sent = 0;
+  const reserveDispatch = () => {
+    if (reserved === 5) return false;
+    reserved++;
+    return true;
+  };
+  const upstream = createServer((_req, res) => { sent++; res.writeHead(503); res.end('{}'); });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const proxies = [];
+  try {
+    for (let i = 0; i < 2; i++) proxies.push(await startGeminiSecurityProxy({
+      credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex', allowedProject: 'p',
+      allowedRegion: 'global', allowedModel: 'gemini-3.8-flash', reserveDispatch,
+      upstreamHost: '127.0.0.1', upstreamPort: upstream.address().port, upstreamHttp: true, allowLoopbackUpstream: true,
+    }));
+    const route = '/v1/projects/p/locations/global/publishers/google/models/gemini-3.8-flash:generateContent';
+    const rejected = await fetch(proxies[0].endpointUrl + '/invalid', { method: 'POST', body: '{}' });
+    assert.equal(rejected.status, 403);
+    assert.equal(reserved, 0);
+    const statuses = await Promise.all(Array.from({ length: 8 }, async (_, i) => {
+      const response = await fetch(proxies[i % 2].endpointUrl + route, { method: 'POST', body: '{}' });
+      await response.text();
+      return response.status;
+    }));
+    assert.equal(statuses.filter(status => status === 503).length, 5);
+    assert.equal(statuses.filter(status => status === 429).length, 3);
+    assert.equal(reserved, 5);
+    assert.equal(sent, 5);
+  } finally {
+    await Promise.all(proxies.map(proxy => proxy.shutdown()));
+    await new Promise(resolve => upstream.close(resolve));
+  }
+});
+
+test('reservation failure and asynchronous or nonliteral grants never send or expose private errors', async () => {
+  let sent = 0;
+  const upstream = createServer((_req, res) => { sent++; res.end('{}'); });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  try {
+    for (const reserveDispatch of [() => { throw new Error('private-ledger-path'); }, () => undefined,
+      () => 1, async () => true, async () => { throw new Error('private-ledger-path'); }]) {
+      const proxy = await startGeminiSecurityProxy({
+        credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex', allowedProject: 'p',
+        allowedRegion: 'global', allowedModel: 'gemini-3.8-flash', reserveDispatch,
+        upstreamHost: '127.0.0.1', upstreamPort: upstream.address().port, upstreamHttp: true, allowLoopbackUpstream: true,
+      });
+      try {
+        const response = await fetch(proxy.endpointUrl + '/v1/projects/p/locations/global/publishers/google/models/gemini-3.8-flash:generateContent', { method: 'POST', body: '{}' });
+        assert.equal(response.status, 429);
+        assert.equal(await response.text(), '{"error":"Upstream dispatch reservation unavailable."}');
+      } finally { await proxy.shutdown(); }
+    }
+    assert.equal(sent, 0);
+  } finally { await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('proxy rejects invalid reservation configuration before startup', async () => {
+  await assert.rejects(startGeminiSecurityProxy({
+    credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex', allowedProject: 'p',
+    allowedRegion: 'global', allowedModel: 'gemini-3.8-flash', reserveDispatch: true,
+  }), /trusted parent function/);
+});

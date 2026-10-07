@@ -65,6 +65,11 @@ if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); proces
 let prompt = '';
 for await (const chunk of process.stdin) prompt += chunk;
 writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')), referenceText: readFileSync('evidence/reference-0001.txt', 'utf8'), manifest: JSON.parse(readFileSync('manifest.json', 'utf8')), evidence: Object.fromEntries(JSON.parse(readFileSync('manifest.json', 'utf8')).files.flatMap(item => ['before', 'after'].filter(side => item[side]).map(side => [item[side].filename, readFileSync(item[side].filename, 'utf8')])).concat(JSON.parse(readFileSync('manifest.json', 'utf8')).references.map(item => [item.filename, readFileSync(item.filename, 'utf8')]))) }));
+if (mode === 'budget') {
+  const result = await fetch(process.env.GOOGLE_VERTEX_BASE_URL + '/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent?alt=sse', { method: 'POST', body: '{}' });
+  if (result.status !== 429) throw new Error('Expected reservation rejection');
+  process.stderr.write('fixture reservation denied'); process.exit(7);
+}
 if (mode === 'delayed') { await new Promise(resolve => setTimeout(resolve, 250)); }
 if (mode === 'stale-failure') { process.stdout.write(JSON.stringify({ response: responseText })); process.exit(7); }
 if (mode === 'failure') { process.stderr.write('fixture execution failure'); process.exit(7); }
@@ -556,4 +561,19 @@ test('prepared configuration rejects non-enumerable selected fields before dispa
       assert.deepEqual(readdirSync(f.privateParentDirectory), []);
     }
   }
+});
+
+
+test('prepared decision forwards parent-only reservation and leaves rejection incomplete', async t => {
+  const f = fixture(t, 'budget');
+  const reviewInput = input(f);
+  let reservations = 0;
+  reviewInput.proxySessionOptions.reserveDispatch = () => { reservations++; return false; };
+  await assert.rejects(runPreparedGeminiCiDecision({
+    reviewInput, authorityProvenance, validationRules, maxResponseBytes: 1024, maxSchemaBytes: 4096,
+  }), /exit|failed/i);
+  assert.equal(reservations, 1);
+  const observation = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+  assert.equal(observation.env.reserveDispatch, undefined);
+  await assertProxyClosed(observation.endpoint);
 });
