@@ -109,10 +109,12 @@ runHookCli();
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
 inputs. See `examples/config.json`. Package resolution is local and fixed: the
 launcher imports its already installed exact package version and must not use
-`npx` or another registry fallback. The Hook adapter invokes an installed
-`codex` binary with hooks disabled and a read-only sandbox.
-See [reviewer host permissions](reviewer-host-permissions.md) for the
-child-process authorization boundary.
+`npx` or another registry fallback. The Hook adapter selects the provider from
+committed reviewer settings. Codex uses an installed `codex` binary with hooks
+disabled and a read-only sandbox; Gemini uses its asynchronous API adapter and
+does not inherit the Codex child-process sandbox. See [local execution
+composition](#local-reviewer-execution-composition) and [reviewer host
+permissions](reviewer-host-permissions.md) for the provider-specific boundary.
 When `validationPath` is configured, the local and manual review paths apply
 that committed policy after structured generation and fail closed on a rule
 violation or malformed policy.
@@ -740,8 +742,12 @@ native preparation read one recorded commit, require exact `authorityIds`,
 and report set digest and member provenance. The complete local prompt must
 fit its limit. An external member leaves local review incomplete; it cannot
 fall back or use a source token. Version 1 public request/review APIs remain.
-Working-tree content is evidence, not authority. Native self-review fails
-closed after its 180-second deadline.
+Working-tree content is evidence, not authority. The native Skill prepare
+command reports the configured `reviewTimeoutMs`, but the package does not
+enforce a hard wall-clock limit on a host-native reviewer. Host cancellation or
+other time bounds are environment-specific; physical termination is not
+verified. See the [Codex Skill installation and execution boundary](#codex-skill-installation)
+and the [review execution contract](architecture/review-execution.md#local-and-manual-review).
 
 Lifecycle-workaround adoption evidence and repeat dogfood results are tracked
 in [architecture-gatekeeper issue #15](https://github.com/flair-agency/architecture-gatekeeper/issues/15).
@@ -1109,12 +1115,15 @@ declarations.
 
 ### Preview support and recovery status
 
-The `0.6.0-preview.3` candidate implements these five API procedures. Support
-is limited to the exact predecessor-selected tuple and trigger described
-above; it does not follow from installing the package or adding inert fields to
-a selection.
+The published [`0.6.0-preview.3` release](https://github.com/flair-agency/architecture-gatekeeper/releases/tag/v0.6.0-preview.3),
+built from source commit `3f71fece350c`, implements these five API procedures.
+Its release and synthetic fixture evidence do not establish trusted
+acceptance, real-consumer adoption, or an `ACTIVE` lifecycle claim; all six
+assurance dimensions remain `UNVERIFIED`. Support is limited to the exact
+predecessor-selected tuple and trigger described above; installing the package
+or adding inert fields to a selection does not select a route.
 
-| Procedure | Required predecessor state | Candidate boundary |
+| Procedure | Required predecessor state | Release behavior |
 | --- | --- | --- |
 | Ordinary review | Supported model-backed predecessor policy, complete selected Authority Set, and committed version-1 preview selection binding the exact repository, target, governance and authority scope, and review inputs | `review` may return `PASS`, `BLOCK` or `OWNER_DECISION`; the receipt remains unverified evidence. |
 | BLOCK amendment | Ordinary completed `BLOCK`; the same exact predecessor selection must select `completed-block-v1` and the B schema/validator | B must resolve only the exact bound trigger; unsupported or mixed changes are ineligible. |
@@ -1133,15 +1142,20 @@ positive and negative reviews, B positive `ELIGIBLE` and negative `INELIGIBLE`
 reviews, and a fresh successor A `PASS`. It records successful normal
 integration and readback for the positive M and B transitions. These local
 fixture results do not establish that a downstream consumer selected the route,
-that its protected caller ran
-the package, or that a protected acceptance check passed. The candidate's six
-assurance dimensions remain `UNVERIFIED`; preview receipts do not supply
-trusted acceptance.
+that its protected caller ran the package, or that a protected acceptance check
+passed. Preview receipts do not supply trusted acceptance.
 
-The current candidate must complete a fresh migration cycle using its exact
-installed runtime before this route's current predecessor-selection
-requirement can be claimed as covered. The earlier cycle and archive remain
-historical evidence and are not relabeled as verification of that requirement.
+The [preview.3 release record](https://github.com/flair-agency/architecture-gatekeeper/releases/tag/v0.6.0-preview.3)
+reports a fresh five-procedure synthetic matrix using the installed pinned API,
+including the initial migration, positive/negative B cases where applicable,
+and normal integration/readback for positive B and migration. Its matrix digest
+is `e5d0e896f8702a63b5333d8bd28142dda2416133efc400c1e0044b4b4286f4c7`. This
+addresses the earlier migration-selection fixture gap for that exact release
+and recorded predecessor tuple. It does not establish a real consumer's route
+selection, host enforcement, trusted adoption, or `ACTIVE` status. A changed
+runtime or predecessor tuple requires its own fresh cycle. This paragraph
+records the release report; it is not a new execution or independent
+verification of that matrix.
 
 The migration procedure does not support later migrations, incompatible
 bridges, changed or omitted authority members, changed reviewer settings,
