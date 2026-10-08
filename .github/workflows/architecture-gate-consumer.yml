@@ -166,16 +166,38 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: node -e 'if (!process.env.OPENAI_API_KEY) { console.error("Missing OPENAI_API_KEY for enforced Architecture Gate"); process.exit(1); }'
+      - name: Validate immutable pull request merge revision
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          node -e 'const sha = process.env.MERGE_SHA; if (typeof sha !== "string" || sha.length !== 40 || !/^[a-f0-9]{40}$/.test(sha)) { console.error("Missing or malformed pull request merge commit SHA"); process.exit(1); }'
       - uses: actions/checkout@v5
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
           submodules: ${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}
           token: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
           persist-credentials: false
       - name: Record reviewed merge revision
         id: revision
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        env:
+          EXPECTED_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          if test "$actual_sha" != "$EXPECTED_MERGE_SHA"; then
+            echo "Checked out merge revision does not match the event merge commit SHA" >&2
+            exit 1
+          fi
+          actual_parents="$(git --no-replace-objects rev-list --parents -n 1 "$actual_sha")"
+          expected_parents="$actual_sha $BASE_SHA $HEAD_SHA"
+          if test "$actual_parents" != "$expected_parents"; then
+            echo "Checked out merge revision does not have the exact event base/head parents" >&2
+            exit 1
+          fi
+          printf 'sha=%s\n' "$EXPECTED_MERGE_SHA" >> "$GITHUB_OUTPUT"
       - name: Materialize protected review instructions
         if: inputs.protected-review-instructions && needs.policy.outputs.policy_version != '1'
         env:

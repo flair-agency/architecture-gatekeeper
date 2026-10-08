@@ -18,6 +18,131 @@ const valid = () => assertWorkflowStructure(workflows());
 
 test('production workflow files satisfy parsed structural invariants', valid);
 
+test('review jobs validate and check out the immutable event merge commit', () => {
+  const mergeSha = '${{ github.event.pull_request.merge_commit_sha }}';
+  const workflowsToCheck = workflows();
+  const runInline = (script, env) => spawnSync('/bin/bash', ['-e', '-u', '-o', 'pipefail', '-c', script], {
+    env: { ...process.env, ...env },
+    encoding: 'utf8',
+  });
+
+  for (const profile of ['consumer', 'self']) {
+    const steps = workflowsToCheck[profile].jobs.review.steps;
+    const guardIndex = steps.findIndex(step => step.name === 'Validate immutable pull request merge revision');
+    const checkoutIndex = steps.findIndex(step => step.uses?.startsWith('actions/checkout@') && step.with?.ref === mergeSha);
+    const recordIndex = steps.findIndex(step => step.name === 'Record reviewed merge revision');
+    const buildIndex = steps.findIndex(step => step.name === 'Build the pinned validation runtime');
+    assert.ok(guardIndex > steps.findIndex(step => step.name === 'Check enforced credentials'), `${profile} guard follows credential check`);
+    assert.ok(checkoutIndex > guardIndex, `${profile} immutable guard precedes candidate checkout`);
+    assert.ok(recordIndex > checkoutIndex, `${profile} HEAD assertion follows candidate checkout`);
+    assert.ok(buildIndex > recordIndex, `${profile} exact merge tuple check precedes runtime build`);
+
+    const guard = steps[guardIndex];
+    assert.deepEqual(guard.env, { MERGE_SHA: mergeSha });
+    assert.match(guard.run, /process\.env\.MERGE_SHA/);
+    assert.match(guard.run, /sha\.length !== 40/);
+    assert.match(guard.run, /\^\[a-f0-9\]\{40\}\$/);
+    assert.equal(steps[checkoutIndex].with['fetch-depth'], 0);
+    assert.equal(steps[checkoutIndex].with.submodules, "${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}");
+    assert.equal(steps[checkoutIndex].with.token, "${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}");
+    assert.equal(steps[checkoutIndex].with['persist-credentials'], false);
+    assert.ok(!steps[checkoutIndex].with.ref.includes('refs/pull/'), `${profile} checkout must not resolve a moving pull request ref`);
+
+    const record = steps[recordIndex];
+    assert.equal(record.id, 'revision');
+    assert.deepEqual(record.env, {
+      EXPECTED_MERGE_SHA: mergeSha,
+      BASE_SHA: '${{ github.event.pull_request.base.sha }}',
+      HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
+    });
+    assert.match(record.run, /git rev-parse HEAD/);
+    assert.match(record.run, /actual_sha.*!=.*EXPECTED_MERGE_SHA/);
+    assert.match(record.run, /git --no-replace-objects rev-list --parents -n 1/);
+    assert.match(record.run, /actual_parents.*!=.*expected_parents/);
+    assert.ok(record.run.indexOf('actual_sha') < record.run.indexOf('GITHUB_OUTPUT'), `${profile} output is written after comparison`);
+    assert.ok(record.run.indexOf('actual_parents') < record.run.indexOf('GITHUB_OUTPUT'), `${profile} output follows the exact parent tuple check`);
+    assert.match(record.run, /printf 'sha=%s\\n' "\$EXPECTED_MERGE_SHA"/);
+    const context = steps.find(step => step.name === 'Attach exact pull request task context to protected review');
+    assert.equal(context.env.BASE_SHA, '${{ github.event.pull_request.base.sha }}');
+    assert.equal(context.env.HEAD_SHA, '${{ github.event.pull_request.head.sha }}');
+    assert.equal(context.env.REVIEWED_SHA, '${{ steps.revision.outputs.sha }}');
+
+    const validSha = 'a'.repeat(40);
+    assert.equal(runInline(guard.run, { MERGE_SHA: validSha }).status, 0, `${profile} accepts a valid immutable SHA`);
+    for (const [label, value] of [
+      ['missing', undefined],
+      ['empty/null representation', ''],
+      ['short', 'a'.repeat(39)],
+      ['invalid character', 'a'.repeat(39) + 'g'],
+      ['uppercase', 'A'.repeat(40)],
+      ['embedded newline', 'a'.repeat(39) + '\n'],
+      ['mutable pull request ref', 'refs/pull/42/merge'],
+    ]) {
+      const env = { MERGE_SHA: value };
+      if (value === undefined) delete env.MERGE_SHA;
+      assert.notEqual(runInline(guard.run, env).status, 0, `${profile} rejects ${label}`);
+    }
+  }
+
+  const root = mkdtempSync(join(tmpdir(), 'agk-merge-revision-'));
+  try {
+    const repository = join(root, 'repo');
+    mkdirSync(repository);
+    const git = (...args) => {
+      const result = spawnSync('git', args, { cwd: repository, encoding: 'utf8' });
+      assert.equal(result.status, 0, `git ${args.join(' ')}: ${result.stderr}`);
+      return result.stdout.trim();
+    };
+    git('init', '-q', '-b', 'base');
+    git('config', 'user.name', 'Workflow Structure Test');
+    git('config', 'user.email', 'workflow-structure@example.invalid');
+    writeFileSync(join(repository, 'base.txt'), 'protected base snapshot\n');
+    git('add', 'base.txt');
+    git('commit', '-q', '-m', 'protected base snapshot');
+    const base = git('rev-parse', 'HEAD');
+    git('checkout', '-q', '-b', 'candidate');
+    writeFileSync(join(repository, 'head.txt'), 'candidate head snapshot\n');
+    git('add', 'head.txt');
+    git('commit', '-q', '-m', 'candidate head snapshot');
+    const head = git('rev-parse', 'HEAD');
+    git('checkout', '-q', 'base');
+    git('merge', '--no-ff', '--no-edit', 'candidate');
+    const merge = git('rev-parse', 'HEAD');
+    assert.match(merge, /^[a-f0-9]{40}$/);
+
+    const record = workflowsToCheck.consumer.jobs.review.steps.find(step => step.name === 'Record reviewed merge revision');
+    const outputPath = join(root, 'github-output');
+    writeFileSync(outputPath, '');
+    const matching = spawnSync('/bin/bash', ['-e', '-u', '-o', 'pipefail', '-c', record.run], {
+      cwd: repository,
+      env: { ...process.env, EXPECTED_MERGE_SHA: merge, BASE_SHA: base, HEAD_SHA: head, GITHUB_OUTPUT: outputPath },
+      encoding: 'utf8',
+    });
+    assert.equal(matching.status, 0, matching.stderr);
+    assert.equal(readFileSync(outputPath, 'utf8'), `sha=${merge}\n`);
+
+    const rejectedTuples = [
+      ['mismatched merge SHA', { EXPECTED_MERGE_SHA: 'b'.repeat(40), BASE_SHA: base, HEAD_SHA: head }],
+      ['swapped event parents', { EXPECTED_MERGE_SHA: merge, BASE_SHA: head, HEAD_SHA: base }],
+      ['stale event base', { EXPECTED_MERGE_SHA: merge, BASE_SHA: 'c'.repeat(40), HEAD_SHA: head }],
+      ['missing event base', { EXPECTED_MERGE_SHA: merge, BASE_SHA: '', HEAD_SHA: head }],
+      ['missing event head', { EXPECTED_MERGE_SHA: merge, BASE_SHA: base, HEAD_SHA: '' }],
+    ];
+    for (const [label, tuple] of rejectedTuples) {
+      writeFileSync(outputPath, '');
+      const rejected = spawnSync('/bin/bash', ['-e', '-u', '-o', 'pipefail', '-c', record.run], {
+        cwd: repository,
+        env: { ...process.env, ...tuple, GITHUB_OUTPUT: outputPath },
+        encoding: 'utf8',
+      });
+      assert.notEqual(rejected.status, 0, `${label} fails the trusted merge guard`);
+      assert.equal(readFileSync(outputPath, 'utf8'), '', `${label} emits no reviewed revision`);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('protected runtime checkouts build their pinned distribution before use', () => {
   for (const [profile, workflow] of Object.entries(workflows())) {
     for (const [jobName, job] of Object.entries(workflow.jobs)) {
