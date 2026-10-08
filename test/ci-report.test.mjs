@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { COMMENT_MARKER, classifyReview, digestDecision, formatInlineFindingHeading, parseLegacyAuthorityProvenance, postInlineReview, renderReport, sanitizeReportApiContext, upsertPullRequestComment, validateInlineFindings } from '../src/ci-report.mjs';
+import { assertEnforcedAcceptance } from '../src/ci-enforced-acceptance.mjs';
+import { assertProceduralV5Acceptance } from '../src/ci-procedural-acceptance.mjs';
 
 test('sanitizes report API context to GitHub.com and canonical PR identity', () => {
   assert.deepEqual(sanitizeReportApiContext({ apiUrl: 'https://api.github.com/', repository: 'flair-agency/architecture-gatekeeper',
@@ -114,6 +116,47 @@ test('distinguishes waiver, policy failure, review failure, and malformed output
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'failure' }).conclusion, 'ERROR');
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'failure' }).conclusion, 'ERROR');
   assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: '{}' }).conclusion, 'ERROR');
+});
+
+test('reports absent decision input distinctly without accepting selected G0 eligibility', () => {
+  const procedure = { procedure: 'VALID_G0_OWNER_ADDITION', missingDecisionId: 'synthetic-missing-choice',
+    repository: 'flair-agency/architecture-gatekeeper', privateMarker: 'PRIVATE_SYNTHETIC_MARKER' };
+  for (const mode of ['enforced', 'procedural']) {
+    const classified = classifyReview({ mode, policyResult: 'success', reviewResult: 'success', rawDecision: '',
+      ownerAdditionSelected: true, ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE',
+      ownerAdditionProcedure: procedure });
+    assert.deepEqual(classified, { conclusion: 'ERROR', decision: null,
+      summary: 'The reporting input was absent after the review job succeeded. Check the workflow output handoff and any runner suppression warnings; this report does not establish why the input is absent.' });
+    const report = renderReport(classified, { runUrl: 'https://github.com/example/repo/actions/runs/123' });
+    assert.match(report, /reporting input was absent/i);
+    assert.match(report, /workflow output handoff and any runner suppression warnings/i);
+    assert.doesNotMatch(report, /PRIVATE_SYNTHETIC_MARKER|synthetic-missing-choice/);
+    if (mode === 'enforced') {
+      assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'success', conclusion: classified.conclusion,
+        ownerAdditionSelected: 'G0', ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE' }),
+      /requires model-backed PASS or verified selected G0 eligibility/);
+    } else {
+      assert.throws(() => assertProceduralV5Acceptance({ policyVersion: '5', evidenceProducer: 'github-actions',
+        reviewResult: 'success', conclusion: classified.conclusion, selectedAuthorityChanged: 'true',
+        ownerAdditionSelected: 'G0', ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE' }),
+      /requires successful OWNER_ADDITION \/ G0 eligibility/);
+    }
+  }
+});
+
+test('keeps absent-input diagnostics separate from malformed JSON and earlier outcomes', () => {
+  const common = { policyResult: 'success', reviewResult: 'success' };
+  const missing = classifyReview({ ...common, mode: 'enforced', rawDecision: '' });
+  const malformed = classifyReview({ ...common, mode: 'enforced', rawDecision: '{"decision":' });
+  assert.notEqual(missing.summary, malformed.summary);
+  assert.match(malformed.summary, /invalid structured decision/);
+  assert.match(missing.summary, /reporting input was absent/);
+  assert.equal(classifyReview({ mode: 'enforced', policyResult: 'failure', reviewResult: 'success', rawDecision: '' }).summary,
+    'Architecture Gate could not resolve the protected base-branch policy.');
+  assert.equal(classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'failure', rawDecision: '' }).summary,
+    'The model-backed architecture review did not complete successfully.');
+  assert.equal(classifyReview({ mode: 'local-only', policyResult: 'success', reviewResult: 'success', rawDecision: '' }).conclusion,
+    'WAIVED');
 });
 
 test('procedural G0 eligibility remains pending until merge and canonical readback', () => {
