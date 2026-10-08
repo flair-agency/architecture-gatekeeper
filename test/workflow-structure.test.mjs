@@ -90,6 +90,34 @@ test('a disabled provider guard and inherited workflow-level signer permissions 
   }
 });
 
+test('provider and consumer amendment guards retain the selected condition, not just failure keywords', () => {
+  const providerMutations = [
+    ['removed condition', `echo 'Selected reviewer provider is not wired into this workflow; review is incomplete.' >&2\nexit 1`],
+    ['inverted condition', `if test -n "$SELECTED_PROVIDER" && test "$SELECTED_PROVIDER" = codex; then\n  echo 'Selected reviewer provider is not wired into this workflow; review is incomplete.' >&2\n  exit 1\nfi`],
+    ['unconditional fake', `echo 'SELECTED_PROVIDER != codex'\necho 'Selected reviewer provider is not wired'\nexit 1`],
+    ['comment only', `# if test -n "$SELECTED_PROVIDER" && test "$SELECTED_PROVIDER" != codex; then\n#   echo 'Selected reviewer provider is not wired into this workflow; review is incomplete.' >&2\n#   exit 1\n# fi`],
+  ];
+  for (const profile of ['consumer', 'self']) {
+    for (const [label, run] of providerMutations) {
+      const data = workflows();
+      data[profile].jobs.policy.steps.find(step => step.name === 'Reject unwired reviewer providers').run = run;
+      assert.throws(() => assertWorkflowStructure(data), /provider guard must retain its selected-provider condition/, `${profile} provider guard accepted ${label}`);
+    }
+  }
+
+  const amendmentMutations = [
+    ['removed condition', `echo 'OWNER_AMENDMENT is supported only by the protected self workflow.' >&2\nexit 1`],
+    ['inverted condition', `if test "$OWNER_AMENDMENT_GRADE" != G0; then\n  echo 'OWNER_AMENDMENT is supported only by the protected self workflow.' >&2\n  exit 1\nfi`],
+    ['unconditional fake', `echo 'OWNER_AMENDMENT_GRADE G0'\necho 'OWNER_AMENDMENT is supported only by the protected self workflow'\nexit 1`],
+    ['comment only', `# if test "$OWNER_AMENDMENT_GRADE" = G0; then\n#   echo 'OWNER_AMENDMENT is supported only by the protected self workflow.' >&2\n#   exit 1\n# fi`],
+  ];
+  for (const [label, run] of amendmentMutations) {
+    const data = workflows();
+    data.consumer.jobs.policy.steps.find(step => step.name === 'Reject self-only OWNER_AMENDMENT policy on the consumer workflow').run = run;
+    assert.throws(() => assertWorkflowStructure(data), /consumer amendment guard must retain its G0 condition/, `consumer amendment guard accepted ${label}`);
+  }
+});
+
 test('comments, formatting, and mapping key order do not alter structural validation', () => {
   const data = workflows();
   const commented = parseWorkflow(`# permissions: id-token: write; needs: [missing]; uses: openai/codex-action@wrong\n${source.consumer}`, 'comment positive fixture');
