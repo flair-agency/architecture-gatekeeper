@@ -103,7 +103,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const f = fixture(t);
   const head = commitOn(f, 'runtime-identity-nested-module', { 'app.txt': 'Runtime identity fixture\n' });
   const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-  const nestedPaths = ['owner-addition/owner-addition-validation.mjs', 'ci-execution/ci-execution-result.mjs'];
+  const nestedPaths = ['owner-addition/owner-addition-validation.mjs', 'ci-execution/ci-execution-result.mjs', 'owner-amendment/owner-amendment-tag-readback.mjs'];
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -117,6 +117,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
 
   const facadePath = join(runtimeRoot, 'dist/owner-addition-validation.mjs');
   const executionFacadePath = join(runtimeRoot, 'dist/ci-execution-result.mjs');
+  const tagReadbackFacadePath = join(runtimeRoot, 'dist/owner-amendment-tag-readback.mjs');
+  const tagReadbackFacadeBefore = createHash('sha256').update(readFileSync(tagReadbackFacadePath)).digest('hex');
   const previewPath = join(runtimeRoot, 'dist/preview-lifecycle.mjs');
   const packagePath = join(runtimeRoot, 'package.json');
   const facadeBefore = createHash('sha256').update(readFileSync(facadePath)).digest('hex');
@@ -129,6 +131,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     assert.notEqual(changedRequest.runtime.files[nestedPath], precedingRequest.runtime.files[nestedPath]);
     assert.equal(createHash('sha256').update(readFileSync(facadePath)).digest('hex'), facadeBefore);
     assert.equal(createHash('sha256').update(readFileSync(executionFacadePath)).digest('hex'), executionFacadeBefore);
+    assert.equal(createHash('sha256').update(readFileSync(tagReadbackFacadePath)).digest('hex'), tagReadbackFacadeBefore);
     assert.equal(createHash('sha256').update(readFileSync(previewPath)).digest('hex'), previewBefore);
     assert.equal(createHash('sha256').update(readFileSync(packagePath)).digest('hex'), packageBefore);
     await assert.rejects(runtime.completePreviewLifecycle(precedingRequest, ordinary(decision()), f.root), /request differs from immutable predecessor inputs/);
@@ -146,6 +149,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-validation.mjs')));
   writeFileSync(join(flatRoot, 'dist/ci-execution-result.mjs'),
     readFileSync(join(flatRoot, 'dist/ci-execution/ci-execution-result.mjs')));
+  writeFileSync(join(flatRoot, 'dist/owner-amendment-tag-readback.mjs'),
+    readFileSync(join(flatRoot, 'dist/owner-amendment/owner-amendment-tag-readback.mjs')));
+  rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
   rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
   const flatRuntime = await import(pathToFileURL(join(flatRoot, 'dist/preview-lifecycle.mjs')).href);
