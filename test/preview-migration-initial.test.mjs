@@ -121,6 +121,7 @@ test('initial compatible v1→v2 M passes old review, binds raw unchanged author
   const f = fixture(t, { successorSchema }); const head = migrationHead(f);
   const request = await preparePreviewLifecycle(migrationSpec(f, head), f.root);
   assert.equal(request.policy.policyVersion, 1); assert.match(request.prompt, /only the predecessor's legacy v1 policy/);
+  assert.match(request.prompt, /predecessorAuthorized is true only when the full prior governance authorizes both this explicitly selected preview procedure and this exact proposed migration stage\. General authorization to use the preview procedure does not authorize this migration/);
   assert.equal(request.inputs.some(input => input.path === selectionPath), true);
   assert.equal(request.successorAuthoritySet.members.length, 2);
   assert.equal(request.successorAuthoritySet.manifest.path, manifestPath);

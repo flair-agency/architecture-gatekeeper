@@ -234,6 +234,7 @@ test('ordinary mode retains PASS, BLOCK and OWNER_DECISION separately from proce
     const request = await preparePreviewLifecycle(spec(f, 'review', head), f.root);
     assert.match(request.prompt, /Assess predecessorAuthorized only for whether the full prior governance authorizes this explicitly selected preview procedure\. For an ordinary review, assess semanticDecision separately under the unchanged predecessor schema and semantic meaning/);
     assert.match(request.prompt, /A substantive BLOCK or OWNER_DECISION on an ordinary review does not by itself make predecessorAuthorized false/);
+    assert.doesNotMatch(request.prompt, /predecessorAuthorized is true only when the full prior governance authorizes both this explicitly selected preview procedure and this exact proposed migration stage/);
     const semanticDecision = decision(result);
     const receipt = await completePreviewLifecycle(request, ordinary(semanticDecision), f.root);
     assert.deepEqual(receipt.decision, semanticDecision);
