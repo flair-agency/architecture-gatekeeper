@@ -13,14 +13,23 @@ async function fixture(t) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'source-cycles-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   await mkdir(path.join(directory, 'scripts'), { recursive: true });
+  await mkdir(path.join(directory, 'src'), { recursive: true });
   await mkdir(path.join(directory, 'node_modules'), { recursive: true });
   await symlink(path.join(repositoryRoot, 'node_modules/acorn'), path.join(directory, 'node_modules/acorn'), 'dir');
+  await symlink(path.join(repositoryRoot, 'node_modules/typescript'), path.join(directory, 'node_modules/typescript'), 'dir');
   await copyFile(checker, path.join(directory, 'scripts/check-source-cycles.mjs'));
   return directory;
 }
 
 async function source(root, relative, contents) {
   const file = path.join(root, 'src', relative);
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, contents);
+  return file;
+}
+
+async function authored(root, relative, contents) {
+  const file = path.join(root, 'src-ts', relative);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, contents);
   return file;
@@ -158,4 +167,101 @@ test('rejects caller-selected roots and keeps the scan pinned to its checkout', 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /usage: node scripts\/check-source-cycles\.mjs/);
   assert.doesNotMatch(result.stdout, /no static relative import cycles/);
+});
+
+test('checks authored .mts dependencies and maps emitted .mjs specifiers to typed peers', async t => {
+  const root = await fixture(t);
+  await authored(root, 'a.mts', "import { b } from './b.mjs'; export const a = b;");
+  await authored(root, 'b.mts', 'export const b = true;');
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Checked 0 runtime \.mjs and 2 authored \.mts modules/);
+});
+
+test('detects deep cycles across authored TypeScript modules', async t => {
+  const root = await fixture(t);
+  await authored(root, 'a.mts', "import './b.mjs';");
+  await authored(root, 'b.mts', "import './c.mjs';");
+  await authored(root, 'c.mts', "import './a.mjs';");
+  const result = run(root);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /cycle: src-ts\/a\.mts -> src-ts\/b\.mts -> src-ts\/c\.mts -> src-ts\/a\.mts/);
+});
+
+test('merges authored dependencies with emitted runtime edges for compiled peers', async t => {
+  const root = await fixture(t);
+  await authored(root, 'a.mts', "import '../src/legacy.mjs';");
+  await source(root, 'a.mjs', 'export {};');
+  await source(root, 'legacy.mjs', "import './facade.mjs';");
+  await source(root, 'facade.mjs', "import './a.mjs';");
+  const result = run(root);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /cycle: a\.mjs -> legacy\.mjs -> facade\.mjs -> a\.mjs/);
+});
+
+test('allows type-only import and export dependencies without adding runtime graph edges', async t => {
+  const root = await fixture(t);
+  await authored(root, 'a.mts', "import type { B } from './b.mjs'; export type { C } from './b.mjs'; export { type A } from './b.mjs'; export const a: B = {} as C;");
+  await authored(root, 'b.mts', "import type { A } from './a.mjs'; export type { A };");
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('fails closed for missing authored peers, unsupported module forms, and invalid TypeScript', async t => {
+  const missing = await fixture(t);
+  await authored(missing, 'a.mts', "import './absent.mjs';");
+  await source(missing, 'absent.mjs', 'export {};');
+  const missingResult = run(missing);
+  assert.equal(missingResult.status, 1);
+  assert.match(missingResult.stderr, /missing authored \.mts target/);
+
+  const unsupported = await fixture(t);
+  await authored(unsupported, 'a.mts', "import './b.js';");
+  const unsupportedResult = run(unsupported);
+  assert.equal(unsupportedResult.status, 1);
+  assert.match(unsupportedResult.stderr, /authoring imports must use \.mjs specifiers/);
+
+  const importEquals = await fixture(t);
+  await authored(importEquals, 'a.mts', "import b = require('./b.mjs');");
+  const importEqualsResult = run(importEquals);
+  assert.equal(importEqualsResult.status, 1);
+  assert.match(importEqualsResult.stderr, /unsupported import-equals declaration/);
+
+  const invalid = await fixture(t);
+  await authored(invalid, 'a.mts', 'export const = ;');
+  const invalidResult = run(invalid);
+  assert.equal(invalidResult.status, 1);
+  assert.match(invalidResult.stderr, /cannot parse src-ts\/a\.mts/);
+});
+
+test('rejects unsupported authoring source files', async t => {
+  const root = await fixture(t);
+  await authored(root, 'future.ts', 'export const future = true;');
+  const result = run(root);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /unsupported source file extension/);
+
+  const runtimeLike = await fixture(t);
+  await authored(runtimeLike, 'runtime.mjs', 'export {};');
+  const runtimeLikeResult = run(runtimeLike);
+  assert.equal(runtimeLikeResult.status, 1);
+  assert.match(runtimeLikeResult.stderr, /unsupported source file extension/);
+});
+
+test('rejects authored imports that escape the fixed roots or traverse symbolic links', async t => {
+  const escaping = await fixture(t);
+  await authored(escaping, 'a.mts', "import '../outside.mjs';");
+  const escapeResult = run(escaping);
+  assert.equal(escapeResult.status, 1);
+  assert.match(escapeResult.stderr, /escapes fixed source roots/);
+
+  const linked = await fixture(t);
+  const outside = path.join(linked, 'outside.mts');
+  await writeFile(outside, 'export {};');
+  await mkdir(path.join(linked, 'src-ts'), { recursive: true });
+  await symlink(outside, path.join(linked, 'src-ts/linked.mts'));
+  await authored(linked, 'a.mts', "import './linked.mjs';");
+  const linkResult = run(linked);
+  assert.equal(linkResult.status, 1);
+  assert.match(linkResult.stderr, /symbolic link is not supported/);
 });

@@ -4,7 +4,7 @@
 
 ## Baseline and scope
 
-This worktree has **96** production `src/**/*.mjs` modules, measured by `rg --files src -g '*.mjs'`; #417’s issue text describes an earlier 92-module baseline. The package is ESM, requires Node `>=22`, pins Acorn `8.19.0` for development, and has no TypeScript compiler, build, or type-check command today. `package.json#files` distributes `src/` but no TS authoring tree. Existing tests, scripts, and workflows refer directly to flat `src/*.mjs` paths.
+The initial map at `44b311d` records **96** production `src/**/*.mjs` modules, measured by `rg --files src -g '*.mjs'`; #417’s issue text describes an earlier 92-module baseline. The package is ESM, requires Node `>=22`, pins Acorn `8.19.0` for development, and had no TypeScript compiler, build, or type-check command at that map revision. `package.json#files` distributes `src/` but no TS authoring tree. Existing tests, scripts, and workflows refer directly to flat `src/*.mjs` paths.
 
 Grouping is a source-navigation proposal around existing responsibility areas, not a new API layer, host abstraction, or runtime responsibility. All six selected normative members remain controlling. Static types do not validate external bytes, establish authenticity/provenance, replace runtime validators, or make a semantic result acceptable.
 
@@ -320,7 +320,7 @@ The table has one row for every enumerated source path and one extracted entry p
 | M8a/b/c owner amendment | a) evidence/handoff; b) trigger/context/record/eligibility; c) merge-group composition/acceptance. Avoid simultaneous conflicting #417 readability and #419 typing edits in one module; one integrator owns each file slice. | Preserve history, exact evidence identity and transition freshness; missing evidence incomplete; focused tests and independent integration review. |
 | Separate PR #423 | Keep the emitted `preview-lifecycle.mjs` implementation flat; its grouped `.mts` authoring path does not imply a nested runtime file or facade. Coordinate source overlap with the existing #423 work. Any new runtime-identity/grouped-output compatibility work belongs in a separate bounded follow-up with the #417/#419 quality program and preview implementation owner; it does not extend current #423 approval. Preserve the original runtime/package root and inventory scope/key conventions, with each file's digest remaining SHA-256 of its exact implementation bytes. | Against actual emitted and installed layouts, test intended-identity collection and successful fresh prepare/complete; prove covered byte changes change their corresponding digest and complete/receipt validation rejects reuse of an earlier request/receipt after a covered byte change. No route/receipt behavior is inferred from this map. |
 
-**Remaining scope:** All 96 modules remain `.mjs`; this document implements no toolchain, types, generated output or source moves. #417 still needs bounded behavior-preserving extraction/formatting and review. #419 still needs strict contracts, compile-negative fixtures, all-source migration, reproducible emitted artifacts, CI/coverage/CodeQL/package updates. The Gemini transport and preview lifecycle owner lanes remain coordinated work. This map is not completion or acceptance of either issue.
+**Initial map scope:** At `44b311d`, all 96 modules remained `.mjs`; the map-only delivery implemented no toolchain, types, generated output or source moves. #417 still needs bounded behavior-preserving extraction/formatting and review. #419 still needs strict contracts, compile-negative fixtures, all-source migration, reproducible emitted artifacts, CI/coverage/CodeQL/package updates. The Gemini transport and preview lifecycle owner lanes remain coordinated work. This map is not completion or acceptance of either issue.
 
 ## Verification and limits
 
@@ -345,3 +345,21 @@ passed. No runtime branch changed, so the slice uses this focused verification
 and AST comparison; fresh main-target CI still runs the required full/package
 checks at integration. The remaining layout and TypeScript stages above stay
 open.
+
+## Initial implementation progress
+
+The subsequent #419 foundation slice authors `owner-addition-validation` in
+`src-ts/owner-addition/owner-addition-validation.mts`, emits its implementation
+to `src/owner-addition/owner-addition-validation.mjs`, and retains the four named
+exports at the original flat path. It adopts pinned development-only strict
+TypeScript checking and explicit build/check commands, extends the mixed source
+graph checker, and adds compile-negative/build-boundary fixtures. See the
+[foundation verification record](2026-10-08-typescript-foundation-quality.md)
+for scope, actual results and remaining limits.
+
+This implements one of the original 96 modules; 95 original modules remain
+unconverted. Additional facade/generated files are implementation artifacts,
+not additional original migration completions. #417/#419 stay open. The map
+table remains the original-module inventory, with this progress section tracking
+implemented slices. #418 guidance is also partial while later callback/result
+contracts and source moves remain pending.

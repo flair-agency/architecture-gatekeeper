@@ -46,6 +46,8 @@
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
+    "build:typescript": "node scripts/build-typescript.mjs",
+    "check:typescript": "node scripts/build-typescript.mjs --check",
     "codeql": "node scripts/codeql-local.mjs",
     "codeql:model": "node scripts/codeql-local.mjs --model-only"
   },
@@ -53,7 +55,9 @@
     "node": ">=22"
   },
   "devDependencies": {
+    "@types/node": "22.20.5",
     "acorn": "8.19.0",
+    "typescript": "6.0.3",
     "yaml": "2.9.1"
   }
 }
