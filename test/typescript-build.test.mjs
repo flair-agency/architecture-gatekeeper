@@ -44,6 +44,14 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   mkdirSync(join(fixtureRoot, 'src/owner-amendment'), { recursive: true });
   cpSync(join(root, 'src/owner-amendment/owner-amendment-tag-readback.mts'), join(fixtureRoot, 'src/owner-amendment/owner-amendment-tag-readback.mts'));
   cpSync(join(root, 'src/owner-amendment-tag-readback.mjs'), join(fixtureRoot, 'src/owner-amendment-tag-readback.mjs'));
+  for (const module of ['owner-amendment-tag-api', 'owner-amendment-tag-attempt',
+    'owner-amendment-semantic-tag-object']) {
+    cpSync(join(root, `src/owner-amendment/${module}.mts`), join(fixtureRoot, `src/owner-amendment/${module}.mts`));
+    cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
+  }
+  for (const module of ['runner-temp-path', 'github-runner-env', 'resolve-ci-policy', 'authority-set']) {
+    cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
+  }
   writeFileSync(join(fixtureRoot, 'src/legacy.mjs'), 'export const legacyValue = 7;\n');
   writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), "import { legacyValue } from '../legacy.mjs';\nexport const answer: number = legacyValue + 35;\n");
   symlinkSync(join(root, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
@@ -54,14 +62,24 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   const initialBuild = runBuild(fixtureRoot);
   assert.equal(initialBuild.status, 0, initialBuild.stderr);
   assert.deepEqual(emittedFiles(dist), [
+    'authority-set.mjs',
     'ci-execution-result.mjs',
     'ci-execution/ci-execution-result.mjs',
+    'github-runner-env.mjs',
     'legacy.mjs',
     'owner-addition-validation.mjs',
     'owner-addition/owner-addition-validation.mjs',
     'owner-addition/peer.mjs',
+    'owner-amendment-semantic-tag-object.mjs',
+    'owner-amendment-tag-api.mjs',
+    'owner-amendment-tag-attempt.mjs',
     'owner-amendment-tag-readback.mjs',
+    'owner-amendment/owner-amendment-semantic-tag-object.mjs',
+    'owner-amendment/owner-amendment-tag-api.mjs',
+    'owner-amendment/owner-amendment-tag-attempt.mjs',
     'owner-amendment/owner-amendment-tag-readback.mjs',
+    'resolve-ci-policy.mjs',
+    'runner-temp-path.mjs',
   ]);
   assert.equal(readFileSync(join(dist, 'legacy.mjs'), 'utf8'), 'export const legacyValue = 7;\n');
   assert.match(readFileSync(join(dist, 'owner-addition-validation.mjs'), 'utf8'), /from '\.\/owner-addition\/owner-addition-validation\.mjs'/);

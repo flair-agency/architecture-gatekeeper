@@ -103,7 +103,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const f = fixture(t);
   const head = commitOn(f, 'runtime-identity-nested-module', { 'app.txt': 'Runtime identity fixture\n' });
   const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-  const nestedPaths = ['owner-addition/owner-addition-validation.mjs', 'ci-execution/ci-execution-result.mjs', 'owner-amendment/owner-amendment-tag-readback.mjs'];
+  const nestedPaths = ['owner-addition/owner-addition-validation.mjs', 'ci-execution/ci-execution-result.mjs', 'owner-amendment/owner-amendment-tag-readback.mjs',
+    'owner-amendment/owner-amendment-tag-api.mjs', 'owner-amendment/owner-amendment-tag-attempt.mjs',
+    'owner-amendment/owner-amendment-semantic-tag-object.mjs'];
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -115,6 +117,11 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   let precedingReceipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
   await runtime.validatePreviewReceipt(precedingReceipt, f.root);
 
+  const tagFacades = ['owner-amendment-tag-api.mjs', 'owner-amendment-tag-attempt.mjs',
+    'owner-amendment-semantic-tag-object.mjs'].map(file => {
+    const path = join(runtimeRoot, 'dist', file);
+    return [path, createHash('sha256').update(readFileSync(path)).digest('hex')];
+  });
   const facadePath = join(runtimeRoot, 'dist/owner-addition-validation.mjs');
   const executionFacadePath = join(runtimeRoot, 'dist/ci-execution-result.mjs');
   const tagReadbackFacadePath = join(runtimeRoot, 'dist/owner-amendment-tag-readback.mjs');
@@ -129,6 +136,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     appendFileSync(join(runtimeRoot, 'dist', nestedPath), '\n// isolated runtime-byte mutation\n');
     const changedRequest = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
     assert.notEqual(changedRequest.runtime.files[nestedPath], precedingRequest.runtime.files[nestedPath]);
+    for (const [path, digest] of tagFacades) {
+      assert.equal(createHash('sha256').update(readFileSync(path)).digest('hex'), digest);
+    }
     assert.equal(createHash('sha256').update(readFileSync(facadePath)).digest('hex'), facadeBefore);
     assert.equal(createHash('sha256').update(readFileSync(executionFacadePath)).digest('hex'), executionFacadeBefore);
     assert.equal(createHash('sha256').update(readFileSync(tagReadbackFacadePath)).digest('hex'), tagReadbackFacadeBefore);
@@ -151,6 +161,12 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/ci-execution/ci-execution-result.mjs')));
   writeFileSync(join(flatRoot, 'dist/owner-amendment-tag-readback.mjs'),
     readFileSync(join(flatRoot, 'dist/owner-amendment/owner-amendment-tag-readback.mjs')));
+  for (const file of ['owner-amendment-tag-api.mjs', 'owner-amendment-tag-attempt.mjs',
+    'owner-amendment-semantic-tag-object.mjs']) {
+    // Restore the former flat dependency paths only in this synthetic legacy copy.
+    writeFileSync(join(flatRoot, 'dist', file),
+      readFileSync(join(flatRoot, 'dist/owner-amendment', file), 'utf8').replace(/from '\.\.\//g, "from './"));
+  }
   rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
   rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
