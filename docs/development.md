@@ -54,6 +54,13 @@ useful assertions. Run the focused structure suite for fast feedback:
 node --test test/workflow-structure.test.mjs
 ```
 
+When request or receipt identity binds runtime implementation bytes, exercise
+the actual emitted and installed layouts. A grouped `.mjs` implementation must
+be covered by the identity collected at its real path; prove both that a fresh
+request/receipt validates and that changing a covered implementation byte
+invalidates an earlier request and receipt. Keep such mutations inside isolated
+package copies so repository runtime files are never altered by the test.
+
 Static YAML analysis does not execute GitHub expressions or establish host
 protection. Keep existing live-proof owners and release obligations separate.
 

@@ -13,7 +13,14 @@ const SHA = /^[a-f0-9]{40}$/;
 const assurance = Object.freeze({ producerAuthentication: 'UNVERIFIED', executionOrigin: 'UNVERIFIED',
   ownerAuthentication: 'UNVERIFIED', custody: 'UNVERIFIED', policyProtection: 'UNVERIFIED', hostEnforcement: 'UNVERIFIED' });
 const utf8 = value => new TextDecoder('utf-8', { fatal: true }).decode(value);
-const runtimeIdentity = () => ({ nodeVersion: process.version, files: Object.fromEntries([...readdirSync(new URL('.', import.meta.url)).filter(file => file.endsWith('.mjs')).sort(), '../package.json'].map(file => [file, digest(readFileSync(new URL(file, import.meta.url)))])) });
+function runtimeModulePaths(directory = new URL('.', import.meta.url), prefix = '') {
+  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) return runtimeModulePaths(new URL(`${entry.name}/`, directory), path);
+    return entry.name.endsWith('.mjs') ? [path] : [];
+  });
+}
+const runtimeIdentity = () => ({ nodeVersion: process.version, files: Object.fromEntries([...runtimeModulePaths().sort(), '../package.json'].map(file => [file, digest(readFileSync(new URL(file, import.meta.url)))])) });
 const digest = value => createHash('sha256').update(value).digest('hex');
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
   ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
