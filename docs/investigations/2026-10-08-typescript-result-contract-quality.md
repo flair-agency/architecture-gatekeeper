@@ -1,5 +1,7 @@
 # Typed CI execution result states under the standard build
 
+**Integration:** Human-approved #433 merged as `817a0d2ddee7327346d6c824721571c2fdd42daa`, with the same tree as reviewed `fbe35ce0d6805c2f3bf706a3d5661d6acdd2dffa`. The preparation and pending-verification statements below are historical checkpoints; exact final verification and approval are retained in the PR and tracking issues. Main now contains two of 96 original modules typed, with 94 remaining.
+
 This nonnormative successor to #431 is integrated against approved main
 `77fb908d2c0f90e50c39f10b71b71902ac5bfd1f`, whose tree matches the prior local
 base `25165ab0d8c62db6ae20d5b75993ca48b0d91d3e`. It carries only the CI result

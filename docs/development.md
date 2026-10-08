@@ -75,12 +75,13 @@ and unresolved limits. The entrypoint and workflow investigations under
 
 ## TypeScript source and runtime distribution
 
-The #419 first two slices type the shared OWNER_ADDITION validation leaf at
+The #419 first three slices type the shared OWNER_ADDITION validation leaf at
 `src/owner-addition/owner-addition-validation.mts` and execution-result states at
-`src/ci-execution/ci-execution-result.mts`. The
+`src/ci-execution/ci-execution-result.mts`, plus tag-readback callbacks at
+`src/owner-amendment/owner-amendment-tag-readback.mts`. The
 [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the grouping inventory, runtime limits and #423 preview-lifecycle
-boundary; 94 original modules remain unconverted. TypeScript migration is
+boundary; 93 original modules remain unconverted. TypeScript migration is
 partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
@@ -124,7 +125,9 @@ Execution-result types distinguish completed observations with bounded response
 bytes from incomplete observations without those bytes. General host outcomes
 remain unknown because an accepted accessor may change across the original two
 reads; the completed branch narrows only its captured success/available facts.
-Sync/async callback contracts remain with their later owning modules.
+Tag-readback callback types preserve existing synchronous, Promise and thenable
+returns; API and observed OID values stay unknown. Readonly observations leave
+Buffer contents mutable. Other callback contracts remain with their owning modules.
 
 Runtime coverage follows the emitted and executed `dist/**/*.mjs` files. Report
 those exact paths without counting source files as runtime coverage. CodeQL
