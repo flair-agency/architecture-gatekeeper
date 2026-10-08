@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import { lstat, readFile, realpath, readdir } from 'node:fs/promises';
+import { parse } from 'acorn';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import vm from 'node:vm';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultSourceRoot = path.resolve(scriptDirectory, '../src');
@@ -107,9 +107,6 @@ function findCycles(graph) {
 }
 
 async function checkSourceCycles() {
-  if (typeof vm.SourceTextModule !== 'function') {
-    throw new Error('vm.SourceTextModule is unavailable. Run this checker with `node --experimental-vm-modules scripts/check-source-cycles.mjs`.');
-  }
   const root = defaultSourceRoot;
   const rootInfo = await lstat(root);
   if (!rootInfo.isDirectory()) throw new Error(`source root is not a directory: ${root}`);
@@ -121,12 +118,19 @@ async function checkSourceCycles() {
     const source = await readFile(file, 'utf8');
     let parsed;
     try {
-      // Construction parses source text only. Do not link, instantiate, or evaluate modules.
-      parsed = new vm.SourceTextModule(source, { identifier: file });
+      parsed = parse(source, { ecmaVersion: 'latest', sourceType: 'module' });
     } catch (error) {
       throw new Error(`cannot parse ${displayPath(root, file)}: ${error.message}`);
     }
-    const requests = parsed.moduleRequests?.map(request => request.specifier) ?? parsed.dependencySpecifiers;
+    const requests = parsed.body.flatMap(statement => {
+      if (statement.type === 'ImportDeclaration' || statement.type === 'ExportAllDeclaration') {
+        return [statement.source.value];
+      }
+      if (statement.type === 'ExportNamedDeclaration' && statement.source !== null) {
+        return [statement.source.value];
+      }
+      return [];
+    });
     const dependencies = new Set();
     for (const specifier of requests) {
       const dependency = await resolveRelativeImport(root, file, specifier);
@@ -141,7 +145,7 @@ async function checkSourceCycles() {
 
 async function main() {
   const args = process.argv.slice(2);
-  if (args.length > 0) throw new Error('usage: node --experimental-vm-modules scripts/check-source-cycles.mjs');
+  if (args.length > 0) throw new Error('usage: node scripts/check-source-cycles.mjs');
   const result = await checkSourceCycles();
   if (result.cycles.length) {
     for (const cycle of result.cycles) console.error(`cycle: ${cycle.join(' -> ')}`);

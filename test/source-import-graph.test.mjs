@@ -13,6 +13,8 @@ async function fixture(t) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'source-cycles-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   await mkdir(path.join(directory, 'scripts'), { recursive: true });
+  await mkdir(path.join(directory, 'node_modules'), { recursive: true });
+  await symlink(path.join(repositoryRoot, 'node_modules/acorn'), path.join(directory, 'node_modules/acorn'), 'dir');
   await copyFile(checker, path.join(directory, 'scripts/check-source-cycles.mjs'));
   return directory;
 }
@@ -24,9 +26,9 @@ async function source(root, relative, contents) {
   return file;
 }
 
-function run(root, { flag = true, args: extraArgs = [] } = {}) {
+function run(root, { args: extraArgs = [] } = {}) {
   const fixtureChecker = path.join(root, 'scripts/check-source-cycles.mjs');
-  const args = [...(flag ? ['--experimental-vm-modules'] : []), fixtureChecker, ...extraArgs];
+  const args = [fixtureChecker, ...extraArgs];
   return spawnSync(process.execPath, args, { encoding: 'utf8', timeout: 5000, env: { ...process.env, NODE_NO_WARNINGS: '1' } });
 }
 
@@ -139,13 +141,13 @@ test('parses without executing module bodies and reports syntax errors with file
   assert.match(invalid.stderr, /cannot parse invalid\.mjs/);
 });
 
-test('explains the required VM modules flag when it is absent', async t => {
+test('includes import-attribute declarations in the static graph', async t => {
   const root = await fixture(t);
-  await source(root, 'a.mjs', 'export {};');
-  const result = run(root, { flag: false });
+  await source(root, 'a.mjs', "import './b.mjs' with { type: 'javascript' };");
+  await source(root, 'b.mjs', "export * from './a.mjs';");
+  const result = run(root);
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /SourceTextModule is unavailable/);
-  assert.match(result.stderr, /--experimental-vm-modules/);
+  assert.match(result.stderr, /cycle: a\.mjs -> b\.mjs -> a\.mjs/);
 });
 
 test('rejects caller-selected roots and keeps the scan pinned to its checkout', async t => {
@@ -154,6 +156,6 @@ test('rejects caller-selected roots and keeps the scan pinned to its checkout', 
   const outside = path.join(os.tmpdir(), 'untrusted-src-root');
   const result = run(root, { args: [outside] });
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /usage: node --experimental-vm-modules scripts\/check-source-cycles\.mjs/);
+  assert.match(result.stderr, /usage: node scripts\/check-source-cycles\.mjs/);
   assert.doesNotMatch(result.stdout, /no static relative import cycles/);
 });

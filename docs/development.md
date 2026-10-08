@@ -29,14 +29,17 @@ reusable and self-review workflows are in `.github/workflows/`.
 From a source checkout on the supported Node.js version, run:
 
 ```bash
-node --experimental-vm-modules scripts/check-source-cycles.mjs
+npm ci --ignore-scripts
+node scripts/check-source-cycles.mjs
 ```
 
-The CI `test` job runs the same command before the test suite. It parses every
-`src/**/*.mjs` module with Node's
-[`vm.SourceTextModule`](https://nodejs.org/download/release/v22.22.0/docs/api/vm.html#class-vmsourcetextmodule)
-constructor and checks static relative `import` and `export ... from` edges.
-It never links or evaluates the modules. A cycle prints a concrete dependency
+The CI `test` job installs the locked development dependencies with lifecycle
+scripts disabled and runs the same check before the test suite. The checker
+parses every `src/**/*.mjs` module with the pinned development-only
+[Acorn parser](https://github.com/acornjs/acorn/tree/master/acorn), then checks
+static relative `import` and `export ... from` edges in the syntax tree. It never
+loads or evaluates candidate modules. Acorn is not a runtime dependency of the
+distributed package. A cycle prints a concrete dependency
 chain and exits nonzero. Missing relative targets, paths outside `src`, symbolic
 links, unsupported source extensions and syntax errors also fail the check.
 The root is fixed to the checkout containing the script; arguments cannot
