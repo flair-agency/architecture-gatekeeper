@@ -24,6 +24,37 @@ reusable and self-review workflows are in `.github/workflows/`.
 - Keep the Skill, CLI, CI adapter and self-review configuration aligned when a
   shared contract changes.
 
+## Static source import cycles
+
+From a source checkout on the supported Node.js version, run:
+
+```bash
+npm ci --ignore-scripts
+node scripts/check-source-cycles.mjs
+```
+
+The CI `test` job installs the locked development dependencies with lifecycle
+scripts disabled and runs the same check before the test suite. The checker
+parses every `src/**/*.mjs` module with the pinned development-only
+[Acorn parser](https://github.com/acornjs/acorn/tree/master/acorn), then checks
+static relative `import` and `export ... from` edges in the syntax tree. It never
+loads or evaluates candidate modules. Acorn is not a runtime dependency of the
+distributed package. A cycle prints a concrete dependency
+chain and exits nonzero. Missing relative targets, paths outside `src`, symbolic
+links, unsupported source extensions and syntax errors also fail the check.
+The root is fixed to the checkout containing the script; arguments cannot
+select another source directory. Tool tests copy the script into isolated
+checkout-shaped fixtures.
+
+The check excludes dynamic `import()`, CommonJS `require`, computed loads,
+bare package specifiers (including Node builtins), and files outside the selected
+root. It does not claim that runtime dependencies or external package graphs
+are acyclic. The `.mjs` scope must be extended as part of a future TypeScript
+migration; adding `.js`, `.cjs`, `.jsx`, `.ts`, `.tsx`, `.mts` or `.cts` source
+files currently fails rather than silently omitting them. This is repository
+development verification and supplies no protected acceptance or consumer
+architecture decision.
+
 ## Architecture changes and rollout
 
 Record any required owner decision in the complete selected architecture Set

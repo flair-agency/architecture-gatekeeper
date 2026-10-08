@@ -66,9 +66,9 @@ which creates and commits a small consumer fixture, installs
 and observable outcomes. Its sample result is review evidence, not repository
 acceptance or implementation authority.
 
-The public first-review demo is tracked separately in [Issue #393](https://github.com/flair-agency/architecture-gatekeeper/issues/393),
-which is open; no public demo asset has been published yet. The broader adoption
-funnel is tracked in [Issue #390](https://github.com/flair-agency/architecture-gatekeeper/issues/390).
+See the compact [first-review demo transcript](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/first-review-demo.md)
+for one actual native preview review. Issue [#393](https://github.com/flair-agency/architecture-gatekeeper/issues/393)
+tracks the demo work; the broader adoption funnel is tracked in [Issue #390](https://github.com/flair-agency/architecture-gatekeeper/issues/390).
 
 ## Review paths
 
@@ -136,9 +136,14 @@ settings do not apply to ordinary consumers.
 ## Documentation
 
 Use the [documentation map](docs/README.md) to find the integration walkthrough,
-operations, development and release guides, or normative contract. See the
-[preview lifecycle API](docs/integration-reference.md#unverified-preview-lifecycle-api)
-for its predecessor-selection and `UNVERIFIED` limits.
+operations, development and release guides, or normative contract.
+
+### Unverified preview lifecycle API
+
+The predecessor-selected `preview-unverified-procedure-v1` lifecycle API and
+its route-specific limits are documented in the [integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api).
+All preview procedures remain `UNVERIFIED` and do not provide protected
+acceptance.
 
 ## Project participation
 
@@ -158,11 +163,5 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 
 ## License
 
-[MIT](LICENSE)
-
-## Unverified preview lifecycle API
-
-The predecessor-selected `preview-unverified-procedure-v1` lifecycle API and
-its route-specific limits are documented in the [integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api).
-All preview procedures remain `UNVERIFIED` and do not provide protected
-acceptance.
+Licensed under the [MIT License](LICENSE).
+Copyright © 2026 Flair Agency.

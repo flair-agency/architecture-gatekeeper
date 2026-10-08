@@ -25,6 +25,10 @@ jobs:
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: 22
+      - name: Install development dependencies
+        run: npm ci --ignore-scripts
+      - name: Check static source import cycles
+        run: node scripts/check-source-cycles.mjs
       - name: Run tests
         run: npm test
       - name: Pack, install, and smoke-test the distributable package

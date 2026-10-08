@@ -10,8 +10,17 @@ import { classifyReview, parseOwnerAdditionProcedure, renderReport } from '../sr
 import { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema,
   validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema,
   resolveSingleOwnerAdditionAuthorityId } from '../src/owner-addition-ci.mjs';
+import { validateOwnerAdditionEligibility as sharedEligibility, validateOwnerAdditionEligibilitySchema as sharedEligibilitySchema,
+  validateOrdinaryOwnerDecision as sharedOrdinaryDecision, validateOrdinaryOwnerDecisionSchema as sharedOrdinaryDecisionSchema } from '../src/owner-addition-validation.mjs';
 
 const sourceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+test('CI module preserves the shared validator exports', () => {
+  assert.equal(validateOwnerAdditionEligibility, sharedEligibility);
+  assert.equal(validateOwnerAdditionEligibilitySchema, sharedEligibilitySchema);
+  assert.equal(validateOrdinaryOwnerDecision, sharedOrdinaryDecision);
+  assert.equal(validateOrdinaryOwnerDecisionSchema, sharedOrdinaryDecisionSchema);
+});
 const schema = { type: 'object', additionalProperties: false,
   required: ['eligible', 'onlyMissingDecision', 'preservesExistingRules', 'noContradiction', 'noUnsupportedCompletionClaim', 'noUnrelatedUnresolvedChoices', 'matchesOrdinaryOwnerDecision', 'summary'],
   properties: Object.fromEntries(['eligible', 'onlyMissingDecision', 'preservesExistingRules', 'noContradiction', 'noUnsupportedCompletionClaim', 'noUnrelatedUnresolvedChoices', 'matchesOrdinaryOwnerDecision'].map(key => [key, { type: 'boolean' }]).concat([['summary', { type: 'string' }]])) };
