@@ -38,6 +38,9 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   mkdirSync(join(fixtureRoot, 'src/owner-addition'), { recursive: true });
   cpSync(join(root, 'src/owner-addition/owner-addition-validation.mts'), join(fixtureRoot, 'src/owner-addition/owner-addition-validation.mts'));
   cpSync(join(root, 'src/owner-addition-validation.mjs'), join(fixtureRoot, 'src/owner-addition-validation.mjs'));
+  mkdirSync(join(fixtureRoot, 'src/ci-execution'), { recursive: true });
+  cpSync(join(root, 'src/ci-execution/ci-execution-result.mts'), join(fixtureRoot, 'src/ci-execution/ci-execution-result.mts'));
+  cpSync(join(root, 'src/ci-execution-result.mjs'), join(fixtureRoot, 'src/ci-execution-result.mjs'));
   writeFileSync(join(fixtureRoot, 'src/legacy.mjs'), 'export const legacyValue = 7;\n');
   writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), "import { legacyValue } from '../legacy.mjs';\nexport const answer: number = legacyValue + 35;\n");
   symlinkSync(join(root, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
@@ -48,6 +51,8 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   const initialBuild = runBuild(fixtureRoot);
   assert.equal(initialBuild.status, 0, initialBuild.stderr);
   assert.deepEqual(emittedFiles(dist), [
+    'ci-execution-result.mjs',
+    'ci-execution/ci-execution-result.mjs',
     'legacy.mjs',
     'owner-addition-validation.mjs',
     'owner-addition/owner-addition-validation.mjs',
@@ -55,6 +60,8 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   ]);
   assert.equal(readFileSync(join(dist, 'legacy.mjs'), 'utf8'), 'export const legacyValue = 7;\n');
   assert.match(readFileSync(join(dist, 'owner-addition-validation.mjs'), 'utf8'), /from '\.\/owner-addition\/owner-addition-validation\.mjs'/);
+  assert.match(readFileSync(join(dist, 'ci-execution-result.mjs'), 'utf8'), /from '\.\/ci-execution\/ci-execution-result\.mjs'/);
+  assert.match(readFileSync(join(dist, 'ci-execution/ci-execution-result.mjs'), 'utf8'), /export function normalizeCiExecutionResult/);
   assert.doesNotMatch(emittedFiles(dist).join('\n'), /stale/);
   assert.equal(runBuild(fixtureRoot).status, 0, 'a second clean build should be deterministic');
 
