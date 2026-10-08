@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 import { MAX_AUTHORITY_LIMITS, MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest } from '../dist/authority-set.mjs';
 import { validateAuthorityReviewSchema } from '../dist/preflight-authority-set-review.mjs';
+import { parseWorkflow } from './helpers/workflow-structure.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authorityFiles: ['docs/architecture.md'], promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json', validationPath: null } } };
@@ -267,7 +268,24 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /--limits-base64 "\$AUTHORITY_LIMITS_BASE64"/);
   assert.match(workflow, /dist\/validate-authority-set-decision\.mjs/);
   assert.match(workflow, /reviewed_sha: \$\{\{ steps\.revision\.outputs\.sha \}\}/);
-  assert.match(workflow, /sha=\$\(git rev-parse HEAD\)/);
+  const reviewSteps = parseWorkflow(workflow, 'architecture-gate.yml').jobs.review.steps;
+  const revisionIndex = reviewSteps.findIndex((step) => step.name === 'Record reviewed merge revision');
+  const revision = reviewSteps[revisionIndex];
+  const runtimeBuildIndex = reviewSteps.findIndex((step) => step.name === 'Build the pinned validation runtime');
+  assert.ok(revisionIndex >= 0);
+  assert.ok(runtimeBuildIndex > revisionIndex, 'reviewed merge identity and parent tuple are checked before runtime build');
+  assert.deepEqual(revision.env, {
+    EXPECTED_MERGE_SHA: '${{ github.event.pull_request.merge_commit_sha }}',
+    BASE_SHA: '${{ github.event.pull_request.base.sha }}',
+    HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
+  });
+  assert.match(revision.run, /git rev-parse HEAD/);
+  assert.match(revision.run, /actual_sha.*!=.*EXPECTED_MERGE_SHA/);
+  assert.match(revision.run, /git --no-replace-objects rev-list --parents -n 1 "\$actual_sha"/);
+  assert.match(revision.run, /expected_parents="\$actual_sha \$BASE_SHA \$HEAD_SHA"/);
+  assert.match(revision.run, /actual_parents.*!=.*expected_parents/);
+  assert.ok(revision.run.indexOf('actual_parents') < revision.run.indexOf('GITHUB_OUTPUT'), 'reviewed SHA is emitted only after exact parent verification');
+  assert.match(revision.run, /printf 'sha=%s\\n' "\$EXPECTED_MERGE_SHA"/);
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
   assert.match(workflow, /report:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
