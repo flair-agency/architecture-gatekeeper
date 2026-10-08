@@ -45,6 +45,50 @@ unavailable to the dependent job. A dropped value should therefore leave the
 real reporter without the ordinary decision; it must not be interpreted as a
 successful review.
 
+## Validation and evidence that a replacement must preserve
+
+This section inventories current paths for investigation; it adds no canonical
+requirement and does not select a transport. A replacement design remains
+unresolved. It cannot be treated as equivalent by carrying only a `PASS` label
+and digest.
+
+- Preserve the selected schema and, when policy selects them, consumer-owned
+  validation rules. The self schema requires the complete structured decision,
+  including findings, authority identifiers and files, review scope, gates,
+  and gate details; consumer schema selection can differ. See
+  [the self schema](../../.codex/gatekeeper/ci-decision.schema.json),
+  [decision validation](../../src/validate-decision.mjs), and the validation
+  steps in both reusable workflows.
+- Preserve selected Authority Set provenance and decision checks: exact
+  selected authority IDs, and for the multi-authority profile its set digest.
+  Legacy policy v1 also carries hashes for policy, prompt, schema, optional
+  validation, and authority members, bound to base, head, and reviewed SHAs.
+  See [authority validation](../../src/validate-authority-set-decision.mjs),
+  [multi-authority checks](../../src/multi-authority-provenance.mjs), and
+  [report provenance parsing](../../src/ci-report.mjs).
+- For OWNER_ADDITION / G0, preserve the separately validated procedure,
+  selected grade, job result, and eligibility, including exact repository,
+  base/head, policy, authority, missing-decision, tag, and record bindings.
+  This route reports eligibility, not semantic PASS. Self acceptance also
+  checks its selected amendment-attempt and semantic-eligibility signer
+  results; the consumer reusable workflow has no amendment-specific acceptance
+  dependencies. See [enforced acceptance](../../src/ci-enforced-acceptance.mjs).
+- `decision_digest` is SHA-256 of the canonicalized decision JSON alone. It
+  adds no independent binding to externally supplied policy/schema, provenance,
+  validator results, revisions, run attempt, producer, or caller. Fields already
+  inside the decision contribute to that hash, but the hash does not authenticate
+  who selected or validated them. The reporter receives a run URL containing the
+  run ID, but does not check `run_attempt`; `workflowRef` and run URL are
+  rendered metadata, not caller or producer authentication. Current `needs`
+  wiring does not by itself establish protected source or same-run/attempt
+  assurance.
+
+The full decision and findings, authority IDs/paths/revisions/hashes, legacy
+policy and prompt paths/hashes, and G0 procedure fields can disclose private
+review or authority context. Their presence in job outputs does not make them
+safe for artifact retention or public reporting. This inventory describes
+observed code paths and open assurance questions, not new architecture policy.
+
 ## Fixture and limits
 
 [`issue329-output-handoff-fixture.yml`](../../.github/workflows/issue329-output-handoff-fixture.yml)
