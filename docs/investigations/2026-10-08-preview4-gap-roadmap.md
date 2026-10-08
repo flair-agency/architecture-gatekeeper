@@ -3,8 +3,9 @@
 **Status:** nonnormative planning document for independent review. It does not
 amend the selected architecture Set, select a consumer route, authorize an
 integration or administration action, activate a route, or establish consumer
-proof. It supports #405's finite roadmap and leaves #403's scope freeze
-provisional until independent review and consumer-route evidence are complete.
+proof. It supports #405's finite roadmap. #403 may freeze the planning scope
+after independent review of the complete inventory, gap allocation and
+recorded unknowns; actual consumer completion remains a Preview.4 release gate.
 
 **Authority and baseline.** This roadmap is based on the complete selected
 six-member Set at `origin/main` commit
@@ -60,15 +61,22 @@ LIVE's adopted state has advanced since the initial snapshot:
   was optional, not a required check. C selects the enforced v4
   `OWNER_ADDITION / G0` route with `ownerAddition v2`. The retained local v1
   and older-schema split stays pinned to runtime `3f71fece`; the local schema
-  bytes match the predecessor. This adoption does not establish a normal B or
-  a completed T1 lifecycle. [Public evidence](https://github.com/flair-agency/architecture-gatekeeper/issues/407#issuecomment-6051350994).
+  bytes match the predecessor. This C owner choice remains adopted and is not
+  reopened by the separate evidence-transport gap below. It does not establish
+  a normal B or a completed T1 lifecycle. [Public evidence](https://github.com/flair-agency/architecture-gatekeeper/issues/407#issuecomment-6051350994).
 - **Still open for LIVE:** actual B execution, #139 adoption, fresh A,
   post-merge v4 connection verification (#407), host-enforcement proof for
-  check source, bypass and transition ordering, and a finite operational trace
-  remain incomplete. A host ruleset readback returned 403, which means
-  unavailable evidence, not evidence of absent protection. Issues #405, #406
-  and #407 remain open; no release completion, scope freeze or date change
-  follows from these checkpoints.
+  check source, bypass and transition ordering, a portable ordinary-result
+  evidence path, and a finite operational trace remain incomplete. On
+  2026-10-09, the selected branch-protection GET and repository-rulesets GET
+  both returned HTTP 403 with GitHub's message that the feature requires
+  GitHub Pro or a public repository. Repository metadata reports
+  `private=true`; the checking identity reports `admin=true`. This is evidence
+  of a plan/visibility capability limit, not proof that protection is absent
+  or that caller permission alone caused the 403. No plan upgrade or visibility
+  change has been selected. Host enforcement remains unknown. Issues #405,
+  #406 and #407 remain open; this checkpoint does not itself freeze scope,
+  complete the release gate, or change the date.
 - **Separate ADA operational observation:** ADA PR #83 merged normally at
   `f582d0a7abbb14770b112ce290e5650b91b83826` after changing its local/native
   review tooling and CI reusable-workflow pin to published Preview.3. The
@@ -99,10 +107,11 @@ LIVE's adopted state has advanced since the initial snapshot:
   exact merge approval pending. It has not merged and does not block recording
   these informational checkpoints.
 
-Issues #403, #405, #406, #407, #408 and #409 remain open and currently have no
-assignees in the issue metadata. The issue-level work allocation below is
-reviewable; personal ownership remains unresolved and no individual owner is
-invented here. LIVE PR #139 is still OPEN at head
+The 2026-10-09 issue-metadata snapshot showed no assignees for #403, #405,
+#406, #407, #408 or #409. Project/issue assignment synchronization is
+underway, so this dated observation may have changed. The table below records
+task roles and dependencies, not personal assignments. LIVE PR #139 is still
+OPEN at head
 `866c0c4a855877ed74e2a769d6555e20321b2b63` (base
 `01ab182e2167f2ad54138dcaa6fa00e7b412eb7e`); before treating it as the actual
 pending B, #408 must re-read its current base, selected policy and owner
@@ -133,19 +142,23 @@ The exact v4 post-merge consumer connection and host enforcement evidence are
 still incomplete. A shared extension would require its own versioned contract
 and authorization before implementation.
 
-**Host-state evidence is limited.** Ruleset/protection readback returned HTTP
-403 with a capability limitation noted in the private plan; this is unavailable
-readback, not evidence that the rules are absent. Check producer ID `15368` was
-observed. Whether that check is required, its exact source binding, bypass
-scope, and ordering through the target transition remain unknown. No visibility
-upgrade, permission, or credential has been selected.
+**Host-state evidence is plan-limited and incomplete.** On 2026-10-09, both
+the selected branch-protection GET and repository-rulesets GET returned HTTP
+403. GitHub's response says the feature requires GitHub Pro or a public
+repository. The repository reports `private=true`, while the checking identity
+reports `admin=true`; this does not establish that the settings are absent or
+that the result is a permission-only failure. No plan upgrade or repository
+visibility change has been selected. Check producer ID `15368` was observed,
+but whether it is required, its exact source binding, bypass scope, and
+ordering through transition remain unknown until readable host evidence exists.
 
 ```mermaid
 flowchart LR
   A[Historical A escalation context; preserved] -. context only; old raw result is not a trigger .-> E
   D[D initial setup exception merged as LIVE #145; not normal B proof] --> C[C normal control adoption merged as LIVE #147; enforced v4 G0 addition v2 selected]
   C --> P[Verify post-merge v4 connection and required host enforcement]
-  P --> E[Fresh ordinary review of exact B in same run: OWNER_DECISION with exact missing ID]
+  P --> Q[Find authorized source for raw ordinary result and complete producer provenance]
+  Q --> E[Fresh ordinary review of exact B in same run: OWNER_DECISION with exact missing ID]
   E --> K[B-specific eligibility separately binds that missing ID]
   K --> B[Exact B through normal merge procedure]
   B --> R[Consumer readback: target, policy, caller, authority]
@@ -157,9 +170,11 @@ The diagram distinguishes completed setup/selection from incomplete lifecycle
 proof. D (#145) is canonically placed through its approved setup exception;
 C (#147) is adopted through normal controls. Neither completes the later
 normal B. First verify the exact post-merge v4 connection and required host
-enforcement. Then the v4 path requires a fresh ordinary review of exact B in
-the same run, returning `OWNER_DECISION` with the exact missing decision ID;
-separate B eligibility binds that ID before the normal merge procedure. The
+enforcement, then establish an authorized source for raw ordinary-result bytes
+and a portable complete producer-provenance bundle. Only after that prerequisite
+does the v4 path call for a fresh ordinary review of exact B in the same run,
+returning `OWNER_DECISION` with the exact missing decision ID; separate B
+eligibility binds that ID before the normal merge procedure. The
 historical raw #139 result is context only and cannot trigger this review. The
 historical #144 exception remains separate and does not prove normal B
 eligibility. No migration M is currently identified as necessary. If a
@@ -173,20 +188,21 @@ This plan is for the still-open real LIVE work only. It does not make an
 operation successful in advance. #407 owns connection and package-path
 verification; #408 owns the real consumer transition and resumed-work trace;
 #409 owns recovery evidence and any separately authorized release record. The
-issues currently have no assignees, so personal execution ownership must be
-assigned during coordination. Consumer-owned choices and actions stay with the
-LIVE owner.
+2026-10-09 assignee snapshot is recorded above and project synchronization is
+underway. These are task-role allocations, not personal assignments.
+Consumer-owned choices and actions stay with the LIVE owner.
 
 | Step / issue | Inputs to capture before proceeding | Expected evidence and pass condition | Stop, preserve, and resume rule |
 |---|---|---|---|
 | **1. Revalidate the real pending work / #408** | Read current LIVE PR #139 state, exact head and base, branch target, current C policy and caller, full selected authority Set, and confirmation that this remains the owner-selected pending work. Historical API snapshot: PR #139 OPEN, head `866c0c4a855877ed74e2a769d6555e20321b2b63`, base `01ab182e2167f2ad54138dcaa6fa00e7b412eb7e`. | A single recorded tuple ties the real owner-selected candidate to the post-C predecessor and the exact selected files/policy. | If PR #139 is stale, its owner selection is unconfirmed, or the current policy/caller differs from C's recorded tuple, pause and ask the consumer owner to identify the next real work. Do not replay the old #139 result or create a test PR. |
-| **2. Prove the post-merge v4 connection / #407** | Exact LIVE commit after C (`2539ed7db957074ba957357e528f86479810869c`), selected `OWNER_ADDITION / G0` policy and `ownerAddition v2`, runtime pin `3f71fece`, caller/workflow revision, complete authority selector, local schema bytes, repository and target branch. | Read back the executing caller and runtime, exact policy and selector, target/ref, producer identity, and any required host check. Record raw readback source and revision. Compare all eight authority identities and local schema to the approved post-C state. | A mismatch, missing field, or 403 is `UNKNOWN / INCOMPLETE`; it is never inferred absent or filled by a candidate-controlled value. Do not proceed to B as an enforced route until #407 proves the selected connection and required host facts. No new credential, permission or storage responsibility is added without the applicable owner decision and authorization. |
-| **3. Verify check source and transition ordering / #407** | Host readback for check producer `15368`, exact required-check name and source binding, target/ref rules, bypass actors, merge methods, and ordering from final check through protected transition. | Evidence shows the selected check is required for the intended target and bound to the expected producer, with bypass and transition ordering recorded. Keep workflow success, check identity, required status and enforcement as separate facts. | Existing 403 means readback is unavailable. Keep this blocker open; do not report the check as absent or enforced. If host capability or owner permission is needed, obtain it through the selected authorized process before retrying. |
+| **2. Prove the post-merge v4 connection / #407** | Exact LIVE commit after C (`2539ed7db957074ba957357e528f86479810869c`), selected `OWNER_ADDITION / G0` policy and `ownerAddition v2`, runtime pin `3f71fece`, caller/workflow revision, complete authority selector, local schema bytes, repository and target branch. | Read back the executing caller and runtime, exact policy and selector, target/ref, producer identity, and any required host check. Record raw readback source and revision. Compare all eight authority identities and local schema to the approved post-C state. | A mismatch or missing field is `UNKNOWN / INCOMPLETE`. For host controls, the 2026-10-09 GETs returned the documented plan/visibility 403 described above; do not infer absent settings or attribute it only to caller permissions. A plan/visibility change is unselected. Do not claim the selected host connection is proved until readable evidence is available. No new credential, permission or storage responsibility is added without applicable owner authority. |
+| **3. Verify check source and transition ordering / #407** | Host readback for check producer `15368`, exact required-check name and source binding, target/ref rules, bypass actors, merge methods, and ordering from final check through protected transition. | Evidence shows the selected check is required for the intended target and bound to the expected producer, with bypass and transition ordering recorded. Keep workflow success, check identity, required status and enforcement as separate facts. | Branch-protection and ruleset GETs both returned 403 with GitHub's plan requirement while repository metadata is private and caller is admin. This points to a plan/visibility capability limit; it does not establish protection state or rule absence. No plan upgrade or visibility change is selected. Keep host enforcement unknown pending an authorized readable path. |
 | **4. Close the runner-output investigation / #407** | PR #432 reproduction and workflow run `37721924693`; complete consumer references and data flow for `final_message`; the exact producer/reporting boundary and any selected replacement path. | Inventory each consumer, identify whether output can contain secret material, cover success, missing, malformed, suppressed and wrong/stale-run cases, and run the focused plus hosted checks for any authorized change. | The reproduction is not a LIVE incident and does not authorize a new shared producer/storage/privacy responsibility. If a replacement needs a contract or responsibility change, record the consumer/AGK owner decision in canonical authority before implementation. |
-| **5. Review the exact B in one ordinary run / #408** | Exact current B SHA/tree and changed-path set; Step 1 predecessor; current selected authority bytes; ordinary reviewer and schema; the v4 caller/runtime connection proven by #407. | The fresh ordinary A review of this exact B returns `OWNER_DECISION` with the exact missing approved-artifact-identity decision ID. Retain the complete run/input identities and structured result. Do not reuse historical #139 output. | If the result is `PASS`, `BLOCK`, incomplete, from another run, or names a different/missing ID, stop. Preserve the result and return to owner choice or #407 diagnosis; do not coerce it into an eligible B. |
+| **4a. Find the ordinary-result evidence source / #407** | Current selected runtime pin `3f71fece`, LIVE caller/workflow and policy, exact ordinary result format, raw result bytes, and producer workflow/revision/run/attempt/job provenance. | Determine whether an existing authorized consumer boundary can supply raw bytes and a portable complete provenance bundle for the exact review. Record the exact source and byte/provenance validation. | No producer is currently connected for this bundle, and consumer-only readback cannot reconstruct it. Parsed output, comment, or digest is insufficient. First inspect the existing authorized route. If it cannot supply the complete bundle, prepare a separately scoped shared-producer/private-Actions-artifact/storage/retention proposal for canonical owner authority before implementation. C's already adopted control selection stays in force; this is an additional evidence extension, not a reason to reopen C. Step 5 cannot start until this gate passes. |
+| **5. Review the exact B in one ordinary run / #408** | Exact current B SHA/tree and changed-path set; Step 1 predecessor; current selected authority bytes; ordinary reviewer and schema; the v4 caller/runtime connection proven by #407; raw ordinary result bytes plus a portable complete producer-provenance bundle supplied through the currently authorized path in Step 4a. | The fresh ordinary A review of this exact B returns `OWNER_DECISION` with the exact missing approved-artifact-identity decision ID. Retain the raw result bytes, complete provenance bundle, run/input identities and structured result. Do not reuse historical #139 output. | The raw-result producer is not connected and the consumer-side `3f71fece` path cannot recover raw bytes and complete portable provenance from a parsed result, comment or digest. Until Step 4a verifies an already authorized source or the required separate owner authority is recorded, this step is not executable; no parsed/comment/digest substitute is allowed. If the eventual result is `PASS`, `BLOCK`, incomplete, from another run, or names a different/missing ID, stop and preserve it. |
 | **6. Establish B eligibility and owner action / #408** | The exact Step 5 result and B identity, plus the consumer's prior-selected v4 eligibility procedure binding the exact missing ID, actor, paths, operation and lineage. | Separate B-specific eligibility accepts that exact ID and exact B; the consumer owner performs the authorized owner action. Eligibility and owner action are recorded separately. | Missing prior selection, mismatched ID/SHA, unauthorized actor, or service failure leaves B incomplete and the predecessor in force. Do not use `ci-policy v5` finalization, #144's exception, D's setup approval, or the historic #139 raw result as a substitute. |
-| **7. Complete the normal protected transition / #408** | Eligible exact B, consumer owner action, Step 2/3 connection evidence, normal required checks and the approved integration procedure. | Capture the final run and check identities, target, merge commit, exact B parent/tree relationship required by the selected procedure, actor and integration timestamp. The transition uses the selected ordinary route without administrator bypass. | Before integration, a failure leaves B pending. If integration has occurred, preserve the resulting placement and adoption facts separately and do not retry by rewriting the result. Missing ordering/readback evidence means incomplete assurance, not retroactive acceptance. |
-| **8. Canonical readback after transition / #408** | Merged commit and target branch; expected authority/policy/workflow/selector identities; authorized readback path. | Read back the canonical target and exact selected authority, policy, caller and producer after the merge. Compare identities to the intended B and record the readback source and time. | Any mismatch, unavailable readback or inability to bind the caller leaves canonical placement/adoption unresolved. Route to #409 only for an observed interruption or separately authorized recovery; preserve the pre-failure evidence. |
+| **7. Complete the normal protected transition / #408** | Eligible exact B, consumer owner action, Step 2/3 connection evidence, normal required checks and the approved integration procedure. | For the selected normal merge form, verify the recorded base is the first parent, exact B is the second parent, and the integration tree equals B's tree. Capture final run/check identities, target, merge commit, actor and integration timestamp. Use the selected ordinary route without administrator bypass. | Before integration, a failure leaves B pending. If integration has occurred, preserve the resulting placement and adoption facts separately and do not retry by rewriting the result. Missing ordered-parent/tree or readback evidence means incomplete assurance, not retroactive acceptance. Other merge forms need their own prior-selected binding. |
+| **8. Canonical readback after transition / #408** | Merged commit and target branch; expected authority/policy/workflow/selector identities; authorized readback path. | Read back the canonical target commit and exact authority bytes, policy, caller and producer after merge. Verify target ancestry contains the integration commit and authority bytes match the intended B result. Record readback source and time. | Any mismatch, unavailable readback or inability to bind the caller leaves canonical placement/adoption unresolved. Route to #409 only for an observed interruption or separately authorized recovery; preserve the pre-failure evidence. |
 | **9. Fresh A and actual resumed work / #408** | Post-transition canonical snapshot, newly resolved current policy/caller and authority inputs, then the next genuine pending owner-selected operation. | Run a new ordinary A against current bindings. Record its exact result and, only if the selected procedure permits, resume the actual pending work. Capture the result of that real work; a green test or source merge is not its substitute. | If inputs changed, regenerate all dependent evidence. If A is not `PASS` or the service is unavailable, keep work stopped and preserve results; no stale-evidence fallback. Do not invent work to demonstrate resumption. |
 | **10. Interruption and release gate / #409** | Interruption point, last complete evidence, whether canonical integration already occurred, and the release plan only if actual consumer proof and review gates are complete. | Recovery record identifies pending versus placed/adopted state and lists evidence that must be regenerated from current bindings. Release evidence binds the exact reviewed package candidate, installed workflow/Skill path, compatibility and recovery checks, plus demonstrated consumer value. | Before merge, resume from the last verified prerequisite. After merge, retain placement and perform only authorized recovery. Publish only after #403's independent inventory review, #408's actual value proof, normal release prerequisites and human-reviewed can/cannot notes; otherwise hold/reforecast without changing the target date by inference. |
 
@@ -292,14 +308,14 @@ guard is treated as satisfied by missing files, package APIs or test fixtures.
 
 ## Finite work sequence and release gates
 
-| Issue | Reviewable outcome / proposed accountable owner | Dependency and exit evidence | Proposed disposition |
+| Issue | Reviewable outcome / task role | Dependency and exit evidence | Proposed disposition |
 |---|---|---|---|
-| [#403](https://github.com/flair-agency/architecture-gatekeeper/issues/403) | Coordinator: independently review the transition matrix, route boundaries, operational plan and unresolved owner decisions, then decide whether scope can be frozen. | The complete selected Set, exact LIVE route evidence and independent worker coverage must all be reviewed. | This candidate remains provisional; coordinator review determines freeze readiness. |
-| [#405](https://github.com/flair-agency/architecture-gatekeeper/issues/405) | Roadmap coordinator: finish finite transition/guard allocation and LIVE normal-route feasibility. | Record D #145 and C #147; verify v4 `OWNER_ADDITION / G0` `ownerAddition v2` connection and host enforcement; retain #139/#144 history; separate C adoption from normal B. | This candidate provides the documentation increment. It does not complete #405, release package code or activate LIVE. |
-| [#406](https://github.com/flair-agency/architecture-gatekeeper/issues/406) | Consumer owner: resolve any remaining owner-responsibility work using adopted decisions where sufficient. Personal assignee is unassigned. | #145's setup exception and canonical placement are complete; any new responsibility requires an owner choice recorded in authority first. | Keep open for remaining scope. D approval/placement is not pending and is not normal B evidence. |
-| [#407](https://github.com/flair-agency/architecture-gatekeeper/issues/407) | Package/host integration implementer under the coordinator; personal assignee is unassigned. | Exact authority, selector, runtime, caller and focused checks; host required-check source, bypass and ordering; #432 output consumer inventory, secret boundary and negative/hosted verification. | No universal preview route implementation. A shared connection or data-custody extension requires separate versioned owner authorization. Security Review is optional, not a required check. |
-| [#408](https://github.com/flair-agency/architecture-gatekeeper/issues/408) | LIVE operator and consumer owner for their actions, coordinated by the #408 lead; personal assignee is unassigned. | Steps 1–9 above, #407 connection/host evidence, exact current PR #139 or another confirmed real owner-selected work item, normal B, readback, fresh A and actual resumed work. | Do not claim normal B adoption, ACTIVE, full lifecycle or consumer value until the trace is complete. |
-| [#409](https://github.com/flair-agency/architecture-gatekeeper/issues/409) | Release coordinator for recovery record; consumer owner for consumer actions; personal assignee is unassigned. | Step 10 above, observed interruption or completed #408 proof, regenerated current evidence, installed compatibility/recovery checks and approved release plan. | No automatic recovery or publishing. Hold/reforecast if the target date arrives before evidence; do not infer a date or scope change now. |
+| [#403](https://github.com/flair-agency/architecture-gatekeeper/issues/403) | Coordinator role: independently review the full transition matrix, exceptional paths, evidence gaps and recorded unknowns; then decide whether planning scope can be frozen. | Review complete six-member mapping, available LIVE/ADA evidence, issue-level ownership/dependencies and explicit unknowns. Actual consumer completion is not a scope-freeze prerequisite; it remains a release gate. | This candidate is reviewable planning input. Independent completeness review determines freeze readiness. |
+| [#405](https://github.com/flair-agency/architecture-gatekeeper/issues/405) | Roadmap coordinator role: finish finite transition/guard allocation and LIVE normal-route feasibility. | Record D #145 and adopted C #147; verify v4 `OWNER_ADDITION / G0` `ownerAddition v2` connection and host evidence; determine if an authorized raw-result/provenance source exists; retain #139/#144 history and separate C adoption from normal B. | This candidate supplies a documentation increment. It does not complete #405, release package code or activate LIVE. |
+| [#406](https://github.com/flair-agency/architecture-gatekeeper/issues/406) | Consumer owner role: resolve any remaining owner-responsibility work using adopted decisions where sufficient. | #145 setup exception and canonical placement are complete; any new shared evidence/custody responsibility requires an owner choice recorded in canonical authority first. | Keep the already adopted C choice intact. Do not treat the separate transport extension as authorized. |
+| [#407](https://github.com/flair-agency/architecture-gatekeeper/issues/407) | Package/host integration workstream role under coordinator. | Exact authority, selector, runtime and caller; host required-check source/bypass/order; #432 output inventory and secret boundary; existing authorized source for raw ordinary bytes plus portable producer provenance, or a separately owner-authorized versioned producer/storage/retention proposal. | No universal preview route implementation. A shared connection or data-custody extension requires separate versioned owner authorization. Plan/visibility 403 is not solved by assuming additional caller permission. Security Review is optional, not a required check. |
+| [#408](https://github.com/flair-agency/architecture-gatekeeper/issues/408) | LIVE operator and consumer-owner action workstream, coordinated by #408 role. | Steps 1–9 above, #407 connection/host and raw evidence prerequisites, exact current PR #139 or another confirmed real owner-selected work item, normal B, readback, fresh A and actual resumed work. | Do not claim normal B adoption, ACTIVE, full lifecycle or consumer value until the trace is complete. |
+| [#409](https://github.com/flair-agency/architecture-gatekeeper/issues/409) | Release/recovery coordinator role; consumer owner for consumer actions. | Step 10 above, observed interruption or completed #408 proof, regenerated current evidence, installed compatibility/recovery checks and approved release plan. | No automatic recovery or publishing. Hold/reforecast if the target date arrives before evidence; do not infer a date or scope change now. |
 | [#423](https://github.com/flair-agency/architecture-gatekeeper/pull/423) | PR author/maintainer; separate from #405–#408. | Current head `9c7f29557e374ede784cf276191ea65d0733d0f2` is OPEN against base `d288bb64ee4916c207d378b1695cca0491f49223`, behind current main; exact merge approval is a separate gate. | Do not count it as merged or completed evidence. Its prompt/input-binding fix remains separate until approved and integrated. |
 
 ## Non-goals and limits
