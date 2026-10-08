@@ -5,11 +5,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
+import { parseWorkflow } from './helpers/workflow-structure.mjs';
 
 for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
   test(`${file} binds observation to exact ordinary Action inputs and preserves validators`, () => {
     const text = readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), 'utf8');
     const block = text.split('      - name: Record ordinary execution observation\n')[1]?.split('      - name:')[0];
+    const observation = parseWorkflow(text, file).jobs.review.steps.find(step => step.name === 'Record ordinary execution observation');
     assert.ok(block);
     assert.match(block, /if: always\(\) && !cancelled\(\) && needs\.policy\.outputs\.execution_selection == 'policy' && steps\.validation_runtime\.outcome == 'success'/);
     for (const [name, expression] of Object.entries({
@@ -20,7 +22,7 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
       REVIEW_RESPONSE: 'steps.codex.outputs.final-message',
     })) assert.ok(block.includes(`${name}: \${{ ${expression} }}`));
     assert.match(text, /execution_settings_base64: \$\{\{ steps\.resolve\.outputs\.executionSettingsBase64 \}\}/);
-    assert.match(block, /run: node \.architecture-gatekeeper-validation-runtime\/dist\/ci-execution-observation\.mjs --github/);
+    assert.equal(observation.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github');
     const checkout = text.split('name: Check out the pinned validation runtime')[1]?.split('      - name:')[0];
     assert.match(checkout, /id: validation_runtime/);
     assert.match(checkout, /execution_selection == 'policy'/);
@@ -93,6 +95,7 @@ test('self selects existing effective Codex limits without changing governance s
 
 test('self protected review binds the exact PR task context before Codex consumes it', () => {
   const workflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
+  const parsed = parseWorkflow(workflow, 'architecture-gate.yml');
   const context = workflow.split('      - name: Attach exact pull request task context to protected review\n')[1]?.split('      - name:')[0];
   assert.ok(context);
   assert.match(context, /if: needs\.policy\.outputs\.authority_manifest_path != '' \|\| needs\.policy\.outputs\.policy_version == '1'/);
@@ -104,8 +107,10 @@ test('self protected review binds the exact PR task context before Codex consume
     AUTHORITY_PROFILE: 'needs.policy.outputs.authority_profile || \'v1\'',
     POLICY_VERSION: 'needs.policy.outputs.policy_version',
   })) assert.ok(context.includes(`${name}: \${{ ${expression} }}`));
-  assert.match(context, /run: node \.architecture-gatekeeper-validation-runtime\/dist\/prepare-review-context\.mjs/);
-  assert.match(workflow, /preflight-authority-set-review\.mjs \\\s*"\$RUNNER_TEMP\/architecture-gate-decision\.schema\.json" \\\s*"\$RUNNER_TEMP\/architecture-gate-review-prompt\.md"/);
+  const contextStep = parsed.jobs.review.steps.find(step => step.name === 'Attach exact pull request task context to protected review');
+  assert.equal(contextStep.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-review-context.mjs"');
+  const preflight = parsed.jobs.review.steps.find(step => step.name === 'Check protected Authority Set schema and complete prompt');
+  assert.match(preflight.run, /^node "\$GATEKEEPER_RUNTIME_ROOT\/dist\/preflight-authority-set-review\.mjs" \\\n\s+"\$RUNNER_TEMP\/architecture-gate-decision\.schema\.json" \\\n\s+"\$RUNNER_TEMP\/architecture-gate-review-prompt\.md"\n?$/);
   assert.match(workflow, /prompt-file: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && format\('\{0\}\/architecture-gate-review-prompt\.md', runner\.temp\) \|\| needs\.policy\.outputs\.authority_manifest_path != '' && format\('\{0\}\/architecture-gate-review-prompt\.md', runner\.temp\)/);
   assert.match(workflow, /prompt-file:[\s\S]*?inputs\.protected-review-instructions && format\('\{0\}\/architecture-gate-prompt\.md', runner\.temp\) \|\| inputs\.prompt-path/);
   assert.ok(workflow.indexOf('name: Attach exact pull request task context to protected review') < workflow.indexOf('id: codex\n'));

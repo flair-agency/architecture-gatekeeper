@@ -32,17 +32,26 @@ test('legacy v1 enforced policy requires canonical paths and an explicit validat
 });
 test('legacy v1 workflow binds protected instructions, authority, and exact report', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
+  const parsed = parseWorkflow(workflow, 'architecture-gate.yml');
   assert.match(workflow, /if: steps\.resolve\.outputs\.authorityManifestPath != '' \|\| steps\.resolve\.outputs\.policyVersion == '1'/);
   assert.match(workflow, /name: Materialize recorded-base legacy authority before review/);
-  assert.match(workflow, /run: node \.architecture-gatekeeper-validation-runtime\/dist\/prepare-legacy-ci-authority\.mjs prepare/);
+  const prepareLegacy = parsed.jobs.review.steps.find(step => step.name === 'Materialize recorded-base legacy authority before review');
+  assert.equal(prepareLegacy.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" prepare');
   assert.match(workflow, /name: Require exact reported legacy authority files/);
-  assert.match(workflow, /run: node \.architecture-gatekeeper-validation-runtime\/dist\/prepare-legacy-ci-authority\.mjs validate/);
+  const validateLegacy = parsed.jobs.review.steps.find(step => step.name === 'Require exact reported legacy authority files');
+  assert.equal(validateLegacy.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" validate');
   assert.match(workflow, /LEGACY_AUTHORITY_PROVENANCE_BASE64: \$\{\{ needs\.review\.outputs\.legacy_authority_provenance \}\}/);
   assert.match(workflow, /test "\$POLICY_PATH" = \.codex\/gatekeeper\/ci-policy\.json/);
   assert.match(workflow, /PROMPT_PATH: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_prompt_path \|\| inputs\.prompt-path \}\}/);
   assert.match(workflow, /SCHEMA_PATH: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_schema_path \|\| inputs\.schema-path \}\}/);
   assert.match(workflow, /if: \(needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_validation_path != ''\) \|\| \(needs\.policy\.outputs\.policy_version != '1' && inputs\.validation-path != ''\)/);
-  assert.match(workflow, /name: Require caller validation selection to match recorded-base v1 policy\n        if: steps\.resolve\.outputs\.policyVersion == '1'[\s\S]*?CALLER_VALIDATION_PATH: \$\{\{ inputs\.validation-path \}\}[\s\S]*?BASE_VALIDATION_PATH: \$\{\{ steps\.resolve\.outputs\.legacyValidationPath \}\}[\s\S]*?run: node \.architecture-gatekeeper-runtime\/dist\/verify-legacy-validation-selection\.mjs "\$BASE_VALIDATION_PATH" "\$CALLER_VALIDATION_PATH"/);
+  const selection = parsed.jobs.policy.steps.find(step => step.name === 'Require caller validation selection to match recorded-base v1 policy');
+  assert.equal(selection.if, "steps.resolve.outputs.policyVersion == '1'");
+  assert.deepEqual(selection.env, {
+    CALLER_VALIDATION_PATH: '${{ inputs.validation-path }}',
+    BASE_VALIDATION_PATH: '${{ steps.resolve.outputs.legacyValidationPath }}',
+  });
+  assert.equal(selection.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/verify-legacy-validation-selection.mjs" "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"');
   assert.match(workflow, /VALIDATION_PATH: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_validation_path \|\| inputs\.validation-path \}\}/);
 });
 test('uses explicit local-only default', () => assert.equal(resolveCiPolicy(policy, 'preview').mode, 'local-only'));
@@ -242,6 +251,7 @@ test('keeps bounded job and step deadlines around upstream Codex Action calls', 
 
 test('uses the immutable called-workflow runtime and keeps review jobs read-only', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
+  const parsed = parseWorkflow(workflow, 'architecture-gate.yml');
   const acceptJob = workflow.match(/  accept:\n([\s\S]*)$/)?.[1];
   assert.ok(acceptJob);
   assert.match(workflow, /repository: \$\{\{ job\.workflow_repository \}\}/);
@@ -255,7 +265,8 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /cancel-in-progress: true/);
   assert.match(workflow, /git show "\$BASE_SHA:\$PROMPT_PATH"/);
   assert.match(workflow, /if git cat-file -e "\$BASE_SHA:\$POLICY_PATH" 2>\/dev\/null; then/);
-  assert.match(workflow, /dist\/materialize-regular-git-snapshot\.mjs \\\n+              "\$BASE_SHA" "\$POLICY_PATH" "\$RUNNER_TEMP\/architecture-gate-policy\.json"/);
+  const resolveStep = parsed.jobs.policy.steps.find(step => step.name === 'Resolve policy from protected base revision');
+  assert.match(resolveStep.run, /node "\$GATEKEEPER_RUNTIME_ROOT\/dist\/materialize-regular-git-snapshot\.mjs" \\\n\s+"\$BASE_SHA" "\$POLICY_PATH" "\$RUNNER_TEMP\/architecture-gate-policy\.json"/);
   assert.match(workflow, /git show "\$BASE_SHA:\$SCHEMA_PATH"/);
   assert.match(workflow, /protected-review-instructions:/);
   assert.match(workflow, /prompt-file: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && format/);
@@ -264,7 +275,8 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /git show "\$BASE_SHA:\$VALIDATION_PATH"/);
   assert.match(workflow, /dist\/validate-decision\.mjs/);
   assert.match(workflow, /dist\/preflight-authority-set-review\.mjs/);
-  assert.match(workflow, /name: Check protected Authority Set schema and complete prompt\n[\s\S]*?run: \|\n          node \.architecture-gatekeeper-validation-runtime\/dist\/preflight-authority-set-review\.mjs/);
+  const preflight = parsed.jobs.review.steps.find(step => step.name === 'Check protected Authority Set schema and complete prompt');
+  assert.match(preflight.run, /^node "\$GATEKEEPER_RUNTIME_ROOT\/dist\/preflight-authority-set-review\.mjs"/);
   assert.match(workflow, /--limits-base64 "\$AUTHORITY_LIMITS_BASE64"/);
   assert.match(workflow, /dist\/validate-authority-set-decision\.mjs/);
   assert.match(workflow, /reviewed_sha: \$\{\{ steps\.revision\.outputs\.sha \}\}/);
@@ -300,7 +312,8 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.doesNotMatch(workflow, /Require protected owner approval/);
   assert.match(workflow, /name: Require successful reporting\n[\s\S]*?REPORT_RESULT: \$\{\{ needs\.report\.result \}\}\n[\s\S]*?test "\$REPORT_RESULT" = success/);
   assert.match(workflow, /name: Require model-backed PASS or verified G0 owner addition\/amendment\n        if: needs\.policy\.outputs\.mode == 'enforced'/);
-  assert.match(workflow, /run: node \.architecture-gatekeeper-runtime\/dist\/ci-enforced-acceptance\.mjs/);
+  const acceptance = parsed.jobs.accept.steps.find(step => step.name === 'Require model-backed PASS or verified G0 owner addition/amendment');
+  assert.equal(acceptance.run, 'node .architecture-gatekeeper-runtime/dist/ci-enforced-acceptance.mjs');
   const finalTagGuard = acceptJob.match(/      - name: Recheck exact B amendment tag at final acceptance boundary\n([\s\S]*?)\n      - name: Require model-backed PASS/)?.[1];
   assert.ok(finalTagGuard);
   assert.match(finalTagGuard, /if: needs\.policy\.outputs\.mode == 'enforced' && needs\.policy\.outputs\.owner_amendment_grade == 'G0'/);
