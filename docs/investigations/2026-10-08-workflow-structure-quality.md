@@ -98,5 +98,8 @@ script. Negative fixtures cover removed and inverted conditions, unconditional
 failure scripts and comment-only text in both consumer/self provider guards and
 the consumer G0 guard. No production workflow or authority file changed. The
 corrective focused structural and least-privilege tests passed 11/11 and
-`git diff --check` passed. The full-suite result is pending and must be reported
-separately from the historical results above.
+`git diff --check` passed. On corrective commit
+`674193a46da94be058c44042931cd6b383b34e50`, the full suite passed 1,189/1,189
+tests (0 failures, about 132.7 seconds on Node 22.22.0) with loopback access.
+This fresh result supersedes the pending status and remains separate from the
+historical pre-correction suite result above.
