@@ -89,6 +89,23 @@ are a risk distinct from an observed flake. The existing macOS preview
 installed-smoke 120-second limit from #414 remains diagnostic context, not a
 reason to weaken the deadline or skip the distribution check.
 
+## Suite and installed-package observations
+
+At the final implementation revision, `npm test` passed all 1,182 cases
+(0 failures, about 191.7s on Node 22.22.0/macOS). The source-cycle check also
+passed. Packaging and an offline consumer install preserved the corrected
+finalizer bytes without installing Acorn as a runtime dependency. The 25 new
+CLI/composition cases and the two deterministic deadline cases passed against
+the installed package.
+
+The complete installed-smoke run reached the existing preview API suite and
+exceeded its unchanged 120-second subprocess limit. This repeats the local
+macOS limitation observed in #414; the scoped installed checks above do not
+establish a complete distribution-smoke pass. A fresh ordinary CI run,
+including the complete installed smoke, remains required when this stacked
+change targets `main`. No bound was increased and no case was skipped to turn
+the local result into a pass.
+
 ## Remaining boundaries
 
 The finalizer's public CLI argument/token lookup/output-file wrapper is not
