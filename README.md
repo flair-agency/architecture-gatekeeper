@@ -136,9 +136,14 @@ settings do not apply to ordinary consumers.
 ## Documentation
 
 Use the [documentation map](docs/README.md) to find the integration walkthrough,
-operations, development and release guides, or normative contract. See the
-[preview lifecycle API](docs/integration-reference.md#unverified-preview-lifecycle-api)
-for its predecessor-selection and `UNVERIFIED` limits.
+operations, development and release guides, or normative contract.
+
+### Unverified preview lifecycle API
+
+The predecessor-selected `preview-unverified-procedure-v1` lifecycle API and
+its route-specific limits are documented in the [integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api).
+All preview procedures remain `UNVERIFIED` and do not provide protected
+acceptance.
 
 ## Project participation
 
@@ -158,11 +163,5 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 
 ## License
 
-[MIT](LICENSE)
-
-## Unverified preview lifecycle API
-
-The predecessor-selected `preview-unverified-procedure-v1` lifecycle API and
-its route-specific limits are documented in the [integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api).
-All preview procedures remain `UNVERIFIED` and do not provide protected
-acceptance.
+Licensed under the [MIT License](LICENSE).
+Copyright © 2026 Flair Agency.
