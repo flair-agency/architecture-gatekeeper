@@ -366,7 +366,7 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
     expected: { targetBranch, pullRequestNumber, baseSha, bSha, bTree, authorityPath, authorityDigest },
     pullRequest: pr,
     mergeCommit: { sha: mergeSha, tree: mergeTree, parents },
-    targetRef: { ref: `refs/heads/${targetBranch}`, sha: targetSha },
+    targetRef: { ref: targetRefRaw.ref, sha: targetSha },
     targetCommit: { sha: targetSha, ancestorShas,
       authoritySnapshot: { commitSha: targetSha, path: authorityPath, bytes: authorityAtTarget } },
   });
