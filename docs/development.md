@@ -75,13 +75,15 @@ and unresolved limits. The entrypoint and workflow investigations under
 
 ## TypeScript source and runtime distribution
 
-The #419 first three slices type the shared OWNER_ADDITION validation leaf at
+The #419 slices type the shared OWNER_ADDITION validation leaf at
 `src/owner-addition/owner-addition-validation.mts` and execution-result states at
 `src/ci-execution/ci-execution-result.mts`, plus tag-readback callbacks at
-`src/owner-amendment/owner-amendment-tag-readback.mts`. The
+`src/owner-amendment/owner-amendment-tag-readback.mts`. The next slice types
+`owner-amendment-tag-api`, `owner-amendment-tag-attempt` and
+`owner-amendment-semantic-tag-object` in that owner-amendment folder. The
 [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the grouping inventory, runtime limits and #423 preview-lifecycle
-boundary; 93 original modules remain unconverted. TypeScript migration is
+boundary; 90 original modules remain unconverted. TypeScript migration is
 partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
@@ -127,7 +129,12 @@ remain unknown because an accepted accessor may change across the original two
 reads; the completed branch narrows only its captured success/available facts.
 Tag-readback callback types preserve existing synchronous, Promise and thenable
 returns; API and observed OID values stay unknown. Readonly observations leave
-Buffer contents mutable. Other callback contracts remain with their owning modules.
+Buffer contents mutable. Tag-attempt results distinguish absence from a present amendment attempt; the
+final absence check narrows the result after its existing re-read. Reader
+callbacks accept synchronous values, Promises and thenables. Parsing a tag
+envelope checks its existing key/profile bindings and decodes bounded evidence
+bytes; unchecked envelope fields remain unknown and do not establish semantic
+eligibility. Other callback contracts remain with their owning modules.
 
 Runtime coverage follows the emitted and executed `dist/**/*.mjs` files. Report
 those exact paths without counting source files as runtime coverage. CodeQL
