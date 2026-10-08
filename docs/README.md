@@ -9,6 +9,7 @@ changing its authority or implementation status.
 | Reader goal | Primary guide | Role |
 | --- | --- | --- |
 | Run a first consumer review or configure a route | [Integration reference](integration-reference.md#manual-review) | Version-pinned manual walkthrough, then local, Skill and CI setup details |
+| See one actual first review | [First-review demo transcript](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/first-review-demo.md) | Compact native preview result; use the integration reference for setup |
 | Operate a result or recover from a failed review | [Owner intervention](owner-intervention.md) | `OWNER_DECISION`, incomplete review and escalation runbook |
 | Understand current host capabilities and claim limits | [GitHub assurance](github-assurance.md) | GitHub capability boundaries and repository-specific observations |
 | Diagnose reviewer identity, credentials or host controls | [Reviewer host permissions](reviewer-host-permissions.md) | Child-reviewer and host boundary reference |
