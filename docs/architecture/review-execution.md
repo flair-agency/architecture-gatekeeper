@@ -390,17 +390,37 @@ The complete encoded stdin prompt, including protected instructions and output
 schema, is limited to 192 KiB. On 2026-10-07 the owner refined the initial
 128 KiB verification stdin bound to 192 KiB after exact complete-input sizing;
 authority bytes remain included, without truncation or workspace-only accounting.
-All other verification bounds and the five-attempt allocation remain unchanged.
+The other prompt, context and output bounds remain unchanged.
 The committed review context is limited to
 32 selected files, 128 KiB per file, and 512 KiB total serialized packet;
 these are separate bounds, not interchangeable prompt limits.
 
-Authenticated Vertex verification under this selection permits at most five
-model dispatch attempts in total, including failed attempts. No automatic
-retry or provider fallback is selected. Record dispatch before sending and
-retain a private durable count; an uncertain remote outcome consumes an attempt
-and does not authorize another dispatch beyond the ceiling. Earlier Issue #333
-investigation attempts are outside this new verification allocation.
+On 2026-10-08 the owner clarified that the previously approved five-retry
+ceiling concerns development and verification retries in the coordinating chat.
+It is not a total upstream HTTP-dispatch allocation, a consumer governance rule,
+or authorization to pre-consume five slots before execution. A Gemini CLI review
+session may make multiple upstream requests; those requests are not separate
+development retry attempts. Keep an observed development-attempt history,
+including failed or uncertain executions, without treating it as authenticated
+cross-run quota enforcement or requiring advance forfeiture of unused attempts.
+
+Each hosted verification executes one review session admitted by the trusted
+coordinator for the exact reviewed source and execution context, with the
+selected deadline and no automatic workflow retry or provider fallback.
+Any later development retry requires a separate explicit coordinator admission
+and remains within the chat's five-retry ceiling; uncertainty is recorded, not
+silently interpreted as success or grounds for an automatic duplicate execution.
+The candidate-loaded workflow does not authenticate itself or authorize replay.
+
+The launcher/proxy applies a finite defensive upstream-request cap within each
+review session, including CLI-internal retries and uncertain sends. Its numeric
+value is a reviewed implementation circuit breaker, separate from the chat's
+retry ceiling and from consumer policy or an execution entitlement. Count before
+sending, stop further dispatch at the cap, and retain bounded private diagnostics.
+A new admitted session starts its own counter; no outer allocation, slot
+pre-consumption, refund protocol or cross-session quota service is required.
+These execution controls establish neither billing limits nor protected
+producer authentication. Earlier Issue #333 evidence remains historical.
 
 This selection authorizes bounded verification, not adoption of an active main
 or consumer acceptance route. Main CI provider selection requires separate
