@@ -27,6 +27,8 @@ jobs:
           node-version: 22
       - name: Install development dependencies
         run: npm ci --ignore-scripts
+      - name: Validate parsed workflow structure
+        run: node --test test/workflow-structure.test.mjs
       - name: Check static source import cycles
         run: node scripts/check-source-cycles.mjs
       - name: Run tests
