@@ -24,6 +24,32 @@ reusable and self-review workflows are in `.github/workflows/`.
 - Keep the Skill, CLI, CI adapter and self-review configuration aligned when a
   shared contract changes.
 
+## Static source import cycles
+
+From a source checkout on the supported Node.js version, run:
+
+```bash
+node --experimental-vm-modules scripts/check-source-cycles.mjs
+```
+
+The CI `test` job runs the same command before the test suite. It parses every
+`src/**/*.mjs` module with Node's
+[`vm.SourceTextModule`](https://nodejs.org/download/release/v22.22.0/docs/api/vm.html#class-vmsourcetextmodule)
+constructor and checks static relative `import` and `export ... from` edges.
+It never links or evaluates the modules. A cycle prints a concrete dependency
+chain and exits nonzero. Missing relative targets, paths outside `src`, symbolic
+links, unsupported source extensions and syntax errors also fail the check.
+The optional `[src-root]` argument selects a fixture directory for tool tests.
+
+The check excludes dynamic `import()`, CommonJS `require`, computed loads,
+bare package specifiers (including Node builtins), and files outside the selected
+root. It does not claim that runtime dependencies or external package graphs
+are acyclic. The `.mjs` scope must be extended as part of a future TypeScript
+migration; adding `.js`, `.cjs`, `.jsx`, `.ts`, `.tsx`, `.mts` or `.cts` source
+files currently fails rather than silently omitting them. This is repository
+development verification and supplies no protected acceptance or consumer
+architecture decision.
+
 ## Architecture changes and rollout
 
 Record any required owner decision in the complete selected architecture Set
