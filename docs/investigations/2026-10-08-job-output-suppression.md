@@ -70,7 +70,25 @@ acceptance proof.
 GitHub documents that job outputs containing a secret are not sent to GitHub
 Actions and are skipped, with a warning; see the official
 [workflow syntax: `jobs.<job_id>.outputs`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idoutputs).
-That hosted runner behavior has not yet been reproduced for this fixture.
-Host reproduction is **PENDING** until the coordinator runs the exact workflow
-and reads back its run result and producer warning/output behavior. No
-replacement or adoption has been selected.
+Hosted reproduction completed on 2026-10-08 in [run 37721924693,
+attempt 1](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/37721924693),
+workflow head `9061056fc544fe9b5d8c98bd03251994600bd5dc`:
+
+- The `produce` job succeeded and its second step confirmed that the synthetic
+  JSON parsed and both the masked marker and unmasked control were present.
+- At job completion, the runner emitted
+  `Skip output 'final_message' since it may contain secret.`
+- The `inspect-handoff` job succeeded: its masked full job output was empty,
+  while the unmasked control parsed and matched its expected value.
+
+The producer and dependent job ran on Ubuntu 24.04 image versions
+`20260927.320.1` and `20261004.327.1`, respectively. These are observations of
+that run, not assumptions required by a replacement design.
+
+This reproduces the runner handoff failure class with generated noncredential
+data. It does not prove why a particular historical real response matched
+GitHub's redaction guard, validate an actual AGK decision, or establish safe
+replacement transport or protected acceptance. No replacement or adoption has
+been selected. #329 remains open for complete downstream validation/evidence
+requirements, safe handoff selection, and exact-run/revision and sensitive-input
+negative verification.
