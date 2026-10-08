@@ -18,6 +18,7 @@ const configPath = join(root, 'tsconfig.json');
 const outputMap = new Map([
   ['owner-addition/owner-addition-validation.mjs', 'src/owner-addition/owner-addition-validation.mjs'],
   ['ci-execution/ci-execution-result.mjs', 'src/ci-execution/ci-execution-result.mjs'],
+  ['owner-amendment/owner-amendment-tag-readback.mjs', 'src/owner-amendment/owner-amendment-tag-readback.mjs'],
 ]);
 const temporaryRoot = mkdtempSync(join(tmpdir(), 'architecture-gatekeeper-typescript-'));
 

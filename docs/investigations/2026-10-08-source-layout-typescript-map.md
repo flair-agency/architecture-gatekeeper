@@ -372,3 +372,19 @@ and requires response bytes. See the
 [result-contract verification record](2026-10-08-typescript-result-contract-quality.md).
 Across these two slices, **2/96 original modules** are migrated and **94 remain**.
 The preceding 1/96 paragraph describes the first foundation slice.
+
+
+## Third typed implementation slice
+
+`owner-amendment-tag-readback` now has named transport input/result and fetch/
+raw-object callback contracts under `src-ts/owner-amendment/`. The original flat
+function export is retained. API JSON and retained raw readbacks remain unknown;
+the raw-object callback accepts a synchronous Buffer or a Promise of Buffer.
+Readonly result fields describe only existing outer/tag Object.freeze calls,
+not immutable Buffer contents or trusted evidence. The existing runtime checks
+continue to bind the raw tag OID, exact B/ref, live ruleset and final ref mapping.
+See the [tag-readback verification record](2026-10-08-typescript-tag-readback-quality.md).
+
+Across the three slices, **3/96 original modules** are migrated and **93 remain**.
+The preceding progress paragraphs record the earlier slice inventories.
+Public CLI/executable extraction and the rest of #417/#419/#418 remain open.

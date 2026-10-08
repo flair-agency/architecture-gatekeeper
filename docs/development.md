@@ -67,9 +67,9 @@ and unresolved limits. The entrypoint and workflow investigations under
 
 ## Staged TypeScript and reproducible JavaScript
 
-#419 starts with the shared OWNER_ADDITION validation leaf and CI execution
-result normalizer. The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
-tracks the remaining 94 original modules and #417 grouping work. Author
+#419 starts with the shared OWNER_ADDITION validation leaf, CI execution
+result normalizer and owner-amendment tag readback callback contracts. The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
+tracks the remaining 93 original modules and #417 grouping work. Author
 `src-ts/<responsibility>/*.mts`; emit checked-in JavaScript to the corresponding
 `src/<responsibility>/*.mjs`. Preserve existing flat `src/*.mjs` paths, package
 exports and bins. A re-export facade is sufficient only for an import-only leaf;

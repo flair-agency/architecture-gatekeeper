@@ -33,6 +33,7 @@ test('TypeScript build checks missing, stale, extra, symlinked, and failed-emiss
 
   const outputPath = join(fixtureRoot, 'src/owner-addition/owner-addition-validation.mjs');
   const secondOutputPath = join(fixtureRoot, 'src/ci-execution/ci-execution-result.mjs');
+  const thirdOutputPath = join(fixtureRoot, 'src/owner-amendment/owner-amendment-tag-readback.mjs');
   const missingCheck = runBuild(fixtureRoot, '--check');
   assert.notEqual(missingCheck.status, 0);
   assert.match(missingCheck.stderr, /Generated output is missing or stale/);
@@ -41,6 +42,7 @@ test('TypeScript build checks missing, stale, extra, symlinked, and failed-emiss
   assert.equal(initialBuild.status, 0, initialBuild.stderr);
   const baselineOutput = readFileSync(outputPath, 'utf8');
   const secondBaselineOutput = readFileSync(secondOutputPath, 'utf8');
+  const thirdBaselineOutput = readFileSync(thirdOutputPath, 'utf8');
   assert.equal(runBuild(fixtureRoot, '--check').status, 0);
 
   rmSync(secondOutputPath);
@@ -97,6 +99,19 @@ test('TypeScript build checks missing, stale, extra, symlinked, and failed-emiss
   assert.equal(readFileSync(outputPath, 'utf8'), baselineOutput, 'second managed directory extra output must stop all generation');
   assert.equal(readFileSync(secondOutputPath, 'utf8'), secondBaselineOutput, 'second managed output must remain untouched');
   rmSync(dirname(secondExtraOutputPath), { recursive: true, force: true });
+
+  const thirdExtraOutputPath = join(fixtureRoot, 'src/owner-amendment/nested/unmapped.mjs');
+  mkdirSync(dirname(thirdExtraOutputPath), { recursive: true });
+  writeFileSync(thirdExtraOutputPath, 'export {};\n');
+  for (const args of [['--check'], []]) {
+    const result = runBuild(fixtureRoot, ...args);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Unexpected generated \.mjs output: src\/owner-amendment\/nested\/unmapped\.mjs/);
+  }
+  assert.equal(readFileSync(outputPath, 'utf8'), baselineOutput, 'third managed directory extra output must stop all generation');
+  assert.equal(readFileSync(secondOutputPath, 'utf8'), secondBaselineOutput, 'existing managed output must remain untouched');
+  assert.equal(readFileSync(thirdOutputPath, 'utf8'), thirdBaselineOutput, 'tag readback managed output must remain untouched');
+  rmSync(dirname(thirdExtraOutputPath), { recursive: true, force: true });
 
   const sourcePath = join(fixtureRoot, 'src-ts/owner-addition/owner-addition-validation.mts');
   const source = readFileSync(sourcePath, 'utf8');

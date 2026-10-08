@@ -1,0 +1,44 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const fixtureRoot = join(root, 'test/fixtures/tag-readback-contract');
+const configPath = join(root, 'tsconfig.json');
+const config = ts.readConfigFile(configPath, ts.sys.readFile);
+assert.equal(config.error, undefined);
+const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root, undefined, configPath);
+assert.deepEqual(parsed.errors, []);
+const options = { ...parsed.options, rootDir: root, noEmit: true };
+
+function diagnosticsFor(name) {
+  const file = join(fixtureRoot, name);
+  const program = ts.createProgram([file], options);
+  const diagnostics = ts.getPreEmitDiagnostics(program);
+  assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file), [], 'tag readback module contracts must remain error-free');
+  return diagnostics.filter(item => item.file?.fileName === file);
+}
+
+test('tag readback transport callbacks accept the explicit async and raw byte contracts', () => {
+  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+});
+
+test('tag readback rejects wrong async response, raw-byte callbacks, API result assumptions, and writable observation fields', () => {
+  const diagnostics = diagnosticsFor('negative.mts');
+  assert.deepEqual(diagnostics.map(item => [
+    item.code,
+    item.file.getLineAndCharacterOfPosition(item.start).line + 1,
+  ]), [[2322, 3], [2739, 4], [2322, 5], [2322, 6], [2322, 7], [2740, 8], [2322, 11], [2322, 12], [2322, 13], [2540, 14]]);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /json/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[1].messageText, '\n'), /Promise/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[2].messageText, '\n'), /Promise<unknown>/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[3].messageText, '\n'), /Buffer/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[4].messageText, '\n'), /Buffer/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[5].messageText, '\n'), /OwnerAmendmentTagReadbackInput/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[6].messageText, '\n'), /unknown.*string|not assignable/i);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[7].messageText, '\n'), /unknown.*string|not assignable/i);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[8].messageText, '\n'), /unknown.*string|not assignable/i);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[9].messageText, '\n'), /read-only/);
+});
