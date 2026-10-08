@@ -989,13 +989,25 @@ test('enforces recorded deadline and cancellation during response body consumpti
   );
 });
 
-test('races never-settling response body consumption against deadline for HTTP success', async () => {
-  // Never settling promise for response.json() on ok: true
-  const neverSettlingFetch = async () => ({
-    ok: true,
-    status: 200,
-    json: () => new Promise(() => {}),
-  });
+test('races never-settling response body consumption against deadline for HTTP success', { timeout: 5000 }, async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+
+  let markJsonEntered;
+  const jsonEntered = new Promise(resolve => { markJsonEntered = resolve; });
+  let responseSignal;
+  let jsonPending = false;
+  const neverSettlingFetch = async (_url, { signal }) => {
+    responseSignal = signal;
+    return {
+      ok: true,
+      status: 200,
+      json: () => {
+        jsonPending = true;
+        markJsonEntered();
+        return new Promise(() => {});
+      },
+    };
+  };
 
   const request = {
     prompt: 'test prompt',
@@ -1008,22 +1020,46 @@ test('races never-settling response body consumption against deadline for HTTP s
     },
   };
 
-  const start = Date.now();
-  await assert.rejects(
-    () => executeGeminiReviewer(request, { apiKey: 'k', fetch: neverSettlingFetch }),
-    /Architecture gate reviewer timed out after 25ms/
-  );
-  const elapsed = Date.now() - start;
-  assert.ok(elapsed >= 20 && elapsed < 200, `Expected timeout around 25ms, got ${elapsed}ms`);
+  let outcome = 'pending';
+  const review = executeGeminiReviewer(request, { apiKey: 'k', fetch: neverSettlingFetch })
+    .then(() => { outcome = 'resolved'; }, error => { outcome = error; });
+  await jsonEntered;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(jsonPending, true, 'response.json() should be pending before the deadline');
+  assert.equal(responseSignal.aborted, false, 'fetch signal should remain live before the deadline');
+  assert.equal(outcome, 'pending', 'review should remain pending before the deadline');
+
+  t.mock.timers.tick(24);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(responseSignal.aborted, false, 'fetch signal should remain live one millisecond before deadline');
+  assert.equal(outcome, 'pending', 'review should remain pending one millisecond before deadline');
+
+  t.mock.timers.tick(1);
+  await review;
+  assert.match(outcome instanceof Error ? outcome.message : '', /Architecture gate reviewer timed out after 25ms/);
+  assert.equal(responseSignal.aborted, true, 'deadline should cancel the fetch signal');
+  assert.equal(jsonPending, true, 'deadline should win while response.json() remains unresolved');
 });
 
-test('races never-settling response body consumption against deadline for HTTP error', async () => {
-  // Never settling promise for response.json() on ok: false
-  const neverSettlingErrorFetch = async () => ({
-    ok: false,
-    status: 500,
-    json: () => new Promise(() => {}),
-  });
+test('races never-settling response body consumption against deadline for HTTP error', { timeout: 5000 }, async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+
+  let markJsonEntered;
+  const jsonEntered = new Promise(resolve => { markJsonEntered = resolve; });
+  let responseSignal;
+  let jsonPending = false;
+  const neverSettlingErrorFetch = async (_url, { signal }) => {
+    responseSignal = signal;
+    return {
+      ok: false,
+      status: 500,
+      json: () => {
+        jsonPending = true;
+        markJsonEntered();
+        return new Promise(() => {});
+      },
+    };
+  };
 
   const request = {
     prompt: 'test prompt',
@@ -1036,13 +1072,25 @@ test('races never-settling response body consumption against deadline for HTTP e
     },
   };
 
-  const start = Date.now();
-  await assert.rejects(
-    () => executeGeminiReviewer(request, { apiKey: 'k', fetch: neverSettlingErrorFetch }),
-    /Architecture gate reviewer timed out after 25ms/
-  );
-  const elapsed = Date.now() - start;
-  assert.ok(elapsed >= 20 && elapsed < 200, `Expected timeout around 25ms, got ${elapsed}ms`);
+  let outcome = 'pending';
+  const review = executeGeminiReviewer(request, { apiKey: 'k', fetch: neverSettlingErrorFetch })
+    .then(() => { outcome = 'resolved'; }, error => { outcome = error; });
+  await jsonEntered;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(jsonPending, true, 'error response.json() should be pending before the deadline');
+  assert.equal(responseSignal.aborted, false, 'fetch signal should remain live before the deadline');
+  assert.equal(outcome, 'pending', 'review should remain pending before the deadline');
+
+  t.mock.timers.tick(24);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(responseSignal.aborted, false, 'fetch signal should remain live one millisecond before deadline');
+  assert.equal(outcome, 'pending', 'review should remain pending one millisecond before deadline');
+
+  t.mock.timers.tick(1);
+  await review;
+  assert.match(outcome instanceof Error ? outcome.message : '', /Architecture gate reviewer timed out after 25ms/);
+  assert.equal(responseSignal.aborted, true, 'deadline should cancel the fetch signal');
+  assert.equal(jsonPending, true, 'deadline should win while error response.json() remains unresolved');
 });
 
 test('cooperative external signal cancellation aborts execution', async () => {
