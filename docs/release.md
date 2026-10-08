@@ -310,6 +310,7 @@ test -z "$(git status --porcelain)"
 RELEASE_TAG="$RELEASE_TAG" RELEASE_REF="$RELEASE_REF" RELEASE_SHA="$RELEASE_SOURCE_SHA" \
   node scripts/release-channel.mjs validate
 npm ci --ignore-scripts
+npm run check:typescript
 node scripts/check-source-cycles.mjs
 npm test
 RELEASE_TMP="$(mktemp -d)"
@@ -328,7 +329,8 @@ node "$RELEASE_REPO/test/installed-smoke.mjs" "$PWD/node_modules/.bin"
 cd "$RELEASE_REPO"
 ```
 
-Retain the source SHA, version, `validate` output, source graph check result,
+Retain the source SHA, version, `validate` output, TypeScript/output check,
+source graph check result,
 `npm test` result, archive filename, `$RELEASE_INTEGRITY`, proof that
 `docs/release.md` is packed, install result, and installed-smoke result. For
 native review evidence, record the exact reviewed SHA and returned decision; a
@@ -368,7 +370,8 @@ git push origin "refs/tags/$RELEASE_TAG"
 The tag push triggers `.github/workflows/publish-package.yml`, which
 checks out `github.sha`, verifies that it equals `HEAD` and that tag, ref and
 `package.json` version agree, installs locked development dependencies with
-`npm ci --ignore-scripts`, checks the static source import graph, then runs
+`npm ci --ignore-scripts`, checks strict TypeScript and generated-output identity,
+checks the static source import graph, then runs
 `npm test`.
 
 The workflow packs with lifecycle scripts disabled, checks required archive

@@ -39,6 +39,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
           node scripts/release-channel.mjs validate >> "$GITHUB_OUTPUT"
           npm ci --ignore-scripts
+          npm run check:typescript
           node scripts/check-source-cycles.mjs
           npm test
       - name: Pack, inspect, install and smoke the package archive
