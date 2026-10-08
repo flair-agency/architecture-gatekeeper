@@ -403,11 +403,14 @@ The LIVE Agency #106 trial exposed a false acceptance: an enforced legacy v1
 review treated candidate-edited authority and unsupported completion claims as
 canonical. The owner explicitly authorized a fail-closed repair for v0.5.1 on
 2026-09-26, including a compatibility break for existing enforced v1 consumers.
-This is the target contract, not active acceptance behavior. It becomes
-applicable only after PR #126's implementation and focused regression tests are
-integrated. Until then, this text does not establish that the v1 runtime
-enforces these requirements. Historical v1 reports are not retroactively
-reclassified.
+PR #126 implemented and regression-tested this owner-authorized target, and
+the repair shipped in v0.5.1. A runtime containing the repair enforces the
+requirements below for enforced legacy v1 reviews; the caller's
+`validation-path` must match the recorded-base validation selection or the
+review fails closed.
+Implementation and publication do not establish adoption by a particular
+consumer or protected host enforcement. Historical v1 reports are not
+retroactively reclassified.
 
 For an enforced v1 review, the recorded base policy must select a nonempty,
 bounded `authorityFiles` list of canonical repository paths, plus canonical
@@ -429,11 +432,11 @@ authority path. A separate previous-base-authorized addition route remains
 available for an eligible authority-only B; an ordinary v1 `PASS` cannot
 substitute for it.
 
-Previously valid enforced v1 policies without these base-selected inputs, or
-without a matching caller validation selection, cease to qualify for acceptance
-when this target is implemented. A candidate PR cannot enable its own
-acceptance by adding the fields to its head; the consumer must first adopt the
-base policy and a base-owned caller under its own governance. A caller loaded
+Enforced v1 policies without these base-selected inputs, or without a matching
+caller validation selection, do not qualify for acceptance on a runtime
+containing this repair. A candidate PR cannot enable its own acceptance by
+adding the fields to its head; the consumer must first adopt the base policy
+and a base-owned caller under its own governance. A caller loaded
 from a pull-request merge commit can itself be candidate-controlled, including
 its selected reusable-workflow revision. Until the caller and required check
 producer are controlled by the applicable host mechanism, the workflow result
