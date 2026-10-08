@@ -1,7 +1,8 @@
 # Typed CI execution result states under the standard build
 
-This nonnormative local successor to #431 uses base
-`25165ab0d8c62db6ae20d5b75993ca48b0d91d3e`. It carries only the CI result
+This nonnormative successor to #431 is integrated against approved main
+`77fb908d2c0f90e50c39f10b71b71902ac5bfd1f`, whose tree matches the prior local
+base `25165ab0d8c62db6ae20d5b75993ca48b0d91d3e`. It carries only the CI result
 feature from donor #433 head `9905d5c843f5bc76d745ecfa8d7b614d45bf8cc4`
 (authored blob `8981fd7a2406e68280cfda250769b8a17a61835c`), adapting its
 paths and tests to the single editable source tree. It changes no selected
@@ -46,6 +47,7 @@ against the committed local candidate. Historical tests on older
 source/generated layouts are not transferred to this candidate.
 
 The candidate contains two of the original 96 modules as typed leaves; 94
-remain. #412/#417/#418/#419 stay open. Current #431 protected review and its
-individual merge approval are separate prerequisites for public stack
-integration; this document supplies neither.
+remain. #412/#417/#418/#419 stay open. #431 completed protected review and
+received its own human merge approval before merging into main. The #433
+successor still requires its own exact-candidate protected acceptance and
+individual human merge approval; this document supplies neither.
