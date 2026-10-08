@@ -16,7 +16,7 @@ Only the temporal implementation-status sentences in `docs/architecture/review-e
 
 | Selected clause | Before | Disposition and preserved meaning |
 | --- | --- | --- |
-| Issue #120 target and history, heading `Target: legacy v1 CI authority repair` | Lines 400-410 at baseline `3a3cf...` described the rule as not active behavior and said it applied only after PR #126 integration. | Replaced the obsolete future tense with merged, regression-tested, shipped status. Retained owner authorization, compatibility break, the consumer-policy/caller selection condition, distinction from protected host enforcement, and no retroactive reclassification. The heading/fragment is unchanged. |
+| Issue #120 target and history, heading `Target: legacy v1 CI authority repair` | Lines 400-410 at baseline `3a3cf...` described the rule as not active behavior and said it applied only after PR #126 integration. | Replaced the obsolete future tense with merged, regression-tested, shipped status. The status summary now names only the caller `validation-path` match; it does not imply that the caller selects or must match prompt/schema values. Retained owner authorization, compatibility break, distinction from protected host enforcement, and no retroactive reclassification. The heading/fragment is unchanged. |
 | Recorded-base inputs and candidate-resistant snapshots | Lines 412-424 | Unchanged: enforced v1 must select canonical authority, prompt, schema and validation path/null; caller validation selection must match; selected bytes come from the same recorded base; candidate bytes cannot self-authorize. |
 | Ordinary acceptance and separate addition | Lines 425-430 | Unchanged: candidate-modified selected authority, absent/invalid selectors or snapshots, and incomplete/extra reported paths fail closed; eligible authority-only B remains a separate previous-base-authorized addition procedure. |
 | Consumer compatibility and host boundary | Lines 432-445 | Replaced only “when this target is implemented” with the current runtime qualification. Preserved the rule that missing selections do not qualify for acceptance, candidate PRs cannot select their own policy, consumers adopt base policy and base-owned caller under their governance, merge-commit callers may be candidate-controlled, protected host evidence remains separate, and Issue #121 is not weakened. |
@@ -94,14 +94,14 @@ The audit baseline at `5e9c5585055c8c330c03fc7bfdf12f0d29058782` contains 54 fil
 
 | File | Before bytes | Candidate bytes | Delta |
 | --- | ---: | ---: | ---: |
-| `docs/architecture/review-execution.md` | 28,901 | 29,039 | +138 |
+| `docs/architecture/review-execution.md` | 28,901 | 29,056 | +155 |
 | `.codex/gatekeeper/authorities.json` | 1,077 | 1,077 | 0 |
 | `docs/architecture.md` | 41,411 | 41,411 | 0 |
 | `docs/architecture/authority-set.md` | 6,863 | 6,863 | 0 |
 | `docs/architecture/owner-addition.md` | 18,063 | 18,063 | 0 |
 | `docs/architecture/owner-amendment.md` | 24,531 | 24,531 | 0 |
 | `docs/architecture/self-profile.md` | 7,150 | 7,150 | 0 |
-| **Selected six-member Set total** | **126,919** | **127,057** | **+138** |
+| **Selected six-member Set total** | **126,919** | **127,074** | **+155** |
 
 The new ledger and one-line index entry increase repository-only docs size; neither is part of package files or selected authority. No reduction target or max-file-limit change is proposed.
 

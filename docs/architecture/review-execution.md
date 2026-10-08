@@ -405,8 +405,9 @@ canonical. The owner explicitly authorized a fail-closed repair for v0.5.1 on
 2026-09-26, including a compatibility break for existing enforced v1 consumers.
 PR #126 implemented and regression-tested this owner-authorized target, and
 the repair shipped in v0.5.1. A runtime containing the repair enforces the
-requirements below for enforced legacy v1 reviews: the recorded-base policy
-and caller must select matching values or the review fails closed.
+requirements below for enforced legacy v1 reviews; the caller's
+`validation-path` must match the recorded-base validation selection or the
+review fails closed.
 Implementation and publication do not establish adoption by a particular
 consumer or protected host enforcement. Historical v1 reports are not
 retroactively reclassified.
