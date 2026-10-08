@@ -13,7 +13,7 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
     const block = text.split('      - name: Record ordinary execution observation\n')[1]?.split('      - name:')[0];
     const observation = parseWorkflow(text, file).jobs.review.steps.find(step => step.name === 'Record ordinary execution observation');
     assert.ok(block);
-    assert.match(block, /if: always\(\) && !cancelled\(\) && needs\.policy\.outputs\.execution_selection == 'policy' && steps\.validation_runtime\.outcome == 'success'/);
+    assert.match(block, /if: always\(\) && !cancelled\(\) && needs\.policy\.outputs\.execution_selection == 'policy' && steps\.validation_runtime\.outcome == 'success' && steps\.validation_runtime_location\.outcome == 'success'/);
     for (const [name, expression] of Object.entries({
       REVIEW_PROVIDER: 'needs.policy.outputs.provider',
       REVIEW_MODEL: 'needs.policy.outputs.model',
@@ -23,6 +23,7 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
     })) assert.ok(block.includes(`${name}: \${{ ${expression} }}`));
     assert.match(text, /execution_settings_base64: \$\{\{ steps\.resolve\.outputs\.executionSettingsBase64 \}\}/);
     assert.equal(observation.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github');
+    assert.equal(observation.env.GATEKEEPER_RUNTIME_ROOT, '${{ steps.validation_runtime_location.outputs.root }}');
     const checkout = text.split('name: Check out the pinned validation runtime')[1]?.split('      - name:')[0];
     assert.match(checkout, /id: validation_runtime/);
     assert.match(checkout, /execution_selection == 'policy'/);
@@ -36,17 +37,18 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
   });
 }
 
-function evaluateObserverCondition(expression, { cancelled, selection, checkoutOutcome }) {
+function evaluateObserverCondition(expression, { cancelled, selection, checkoutOutcome, relocationOutcome }) {
   return expression.split(/\s*&&\s*/).every((term) => {
     if (term === 'always()') return true;
     if (term === '!cancelled()') return !cancelled;
     if (term === "needs.policy.outputs.execution_selection == 'policy'") return selection === 'policy';
     if (term === "steps.validation_runtime.outcome == 'success'") return checkoutOutcome === 'success';
+    if (term === "steps.validation_runtime_location.outcome == 'success'") return relocationOutcome === 'success';
     throw new Error(`Unexpected observer condition term: ${term}`);
   });
 }
 
-test('candidate-path observer cannot execute unless the pinned runtime checkout succeeded', () => {
+test('candidate-path observer cannot execute unless the pinned runtime checkout and relocation succeeded', () => {
   for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
     const text = readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), 'utf8');
     const block = text.split('      - name: Record ordinary execution observation\n')[1]?.split('      - name:')[0];
@@ -66,12 +68,16 @@ test('candidate-path observer cannot execute unless the pinned runtime checkout 
       };
 
       for (const outcome of ['failure', 'skipped']) {
-        invokeWhenEnabled({ cancelled: false, selection: 'policy', checkoutOutcome: outcome });
+        invokeWhenEnabled({ cancelled: false, selection: 'policy', checkoutOutcome: outcome, relocationOutcome: 'success' });
         assert.equal(existsSync(marker), false, `${file}: candidate script ran after checkout ${outcome}`);
       }
-      invokeWhenEnabled({ cancelled: true, selection: 'policy', checkoutOutcome: 'success' });
+      for (const outcome of ['failure', 'skipped']) {
+        invokeWhenEnabled({ cancelled: false, selection: 'policy', checkoutOutcome: 'success', relocationOutcome: outcome });
+        assert.equal(existsSync(marker), false, `${file}: candidate script ran after relocation ${outcome}`);
+      }
+      invokeWhenEnabled({ cancelled: true, selection: 'policy', checkoutOutcome: 'success', relocationOutcome: 'success' });
       assert.equal(existsSync(marker), false, `${file}: candidate script ran after cancellation`);
-      invokeWhenEnabled({ cancelled: false, selection: 'policy', checkoutOutcome: 'success' });
+      invokeWhenEnabled({ cancelled: false, selection: 'policy', checkoutOutcome: 'success', relocationOutcome: 'success' });
       assert.equal(existsSync(marker), true, `${file}: successful pinned checkout did not enable observer`);
     } finally {
       rmSync(temp, { recursive: true, force: true });

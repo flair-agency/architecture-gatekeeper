@@ -163,10 +163,12 @@ test('protected runtime checkouts build their pinned distribution before use', (
         const build = isolated ? steps[index + 3] : steps[index + 2];
         if (isolated) {
           assert.equal(relocation.name, runtimePath.endsWith('validation-runtime')
-            ? 'Move validation runtime outside candidate workspace ancestry'
-            : 'Move protected runtime outside candidate workspace ancestry');
+            ? 'Relocate pinned validation runtime'
+            : 'Relocate pinned protected runtime');
+          assert.equal(relocation.id, runtimePath.endsWith('validation-runtime') ? 'validation_runtime_location' : 'runtime_location');
           assert.equal(relocation.env.EXPECTED_RUNTIME_SHA, '${{ job.workflow_sha }}');
           assert.match(relocation.run, new RegExp(`node ${runtimePath.replaceAll('.', '\\.')}/scripts/relocate-protected-runtime\\.mjs ${runtimePath.replaceAll('.', '\\.')}`));
+          assert.match(relocation.run, />> "\$GITHUB_OUTPUT"$/);
           assert.equal(relocation.if, checkout.if, `${profile}.${jobName} keeps exact conditional runtime selection`);
         }
         assert.equal(nodeStep.uses, 'actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f', `${profile}.${jobName} Node pin`);
@@ -174,6 +176,10 @@ test('protected runtime checkouts build their pinned distribution before use', (
         assert.match(build.name, /^Build the pinned (protected|validation) runtime$/);
         if (isolated) {
           assert.match(build.run, /cd "\$GATEKEEPER_RUNTIME_ROOT"/);
+          assert.ok(build.run.indexOf('test -n') < build.run.indexOf('cd '), 'empty output is rejected before changing cwd');
+          assert.equal(build.env.GATEKEEPER_RUNTIME_ROOT, runtimePath.endsWith('validation-runtime')
+            ? '${{ steps.validation_runtime_location.outputs.root }}'
+            : '${{ steps.runtime_location.outputs.root }}');
           assert.match(build.run, /npm ci --ignore-scripts\s+npm run build/);
           assert.doesNotMatch(build.run, /--prefix/);
         } else {
@@ -184,6 +190,9 @@ test('protected runtime checkouts build their pinned distribution before use', (
 
         const laterRuntimeCalls = steps.slice(isolated ? index + 4 : index + 3).map(step => `${step.run ?? ''}\n${step.env ? JSON.stringify(step.env) : ''}`).join('\n');
         if (isolated) {
+          for (const step of steps.slice(isolated ? index + 4 : index + 3)) {
+            if ((step.run ?? '').includes('$GATEKEEPER_RUNTIME_ROOT')) assert.equal(typeof step.env?.GATEKEEPER_RUNTIME_ROOT, 'string', `${profile}.${jobName} explicitly binds runtime root in ${step.name}`);
+          }
           assert.doesNotMatch(laterRuntimeCalls, new RegExp(`${runtimePath.replaceAll('.', '\\.')}/(?:src|dist|scripts)/`));
           assert.match(laterRuntimeCalls, /\$GATEKEEPER_RUNTIME_ROOT\/(?:dist|scripts)\//);
         } else {
@@ -421,4 +430,32 @@ test('comments, formatting, and mapping key order do not alter structural valida
 test('malformed YAML and duplicate mapping keys fail before invariant checks', () => {
   assert.throws(() => parseWorkflow('jobs:\n  policy: {}\n  policy: {}\n', 'duplicate fixture'), /duplicate keys/);
   assert.throws(() => parseWorkflow('jobs: [\n', 'malformed fixture'), /valid YAML/);
+});
+
+
+test('missing and relative runtime outputs cannot run the candidate build', () => {
+  const root = mkdtempSync(join(tmpdir(), 'agk-empty-runtime-'));
+  try {
+    for (const profile of ['consumer', 'self']) for (const job of ['policy', 'review']) for (const [label, output] of [['empty', ''], ['relative', '.']]) {
+      const candidate = join(root, `${profile}-${job}-${label}`);
+      mkdirSync(candidate);
+      const pkg = { name: 'empty-runtime-fixture', version: '1.0.0', scripts: { build: 'node build-marker.mjs' } };
+      writeFileSync(join(candidate, 'package.json'), JSON.stringify(pkg));
+      writeFileSync(join(candidate, 'package-lock.json'), JSON.stringify({ name: pkg.name, version: pkg.version, lockfileVersion: 3, requires: true, packages: { '': { name: pkg.name, version: pkg.version } } }));
+      writeFileSync(join(candidate, 'build-marker.mjs'), "import { writeFileSync } from 'node:fs'; writeFileSync('candidate-build-ran', 'yes');\n");
+      const block = workflows()[profile].jobs[job].steps.find(step => step.name === (job === 'policy' ? 'Build the pinned protected runtime' : 'Build the pinned validation runtime')).run;
+      const invoke = script => spawnSync('/bin/bash', ['-e', '-c', script], {
+        cwd: candidate, encoding: 'utf8',
+        env: { ...process.env, GATEKEEPER_RUNTIME_ROOT: output, npm_config_offline: 'true', npm_config_audit: 'false', npm_config_cache: join(root, 'npm-cache') },
+      });
+      const marker = join(candidate, 'candidate-build-ran');
+      const oldBehavior = invoke(block.slice(block.indexOf('cd "$GATEKEEPER_RUNTIME_ROOT"')));
+      assert.equal(oldBehavior.status, 0, oldBehavior.stderr);
+      assert.equal(existsSync(marker), true, `${profile}.${job}: control must execute candidate build`);
+      rmSync(marker);
+      const fixed = invoke(block);
+      assert.notEqual(fixed.status, 0, `${profile}.${job}: ${label} output must fail`);
+      assert.equal(existsSync(marker), false, `${profile}.${job}: candidate build must not run`);
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

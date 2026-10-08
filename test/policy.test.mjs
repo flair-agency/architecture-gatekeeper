@@ -50,6 +50,7 @@ test('legacy v1 workflow binds protected instructions, authority, and exact repo
   assert.deepEqual(selection.env, {
     CALLER_VALIDATION_PATH: '${{ inputs.validation-path }}',
     BASE_VALIDATION_PATH: '${{ steps.resolve.outputs.legacyValidationPath }}',
+    GATEKEEPER_RUNTIME_ROOT: '${{ steps.runtime_location.outputs.root }}',
   });
   assert.equal(selection.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/verify-legacy-validation-selection.mjs" "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"');
   assert.match(workflow, /VALIDATION_PATH: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_validation_path \|\| inputs\.validation-path \}\}/);

@@ -94,12 +94,20 @@ jobs:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: 22
-      - name: Move protected runtime outside candidate workspace ancestry
+      - name: Relocate pinned protected runtime
+        id: runtime_location
         env:
           EXPECTED_RUNTIME_SHA: ${{ job.workflow_sha }}
-        run: node .architecture-gatekeeper-runtime/scripts/relocate-protected-runtime.mjs .architecture-gatekeeper-runtime
+        run: node .architecture-gatekeeper-runtime/scripts/relocate-protected-runtime.mjs .architecture-gatekeeper-runtime >> "$GITHUB_OUTPUT"
       - name: Build the pinned protected runtime
+        env:
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.runtime_location.outputs.root }}
         run: |
+          test -n "$GATEKEEPER_RUNTIME_ROOT"
+          case "$GATEKEEPER_RUNTIME_ROOT" in
+            /*) ;;
+            *) echo "Protected runtime root must be absolute" >&2; exit 1 ;;
+          esac
           cd "$GATEKEEPER_RUNTIME_ROOT"
           npm ci --ignore-scripts
           npm run build
@@ -128,6 +136,7 @@ jobs:
           BASE_BRANCH: ${{ github.base_ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           POLICY_PATH: ${{ inputs.policy-path }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.runtime_location.outputs.root }}
         run: |
           if test "$GITHUB_EVENT_NAME" = pull_request; then
             test "$POLICY_PATH" = .codex/gatekeeper/ci-policy.json
@@ -153,6 +162,7 @@ jobs:
         env:
           REVIEW_JOB_TIMEOUT_MINUTES: ${{ inputs.review-job-timeout-minutes }}
           REVIEW_STEP_TIMEOUT_MINUTES: ${{ inputs.review-step-timeout-minutes }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/scripts/validate-review-timeouts.mjs" >> "$GITHUB_OUTPUT"
       - name: Reject unwired reviewer providers
         env:
@@ -182,6 +192,7 @@ jobs:
         env:
           CALLER_VALIDATION_PATH: ${{ inputs.validation-path }}
           BASE_VALIDATION_PATH: ${{ steps.resolve.outputs.legacyValidationPath }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/verify-legacy-validation-selection.mjs" "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"
 
   review:
@@ -276,14 +287,22 @@ jobs:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: 22
-      - name: Move validation runtime outside candidate workspace ancestry
+      - name: Relocate pinned validation runtime
+        id: validation_runtime_location
         if: needs.policy.outputs.execution_selection == 'policy' || inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
         env:
           EXPECTED_RUNTIME_SHA: ${{ job.workflow_sha }}
-        run: node .architecture-gatekeeper-validation-runtime/scripts/relocate-protected-runtime.mjs .architecture-gatekeeper-validation-runtime
+        run: node .architecture-gatekeeper-validation-runtime/scripts/relocate-protected-runtime.mjs .architecture-gatekeeper-validation-runtime >> "$GITHUB_OUTPUT"
       - name: Build the pinned validation runtime
         if: needs.policy.outputs.execution_selection == 'policy' || inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
+        env:
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: |
+          test -n "$GATEKEEPER_RUNTIME_ROOT"
+          case "$GATEKEEPER_RUNTIME_ROOT" in
+            /*) ;;
+            *) echo "Protected runtime root must be absolute" >&2; exit 1 ;;
+          esac
           cd "$GATEKEEPER_RUNTIME_ROOT"
           npm ci --ignore-scripts
           npm run build
@@ -306,6 +325,7 @@ jobs:
           VALIDATION_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-decision.validation.json
           OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-legacy-prompt.md
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" prepare
       - name: Materialize protected Authority Set before review
         if: needs.policy.outputs.authority_manifest_path != ''
@@ -319,6 +339,7 @@ jobs:
           AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
           OWNER_AUTHORITY_ID: ${{ needs.policy.outputs.owner_addition_authority_id }}
           OWNER_AUTHORITY_PATH: ${{ needs.policy.outputs.owner_addition_authority_path }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: |
           umask 077
           git show "$BASE_SHA:$MANIFEST_PATH" > "$RUNNER_TEMP/architecture-gate-authorities.json"
@@ -347,6 +368,7 @@ jobs:
           SELF_REPOSITORY: ${{ github.repository }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-procedural-authority-change.mjs"
       - name: Attach exact pull request task context to protected review
         if: needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
@@ -358,12 +380,14 @@ jobs:
           AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
           AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-review-context.mjs"
       - name: Check protected Authority Set schema and complete prompt
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
           AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
           AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: |
           node "$GATEKEEPER_RUNTIME_ROOT/dist/preflight-authority-set-review.mjs" \
             "$RUNNER_TEMP/architecture-gate-decision.schema.json" \
@@ -385,13 +409,14 @@ jobs:
           codex-args: ${{ needs.policy.outputs.codex_args || (inputs.self-flex-probe && '["--ephemeral","-c","project_doc_max_bytes=0","-c","service_tier=''flex''","--json"]' || '["--ephemeral","-c","project_doc_max_bytes=0","--json"]') }}
       - name: Record ordinary execution observation
         id: execution
-        if: always() && !cancelled() && needs.policy.outputs.execution_selection == 'policy' && steps.validation_runtime.outcome == 'success'
+        if: always() && !cancelled() && needs.policy.outputs.execution_selection == 'policy' && steps.validation_runtime.outcome == 'success' && steps.validation_runtime_location.outcome == 'success'
         env:
           REVIEW_PROVIDER: ${{ needs.policy.outputs.provider }}
           REVIEW_MODEL: ${{ needs.policy.outputs.model }}
           REVIEW_SETTINGS_BASE64: ${{ needs.policy.outputs.execution_settings_base64 }}
           REVIEW_OUTCOME: ${{ steps.codex.outcome }}
           REVIEW_RESPONSE: ${{ steps.codex.outputs.final-message }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github
       - name: Diagnose architecture reviewer completion
         if: always()
@@ -423,22 +448,26 @@ jobs:
         id: decision
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-decision-kind.mjs"
       - name: Apply consumer-owned decision validation
         if: (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '')
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: printf '%s' "$DECISION" | node "$GATEKEEPER_RUNTIME_ROOT/dist/validate-decision.mjs" "$RUNNER_TEMP/architecture-gate-decision.validation.json"
       - name: Require exact reported legacy authority files
         if: needs.policy.outputs.policy_version == '1'
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" validate
       - name: Require exact reported Authority IDs
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: printf '%s' "$DECISION" | node "$GATEKEEPER_RUNTIME_ROOT/dist/validate-authority-set-decision.mjs" "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
   block-review-record:
