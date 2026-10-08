@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -51,11 +51,22 @@ function runCli(root, overrides = {}, responseOverrides = {}) {
     GITHUB_REPOSITORY: repo, PR_NUMBER: '17', BASE_SHA: base, HEAD_SHA: head, REVIEWED_SHA: reviewed,
     GITHUB_API_URL: 'https://api.github.com/', GITHUB_TOKEN: 'synthetic-test-token',
     GITHUB_STEP_SUMMARY: paths.summary, REPORT_PATH: paths.report, GITHUB_OUTPUT: paths.output,
-    CI_REPORT_FIXTURE: paths.fixture, CI_REPORT_REQUEST_LOG: paths.requests,
     ...overrides,
     NODE_OPTIONS: `--import=${pathToFileURL(hook).href}`,
   });
-  const child = spawnSync(process.execPath, [entrypoint], { cwd: root, env, encoding: 'utf8', timeout: 15_000 });
+  let child;
+  const fixtureFd = openSync(paths.fixture, 'r');
+  try {
+    const requestLogFd = openSync(paths.requests, 'w', 0o600);
+    try {
+      child = spawnSync(process.execPath, [entrypoint], { cwd: root, env, encoding: 'utf8', timeout: 15_000,
+        stdio: ['ignore', 'pipe', 'pipe', fixtureFd, requestLogFd] });
+    } finally {
+      closeSync(requestLogFd);
+    }
+  } finally {
+    closeSync(fixtureFd);
+  }
   assert.equal(child.error, undefined, `ci-report child process could not be observed: ${child.error?.message || ''}`);
   assert.equal(child.signal, null, `ci-report child was interrupted (${child.signal})`);
   const fixtureLog = JSON.parse(readFileSync(paths.requests, 'utf8').trim());
