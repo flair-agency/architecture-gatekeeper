@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { fetchOwnerAmendmentBlockArtifact, OWNER_AMENDMENT_ARTIFACT_LIMITS } from '../src/owner-amendment-artifact.mjs';
+import { fetchOwnerAmendmentBlockArtifact, OWNER_AMENDMENT_ARTIFACT_LIMITS } from '../dist/owner-amendment-artifact.mjs';
 
 const expected = { repository: 'flair-agency/example', artifactId: '88', runId: '42', runAttempt: '2', baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40) };
 const digest = bytes => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;

@@ -7,7 +7,7 @@ import { request as httpRequest } from 'node:http';
 import { Server } from 'node:http';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { runGeminiCliProxySession } from '../src/gemini-cli-proxy-session.mjs';
+import { runGeminiCliProxySession } from '../dist/gemini-cli-proxy-session.mjs';
 
 const oid = char => char.repeat(40);
 const workspaceLimits = { maxFiles: 2, maxFileBytes: 2048, maxTotalBytes: 4096 };

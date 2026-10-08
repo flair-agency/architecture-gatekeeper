@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync }
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { prepareAuthoritySet } from '../src/prepare-authority-set.mjs';
+import { prepareAuthoritySet } from '../dist/prepare-authority-set.mjs';
 
 const limits = { maxManifestBytes: 4096, maxMembers: 3, maxFileBytes: 1024, maxTotalBytes: 2048, maxPromptBytes: 8192 };
 const authority = { id: 'self-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' };
@@ -72,7 +72,7 @@ test('preserves complete two-member order and provenance digest', async t => {
 test('external CLI without its explicit token fails without creating output', t => {
   const f = fixture(t); const outputDir = join(f.root, 'bundle');
   writeFileSync(f.manifestPath, JSON.stringify({ version: 1, authorities: [{ id: 'external-contract', repository: 'flair-agency/parent', revision: 'a'.repeat(40), path: 'docs/parent.md' }] }));
-  const result = spawnSync(process.execPath, [new URL('../src/prepare-authority-set.mjs', import.meta.url).pathname,
+  const result = spawnSync(process.execPath, [new URL('../dist/prepare-authority-set.mjs', import.meta.url).pathname,
     '--manifest', f.manifestPath, '--self-repository', 'flair-agency/example', '--self-root', f.selfRoot,
     '--authority-sha', f.authorityRevision, '--limits', f.limitsPath, '--output-dir', outputDir],
   { encoding: 'utf8', env: { ...process.env, GATEKEEPER_SOURCE_TOKEN: '' } });
@@ -83,7 +83,7 @@ test('external CLI without its explicit token fails without creating output', t 
 
 test('direct CLI invocation writes the selected self-authority bundle', t => {
   const f = fixture(t); const outputDir = join(f.root, 'bundle');
-  const result = spawnSync(process.execPath, [new URL('../src/prepare-authority-set.mjs', import.meta.url).pathname,
+  const result = spawnSync(process.execPath, [new URL('../dist/prepare-authority-set.mjs', import.meta.url).pathname,
     '--manifest', f.manifestPath, '--self-repository', 'flair-agency/example', '--self-root', f.selfRoot,
     '--authority-sha', f.authorityRevision, '--limits', f.limitsPath, '--output-dir', outputDir],
   { encoding: 'utf8', env: { ...process.env, GATEKEEPER_SOURCE_TOKEN: '' } });

@@ -8,8 +8,9 @@ this guide does not amend that Set.
 ## Repository layout
 
 This is a Node.js ES module package. Its supported Node version is declared by
-`package.json#engines`. Runtime JavaScript and compatibility paths are in `src/`; migrated TypeScript
-authoring source is in `src-ts/`. Tests are in `test/`, the
+`package.json#engines`. Editable runtime source is in `src/`; TypeScript modules
+use `.mts` and JavaScript modules use `.mjs`. `npm run build` emits the runtime
+package into ignored `dist/`. Tests are in `test/`, the
 separately distributed Codex Skill is in `skills/architecture-review/`, and
 reusable and self-review workflows are in `.github/workflows/`.
 
@@ -54,6 +55,13 @@ useful assertions. Run the focused structure suite for fast feedback:
 node --test test/workflow-structure.test.mjs
 ```
 
+When request or receipt identity binds runtime implementation bytes, exercise
+the actual emitted and installed layouts. A grouped `.mjs` implementation must
+be covered by the identity collected at its real path; prove both that a fresh
+request/receipt validates and that changing a covered implementation byte
+invalidates an earlier request and receipt. Keep such mutations inside isolated
+package copies so repository runtime files are never altered by the test.
+
 Static YAML analysis does not execute GitHub expressions or establish host
 protection. Keep existing live-proof owners and release obligations separate.
 
@@ -65,38 +73,44 @@ not protected acceptance. Record focused/full runtimes, actual package results
 and unresolved limits. The entrypoint and workflow investigations under
 `docs/investigations/2026-10-08-*.md` provide concrete #415/#416 examples.
 
-## Staged TypeScript and reproducible JavaScript
+## TypeScript source and runtime distribution
 
-#419 starts with the shared OWNER_ADDITION validation leaf and CI execution
-result normalizer. The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
-tracks the remaining 94 original modules and #417 grouping work. Author
-`src-ts/<responsibility>/*.mts`; emit checked-in JavaScript to the corresponding
-`src/<responsibility>/*.mjs`. Preserve existing flat `src/*.mjs` paths, package
-exports and bins. A re-export facade is sufficient only for an import-only leaf;
-executable paths need explicit direct dispatch and inert-import verification.
-Audit `import.meta.url`, relative resources and child-script locations before
-moving their implementation.
+The #419 first two slices type the shared OWNER_ADDITION validation leaf at
+`src/owner-addition/owner-addition-validation.mts` and execution-result states at
+`src/ci-execution/ci-execution-result.mts`. The
+[96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
+retains the grouping inventory, runtime limits and #423 preview-lifecycle
+boundary; 94 original modules remain unconverted. TypeScript migration is
+partial and does not change consumer architecture or assurance policy.
+
+Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
+uses `rootDir: src`, `outDir: dist`, `allowJs: true`, and `checkJs: false`.
+`npm run check:typescript` runs `tsc --noEmit --project tsconfig.json`.
+`npm run build` clears ignored `dist/` and runs the same project compiler to
+emit `.mjs`. The `allowJs` and `checkJs: false` settings include JavaScript in
+the build while strict type checking applies to `.mts`. Keep established flat
+`src/*.mjs` facades and package aliases and
+bins; their runtime targets are in `dist/`. Source-location-sensitive modules
+such as preview lifecycle retain their flat emitted path. Audit `import.meta.url`,
+relative resources and child-script locations before moving implementations.
 
 Install locked development dependencies with lifecycle scripts disabled, then:
 
 ```bash
 npm ci --ignore-scripts
 npm run check:typescript
+npm run build
 node scripts/check-source-cycles.mjs
 npm test
 ```
 
-`check:typescript` uses the fixed committed tsconfig with strict checking,
-`noImplicitAny`, `noEmitOnError` and NodeNext ESM resolution. TypeScript 6.0.3
-provides the compiler API used by both build and dependency analysis; Node 22
-types are pinned at 22.20.5. Both are development-only. Compilation happens in
-a unique temporary directory, compares the complete allowlisted output set and
-bytes with the checked-in generated files, and rejects missing, stale or extra
-managed `.mjs` output. To regenerate after an authoring change, run
-`npm run build:typescript`, review its JavaScript diff, then repeat the check.
-No install/publish lifecycle script silently compiles code. Ordinary CI and
-release preflight run the same read-only check before tests/package creation;
-registry credentials remain in their existing later steps.
+The committed tsconfig uses strict checking, `noImplicitAny`,
+`noEmitOnError`, and NodeNext ESM resolution. TypeScript 6.0.3 and Node 22 types
+pinned at 22.20.5 are development-only. CI and release jobs use Node 22, install
+the lockfile with lifecycle scripts disabled, and build before runtime tests
+and package creation. There are no checked-in generated runtime files and no
+install or publish lifecycle compilation. Registry credentials remain in
+their existing later steps.
 
 External JSON, environment, API and evidence values remain `unknown` until
 existing runtime checks establish their usable shape. Preserve check order,
@@ -106,46 +120,43 @@ which completed runtime checks establish the shape; assertions and brands are
 not evidence validation. Never create a no-op assertion function that appears
 to validate input. Compile-negative fixtures use the actual tsconfig, reject
 unexpected diagnostics and identify the intended field/argument failure.
-The CI result normalizer distinguishes completed results carrying response bytes
-from incomplete results without those bytes; completion means host-reported
-success with bounded output, not a validated semantic decision or acceptance.
-General observed outcomes remain unknown where the accepted JavaScript input
-can return a changing accessor value. Callback sync/async contracts remain
-future work when their actual owning modules migrate.
+Execution-result types distinguish completed observations with bounded response
+bytes from incomplete observations without those bytes. General host outcomes
+remain unknown because an accepted accessor may change across the original two
+reads; the completed branch narrows only its captured success/available facts.
+Sync/async callback contracts remain with their later owning modules.
 
-Runtime coverage follows executed `src/**/*.mjs`, including the generated
-implementation behind a flat facade. Report those exact paths without counting
-an unexecuted authoring copy as runtime coverage. The unchanged JavaScript/
-TypeScript CodeQL path analyzes authoring `.mts` and runtime `.mjs`; supported
-suffixes are documented in the [CodeQL language reference](https://codeql.github.com/docs/codeql-overview/supported-languages-and-frameworks/).
-Review authored/generated locations as corresponding evidence, not independent
-coverage; retain hosted extraction/query results before claiming analysis of
-the final candidate. Installed consumers receive JavaScript and need no
-TypeScript compiler; verify archive contents and clean/offline installation.
+Runtime coverage follows the emitted and executed `dist/**/*.mjs` files. Report
+those exact paths without counting source files as runtime coverage. CodeQL
+analyzes authored `.mts`, compatibility `.mjs`, and Actions source. Generated
+`dist/` is git-ignored; confirm its treatment from the actual CodeQL extraction
+before making a coverage claim about emitted files. Review authored and emitted
+locations as corresponding evidence, not independent coverage; retain hosted
+extraction/query results before claiming analysis of the final candidate.
+Installed consumers receive the `dist/` JavaScript and need no TypeScript compiler; verify archive contents
+and clean/offline installation.
 
 ## Static source import cycles
 
-`node scripts/check-source-cycles.mjs` checks fixed checkout roots `src/`
-(runtime `.mjs`) and optional `src-ts/` (authoring `.mts`). Acorn parses runtime
-ESM; the pinned TypeScript compiler API parses authored syntax. Neither parser
-loads or evaluates candidate modules. Value-bearing relative imports and
-re-exports contribute graph edges. Authoring `.mjs` specifiers resolve their
-actual sibling `.mts` peer; an explicit relative reference into `src/` can
-bridge to an unchanged runtime module. A similarly named runtime file does not
-substitute for a missing authoring peer. Authoring and emitted peer identities
-are combined so a cycle involving an authored dependency and runtime facade
-cannot disappear between separate scans.
+`node scripts/check-source-cycles.mjs` checks the fixed `src/` tree containing
+editable runtime `.mjs` and authored `.mts` files. Acorn parses runtime ESM; the
+pinned TypeScript compiler API parses authored syntax. Neither parser loads or
+evaluates candidate modules. Value-bearing relative imports and re-exports
+contribute graph edges. An authored `.mjs` specifier resolves to a sibling
+`.mts` source when present, or to an unmigrated `.mjs` module otherwise, matching
+NodeNext resolution. The checker rejects duplicate authored/runtime module
+paths so source and emitted peers cannot mask each other.
 
 The check rejects cycles, invalid syntax, missing relative targets, symbolic
-links, escapes from both fixed roots, import-equals forms and unsupported
-source suffixes. `src/` supports `.mjs`; `src-ts/` supports `.mts`. Pure type-only
-imports/re-exports have their target safety checked but do not create runtime
-cycle edges. The strict compiler still owns type resolution and semantic
-checking. Arguments cannot select another root; fixtures use isolated checkout
-copies. Dynamic imports, computed/CommonJS loads, bare packages and external
-package graphs remain outside this static relative-edge scope. Parser/tool
-success supplies development verification, not protected acceptance or
-consumer architecture authority.
+links, escapes from the fixed root, import-equals forms and unsupported source
+suffixes. `src/` supports `.mjs` and `.mts`. Pure type-only imports/re-exports
+have their target safety checked but do not create runtime cycle edges. The
+strict compiler still owns type resolution and semantic checking. Arguments
+cannot select another root; fixtures use isolated checkout copies. Dynamic
+imports, computed/CommonJS loads, bare packages and external package graphs
+remain outside this static relative-edge scope. Parser/tool success supplies
+development verification, not protected acceptance or consumer architecture
+authority.
 
 ## Architecture changes and rollout
 

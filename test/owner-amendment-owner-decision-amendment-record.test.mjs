@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { buildOwnerAmendmentOwnerDecisionAmendmentRecord, validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../src/owner-amendment-owner-decision-amendment-record.mjs';
+import { buildOwnerAmendmentOwnerDecisionAmendmentRecord, validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../dist/owner-amendment-owner-decision-amendment-record.mjs';
 
 const sha = value => createHash('sha256').update(value).digest('hex');
 const base = 'a'.repeat(40); const bSha = 'b'.repeat(40); const aHead = 'c'.repeat(40); const merge = 'd'.repeat(40);

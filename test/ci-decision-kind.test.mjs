@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ordinaryDecisionKind } from '../src/ci-decision-kind.mjs';
+import { ordinaryDecisionKind } from '../dist/ci-decision-kind.mjs';
 
 test('routes only a bounded completed ordinary decision kind', () => {
   for (const kind of ['PASS', 'BLOCK', 'OWNER_DECISION']) {

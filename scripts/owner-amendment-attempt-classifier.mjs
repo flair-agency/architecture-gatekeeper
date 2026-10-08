@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { assertOwnerAmendmentTagAbsentAtAcceptance, classifyOwnerAmendmentTagAttempt } from '../src/owner-amendment-tag-attempt.mjs';
-import { ownerAmendmentTagApiRoute } from '../src/runner-temp-path.mjs';
+import { assertOwnerAmendmentTagAbsentAtAcceptance, classifyOwnerAmendmentTagAttempt } from '../dist/owner-amendment-tag-attempt.mjs';
+import { ownerAmendmentTagApiRoute } from '../dist/runner-temp-path.mjs';
 
 const fail = message => { throw new Error(`OWNER_AMENDMENT attempt classifier: ${message}`); };
 const repository = process.env.GITHUB_REPOSITORY;

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { composeOwnerAmendmentBlockHandoff } from '../src/owner-amendment-block-handoff-compose.mjs';
+import { composeOwnerAmendmentBlockHandoff } from '../dist/owner-amendment-block-handoff-compose.mjs';
 
 const context = Object.freeze({ repository: 'flair-agency/example', artifactId: '77', runId: '42', runAttempt: '2',
   baseSha: 'a'.repeat(40), headSha: 'c'.repeat(40), aPrNumber: 9, workflowPath: '.github/workflows/self-architecture-gate.yml',

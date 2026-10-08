@@ -5,7 +5,7 @@ import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
-import { materializeAuthoritySet } from '../src/authority-set.mjs';
+import { materializeAuthoritySet } from '../dist/authority-set.mjs';
 import { buildRealPrBlockRecord } from '../scripts/issue83-real-pr-block-probe.mjs';
 import { inspectHistoricalBlock } from '../scripts/issue83-offline-block-verifier.mjs';
 

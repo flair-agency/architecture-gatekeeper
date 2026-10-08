@@ -6,10 +6,12 @@
     "strict": true,
     "noImplicitAny": true,
     "noEmitOnError": true,
-    "rootDir": ".",
+    "rootDir": "src",
     "skipLibCheck": false,
     "types": ["node"],
-    "outDir": "dist-typescript"
+    "outDir": "dist",
+    "allowJs": true,
+    "checkJs": false
   },
-  "include": ["src-ts/**/*.mts"]
+  "include": ["src/**/*.mjs", "src/**/*.mts"]
 }

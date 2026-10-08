@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseGithubMergeGroupEvent } from '../src/github-merge-group-event.mjs';
+import { parseGithubMergeGroupEvent } from '../dist/github-merge-group-event.mjs';
 
 const payload = () => ({
   action: 'checks_requested',

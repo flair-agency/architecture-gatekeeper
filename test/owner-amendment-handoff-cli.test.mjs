@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runOwnerAmendmentHandoff } from '../src/owner-amendment-handoff-cli.mjs';
+import { runOwnerAmendmentHandoff } from '../dist/owner-amendment-handoff-cli.mjs';
 
 const baseSha = 'a'.repeat(40), bHeadSha = 'b'.repeat(40), aHeadSha = 'c'.repeat(40);
 const selected = { status: 'SELECTED_OWNER_AMENDMENT_HANDOFF_PR_RUN_CONTEXT',

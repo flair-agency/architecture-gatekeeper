@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createAndReadOwnerAmendmentTag } from '../src/owner-amendment-tag-adapter.mjs';
+import { createAndReadOwnerAmendmentTag } from '../dist/owner-amendment-tag-adapter.mjs';
 
 const repository = 'flair-agency/example';
 const bSha = 'b'.repeat(40);

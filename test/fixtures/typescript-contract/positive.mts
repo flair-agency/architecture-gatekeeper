@@ -2,7 +2,7 @@ import {
   validateOrdinaryOwnerDecision,
   validateOwnerAdditionEligibility,
   validateOwnerAdditionEligibilitySchema,
-} from '../../../src-ts/owner-addition/owner-addition-validation.mjs';
+} from '../../../src/owner-addition/owner-addition-validation.mjs';
 
 const schema: unknown = JSON.parse('{}');
 validateOwnerAdditionEligibilitySchema(schema);

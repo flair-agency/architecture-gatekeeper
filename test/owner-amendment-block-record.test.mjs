@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { buildOwnerAmendmentBlockRecord, validateOwnerAmendmentBlockRecord } from '../src/owner-amendment-block-record.mjs';
+import { buildOwnerAmendmentBlockRecord, validateOwnerAmendmentBlockRecord } from '../dist/owner-amendment-block-record.mjs';
 
 const a = 'a'.repeat(40), h = 'b'.repeat(40), m = 'c'.repeat(40), d = 'd'.repeat(64);
 const schema = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/ci-decision.schema.json', import.meta.url)));

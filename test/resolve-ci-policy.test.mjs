@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 
 const limits = { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 };
 const amendment = {

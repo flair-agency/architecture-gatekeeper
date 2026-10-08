@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { evaluateOwnerAdditionAdoption } from '../src/owner-addition-adoption.mjs';
+import { evaluateOwnerAdditionAdoption } from '../dist/owner-addition-adoption.mjs';
 
 const sha = char => char.repeat(40);
 const digest = char => char.repeat(64);

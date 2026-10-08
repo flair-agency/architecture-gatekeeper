@@ -1,4 +1,4 @@
-import { validateOrdinaryOwnerDecision } from '../../../src-ts/owner-addition/owner-addition-validation.mjs';
+import { validateOrdinaryOwnerDecision } from '../../../src/owner-addition/owner-addition-validation.mjs';
 
 const decision = validateOrdinaryOwnerDecision(
   '{"decision":"OWNER_DECISION","ownerDecisionId":"choice-1","summary":"Select an owner."}',

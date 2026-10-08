@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { trustedGitHubOutputPath } from '../src/github-runner-env.mjs';
+import { trustedGitHubOutputPath } from '../dist/github-runner-env.mjs';
 
 test('runner boundary reads only GITHUB_OUTPUT and offers no caller-selected input', () => {
   const original = process.env.GITHUB_OUTPUT;

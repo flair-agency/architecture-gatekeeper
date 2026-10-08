@@ -4,11 +4,11 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { MAX_AUTHORITY_LIMITS } from '../src/authority-set.mjs';
-import { decodeLimits } from '../src/prepare-authority-set.mjs';
-import { validateAuthorityReviewSchema } from '../src/preflight-authority-set-review.mjs';
-import { validatePreparedAuthorityDecision } from '../src/validate-authority-set-decision.mjs';
-import { parseAuthorityProvenance } from '../src/ci-report.mjs';
+import { MAX_AUTHORITY_LIMITS } from '../dist/authority-set.mjs';
+import { decodeLimits } from '../dist/prepare-authority-set.mjs';
+import { validateAuthorityReviewSchema } from '../dist/preflight-authority-set-review.mjs';
+import { validatePreparedAuthorityDecision } from '../dist/validate-authority-set-decision.mjs';
+import { parseAuthorityProvenance } from '../dist/ci-report.mjs';
 
 const effective = { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 };
 const encoded = Buffer.from(JSON.stringify(effective)).toString('base64');
@@ -40,7 +40,7 @@ test('CI preflight bounds the complete prompt before model execution', t => {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const schema = join(root, 'schema.json');
   const prompt = join(root, 'prompt.md');
-  const script = new URL('../src/preflight-authority-set-review.mjs', import.meta.url).pathname;
+  const script = new URL('../dist/preflight-authority-set-review.mjs', import.meta.url).pathname;
   writeFileSync(schema, JSON.stringify({ type: 'object', required: ['authorityIds'], properties: { authorityIds: { type: 'array', items: { type: 'string' }, minItems: 1 } } }));
   const env = { ...process.env, AUTHORITY_LIMITS_BASE64: Buffer.from(JSON.stringify({ ...effective, maxPromptBytes: 8 })).toString('base64') };
   writeFileSync(prompt, '12345678');
@@ -64,7 +64,7 @@ test('protected-base self authority reaches review with complete provenance and 
   const base = git('rev-parse', 'HEAD');
   writeFileSync(join(root, 'docs', 'architecture.md'), '# untrusted PR replacement\n');
   const output = join(root, 'prepared');
-  const script = new URL('../src/prepare-authority-set.mjs', import.meta.url).pathname;
+  const script = new URL('../dist/prepare-authority-set.mjs', import.meta.url).pathname;
   execFileSync(process.execPath, [script, '--manifest', manifest, '--self-repository', 'flair-agency/test',
     '--self-root', root, '--authority-sha', base, '--limits-base64', encoded, '--output-dir', output]);
   const prompt = readFileSync(join(output, 'authority-prompt.md'), 'utf8');

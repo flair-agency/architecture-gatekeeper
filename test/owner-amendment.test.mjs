@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { digestOwnerAmendmentRecord, validateOwnerAmendmentG0Procedure, validateOwnerAmendmentG0TagEnvelope } from '../src/owner-amendment.mjs';
+import { digestOwnerAmendmentRecord, validateOwnerAmendmentG0Procedure, validateOwnerAmendmentG0TagEnvelope } from '../dist/owner-amendment.mjs';
 
 const a = 'a'.repeat(40);
 const b = 'b'.repeat(40);

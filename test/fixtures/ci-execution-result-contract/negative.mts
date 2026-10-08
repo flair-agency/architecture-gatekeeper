@@ -1,4 +1,4 @@
-import type { CompletedCiExecutionResult, IncompleteCiExecutionResult, CiExecutionResult } from '../../../src-ts/ci-execution/ci-execution-result.mjs';
+import type { CompletedCiExecutionResult, IncompleteCiExecutionResult, CiExecutionResult } from '../../../src/ci-execution/ci-execution-result.mjs';
 
 declare const unionResult: CiExecutionResult;
 const unrefinedBytes: Buffer = unionResult.responseBytes;
