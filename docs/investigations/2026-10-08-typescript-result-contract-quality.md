@@ -32,7 +32,7 @@ The retained risk map is:
 
 | Risk | Production boundary | Verification |
 | --- | --- | --- |
-| Reading bytes before completion or constructing an inconsistent state | Authored result union | Actual project compiler positives and four exact-code/location negatives |
+| Reading bytes before completion or constructing an inconsistent state | Authored result union | Actual project compiler positives and ten exact-code/location negatives, including variable, helper-return and spread values assigned to both incomplete and union types |
 | Incorrectly narrowing an arbitrary second accessor read | Captured host outcome and completed branch | Three changing-accessor values; two reads, incomplete result, exact observed value, no bytes |
 | Type port alters input validation or output observations | Emitted normalizer behind the flat entrypoint | Retained malformed, bounded, proxy/getter, JSON settings and response runtime regressions |
 | New grouped implementation omitted from build | Standard compiler and flat facade | Actual leaf/facade emitted in clean-build fixture; stale output, failed compilation and symlink/hardlink negatives retained |
@@ -51,3 +51,14 @@ remain. #412/#417/#418/#419 stay open. #431 completed protected review and
 received its own human merge approval before merging into main. The #433
 successor still requires its own exact-candidate protected acceptance and
 individual human merge approval; this document supplies neither.
+
+The incomplete branch declares `responseBytes?: never` to reject Buffer-valued
+bytes through structural assignment as well as fresh object literals. The
+actual project compiler accepted the six nonfresh assignments under the prior
+4018 contract and rejects them after this repair. Ordinary incomplete values
+without bytes still assign to both branch and union types. The project keeps
+its existing optional-property setting: explicit `undefined` may type-check,
+so exact runtime key absence remains established by the unchanged normalizer
+and retained runtime tests rather than by static types. Runtime emission is
+unchanged by this type-only correction. Prior candidate checks and reviews
+remain historical; the repaired candidate requires fresh verification.

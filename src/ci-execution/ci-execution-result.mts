@@ -26,6 +26,7 @@ export type IncompleteCiExecutionResult = {
   status: 'incomplete';
   expectedExecution: ExpectedExecution;
   observations: CiExecutionObservations;
+  responseBytes?: never;
 };
 export type CiExecutionResult = CompletedCiExecutionResult | IncompleteCiExecutionResult;
 

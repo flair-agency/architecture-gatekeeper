@@ -25,4 +25,13 @@ const completed: CompletedCiExecutionResult = {
   },
   responseBytes: Buffer.from('x'),
 };
-void completed;
+const legitimateIncompleteValue = {
+  version: 1, status: 'incomplete', expectedExecution: completed.expectedExecution,
+  observations: {
+    hostStepOutcome: 'failure', rawResponse: { status: 'available', byteLength: 1 },
+    timeoutCause: 'unknown', backendModelIdentity: 'unknown', processTermination: 'unknown',
+  },
+} satisfies Omit<IncompleteCiExecutionResult, 'responseBytes'>;
+const legitimateIncompleteAssignment: IncompleteCiExecutionResult = legitimateIncompleteValue;
+const legitimateIncompleteUnion: CiExecutionResult = legitimateIncompleteValue;
+void [completed, legitimateIncompleteAssignment, legitimateIncompleteUnion];
