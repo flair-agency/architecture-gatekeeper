@@ -309,6 +309,7 @@ test "$(git rev-parse HEAD)" = "$RELEASE_SOURCE_SHA"
 test -z "$(git status --porcelain)"
 RELEASE_TAG="$RELEASE_TAG" RELEASE_REF="$RELEASE_REF" RELEASE_SHA="$RELEASE_SOURCE_SHA" \
   node scripts/release-channel.mjs validate
+npm ci --ignore-scripts
 npm test
 RELEASE_TMP="$(mktemp -d)"
 npm pack --ignore-scripts --json --pack-destination "$RELEASE_TMP" > "$RELEASE_TMP/pack.json"
@@ -365,7 +366,8 @@ git push origin "refs/tags/$RELEASE_TAG"
 
 The tag push triggers `.github/workflows/publish-package.yml`, which
 checks out `github.sha`, verifies that it equals `HEAD` and that tag, ref and
-`package.json` version agree, then runs `npm test`.
+`package.json` version agree, installs locked development dependencies with
+`npm ci --ignore-scripts`, then runs `npm test`.
 
 The workflow packs with lifecycle scripts disabled, checks required archive
 paths, installs the archive offline in an empty directory, checks each public

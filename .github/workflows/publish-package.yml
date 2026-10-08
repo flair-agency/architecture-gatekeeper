@@ -38,6 +38,7 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
           node scripts/release-channel.mjs validate >> "$GITHUB_OUTPUT"
+          npm ci --ignore-scripts
           npm test
       - name: Pack, inspect, install and smoke the package archive
         id: archive
