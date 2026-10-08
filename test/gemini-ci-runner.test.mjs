@@ -1,12 +1,12 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReviewRequestAsync, preflightReviewRequest } from '../src/review-contract.mjs';
+import { createReviewRequestAsync, preflightReviewRequest } from '../dist/review-contract.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { formatGitHubReviewOutputs, parseArgs, resolveSafePath, resolveReviewRequest, runGeminiCiReview } from '../src/gemini-ci-runner.mjs';
+import { formatGitHubReviewOutputs, parseArgs, resolveSafePath, resolveReviewRequest, runGeminiCiReview } from '../dist/gemini-ci-runner.mjs';
 
 test('parseArgs parses key-value and flag arguments', () => {
   const args = ['--prompt', 'p.md', '--schema', 's.json', '--flag', '--output', 'out.json'];
@@ -499,7 +499,7 @@ test('default output rejects checkout and symlinked temporary roots before creat
       childPath = `${bin}:${childPath}`;
     }
     const before = readdirSync(root).sort();
-    const moduleUrl = new URL('../src/gemini-ci-runner.mjs', import.meta.url).href;
+    const moduleUrl = new URL('../dist/gemini-ci-runner.mjs', import.meta.url).href;
     const program = `import assert from 'node:assert/strict';
 import { runGeminiCiReview } from ${JSON.stringify(moduleUrl)};
 let dispatches = 0;

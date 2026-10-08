@@ -6,9 +6,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
-import { runCiExecutionObservationCli } from '../src/ci-execution-observation.mjs';
+import { runCiExecutionObservationCli } from '../dist/ci-execution-observation.mjs';
 
-const cli = fileURLToPath(new URL('../src/ci-execution-observation.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../dist/ci-execution-observation.mjs', import.meta.url));
 const envelope = (overrides = {}) => ({
   expectedExecution: {
     provider: 'codex', requestedModel: 'gpt-6.1-sol', requestedSettings: { reasoningEffort: 'medium' },
@@ -159,7 +159,7 @@ test('counts the input limit across stream chunks', async () => {
 });
 
 test('importing the module has no process I/O side effects', () => {
-  const program = `import(${JSON.stringify(new URL('../src/ci-execution-observation.mjs', import.meta.url).href)});`;
+  const program = `import(${JSON.stringify(new URL('../dist/ci-execution-observation.mjs', import.meta.url).href)});`;
   const result = spawnSync(process.execPath, ['--input-type=module', '-e', program], {
     encoding: 'utf8', timeout: 5_000,
   });

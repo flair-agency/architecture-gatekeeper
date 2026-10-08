@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COMMENT_MARKER, classifyReview, digestDecision, formatInlineFindingHeading, parseLegacyAuthorityProvenance, postInlineReview, renderReport, sanitizeReportApiContext, upsertPullRequestComment, validateInlineFindings } from '../src/ci-report.mjs';
+import { COMMENT_MARKER, classifyReview, digestDecision, formatInlineFindingHeading, parseLegacyAuthorityProvenance, postInlineReview, renderReport, sanitizeReportApiContext, upsertPullRequestComment, validateInlineFindings } from '../dist/ci-report.mjs';
 
 test('sanitizes report API context to GitHub.com and canonical PR identity', () => {
   assert.deepEqual(sanitizeReportApiContext({ apiUrl: 'https://api.github.com/', repository: 'flair-agency/architecture-gatekeeper',

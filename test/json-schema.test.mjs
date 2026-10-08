@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateJsonSchema } from '../src/json-schema.mjs';
+import { validateJsonSchema } from '../dist/json-schema.mjs';
 
 const recursiveSchema = {
   description: 'recursive linked values',

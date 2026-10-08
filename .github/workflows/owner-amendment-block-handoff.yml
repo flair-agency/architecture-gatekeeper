@@ -26,13 +26,17 @@ jobs:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: 22
+      - name: Build the protected runtime
+        run: |
+          npm ci --ignore-scripts
+          npm run build
       - name: Isolated complete ruleset readback
         env:
           RULESET_READBACK_APP_ID: ${{ vars.RULESET_READBACK_APP_ID }}
           RULESET_READBACK_INSTALLATION_ID: ${{ vars.RULESET_READBACK_INSTALLATION_ID }}
           RULESET_READBACK_PRIVATE_KEY: ${{ secrets.RULESET_READBACK_PRIVATE_KEY }}
           OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
-        run: env -u GH_TOKEN -u GITHUB_TOKEN node src/github-ruleset-readback-cli.mjs
+        run: env -u GH_TOKEN -u GITHUB_TOKEN node dist/github-ruleset-readback-cli.mjs
       - name: Verify evidence and transport exact-B tag
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -46,4 +50,4 @@ jobs:
           OWNER_AMENDMENT_RULESET_READBACK_FILE: ${{ runner.temp }}/owner-amendment-ruleset-readback/snapshot.json
           OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
           GH_TOKEN: ${{ github.token }}
-        run: node src/owner-amendment-handoff-cli.mjs
+        run: node dist/owner-amendment-handoff-cli.mjs

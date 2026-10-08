@@ -4,8 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { extractGeminiCliResponseText, validateGeminiCliResponse } from '../src/gemini-cli-response.mjs';
-import { createReviewRequestAsync } from '../src/review-contract.mjs';
+import { extractGeminiCliResponseText, validateGeminiCliResponse } from '../dist/gemini-cli-response.mjs';
+import { createReviewRequestAsync } from '../dist/review-contract.mjs';
 
 const limits = { maxStdoutBytes: 4096, maxStderrBytes: 256 };
 const good = { exitCode: 0, stdout: JSON.stringify({ response: '{"decision":"PASS"}', stats: { tokens: 1 } }), stderr: '' };

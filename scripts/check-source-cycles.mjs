@@ -2,11 +2,12 @@
 
 import { lstat, readFile, realpath, readdir } from 'node:fs/promises';
 import { parse } from 'acorn';
+import ts from 'typescript';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
-const defaultSourceRoot = path.resolve(scriptDirectory, '../src');
+const sourceRootPath = path.resolve(scriptDirectory, '../src');
 
 function isWithin(root, candidate) {
   const relative = path.relative(root, candidate);
@@ -14,7 +15,8 @@ function isWithin(root, candidate) {
 }
 
 function displayPath(root, file) {
-  return path.relative(root, file).split(path.sep).join('/');
+  const relative = path.relative(root, file).split(path.sep).join('/');
+  return relative.endsWith('.mts') ? `${relative.slice(0, -4)}.mjs` : relative;
 }
 
 function compareText(a, b) {
@@ -29,46 +31,103 @@ async function findSourceFiles(root) {
     for (const entry of entries) {
       const absolute = path.join(directory, entry.name);
       if (entry.isSymbolicLink()) throw new Error(`symbolic link is not supported in source root: ${displayPath(root, absolute)}`);
-      if (entry.isDirectory()) {
-        await visit(absolute);
-      } else if (entry.isFile()) {
-        if (/\.(?:js|cjs|jsx|ts|tsx|mts|cts)$/i.test(entry.name)) {
-          throw new Error(`unsupported source file extension (checker covers .mjs only): ${displayPath(root, absolute)}`);
+      if (entry.isDirectory()) await visit(absolute);
+      else if (entry.isFile()) {
+        if (/\.(?:js|cjs|jsx|ts|tsx|cts|mjs|mts)$/i.test(entry.name) && !entry.name.endsWith('.mjs') && !entry.name.endsWith('.mts')) {
+          throw new Error(`unsupported source file extension (checker covers .mjs and .mts only): ${displayPath(root, absolute)}`);
         }
-        if (entry.name.endsWith('.mjs')) files.push(absolute);
+        if (entry.name.endsWith('.mjs') || entry.name.endsWith('.mts')) files.push(absolute);
       }
     }
   }
   await visit(root);
-  return files.sort((a, b) => compareText(displayPath(root, a), displayPath(root, b)));
+  files.sort((a, b) => compareText(displayPath(root, a), displayPath(root, b)));
+  const labels = new Set();
+  for (const file of files) {
+    const label = displayPath(root, file);
+    if (labels.has(label)) throw new Error(`duplicate authored/runtime module path: ${label}`);
+    labels.add(label);
+  }
+  return files;
 }
 
-async function assertNoSymlinkComponents(root, target) {
+async function assertNoSymlinkComponents(root, target, missingMessage = `missing relative .mjs import target: ${displayPath(root, target)}`) {
   const relative = path.relative(root, target);
   let current = root;
   for (const component of relative.split(path.sep).filter(Boolean)) {
     current = path.join(current, component);
     const info = await lstat(current).catch(error => {
-      if (error.code === 'ENOENT') throw new Error(`missing relative .mjs import target: ${displayPath(root, target)}`);
+      if (error.code === 'ENOENT') throw new Error(missingMessage);
       throw error;
     });
     if (info.isSymbolicLink()) throw new Error(`symbolic link is not supported in relative import target: ${displayPath(root, current)}`);
   }
 }
 
-async function resolveRelativeImport(root, importer, specifier) {
-  if (!(specifier.startsWith('./') || specifier.startsWith('../'))) return null;
+function relativeSpecifier(specifier) {
+  return specifier.startsWith('./') || specifier.startsWith('../');
+}
+
+async function resolveImport(root, importer, specifier) {
+  if (!relativeSpecifier(specifier)) return null;
   if (!specifier.endsWith('.mjs')) {
-    throw new Error(`unsupported relative import target from ${displayPath(root, importer)}: ${specifier} (only .mjs targets are checked)`);
+    throw new Error(`unsupported relative import target from ${displayPath(root, importer)}: ${specifier} (only .mjs specifiers are checked)`);
   }
-  const target = path.resolve(path.dirname(importer), specifier);
-  if (!isWithin(root, target)) throw new Error(`relative import escapes source root from ${displayPath(root, importer)}: ${specifier}`);
+  const requested = path.resolve(path.dirname(importer), specifier);
+  if (!isWithin(root, requested)) throw new Error(`relative import escapes source root from ${displayPath(root, importer)}: ${specifier}`);
+  const typedPeer = `${requested.slice(0, -4)}.mts`;
+  const target = await lstat(typedPeer).then(() => typedPeer).catch(error => {
+    if (error.code === 'ENOENT') return requested;
+    throw error;
+  });
   await assertNoSymlinkComponents(root, target);
   const info = await lstat(target);
   if (!info.isFile()) throw new Error(`relative import target is not a regular file: ${displayPath(root, target)}`);
   const resolved = await realpath(target);
   if (!isWithin(root, resolved)) throw new Error(`relative import escapes source root from ${displayPath(root, importer)}: ${specifier}`);
   return resolved;
+}
+
+function tsSpecifier(node) {
+  return ts.isStringLiteralLike(node) ? node.text : null;
+}
+
+function isTypeOnlyImport(clause) {
+  if (clause.isTypeOnly || clause.name) return clause.isTypeOnly;
+  const bindings = clause.namedBindings;
+  return bindings !== undefined && ts.isNamedImports(bindings) && bindings.elements.length > 0 && bindings.elements.every(element => element.isTypeOnly);
+}
+
+function isTypeOnlyExport(declaration) {
+  if (declaration.isTypeOnly) return true;
+  const clause = declaration.exportClause;
+  return clause !== undefined && ts.isNamedExports(clause) && clause.elements.length > 0 && clause.elements.every(element => element.isTypeOnly);
+}
+
+function authoredRequests(sourceFile, file) {
+  const requests = [];
+  function visit(node) {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      const value = node.moduleSpecifier && tsSpecifier(node.moduleSpecifier);
+      if (node.moduleSpecifier && value === null) throw new Error(`unsupported relative module form in ${displayPath(sourceRootPath, file)}`);
+      if (value !== null && value !== undefined) requests.push({
+        specifier: value,
+        typeOnly: ts.isImportDeclaration(node)
+          ? node.importClause !== undefined && isTypeOnlyImport(node.importClause)
+          : isTypeOnlyExport(node),
+      });
+    } else if (ts.isImportEqualsDeclaration(node)) {
+      throw new Error(`unsupported import-equals declaration in ${displayPath(sourceRootPath, file)}`);
+    } else if (ts.isImportTypeNode(node)) {
+      const argument = node.argument;
+      if (ts.isLiteralTypeNode(argument) && ts.isStringLiteralLike(argument.literal)) {
+        requests.push({ specifier: argument.literal.text, typeOnly: true });
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return requests;
 }
 
 function normalizeCycle(cycle) {
@@ -93,54 +152,62 @@ function findCycles(graph) {
         const start = stack.lastIndexOf(dependency);
         const cycle = normalizeCycle([...stack.slice(start), dependency]);
         found.set(cycle.join('\0'), cycle);
-      } else if (!state.has(dependency)) {
-        visit(dependency);
-      }
+      } else if (!state.has(dependency)) visit(dependency);
     }
     stack.pop();
     state.set(module, 2);
   }
-  for (const module of [...graph.keys()].sort(compareText)) {
-    if (!state.has(module)) visit(module);
-  }
+  for (const module of [...graph.keys()].sort(compareText)) if (!state.has(module)) visit(module);
   return [...found.values()].sort((a, b) => compareText(a.join('\0'), b.join('\0')));
 }
 
 async function checkSourceCycles() {
-  const root = defaultSourceRoot;
-  const rootInfo = await lstat(root);
-  if (!rootInfo.isDirectory()) throw new Error(`source root is not a directory: ${root}`);
-  const files = await findSourceFiles(root);
+  const rootInfo = await lstat(sourceRootPath);
+  if (rootInfo.isSymbolicLink() || !rootInfo.isDirectory()) throw new Error(`source root is not a regular directory: ${sourceRootPath}`);
+  const sourceRoot = await realpath(sourceRootPath);
+  if (sourceRoot !== sourceRootPath) throw new Error(`source root has a symbolic link component: ${sourceRootPath}`);
+  const files = await findSourceFiles(sourceRoot);
   const graph = new Map();
-  const paths = new Map(files.map(file => [file, displayPath(root, file)]));
 
   for (const file of files) {
+    const label = displayPath(sourceRoot, file);
     const source = await readFile(file, 'utf8');
-    let parsed;
-    try {
-      parsed = parse(source, { ecmaVersion: 'latest', sourceType: 'module' });
-    } catch (error) {
-      throw new Error(`cannot parse ${displayPath(root, file)}: ${error.message}`);
-    }
-    const requests = parsed.body.flatMap(statement => {
-      if (statement.type === 'ImportDeclaration' || statement.type === 'ExportAllDeclaration') {
-        return [statement.source.value];
-      }
-      if (statement.type === 'ExportNamedDeclaration' && statement.source !== null) {
-        return [statement.source.value];
-      }
-      return [];
-    });
     const dependencies = new Set();
-    for (const specifier of requests) {
-      const dependency = await resolveRelativeImport(root, file, specifier);
-      if (dependency !== null) dependencies.add(paths.get(dependency) ?? displayPath(root, dependency));
+    if (file.endsWith('.mjs')) {
+      let parsed;
+      try { parsed = parse(source, { ecmaVersion: 'latest', sourceType: 'module' }); }
+      catch (error) { throw new Error(`cannot parse ${label}: ${error.message}`); }
+      const requests = parsed.body.flatMap(statement => {
+        if (statement.type === 'ImportDeclaration' || statement.type === 'ExportAllDeclaration') return [statement.source.value];
+        if (statement.type === 'ExportNamedDeclaration' && statement.source !== null) return [statement.source.value];
+        return [];
+      });
+      for (const specifier of requests) {
+        const dependency = await resolveImport(sourceRoot, file, specifier);
+        if (dependency !== null) dependencies.add(displayPath(sourceRoot, dependency));
+      }
+    } else {
+      const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+      const syntaxDiagnostics = sourceFile.parseDiagnostics;
+      if (syntaxDiagnostics.length) {
+        const diagnostic = syntaxDiagnostics[0];
+        const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+        throw new Error(`cannot parse ${label}: ${message}`);
+      }
+      for (const request of authoredRequests(sourceFile, file)) {
+        const dependency = await resolveImport(sourceRoot, file, request.specifier);
+        if (dependency !== null && !request.typeOnly) dependencies.add(displayPath(sourceRoot, dependency));
+      }
     }
-    graph.set(displayPath(root, file), [...dependencies].sort(compareText));
+    graph.set(label, [...dependencies].sort(compareText));
   }
 
-  const cycles = findCycles(graph);
-  return { moduleCount: files.length, cycles };
+  return {
+    moduleCount: graph.size,
+    runtimeCount: files.filter(file => file.endsWith('.mjs')).length,
+    authoredCount: files.filter(file => file.endsWith('.mts')).length,
+    cycles: findCycles(graph),
+  };
 }
 
 async function main() {
@@ -149,10 +216,10 @@ async function main() {
   const result = await checkSourceCycles();
   if (result.cycles.length) {
     for (const cycle of result.cycles) console.error(`cycle: ${cycle.join(' -> ')}`);
-    console.error(`Found ${result.cycles.length} static relative import cycle(s) among ${result.moduleCount} .mjs modules.`);
+    console.error(`Found ${result.cycles.length} static relative dependency cycle(s) among ${result.moduleCount} checked modules.`);
     process.exitCode = 1;
   } else {
-    console.log(`Checked ${result.moduleCount} .mjs modules; no static relative import cycles.`);
+    console.log(`Checked ${result.runtimeCount} runtime .mjs and ${result.authoredCount} authored .mts modules; no static relative dependency cycles.`);
   }
 }
 

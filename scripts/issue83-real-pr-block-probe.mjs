@@ -6,10 +6,10 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
-import { rejectDuplicateJsonKeys, validateAuthoritySetDecision } from '../src/authority-set.mjs';
-import { validateJsonSchema } from '../src/json-schema.mjs';
-import { validateDecisionRules } from '../src/validate-decision.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { rejectDuplicateJsonKeys, validateAuthoritySetDecision } from '../dist/authority-set.mjs';
+import { validateJsonSchema } from '../dist/json-schema.mjs';
+import { validateDecisionRules } from '../dist/validate-decision.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 
 const SHA = /^[a-f0-9]{40}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;

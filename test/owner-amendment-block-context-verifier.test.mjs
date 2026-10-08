@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { verifyOwnerAmendmentBlockContext } from '../src/owner-amendment-block-context-verifier.mjs';
+import { verifyOwnerAmendmentBlockContext } from '../dist/owner-amendment-block-context-verifier.mjs';
 
 const a = 'a'.repeat(40), b = 'b'.repeat(40), c = 'c'.repeat(40);
 const oldHash = '1'.repeat(64), newHash = '2'.repeat(64);

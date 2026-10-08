@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { parseAuthorityManifest, rejectDuplicateJsonKeys } from '../src/authority-set.mjs';
-import { validatePreparedCiDecision } from '../src/prepared-ci-decision.mjs';
+import { parseAuthorityManifest, rejectDuplicateJsonKeys } from '../dist/authority-set.mjs';
+import { validatePreparedCiDecision } from '../dist/prepared-ci-decision.mjs';
 
 const ids = [
   'architecture-contract', 'architecture-authority-set', 'architecture-owner-addition',
@@ -164,7 +164,7 @@ test('deep duplicate keys remain rejected, scanner overflow is bounded, and mani
 
 
 test('truncated schema and response JSON reject without hanging the synchronous validator', () => {
-  const moduleUrl = new URL('../src/prepared-ci-decision.mjs', import.meta.url).href;
+  const moduleUrl = new URL('../dist/prepared-ci-decision.mjs', import.meta.url).href;
   const good = input({ decision: 'PASS', authorityIds: ids }, {
     responseBytes: JSON.stringify({ decision: 'PASS', authorityIds: ids }), schemaBytes: schemaText,
   });

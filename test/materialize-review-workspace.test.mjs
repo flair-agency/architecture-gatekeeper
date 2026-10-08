@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { materializeReviewWorkspace } from '../src/materialize-review-workspace.mjs';
+import { materializeReviewWorkspace } from '../dist/materialize-review-workspace.mjs';
 
 const limits = { maxFiles: 8, maxFileBytes: 4096, maxTotalBytes: 16_000 };
 const oid = 'a'.repeat(40);

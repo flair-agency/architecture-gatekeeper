@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { executeLocalReviewer, executeLocalReviewerSync } from '../src/local-reviewer-execution.mjs';
+import { executeLocalReviewer, executeLocalReviewerSync } from '../dist/local-reviewer-execution.mjs';
 
 const request = { reviewer: { reviewTimeoutMs: 20 } };
 test('deadline cancels cooperative adapter and never adopts its late PASS', async () => {

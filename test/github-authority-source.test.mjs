@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs';
+import { createGitHubAuthoritySource } from '../dist/github-authority-source.mjs';
 
 const repository = 'flair-agency/private-authority';
 const revision = 'a'.repeat(40);

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { composeOwnerAmendmentMergeGroupEvidence } from '../src/owner-amendment-merge-group-evidence.mjs';
+import { composeOwnerAmendmentMergeGroupEvidence } from '../dist/owner-amendment-merge-group-evidence.mjs';
 import { readFileSync } from 'node:fs';
-import { verifyOwnerAmendmentBlockEvidenceBundle } from '../src/owner-amendment-block-evidence-composer.mjs';
+import { verifyOwnerAmendmentBlockEvidenceBundle } from '../dist/owner-amendment-block-evidence-composer.mjs';
 
 const repository = 'flair-agency/example';
 const baseSha = 'a'.repeat(40), bSha = 'b'.repeat(40), tagNamespace = 'refs/tags/architecture-gatekeeper/amendments';

@@ -8,8 +8,8 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { TextDecoder } from 'node:util';
 import { isDeepStrictEqual } from 'node:util';
-import { materializeAuthoritySet, rejectDuplicateJsonKeys, validateAuthorityLimits } from '../src/authority-set.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { materializeAuthoritySet, rejectDuplicateJsonKeys, validateAuthorityLimits } from '../dist/authority-set.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 import { buildRealPrBlockRecord } from './issue83-real-pr-block-probe.mjs';
 
 const SHA = /^[a-f0-9]{40}$/;

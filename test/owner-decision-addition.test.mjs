@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import test from 'node:test';
-import { digestOwnerDecisionAddition, validateOwnerDecisionAdditionG0Procedure } from '../src/owner-decision-addition.mjs';
+import { digestOwnerDecisionAddition, validateOwnerDecisionAdditionG0Procedure } from '../dist/owner-decision-addition.mjs';
 
 const a = 'a'.repeat(40);
 const b = 'b'.repeat(40);
