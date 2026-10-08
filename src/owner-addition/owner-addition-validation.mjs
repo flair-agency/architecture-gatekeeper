@@ -5,97 +5,96 @@ const REQUIRED_CHECKS = [
     'matchesOrdinaryOwnerDecision',
 ];
 const DECISION_ID = /^[a-z0-9][a-z0-9._-]{0,99}$/;
-function isRecord(value) {
-    return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-function optionalProperty(value, key) {
-    if (value === null || value === undefined)
-        return undefined;
-    return Reflect.get(Object(value), key);
-}
 export function validateOwnerAdditionEligibilitySchema(schema) {
-    if (!isRecord(schema) || schema.type !== 'object' || schema.additionalProperties !== false ||
-        !Array.isArray(schema.required) || !isRecord(schema.properties)) {
+    if (!schema || typeof schema !== 'object' || Array.isArray(schema) ||
+        schema.type !== 'object' || schema.additionalProperties !== false ||
+        !Array.isArray(schema.required) ||
+        !schema.properties || typeof schema.properties !== 'object' ||
+        Array.isArray(schema.properties)) {
         throw new Error('Owner-addition schema must be a closed object.');
     }
     if (Object.keys(schema).some(key => !['$schema', 'type', 'additionalProperties', 'required', 'properties', 'description'].includes(key))) {
         throw new Error('Owner-addition schema uses an unsupported rule.');
     }
-    const required = schema.required;
-    const properties = schema.properties;
-    const propertyKeys = Object.keys(properties);
-    if (new Set(required).size !== required.length ||
-        propertyKeys.length !== required.length ||
-        propertyKeys.some(key => !required.includes(key))) {
+    const propertyKeys = Object.keys(schema.properties);
+    if (new Set(schema.required).size !== schema.required.length ||
+        propertyKeys.length !== schema.required.length ||
+        propertyKeys.some(key => !schema.required.includes(key))) {
         throw new Error('Owner-addition schema must require every declared property.');
     }
     for (const key of REQUIRED_CHECKS) {
-        if (!required.includes(key) || optionalProperty(properties[key], 'type') !== 'boolean') {
+        if (!schema.required.includes(key) ||
+            schema.properties[key]?.type !== 'boolean') {
             throw new Error(`Owner-addition schema must require boolean ${key}.`);
         }
     }
-    if (!required.includes('summary') || optionalProperty(properties.summary, 'type') !== 'string') {
+    if (!schema.required.includes('summary') ||
+        schema.properties.summary?.type !== 'string') {
         throw new Error('Owner-addition schema must require a summary string.');
     }
-    for (const [key, property] of Object.entries(properties)) {
+    for (const [key, property] of Object.entries(schema.properties)) {
         if (!property || typeof property !== 'object' || Array.isArray(property) ||
             Object.keys(property).some(name => !['type', 'description'].includes(name)) ||
-            (key !== 'summary' && optionalProperty(property, 'type') !== 'boolean')) {
+            (key !== 'summary' && property.type !== 'boolean')) {
             throw new Error(`Owner-addition schema has an unsupported property: ${key}.`);
         }
     }
 }
 export function validateOwnerAdditionEligibility(rawDecision, schema) {
     validateOwnerAdditionEligibilitySchema(schema);
-    let parsed;
+    let decision;
     try {
-        parsed = JSON.parse(rawDecision);
+        decision = JSON.parse(rawDecision);
     }
     catch {
         throw new Error('Owner-addition reviewer returned invalid JSON.');
     }
-    if (!isRecord(parsed) || typeof parsed.summary !== 'string' || !parsed.summary.trim() || parsed.summary.length > 4_000) {
+    if (!decision || typeof decision !== 'object' || Array.isArray(decision) ||
+        typeof decision.summary !== 'string' || !decision.summary.trim() ||
+        decision.summary.length > 4_000) {
         throw new Error('Owner-addition reviewer returned an incomplete decision.');
     }
     for (const key of REQUIRED_CHECKS) {
-        if (parsed[key] !== true)
+        if (decision[key] !== true)
             throw new Error(`Owner-addition reviewer did not establish ${key}.`);
     }
     const expected = Object.keys(schema.properties);
-    if (Object.keys(parsed).length !== expected.length || expected.some(key => !Object.hasOwn(parsed, key))) {
+    if (Object.keys(decision).length !== expected.length || expected.some(key => !Object.hasOwn(decision, key))) {
         throw new Error('Owner-addition reviewer did not return the complete selected schema.');
     }
     for (const key of expected) {
-        if (key !== 'summary' && parsed[key] !== true) {
+        if (key !== 'summary' && decision[key] !== true) {
             throw new Error(`Owner-addition reviewer did not establish consumer check ${key}.`);
         }
     }
     // The schema and required-key loops above establish the static shape returned to typed callers.
-    return parsed;
+    return decision;
 }
 export function validateOrdinaryOwnerDecisionSchema(schema) {
-    if (!isRecord(schema) || !Array.isArray(schema.required) || !schema.required.includes('ownerDecisionId') ||
+    if (!schema || typeof schema !== 'object' || Array.isArray(schema) ||
+        !Array.isArray(schema.required) ||
+        !schema.required.includes('ownerDecisionId') ||
         !schema.properties ||
-        optionalProperty(optionalProperty(optionalProperty(schema, 'properties'), 'ownerDecisionId'), 'type') !== 'string') {
+        schema.properties.ownerDecisionId?.type !== 'string') {
         throw new Error('Protected ordinary review schema must require ownerDecisionId.');
     }
 }
 export function validateOrdinaryOwnerDecision(rawDecision, missingDecisionId) {
-    let parsed;
+    let decision;
     try {
-        parsed = JSON.parse(rawDecision);
+        decision = JSON.parse(rawDecision);
     }
     catch {
         throw new Error('Ordinary review did not return valid JSON.');
     }
-    if (!isRecord(parsed) || parsed.decision !== 'OWNER_DECISION' ||
-        !DECISION_ID.test(String(parsed.ownerDecisionId)) ||
-        parsed.ownerDecisionId !== missingDecisionId ||
-        typeof parsed.summary !== 'string' || !parsed.summary.trim() ||
-        (parsed.gates && typeof parsed.gates === 'object' &&
-            Object.values(parsed.gates).some(gate => optionalProperty(gate, 'decision') === 'BLOCK'))) {
+    if (!decision || decision.decision !== 'OWNER_DECISION' ||
+        !DECISION_ID.test(decision.ownerDecisionId) ||
+        decision.ownerDecisionId !== missingDecisionId ||
+        typeof decision.summary !== 'string' || !decision.summary.trim() ||
+        (decision.gates && typeof decision.gates === 'object' &&
+            Object.values(decision.gates).some(gate => gate?.decision === 'BLOCK'))) {
         throw new Error('Ordinary OWNER_DECISION does not identify the exact missing decision without a BLOCK.');
     }
     // The existing decision, ID-equality, and summary checks establish this shape when called with a string ID.
-    return parsed;
+    return decision;
 }

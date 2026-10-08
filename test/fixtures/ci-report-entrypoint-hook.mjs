@@ -1,8 +1,6 @@
-import { appendFileSync, readFileSync } from 'node:fs';
+import { readFileSync, writeSync } from 'node:fs';
 
-const fixturePath = process.env.CI_REPORT_FIXTURE;
-if (!fixturePath) throw new Error('CI_REPORT_FIXTURE must name the synthetic response fixture.');
-const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'));
+const fixture = JSON.parse(readFileSync(3, 'utf8'));
 const requests = [];
 const violations = [];
 
@@ -32,7 +30,5 @@ globalThis.fetch = async (input, options = {}) => {
 };
 
 process.on('exit', () => {
-  if (process.env.CI_REPORT_REQUEST_LOG) {
-    appendFileSync(process.env.CI_REPORT_REQUEST_LOG, `${JSON.stringify({ requests, violations })}\n`);
-  }
+  writeSync(4, `${JSON.stringify({ requests, violations })}\n`);
 });
