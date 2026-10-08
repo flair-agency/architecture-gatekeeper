@@ -20,7 +20,7 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
       REVIEW_RESPONSE: 'steps.codex.outputs.final-message',
     })) assert.ok(block.includes(`${name}: \${{ ${expression} }}`));
     assert.match(text, /execution_settings_base64: \$\{\{ steps\.resolve\.outputs\.executionSettingsBase64 \}\}/);
-    assert.match(block, /run: node \.architecture-gatekeeper-validation-runtime\/src\/ci-execution-observation\.mjs --github/);
+    assert.match(block, /run: node \.architecture-gatekeeper-validation-runtime\/dist\/ci-execution-observation\.mjs --github/);
     const checkout = text.split('name: Check out the pinned validation runtime')[1]?.split('      - name:')[0];
     assert.match(checkout, /id: validation_runtime/);
     assert.match(checkout, /execution_selection == 'policy'/);
@@ -53,8 +53,8 @@ test('candidate-path observer cannot execute unless the pinned runtime checkout 
 
     const temp = mkdtempSync(join(tmpdir(), 'agk-runtime-checkout-'));
     try {
-      const candidateScript = join(temp, '.architecture-gatekeeper-validation-runtime', 'src', 'ci-execution-observation.mjs');
-      mkdirSync(join(temp, '.architecture-gatekeeper-validation-runtime', 'src'), { recursive: true });
+      const candidateScript = join(temp, '.architecture-gatekeeper-validation-runtime', 'dist', 'ci-execution-observation.mjs');
+      mkdirSync(join(temp, '.architecture-gatekeeper-validation-runtime', 'dist'), { recursive: true });
       const marker = join(temp, 'executed');
       writeFileSync(candidateScript, `import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 'ran');\n`);
       const invokeWhenEnabled = (state) => {
@@ -104,7 +104,7 @@ test('self protected review binds the exact PR task context before Codex consume
     AUTHORITY_PROFILE: 'needs.policy.outputs.authority_profile || \'v1\'',
     POLICY_VERSION: 'needs.policy.outputs.policy_version',
   })) assert.ok(context.includes(`${name}: \${{ ${expression} }}`));
-  assert.match(context, /run: node \.architecture-gatekeeper-validation-runtime\/src\/prepare-review-context\.mjs/);
+  assert.match(context, /run: node \.architecture-gatekeeper-validation-runtime\/dist\/prepare-review-context\.mjs/);
   assert.match(workflow, /preflight-authority-set-review\.mjs \\\s*"\$RUNNER_TEMP\/architecture-gate-decision\.schema\.json" \\\s*"\$RUNNER_TEMP\/architecture-gate-review-prompt\.md"/);
   assert.match(workflow, /prompt-file: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && format\('\{0\}\/architecture-gate-review-prompt\.md', runner\.temp\) \|\| needs\.policy\.outputs\.authority_manifest_path != '' && format\('\{0\}\/architecture-gate-review-prompt\.md', runner\.temp\)/);
   assert.match(workflow, /prompt-file:[\s\S]*?inputs\.protected-review-instructions && format\('\{0\}\/architecture-gate-prompt\.md', runner\.temp\) \|\| inputs\.prompt-path/);
