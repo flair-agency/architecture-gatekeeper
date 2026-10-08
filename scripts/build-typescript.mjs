@@ -17,6 +17,7 @@ const sourceRoot = join(root, 'src-ts');
 const configPath = join(root, 'tsconfig.json');
 const outputMap = new Map([
   ['owner-addition/owner-addition-validation.mjs', 'src/owner-addition/owner-addition-validation.mjs'],
+  ['ci-execution/ci-execution-result.mjs', 'src/ci-execution/ci-execution-result.mjs'],
 ]);
 const temporaryRoot = mkdtempSync(join(tmpdir(), 'architecture-gatekeeper-typescript-'));
 
@@ -92,12 +93,17 @@ function walkTemporary(directory) {
 }
 
 function unexpectedMappedOutputs() {
-  const mappedDirectory = join(root, 'src/owner-addition');
-  if (!assertSafeCheckoutPath(mappedDirectory, { allowMissing: true, kind: 'directory', singleLink: true })) return [];
-  const expectedDestinations = new Set(outputMap.values());
-  return walkCheckout(mappedDirectory, { singleLink: true })
-    .map(path => relative(root, path).split('\\').join('/'))
-    .filter(path => !expectedDestinations.has(path));
+  const managedDirectories = new Set([...outputMap.values()].map(path => dirname(join(root, path))));
+  const unexpected = [];
+  for (const mappedDirectory of managedDirectories) {
+    if (!assertSafeCheckoutPath(mappedDirectory, { allowMissing: true, kind: 'directory', singleLink: true })) continue;
+    const expectedDestinations = new Set([...outputMap.values()]
+      .filter(path => dirname(join(root, path)) === mappedDirectory));
+    unexpected.push(...walkCheckout(mappedDirectory, { singleLink: true })
+      .map(path => relative(root, path).split('\\').join('/'))
+      .filter(path => !expectedDestinations.has(path)));
+  }
+  return unexpected;
 }
 
 try {
