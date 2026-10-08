@@ -67,9 +67,9 @@ and unresolved limits. The entrypoint and workflow investigations under
 
 ## Staged TypeScript and reproducible JavaScript
 
-#419 initially migrates the shared OWNER_ADDITION validation leaf. The
-[96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
-tracks the remaining 95 original modules and #417 grouping work. Author
+#419 starts with the shared OWNER_ADDITION validation leaf and CI execution
+result normalizer. The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
+tracks the remaining 94 original modules and #417 grouping work. Author
 `src-ts/<responsibility>/*.mts`; emit checked-in JavaScript to the corresponding
 `src/<responsibility>/*.mjs`. Preserve existing flat `src/*.mjs` paths, package
 exports and bins. A re-export facade is sufficient only for an import-only leaf;
@@ -106,8 +106,12 @@ which completed runtime checks establish the shape; assertions and brands are
 not evidence validation. Never create a no-op assertion function that appears
 to validate input. Compile-negative fixtures use the actual tsconfig, reject
 unexpected diagnostics and identify the intended field/argument failure.
-Callback sync/async contracts and incomplete/success variants will be added
-when their actual owning modules migrate; the first leaf invents neither.
+The CI result normalizer distinguishes completed results carrying response bytes
+from incomplete results without those bytes; completion means host-reported
+success with bounded output, not a validated semantic decision or acceptance.
+General observed outcomes remain unknown where the accepted JavaScript input
+can return a changing accessor value. Callback sync/async contracts remain
+future work when their actual owning modules migrate.
 
 Runtime coverage follows executed `src/**/*.mjs`, including the generated
 implementation behind a flat facade. Report those exact paths without counting

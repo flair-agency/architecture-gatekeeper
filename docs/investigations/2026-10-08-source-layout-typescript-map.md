@@ -363,3 +363,12 @@ not additional original migration completions. #417/#419 stay open. The map
 table remains the original-module inventory, with this progress section tracking
 implemented slices. #418 guidance is also partial while later callback/result
 contracts and source moves remain pending.
+
+The next #419 slice migrates `ci-execution-result` with completed/incomplete
+result contracts, while preserving the original flat function export and runtime
+normalization. General observed outcomes remain `unknown` to represent accepted
+accessor-backed JavaScript input; the completed branch refines success/available
+and requires response bytes. See the
+[result-contract verification record](2026-10-08-typescript-result-contract-quality.md).
+Across these two slices, **2/96 original modules** are migrated and **94 remain**.
+The preceding 1/96 paragraph describes the first foundation slice.
