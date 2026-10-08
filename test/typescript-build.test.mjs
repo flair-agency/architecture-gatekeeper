@@ -32,6 +32,7 @@ test('TypeScript build checks missing, stale, extra, symlinked, and failed-emiss
   symlinkSync(join(root, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
 
   const outputPath = join(fixtureRoot, 'src/owner-addition/owner-addition-validation.mjs');
+  const secondOutputPath = join(fixtureRoot, 'src/ci-execution/ci-execution-result.mjs');
   const missingCheck = runBuild(fixtureRoot, '--check');
   assert.notEqual(missingCheck.status, 0);
   assert.match(missingCheck.stderr, /Generated output is missing or stale/);
@@ -39,7 +40,22 @@ test('TypeScript build checks missing, stale, extra, symlinked, and failed-emiss
   const initialBuild = runBuild(fixtureRoot);
   assert.equal(initialBuild.status, 0, initialBuild.stderr);
   const baselineOutput = readFileSync(outputPath, 'utf8');
+  const secondBaselineOutput = readFileSync(secondOutputPath, 'utf8');
   assert.equal(runBuild(fixtureRoot, '--check').status, 0);
+
+  rmSync(secondOutputPath);
+  const secondMissingCheck = runBuild(fixtureRoot, '--check');
+  assert.notEqual(secondMissingCheck.status, 0);
+  assert.match(secondMissingCheck.stderr, /Generated output is missing or stale: src\/ci-execution\/ci-execution-result\.mjs/);
+  assert.equal(runBuild(fixtureRoot).status, 0);
+  assert.equal(readFileSync(secondOutputPath, 'utf8'), secondBaselineOutput);
+
+  writeFileSync(secondOutputPath, `${secondBaselineOutput}\n// stale fixture output\n`);
+  const secondStaleCheck = runBuild(fixtureRoot, '--check');
+  assert.notEqual(secondStaleCheck.status, 0);
+  assert.match(secondStaleCheck.stderr, /Generated output is missing or stale: src\/ci-execution\/ci-execution-result\.mjs/);
+  assert.equal(runBuild(fixtureRoot).status, 0);
+  assert.equal(readFileSync(secondOutputPath, 'utf8'), secondBaselineOutput);
 
   writeFileSync(outputPath, `${baselineOutput}\n// stale fixture output\n`);
   const staleCheck = runBuild(fixtureRoot, '--check');
@@ -70,6 +86,18 @@ test('TypeScript build checks missing, stale, extra, symlinked, and failed-emiss
   assert.equal(readFileSync(outputPath, 'utf8'), baselineOutput, 'extra output must stop generation before writing');
   rmSync(dirname(extraOutputPath), { recursive: true, force: true });
 
+  const secondExtraOutputPath = join(fixtureRoot, 'src/ci-execution/nested/unmapped.mjs');
+  mkdirSync(dirname(secondExtraOutputPath), { recursive: true });
+  writeFileSync(secondExtraOutputPath, 'export {};\n');
+  for (const args of [['--check'], []]) {
+    const result = runBuild(fixtureRoot, ...args);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Unexpected generated \.mjs output: src\/ci-execution\/nested\/unmapped\.mjs/);
+  }
+  assert.equal(readFileSync(outputPath, 'utf8'), baselineOutput, 'second managed directory extra output must stop all generation');
+  assert.equal(readFileSync(secondOutputPath, 'utf8'), secondBaselineOutput, 'second managed output must remain untouched');
+  rmSync(dirname(secondExtraOutputPath), { recursive: true, force: true });
+
   const sourcePath = join(fixtureRoot, 'src-ts/owner-addition/owner-addition-validation.mts');
   const source = readFileSync(sourcePath, 'utf8');
   writeFileSync(sourcePath, `${source}\nconst deliberateTypeError: string = 1;\n`);
@@ -77,6 +105,7 @@ test('TypeScript build checks missing, stale, extra, symlinked, and failed-emiss
   assert.notEqual(failedCompile.status, 0);
   assert.match(failedCompile.stderr, /Type 'number' is not assignable to type 'string'/);
   assert.equal(readFileSync(outputPath, 'utf8'), baselineOutput, 'compiler errors must not replace generated output');
+  assert.equal(readFileSync(secondOutputPath, 'utf8'), secondBaselineOutput, 'compiler errors must not replace the second generated output');
   writeFileSync(sourcePath, source);
 
   const externalDirectory = join(externalRoot, 'mapped-output');
@@ -89,16 +118,56 @@ test('TypeScript build checks missing, stale, extra, symlinked, and failed-emiss
     const result = runBuild(fixtureRoot, ...args);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Symbolic links are not allowed/);
+    assert.match(result.stderr, /src\/owner-addition/);
     assert.equal(readFileSync(externalSentinel, 'utf8'), 'outside sentinel\n');
   }
+  rmSync(join(fixtureRoot, 'src/owner-addition'), { recursive: true, force: true });
+  assert.equal(runBuild(fixtureRoot).status, 0);
 
-  rmSync(join(fixtureRoot, 'src/owner-addition'));
+  const secondExternalDirectory = join(externalRoot, 'second-mapped-output');
+  mkdirSync(secondExternalDirectory);
+  const secondExternalSentinel = join(secondExternalDirectory, 'ci-execution-result.mjs');
+  writeFileSync(secondExternalSentinel, 'second outside sentinel\n');
+  rmSync(join(fixtureRoot, 'src/ci-execution'), { recursive: true, force: true });
+  symlinkSync(secondExternalDirectory, join(fixtureRoot, 'src/ci-execution'), 'dir');
+  for (const args of [['--check'], []]) {
+    const result = runBuild(fixtureRoot, ...args);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Symbolic links are not allowed/);
+    assert.match(result.stderr, /src\/ci-execution/);
+    assert.equal(readFileSync(secondExternalSentinel, 'utf8'), 'second outside sentinel\n');
+  }
+  rmSync(join(fixtureRoot, 'src/ci-execution'));
+  mkdirSync(join(fixtureRoot, 'src/ci-execution'), { recursive: true });
+  symlinkSync(secondExternalSentinel, secondOutputPath);
+  for (const args of [['--check'], []]) {
+    const result = runBuild(fixtureRoot, ...args);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Symbolic links are not allowed/);
+    assert.match(result.stderr, /src\/ci-execution\/ci-execution-result\.mjs/);
+    assert.equal(readFileSync(secondExternalSentinel, 'utf8'), 'second outside sentinel\n');
+  }
+  rmSync(secondOutputPath);
+  assert.equal(runBuild(fixtureRoot).status, 0);
+  const secondExternalHardlink = join(externalRoot, 'second-hard-linked-output.mjs');
+  linkSync(secondOutputPath, secondExternalHardlink);
+  for (const args of [['--check'], []]) {
+    const result = runBuild(fixtureRoot, ...args);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Hard-linked generated output is not allowed/);
+    assert.match(result.stderr, /src\/ci-execution\/ci-execution-result\.mjs/);
+    assert.equal(readFileSync(secondExternalHardlink, 'utf8'), secondBaselineOutput);
+  }
+  rmSync(secondExternalHardlink);
+
+  rmSync(join(fixtureRoot, 'src/owner-addition'), { recursive: true, force: true });
   mkdirSync(join(fixtureRoot, 'src/owner-addition'), { recursive: true });
   symlinkSync(externalSentinel, outputPath);
   for (const args of [['--check'], []]) {
     const result = runBuild(fixtureRoot, ...args);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Symbolic links are not allowed/);
+    assert.match(result.stderr, /src\/owner-addition\/owner-addition-validation\.mjs/);
     assert.equal(readFileSync(externalSentinel, 'utf8'), 'outside sentinel\n');
   }
 
@@ -110,6 +179,7 @@ test('TypeScript build checks missing, stale, extra, symlinked, and failed-emiss
     const result = runBuild(fixtureRoot, ...args);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Hard-linked generated output is not allowed/);
+    assert.match(result.stderr, /src\/owner-addition\/owner-addition-validation\.mjs/);
     assert.equal(readFileSync(externalHardlink, 'utf8'), baselineOutput);
   }
 });
