@@ -6,10 +6,35 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/flair-agency?label=Sponsor&logo=github)](https://github.com/sponsors/flair-agency)
 
-Architecture Gatekeeper supplies architecture-review mechanics while each
-consumer repository owns its architecture, review inputs and acceptance policy.
-The package returns structured review evidence; repository policy determines
-what that evidence permits.
+Coding agents can follow `AGENTS.md` and still move a responsibility or trust
+boundary. Instructions explain how to work; generic AI review may not use the
+consumer's architecture, and static checks only enforce encoded patterns. None
+resolves an owner choice absent from repository authority.
+
+In about 30 seconds, the relationship is:
+
+```text
+coding-agent change
+  → Gatekeeper selects committed repository-owned review inputs
+  → reviewer returns PASS / BLOCK / OWNER_DECISION
+  → Gatekeeper validates the structured response and declared consumer rules
+  → repository policy decides what that evidence permits
+```
+
+Illustrative, not a recorded result: if a consumer reserves review-credential
+issuance to a protected workflow, moving it into a pull-request-controlled step
+could yield `BLOCK`. If authority leaves a new responsibility unassigned, it
+could yield `OWNER_DECISION`. Neither result authorizes implementation or
+acceptance.
+
+| Mechanism | What it contributes | What it does not decide by itself |
+| --- | --- | --- |
+| Instructions (`AGENTS.md`) | Agent context | Architecture review or acceptance |
+| Generic AI review | Broad feedback | Consumer-bound review unless it uses selected authority |
+| Linters and static checks | Deterministic checks for encoded patterns | Unwritten intent or responsibility choices |
+| Architecture Gatekeeper | Review against committed inputs; validate structured results and declared rules | Acceptance; consumer policy decides what evidence permits |
+
+Each consumer owns its architecture, review inputs and acceptance policy.
 
 ## Choose your goal
 
@@ -26,7 +51,9 @@ what that evidence permits.
 ## Requirements
 
 - Node.js 22 or later.
-- GitHub Packages access with `read:packages` to install the package.
+- GitHub Packages authentication with `read:packages` to install. Package
+  visibility and registry authentication are separate; [Issue #33](https://github.com/flair-agency/architecture-gatekeeper/issues/33)
+  remains the source for that distribution work.
 - An authenticated local `codex` CLI for the first manual Codex review.
 - Consumer-owned authority, prompt, decision schema, reviewer settings and
   configuration committed at the revision being reviewed.
@@ -38,6 +65,10 @@ which creates and commits a small consumer fixture, installs
 `@flair-agency/architecture-gatekeeper@0.6.0-preview.3`, and shows the command
 and observable outcomes. Its sample result is review evidence, not repository
 acceptance or implementation authority.
+
+The public first-review demo is tracked separately in [Issue #393](https://github.com/flair-agency/architecture-gatekeeper/issues/393),
+which is open; no public demo asset has been published yet. The broader adoption
+funnel is tracked in [Issue #390](https://github.com/flair-agency/architecture-gatekeeper/issues/390).
 
 ## Review paths
 
