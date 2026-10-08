@@ -1,4 +1,4 @@
-# This workflow and its condition are candidate-loaded consistency checks, not source authentication. Before a trusted coordinator merges this feature once, independently verify the exact external head/tree and WIF principal/permissions, durably consume all five reserved verification slots, and ensure there is no second merge, workflow submission, rerun, or replay. The hosted result is private post-merge evidence, never ordinary CI acceptance.
+# This candidate-loaded workflow is a consistency check, not source authentication. A trusted coordinator must independently admit one exact hosted execution, verify its source and WIF identity, and retain development-attempt history. The selected deadline and defensive per-session cap bound that execution; the chat development retry ceiling is not a cross-session dispatch quota. No automatic workflow retry or fallback is authorized. Its private post-merge evidence is not ordinary CI acceptance.
 name: Issue 334 single hosted Gemini verification
 on:
   push:
@@ -10,7 +10,9 @@ permissions:
   contents: read
 jobs:
   verify:
-    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == '21731bf98e998cddf13c085cc4a02bb51bfda498' && github.run_attempt == 1
+    # Staging only: a follow-up PR must bind and admit the exact hosted execution.
+    if: ${{ false }}
+    # Previous consistency condition: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == '21731bf98e998cddf13c085cc4a02bb51bfda498' && github.run_attempt == 1
     permissions:
       contents: read
       id-token: write
@@ -59,23 +61,25 @@ jobs:
           AGK_VERTEX_PROJECT: ${{ steps.auth.outputs.project_id }}
           AGK_VERTEX_LOCATION: global
         run: node scripts/issue334-gemini-verification.mjs verify
-      - name: Seal durable count after completion or interruption
+      - name: Seal private dispatch diagnostics after completion or interruption
         timeout-minutes: 1
         id: checkpoint
         if: always()
         run: node scripts/issue334-gemini-verification.mjs seal-checkpoint
-      - name: Retain encrypted private evidence only
+      - name: Retain encrypted private evidence
         id: evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         timeout-minutes: 2
         with:
           name: issue334-private-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: .agk334-private-runtime/agk334-private-evidence-*/*.enc.json
+          path: |
+            .agk334-private-runtime/agk334-private-evidence-*/*.enc.json
+            .agk334-private-runtime/agk334-private-evidence-checkpoint/*.enc.json
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 7
-      - name: Remove private CLI runtime after retained checkpoint
+      - name: Remove private CLI runtime after retaining encrypted diagnostics
         timeout-minutes: 1
         if: always() && steps.checkpoint.outcome == 'success' && steps.evidence.outcome == 'success'
         run: rm -rf -- .agk334-private-runtime
