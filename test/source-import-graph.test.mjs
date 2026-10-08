@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -12,18 +12,21 @@ const checker = path.join(repositoryRoot, 'scripts/check-source-cycles.mjs');
 async function fixture(t) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'source-cycles-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
+  await mkdir(path.join(directory, 'scripts'), { recursive: true });
+  await copyFile(checker, path.join(directory, 'scripts/check-source-cycles.mjs'));
   return directory;
 }
 
 async function source(root, relative, contents) {
-  const file = path.join(root, relative);
+  const file = path.join(root, 'src', relative);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, contents);
   return file;
 }
 
-function run(root, { flag = true } = {}) {
-  const args = [...(flag ? ['--experimental-vm-modules'] : []), checker, root];
+function run(root, { flag = true, args: extraArgs = [] } = {}) {
+  const fixtureChecker = path.join(root, 'scripts/check-source-cycles.mjs');
+  const args = [...(flag ? ['--experimental-vm-modules'] : []), fixtureChecker, ...extraArgs];
   return spawnSync(process.execPath, args, { encoding: 'utf8', timeout: 5000, env: { ...process.env, NODE_NO_WARNINGS: '1' } });
 }
 
@@ -106,7 +109,7 @@ test('fails closed for missing, escaping, unsupported, and symlinked relative ta
 
   const linked = await fixture(t);
   const outside = await source(linked, 'outside.mjs', 'export {};');
-  await symlink(outside, path.join(linked, 'linked.mjs'));
+  await symlink(outside, path.join(linked, 'src/linked.mjs'));
   await source(linked, 'a.mjs', "import './linked.mjs';");
   const linkedResult = run(linked);
   assert.equal(linkedResult.status, 1);
@@ -143,4 +146,14 @@ test('explains the required VM modules flag when it is absent', async t => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /SourceTextModule is unavailable/);
   assert.match(result.stderr, /--experimental-vm-modules/);
+});
+
+test('rejects caller-selected roots and keeps the scan pinned to its checkout', async t => {
+  const root = await fixture(t);
+  await source(root, 'a.mjs', 'export {};');
+  const outside = path.join(os.tmpdir(), 'untrusted-src-root');
+  const result = run(root, { args: [outside] });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /usage: node --experimental-vm-modules scripts\/check-source-cycles\.mjs/);
+  assert.doesNotMatch(result.stdout, /no static relative import cycles/);
 });

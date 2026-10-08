@@ -39,7 +39,9 @@ constructor and checks static relative `import` and `export ... from` edges.
 It never links or evaluates the modules. A cycle prints a concrete dependency
 chain and exits nonzero. Missing relative targets, paths outside `src`, symbolic
 links, unsupported source extensions and syntax errors also fail the check.
-The optional `[src-root]` argument selects a fixture directory for tool tests.
+The root is fixed to the checkout containing the script; arguments cannot
+select another source directory. Tool tests copy the script into isolated
+checkout-shaped fixtures.
 
 The check excludes dynamic `import()`, CommonJS `require`, computed loads,
 bare package specifiers (including Node builtins), and files outside the selected

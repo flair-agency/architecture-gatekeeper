@@ -106,13 +106,13 @@ function findCycles(graph) {
   return [...found.values()].sort((a, b) => compareText(a.join('\0'), b.join('\0')));
 }
 
-export async function checkSourceCycles(sourceRoot = defaultSourceRoot) {
+async function checkSourceCycles() {
   if (typeof vm.SourceTextModule !== 'function') {
     throw new Error('vm.SourceTextModule is unavailable. Run this checker with `node --experimental-vm-modules scripts/check-source-cycles.mjs`.');
   }
-  const root = await realpath(path.resolve(sourceRoot));
+  const root = defaultSourceRoot;
   const rootInfo = await lstat(root);
-  if (!rootInfo.isDirectory()) throw new Error(`source root is not a directory: ${sourceRoot}`);
+  if (!rootInfo.isDirectory()) throw new Error(`source root is not a directory: ${root}`);
   const files = await findSourceFiles(root);
   const graph = new Map();
   const paths = new Map(files.map(file => [file, displayPath(root, file)]));
@@ -141,8 +141,8 @@ export async function checkSourceCycles(sourceRoot = defaultSourceRoot) {
 
 async function main() {
   const args = process.argv.slice(2);
-  if (args.length > 1) throw new Error('usage: node --experimental-vm-modules scripts/check-source-cycles.mjs [src-root]');
-  const result = await checkSourceCycles(args[0] ? path.resolve(args[0]) : defaultSourceRoot);
+  if (args.length > 0) throw new Error('usage: node --experimental-vm-modules scripts/check-source-cycles.mjs');
+  const result = await checkSourceCycles();
   if (result.cycles.length) {
     for (const cycle of result.cycles) console.error(`cycle: ${cycle.join(' -> ')}`);
     console.error(`Found ${result.cycles.length} static relative import cycle(s) among ${result.moduleCount} .mjs modules.`);
