@@ -227,13 +227,16 @@ test('legacy predecessor authority retains exact BOM bytes and decoded content',
   await completePreviewLifecycle(predecessorRequest, ordinary(decision()), predecessor.root);
 });
 
-test('ordinary mode records PASS, BLOCK and OWNER_DECISION without promoting escalation', async t => {
+test('ordinary mode retains PASS, BLOCK and OWNER_DECISION separately from procedure authorization', async t => {
   for (const result of ['PASS', 'BLOCK', 'OWNER_DECISION']) {
     const f = fixture(t);
     const head = commitOn(f, `ordinary-${result.toLowerCase()}`, { 'app.txt': `Candidate for ${result}\n` });
     const request = await preparePreviewLifecycle(spec(f, 'review', head), f.root);
-    const receipt = await completePreviewLifecycle(request, ordinary(decision(result)), f.root);
-    assert.equal(receipt.decision.decision, result);
+    assert.match(request.prompt, /Assess predecessorAuthorized only for whether the full prior governance authorizes this explicitly selected preview procedure\. For an ordinary review, assess semanticDecision separately under the unchanged predecessor schema and semantic meaning/);
+    assert.match(request.prompt, /A substantive BLOCK or OWNER_DECISION on an ordinary review does not by itself make predecessorAuthorized false/);
+    const semanticDecision = decision(result);
+    const receipt = await completePreviewLifecycle(request, ordinary(semanticDecision), f.root);
+    assert.deepEqual(receipt.decision, semanticDecision);
     assert.equal(receipt.eligibility, 'NOT_APPLICABLE');
     assert.equal(receipt.adoption, 'PENDING');
     assert.equal(receipt.canonical, 'PENDING');
