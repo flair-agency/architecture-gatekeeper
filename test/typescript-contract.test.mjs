@@ -79,3 +79,24 @@ test('JavaScript validator behavior retains original ID coercion and schema chec
   eligibility.summary = 'eligible';
   assert.deepEqual(validateOwnerAdditionEligibility(JSON.stringify(eligibility), eligibilitySchema), eligibility);
 });
+
+test('ordinary decision validation preserves strict primitive getter receivers', () => {
+  const previousDescriptor = Object.getOwnPropertyDescriptor(String.prototype, 'decision');
+  Object.defineProperty(String.prototype, 'decision', {
+    configurable: true,
+    get() { return typeof this === 'string' ? 'BLOCK' : undefined; },
+  });
+  try {
+    const rawDecision = JSON.stringify({
+      decision: 'OWNER_DECISION', ownerDecisionId: 'guard', summary: 'blocked',
+      gates: { guard: 'primitive' },
+    });
+    assert.throws(
+      () => validateOrdinaryOwnerDecision(rawDecision, 'guard'),
+      { message: 'Ordinary OWNER_DECISION does not identify the exact missing decision without a BLOCK.' },
+    );
+  } finally {
+    if (previousDescriptor) Object.defineProperty(String.prototype, 'decision', previousDescriptor);
+    else delete String.prototype.decision;
+  }
+});

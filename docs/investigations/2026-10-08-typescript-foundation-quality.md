@@ -55,6 +55,17 @@ computed loads, bare packages and external graphs remain out of scope.
 
 ## Verification
 
+- Fixed-candidate follow-up: a strict inherited `String.prototype.decision`
+  getter returning `BLOCK` only for a primitive string receiver exposed a
+  regression where the first generated leaf boxed values before optional
+  property reads. The authored source now uses erased property-view casts with
+  direct optional reads, preserving the original receiver and checks without
+  adding runtime validation. A `finally`-restored regression fixture covers the
+  case. The generated Acorn AST matches the original base leaf after removing
+  only source locations, raw spellings and comments. After the fix,
+  `npm run check:typescript`, the source-cycle check, the focused
+  TypeScript/build/graph suites (23/23), and OWNER_ADDITION CI/multi-authority
+  suites (31/31) pass. Full `npm test` for the fixed candidate is pending.
 - Clean locked `npm ci --ignore-scripts` succeeded; `npm run check:typescript`
   succeeded and the actual graph scan checked 97 runtime + 1 authored module
   without a cycle. The additional runtime file is the generated implementation,
