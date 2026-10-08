@@ -145,10 +145,10 @@ export function assertWorkflowStructure({ consumer, self, caller }) {
     assert.equal(materializeLegacy.if, "needs.policy.outputs.policy_version == '1'");
     assert.equal(materializeLegacy.env.BASE_SHA, '${{ github.event.pull_request.base.sha }}');
     assert.equal(materializeLegacy.env.AUTHORITY_FILES_BASE64, '${{ needs.policy.outputs.legacy_authority_files_base64 }}');
-    assert.match(materializeLegacy.run, /prepare-legacy-ci-authority\.mjs prepare/);
+    assert.match(materializeLegacy.run, /(?:\.architecture-gatekeeper-validation-runtime\/|\$GATEKEEPER_RUNTIME_ROOT\/)dist\/prepare-legacy-ci-authority\.mjs"? prepare/);
     const reportedLegacy = namedStep(reviewJob, 'Require exact reported legacy authority files');
     assert.equal(reportedLegacy.if, "needs.policy.outputs.policy_version == '1'");
-    assert.match(reportedLegacy.run, /prepare-legacy-ci-authority\.mjs validate/);
+    assert.match(reportedLegacy.run, /(?:\.architecture-gatekeeper-validation-runtime\/|\$GATEKEEPER_RUNTIME_ROOT\/)dist\/prepare-legacy-ci-authority\.mjs"? validate/);
     const reportedIds = namedStep(reviewJob, 'Require exact reported Authority IDs');
     assert.equal(reportedIds.if, "needs.policy.outputs.authority_manifest_path != ''");
     assert.match(reportedIds.run, /validate-authority-set-decision\.mjs/);

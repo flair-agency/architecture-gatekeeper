@@ -156,17 +156,39 @@ test('protected runtime checkouts build their pinned distribution before use', (
         assert.equal(checkout.with.ref, '${{ job.workflow_sha }}', `${profile}.${jobName} runtime revision`);
         assert.equal(checkout.with['persist-credentials'], false, `${profile}.${jobName} runtime checkout credentials`);
 
+        const isolated = ['policy', 'review'].includes(jobName);
         const node = steps[index + 1];
-        const build = steps[index + 2];
-        assert.equal(node.uses, 'actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f', `${profile}.${jobName} Node pin`);
-        assert.equal(node.with['node-version'], 22, `${profile}.${jobName} Node version`);
+        const relocation = isolated ? steps[index + 2] : undefined;
+        const nodeStep = node;
+        const build = isolated ? steps[index + 3] : steps[index + 2];
+        if (isolated) {
+          assert.equal(relocation.name, runtimePath.endsWith('validation-runtime')
+            ? 'Move validation runtime outside candidate workspace ancestry'
+            : 'Move protected runtime outside candidate workspace ancestry');
+          assert.equal(relocation.env.EXPECTED_RUNTIME_SHA, '${{ job.workflow_sha }}');
+          assert.match(relocation.run, new RegExp(`node ${runtimePath.replaceAll('.', '\\.')}/scripts/relocate-protected-runtime\\.mjs ${runtimePath.replaceAll('.', '\\.')}`));
+          assert.equal(relocation.if, checkout.if, `${profile}.${jobName} keeps exact conditional runtime selection`);
+        }
+        assert.equal(nodeStep.uses, 'actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f', `${profile}.${jobName} Node pin`);
+        assert.equal(nodeStep.with['node-version'], 22, `${profile}.${jobName} Node version`);
         assert.match(build.name, /^Build the pinned (protected|validation) runtime$/);
-        assert.match(build.run, new RegExp(`npm ci --ignore-scripts --prefix ${runtimePath.replaceAll('.', '\\.')}`));
-        assert.match(build.run, new RegExp(`npm run --prefix ${runtimePath.replaceAll('.', '\\.') } build`));
+        if (isolated) {
+          assert.match(build.run, /cd "\$GATEKEEPER_RUNTIME_ROOT"/);
+          assert.match(build.run, /npm ci --ignore-scripts\s+npm run build/);
+          assert.doesNotMatch(build.run, /--prefix/);
+        } else {
+          assert.match(build.run, new RegExp(`npm ci --ignore-scripts --prefix ${runtimePath.replaceAll('.', '\\.')}`));
+          assert.match(build.run, new RegExp(`npm run --prefix ${runtimePath.replaceAll('.', '\\.') } build`));
+        }
         if (checkout.if !== undefined) assert.equal(build.if, checkout.if, `${profile}.${jobName} conditional runtime selection`);
 
-        const laterRuntimeCalls = steps.slice(index + 3).map(step => `${step.run ?? ''}\n${step.env ? JSON.stringify(step.env) : ''}`).join('\n');
-        assert.doesNotMatch(laterRuntimeCalls, new RegExp(`${runtimePath.replaceAll('.', '\\.')}/src/`));
+        const laterRuntimeCalls = steps.slice(isolated ? index + 4 : index + 3).map(step => `${step.run ?? ''}\n${step.env ? JSON.stringify(step.env) : ''}`).join('\n');
+        if (isolated) {
+          assert.doesNotMatch(laterRuntimeCalls, new RegExp(`${runtimePath.replaceAll('.', '\\.')}/(?:src|dist|scripts)/`));
+          assert.match(laterRuntimeCalls, /\$GATEKEEPER_RUNTIME_ROOT\/(?:dist|scripts)\//);
+        } else {
+          assert.doesNotMatch(laterRuntimeCalls, new RegExp(`${runtimePath.replaceAll('.', '\\.')}/src/`));
+        }
       }
     }
   }
