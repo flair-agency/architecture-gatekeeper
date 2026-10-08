@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { readOwnerAmendmentTagForMergeGroup } from '../src/owner-amendment-tag-readback.mjs';
+import { readOwnerAmendmentTagForMergeGroup } from '../dist/owner-amendment-tag-readback.mjs';
 
 const repository = 'flair-agency/example';
 const bSha = 'b'.repeat(40);

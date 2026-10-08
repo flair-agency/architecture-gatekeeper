@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { runGeminiCliSession } from '../src/gemini-cli-session.mjs';
+import { runGeminiCliSession } from '../dist/gemini-cli-session.mjs';
 
 const workspaceLimits = { maxFiles: 4, maxFileBytes: 4096, maxTotalBytes: 12000 };
 const oid = char => char.repeat(40);

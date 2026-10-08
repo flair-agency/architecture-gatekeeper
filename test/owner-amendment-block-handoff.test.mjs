@@ -4,9 +4,9 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { prepareOwnerAmendmentBlockHandoff } from '../src/owner-amendment-block-handoff.mjs';
-import { verifyOwnerAmendmentBlockEvidence } from '../src/owner-amendment-attestation.mjs';
-import { createGitHubCliRunner } from '../src/github-cli-runner.mjs';
+import { prepareOwnerAmendmentBlockHandoff } from '../dist/owner-amendment-block-handoff.mjs';
+import { verifyOwnerAmendmentBlockEvidence } from '../dist/owner-amendment-attestation.mjs';
+import { createGitHubCliRunner } from '../dist/github-cli-runner.mjs';
 
 const expected = { repository: 'flair-agency/example', workflowPath: '.github/workflows/owner-amendment.yml',
   workflowSha: 'a'.repeat(40), workflowRef: 'refs/heads/main', runId: '42', runAttempt: '2' };

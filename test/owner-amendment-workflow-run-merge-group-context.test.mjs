@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveOwnerAmendmentWorkflowRunMergeGroupContext } from '../src/owner-amendment-workflow-run-merge-group-context.mjs';
+import { resolveOwnerAmendmentWorkflowRunMergeGroupContext } from '../dist/owner-amendment-workflow-run-merge-group-context.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const repositoryId = 1379218762;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-function runBuild(fixtureRoot, ...args) {
-  const result = spawnSync(process.execPath, ['scripts/build-typescript.mjs', ...args], {
+function runBuild(fixtureRoot) {
+  const result = spawnSync('npm', ['run', 'build'], {
     cwd: fixtureRoot,
     encoding: 'utf8',
     timeout: 60_000,
@@ -19,97 +19,77 @@ function runBuild(fixtureRoot, ...args) {
   return result;
 }
 
-test('TypeScript build checks missing, stale, extra, symlinked, and failed-emission paths in an isolated checkout', { timeout: 240_000 }, t => {
+function emittedFiles(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const path = join(directory, entry.name);
+    return entry.isDirectory() ? emittedFiles(path).map(file => `${entry.name}/${file}`) : [entry.name];
+  }).sort();
+}
+
+test('standard tsc build cleans only dist, copies legacy JavaScript, and emits mixed source paths', { timeout: 240_000 }, t => {
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'architecture-gatekeeper-typescript-build-'));
   const externalRoot = mkdtempSync(join(tmpdir(), 'architecture-gatekeeper-typescript-external-'));
   t.after(() => rmSync(fixtureRoot, { recursive: true, force: true }));
   t.after(() => rmSync(externalRoot, { recursive: true, force: true }));
   mkdirSync(join(fixtureRoot, 'scripts'), { recursive: true });
-  cpSync(join(root, 'scripts/build-typescript.mjs'), join(fixtureRoot, 'scripts/build-typescript.mjs'), { recursive: true });
+  cpSync(join(root, 'scripts/clean-dist.mjs'), join(fixtureRoot, 'scripts/clean-dist.mjs'));
   cpSync(join(root, 'tsconfig.json'), join(fixtureRoot, 'tsconfig.json'));
-  cpSync(join(root, 'src-ts'), join(fixtureRoot, 'src-ts'), { recursive: true });
-  mkdirSync(join(fixtureRoot, 'src'));
+  cpSync(join(root, 'package.json'), join(fixtureRoot, 'package.json'));
+  mkdirSync(join(fixtureRoot, 'src/owner-addition'), { recursive: true });
+  cpSync(join(root, 'src/owner-addition/owner-addition-validation.mts'), join(fixtureRoot, 'src/owner-addition/owner-addition-validation.mts'));
+  cpSync(join(root, 'src/owner-addition-validation.mjs'), join(fixtureRoot, 'src/owner-addition-validation.mjs'));
+  writeFileSync(join(fixtureRoot, 'src/legacy.mjs'), 'export const legacyValue = 7;\n');
+  writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), "import { legacyValue } from '../legacy.mjs';\nexport const answer: number = legacyValue + 35;\n");
   symlinkSync(join(root, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
 
-  const outputPath = join(fixtureRoot, 'src/owner-addition/owner-addition-validation.mjs');
-  const missingCheck = runBuild(fixtureRoot, '--check');
-  assert.notEqual(missingCheck.status, 0);
-  assert.match(missingCheck.stderr, /Generated output is missing or stale/);
-
+  const dist = join(fixtureRoot, 'dist');
+  mkdirSync(dist);
+  writeFileSync(join(dist, 'stale.mjs'), 'old artifact\n');
   const initialBuild = runBuild(fixtureRoot);
   assert.equal(initialBuild.status, 0, initialBuild.stderr);
-  const baselineOutput = readFileSync(outputPath, 'utf8');
-  assert.equal(runBuild(fixtureRoot, '--check').status, 0);
+  assert.deepEqual(emittedFiles(dist), [
+    'legacy.mjs',
+    'owner-addition-validation.mjs',
+    'owner-addition/owner-addition-validation.mjs',
+    'owner-addition/peer.mjs',
+  ]);
+  assert.equal(readFileSync(join(dist, 'legacy.mjs'), 'utf8'), 'export const legacyValue = 7;\n');
+  assert.match(readFileSync(join(dist, 'owner-addition-validation.mjs'), 'utf8'), /from '\.\/owner-addition\/owner-addition-validation\.mjs'/);
+  assert.doesNotMatch(emittedFiles(dist).join('\n'), /stale/);
+  assert.equal(runBuild(fixtureRoot).status, 0, 'a second clean build should be deterministic');
 
-  writeFileSync(outputPath, `${baselineOutput}\n// stale fixture output\n`);
-  const staleCheck = runBuild(fixtureRoot, '--check');
-  assert.notEqual(staleCheck.status, 0);
-  assert.match(staleCheck.stderr, /Generated output is missing or stale/);
-  assert.equal(runBuild(fixtureRoot).status, 0, 'build should refresh a stale mapped output');
-
-  const externalSource = join(externalRoot, 'outside.mts');
-  writeFileSync(externalSource, 'throw new Error("must not read through symlink");\n');
-  const linkedSource = join(fixtureRoot, 'src-ts/owner-addition/linked.mts');
-  symlinkSync(externalSource, linkedSource);
-  for (const args of [['--check'], []]) {
-    const result = runBuild(fixtureRoot, ...args);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /Symbolic links are not allowed/);
-    assert.equal(readFileSync(externalSource, 'utf8'), 'throw new Error("must not read through symlink");\n');
-  }
-  rmSync(linkedSource);
-
-  const extraOutputPath = join(fixtureRoot, 'src/owner-addition/nested/unmapped.mjs');
-  mkdirSync(dirname(extraOutputPath), { recursive: true });
-  writeFileSync(extraOutputPath, 'export {};\n');
-  for (const args of [['--check'], []]) {
-    const result = runBuild(fixtureRoot, ...args);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /Unexpected generated \.mjs output: src\/owner-addition\/nested\/unmapped\.mjs/);
-  }
-  assert.equal(readFileSync(outputPath, 'utf8'), baselineOutput, 'extra output must stop generation before writing');
-  rmSync(dirname(extraOutputPath), { recursive: true, force: true });
-
-  const sourcePath = join(fixtureRoot, 'src-ts/owner-addition/owner-addition-validation.mts');
-  const source = readFileSync(sourcePath, 'utf8');
-  writeFileSync(sourcePath, `${source}\nconst deliberateTypeError: string = 1;\n`);
+  writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), 'export const deliberateTypeError: string = 1;\n');
   const failedCompile = runBuild(fixtureRoot);
   assert.notEqual(failedCompile.status, 0);
-  assert.match(failedCompile.stderr, /Type 'number' is not assignable to type 'string'/);
-  assert.equal(readFileSync(outputPath, 'utf8'), baselineOutput, 'compiler errors must not replace generated output');
-  writeFileSync(sourcePath, source);
+  assert.match(`${failedCompile.stdout}${failedCompile.stderr}`, /Type 'number' is not assignable to type 'string'/);
+  assert.equal(existsSync(dist), false, 'failed compilation must not leave usable output from the previous successful build');
 
-  const externalDirectory = join(externalRoot, 'mapped-output');
+  rmSync(dist, { recursive: true, force: true });
+  const externalDirectory = join(externalRoot, 'dist-target');
   mkdirSync(externalDirectory);
-  const externalSentinel = join(externalDirectory, 'owner-addition-validation.mjs');
+  const externalSentinel = join(externalDirectory, 'sentinel');
   writeFileSync(externalSentinel, 'outside sentinel\n');
-  rmSync(join(fixtureRoot, 'src/owner-addition'), { recursive: true, force: true });
-  symlinkSync(externalDirectory, join(fixtureRoot, 'src/owner-addition'), 'dir');
-  for (const args of [['--check'], []]) {
-    const result = runBuild(fixtureRoot, ...args);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /Symbolic links are not allowed/);
-    assert.equal(readFileSync(externalSentinel, 'utf8'), 'outside sentinel\n');
-  }
+  symlinkSync(externalDirectory, dist, 'dir');
+  const linkedBuild = runBuild(fixtureRoot);
+  assert.notEqual(linkedBuild.status, 0);
+  assert.match(linkedBuild.stderr, /dist must be a real directory/);
+  assert.equal(readFileSync(externalSentinel, 'utf8'), 'outside sentinel\n');
+  rmSync(dist);
 
-  rmSync(join(fixtureRoot, 'src/owner-addition'));
-  mkdirSync(join(fixtureRoot, 'src/owner-addition'), { recursive: true });
-  symlinkSync(externalSentinel, outputPath);
-  for (const args of [['--check'], []]) {
-    const result = runBuild(fixtureRoot, ...args);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /Symbolic links are not allowed/);
-    assert.equal(readFileSync(externalSentinel, 'utf8'), 'outside sentinel\n');
-  }
+  mkdirSync(dist);
+  const linkedEntry = join(dist, 'linked.mjs');
+  symlinkSync(externalSentinel, linkedEntry);
+  const nestedLinkBuild = runBuild(fixtureRoot);
+  assert.notEqual(nestedLinkBuild.status, 0);
+  assert.match(nestedLinkBuild.stderr, /Refusing to clean symbolic link in dist/);
+  assert.equal(readFileSync(externalSentinel, 'utf8'), 'outside sentinel\n');
+  rmSync(linkedEntry);
 
-  rmSync(outputPath);
-  assert.equal(runBuild(fixtureRoot).status, 0);
-  const externalHardlink = join(externalRoot, 'hard-linked-output.mjs');
-  linkSync(outputPath, externalHardlink);
-  for (const args of [['--check'], []]) {
-    const result = runBuild(fixtureRoot, ...args);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /Hard-linked generated output is not allowed/);
-    assert.equal(readFileSync(externalHardlink, 'utf8'), baselineOutput);
-  }
+  writeFileSync(join(dist, 'hardlinked.mjs'), 'hardlink sentinel\n');
+  const externalHardlink = join(externalRoot, 'hardlinked.mjs');
+  linkSync(join(dist, 'hardlinked.mjs'), externalHardlink);
+  const hardlinkBuild = runBuild(fixtureRoot);
+  assert.notEqual(hardlinkBuild.status, 0);
+  assert.match(hardlinkBuild.stderr, /Refusing to clean hard-linked dist file/);
+  assert.equal(readFileSync(externalHardlink, 'utf8'), 'hardlink sentinel\n');
 });

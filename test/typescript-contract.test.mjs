@@ -7,7 +7,7 @@ import {
   validateOrdinaryOwnerDecision,
   validateOrdinaryOwnerDecisionSchema,
   validateOwnerAdditionEligibility,
-} from '../src/owner-addition-validation.mjs';
+} from '../dist/owner-addition-validation.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/typescript-contract');

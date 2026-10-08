@@ -3,10 +3,10 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { appendGitHubOutput, resolveRunnerTempDirectory, readRunnerTempFile, writeRunnerTempFile } from '../src/runner-temp-path.mjs';
-import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs';
+import { appendGitHubOutput, resolveRunnerTempDirectory, readRunnerTempFile, writeRunnerTempFile } from '../dist/runner-temp-path.mjs';
+import { createGitHubAuthoritySource } from '../dist/github-authority-source.mjs';
 import { prepareOwnerAmendmentMergeGroupOrdinaryReview,
-  validateOwnerAmendmentMergeGroupOrdinaryDecision } from '../src/owner-amendment-merge-group-ordinary-review.mjs';
+  validateOwnerAmendmentMergeGroupOrdinaryDecision } from '../dist/owner-amendment-merge-group-ordinary-review.mjs';
 
 const fail = message => { throw new Error(`Owner amendment merge-group ordinary review: ${message}`); };
 const tempDir = () => resolveRunnerTempDirectory('owner-amendment-merge-group');

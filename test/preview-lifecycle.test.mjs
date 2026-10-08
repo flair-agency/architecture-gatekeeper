@@ -97,9 +97,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const packageRoot = dirname(dirname(fileURLToPath(import.meta.resolve('@flair-agency/architecture-gatekeeper/preview-lifecycle'))));
   const runtimeRoot = mkdtempSync(join(tmpdir(), 'preview-runtime-layout-'));
   t.after(() => rmSync(runtimeRoot, { recursive: true, force: true }));
-  cpSync(join(packageRoot, 'src'), join(runtimeRoot, 'src'), { recursive: true });
+  cpSync(join(packageRoot, 'dist'), join(runtimeRoot, 'dist'), { recursive: true });
   copyFileSync(join(packageRoot, 'package.json'), join(runtimeRoot, 'package.json'));
-  const runtime = await import(pathToFileURL(join(runtimeRoot, 'src/preview-lifecycle.mjs')).href);
+  const runtime = await import(pathToFileURL(join(runtimeRoot, 'dist/preview-lifecycle.mjs')).href);
   const f = fixture(t);
   const head = commitOn(f, 'runtime-identity-nested-module', { 'app.txt': 'Runtime identity fixture\n' });
   const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
@@ -107,18 +107,21 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   assert.ok(request.runtime.files[nestedPath]);
-  assert.ok(readdirSync(join(runtimeRoot, 'src')).filter(file => file.endsWith('.mjs')).every(file => request.runtime.files[file]));
+  assert.ok(readdirSync(join(runtimeRoot, 'dist')).filter(file => file.endsWith('.mjs')).every(file => request.runtime.files[file]));
   const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
   await runtime.validatePreviewReceipt(receipt, f.root);
 
-  const facadePath = join(runtimeRoot, 'src/owner-addition-validation.mjs');
+  const facadePath = join(runtimeRoot, 'dist/owner-addition-validation.mjs');
+  const previewPath = join(runtimeRoot, 'dist/preview-lifecycle.mjs');
   const packagePath = join(runtimeRoot, 'package.json');
   const facadeBefore = createHash('sha256').update(readFileSync(facadePath)).digest('hex');
+  const previewBefore = createHash('sha256').update(readFileSync(previewPath)).digest('hex');
   const packageBefore = createHash('sha256').update(readFileSync(packagePath)).digest('hex');
-  appendFileSync(join(runtimeRoot, 'src', nestedPath), '\n// isolated runtime-byte mutation\n');
+  appendFileSync(join(runtimeRoot, 'dist', nestedPath), '\n// isolated runtime-byte mutation\n');
   const changedRequest = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
   assert.notEqual(changedRequest.runtime.files[nestedPath], request.runtime.files[nestedPath]);
   assert.equal(createHash('sha256').update(readFileSync(facadePath)).digest('hex'), facadeBefore);
+  assert.equal(createHash('sha256').update(readFileSync(previewPath)).digest('hex'), previewBefore);
   assert.equal(createHash('sha256').update(readFileSync(packagePath)).digest('hex'), packageBefore);
   await assert.rejects(runtime.completePreviewLifecycle(request, ordinary(decision()), f.root), /request differs from immutable predecessor inputs/);
   await assert.rejects(runtime.validatePreviewReceipt(receipt, f.root), /request differs from immutable predecessor inputs/);
@@ -127,13 +130,13 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
 
   const flatRoot = mkdtempSync(join(tmpdir(), 'preview-runtime-flat-layout-'));
   t.after(() => rmSync(flatRoot, { recursive: true, force: true }));
-  cpSync(join(packageRoot, 'src'), join(flatRoot, 'src'), { recursive: true });
+  cpSync(join(packageRoot, 'dist'), join(flatRoot, 'dist'), { recursive: true });
   copyFileSync(join(packageRoot, 'package.json'), join(flatRoot, 'package.json'));
-  writeFileSync(join(flatRoot, 'src/owner-addition-validation.mjs'), readFileSync(join(flatRoot, 'src', nestedPath)));
-  rmSync(join(flatRoot, 'src/owner-addition'), { recursive: true });
-  const flatRuntime = await import(pathToFileURL(join(flatRoot, 'src/preview-lifecycle.mjs')).href);
+  writeFileSync(join(flatRoot, 'dist/owner-addition-validation.mjs'), readFileSync(join(flatRoot, 'dist', nestedPath)));
+  rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
+  const flatRuntime = await import(pathToFileURL(join(flatRoot, 'dist/preview-lifecycle.mjs')).href);
   const flatRequest = await flatRuntime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-  const expectedFlatPaths = readdirSync(join(flatRoot, 'src')).filter(file => file.endsWith('.mjs')).sort();
+  const expectedFlatPaths = readdirSync(join(flatRoot, 'dist')).filter(file => file.endsWith('.mjs')).sort();
   assert.equal(flatRequest.runtime.nodeVersion, process.version);
   assert.deepEqual(Object.keys(flatRequest.runtime.files).filter(file => file !== '../package.json').sort(), expectedFlatPaths);
   assert.equal(flatRequest.runtime.files['../package.json'], packageBefore);

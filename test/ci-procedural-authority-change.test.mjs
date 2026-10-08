@@ -6,8 +6,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { assertProceduralV5Acceptance } from '../src/ci-procedural-acceptance.mjs';
-import { changedSelectedAuthorityPaths } from '../src/ci-procedural-authority-change.mjs';
+import { assertProceduralV5Acceptance } from '../dist/ci-procedural-acceptance.mjs';
+import { changedSelectedAuthorityPaths } from '../dist/ci-procedural-authority-change.mjs';
 
 const sourceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');

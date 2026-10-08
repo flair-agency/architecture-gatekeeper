@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { deflateRawSync } from 'node:zlib';
-import { digestOwnerDecisionAddition } from '../../src/owner-decision-addition.mjs';
+import { digestOwnerDecisionAddition } from '../../dist/owner-decision-addition.mjs';
 
 const sha = char => char.repeat(40);
 const hex = char => char.repeat(64);

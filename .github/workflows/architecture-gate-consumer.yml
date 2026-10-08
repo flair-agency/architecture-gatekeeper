@@ -79,6 +79,13 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the pinned protected runtime
+        run: |
+          npm ci --ignore-scripts --prefix .architecture-gatekeeper-runtime
+          npm run --prefix .architecture-gatekeeper-runtime build
       - name: Resolve policy from protected base revision
         id: resolve
         env:
@@ -90,9 +97,9 @@ jobs:
             test "$POLICY_PATH" = .codex/gatekeeper/ci-policy.json
           fi
           if git cat-file -e "$BASE_SHA:$POLICY_PATH" 2>/dev/null; then
-            node .architecture-gatekeeper-runtime/src/materialize-regular-git-snapshot.mjs \
+            node .architecture-gatekeeper-runtime/dist/materialize-regular-git-snapshot.mjs \
               "$BASE_SHA" "$POLICY_PATH" "$RUNNER_TEMP/architecture-gate-policy.json" >> "$GITHUB_OUTPUT"
-            node .architecture-gatekeeper-runtime/src/resolve-ci-policy.mjs "$RUNNER_TEMP/architecture-gate-policy.json" "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
+            node .architecture-gatekeeper-runtime/dist/resolve-ci-policy.mjs "$RUNNER_TEMP/architecture-gate-policy.json" "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
           else
             if test "$GITHUB_EVENT_NAME" = pull_request; then
               echo 'Recorded-base CI policy is required for pull_request callers.' >&2
@@ -137,7 +144,7 @@ jobs:
         env:
           CALLER_VALIDATION_PATH: ${{ inputs.validation-path }}
           BASE_VALIDATION_PATH: ${{ steps.resolve.outputs.legacyValidationPath }}
-        run: node .architecture-gatekeeper-runtime/src/verify-legacy-validation-selection.mjs "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"
+        run: node .architecture-gatekeeper-runtime/dist/verify-legacy-validation-selection.mjs "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"
 
   review:
     if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
@@ -193,6 +200,14 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-validation-runtime
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the pinned validation runtime
+        if: needs.policy.outputs.execution_selection == 'policy' || inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
+        run: |
+          npm ci --ignore-scripts --prefix .architecture-gatekeeper-validation-runtime
+          npm run --prefix .architecture-gatekeeper-validation-runtime build
       - name: Materialize recorded-base legacy authority before review
         if: needs.policy.outputs.policy_version == '1'
         id: legacy-authority
@@ -212,7 +227,7 @@ jobs:
           VALIDATION_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-decision.validation.json
           OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-legacy-prompt.md
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
-        run: node .architecture-gatekeeper-validation-runtime/src/prepare-legacy-ci-authority.mjs prepare
+        run: node .architecture-gatekeeper-validation-runtime/dist/prepare-legacy-ci-authority.mjs prepare
       - name: Materialize protected Authority Set before review
         if: needs.policy.outputs.authority_manifest_path != ''
         id: authority
@@ -232,7 +247,7 @@ jobs:
           if test "$AUTHORITY_PROFILE" = owner-addition-v2; then
             PROFILE_ARGS=(--affected-id "$OWNER_AUTHORITY_ID" --affected-path "$OWNER_AUTHORITY_PATH")
           fi
-          node .architecture-gatekeeper-validation-runtime/src/prepare-authority-set.mjs \
+          node .architecture-gatekeeper-validation-runtime/dist/prepare-authority-set.mjs \
             --manifest "$RUNNER_TEMP/architecture-gate-authorities.json" \
             --self-repository "$SELF_REPOSITORY" \
             --self-root . \
@@ -253,7 +268,7 @@ jobs:
           SELF_REPOSITORY: ${{ github.repository }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node .architecture-gatekeeper-validation-runtime/src/ci-procedural-authority-change.mjs
+        run: node .architecture-gatekeeper-validation-runtime/dist/ci-procedural-authority-change.mjs
       - name: Attach exact pull request task context to protected review
         if: needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
         env:
@@ -264,14 +279,14 @@ jobs:
           AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
           AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
-        run: node .architecture-gatekeeper-validation-runtime/src/prepare-review-context.mjs
+        run: node .architecture-gatekeeper-validation-runtime/dist/prepare-review-context.mjs
       - name: Check protected Authority Set schema and complete prompt
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
           AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
           AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
         run: |
-          node .architecture-gatekeeper-validation-runtime/src/preflight-authority-set-review.mjs \
+          node .architecture-gatekeeper-validation-runtime/dist/preflight-authority-set-review.mjs \
             "$RUNNER_TEMP/architecture-gate-decision.schema.json" \
             "$RUNNER_TEMP/architecture-gate-review-prompt.md"
       - name: Run read-only architecture review
@@ -298,7 +313,7 @@ jobs:
           REVIEW_SETTINGS_BASE64: ${{ needs.policy.outputs.execution_settings_base64 }}
           REVIEW_OUTCOME: ${{ steps.codex.outcome }}
           REVIEW_RESPONSE: ${{ steps.codex.outputs.final-message }}
-        run: node .architecture-gatekeeper-validation-runtime/src/ci-execution-observation.mjs --github
+        run: node .architecture-gatekeeper-validation-runtime/dist/ci-execution-observation.mjs --github
       - name: Diagnose architecture reviewer completion
         if: always()
         timeout-minutes: 1
@@ -329,23 +344,23 @@ jobs:
         id: decision
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
-        run: node .architecture-gatekeeper-validation-runtime/src/ci-decision-kind.mjs
+        run: node .architecture-gatekeeper-validation-runtime/dist/ci-decision-kind.mjs
       - name: Apply consumer-owned decision validation
         if: (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '')
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
-        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-decision.mjs "$RUNNER_TEMP/architecture-gate-decision.validation.json"
+        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/dist/validate-decision.mjs "$RUNNER_TEMP/architecture-gate-decision.validation.json"
       - name: Require exact reported legacy authority files
         if: needs.policy.outputs.policy_version == '1'
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
-        run: node .architecture-gatekeeper-validation-runtime/src/prepare-legacy-ci-authority.mjs validate
+        run: node .architecture-gatekeeper-validation-runtime/dist/prepare-legacy-ci-authority.mjs validate
       - name: Require exact reported Authority IDs
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
-        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
+        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/dist/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
   owner-addition:
     if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.owner_addition_grade == 'G0' && needs.review.outputs.decision_kind == 'OWNER_DECISION'
@@ -371,6 +386,13 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the pinned protected runtime
+        run: |
+          npm ci --ignore-scripts --prefix .architecture-gatekeeper-runtime
+          npm run --prefix .architecture-gatekeeper-runtime build
       - name: Fetch B and its annotated tag as Git objects only
         env:
           FETCH_TOKEN: ${{ github.token }}
@@ -410,7 +432,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GATEKEEPER_SOURCE_TOKEN: ${{ needs.policy.outputs.owner_addition_version == '2' && (secrets.CI_SOURCE_READ_TOKEN || github.token) || '' }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
-        run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs prepare
+        run: node .architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs prepare
       - name: Review B-specific missing-decision eligibility
         id: codex-addition
         timeout-minutes: 5
@@ -431,7 +453,7 @@ jobs:
           DECISION: ${{ steps.codex-addition.outputs.final-message }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
-        run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs validate
+        run: node .architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs validate
       - name: Preserve exact v5 pre-merge eligibility evidence
         id: eligibility-evidence
         if: needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
@@ -474,6 +496,13 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the pinned protected runtime
+        run: |
+          npm ci --ignore-scripts --prefix .architecture-gatekeeper-runtime
+          npm run --prefix .architecture-gatekeeper-runtime build
       - name: Publish human-readable result
         id: report
         if: always()
@@ -497,7 +526,7 @@ jobs:
           WORKFLOW_REF: ${{ job.workflow_ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: node .architecture-gatekeeper-runtime/src/ci-report.mjs
+        run: node .architecture-gatekeeper-runtime/dist/ci-report.mjs
 
   accept:
     if: always()
@@ -531,6 +560,14 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the pinned protected runtime
+        if: needs.policy.outputs.mode == 'procedural' || needs.policy.outputs.mode == 'enforced'
+        run: |
+          npm ci --ignore-scripts --prefix .architecture-gatekeeper-runtime
+          npm run --prefix .architecture-gatekeeper-runtime build
       - name: Require model-backed PASS or verified G0 owner addition
         if: needs.policy.outputs.mode == 'enforced'
         env:
@@ -539,7 +576,7 @@ jobs:
           OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
           OWNER_ADDITION_ELIGIBILITY: ${{ needs['owner-addition'].outputs.eligibility }}
           OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade }}
-        run: node .architecture-gatekeeper-runtime/src/ci-enforced-acceptance.mjs
+        run: node .architecture-gatekeeper-runtime/dist/ci-enforced-acceptance.mjs
       - name: Require PASS or pre-merge G0 eligibility
         if: needs.policy.outputs.mode == 'procedural'
         env:
@@ -551,4 +588,4 @@ jobs:
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
           EVIDENCE_PRODUCER: ${{ needs.policy.outputs.adoption_evidence_producer }}
           SELECTED_AUTHORITY_CHANGED: ${{ needs.review.outputs.selected_authority_changed }}
-        run: node .architecture-gatekeeper-runtime/src/ci-procedural-acceptance.mjs
+        run: node .architecture-gatekeeper-runtime/dist/ci-procedural-acceptance.mjs

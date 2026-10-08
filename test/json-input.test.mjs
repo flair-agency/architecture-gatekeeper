@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { MAX_AUTHORITY_LIMITS, parseAuthorityManifest, rejectDuplicateJsonKeys } from '../src/authority-set.mjs';
+import { MAX_AUTHORITY_LIMITS, parseAuthorityManifest, rejectDuplicateJsonKeys } from '../dist/authority-set.mjs';
 
 const sourceRoot = new URL('..', import.meta.url);
 const sourcePath = fileURLToPath(sourceRoot);
-const helperUrl = new URL('../src/authority-set.mjs', import.meta.url).href;
+const helperUrl = new URL('../dist/authority-set.mjs', import.meta.url).href;
 
 function runChild(script, timeout = 5_000) {
   return spawnSync(process.execPath, ['--input-type=module', '-e', script], {
@@ -23,12 +23,12 @@ test('the shared validator terminates on malformed JSON and representative produ
     import { dirname, join } from 'node:path';
     import { createHash } from 'node:crypto';
     import { rejectDuplicateJsonKeys } from ${JSON.stringify(helperUrl)};
-    import { parseCiPolicyJson } from './src/resolve-ci-policy.mjs';
-    import { loadConfig } from './src/review-contract.mjs';
-    import { decodeLimits } from './src/prepare-authority-set.mjs';
-    import { validateMultiAuthorityEligibility } from './src/owner-addition-multiauthority.mjs';
-    import { validateOwnerAmendmentOwnerDecisionAmendmentRecord } from './src/owner-amendment-owner-decision-amendment-record.mjs';
-    import { validatePreparedCiDecision } from './src/prepared-ci-decision.mjs';
+    import { parseCiPolicyJson } from './dist/resolve-ci-policy.mjs';
+    import { loadConfig } from './dist/review-contract.mjs';
+    import { decodeLimits } from './dist/prepare-authority-set.mjs';
+    import { validateMultiAuthorityEligibility } from './dist/owner-addition-multiauthority.mjs';
+    import { validateOwnerAmendmentOwnerDecisionAmendmentRecord } from './dist/owner-amendment-owner-decision-amendment-record.mjs';
+    import { validatePreparedCiDecision } from './dist/prepared-ci-decision.mjs';
 
     const malformed = [
       '[', '[1', '[1,', '', '{', '{"a"', '{"a":', '{"a":[1',

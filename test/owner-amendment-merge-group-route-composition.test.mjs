@@ -6,28 +6,28 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { buildOwnerAmendmentBlockRecord } from '../src/owner-amendment-block-record.mjs';
-import { buildOwnerAmendmentOwnerDecisionRecord } from '../src/owner-amendment-owner-decision-record.mjs';
-import { validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../src/owner-amendment-owner-decision-amendment-record.mjs';
-import { orchestrateOwnerAmendmentBlockHandoff } from '../src/owner-amendment-block-handoff-orchestrator.mjs';
-import { handoffOwnerAmendmentOwnerDecision } from '../src/owner-amendment-owner-decision-handoff.mjs';
-import { discoverOwnerAmendmentBlockArtifact } from '../src/owner-amendment-artifact-discovery.mjs';
-import { fetchOwnerAmendmentBlockArtifact } from '../src/owner-amendment-artifact.mjs';
-import { extractOwnerAmendmentArtifactZip } from '../src/owner-amendment-artifact-zip.mjs';
-import { resolveOwnerAmendmentHandoffGitContext } from '../src/owner-amendment-handoff-git-context.mjs';
-import { selectOwnerAmendmentMergeGroupBContext } from '../src/owner-amendment-merge-group-b-context.mjs';
-import { composeOwnerAmendmentMergeGroupEvidence } from '../src/owner-amendment-merge-group-evidence.mjs';
-import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../src/owner-amendment-merge-group-acceptance.mjs';
+import { buildOwnerAmendmentBlockRecord } from '../dist/owner-amendment-block-record.mjs';
+import { buildOwnerAmendmentOwnerDecisionRecord } from '../dist/owner-amendment-owner-decision-record.mjs';
+import { validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../dist/owner-amendment-owner-decision-amendment-record.mjs';
+import { orchestrateOwnerAmendmentBlockHandoff } from '../dist/owner-amendment-block-handoff-orchestrator.mjs';
+import { handoffOwnerAmendmentOwnerDecision } from '../dist/owner-amendment-owner-decision-handoff.mjs';
+import { discoverOwnerAmendmentBlockArtifact } from '../dist/owner-amendment-artifact-discovery.mjs';
+import { fetchOwnerAmendmentBlockArtifact } from '../dist/owner-amendment-artifact.mjs';
+import { extractOwnerAmendmentArtifactZip } from '../dist/owner-amendment-artifact-zip.mjs';
+import { resolveOwnerAmendmentHandoffGitContext } from '../dist/owner-amendment-handoff-git-context.mjs';
+import { selectOwnerAmendmentMergeGroupBContext } from '../dist/owner-amendment-merge-group-b-context.mjs';
+import { composeOwnerAmendmentMergeGroupEvidence } from '../dist/owner-amendment-merge-group-evidence.mjs';
+import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../dist/owner-amendment-merge-group-acceptance.mjs';
 import { createOwnerAmendmentSemanticEligibilityProducer,
-  validateOwnerAmendmentSemanticEligibilityReceipt } from '../src/owner-amendment-semantic-eligibility.mjs';
-import { validateOwnerAmendmentBlockSemanticRecord } from '../src/owner-amendment-block-semantic-record.mjs';
-import { verifyOwnerAmendmentBlockEvidence } from '../src/owner-amendment-attestation.mjs';
-import { parseOwnerAmendmentSemanticTagObject } from '../src/owner-amendment-semantic-tag-object.mjs';
-import { deriveOwnerAmendmentGitChanges } from '../src/owner-amendment-git-changes.mjs';
-import { materializeAuthoritySet } from '../src/authority-set.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
-import { inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
-import { selectOwnerAmendmentHandoffPrRunContext } from '../src/owner-amendment-handoff-pr-run-context.mjs';
+  validateOwnerAmendmentSemanticEligibilityReceipt } from '../dist/owner-amendment-semantic-eligibility.mjs';
+import { validateOwnerAmendmentBlockSemanticRecord } from '../dist/owner-amendment-block-semantic-record.mjs';
+import { verifyOwnerAmendmentBlockEvidence } from '../dist/owner-amendment-attestation.mjs';
+import { parseOwnerAmendmentSemanticTagObject } from '../dist/owner-amendment-semantic-tag-object.mjs';
+import { deriveOwnerAmendmentGitChanges } from '../dist/owner-amendment-git-changes.mjs';
+import { materializeAuthoritySet } from '../dist/authority-set.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
+import { inspectOwnerAmendmentSemanticProducerAttempts } from '../dist/owner-amendment-semantic-producer-attempts.mjs';
+import { selectOwnerAmendmentHandoffPrRunContext } from '../dist/owner-amendment-handoff-pr-run-context.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -243,7 +243,7 @@ function makeRepo(profile, { includeRuntime = false } = {}) {
   const repoPath = mkdtempSync(join(tmpdir(), 'agk-merge-group-route-'));
   git(repoPath, ['init', '-q']);
   if (includeRuntime) {
-    for (const path of ['src', 'scripts']) cpSync(join(root, path), join(repoPath, path), { recursive: true });
+    for (const path of ['src', 'dist', 'scripts']) cpSync(join(root, path), join(repoPath, path), { recursive: true });
   }
   const authorityLimits = { maxManifestBytes: 16_384, maxMembers: 16, maxFileBytes: 65_536,
     maxTotalBytes: 262_144, maxPromptBytes: 524_288 };

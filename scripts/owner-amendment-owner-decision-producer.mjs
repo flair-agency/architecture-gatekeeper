@@ -3,13 +3,13 @@
 // The ReviewRecord is evidence input, not an owner approval or acceptance.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readRunnerTempFile, resolveRunnerTempDirectory, writeRunnerTempFile, validateRepositoryTreePath } from '../src/runner-temp-path.mjs';
+import { readRunnerTempFile, resolveRunnerTempDirectory, writeRunnerTempFile, validateRepositoryTreePath } from '../dist/runner-temp-path.mjs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { TextDecoder } from 'node:util';
-import { parseAuthorityManifest, readCommittedAuthorityFile, rejectDuplicateJsonKeys } from '../src/authority-set.mjs';
-import { buildOwnerAmendmentOwnerDecisionRecord } from '../src/owner-amendment-owner-decision-record.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { parseAuthorityManifest, readCommittedAuthorityFile, rejectDuplicateJsonKeys } from '../dist/authority-set.mjs';
+import { buildOwnerAmendmentOwnerDecisionRecord } from '../dist/owner-amendment-owner-decision-record.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 
 const SHA = /^[a-f0-9]{40}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;

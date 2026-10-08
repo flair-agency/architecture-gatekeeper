@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { parseWorkflow, assertWorkflowStructure } from './helpers/workflow-structure.mjs';
 import { stringify } from 'yaml';
 
@@ -14,6 +17,146 @@ const workflows = () => Object.fromEntries(Object.entries(source).map(([key, tex
 const valid = () => assertWorkflowStructure(workflows());
 
 test('production workflow files satisfy parsed structural invariants', valid);
+
+test('protected runtime checkouts build their pinned distribution before use', () => {
+  for (const [profile, workflow] of Object.entries(workflows())) {
+    for (const [jobName, job] of Object.entries(workflow.jobs)) {
+      const steps = job.steps ?? [];
+      for (let index = 0; index < steps.length; index += 1) {
+        const checkout = steps[index];
+        const runtimePath = checkout.with?.path;
+        if (!['.architecture-gatekeeper-runtime', '.architecture-gatekeeper-validation-runtime'].includes(runtimePath)) continue;
+
+        assert.equal(checkout.with.repository, '${{ job.workflow_repository }}', `${profile}.${jobName} runtime repository`);
+        assert.equal(checkout.with.ref, '${{ job.workflow_sha }}', `${profile}.${jobName} runtime revision`);
+        assert.equal(checkout.with['persist-credentials'], false, `${profile}.${jobName} runtime checkout credentials`);
+
+        const node = steps[index + 1];
+        const build = steps[index + 2];
+        assert.equal(node.uses, 'actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f', `${profile}.${jobName} Node pin`);
+        assert.equal(node.with['node-version'], 22, `${profile}.${jobName} Node version`);
+        assert.match(build.name, /^Build the pinned (protected|validation) runtime$/);
+        assert.match(build.run, new RegExp(`npm ci --ignore-scripts --prefix ${runtimePath.replaceAll('.', '\\.')}`));
+        assert.match(build.run, new RegExp(`npm run --prefix ${runtimePath.replaceAll('.', '\\.') } build`));
+        if (checkout.if !== undefined) assert.equal(build.if, checkout.if, `${profile}.${jobName} conditional runtime selection`);
+
+        const laterRuntimeCalls = steps.slice(index + 3).map(step => `${step.run ?? ''}\n${step.env ? JSON.stringify(step.env) : ''}`).join('\n');
+        assert.doesNotMatch(laterRuntimeCalls, new RegExp(`${runtimePath.replaceAll('.', '\\.')}/src/`));
+      }
+    }
+  }
+});
+
+test('protected-main handoffs build before secret-bearing steps and execute dist', () => {
+  for (const file of [
+    '../.github/workflows/owner-amendment-block-handoff.yml',
+    '../.github/workflows/owner-amendment-owner-decision-handoff.yml',
+  ]) {
+    const workflow = parseWorkflow(read(file), file);
+    const steps = workflow.jobs.handoff.steps;
+    const checkout = steps.find(step => step.uses?.startsWith('actions/checkout@'));
+    assert.equal(checkout.with.ref, '${{ github.sha }}');
+    assert.equal(checkout.with['persist-credentials'], false);
+    const setupIndex = steps.findIndex(step => step.uses === 'actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f');
+    const buildIndex = steps.findIndex(step => step.name === 'Build the protected runtime');
+    const secretIndex = steps.findIndex(step => Object.values(step.env ?? {}).some(value => String(value).includes('secrets.')));
+    assert.ok(setupIndex > 0 && buildIndex > setupIndex && secretIndex > buildIndex);
+    assert.equal(steps[setupIndex].with['node-version'], 22);
+    assert.match(steps[buildIndex].run, /npm ci --ignore-scripts/);
+    assert.match(steps[buildIndex].run, /npm run build/);
+    assert.doesNotMatch(steps[buildIndex].run, /secrets\./);
+    const runtimeCalls = steps.map(step => step.run ?? '').join('\n');
+    assert.match(runtimeCalls, /node dist\/github-ruleset-readback-cli\.mjs/);
+    assert.match(runtimeCalls, /node dist\/owner-amendment-(?:handoff|owner-decision-handoff)-cli\.mjs/);
+    assert.doesNotMatch(runtimeCalls, /node src\//);
+  }
+});
+
+test('selected protected-base script callers build only when that exact revision declares build', () => {
+  const workflow = workflows().self;
+  const cases = [
+    ['owner-amendment-owner-decision-record', 'owner-amendment-owner-decision-producer.mjs'],
+    ['owner-amendment-attempt-classifier', 'owner-amendment-attempt-classifier.mjs'],
+    ['owner-amendment-semantic-eligibility', 'owner-amendment-semantic-eligibility-producer.mjs'],
+    ['owner-amendment-semantic-eligibility-signer', 'owner-amendment-semantic-eligibility-producer.mjs'],
+  ];
+  for (const [jobName, scriptName] of cases) {
+    const steps = workflow.jobs[jobName].steps;
+    const checkoutIndex = steps.findIndex(step => step.uses?.startsWith('actions/checkout@'));
+    const checkout = steps[checkoutIndex];
+    assert.equal(checkout.with.ref, '${{ github.event.pull_request.base.sha }}', `${jobName} must keep exact base selection`);
+    assert.equal(checkout.with['persist-credentials'], false, `${jobName} checkout credentials`);
+    assert.equal(checkout.with.path, undefined, `${jobName} protected base remains the script root`);
+    const setup = steps[checkoutIndex + 1];
+    const buildIndex = steps.findIndex(step => step.name === 'Build the exact selected base runtime when supported');
+    const build = steps[buildIndex];
+    assert.equal(setup.uses, 'actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f', `${jobName} Node pin`);
+    assert.equal(setup.with['node-version'], 22, `${jobName} Node version`);
+    assert.ok(buildIndex > checkoutIndex, `${jobName} build follows exact base checkout`);
+    assert.match(build.run, /JSON\.parse\(fs\.readFileSync\("package\.json"/);
+    assert.match(build.run, /npm ci --ignore-scripts/);
+    assert.match(build.run, /npm run build/);
+    assert.match(build.run, /else[\s\S]*Selected base revision predates the runtime build contract/);
+    assert.doesNotMatch(build.run, /\|\| true|git checkout|git reset/);
+    assert.equal(build.env, undefined, `${jobName} build receives no step credentials`);
+
+    const scriptCallIndexes = steps.flatMap((step, index) => (step.run ?? '').includes(`/scripts/${scriptName}`) ? [index] : []);
+    assert.ok(scriptCallIndexes.length > 0, `${jobName} invokes ${scriptName}`);
+    assert.ok(scriptCallIndexes.every(index => index > buildIndex), `${jobName} script runs only after selected-base materialization`);
+    const protectedCredentialIndexes = steps.flatMap((step, index) => {
+      const names = Object.keys(step.env ?? {}).join(' ');
+      return JSON.stringify(step).includes('secrets.') || /(?:GH_TOKEN|GITHUB_TOKEN|OPENAI_API_KEY|PRIVATE_KEY|ACCESS_TOKEN)/.test(names) ? [index] : [];
+    });
+    assert.ok(protectedCredentialIndexes.every(index => index > buildIndex), `${jobName} credentials stay after the base build`);
+  }
+
+  const buildStep = workflow.jobs['owner-amendment-owner-decision-record'].steps.find(step => step.name === 'Build the exact selected base runtime when supported');
+  const runBuildStep = (directory, failBuild = false) => {
+    const bin = join(directory, 'bin');
+    mkdirSync(bin);
+    const logPath = join(directory, 'npm.log');
+    const npmPath = join(bin, 'npm');
+    writeFileSync(npmPath, '#!/bin/sh\nprintf "%s\\n" "$*" >> "$NPM_LOG"\nif test "${FAIL_BUILD:-false}" = true && test "$1" = run; then exit 31; fi\n');
+    chmodSync(npmPath, 0o755);
+    const result = spawnSync('/bin/bash', ['-e', '-u', '-o', 'pipefail', '-c', buildStep.run], {
+      cwd: directory,
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, NPM_LOG: logPath, FAIL_BUILD: String(failBuild) },
+      encoding: 'utf8',
+    });
+    return { ...result, log: existsSync(logPath) ? readFileSync(logPath, 'utf8').trim().split('\n').filter(Boolean) : [] };
+  };
+  const root = mkdtempSync(join(tmpdir(), 'agk-base-build-'));
+  try {
+    const legacy = join(root, 'legacy');
+    mkdirSync(legacy);
+    writeFileSync(join(legacy, 'package.json'), JSON.stringify({ name: 'legacy-runtime' }));
+    const legacyResult = runBuildStep(legacy);
+    assert.equal(legacyResult.status, 0, 'valid selected revision without scripts.build continues on its source layout');
+    assert.deepEqual(legacyResult.log, [], 'legacy revision does not install dependencies or select another revision');
+
+    const current = join(root, 'current');
+    mkdirSync(current);
+    writeFileSync(join(current, 'package.json'), JSON.stringify({ name: 'current-runtime', scripts: { build: 'node build.mjs' } }));
+    const currentResult = runBuildStep(current);
+    assert.equal(currentResult.status, 0);
+    assert.deepEqual(currentResult.log, ['ci --ignore-scripts', 'run build']);
+    const failingCurrent = join(root, 'current-failure');
+    mkdirSync(failingCurrent);
+    writeFileSync(join(failingCurrent, 'package.json'), JSON.stringify({ name: 'current-runtime', scripts: { build: 'node build.mjs' } }));
+    const failedBuild = runBuildStep(failingCurrent, true);
+    assert.equal(failedBuild.status, 31, 'declared build failure stops before source-script invocation');
+    assert.deepEqual(failedBuild.log, ['ci --ignore-scripts', 'run build']);
+
+    const invalid = join(root, 'invalid');
+    mkdirSync(invalid);
+    writeFileSync(join(invalid, 'package.json'), '{ invalid');
+    const invalidResult = runBuildStep(invalid);
+    assert.notEqual(invalidResult.status, 0, 'invalid package JSON fails closed');
+    assert.deepEqual(invalidResult.log, [], 'invalid package JSON never falls back to source execution');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('a comment containing required-looking text cannot satisfy a missing structural guard', () => {
   const data = workflows();

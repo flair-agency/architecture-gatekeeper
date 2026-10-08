@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { finalizeOwnerAddition } from '../src/owner-addition-finalize.mjs';
+import { finalizeOwnerAddition } from '../dist/owner-addition-finalize.mjs';
 import { ownerAdditionFinalizeFixture } from './fixtures/owner-addition-finalize-composition.mjs';
 
 test('real finalizer composes selected policy, producer evidence, immutable workflow, merge and readback', async () => {

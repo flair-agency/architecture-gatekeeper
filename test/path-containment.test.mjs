@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { win32, posix } from 'node:path';
-import { containsPath } from '../src/review-input-path.mjs';
+import { containsPath } from '../dist/review-input-path.mjs';
 
 test('review output containment classifies native Windows and POSIX checkout boundaries', () => {
   for (const [paths, root, inside, sibling, temp, otherDrive] of [

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertOwnerAmendmentTagAbsentAtAcceptance, classifyOwnerAmendmentTagAttempt } from '../src/owner-amendment-tag-attempt.mjs';
-import { assertEnforcedAcceptance } from '../src/ci-enforced-acceptance.mjs';
-import { inspectOwnerAmendmentSelfScope } from '../src/owner-amendment-scope.mjs';
+import { assertOwnerAmendmentTagAbsentAtAcceptance, classifyOwnerAmendmentTagAttempt } from '../dist/owner-amendment-tag-attempt.mjs';
+import { assertEnforcedAcceptance } from '../dist/ci-enforced-acceptance.mjs';
+import { inspectOwnerAmendmentSelfScope } from '../dist/owner-amendment-scope.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const baseSha = 'a'.repeat(40);

@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 
 for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
   test(`${file} binds observation to exact ordinary Action inputs and preserves validators`, () => {

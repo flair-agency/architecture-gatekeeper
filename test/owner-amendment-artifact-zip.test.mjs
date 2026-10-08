@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
-import { extractOwnerAmendmentArtifactZip, extractOwnerAmendmentBlockArtifactZip, OWNER_AMENDMENT_ARTIFACT_ZIP_LIMITS } from '../src/owner-amendment-artifact-zip.mjs';
+import { extractOwnerAmendmentArtifactZip, extractOwnerAmendmentBlockArtifactZip, OWNER_AMENDMENT_ARTIFACT_ZIP_LIMITS } from '../dist/owner-amendment-artifact-zip.mjs';
 
 const crc32 = bytes => {
   let crc = 0xffffffff;

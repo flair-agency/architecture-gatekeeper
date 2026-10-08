@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { runManualReview, runManualReviewAsync, runHookAsync, runManualReviewCli, validate } from '../src/local-gate.mjs';
-import { createReviewRequest, createReviewRequestAsync, validateReviewResponse } from '../src/review-contract.mjs';
+import { runManualReview, runManualReviewAsync, runHookAsync, runManualReviewCli, validate } from '../dist/local-gate.mjs';
+import { createReviewRequest, createReviewRequestAsync, validateReviewResponse } from '../dist/review-contract.mjs';
 
 const cfg = { authorityFiles: ['AGENTS.md'], requiredReportedAuthorityFiles: ['AGENTS.md'], requiredPassArrays: ['reviewedScope'] };
 test('accepts explicit PASS scope', () => assert.equal(validate({ decision: 'PASS', authorityFiles: ['AGENTS.md'], reviewedScope: ['change'] }, cfg).decision, 'PASS'));
@@ -16,7 +16,7 @@ test('rejects reported authority outside the configured boundary', () => assert.
 ));
 test('packages the manual review CLI', () => {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  assert.equal(manifest.bin['architecture-review'], 'src/manual-review.mjs');
+  assert.equal(manifest.bin['architecture-review'], 'dist/manual-review.mjs');
   assert.match(readFileSync(new URL('../src/manual-review.mjs', import.meta.url), 'utf8'), /runManualReviewCli\(\)/);
   assert.equal(typeof runManualReviewCli, 'function');
 });
@@ -156,7 +156,7 @@ test('v2 includes Hook context inside the complete prompt limit', async t => {
 });
 
 function runManual({ root, bin }, extraEnv = {}) {
-  return spawnSync(process.execPath, [fileURLToPath(new URL('../src/manual-review.mjs', import.meta.url)), 'Review this boundary'], {
+  return spawnSync(process.execPath, [fileURLToPath(new URL('../dist/manual-review.mjs', import.meta.url)), 'Review this boundary'], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, ...extraEnv }
@@ -239,7 +239,7 @@ test('Gemini manual-review CLI works with a model-free fetch shim and PATH witho
   const gitPath = dirname(execFileSync('which', ['git'], { encoding: 'utf8' }).trim());
   const childEnv = { ...process.env, PATH: `${poisonBin}:${gitPath}`, NODE_OPTIONS: `--import=${JSON.stringify(preload)}`, GEMINI_API_KEY: 'fixture-key' };
   for (const key of ['OPENAI_API_KEY', 'CODEX_API_KEY', 'OPENAI_BASE_URL']) delete childEnv[key];
-  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../src/manual-review.mjs', import.meta.url)), '--execution-report', 'Review Gemini CLI'], {
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../dist/manual-review.mjs', import.meta.url)), '--execution-report', 'Review Gemini CLI'], {
     cwd: fixture.root, encoding: 'utf8',
     env: childEnv
   });
@@ -290,7 +290,7 @@ test('manual CLI rejects unterminated reviewer JSON promptly', t => {
   const reviewerPath = join(fixture.root, '.codex', 'gatekeeper', 'reviewer.json');
   writeFileSync(reviewerPath, '{"model":[');
   git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'malformed reviewer settings');
-  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../src/manual-review.mjs', import.meta.url)), 'Review malformed settings'], {
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../dist/manual-review.mjs', import.meta.url)), 'Review malformed settings'], {
     cwd: fixture.root, encoding: 'utf8', timeout: 3000,
     env: { ...process.env, PATH: `${fixture.bin}:${process.env.PATH}` }
   });
@@ -305,7 +305,7 @@ test('native Codex preparation rejects Gemini before creating a request file', a
   writeFileSync(reviewerPath, JSON.stringify({ provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 512 }));
   git(fixture.root, 'add', '.'); git(fixture.root, 'commit', '-m', 'select Gemini reviewer');
   const requestPath = join(fixture.root, 'native-request.json');
-  const { runNativeReviewCli } = await import('../src/native-review.mjs');
+  const { runNativeReviewCli } = await import('../dist/native-review.mjs');
   await assert.rejects(runNativeReviewCli(['prepare', requestPath, 'Review'], fixture.root), /cannot apply Gemini settings/);
   assert.equal(existsSync(requestPath), false);
 });

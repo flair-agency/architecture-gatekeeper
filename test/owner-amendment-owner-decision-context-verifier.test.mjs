@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { verifyOwnerAmendmentOwnerDecisionContext } from '../src/owner-amendment-owner-decision-context-verifier.mjs';
+import { verifyOwnerAmendmentOwnerDecisionContext } from '../dist/owner-amendment-owner-decision-context-verifier.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const baseSha = 'a'.repeat(40), bSha = 'b'.repeat(40), aSha = 'c'.repeat(40), mergeSha = 'd'.repeat(40);

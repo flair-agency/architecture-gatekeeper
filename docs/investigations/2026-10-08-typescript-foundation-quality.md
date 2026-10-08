@@ -4,6 +4,15 @@ This nonnormative record describes one implementation slice under #412. It
 amends no selected authority, assurance rule, route or consumer architecture.
 The baseline is `44b311dad92bd604dbc50b7ccbfb89a898ae6259` (initial #417 map).
 
+> **Historical layout evidence:** The results below verify the earlier
+> `src-ts/` authoring and checked-in generated `src/` output candidate. They do
+> not prove the current layout, where editable `.mts` and `.mjs` sources are in
+> `src/` and runtime JavaScript is built into ignored `dist/`. Use the current
+> [development guide](../development.md#typescript-source-and-runtime-distribution)
+> for the selected build and workflow contract. Fresh verification of the
+> current layout is reported separately; no result below should be read as that
+> verification.
+
 ## Changed boundary and retained behavior
 
 One original module, `owner-addition-validation`, is authored as `.mts` under

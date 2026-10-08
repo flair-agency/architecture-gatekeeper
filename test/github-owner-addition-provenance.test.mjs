@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { deflateRawSync, inflateRawSync } from 'node:zlib';
-import { verifyOwnerAdditionEligibilityProvenance } from '../src/github-owner-addition-provenance.mjs';
+import { verifyOwnerAdditionEligibilityProvenance } from '../dist/github-owner-addition-provenance.mjs';
 
 const sha = char => char.repeat(40);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');

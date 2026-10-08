@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync, mkdirSync, chmodSync,
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { produceRulesetReadback, readLocalRulesetReadback, rulesetStorageDirectory } from '../src/github-ruleset-readback.mjs';
+import { produceRulesetReadback, readLocalRulesetReadback, rulesetStorageDirectory } from '../dist/github-ruleset-readback.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const namespace = 'refs/tags/architecture-gatekeeper/amendments';
