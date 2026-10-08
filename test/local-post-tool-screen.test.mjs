@@ -4,7 +4,7 @@ import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readFile
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
-import { runPostToolScreenHook } from '../src/local-gate.mjs';
+import { runPostToolScreenHook } from '../dist/local-gate.mjs';
 
 function git(root, ...args) { return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim(); }
 
@@ -197,7 +197,7 @@ test('separate processes share a single-flight reviewer lock', async t => {
   const root = fixture(t);
   writeFileSync(join(root, 'candidate.md'), 'multiprocess candidate\n');
   const callsPath = join(root, 'reviewer-calls.txt');
-  const moduleUrl = new URL('../src/local-gate.mjs', import.meta.url).href;
+  const moduleUrl = new URL('../dist/local-gate.mjs', import.meta.url).href;
   const script = `import { appendFileSync } from 'node:fs'; import { runPostToolScreenHook } from ${JSON.stringify(moduleUrl)}; const request = await runPostToolScreenHook(JSON.parse(process.env.EVENT_JSON), { batchDelayMs: 0, reviewer: request => new Promise(resolve => { appendFileSync(process.env.CALLS_PATH, 'x'); setTimeout(() => resolve({ decision: 'PASS', summary: 'child', authorityFiles: ['AGENTS.md'], reviewedScope: ['child'] }), 350); }) }); process.stdout.write(JSON.stringify(request));`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', script], {
     cwd: root, env: { ...process.env, EVENT_JSON: JSON.stringify(event(root)), CALLS_PATH: callsPath }, encoding: 'utf8'

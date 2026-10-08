@@ -2,8 +2,8 @@ import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
-import { resolveSafePath } from '../../src/review-input-path.mjs';
-import { runIsolatedGeminiSession } from '../../src/gemini-launcher.mjs';
+import { resolveSafePath } from '../../dist/review-input-path.mjs';
+import { runIsolatedGeminiSession } from '../../dist/gemini-launcher.mjs';
 const [mode, state] = process.argv.slice(2);
 const script = fileURLToPath(import.meta.url);
 if (mode === 'supervisor' || mode === 'supervisor-parent') {

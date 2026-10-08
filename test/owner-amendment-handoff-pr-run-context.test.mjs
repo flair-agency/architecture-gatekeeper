@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { selectOwnerAmendmentHandoffPrRunContext } from '../src/owner-amendment-handoff-pr-run-context.mjs';
+import { selectOwnerAmendmentHandoffPrRunContext } from '../dist/owner-amendment-handoff-pr-run-context.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const baseSha = 'a'.repeat(40);

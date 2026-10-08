@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ownerAmendmentTagApiRoute, readRunnerTempFile,
   appendGitHubOutput, resolveRunnerTempDirectory, resolveRunnerTempFile, validateRepositoryTreePath, validateSelfAuthorityManifest,
-  writeRunnerTempFile } from '../src/runner-temp-path.mjs';
-import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from '../src/owner-amendment-tag-api.mjs';
+  writeRunnerTempFile } from '../dist/runner-temp-path.mjs';
+import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from '../dist/owner-amendment-tag-api.mjs';
 
 function fixture(fn) {
   const root = mkdtempSync(join(tmpdir(), 'agk-runner-temp-'));

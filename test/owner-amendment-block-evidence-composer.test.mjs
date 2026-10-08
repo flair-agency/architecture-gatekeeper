@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { verifyOwnerAmendmentBlockEvidenceBundle } from '../src/owner-amendment-block-evidence-composer.mjs';
+import { verifyOwnerAmendmentBlockEvidenceBundle } from '../dist/owner-amendment-block-evidence-composer.mjs';
 
 const a = 'a'.repeat(40), b = 'b'.repeat(40), c = 'c'.repeat(40);
 const oldHash = '1'.repeat(64), newHash = '2'.repeat(64);

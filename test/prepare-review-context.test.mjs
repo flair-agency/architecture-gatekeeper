@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { prepareReviewContext } from '../src/prepare-review-context.mjs';
+import { prepareReviewContext } from '../dist/prepare-review-context.mjs';
 
 const git = (root, ...args) => execFileSync('git', ['--no-replace-objects', ...args], { cwd: root, encoding: 'utf8', env: {
   ...process.env, GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 'test@example.com',
@@ -88,7 +88,7 @@ test('protected CLI derives its prompt and output from runner-temp fixed names',
   const finalPromptPath = join(context.runnerTemp, 'architecture-gate-review-prompt.md');
   writeFileSync(protectedPromptPath, 'Protected fixed-name prompt.');
   writeFileSync(attackerPromptPath, 'Attacker-selected prompt.');
-  const output = execFileSync(process.execPath, [fileURLToPath(new URL('../src/prepare-review-context.mjs', import.meta.url))], {
+  const output = execFileSync(process.execPath, [fileURLToPath(new URL('../dist/prepare-review-context.mjs', import.meta.url))], {
     encoding: 'utf8', env: { ...process.env, GITHUB_WORKSPACE: context.root, RUNNER_TEMP: context.runnerTemp,
       GITHUB_REPOSITORY: context.input.repository, BASE_SHA: context.input.baseSha,
       HEAD_SHA: context.input.headSha, REVIEWED_SHA: context.input.reviewedSha,

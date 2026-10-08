@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { discoverOwnerAmendmentBlockArtifact, OWNER_AMENDMENT_ARTIFACT_DISCOVERY_LIMITS } from '../src/owner-amendment-artifact-discovery.mjs';
+import { discoverOwnerAmendmentBlockArtifact, OWNER_AMENDMENT_ARTIFACT_DISCOVERY_LIMITS } from '../dist/owner-amendment-artifact-discovery.mjs';
 
 const expected = Object.freeze({ repository: 'flair-agency/example', runId: '42', runAttempt: '2',
   baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40) });

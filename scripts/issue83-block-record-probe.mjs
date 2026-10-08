@@ -5,9 +5,9 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
-import { validateAuthoritySetDecision, rejectDuplicateJsonKeys } from '../src/authority-set.mjs';
-import { validateJsonSchema } from '../src/json-schema.mjs';
-import { validateDecisionRules } from '../src/validate-decision.mjs';
+import { validateAuthoritySetDecision, rejectDuplicateJsonKeys } from '../dist/authority-set.mjs';
+import { validateJsonSchema } from '../dist/json-schema.mjs';
+import { validateDecisionRules } from '../dist/validate-decision.mjs';
 
 const SHA = /^[a-f0-9]{40}$/;
 const NUMBER = /^[1-9][0-9]*$/;

@@ -1,22 +1,22 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { appendGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory, validateSelfAuthorityManifest } from '../src/runner-temp-path.mjs';
-import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from '../src/owner-amendment-tag-api.mjs';
-import { selectOwnerAmendmentMergeGroupBContext } from '../src/owner-amendment-merge-group-b-context.mjs';
-import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../src/owner-amendment-merge-group-acceptance.mjs';
-import { resolveOwnerAmendmentHandoffGitContext } from '../src/owner-amendment-handoff-git-context.mjs';
-import { composeOwnerAmendmentMergeGroupEvidence } from '../src/owner-amendment-merge-group-evidence.mjs';
-import { discoverOwnerAmendmentBlockArtifact } from '../src/owner-amendment-artifact-discovery.mjs';
-import { fetchOwnerAmendmentBlockArtifact } from '../src/owner-amendment-artifact.mjs';
-import { extractOwnerAmendmentArtifactZip } from '../src/owner-amendment-artifact-zip.mjs';
-import { verifyOwnerAmendmentBlockEvidence } from '../src/owner-amendment-attestation.mjs';
-import { materializeAuthoritySet } from '../src/authority-set.mjs';
-import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { appendGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory, validateSelfAuthorityManifest } from '../dist/runner-temp-path.mjs';
+import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from '../dist/owner-amendment-tag-api.mjs';
+import { selectOwnerAmendmentMergeGroupBContext } from '../dist/owner-amendment-merge-group-b-context.mjs';
+import { createOwnerAmendmentMergeGroupAcceptanceVerifier } from '../dist/owner-amendment-merge-group-acceptance.mjs';
+import { resolveOwnerAmendmentHandoffGitContext } from '../dist/owner-amendment-handoff-git-context.mjs';
+import { composeOwnerAmendmentMergeGroupEvidence } from '../dist/owner-amendment-merge-group-evidence.mjs';
+import { discoverOwnerAmendmentBlockArtifact } from '../dist/owner-amendment-artifact-discovery.mjs';
+import { fetchOwnerAmendmentBlockArtifact } from '../dist/owner-amendment-artifact.mjs';
+import { extractOwnerAmendmentArtifactZip } from '../dist/owner-amendment-artifact-zip.mjs';
+import { verifyOwnerAmendmentBlockEvidence } from '../dist/owner-amendment-attestation.mjs';
+import { materializeAuthoritySet } from '../dist/authority-set.mjs';
+import { createGitHubAuthoritySource } from '../dist/github-authority-source.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 import { assertMissingOwnerAmendmentTagHasNoSuccessfulSigner,
-  inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
-import { createGitHubCliRunner } from '../src/github-cli-runner.mjs';
-import { computeOwnerAmendmentResultingAuthoritySet, deriveOwnerAmendmentGitChanges } from '../src/owner-amendment-git-changes.mjs';
+  inspectOwnerAmendmentSemanticProducerAttempts } from '../dist/owner-amendment-semantic-producer-attempts.mjs';
+import { createGitHubCliRunner } from '../dist/github-cli-runner.mjs';
+import { computeOwnerAmendmentResultingAuthoritySet, deriveOwnerAmendmentGitChanges } from '../dist/owner-amendment-git-changes.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;
 const token = process.env.GH_TOKEN;

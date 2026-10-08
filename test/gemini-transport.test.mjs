@@ -12,7 +12,7 @@ import {
   resolveVertexRegion,
   resolveGcloudAccessToken,
   validateThinkingBudget,
-} from '../src/gemini-transport.mjs';
+} from '../dist/gemini-transport.mjs';
 
 test('cleanJsonSchema removes $schema while keeping properties and rules', () => {
   const input = {
@@ -425,7 +425,7 @@ test('runGeminiReviewer fails closed on timeout', async () => {
 });
 
 test('integrates with review-contract validateReviewResponse for deterministic validation', async () => {
-  const { createReviewRequestAsync, validateReviewResponse } = await import('../src/review-contract.mjs');
+  const { createReviewRequestAsync, validateReviewResponse } = await import('../dist/review-contract.mjs');
 
   const request = await createReviewRequestAsync('Add Gemini transport module');
   const expectedDecision = {

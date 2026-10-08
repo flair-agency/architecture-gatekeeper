@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { inspectOwnerAmendmentAttestation } from '../src/owner-amendment-attestation.mjs';
+import { inspectOwnerAmendmentAttestation } from '../dist/owner-amendment-attestation.mjs';
 
 const expected = Object.freeze({ repository: 'flair-agency/architecture-gatekeeper',
   workflowPath: '.github/workflows/owner-amendment.yml', workflowSha: 'a'.repeat(40),

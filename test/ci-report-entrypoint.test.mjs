@@ -6,10 +6,10 @@ import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writ
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { digestDecision } from '../src/ci-report.mjs';
+import { digestDecision } from '../dist/ci-report.mjs';
 
 const sourceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const entrypoint = join(sourceRoot, 'src/ci-report.mjs');
+const entrypoint = join(sourceRoot, 'dist/ci-report.mjs');
 const hook = join(sourceRoot, 'test/fixtures/ci-report-entrypoint-hook.mjs');
 const repo = 'flair-agency/architecture-gatekeeper';
 const base = 'a'.repeat(40);

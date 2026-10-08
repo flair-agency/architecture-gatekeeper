@@ -6,10 +6,10 @@ import { tmpdir } from 'node:os';
 import { request as httpRequest } from 'node:http';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { runPreparedGeminiCiReview } from '../src/prepared-gemini-ci-review.mjs';
-import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from '../src/gemini-cli-process.mjs';
-import { normalizeCiExecutionResult } from '../src/ci-execution-result.mjs';
-import { validatePreparedCiDecision } from '../src/prepared-ci-decision.mjs';
+import { runPreparedGeminiCiReview } from '../dist/prepared-gemini-ci-review.mjs';
+import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from '../dist/gemini-cli-process.mjs';
+import { normalizeCiExecutionResult } from '../dist/ci-execution-result.mjs';
+import { validatePreparedCiDecision } from '../dist/prepared-ci-decision.mjs';
 
 const oid = char => char.repeat(40);
 const workspaceLimits = { maxFiles: 2, maxFileBytes: 2048, maxTotalBytes: 4096 };
