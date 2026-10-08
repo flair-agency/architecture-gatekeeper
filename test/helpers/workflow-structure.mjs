@@ -29,6 +29,15 @@ export function hasNeeds(workflowJob, dependency) {
   return needs.includes(dependency);
 }
 
+const PROVIDER_GUARD_SCRIPT = `if test -n "$SELECTED_PROVIDER" && test "$SELECTED_PROVIDER" != codex; then
+  echo 'Selected reviewer provider is not wired into this workflow; review is incomplete.' >&2
+  exit 1
+fi`;
+const CONSUMER_AMENDMENT_GUARD_SCRIPT = `if test "$OWNER_AMENDMENT_GRADE" = G0; then
+  echo 'OWNER_AMENDMENT is supported only by the protected self workflow.' >&2
+  exit 1
+fi`;
+
 export function assertWorkflowStructure({ consumer, self, caller }) {
   const consumerPolicy = job(consumer, 'policy');
   const consumerReview = job(consumer, 'review');
@@ -42,9 +51,7 @@ export function assertWorkflowStructure({ consumer, self, caller }) {
   const selfPolicyGuard = namedStep(selfPolicy, 'Reject unwired reviewer providers');
   for (const guard of [consumerPolicyGuard, selfPolicyGuard]) {
     assert.equal(guard.env.SELECTED_PROVIDER, '${{ steps.resolve.outputs.provider }}');
-    assert.match(guard.run, /SELECTED_PROVIDER.*!= codex/);
-    assert.match(guard.run, /Selected reviewer provider is not wired/);
-    assert.match(guard.run, /exit 1/);
+    assert.equal(guard.run.trim(), PROVIDER_GUARD_SCRIPT, 'provider guard must retain its selected-provider condition and failure behavior');
   }
   assert.equal(consumerPolicyGuard.if, undefined, 'consumer provider guard must always run');
   assert.equal(selfPolicyGuard.if, undefined, 'self provider guard must always run');
@@ -84,9 +91,7 @@ export function assertWorkflowStructure({ consumer, self, caller }) {
   const consumerAmendmentGuard = namedStep(consumerPolicy, 'Reject self-only OWNER_AMENDMENT policy on the consumer workflow');
   assert.equal(consumerAmendmentGuard.if, undefined, 'consumer OWNER_AMENDMENT guard must always run');
   assert.equal(consumerAmendmentGuard.env.OWNER_AMENDMENT_GRADE, '${{ steps.resolve.outputs.ownerAmendmentGrade }}');
-  assert.match(consumerAmendmentGuard.run, /OWNER_AMENDMENT_GRADE.*G0/);
-  assert.match(consumerAmendmentGuard.run, /OWNER_AMENDMENT is supported only by the protected self workflow/);
-  assert.match(consumerAmendmentGuard.run, /exit 1/);
+  assert.equal(consumerAmendmentGuard.run.trim(), CONSUMER_AMENDMENT_GUARD_SCRIPT, 'consumer amendment guard must retain its G0 condition and failure behavior');
   assert.equal(consumerPolicy.outputs.owner_addition_grade, '${{ steps.resolve.outputs.ownerAdditionGrade }}');
   assert.ok(!('self-flex-probe' in (consumer.on.workflow_call.inputs ?? {})), 'consumer workflow must not expose self flex input');
   const consumerStructure = JSON.stringify(consumer);
