@@ -21,19 +21,18 @@ function diagnosticsFor(name) {
   return diagnostics.filter(item => item.file?.fileName === file);
 }
 
-test('tag readback transport callbacks accept the explicit async and raw byte contracts', () => {
+test('tag readback callbacks accept sync, async, thenable, and unknown JSON results', () => {
   assert.deepEqual(diagnosticsFor('positive.mts'), []);
 });
 
-test('tag readback rejects wrong async response, raw-byte callbacks, API result assumptions, and writable observation fields', () => {
+test('tag readback rejects malformed callback contracts and widened observation fields', () => {
   const diagnostics = diagnosticsFor('negative.mts');
-  assert.deepEqual(diagnostics.map(item => [
-    item.code,
-    item.file.getLineAndCharacterOfPosition(item.start).line + 1,
-  ]), [[2322, 3], [2739, 4], [2322, 5], [2322, 6], [2322, 7], [2740, 8], [2322, 11], [2322, 12], [2322, 13], [2540, 14]]);
+  assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [
+    [2322, 3], [2322, 4], [2322, 5], [2322, 6], [2322, 7], [2740, 8], [2322, 11], [2322, 12], [2322, 13], [2540, 14],
+  ]);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /json/);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[1].messageText, '\n'), /Promise/);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[2].messageText, '\n'), /Promise<unknown>/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[1].messageText, '\n'), /json/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[2].messageText, '\n'), /json/);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[3].messageText, '\n'), /Buffer/);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[4].messageText, '\n'), /Buffer/);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[5].messageText, '\n'), /OwnerAmendmentTagReadbackInput/);

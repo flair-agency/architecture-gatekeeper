@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { selectSelfSemanticTrigger } from '../scripts/owner-amendment-semantic-trigger-selection.mjs';
-import { inspectOwnerAmendmentAttestation } from '../src/owner-amendment-attestation.mjs';
+import { inspectOwnerAmendmentAttestation } from '../dist/owner-amendment-attestation.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const baseSha = 'a'.repeat(40);

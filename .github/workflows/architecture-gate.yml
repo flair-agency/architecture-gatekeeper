@@ -91,6 +91,26 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Relocate pinned protected runtime
+        id: runtime_location
+        env:
+          EXPECTED_RUNTIME_SHA: ${{ job.workflow_sha }}
+        run: node .architecture-gatekeeper-runtime/scripts/relocate-protected-runtime.mjs .architecture-gatekeeper-runtime >> "$GITHUB_OUTPUT"
+      - name: Build the pinned protected runtime
+        env:
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.runtime_location.outputs.root }}
+        run: |
+          test -n "$GATEKEEPER_RUNTIME_ROOT"
+          case "$GATEKEEPER_RUNTIME_ROOT" in
+            /*) ;;
+            *) echo "Protected runtime root must be absolute" >&2; exit 1 ;;
+          esac
+          cd "$GATEKEEPER_RUNTIME_ROOT"
+          npm ci --ignore-scripts
+          npm run build
       - name: Validate opt-in self-review Environment selection
         id: self-review-environment
         env:
@@ -116,14 +136,15 @@ jobs:
           BASE_BRANCH: ${{ github.base_ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           POLICY_PATH: ${{ inputs.policy-path }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.runtime_location.outputs.root }}
         run: |
           if test "$GITHUB_EVENT_NAME" = pull_request; then
             test "$POLICY_PATH" = .codex/gatekeeper/ci-policy.json
           fi
           if git cat-file -e "$BASE_SHA:$POLICY_PATH" 2>/dev/null; then
-            node .architecture-gatekeeper-runtime/src/materialize-regular-git-snapshot.mjs \
+            node "$GATEKEEPER_RUNTIME_ROOT/dist/materialize-regular-git-snapshot.mjs" \
               "$BASE_SHA" "$POLICY_PATH" "$RUNNER_TEMP/architecture-gate-policy.json" >> "$GITHUB_OUTPUT"
-            node .architecture-gatekeeper-runtime/src/resolve-ci-policy.mjs "$RUNNER_TEMP/architecture-gate-policy.json" "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
+            node "$GATEKEEPER_RUNTIME_ROOT/dist/resolve-ci-policy.mjs" "$RUNNER_TEMP/architecture-gate-policy.json" "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
           else
             if test "$GITHUB_EVENT_NAME" = pull_request; then
               echo 'Recorded-base CI policy is required for pull_request callers.' >&2
@@ -141,7 +162,8 @@ jobs:
         env:
           REVIEW_JOB_TIMEOUT_MINUTES: ${{ inputs.review-job-timeout-minutes }}
           REVIEW_STEP_TIMEOUT_MINUTES: ${{ inputs.review-step-timeout-minutes }}
-        run: node .architecture-gatekeeper-runtime/scripts/validate-review-timeouts.mjs >> "$GITHUB_OUTPUT"
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.runtime_location.outputs.root }}
+        run: node "$GATEKEEPER_RUNTIME_ROOT/scripts/validate-review-timeouts.mjs" >> "$GITHUB_OUTPUT"
       - name: Reject unwired reviewer providers
         env:
           SELECTED_PROVIDER: ${{ steps.resolve.outputs.provider }}
@@ -170,7 +192,8 @@ jobs:
         env:
           CALLER_VALIDATION_PATH: ${{ inputs.validation-path }}
           BASE_VALIDATION_PATH: ${{ steps.resolve.outputs.legacyValidationPath }}
-        run: node .architecture-gatekeeper-runtime/src/verify-legacy-validation-selection.mjs "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.runtime_location.outputs.root }}
+        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/verify-legacy-validation-selection.mjs" "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"
 
   review:
     if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
@@ -205,16 +228,38 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: node -e 'if (!process.env.OPENAI_API_KEY) { console.error("Missing OPENAI_API_KEY for enforced Architecture Gate"); process.exit(1); }'
+      - name: Validate immutable pull request merge revision
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          node -e 'const sha = process.env.MERGE_SHA; if (typeof sha !== "string" || sha.length !== 40 || !/^[a-f0-9]{40}$/.test(sha)) { console.error("Missing or malformed pull request merge commit SHA"); process.exit(1); }'
       - uses: actions/checkout@v5
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
           submodules: ${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}
           token: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
           persist-credentials: false
       - name: Record reviewed merge revision
         id: revision
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        env:
+          EXPECTED_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          if test "$actual_sha" != "$EXPECTED_MERGE_SHA"; then
+            echo "Checked out merge revision does not match the event merge commit SHA" >&2
+            exit 1
+          fi
+          actual_parents="$(git --no-replace-objects rev-list --parents -n 1 "$actual_sha")"
+          expected_parents="$actual_sha $BASE_SHA $HEAD_SHA"
+          if test "$actual_parents" != "$expected_parents"; then
+            echo "Checked out merge revision does not have the exact event base/head parents" >&2
+            exit 1
+          fi
+          printf 'sha=%s\n' "$EXPECTED_MERGE_SHA" >> "$GITHUB_OUTPUT"
       - name: Materialize protected review instructions
         if: inputs.protected-review-instructions && needs.policy.outputs.policy_version != '1'
         env:
@@ -239,6 +284,28 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-validation-runtime
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Relocate pinned validation runtime
+        id: validation_runtime_location
+        if: needs.policy.outputs.execution_selection == 'policy' || inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
+        env:
+          EXPECTED_RUNTIME_SHA: ${{ job.workflow_sha }}
+        run: node .architecture-gatekeeper-validation-runtime/scripts/relocate-protected-runtime.mjs .architecture-gatekeeper-validation-runtime >> "$GITHUB_OUTPUT"
+      - name: Build the pinned validation runtime
+        if: needs.policy.outputs.execution_selection == 'policy' || inputs.validation-path != '' || needs.policy.outputs.legacy_validation_path != '' || needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
+        env:
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        run: |
+          test -n "$GATEKEEPER_RUNTIME_ROOT"
+          case "$GATEKEEPER_RUNTIME_ROOT" in
+            /*) ;;
+            *) echo "Protected runtime root must be absolute" >&2; exit 1 ;;
+          esac
+          cd "$GATEKEEPER_RUNTIME_ROOT"
+          npm ci --ignore-scripts
+          npm run build
       - name: Materialize recorded-base legacy authority before review
         if: needs.policy.outputs.policy_version == '1'
         id: legacy-authority
@@ -258,7 +325,8 @@ jobs:
           VALIDATION_OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-decision.validation.json
           OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-legacy-prompt.md
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
-        run: node .architecture-gatekeeper-validation-runtime/src/prepare-legacy-ci-authority.mjs prepare
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" prepare
       - name: Materialize protected Authority Set before review
         if: needs.policy.outputs.authority_manifest_path != ''
         id: authority
@@ -271,6 +339,7 @@ jobs:
           AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
           OWNER_AUTHORITY_ID: ${{ needs.policy.outputs.owner_addition_authority_id }}
           OWNER_AUTHORITY_PATH: ${{ needs.policy.outputs.owner_addition_authority_path }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: |
           umask 077
           git show "$BASE_SHA:$MANIFEST_PATH" > "$RUNNER_TEMP/architecture-gate-authorities.json"
@@ -278,7 +347,7 @@ jobs:
           if test "$AUTHORITY_PROFILE" = owner-addition-v2; then
             PROFILE_ARGS=(--affected-id "$OWNER_AUTHORITY_ID" --affected-path "$OWNER_AUTHORITY_PATH")
           fi
-          node .architecture-gatekeeper-validation-runtime/src/prepare-authority-set.mjs \
+          node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-authority-set.mjs" \
             --manifest "$RUNNER_TEMP/architecture-gate-authorities.json" \
             --self-repository "$SELF_REPOSITORY" \
             --self-root . \
@@ -299,7 +368,8 @@ jobs:
           SELF_REPOSITORY: ${{ github.repository }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node .architecture-gatekeeper-validation-runtime/src/ci-procedural-authority-change.mjs
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-procedural-authority-change.mjs"
       - name: Attach exact pull request task context to protected review
         if: needs.policy.outputs.authority_manifest_path != '' || needs.policy.outputs.policy_version == '1'
         env:
@@ -310,14 +380,16 @@ jobs:
           AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
           AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
-        run: node .architecture-gatekeeper-validation-runtime/src/prepare-review-context.mjs
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-review-context.mjs"
       - name: Check protected Authority Set schema and complete prompt
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
           AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
           AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: |
-          node .architecture-gatekeeper-validation-runtime/src/preflight-authority-set-review.mjs \
+          node "$GATEKEEPER_RUNTIME_ROOT/dist/preflight-authority-set-review.mjs" \
             "$RUNNER_TEMP/architecture-gate-decision.schema.json" \
             "$RUNNER_TEMP/architecture-gate-review-prompt.md"
       - name: Run read-only architecture review
@@ -337,14 +409,15 @@ jobs:
           codex-args: ${{ needs.policy.outputs.codex_args || (inputs.self-flex-probe && '["--ephemeral","-c","project_doc_max_bytes=0","-c","service_tier=''flex''","--json"]' || '["--ephemeral","-c","project_doc_max_bytes=0","--json"]') }}
       - name: Record ordinary execution observation
         id: execution
-        if: always() && !cancelled() && needs.policy.outputs.execution_selection == 'policy' && steps.validation_runtime.outcome == 'success'
+        if: always() && !cancelled() && needs.policy.outputs.execution_selection == 'policy' && steps.validation_runtime.outcome == 'success' && steps.validation_runtime_location.outcome == 'success'
         env:
           REVIEW_PROVIDER: ${{ needs.policy.outputs.provider }}
           REVIEW_MODEL: ${{ needs.policy.outputs.model }}
           REVIEW_SETTINGS_BASE64: ${{ needs.policy.outputs.execution_settings_base64 }}
           REVIEW_OUTCOME: ${{ steps.codex.outcome }}
           REVIEW_RESPONSE: ${{ steps.codex.outputs.final-message }}
-        run: node .architecture-gatekeeper-validation-runtime/src/ci-execution-observation.mjs --github
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github
       - name: Diagnose architecture reviewer completion
         if: always()
         timeout-minutes: 1
@@ -375,23 +448,27 @@ jobs:
         id: decision
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
-        run: node .architecture-gatekeeper-validation-runtime/src/ci-decision-kind.mjs
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-decision-kind.mjs"
       - name: Apply consumer-owned decision validation
         if: (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '')
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
-        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-decision.mjs "$RUNNER_TEMP/architecture-gate-decision.validation.json"
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        run: printf '%s' "$DECISION" | node "$GATEKEEPER_RUNTIME_ROOT/dist/validate-decision.mjs" "$RUNNER_TEMP/architecture-gate-decision.validation.json"
       - name: Require exact reported legacy authority files
         if: needs.policy.outputs.policy_version == '1'
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
-        run: node .architecture-gatekeeper-validation-runtime/src/prepare-legacy-ci-authority.mjs validate
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" validate
       - name: Require exact reported Authority IDs
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
-        run: printf '%s' "$DECISION" | node .architecture-gatekeeper-validation-runtime/src/validate-authority-set-decision.mjs "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        run: printf '%s' "$DECISION" | node "$GATEKEEPER_RUNTIME_ROOT/dist/validate-authority-set-decision.mjs" "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
   block-review-record:
     if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && needs.policy.result == 'success' && needs.review.result == 'success' && needs.policy.outputs.owner_amendment_grade == 'G0' && needs.policy.outputs.owner_amendment_evidence_producer == 'github-actions-attestation' && needs.review.outputs.decision_kind == 'BLOCK'
@@ -416,6 +493,13 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the pinned protected runtime
+        run: |
+          npm ci --ignore-scripts --prefix .architecture-gatekeeper-runtime
+          npm run --prefix .architecture-gatekeeper-runtime build
       - name: Produce the exact protected-base BLOCK ReviewRecord
         env:
           DECISION: ${{ needs.review.outputs.final_message }}
@@ -511,6 +595,13 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the pinned protected runtime
+        run: |
+          npm ci --ignore-scripts --prefix .architecture-gatekeeper-runtime
+          npm run --prefix .architecture-gatekeeper-runtime build
       - name: Fetch B and its annotated tag as Git objects only
         env:
           FETCH_TOKEN: ${{ github.token }}
@@ -550,7 +641,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GATEKEEPER_SOURCE_TOKEN: ${{ needs.policy.outputs.owner_addition_version == '2' && (secrets.CI_SOURCE_READ_TOKEN || github.token) || '' }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
-        run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs prepare
+        run: node .architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs prepare
       - name: Review B-specific missing-decision eligibility
         id: codex-addition
         timeout-minutes: 5
@@ -571,7 +662,7 @@ jobs:
           DECISION: ${{ steps.codex-addition.outputs.final-message }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
-        run: node .architecture-gatekeeper-runtime/src/owner-addition-ci.mjs validate
+        run: node .architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs validate
       - name: Preserve exact v5 pre-merge eligibility evidence
         id: eligibility-evidence
         if: needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
@@ -609,6 +700,22 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 1
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the exact selected base runtime when supported
+        run: |
+          set -euo pipefail
+          BUILD_SUPPORTED="$(node -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); if (!pkg || typeof pkg !== "object" || Array.isArray(pkg)) throw new Error("selected base package.json must be an object"); const scripts = pkg.scripts; if (scripts !== undefined && (!scripts || typeof scripts !== "object" || Array.isArray(scripts))) throw new Error("selected base package scripts must be an object"); if (scripts && Object.hasOwn(scripts, "build")) { if (typeof scripts.build !== "string" || scripts.build.length === 0) throw new Error("selected base build script must be a nonempty string"); process.stdout.write("true"); } else { process.stdout.write("false"); }')"
+          if test "$BUILD_SUPPORTED" = true; then
+            npm ci --ignore-scripts
+            npm run build
+          elif test "$BUILD_SUPPORTED" = false; then
+            echo "Selected base revision predates the runtime build contract; continue using its source scripts."
+          else
+            echo "Could not determine selected base runtime build support." >&2
+            exit 1
+          fi
       - name: Produce the exact protected-base OWNER_DECISION ReviewRecord
         working-directory: ${{ runner.temp }}
         env:
@@ -696,6 +803,22 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 1
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the exact selected base runtime when supported
+        run: |
+          set -euo pipefail
+          BUILD_SUPPORTED="$(node -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); if (!pkg || typeof pkg !== "object" || Array.isArray(pkg)) throw new Error("selected base package.json must be an object"); const scripts = pkg.scripts; if (scripts !== undefined && (!scripts || typeof scripts !== "object" || Array.isArray(scripts))) throw new Error("selected base package scripts must be an object"); if (scripts && Object.hasOwn(scripts, "build")) { if (typeof scripts.build !== "string" || scripts.build.length === 0) throw new Error("selected base build script must be a nonempty string"); process.stdout.write("true"); } else { process.stdout.write("false"); }')"
+          if test "$BUILD_SUPPORTED" = true; then
+            npm ci --ignore-scripts
+            npm run build
+          elif test "$BUILD_SUPPORTED" = false; then
+            echo "Selected base revision predates the runtime build contract; continue using its source scripts."
+          else
+            echo "Could not determine selected base runtime build support." >&2
+            exit 1
+          fi
       - name: Classify an exact-B protected OWNER_AMENDMENT tag attempt
         id: classify
         working-directory: ${{ runner.temp }}
@@ -734,6 +857,22 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the exact selected base runtime when supported
+        run: |
+          set -euo pipefail
+          BUILD_SUPPORTED="$(node -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); if (!pkg || typeof pkg !== "object" || Array.isArray(pkg)) throw new Error("selected base package.json must be an object"); const scripts = pkg.scripts; if (scripts !== undefined && (!scripts || typeof scripts !== "object" || Array.isArray(scripts))) throw new Error("selected base package scripts must be an object"); if (scripts && Object.hasOwn(scripts, "build")) { if (typeof scripts.build !== "string" || scripts.build.length === 0) throw new Error("selected base build script must be a nonempty string"); process.stdout.write("true"); } else { process.stdout.write("false"); }')"
+          if test "$BUILD_SUPPORTED" = true; then
+            npm ci --ignore-scripts
+            npm run build
+          elif test "$BUILD_SUPPORTED" = false; then
+            echo "Selected base revision predates the runtime build contract; continue using its source scripts."
+          else
+            echo "Could not determine selected base runtime build support." >&2
+            exit 1
+          fi
       - name: Fetch exact B Git object without checking out or executing it
         env:
           B_PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -824,6 +963,22 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the exact selected base runtime when supported
+        run: |
+          set -euo pipefail
+          BUILD_SUPPORTED="$(node -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); if (!pkg || typeof pkg !== "object" || Array.isArray(pkg)) throw new Error("selected base package.json must be an object"); const scripts = pkg.scripts; if (scripts !== undefined && (!scripts || typeof scripts !== "object" || Array.isArray(scripts))) throw new Error("selected base package scripts must be an object"); if (scripts && Object.hasOwn(scripts, "build")) { if (typeof scripts.build !== "string" || scripts.build.length === 0) throw new Error("selected base build script must be a nonempty string"); process.stdout.write("true"); } else { process.stdout.write("false"); }')"
+          if test "$BUILD_SUPPORTED" = true; then
+            npm ci --ignore-scripts
+            npm run build
+          elif test "$BUILD_SUPPORTED" = false; then
+            echo "Selected base revision predates the runtime build contract; continue using its source scripts."
+          else
+            echo "Could not determine selected base runtime build support." >&2
+            exit 1
+          fi
       - name: Fetch exact B Git object without checking out or executing it
         env:
           B_PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -935,6 +1090,13 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the pinned protected runtime
+        run: |
+          npm ci --ignore-scripts --prefix .architecture-gatekeeper-runtime
+          npm run --prefix .architecture-gatekeeper-runtime build
       - name: Publish human-readable result
         id: report
         if: always()
@@ -958,7 +1120,7 @@ jobs:
           WORKFLOW_REF: ${{ job.workflow_ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: node .architecture-gatekeeper-runtime/src/ci-report.mjs
+        run: node .architecture-gatekeeper-runtime/dist/ci-report.mjs
 
   accept:
     if: always()
@@ -997,6 +1159,14 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .architecture-gatekeeper-runtime
           persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Build the pinned protected runtime
+        if: needs.policy.outputs.mode == 'procedural' || needs.policy.outputs.mode == 'enforced'
+        run: |
+          npm ci --ignore-scripts --prefix .architecture-gatekeeper-runtime
+          npm run --prefix .architecture-gatekeeper-runtime build
       - name: Check out the exact protected base for amendment policy recheck
         if: needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_amendment_grade == 'G0'
         uses: actions/checkout@v5
@@ -1033,7 +1203,7 @@ jobs:
           OWNER_AMENDMENT_SIGNER_STATUS: ${{ needs['owner-amendment-semantic-eligibility-signer'].outputs.status }}
           OWNER_AMENDMENT_ELIGIBILITY: ${{ needs['owner-amendment-semantic-eligibility-signer'].outputs.eligibility }}
           OWNER_AMENDMENT_SELECTED: ${{ needs.policy.outputs.owner_amendment_grade }}
-        run: node .architecture-gatekeeper-runtime/src/ci-enforced-acceptance.mjs
+        run: node .architecture-gatekeeper-runtime/dist/ci-enforced-acceptance.mjs
       - name: Require PASS or pre-merge G0 eligibility
         if: needs.policy.outputs.mode == 'procedural'
         env:
@@ -1045,4 +1215,4 @@ jobs:
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
           EVIDENCE_PRODUCER: ${{ needs.policy.outputs.adoption_evidence_producer }}
           SELECTED_AUTHORITY_CHANGED: ${{ needs.review.outputs.selected_authority_changed }}
-        run: node .architecture-gatekeeper-runtime/src/ci-procedural-acceptance.mjs
+        run: node .architecture-gatekeeper-runtime/dist/ci-procedural-acceptance.mjs

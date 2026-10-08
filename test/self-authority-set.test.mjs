@@ -6,10 +6,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { validateAuthoritySetDecision } from '../src/authority-set.mjs';
-import { prepareAuthoritySet } from '../src/prepare-authority-set.mjs';
-import { createReviewRequestAsync } from '../src/review-contract.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { validateAuthoritySetDecision } from '../dist/authority-set.mjs';
+import { prepareAuthoritySet } from '../dist/prepare-authority-set.mjs';
+import { createReviewRequestAsync } from '../dist/review-contract.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 
 const sourceRoot = fileURLToPath(new URL('../', import.meta.url));
 const read = path => readFileSync(join(sourceRoot, path));

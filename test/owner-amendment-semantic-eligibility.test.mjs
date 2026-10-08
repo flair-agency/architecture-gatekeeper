@@ -4,20 +4,20 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 import { produceOwnerAmendmentOwnerDecision } from '../scripts/owner-amendment-owner-decision-producer.mjs';
 import { buildOwnerAmendmentOwnerDecisionAmendmentRecord,
-  validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../src/owner-amendment-owner-decision-amendment-record.mjs';
-import { buildOwnerAmendmentRecord } from '../src/owner-amendment-record-builder.mjs';
-import { validateOwnerAmendmentBlockSemanticRecord } from '../src/owner-amendment-block-semantic-record.mjs';
-import { prepareOwnerAmendmentBlockHandoff } from '../src/owner-amendment-block-handoff.mjs';
-import { handoffOwnerAmendmentOwnerDecision } from '../src/owner-amendment-owner-decision-handoff.mjs';
-import { parseOwnerAmendmentSemanticTagObject } from '../src/owner-amendment-semantic-tag-object.mjs';
+  validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../dist/owner-amendment-owner-decision-amendment-record.mjs';
+import { buildOwnerAmendmentRecord } from '../dist/owner-amendment-record-builder.mjs';
+import { validateOwnerAmendmentBlockSemanticRecord } from '../dist/owner-amendment-block-semantic-record.mjs';
+import { prepareOwnerAmendmentBlockHandoff } from '../dist/owner-amendment-block-handoff.mjs';
+import { handoffOwnerAmendmentOwnerDecision } from '../dist/owner-amendment-owner-decision-handoff.mjs';
+import { parseOwnerAmendmentSemanticTagObject } from '../dist/owner-amendment-semantic-tag-object.mjs';
 import {
   completeOwnerAmendmentSemanticEligibility,
   createOwnerAmendmentSemanticEligibilityProducer,
   validateOwnerAmendmentSemanticEligibilityReceipt,
-} from '../src/owner-amendment-semantic-eligibility.mjs';
+} from '../dist/owner-amendment-semantic-eligibility.mjs';
 
 const baseSha = 'a'.repeat(40);
 const bSha = 'b'.repeat(40);

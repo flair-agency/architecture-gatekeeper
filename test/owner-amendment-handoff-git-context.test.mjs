@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import test from 'node:test';
-import { resolveOwnerAmendmentHandoffGitContext } from '../src/owner-amendment-handoff-git-context.mjs';
+import { resolveOwnerAmendmentHandoffGitContext } from '../dist/owner-amendment-handoff-git-context.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const policyPath = '.codex/gatekeeper/ci-policy.json';

@@ -1,3 +1,1 @@
-export {
-  readOwnerAmendmentTagForMergeGroup,
-} from './owner-amendment/owner-amendment-tag-readback.mjs';
+export { readOwnerAmendmentTagForMergeGroup } from './owner-amendment/owner-amendment-tag-readback.mjs';

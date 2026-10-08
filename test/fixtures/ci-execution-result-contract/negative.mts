@@ -1,4 +1,4 @@
-import type { CompletedCiExecutionResult, IncompleteCiExecutionResult, CiExecutionResult } from '../../../src-ts/ci-execution/ci-execution-result.mjs';
+import type { CompletedCiExecutionResult, IncompleteCiExecutionResult, CiExecutionResult } from '../../../src/ci-execution/ci-execution-result.mjs';
 
 declare const unionResult: CiExecutionResult;
 const unrefinedBytes: Buffer = unionResult.responseBytes;
@@ -23,4 +23,23 @@ const incompleteWithBytes: IncompleteCiExecutionResult = {
   responseBytes: Buffer.from('x'),
 };
 const unvalidatedHostOutcome: 'failure' = incompleteWithBytes.observations.hostStepOutcome;
-void [completedMissingBytes, incompleteWithBytes, unrefinedBytes, unvalidatedHostOutcome];
+
+type IncompleteShapeWithBytes = {
+  version: 1;
+  status: 'incomplete';
+  expectedExecution: IncompleteCiExecutionResult['expectedExecution'];
+  observations: IncompleteCiExecutionResult['observations'];
+  responseBytes: Buffer;
+};
+declare const nonfreshIncomplete: IncompleteShapeWithBytes;
+const nonfreshAsIncomplete: IncompleteCiExecutionResult = nonfreshIncomplete;
+const nonfreshAsUnion: CiExecutionResult = nonfreshIncomplete;
+function returnIncompleteWithBytes(): IncompleteShapeWithBytes { return nonfreshIncomplete; }
+const returnedAsIncomplete: IncompleteCiExecutionResult = returnIncompleteWithBytes();
+const returnedAsUnion: CiExecutionResult = returnIncompleteWithBytes();
+const spreadIncomplete = { ...nonfreshIncomplete };
+const spreadAsIncomplete: IncompleteCiExecutionResult = spreadIncomplete;
+const spreadAsUnion: CiExecutionResult = spreadIncomplete;
+void [completedMissingBytes, incompleteWithBytes, unrefinedBytes, unvalidatedHostOutcome,
+  nonfreshAsIncomplete, nonfreshAsUnion, returnedAsIncomplete, returnedAsUnion,
+  spreadAsIncomplete, spreadAsUnion];

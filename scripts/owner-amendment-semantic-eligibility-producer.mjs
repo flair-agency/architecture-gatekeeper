@@ -2,20 +2,20 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readRunnerTempFile, resolveRunnerTempDirectory, writeRunnerTempFile,
   validateRepositoryTreePath, validateSelfAuthorityManifest,
-  ownerAmendmentTagApiRoute } from '../src/runner-temp-path.mjs';
-import { createOwnerAmendmentSemanticEligibilityProducer, completeOwnerAmendmentSemanticEligibility } from '../src/owner-amendment-semantic-eligibility.mjs';
-import { resolveOwnerAmendmentHandoffGitContext } from '../src/owner-amendment-handoff-git-context.mjs';
-import { readOwnerAmendmentTagForMergeGroup } from '../src/owner-amendment-tag-readback.mjs';
-import { verifyOwnerAmendmentBlockEvidence } from '../src/owner-amendment-attestation.mjs';
-import { verifyOwnerAmendmentBlockContext } from '../src/owner-amendment-block-context-verifier.mjs';
-import { verifyOwnerAmendmentOwnerDecisionContext } from '../src/owner-amendment-owner-decision-context-verifier.mjs';
-import { validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../src/owner-amendment-owner-decision-amendment-record.mjs';
-import { materializeAuthoritySet } from '../src/authority-set.mjs';
-import { createGitHubAuthoritySource } from '../src/github-authority-source.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
-import { parseOwnerAmendmentSemanticTagObject } from '../src/owner-amendment-semantic-tag-object.mjs';
-import { computeOwnerAmendmentResultingAuthoritySet, deriveOwnerAmendmentGitChanges } from '../src/owner-amendment-git-changes.mjs';
-import { validateOwnerAmendmentBlockSemanticRecord } from '../src/owner-amendment-block-semantic-record.mjs';
+  ownerAmendmentTagApiRoute } from '../dist/runner-temp-path.mjs';
+import { createOwnerAmendmentSemanticEligibilityProducer, completeOwnerAmendmentSemanticEligibility } from '../dist/owner-amendment-semantic-eligibility.mjs';
+import { resolveOwnerAmendmentHandoffGitContext } from '../dist/owner-amendment-handoff-git-context.mjs';
+import { readOwnerAmendmentTagForMergeGroup } from '../dist/owner-amendment-tag-readback.mjs';
+import { verifyOwnerAmendmentBlockEvidence } from '../dist/owner-amendment-attestation.mjs';
+import { verifyOwnerAmendmentBlockContext } from '../dist/owner-amendment-block-context-verifier.mjs';
+import { verifyOwnerAmendmentOwnerDecisionContext } from '../dist/owner-amendment-owner-decision-context-verifier.mjs';
+import { validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../dist/owner-amendment-owner-decision-amendment-record.mjs';
+import { materializeAuthoritySet } from '../dist/authority-set.mjs';
+import { createGitHubAuthoritySource } from '../dist/github-authority-source.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
+import { parseOwnerAmendmentSemanticTagObject } from '../dist/owner-amendment-semantic-tag-object.mjs';
+import { computeOwnerAmendmentResultingAuthoritySet, deriveOwnerAmendmentGitChanges } from '../dist/owner-amendment-git-changes.mjs';
+import { validateOwnerAmendmentBlockSemanticRecord } from '../dist/owner-amendment-block-semantic-record.mjs';
 import { selectSelfSemanticTrigger } from './owner-amendment-semantic-trigger-selection.mjs';
 
 const repository = process.env.GITHUB_REPOSITORY;

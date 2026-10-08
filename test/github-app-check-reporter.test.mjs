@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, verify } from 'node:crypto';
-import { publishSelfArchitectureCheck } from '../src/github-app-check-reporter.mjs';
+import { publishSelfArchitectureCheck } from '../dist/github-app-check-reporter.mjs';
 
 const now = Date.parse('2026-09-30T00:00:00.000Z');
 const headSha = 'a'.repeat(40);

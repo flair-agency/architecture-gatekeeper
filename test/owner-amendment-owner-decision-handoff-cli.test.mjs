@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runOwnerAmendmentOwnerDecisionHandoff } from '../src/owner-amendment-owner-decision-handoff-cli.mjs';
+import { runOwnerAmendmentOwnerDecisionHandoff } from '../dist/owner-amendment-owner-decision-handoff-cli.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const baseSha = 'a'.repeat(40), bHeadSha = 'b'.repeat(40), aHeadSha = 'c'.repeat(40);

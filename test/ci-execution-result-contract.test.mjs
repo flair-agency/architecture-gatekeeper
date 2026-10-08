@@ -30,9 +30,16 @@ test('execution result state contracts require completed bytes and exclude them 
   assert.deepEqual(diagnostics.map(item => [
     item.code,
     item.file.getLineAndCharacterOfPosition(item.start).line + 1,
-  ]), [[2339, 4], [2741, 6], [2353, 23], [2322, 25]]);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /responseBytes/);
+  ]), [
+    [2322, 4], [2741, 6], [2322, 23], [2322, 25],
+    [2322, 35], [2322, 36], [2322, 38], [2322, 39], [2322, 41], [2322, 42],
+  ]);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /responseBytes|undefined/);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[1].messageText, '\n'), /responseBytes/);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[2].messageText, '\n'), /responseBytes/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[2].messageText, '\n'), /undefined/);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[3].messageText, '\n'), /unknown.*failure|not assignable/i);
+  for (const diagnostic of diagnostics.slice(4)) {
+    assert.match(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'), /not assignable/i);
+    assert.match(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'), /responseBytes/);
+  }
 });

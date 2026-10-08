@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateDecisionRules } from '../src/validate-decision.mjs';
+import { validateDecisionRules } from '../dist/validate-decision.mjs';
 
 const policy = {
   version: 1,

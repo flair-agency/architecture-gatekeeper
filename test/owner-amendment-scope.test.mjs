@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { inspectOwnerAmendmentSelfScope } from '../src/owner-amendment-scope.mjs';
+import { inspectOwnerAmendmentSelfScope } from '../dist/owner-amendment-scope.mjs';
 
 const baseSha = 'a'.repeat(40);
 const headSha = 'b'.repeat(40);

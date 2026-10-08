@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { composeOwnerAmendmentMergeGroupBlockInputs } from '../src/owner-amendment-merge-group-block-bridge.mjs';
+import { composeOwnerAmendmentMergeGroupBlockInputs } from '../dist/owner-amendment-merge-group-block-bridge.mjs';
 
 const repository = 'flair-agency/example';
 const baseSha = 'a'.repeat(40), bSha = 'b'.repeat(40);

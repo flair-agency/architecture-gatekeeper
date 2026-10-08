@@ -10,6 +10,7 @@ const decoder = new TextDecoder('utf-8', { fatal: true });
 const SHA = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
 const fail: (message: string) => never = message => { throw new Error(`Owner amendment tag readback: ${message}`); };
 
+export type Awaitable<T> = T | PromiseLike<T>;
 export type OwnerAmendmentTagReadbackInput = {
   repository: string;
   bSha: string;
@@ -18,28 +19,21 @@ export type OwnerAmendmentTagReadbackInput = {
   rulesetId: number;
   token: string;
   fetchImpl?: OwnerAmendmentTagFetch;
-  readTagObject?: (repository: string, tagRef: string, tagName: string, objectOid: unknown, token: string) => Buffer | Promise<Buffer>;
+  readTagObject?: (repository: string, tagRef: string, tagName: string, objectOid: unknown, token: string) => Awaitable<Buffer>;
 };
-
 export type OwnerAmendmentTagReadback = ReadbackResult;
-
 export type OwnerAmendmentTagFetchResponse = {
   ok?: unknown;
   status?: unknown;
-  json: () => Promise<unknown>;
+  json: () => Awaitable<unknown>;
 };
-
 export type OwnerAmendmentTagFetch = (
   url: string,
   options: { headers: Record<string, string>; redirect: 'error' },
-) => Promise<OwnerAmendmentTagFetchResponse>;
+) => Awaitable<OwnerAmendmentTagFetchResponse>;
 
 type ValidatedInput = { owner: string; repo: string; tagName: string };
-type TagResult = {
-  readonly ref: string;
-  readonly objectOid: unknown;
-  readonly objectBytes: Buffer;
-};
+type TagResult = { readonly ref: string; readonly objectOid: unknown; readonly objectBytes: Buffer };
 type ReadbackResult = {
   readonly status: 'READ_BACK_OWNER_AMENDMENT_TAG';
   readonly repository: string;
@@ -68,8 +62,7 @@ async function getJson(fetchImpl: OwnerAmendmentTagFetch, url: string, token: st
   try { return await response.json(); } catch { fail('GitHub API returned invalid JSON.'); }
 }
 
-// These private property views preserve JavaScript reads, including repeated
-// accessor reads. They are not runtime shape validation or trusted payload types.
+// These private property views preserve JavaScript reads, including repeated accessor reads. They are not runtime shape validation or trusted payload types.
 function validateRuleset(value: unknown, rulesetId: number, tagNamespace: string): void {
   type JsonView = { id?: unknown; target?: unknown; enforcement?: unknown; conditions?: { ref_name?: { include?: unknown; exclude?: unknown } }; rules?: unknown; bypass_actors?: unknown };
   const include = (value as JsonView | null | undefined)?.conditions?.ref_name?.include;
@@ -93,9 +86,7 @@ function readRawTagObject(repository: string, tagRef: string, tagName: string, o
   const [owner, repo] = repository.split('/');
   const remote = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}.git`;
   const auth = Buffer.from(`x-access-token:${token}`).toString('base64');
-  const env = { ...process.env, GIT_CONFIG_COUNT: '2',
-    GIT_CONFIG_KEY_0: 'http.extraheader', GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${auth}`,
-    GIT_CONFIG_KEY_1: 'http.followRedirects', GIT_CONFIG_VALUE_1: 'false' };
+  const env = { ...process.env, GIT_CONFIG_COUNT: '2', GIT_CONFIG_KEY_0: 'http.extraheader', GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${auth}`, GIT_CONFIG_KEY_1: 'http.followRedirects', GIT_CONFIG_VALUE_1: 'false' };
   try {
     execFileSync('git', ['init', '--bare', '--quiet', directory], { env, stdio: 'ignore' });
     execFileSync('git', ['-C', directory, 'fetch', '--quiet', '--no-tags', '--force', remote, `+${tagRef}:refs/tags/${tagName}`], { env, stdio: 'ignore', timeout: 30_000 });
@@ -109,9 +100,7 @@ function readRawTagObject(repository: string, tagRef: string, tagName: string, o
     type ErrorView = { message?: { startsWith(prefix: string): boolean } };
     if ((error as ErrorView | null | undefined)?.message?.startsWith('Owner amendment tag readback:')) throw error;
     fail('raw tag object could not be fetched and read from Git.');
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 }
 
 function validateRawObject(bytes: Buffer, { bSha, tagName, objectOid }: { bSha: string; tagName: string; objectOid: unknown }): void {
@@ -125,21 +114,14 @@ function validateRawObject(bytes: Buffer, { bSha, tagName, objectOid }: { bSha: 
   const split = text.indexOf('\n\n');
   if (split < 0) fail('annotated tag object has malformed headers or no message.');
   const headers = text.slice(0, split).split('\n');
-  if (headers.length !== 4 || headers[0] !== `object ${bSha}` || headers[1] !== 'type commit' || headers[2] !== `tag ${tagName}` ||
-      !/^tagger [^\n<>]+ <[^\n<>]+> [0-9]+ [+-][0-9]{4}$/.test(headers[3])) fail('annotated tag headers do not bind exact B and ref.');
+  if (headers.length !== 4 || headers[0] !== `object ${bSha}` || headers[1] !== 'type commit' || headers[2] !== `tag ${tagName}` || !/^tagger [^\n<>]+ <[^\n<>]+> [0-9]+ [+-][0-9]{4}$/.test(headers[3])) fail('annotated tag headers do not bind exact B and ref.');
   const message = text.slice(split + 2);
   if (!message.endsWith('\n') || message.slice(0, -1).includes('\n')) fail('tag message must be one newline-terminated JSON line.');
   try { JSON.parse(message.slice(0, -1)); } catch { fail('tag message is malformed JSON.'); }
 }
 
-/**
- * Read the exact protected annotated tag for merge-group validation. GitHub
- * REST supplies the live ref and ruleset; a temporary bare repository fetches
- * the ref and `cat-file` supplies its original object bytes. This is a
- * readback only: it creates no remote refs and makes no acceptance claim.
- */
-// The default cast preserves the original no-argument runtime validation error;
-// it does not supply valid input or bypass validation.
+/** Read the exact protected annotated tag for merge-group validation. GitHub REST supplies the live ref and ruleset; a temporary bare repository fetches the ref and `cat-file` supplies its original object bytes. This is a readback only: it creates no remote refs and makes no acceptance claim. */
+// The default cast preserves the original no-argument runtime validation error; it does not supply valid input or bypass validation.
 export async function readOwnerAmendmentTagForMergeGroup({ repository, bSha, tagNamespace, tagRef, rulesetId, token, fetchImpl = fetch, readTagObject = readRawTagObject }: OwnerAmendmentTagReadbackInput = {} as OwnerAmendmentTagReadbackInput): Promise<ReadbackResult> {
   if (typeof fetchImpl !== 'function' || typeof readTagObject !== 'function') fail('read dependencies are invalid.');
   const { owner, repo, tagName } = validateInput({ repository, bSha, tagNamespace, tagRef, rulesetId, token });
@@ -154,7 +136,5 @@ export async function readOwnerAmendmentTagForMergeGroup({ repository, bSha, tag
   const finalRef = await getJson(fetchImpl, `${base}/git/ref/tags/${refPath}`, token);
   const finalOid = validateRef(finalRef, tagRef);
   if (finalOid !== objectOid) fail('tag ref changed during readback.');
-  return Object.freeze({ status: 'READ_BACK_OWNER_AMENDMENT_TAG', repository, bSha, tagRef,
-    tag: Object.freeze({ ref: tagRef, objectOid, objectBytes }), observedTagRefOid: finalOid,
-    rulesetReadback: ruleset, refReadback: finalRef });
+  return Object.freeze({ status: 'READ_BACK_OWNER_AMENDMENT_TAG', repository, bSha, tagRef, tag: Object.freeze({ ref: tagRef, objectOid, objectBytes }), observedTagRefOid: finalOid, rulesetReadback: ruleset, refReadback: finalRef });
 }

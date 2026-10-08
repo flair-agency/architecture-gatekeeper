@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeCiExecutionResult } from '../src/ci-execution-result.mjs';
+import { normalizeCiExecutionResult } from '../dist/ci-execution-result.mjs';
 
 const expectedExecution = {
   provider: 'codex', requestedModel: 'gpt-6.1-sol', requestedSettings: { reasoningEffort: 'medium' },

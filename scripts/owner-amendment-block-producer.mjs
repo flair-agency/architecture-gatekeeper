@@ -7,9 +7,9 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
-import { parseAuthorityManifest, readCommittedAuthorityFile, rejectDuplicateJsonKeys } from '../src/authority-set.mjs';
-import { buildOwnerAmendmentBlockRecord } from '../src/owner-amendment-block-record.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { parseAuthorityManifest, readCommittedAuthorityFile, rejectDuplicateJsonKeys } from '../dist/authority-set.mjs';
+import { buildOwnerAmendmentBlockRecord } from '../dist/owner-amendment-block-record.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 
 const SHA = /^[a-f0-9]{40}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;

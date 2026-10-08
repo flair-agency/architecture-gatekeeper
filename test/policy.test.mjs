@@ -5,9 +5,10 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
-import { MAX_AUTHORITY_LIMITS, MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest } from '../src/authority-set.mjs';
-import { validateAuthorityReviewSchema } from '../src/preflight-authority-set-review.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
+import { MAX_AUTHORITY_LIMITS, MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest } from '../dist/authority-set.mjs';
+import { validateAuthorityReviewSchema } from '../dist/preflight-authority-set-review.mjs';
+import { parseWorkflow } from './helpers/workflow-structure.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authorityFiles: ['docs/architecture.md'], promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json', validationPath: null } } };
@@ -31,17 +32,27 @@ test('legacy v1 enforced policy requires canonical paths and an explicit validat
 });
 test('legacy v1 workflow binds protected instructions, authority, and exact report', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
+  const parsed = parseWorkflow(workflow, 'architecture-gate.yml');
   assert.match(workflow, /if: steps\.resolve\.outputs\.authorityManifestPath != '' \|\| steps\.resolve\.outputs\.policyVersion == '1'/);
   assert.match(workflow, /name: Materialize recorded-base legacy authority before review/);
-  assert.match(workflow, /run: node \.architecture-gatekeeper-validation-runtime\/src\/prepare-legacy-ci-authority\.mjs prepare/);
+  const prepareLegacy = parsed.jobs.review.steps.find(step => step.name === 'Materialize recorded-base legacy authority before review');
+  assert.equal(prepareLegacy.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" prepare');
   assert.match(workflow, /name: Require exact reported legacy authority files/);
-  assert.match(workflow, /run: node \.architecture-gatekeeper-validation-runtime\/src\/prepare-legacy-ci-authority\.mjs validate/);
+  const validateLegacy = parsed.jobs.review.steps.find(step => step.name === 'Require exact reported legacy authority files');
+  assert.equal(validateLegacy.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" validate');
   assert.match(workflow, /LEGACY_AUTHORITY_PROVENANCE_BASE64: \$\{\{ needs\.review\.outputs\.legacy_authority_provenance \}\}/);
   assert.match(workflow, /test "\$POLICY_PATH" = \.codex\/gatekeeper\/ci-policy\.json/);
   assert.match(workflow, /PROMPT_PATH: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_prompt_path \|\| inputs\.prompt-path \}\}/);
   assert.match(workflow, /SCHEMA_PATH: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_schema_path \|\| inputs\.schema-path \}\}/);
   assert.match(workflow, /if: \(needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_validation_path != ''\) \|\| \(needs\.policy\.outputs\.policy_version != '1' && inputs\.validation-path != ''\)/);
-  assert.match(workflow, /name: Require caller validation selection to match recorded-base v1 policy\n        if: steps\.resolve\.outputs\.policyVersion == '1'[\s\S]*?CALLER_VALIDATION_PATH: \$\{\{ inputs\.validation-path \}\}[\s\S]*?BASE_VALIDATION_PATH: \$\{\{ steps\.resolve\.outputs\.legacyValidationPath \}\}[\s\S]*?run: node \.architecture-gatekeeper-runtime\/src\/verify-legacy-validation-selection\.mjs "\$BASE_VALIDATION_PATH" "\$CALLER_VALIDATION_PATH"/);
+  const selection = parsed.jobs.policy.steps.find(step => step.name === 'Require caller validation selection to match recorded-base v1 policy');
+  assert.equal(selection.if, "steps.resolve.outputs.policyVersion == '1'");
+  assert.deepEqual(selection.env, {
+    CALLER_VALIDATION_PATH: '${{ inputs.validation-path }}',
+    BASE_VALIDATION_PATH: '${{ steps.resolve.outputs.legacyValidationPath }}',
+    GATEKEEPER_RUNTIME_ROOT: '${{ steps.runtime_location.outputs.root }}',
+  });
+  assert.equal(selection.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/verify-legacy-validation-selection.mjs" "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"');
   assert.match(workflow, /VALIDATION_PATH: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && needs\.policy\.outputs\.legacy_validation_path \|\| inputs\.validation-path \}\}/);
 });
 test('uses explicit local-only default', () => assert.equal(resolveCiPolicy(policy, 'preview').mode, 'local-only'));
@@ -182,7 +193,7 @@ test('protected policy rejects duplicate JSON keys before resolving effective li
   t.after(() => rmSync(folder, { recursive: true, force: true }));
   const file = join(folder, 'ci-policy.json');
   writeFileSync(file, repeated);
-  assert.throws(() => execFileSync(process.execPath, [join(root, 'src/resolve-ci-policy.mjs'), file, 'main'], { stdio: 'ignore' }));
+  assert.throws(() => execFileSync(process.execPath, [join(root, 'dist/resolve-ci-policy.mjs'), file, 'main'], { stdio: 'ignore' }));
 });
 
 test('uses the pinned upstream Codex Action with supported protected inputs', () => {
@@ -241,33 +252,53 @@ test('keeps bounded job and step deadlines around upstream Codex Action calls', 
 
 test('uses the immutable called-workflow runtime and keeps review jobs read-only', () => {
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
+  const parsed = parseWorkflow(workflow, 'architecture-gate.yml');
   const acceptJob = workflow.match(/  accept:\n([\s\S]*)$/)?.[1];
   assert.ok(acceptJob);
   assert.match(workflow, /repository: \$\{\{ job\.workflow_repository \}\}/);
   assert.match(workflow, /ref: \$\{\{ job\.workflow_sha \}\}/);
   assert.doesNotMatch(workflow, /ref: v0\.1\.0/);
   assert.match(workflow, /review:\n[\s\S]*?permissions:\n      contents: read/);
-  assert.match(workflow, /src\/ci-report\.mjs/);
+  assert.match(workflow, /dist\/ci-report\.mjs/);
   assert.match(workflow, /CONCLUSION: \$\{\{ needs\.report\.outputs\.conclusion \}\}/);
   assert.doesNotMatch(workflow, /JSON\.parse\(process\.env\.DECISION\)/);
   assert.match(workflow, /group: architecture-gate-\$\{\{ github\.repository \}\}-\$\{\{ github\.event\.pull_request\.number \}\}/);
   assert.match(workflow, /cancel-in-progress: true/);
   assert.match(workflow, /git show "\$BASE_SHA:\$PROMPT_PATH"/);
   assert.match(workflow, /if git cat-file -e "\$BASE_SHA:\$POLICY_PATH" 2>\/dev\/null; then/);
-  assert.match(workflow, /src\/materialize-regular-git-snapshot\.mjs \\\n+              "\$BASE_SHA" "\$POLICY_PATH" "\$RUNNER_TEMP\/architecture-gate-policy\.json"/);
+  const resolveStep = parsed.jobs.policy.steps.find(step => step.name === 'Resolve policy from protected base revision');
+  assert.match(resolveStep.run, /node "\$GATEKEEPER_RUNTIME_ROOT\/dist\/materialize-regular-git-snapshot\.mjs" \\\n\s+"\$BASE_SHA" "\$POLICY_PATH" "\$RUNNER_TEMP\/architecture-gate-policy\.json"/);
   assert.match(workflow, /git show "\$BASE_SHA:\$SCHEMA_PATH"/);
   assert.match(workflow, /protected-review-instructions:/);
   assert.match(workflow, /prompt-file: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && format/);
   assert.match(workflow, /\|\| needs\.policy\.outputs\.authority_manifest_path/);
   assert.match(workflow, /output-schema-file: \$\{\{ needs\.policy\.outputs\.policy_version == '1'/);
   assert.match(workflow, /git show "\$BASE_SHA:\$VALIDATION_PATH"/);
-  assert.match(workflow, /src\/validate-decision\.mjs/);
-  assert.match(workflow, /src\/preflight-authority-set-review\.mjs/);
-  assert.match(workflow, /name: Check protected Authority Set schema and complete prompt\n[\s\S]*?run: \|\n          node \.architecture-gatekeeper-validation-runtime\/src\/preflight-authority-set-review\.mjs/);
+  assert.match(workflow, /dist\/validate-decision\.mjs/);
+  assert.match(workflow, /dist\/preflight-authority-set-review\.mjs/);
+  const preflight = parsed.jobs.review.steps.find(step => step.name === 'Check protected Authority Set schema and complete prompt');
+  assert.match(preflight.run, /^node "\$GATEKEEPER_RUNTIME_ROOT\/dist\/preflight-authority-set-review\.mjs"/);
   assert.match(workflow, /--limits-base64 "\$AUTHORITY_LIMITS_BASE64"/);
-  assert.match(workflow, /src\/validate-authority-set-decision\.mjs/);
+  assert.match(workflow, /dist\/validate-authority-set-decision\.mjs/);
   assert.match(workflow, /reviewed_sha: \$\{\{ steps\.revision\.outputs\.sha \}\}/);
-  assert.match(workflow, /sha=\$\(git rev-parse HEAD\)/);
+  const reviewSteps = parseWorkflow(workflow, 'architecture-gate.yml').jobs.review.steps;
+  const revisionIndex = reviewSteps.findIndex((step) => step.name === 'Record reviewed merge revision');
+  const revision = reviewSteps[revisionIndex];
+  const runtimeBuildIndex = reviewSteps.findIndex((step) => step.name === 'Build the pinned validation runtime');
+  assert.ok(revisionIndex >= 0);
+  assert.ok(runtimeBuildIndex > revisionIndex, 'reviewed merge identity and parent tuple are checked before runtime build');
+  assert.deepEqual(revision.env, {
+    EXPECTED_MERGE_SHA: '${{ github.event.pull_request.merge_commit_sha }}',
+    BASE_SHA: '${{ github.event.pull_request.base.sha }}',
+    HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
+  });
+  assert.match(revision.run, /git rev-parse HEAD/);
+  assert.match(revision.run, /actual_sha.*!=.*EXPECTED_MERGE_SHA/);
+  assert.match(revision.run, /git --no-replace-objects rev-list --parents -n 1 "\$actual_sha"/);
+  assert.match(revision.run, /expected_parents="\$actual_sha \$BASE_SHA \$HEAD_SHA"/);
+  assert.match(revision.run, /actual_parents.*!=.*expected_parents/);
+  assert.ok(revision.run.indexOf('actual_parents') < revision.run.indexOf('GITHUB_OUTPUT'), 'reviewed SHA is emitted only after exact parent verification');
+  assert.match(revision.run, /printf 'sha=%s\\n' "\$EXPECTED_MERGE_SHA"/);
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
   assert.match(workflow, /report:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
@@ -282,7 +313,8 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.doesNotMatch(workflow, /Require protected owner approval/);
   assert.match(workflow, /name: Require successful reporting\n[\s\S]*?REPORT_RESULT: \$\{\{ needs\.report\.result \}\}\n[\s\S]*?test "\$REPORT_RESULT" = success/);
   assert.match(workflow, /name: Require model-backed PASS or verified G0 owner addition\/amendment\n        if: needs\.policy\.outputs\.mode == 'enforced'/);
-  assert.match(workflow, /run: node \.architecture-gatekeeper-runtime\/src\/ci-enforced-acceptance\.mjs/);
+  const acceptance = parsed.jobs.accept.steps.find(step => step.name === 'Require model-backed PASS or verified G0 owner addition/amendment');
+  assert.equal(acceptance.run, 'node .architecture-gatekeeper-runtime/dist/ci-enforced-acceptance.mjs');
   const finalTagGuard = acceptJob.match(/      - name: Recheck exact B amendment tag at final acceptance boundary\n([\s\S]*?)\n      - name: Require model-backed PASS/)?.[1];
   assert.ok(finalTagGuard);
   assert.match(finalTagGuard, /if: needs\.policy\.outputs\.mode == 'enforced' && needs\.policy\.outputs\.owner_amendment_grade == 'G0'/);
@@ -311,10 +343,10 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(additionJob, /test "\$\(git rev-parse FETCH_HEAD\)" = "\$REVIEWED_SHA"/);
   assert.match(additionJob, /test "\$MERGE_PARENT_HEAD" = "\$HEAD_SHA"/);
   assert.match(additionJob, /git -c "http\.extraheader=.*" fetch --no-tags/);
-  assert.match(additionJob, /src\/owner-addition-ci\.mjs prepare/);
+  assert.match(additionJob, /dist\/owner-addition-ci\.mjs prepare/);
   assert.match(additionJob, /ORDINARY_DECISION: \$\{\{ needs\.review\.outputs\.final_message \}\}/);
   assert.match(additionJob, /PR_NUMBER: \$\{\{ github\.event\.pull_request\.number \}\}/);
-  assert.match(additionJob, /src\/owner-addition-ci\.mjs validate/);
+  assert.match(additionJob, /dist\/owner-addition-ci\.mjs validate/);
   assert.match(additionJob, /POLICY_VERSION: \$\{\{ needs\.policy\.outputs\.policy_version \}\}/);
   assert.match(additionJob, /prompt-file: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-addition\/eligibility-prompt\.md/);
   assert.match(additionJob, /name: Preserve exact v5 pre-merge eligibility evidence\n        id: eligibility-evidence\n        if: needs\.policy\.outputs\.policy_version == '5'/);
@@ -515,7 +547,7 @@ test('selects and materializes the protected self Authority Set for CI and local
   try {
     const promptPath = join(preflightRoot, 'complete-prompt.md');
     writeFileSync(promptPath, completePrompt);
-    execFileSync(process.execPath, [join(root, 'src/preflight-authority-set-review.mjs'), schemaPath, promptPath],
+    execFileSync(process.execPath, [join(root, 'dist/preflight-authority-set-review.mjs'), schemaPath, promptPath],
       { env: { ...process.env, AUTHORITY_LIMITS_BASE64: selected.authorityLimitsBase64 } });
   } finally { rmSync(preflightRoot, { recursive: true, force: true }); }
   assert.deepEqual(schema.properties.decision.enum, ['PASS', 'BLOCK', 'OWNER_DECISION']);

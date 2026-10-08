@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { handoffOwnerAmendmentOwnerDecision } from '../src/owner-amendment-owner-decision-handoff.mjs';
-import { verifyOwnerAmendmentOwnerDecisionContext } from '../src/owner-amendment-owner-decision-context-verifier.mjs';
+import { handoffOwnerAmendmentOwnerDecision } from '../dist/owner-amendment-owner-decision-handoff.mjs';
+import { verifyOwnerAmendmentOwnerDecisionContext } from '../dist/owner-amendment-owner-decision-context-verifier.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const repository = 'flair-agency/architecture-gatekeeper';
