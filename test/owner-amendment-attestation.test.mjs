@@ -89,3 +89,43 @@ test('rejects missing or unknown trusted identity fields and multiple subjects',
   verified[0].verificationResult.statement.subject.push(verified[0].verificationResult.statement.subject[0]);
   assert.equal(inspectOwnerAmendmentAttestation({ ...input, verified }).status, 'INCOMPLETE');
 });
+
+test('verifier callback receives private exact-byte files and its temporary directory is removed', async () => {
+  const { verifyOwnerAmendmentBlockEvidence } = await import('../dist/owner-amendment-attestation.mjs');
+  const { readFileSync, existsSync, statSync } = await import('node:fs');
+  const input = fixture();
+  const bundleBytes = Buffer.from('{"bundle":true}');
+  let observedPaths;
+  const result = verifyOwnerAmendmentBlockEvidence({ ...input, bundleBytes, runGh(_file, args, options) {
+    assert.equal(_file, 'gh');
+    assert.deepEqual(args.slice(0, 2), ['attestation', 'verify']);
+    assert.equal(args[3], '--bundle');
+    assert.equal(args[5], '--format');
+    assert.equal(args[6], 'json');
+    assert.equal(args[7], '--repo');
+    assert.equal(args[8], expected.repository);
+    assert.equal(args[9], '--signer-repo');
+    assert.equal(args[10], expected.repository);
+    assert.deepEqual(options, { encoding: 'utf8', maxBuffer: 1024 * 1024, timeout: 30_000, stdio: ['pipe', 'pipe', 'pipe'] });
+    const recordPath = args[2];
+    const bundlePath = args[4];
+    observedPaths = [recordPath, bundlePath];
+    assert.deepEqual(readFileSync(recordPath), input.recordBytes);
+    assert.deepEqual(readFileSync(bundlePath), bundleBytes);
+    assert.equal(statSync(recordPath).mode & 0o777, 0o600);
+    assert.equal(statSync(bundlePath).mode & 0o777, 0o600);
+    return JSON.stringify(input.verified);
+  } });
+  assert.equal(result.status, 'VERIFIED_PRODUCER_ATTESTATION');
+  for (const path of observedPaths) assert.throws(() => readFileSync(path), { code: 'ENOENT' });
+  assert.equal(existsSync((await import('node:path')).dirname(observedPaths[0])), false);
+});
+
+test('async verifier callback output remains malformed at runtime', async () => {
+  const { verifyOwnerAmendmentBlockEvidence } = await import('../dist/owner-amendment-attestation.mjs');
+  const input = fixture();
+  const result = verifyOwnerAmendmentBlockEvidence({ ...input, bundleBytes: Buffer.from('{}'),
+    runGh: () => Promise.resolve(JSON.stringify(input.verified)) });
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /malformed JSON/);
+});

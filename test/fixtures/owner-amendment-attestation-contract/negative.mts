@@ -1,0 +1,12 @@
+import { inspectOwnerAmendmentAttestation } from '../../../src/owner-amendment-attestation.mjs';
+import type { OwnerAmendmentAttestationResult } from '../../../src/owner-amendment/owner-amendment-attestation.mjs';
+declare const external: unknown;
+const certified: { verificationResult: object }[] = external;
+const result = inspectOwnerAmendmentAttestation({ recordBytes: external, verified: external, expected: external });
+const reason: string = result.status === 'INCOMPLETE' ? result.reason : '';
+const success: OwnerAmendmentAttestationResult = { status: 'VERIFIED_PRODUCER_ATTESTATION', recordSha256: 'a' };
+success.recordSha256 = 'b';
+const missing: string = result.status === 'INCOMPLETE' ? result.recordSha256 : '';
+const stale = { status: 'INCOMPLETE' as const, reason: 'failed', recordSha256: 'stale' };
+const invalid: OwnerAmendmentAttestationResult = stale;
+void [certified, reason, success, missing, invalid];
