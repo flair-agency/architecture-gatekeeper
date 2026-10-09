@@ -1,1 +1,1 @@
-export { verifyGitHubOwnerAmendmentReadback } from './github/github-owner-amendment-readback.mjs';
+export { verifyGitHubOwnerAmendmentReadback } from './github/github-owner-amendment-readback.mts';

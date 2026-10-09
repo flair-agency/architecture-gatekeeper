@@ -1,1 +1,1 @@
-export { createGitHubCliRunner } from './github/github-cli-runner.mjs';
+export { createGitHubCliRunner } from './github/github-cli-runner.mts';
