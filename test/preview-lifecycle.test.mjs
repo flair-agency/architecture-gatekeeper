@@ -112,7 +112,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'owner-amendment/owner-amendment-handoff-pr-run-context.mjs',
     'owner-amendment/owner-amendment-workflow-run-merge-group-context.mjs', 'owner-amendment/owner-amendment-scope.mjs',
     'github/github-authority-source.mjs', 'github/github-merge-group-event.mjs', 'github/github-owner-amendment-readback.mjs',
-    'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs'];
+    'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs',
+    'github/github-ruleset-readback.mjs'];
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -183,7 +184,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   }
   for (const file of ['github-associated-repository.mjs', 'github-cli-runner.mjs',
     'github-authority-source.mjs', 'github-merge-group-event.mjs', 'github-owner-amendment-readback.mjs',
-    'github-owner-addition-readback.mjs', 'github-app-check-reporter.mjs']) {
+    'github-owner-addition-readback.mjs', 'github-app-check-reporter.mjs', 'github-ruleset-readback.mjs']) {
     writeFileSync(join(flatRoot, 'dist', file), readFileSync(join(flatRoot, 'dist/github', file)));
   }
   rmSync(join(flatRoot, 'dist/github'), { recursive: true });

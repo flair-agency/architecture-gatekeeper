@@ -78,12 +78,13 @@ and unresolved limits. The entrypoint and workflow investigations under
 The integrated #419 slices type OWNER_ADDITION validation, execution-result
 states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
 PR/run and live queue context, self-amendment scope, and amendment canonical
-readback. This slice types OWNER_ADDITION post-merge readback and the self-only
-GitHub App check reporter under `src/github/*.mts`, retaining flat exports.
+readback, OWNER_ADDITION post-merge readback and self-only GitHub App reporting.
+This slice types the isolated GitHub ruleset readback under
+`src/github/github-ruleset-readback.mts`, retaining its flat exports.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `9397854` has eighteen original modules typed and 78 remaining; this
-candidate has twenty typed and 76 remaining. Migration is partial and does
+Main `70c9214` has twenty original modules typed and 76 remaining; this
+candidate has twenty-one typed and 75 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
@@ -161,6 +162,16 @@ constants and computed digests are typed. Publishing assumes a protected caller
 already validated the result and does not authenticate that precondition.
 Neither result type supplies owner authorization, producer provenance or route
 activation. Focused accessor regressions retain existing observable rereads.
+
+Ruleset readback retains the fixed protected-main workflow context, App
+installation binding, single-repository administration grant and token
+revocation in `finally` before a snapshot is returned. Storage remains anchored
+to the real checkout, with private regular-file modes and same-run/base/freshness
+checks. Environment fields and API JSON are unknown; the captured workflow and
+fixed constants are typed, while context fields read again remain unknown.
+Readonly annotations prevent typed reassignment but do not freeze returned
+objects. A local snapshot is same-job launcher input, not a portable receipt or
+proof of host enforcement; the unchanged runtime validators still own its use.
 
 Runtime coverage follows the emitted and executed `dist/**/*.mjs` files. Report
 those exact paths without counting source files as runtime coverage. CodeQL
