@@ -7,8 +7,8 @@ proof. It supports #405's finite roadmap. #403 may freeze the planning scope
 after independent review of the complete inventory, gap allocation and
 recorded unknowns; actual consumer completion remains a Preview.4 release gate.
 
-**Authority and baseline.** The current baseline for this roadmap is the
-complete selected six-member Set at main commit
+**Authority and inventory snapshot at 939 (2026-10-09).** This roadmap records
+the complete selected six-member Set at main commit
 `93978544ca860860a675afa49b2c95cfad9c11eb` (#447): [architecture contract](../architecture.md),
 [Authority Set](../architecture/authority-set.md),
 [owner addition](../architecture/owner-addition.md),
@@ -21,17 +21,18 @@ catalogue merged in #411 is a traceability aid, not authority or proof
 test references below identify mechanisms at the stated revision only.
 
 The earlier initial Set snapshot was `426fd7832dd5b32e6e74df74f63ba29926b7d717`.
-Compared with that snapshot, the current `review-execution.md` records that
+Compared with that snapshot, `review-execution.md` at 939 records that
 PR #126 implemented and regression-tested the authorized legacy v1 repair and
 that it shipped in v0.5.1. The earlier text described that same authorized
 repair as a target pending integration. This is a documentation status update
 for the existing repair, not a new rule; neither wording establishes adoption
 by a consumer or protected host enforcement.
 
-## Latest integration checkpoint (main 9397854, 2026-10-09)
+## Integration checkpoint through PR #447 (2026-10-09)
 
-GitHub main is `93978544ca860860a675afa49b2c95cfad9c11eb` (#447), directly
-parented by `5f1f993f9491e7dab4998e850038c23e1d714677` (#446). PR #447 adds
+At this checkpoint GitHub main was
+`93978544ca860860a675afa49b2c95cfad9c11eb` (#447), directly parented by
+`5f1f993f9491e7dab4998e850038c23e1d714677` (#446). PR #447 adds
 typed GitHub authority-source, merge-group-event and canonical-readback
 mechanisms with focused type and behavior tests, while retaining their
 compatibility entry points. These are package source, test and development
@@ -48,8 +49,8 @@ This checkpoint asserts no newer consumer or issue statuses.
 ## Historical integration checkpoint through PR #446 (2026-10-09)
 
 This section preserves the earlier roadmap checkpoint at main
-`5f1f993f9491e7dab4998e850038c23e1d714677` (#446); it is historical, not the
-current baseline. At that checkpoint, its direct parent was
+`5f1f993f9491e7dab4998e850038c23e1d714677` (#446); it is historical and
+superseded by the #447 checkpoint above. At that checkpoint, its direct parent was
 `2bd5ca7480b91aabbfcecf08301d9c0fcda57165` (#444), whose parent is
 `da113eedf8b41053f7f0b9eb757e626c04ba3e12` (#442). These immutable commit
 links establish that the #446 checkpoint included both #444 and #446 after the
