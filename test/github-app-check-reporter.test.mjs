@@ -211,3 +211,14 @@ test('fails with sanitized errors when token or check APIs fail', async (t) => {
     );
   });
 });
+
+test('published metadata retains a later unchecked ID accessor observation', async () => {
+  let reads = 0;
+  const laterId = { observed: 'changed ID' };
+  const run = checkRun();
+  Object.defineProperty(run, 'id', { get: () => ++reads === 1 ? 2468 : laterId });
+  const { fetchImpl } = queuedFetch({ run });
+  const published = await publishSelfArchitectureCheck({ app, result: { headSha, conclusion: 'success' }, fetchImpl, now });
+  assert.equal(published.id, laterId);
+  assert.equal(reads, 2);
+});

@@ -117,3 +117,14 @@ test('binds authority bytes to exact observed target commit and expected path an
   changedAuthority.targetCommit.authoritySnapshot.bytes = Buffer.from('different authority');
   assert.throws(() => verifyOwnerAdditionReadback(changedAuthority), /Canonical authority bytes differ/);
 });
+
+test('readback returns later unchecked merge-tree metadata after the existing comparisons', () => {
+  const input = fixture();
+  const tree = input.mergeCommit.tree;
+  const laterTree = { observed: 'changed tree' };
+  let reads = 0;
+  Object.defineProperty(input.mergeCommit, 'tree', { get: () => ++reads <= 2 ? tree : laterTree });
+  const result = verifyOwnerAdditionReadback(input);
+  assert.equal(result.merge.commit.tree, laterTree);
+  assert.equal(reads, 3);
+});
