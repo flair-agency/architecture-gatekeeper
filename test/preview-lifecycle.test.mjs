@@ -105,7 +105,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
   const nestedPaths = ['owner-addition/owner-addition-validation.mjs', 'ci-execution/ci-execution-result.mjs', 'owner-amendment/owner-amendment-tag-readback.mjs',
     'owner-amendment/owner-amendment-tag-api.mjs', 'owner-amendment/owner-amendment-tag-attempt.mjs',
-    'owner-amendment/owner-amendment-semantic-tag-object.mjs'];
+    'owner-amendment/owner-amendment-semantic-tag-object.mjs',
+    'owner-amendment/owner-amendment-artifact.mjs', 'owner-amendment/owner-amendment-artifact-discovery.mjs',
+    'owner-amendment/owner-amendment-attestation.mjs'];
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -113,43 +115,48 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
       .update(readFileSync(join(runtimeRoot, 'dist', nestedPath))).digest('hex'));
   }
   assert.ok(readdirSync(join(runtimeRoot, 'dist')).filter(file => file.endsWith('.mjs')).every(file => request.runtime.files[file]));
-  let precedingRequest = request;
-  let precedingReceipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
-  await runtime.validatePreviewReceipt(precedingReceipt, f.root);
+  const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
+  await runtime.validatePreviewReceipt(receipt, f.root);
 
-  const tagFacades = ['owner-amendment-tag-api.mjs', 'owner-amendment-tag-attempt.mjs',
-    'owner-amendment-semantic-tag-object.mjs'].map(file => {
+  const unchangedPaths = [...nestedPaths.map(path => path.split('/').at(-1)),
+    'preview-lifecycle.mjs', '../package.json'];
+  const unchangedDigests = unchangedPaths.map(file => {
     const path = join(runtimeRoot, 'dist', file);
     return [path, createHash('sha256').update(readFileSync(path)).digest('hex')];
   });
-  const facadePath = join(runtimeRoot, 'dist/owner-addition-validation.mjs');
-  const executionFacadePath = join(runtimeRoot, 'dist/ci-execution-result.mjs');
-  const tagReadbackFacadePath = join(runtimeRoot, 'dist/owner-amendment-tag-readback.mjs');
-  const tagReadbackFacadeBefore = createHash('sha256').update(readFileSync(tagReadbackFacadePath)).digest('hex');
-  const previewPath = join(runtimeRoot, 'dist/preview-lifecycle.mjs');
-  const packagePath = join(runtimeRoot, 'package.json');
-  const facadeBefore = createHash('sha256').update(readFileSync(facadePath)).digest('hex');
-  const executionFacadeBefore = createHash('sha256').update(readFileSync(executionFacadePath)).digest('hex');
-  const previewBefore = createHash('sha256').update(readFileSync(previewPath)).digest('hex');
-  const packageBefore = createHash('sha256').update(readFileSync(packagePath)).digest('hex');
+  const packageBefore = request.runtime.files['../package.json'];
   for (const nestedPath of nestedPaths) {
-    appendFileSync(join(runtimeRoot, 'dist', nestedPath), '\n// isolated runtime-byte mutation\n');
-    const changedRequest = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-    assert.notEqual(changedRequest.runtime.files[nestedPath], precedingRequest.runtime.files[nestedPath]);
-    for (const [path, digest] of tagFacades) {
-      assert.equal(createHash('sha256').update(readFileSync(path)).digest('hex'), digest);
+    const path = join(runtimeRoot, 'dist', nestedPath);
+    const originalBytes = readFileSync(path);
+    try {
+      appendFileSync(path, '\n// isolated runtime-byte mutation\n');
+      const changedRequest = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
+      assert.notEqual(changedRequest.runtime.files[nestedPath], request.runtime.files[nestedPath]);
+      assert.equal(changedRequest.runtime.files[nestedPath], createHash('sha256').update(readFileSync(path)).digest('hex'));
+      for (const otherPath of nestedPaths.filter(other => other !== nestedPath)) {
+        assert.equal(changedRequest.runtime.files[otherPath], request.runtime.files[otherPath]);
+      }
+      for (const [unchangedPath, digest] of unchangedDigests) {
+        assert.equal(createHash('sha256').update(readFileSync(unchangedPath)).digest('hex'), digest);
+      }
+      await assert.rejects(runtime.completePreviewLifecycle(request, ordinary(decision()), f.root), /request differs from immutable predecessor inputs/);
+      await assert.rejects(runtime.validatePreviewReceipt(receipt, f.root), /request differs from immutable predecessor inputs/);
+    } finally {
+      // Each rejection is attributed to one leaf, against the same valid baseline.
+      writeFileSync(path, originalBytes);
     }
-    assert.equal(createHash('sha256').update(readFileSync(facadePath)).digest('hex'), facadeBefore);
-    assert.equal(createHash('sha256').update(readFileSync(executionFacadePath)).digest('hex'), executionFacadeBefore);
-    assert.equal(createHash('sha256').update(readFileSync(tagReadbackFacadePath)).digest('hex'), tagReadbackFacadeBefore);
-    assert.equal(createHash('sha256').update(readFileSync(previewPath)).digest('hex'), previewBefore);
-    assert.equal(createHash('sha256').update(readFileSync(packagePath)).digest('hex'), packageBefore);
-    await assert.rejects(runtime.completePreviewLifecycle(precedingRequest, ordinary(decision()), f.root), /request differs from immutable predecessor inputs/);
-    await assert.rejects(runtime.validatePreviewReceipt(precedingReceipt, f.root), /request differs from immutable predecessor inputs/);
-    precedingRequest = changedRequest;
-    precedingReceipt = await runtime.completePreviewLifecycle(changedRequest, ordinary(decision()), f.root);
-    await runtime.validatePreviewReceipt(precedingReceipt, f.root);
   }
+  // One fresh request/receipt covers the changed bytes of every grouped leaf.
+  // Per-leaf stale rejection above remains independent; repeated fresh Git
+  // reconstruction for every leaf adds no distinct success-path assertion.
+  for (const nestedPath of nestedPaths) appendFileSync(join(runtimeRoot, 'dist', nestedPath), '\n// combined runtime-byte mutation\n');
+  const freshRequest = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
+  for (const nestedPath of nestedPaths) {
+    assert.notEqual(freshRequest.runtime.files[nestedPath], request.runtime.files[nestedPath]);
+    assert.equal(freshRequest.runtime.files[nestedPath], createHash('sha256').update(readFileSync(join(runtimeRoot, 'dist', nestedPath))).digest('hex'));
+  }
+  const freshReceipt = await runtime.completePreviewLifecycle(freshRequest, ordinary(decision()), f.root);
+  await runtime.validatePreviewReceipt(freshReceipt, f.root);
 
   const flatRoot = mkdtempSync(join(tmpdir(), 'preview-runtime-flat-layout-'));
   t.after(() => rmSync(flatRoot, { recursive: true, force: true }));
@@ -162,7 +169,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   writeFileSync(join(flatRoot, 'dist/owner-amendment-tag-readback.mjs'),
     readFileSync(join(flatRoot, 'dist/owner-amendment/owner-amendment-tag-readback.mjs')));
   for (const file of ['owner-amendment-tag-api.mjs', 'owner-amendment-tag-attempt.mjs',
-    'owner-amendment-semantic-tag-object.mjs']) {
+    'owner-amendment-semantic-tag-object.mjs', 'owner-amendment-artifact.mjs',
+    'owner-amendment-artifact-discovery.mjs', 'owner-amendment-attestation.mjs']) {
     // Restore the former flat dependency paths only in this synthetic legacy copy.
     writeFileSync(join(flatRoot, 'dist', file),
       readFileSync(join(flatRoot, 'dist/owner-amendment', file), 'utf8').replace(/from '\.\.\//g, "from './"));

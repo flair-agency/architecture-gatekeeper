@@ -208,3 +208,58 @@ test('stops reading when the download exceeds its declared size', async () => {
   assert.equal(result.status, 'INCOMPLETE');
   assert.match(result.reason, /exceeds its declared or maximum size/);
 });
+
+
+test('cancels a failed artifact stream and releases its reader after cancellation settles', async () => {
+  const f = fixture();
+  const lifecycle = [];
+  f.fetchImpl = async url => {
+    if (url.endsWith('/actions/runs/42/attempts/2')) return { ok: true, json: async () => f.run };
+    if (url.endsWith('/actions/artifacts/88')) return { ok: true, json: async () => f.artifact };
+    if (url.endsWith('/actions/artifacts/88/zip')) return { ok: true, body: { getReader: () => ({
+      read: async () => { lifecycle.push('read'); throw new Error('stream read failed'); },
+      cancel: () => { lifecycle.push('cancel'); return Promise.resolve().then(() => { lifecycle.push('cancel-settled'); throw new Error('cancel failed'); }); },
+      releaseLock: () => lifecycle.push('release'),
+    }) } };
+    throw new Error(`unexpected URL ${url}`);
+  };
+  const result = await retrieve(f);
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /stream read failed/);
+  assert.deepEqual(lifecycle, ['read', 'cancel', 'cancel-settled', 'release']);
+});
+
+
+test('awaits synchronous and thenable fetch/JSON/stream callbacks without changing bytes', async () => {
+  const f = fixture();
+  const thenable = value => ({ then(resolve) { resolve(value); } });
+  let reads = 0;
+  f.fetchImpl = url => {
+    if (url.endsWith('/actions/runs/42/attempts/2')) return { ok: true, json: () => f.run };
+    if (url.endsWith('/actions/artifacts/88')) return thenable({ ok: true, json: () => thenable(f.artifact) });
+    if (url.endsWith('/actions/artifacts/88/zip')) return thenable({ ok: true, body: { getReader: () => ({
+      read: () => thenable(reads++ === 0 ? { done: false, value: new Uint8Array(f.zip) } : { done: true }),
+      cancel: () => Promise.resolve(), releaseLock() {},
+    }) } });
+    throw new Error(`unexpected URL ${url}`);
+  };
+  const result = await retrieve(f);
+  assert.equal(result.status, 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
+  assert.deepEqual(result.zipBytes, f.zip);
+  assert.notEqual(result.zipBytes, f.zip);
+  assert.equal(reads, 2);
+});
+
+test('preserves unknown repeated metadata readbacks and primitive transport errors', async () => {
+  const f = fixture();
+  const name = f.artifact.name;
+  let nameReads = 0;
+  Object.defineProperty(f.artifact, 'name', { get: () => nameReads++ === 0 ? name : 17 });
+  const result = await retrieve(f);
+  assert.equal(result.status, 'FETCHED_OWNER_AMENDMENT_BLOCK_ARTIFACT');
+  assert.equal(result.artifactName, 17);
+  assert.equal(nameReads, 2);
+  const failed = await fetchOwnerAmendmentBlockArtifact({ expected, token: 'fixture-token', fetchImpl: () => { throw 'primitive'; } });
+  assert.deepEqual(failed, { status: 'INCOMPLETE', reason: undefined });
+  await assert.rejects(fetchOwnerAmendmentBlockArtifact({ expected, token: 'fixture-token', fetchImpl: () => { throw null; } }), TypeError);
+});
