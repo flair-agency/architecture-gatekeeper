@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync, mkdirSync, chmodSync,
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { produceRulesetReadback, readLocalRulesetReadback, rulesetStorageDirectory } from '../dist/github-ruleset-readback.mjs';
+import { produceRulesetReadback, readLocalRulesetReadback, rulesetReadbackContext, rulesetStorageDirectory } from '../dist/github-ruleset-readback.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const namespace = 'refs/tags/architecture-gatekeeper/amendments';
@@ -15,6 +15,14 @@ const env = { GITHUB_REPOSITORY: repository, GITHUB_REF: 'refs/heads/main', GITH
   RULESET_READBACK_APP_ID: '101', RULESET_READBACK_INSTALLATION_ID: '102', RULESET_READBACK_PRIVATE_KEY: privateKey };
 const ruleset = { id: 24072482, target: 'tag', enforcement: 'active', bypass_actors: [],
   conditions: { ref_name: { include: [`${namespace}/*`], exclude: [] } }, rules: [{ type: 'update' }, { type: 'deletion' }] };
+test('context preserves the original post-check environment reread without claiming validated metadata', () => {
+  let revisionReads = 0;
+  const contextEnv = { ...env };
+  Object.defineProperty(contextEnv, 'GITHUB_SHA', { get: () => ++revisionReads === 1 ? env.GITHUB_SHA : 17 });
+  const context = rulesetReadbackContext(contextEnv);
+  assert.equal(revisionReads, 2);
+  assert.equal(context.revision, 17);
+});
 function fixture({ body = ruleset, permissions = { administration: 'write', metadata: 'read' }, revoke = true } = {}) {
   const calls = [];
   return { calls, fetchImpl: async (url, options) => {
