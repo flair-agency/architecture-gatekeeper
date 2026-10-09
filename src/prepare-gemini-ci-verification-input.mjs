@@ -73,7 +73,7 @@ function parseJson(bytes, label, maxBytes) {
  * base Git objects, then bind them to the exact base/head/two-parent merge.
  * This implementation supports self-repository Authority Set members only;
  * external sources fail closed. Repository identity, selector authority,
- * runtime, credentials, allocation custody and acceptance remain caller
+ * runtime, credentials, defensive counter journaling and acceptance remain caller
  * responsibilities.
  */
 export async function prepareGeminiCiVerificationInput(supplied) {

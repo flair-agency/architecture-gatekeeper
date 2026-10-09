@@ -1,0 +1,85 @@
+# This candidate-loaded workflow is a consistency check, not source authentication. A trusted coordinator must independently admit one exact hosted execution, verify its source and WIF identity, and retain development-attempt history. The selected deadline and defensive per-session cap bound that execution; the chat development retry ceiling is not a cross-session dispatch quota. No automatic workflow retry or fallback is authorized. Its private post-merge evidence is not ordinary CI acceptance.
+name: Issue 334 single hosted Gemini verification
+on:
+  push:
+    branches: [feature/gemini-ci]
+    paths:
+      - .github/workflows/issue334-gemini-verification.yml
+      - scripts/issue334-gemini-verification.mjs
+permissions:
+  contents: read
+jobs:
+  verify:
+    # Staging only: a follow-up PR must bind and admit the exact hosted execution.
+    if: ${{ false }}
+    # Previous consistency condition: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == '21731bf98e998cddf13c085cc4a02bb51bfda498' && github.run_attempt == 1
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        timeout-minutes: 2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        timeout-minutes: 3
+        with:
+          node-version: '22'
+      - name: Install pinned CLI before WIF issuance
+        timeout-minutes: 6
+        run: node scripts/issue334-gemini-verification.mjs install-runtime
+      - name: Mask private deployment identifiers
+        timeout-minutes: 1
+        env:
+          PRIVATE_IDENTITY: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          PRIVATE_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+        run: |
+          node --input-type=module <<'NODE'
+          const project = process.env.PRIVATE_IDENTITY?.split('@')[1]?.split('.iam.')[0];
+          const number = /^projects\/(\d+)\//.exec(process.env.PRIVATE_PROVIDER ?? '')?.[1];
+          for (const value of [project, number]) if (value && /^[a-z0-9-]+$/.test(value)) console.log(`::add-mask::${value}`);
+          NODE
+      - name: Exchange existing WIF identity
+        id: auth
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        timeout-minutes: 1
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_lifetime: 300s
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: One bounded review without retry or fallback
+        timeout-minutes: 5
+        env:
+          AGK_VERTEX_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          AGK_VERTEX_PROJECT: ${{ steps.auth.outputs.project_id }}
+          AGK_VERTEX_LOCATION: global
+        run: node scripts/issue334-gemini-verification.mjs verify
+      - name: Seal private dispatch diagnostics after completion or interruption
+        timeout-minutes: 1
+        id: checkpoint
+        if: always()
+        run: node scripts/issue334-gemini-verification.mjs seal-checkpoint
+      - name: Retain encrypted private evidence
+        id: evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        timeout-minutes: 2
+        with:
+          name: issue334-private-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .agk334-private-runtime/agk334-private-evidence-*/*.enc.json
+            .agk334-private-runtime/agk334-private-evidence-checkpoint/*.enc.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Remove private CLI runtime after retaining encrypted diagnostics
+        timeout-minutes: 1
+        if: always() && steps.checkpoint.outcome == 'success' && steps.evidence.outcome == 'success'
+        run: rm -rf -- .agk334-private-runtime

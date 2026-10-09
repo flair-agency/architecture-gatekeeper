@@ -7,7 +7,7 @@ import { Readable } from 'node:stream';
 import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createVertexVerificationReservation, initializeVertexVerificationLedger } from '../src/vertex-verification-reservation.mjs';
+import { createVertexVerificationReservation } from '../src/vertex-verification-reservation.mjs';
 import { syncBuiltinESMExports } from 'node:module';
 import { validateGeminiRoute, startGeminiSecurityProxy, MAX_PROXY_REQUEST_BYTES, remainingDeadlineMs } from '../src/gemini-security-proxy.mjs';
 import { validateLoopbackEndpoint } from '../src/review-security-proxy.mjs';
@@ -470,13 +470,10 @@ test('proxy rejects declared and chunked oversized bodies before upstream dispat
   } finally { await proxy.shutdown(); await new Promise(resolve => upstream.close(resolve)); }
 });
 
-test('parent dispatch reservation caps concurrent and failed upstream calls across sessions', async () => {
+test('per-session dispatch cap includes concurrent and failed upstream calls and resets for a new session', async () => {
   let sent = 0;
-  const directory = mkdtempSync(join(tmpdir(), 'proxy-verification-budget-'));
-  const ledger = join(directory, 'attempts');
-  const fd = openSync(ledger, 'wx+', 0o600);
-  initializeVertexVerificationLedger(fd);
-  const reserveDispatch = createVertexVerificationReservation(fd);
+  const reserveDispatch = createVertexVerificationReservation().reserveDispatch;
+  const nextSessionReserve = createVertexVerificationReservation().reserveDispatch;
   const upstream = createServer((_req, res) => { sent++; res.writeHead(503); res.end('{}'); });
   await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
   const proxies = [];
@@ -487,23 +484,27 @@ test('parent dispatch reservation caps concurrent and failed upstream calls acro
       upstreamHost: '127.0.0.1', upstreamPort: upstream.address().port, upstreamHttp: true, allowLoopbackUpstream: true,
     }));
     const route = '/v1/projects/p/locations/global/publishers/google/models/gemini-3.8-flash:generateContent';
-    const rejected = await fetch(proxies[0].endpointUrl + '/invalid', { method: 'POST', body: '{}' });
-    assert.equal(rejected.status, 403);
-    assert.equal(readFileSync(ledger, 'utf8'), 'AGK334-V1\n');
-    const statuses = await Promise.all(Array.from({ length: 8 }, async (_, i) => {
+    const statuses = await Promise.all(Array.from({ length: 12 }, async (_, i) => {
       const response = await fetch(proxies[i % 2].endpointUrl + route, { method: 'POST', body: '{}' });
       await response.text();
       return response.status;
     }));
-    assert.equal(statuses.filter(status => status === 503).length, 5);
-    assert.equal(statuses.filter(status => status === 429).length, 3);
-    assert.equal(readFileSync(ledger, 'utf8'), 'AGK334-V1\n1\n2\n3\n4\n5\n');
-    assert.equal(sent, 5);
+    assert.equal(statuses.filter(status => status === 503).length, 10);
+    assert.equal(statuses.filter(status => status === 429).length, 2);
+    assert.equal(sent, 10);
+    const freshProxy = await startGeminiSecurityProxy({
+      credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex', allowedProject: 'p',
+      allowedRegion: 'global', allowedModel: 'gemini-3.8-flash', reserveDispatch: nextSessionReserve,
+      upstreamHost: '127.0.0.1', upstreamPort: upstream.address().port, upstreamHttp: true, allowLoopbackUpstream: true,
+    });
+    proxies.push(freshProxy);
+    const fresh = await fetch(freshProxy.endpointUrl + route, { method: 'POST', body: '{}' });
+    assert.equal(fresh.status, 503);
+    await fresh.text();
+    assert.equal(sent, 11);
   } finally {
     await Promise.all(proxies.map(proxy => proxy.shutdown()));
     await new Promise(resolve => upstream.close(resolve));
-    closeSync(fd);
-    rmSync(directory, { recursive: true, force: true });
   }
 });
 

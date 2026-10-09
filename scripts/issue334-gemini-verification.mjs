@@ -5,13 +5,12 @@ import https from 'node:https';
 import { syncBuiltinESMExports } from 'node:module';
 import {
   closeSync, existsSync, fstatSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync,
-  readFileSync, realpathSync, rmSync, statSync, writeFileSync,
+  readFileSync, readSync, realpathSync, rmSync, statSync, writeFileSync, writeSync,
 } from 'node:fs';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import { prepareGeminiCiVerificationInput } from '../src/prepare-gemini-ci-verification-input.mjs';
-import { initializeVertexVerificationLedger, readVertexVerificationReservationCount } from '../src/vertex-verification-reservation.mjs';
 
 const REPOSITORY = 'flair-agency/architecture-gatekeeper';
 const BRANCH = 'feature/gemini-ci';
@@ -21,14 +20,14 @@ const PROMPT_PATH = '.codex/gatekeeper/ci-prompt.md';
 const SCHEMA_PATH = '.codex/gatekeeper/ci-decision.schema.json';
 const VALIDATION_PATH = '.codex/gatekeeper/decision.validation.json';
 const RUNTIME_LOCK_PATH = '.codex/gatekeeper/gemini-verification-package-lock.json';
-const EXPECTED_PREDECESSOR_SHA = '39966c75995e8ce75ef9b014e795eb32a13436e2';
+const EXPECTED_PREDECESSOR_SHA = '21731bf98e998cddf13c085cc4a02bb51bfda498';
 const PUBLIC_KEY_PEM='-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAnZVHMkUmRdmwVbfIAhb+\nQAAIezgXahPDeOGtQvy6P2kn97TIhekWCYTO7krC3aUUpk1MvRzdxnkpJ/Z5sPXt\nrvmdwvWKcjXrtPVyd3zDJ6wJWuQigblUET+qAjZ1+YIdJnj+pRl4LM+nzHvEryX1\navwoZcL52CUh9LwiR+N8knGJMYOCFTUv5NMdx0esEk5UaadaoJquKY+iJKnExGK3\n6hbrR1KlItgRj+vBBImcwTpsJx6d6NkUSkPX2TnVqLtTQljqqBFViCTxK64pvSPW\nAbpXBNn4RJEFiTTfQczaQ9RAo1txJonYhaSX4iIAqEG1FYHm00Q6wN7tKiHdzpW7\nsXfqQ5PZWmKCkJCiMiHAx4XbRGbPxNKqclCkJRVJ4ZOGHtVzB7Btu7hI3LQFyoyK\nTEvzi+reS+xUvMd/XKmGFlXreATQqZwWP1E0m4Yv6GQsmOhSV+nmTQXdX31qe4B9\nB+/SQO4EhyCopV7ZbtwbgKtFj6TV7dkMUinpcXdXps2BAgMBAAE=\n-----END PUBLIC KEY-----\n';
 const PUBLIC_KEY_SHA256 = '635e87fee174aaca8b86ae9863fdc26926f969171c67d9678b96176388e80ba3';
 const CLI_TARBALL_INTEGRITY = 'sha512-A1rw0Tf2sHLpGncfYdaq5WaJIufKAP8il4BmHD5Yw4ewmB/Wo0vRQb2bEvx7OqyaPFPZCh0hVhcMKsICZyIBww==';
 const RUNTIME_PACKAGE_NAME = '@google/gemini-cli';
 const RUNTIME_VERSION = '0.62.0';
 const AUTHORIZED_RUNTIME_LOCK_SHA256 = 'ffc6d0296558b2bcd12278f45c48151cf720d4cdfcbdb06a09ee87b24cf97b42';
-const MAX_RESERVATIONS = 5;
+const DEFENSIVE_SESSION_DISPATCH_CAP = 10;
 const VERIFICATION_START_CLAIM = 'verification-start.claim';
 const VERIFICATION_START_CLAIM_BYTES = Buffer.from('AGK334-VERIFICATION-START-V1\n');
 const REFERENCE_PATHS = Object.freeze([
@@ -36,12 +35,14 @@ const REFERENCE_PATHS = Object.freeze([
   'src/prepared-gemini-ci-verification.mjs', 'src/gemini-cli-proxy-session.mjs',
   'src/gemini-security-proxy.mjs', 'src/gemini-cli-process.mjs',
   '.github/workflows/architecture-gate-consumer.yml',
+  'scripts/issue334-gemini-verification.mjs',
+  '.codex/gatekeeper/gemini-verification-package-lock.json',
 ]);
 const WIF_ENV = Object.freeze({ token: 'AGK_VERTEX_ACCESS_TOKEN', project: 'AGK_VERTEX_PROJECT', region: 'AGK_VERTEX_LOCATION' });
 const DENIED_CREDENTIAL_NAMES = Object.freeze(['OPENAI_API_KEY', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN']);
 const ENTRYPOINT = 'bundle/gemini.js';
 const MAX_EVIDENCE_PLAINTEXT_BYTES = 2_097_152;
-const MAX_LEDGER_BYTES = 20;
+const MAX_JOURNAL_BYTES = 128;
 const MAX_UPSTREAM_CAPTURE_BYTES = 262_144;
 const MAX_UPSTREAM_RESPONSE_BYTES = 65_536;
 const MAX_PROMPT_BYTES = 196_608;
@@ -122,31 +123,33 @@ export function assertNoCodexExecutable(pathValue, fixedSearchPaths = ['/usr/bin
   }
 }
 
-/** Exclusive mode-0600 file and fsynced private directory entry, initialized exactly once. */
-export function createFreshLedger(runnerTemp) {
-  if (typeof runnerTemp !== 'string' || !runnerTemp.startsWith('/')) fail('runner temporary root must be absolute.');
-  let root;
-  try { root = realpathSync(runnerTemp); if (!lstatSync(root).isDirectory()) fail('runner temporary root is not a directory.'); }
-  catch { fail('runner temporary root is unavailable.'); }
-  const directory = join(root, `agk334-private-ledger-${process.pid}-${randomBytes(8).toString('hex')}`);
-  mkdirSync(directory, { mode: 0o700 });
-  let fd;
+/** Create a bounded per-invocation diagnostic journal; it never authorizes or resets a session. */
+export function createPrivateDispatchJournal(runtimeDirectory) {
+  assertPrivateDirectory(runtimeDirectory, 'private runtime directory is not private.');
+  const path = join(runtimeDirectory, `dispatch-journal-${process.pid}-${randomBytes(8).toString('hex')}.jsonl`);
+  const fd = openSync(path, 'wx', 0o600);
+  const stat = fstatSync(fd);
+  if (!stat.isFile() || stat.nlink !== 1 || (stat.mode & 0o777) !== 0o600 ||
+      (typeof process.getuid === 'function' && stat.uid !== process.getuid())) {
+    closeSync(fd); fail('private dispatch journal is not protected.');
+  }
   try {
-    const path = join(directory, 'reservation.ledger');
-    fd = openSync(path, 'wx+', 0o600);
-    const stat = fstatSync(fd);
-    if (!stat.isFile() || stat.nlink !== 1 || (stat.mode & 0o777) !== 0o600 ||
-        (typeof process.getuid === 'function' && stat.uid !== process.getuid())) fail('fresh reservation ledger is not private.');
-    const dirFd = openSync(directory, 'r');
-    try { fsyncSync(dirFd); } finally { closeSync(dirFd); }
-    initializeVertexVerificationLedger(fd);
-    fsyncSync(fd);
-    return { directory, path, fd };
+    const directoryFd = openSync(runtimeDirectory, 'r');
+    try { fsyncSync(directoryFd); } finally { closeSync(directoryFd); }
   } catch (error) {
-    if (fd !== undefined) closeSync(fd);
-    rmSync(directory, { recursive: true, force: true });
+    closeSync(fd);
     throw error;
   }
+  return Object.freeze({ path, record(count) {
+    try {
+      const current = fstatSync(fd);
+      if (current.size + 3 > MAX_JOURNAL_BYTES || current.dev !== stat.dev || current.ino !== stat.ino) return false;
+      const bytes = Buffer.from(`${count}\n`);
+      if (writeSync(fd, bytes, 0, bytes.length, current.size) !== bytes.length) return false;
+      fsyncSync(fd);
+      return true;
+    } catch { return false; }
+  }, close() { closeSync(fd); } });
 }
 
 /** Durably claim the one permitted verification invocation before provider dispatch. */
@@ -206,7 +209,7 @@ export function assertCompletedDecisionResult(result) {
   return result;
 }
 
-export function redactedSummary({ context, reservationCount, clientRequestFinishedCount, httpResponseCount, execution, decision, evidenceFile }) {
+export function redactedSummary({ context, dispatchCount, clientRequestFinishedCount, httpResponseCount, execution, decision, evidenceFile }) {
   const statuses = new Set(['completed', 'incomplete']);
   const decisionKinds = new Set(['PASS', 'BLOCK', 'OWNER_DECISION']);
   return Object.freeze({ format: 'agk334-private-verification-v1', runId: context.runId,
@@ -214,8 +217,8 @@ export function redactedSummary({ context, reservationCount, clientRequestFinish
     mergeSha: context.mergeSha, provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM',
     executionStatus: statuses.has(execution?.status) ? execution.status : 'failed',
     decisionKind: decisionKinds.has(decision?.decision) ? decision.decision : null,
-    reservationCount: Number.isSafeInteger(reservationCount) && reservationCount >= 0 && reservationCount <= MAX_RESERVATIONS ? reservationCount : null,
-    reservationMaximum: MAX_RESERVATIONS,
+    dispatchCount: Number.isSafeInteger(dispatchCount) && dispatchCount >= 0 && dispatchCount <= DEFENSIVE_SESSION_DISPATCH_CAP ? dispatchCount : null,
+    dispatchMaximum: DEFENSIVE_SESSION_DISPATCH_CAP,
     clientRequestFinishedCount: Number.isSafeInteger(clientRequestFinishedCount) && clientRequestFinishedCount >= 0 ? clientRequestFinishedCount : null,
     httpResponseCount: Number.isSafeInteger(httpResponseCount) && httpResponseCount >= 0 ? httpResponseCount : null,
     requestCountSemantics: 'HTTPS request finish is client-side only; remote receipt is not independently proven',
@@ -317,50 +320,42 @@ function assertPrivateDirectory(path, message) {
   return stat;
 }
 
-function readLedgerCheckpointEntries(runtimeDirectory) {
+function readDispatchJournalEntries(runtimeDirectory) {
   const runtimeStat = assertPrivateDirectory(runtimeDirectory, 'private runtime directory is not private.');
   const entries = readdirSync(runtimeDirectory, { withFileTypes: true });
-  const possibleLedgers = entries.filter(entry => entry.name.startsWith('agk334-private-ledger-'));
+  const possible = entries.filter(entry => entry.name.startsWith('dispatch-journal-'));
+  if (possible.length > 8) fail('private dispatch journal count exceeds its bound.');
   const snapshots = [];
-  for (const entry of possibleLedgers) {
-    if (!/^agk334-private-ledger-[0-9]+-[a-f0-9]{16}$/.test(entry.name) || !entry.isDirectory() || entry.isSymbolicLink()) {
-      fail('private reservation ledger entry is malformed.');
-    }
-    const directory = join(runtimeDirectory, entry.name);
-    const directoryStat = assertPrivateDirectory(directory, 'private reservation ledger directory is not private.');
-    if (directoryStat.dev !== runtimeStat.dev || directoryStat.uid !== runtimeStat.uid) fail('private reservation ledger directory identity is invalid.');
-    const ledgerPath = join(directory, 'reservation.ledger');
-    const pathStat = lstatSync(ledgerPath);
-    if (!pathStat.isFile() || pathStat.isSymbolicLink() || pathStat.nlink !== 1 ||
-        (pathStat.mode & 0o777) !== 0o600 || pathStat.size > MAX_LEDGER_BYTES ||
-        (typeof process.getuid === 'function' && pathStat.uid !== process.getuid())) {
-      fail('private reservation ledger is not a bounded private regular file.');
-    }
-    const fd = openSync(ledgerPath, 'r');
+  for (const entry of possible) {
+    if (!/^dispatch-journal-[0-9]+-[a-f0-9]{16}\.jsonl$/.test(entry.name) || !entry.isFile() || entry.isSymbolicLink()) fail('private dispatch journal entry is malformed.');
+    const path = join(runtimeDirectory, entry.name);
+    const pathStat = lstatSync(path);
+    if (!pathStat.isFile() || pathStat.isSymbolicLink() || pathStat.nlink !== 1 || pathStat.size > MAX_JOURNAL_BYTES ||
+        (pathStat.mode & 0o777) !== 0o600 || pathStat.dev !== runtimeStat.dev ||
+        (typeof process.getuid === 'function' && pathStat.uid !== process.getuid())) fail('private dispatch journal is invalid.');
+    const fd = openSync(path, 'r');
     try {
       const opened = fstatSync(fd);
       if (!opened.isFile() || opened.dev !== pathStat.dev || opened.ino !== pathStat.ino || opened.nlink !== 1 ||
-          opened.size !== pathStat.size || (opened.mode & 0o777) !== 0o600 ||
-          (typeof process.getuid === 'function' && opened.uid !== process.getuid())) {
-        fail('opened private reservation ledger identity changed.');
-      }
-      const count = readVertexVerificationReservationCount(fd);
-      const bytes = readFileSync(fd);
+          opened.size !== pathStat.size || opened.size > MAX_JOURNAL_BYTES || (opened.mode & 0o777) !== 0o600 ||
+          (typeof process.getuid === 'function' && opened.uid !== process.getuid())) fail('opened private dispatch journal identity changed.');
+      const bytes = Buffer.alloc(opened.size);
+      if (readSync(fd, bytes, 0, bytes.length, 0) !== bytes.length) fail('private dispatch journal read is incomplete.');
       const afterRead = fstatSync(fd);
-      if (bytes.length !== opened.size || afterRead.dev !== opened.dev || afterRead.ino !== opened.ino ||
-          afterRead.size !== opened.size || afterRead.nlink !== 1) fail('private reservation ledger changed while checkpointing.');
-      snapshots.push(Object.freeze({ directory: entry.name, device: String(opened.dev), inode: String(opened.ino),
-        reservationCount: count, bytesBase64: bytes.toString('base64') }));
+      if (afterRead.dev !== opened.dev || afterRead.ino !== opened.ino || afterRead.nlink !== 1 ||
+          afterRead.size !== opened.size || (afterRead.mode & 0o777) !== 0o600 ||
+          (typeof process.getuid === 'function' && afterRead.uid !== process.getuid())) fail('private dispatch journal changed while checkpointing.');
+      snapshots.push({ file: entry.name, bytesBase64: bytes.toString('base64') });
     } finally { closeSync(fd); }
   }
-  return Object.freeze(snapshots);
+  return snapshots;
 }
 
 function writePrivateCheckpoint(runtimeDirectory, encryptedBytes) {
   const directory = join(runtimeDirectory, 'agk334-private-evidence-checkpoint');
   mkdirSync(directory, { mode: 0o700 });
   const directoryStat = assertPrivateDirectory(directory, 'private checkpoint directory is not private.');
-  const path = join(directory, 'reservation-checkpoint.enc.json');
+  const path = join(directory, 'dispatch-checkpoint.enc.json');
   const fd = openSync(path, 'wx', 0o600);
   try {
     writeFileSync(fd, encryptedBytes);
@@ -376,25 +371,30 @@ function writePrivateCheckpoint(runtimeDirectory, encryptedBytes) {
   return Object.freeze({ path, directoryDevice: String(directoryStat.dev), directoryInode: String(directoryStat.ino) });
 }
 
-/** Seal the fixed private ledger tree after the verifier process completes or is interrupted. */
-export function sealPrivateLedgerCheckpoint() {
+/** Seal bounded invocation diagnostics after completion or interruption. */
+export function sealPrivateDispatchCheckpoint() {
   const root = realpathSync(process.cwd());
   const runtimeDirectory = join(root, '.agk334-private-runtime');
   let runtimeStat;
   try { runtimeStat = lstatSync(runtimeDirectory); }
   catch (error) {
-    if (error?.code === 'ENOENT') return Object.freeze({ status: 'no-runtime', reservationCount: 0, evidenceFile: null });
+    if (error?.code === 'ENOENT') return Object.freeze({ status: 'no-runtime', dispatchCount: null, evidenceFile: null });
     throw error;
   }
   if (!runtimeStat.isDirectory() || runtimeStat.isSymbolicLink()) fail('private runtime directory is not a regular directory.');
-  assertPrivateDirectory(runtimeDirectory, 'private runtime directory is not private.');
-  const ledgerSnapshots = readLedgerCheckpointEntries(runtimeDirectory);
-  const reservationCount = ledgerSnapshots.reduce((sum, ledger) => sum + ledger.reservationCount, 0);
-  const payload = { format: 'agk334-private-verification-checkpoint-v1', ledgerCount: ledgerSnapshots.length,
-    reservationCount, reservationMaximum: MAX_RESERVATIONS, ledgers: ledgerSnapshots };
+  const journals = readDispatchJournalEntries(runtimeDirectory);
+  const counts = journals.map(journal => {
+    const text = Buffer.from(journal.bytesBase64, 'base64').toString('utf8');
+    for (let count = 0; count <= DEFENSIVE_SESSION_DISPATCH_CAP; count++) {
+      if (text === Array.from({ length: count }, (_, index) => `${index + 1}\n`).join('')) return count;
+    }
+    return null;
+  });
+  const count = journals.length !== 1 || counts.includes(null) ? null : counts[0];
+  const payload = { format: 'agk334-private-dispatch-checkpoint-v1', journals };
   const checkpoint = writePrivateCheckpoint(runtimeDirectory, sealPrivateEvidence(payload));
-  return Object.freeze({ status: 'sealed', reservationCount, ledgerCount: ledgerSnapshots.length,
-    evidenceFile: 'agk334-private-evidence-checkpoint/reservation-checkpoint.enc.json', checkpointDevice: checkpoint.directoryDevice,
+  return Object.freeze({ status: 'sealed', dispatchCount: count, journalCount: journals.length,
+    evidenceFile: 'agk334-private-evidence-checkpoint/dispatch-checkpoint.enc.json', checkpointDevice: checkpoint.directoryDevice,
     checkpointInode: checkpoint.directoryInode });
 }
 
@@ -474,7 +474,7 @@ export function buildPreparedVerificationCall({ prepared, credential, runtimeEnt
     maxResponseBytes: prepared.maxResponseBytes, maxSchemaBytes: prepared.maxSchemaBytes };
 }
 
-/** One invocation; no retry path, ledger reset, rerun, fallback, or output-path selector. */
+/** One invocation with no retry path, fallback, or output-path selector. */
 export async function runOneHostedVerification({ env = process.env, cwd = process.cwd() } = {}) {
   const root = realpathSync(cwd);
   const context = readPushContextConsistency(root, env);
@@ -486,33 +486,26 @@ export async function runOneHostedVerification({ env = process.env, cwd = proces
   // This launcher owns the fixed private install directory; no environment
   // variable or model/candidate value selects a filesystem sink.
   const runnerTemp = runtime.privateDirectory;
-  let ledger;
+  let journal;
   let prepared;
   let result;
   let failure;
-  let reservationCount = 0;
-  let ledgerEvidence = null;
+  let dispatchDiagnostics = null;
   let observation = null;
   try {
     prepared = await prepareGeminiCiVerificationInput({ root, repository: REPOSITORY, baseBranch: BRANCH,
       baseSha: context.beforeSha, headSha: context.featureHeadSha, reviewedSha: context.mergeSha,
       policyPath: POLICY_PATH, promptPath: PROMPT_PATH, schemaPath: SCHEMA_PATH, validationPath: VALIDATION_PATH,
       referencePaths: [...REFERENCE_PATHS] });
-    ledger = createFreshLedger(runnerTemp);
+    journal = createPrivateDispatchJournal(runtime.privateDirectory);
     observation = installPrivateObservation(runtime.entry);
     const runInput = buildPreparedVerificationCall({ prepared, credential, runtimeEntry: runtime.entry, runnerTemp });
     const { runPreparedGeminiCiVerification } = await import('../src/prepared-gemini-ci-verification.mjs');
-    result = assertCompletedDecisionResult(await runPreparedGeminiCiVerification(runInput, ledger.fd));
+    result = assertCompletedDecisionResult(await runPreparedGeminiCiVerification(runInput, journal.record));
+    dispatchDiagnostics = result.dispatchDiagnostics;
   } catch (error) { failure = error; }
   finally {
-    if (ledger) {
-      try {
-        reservationCount = readVertexVerificationReservationCount(ledger.fd);
-        const ledgerStat = fstatSync(ledger.fd);
-        ledgerEvidence = { dev: String(ledgerStat.dev), ino: String(ledgerStat.ino), bytesBase64: readFileSync(ledger.path).toString('base64') };
-      } catch { failure ??= new Error('verification reservation ledger could not be read after execution.'); }
-      closeSync(ledger.fd);
-    }
+    if (journal) journal.close();
   }
   try {
     const evidencePayload = {
@@ -526,13 +519,13 @@ export async function runOneHostedVerification({ env = process.env, cwd = proces
         rawResponseBase64: result?.execution?.responseBytes ? Buffer.from(result.execution.responseBytes).toString('base64') : null,
         decision: result?.decision ?? null,
       },
-      reservationCount, reservationMaximum: MAX_RESERVATIONS, ledgerEvidence,
+      dispatchDiagnostics: dispatchDiagnostics ?? null,
       observation: observation?.snapshot() ?? { requestObjectCount: 0, clientRequestFinishedCount: 0, httpResponseCount: 0, upstreamResponses: [], cliOutcome: null },
     };
     if (Buffer.byteLength(JSON.stringify(evidencePayload), 'utf8') > MAX_EVIDENCE_PLAINTEXT_BYTES) fail('private evidence exceeds its 2 MiB bound.');
     const evidence = writePrivateEvidence(runnerTemp, sealPrivateEvidence(evidencePayload));
     const observationSummary = observation?.snapshot() ?? { clientRequestFinishedCount: 0, httpResponseCount: 0 };
-    const summary = redactedSummary({ context, reservationCount, clientRequestFinishedCount: observationSummary.clientRequestFinishedCount,
+    const summary = redactedSummary({ context, dispatchCount: dispatchDiagnostics?.count ?? null, clientRequestFinishedCount: observationSummary.clientRequestFinishedCount,
       httpResponseCount: observationSummary.httpResponseCount, execution: result?.execution, decision: result?.decision, evidenceFile: 'verification.enc.json' });
     process.stdout.write(`${JSON.stringify(summary)}\n`);
     if (failure) fail('hosted verification failed; private encrypted evidence was retained.');
@@ -555,7 +548,7 @@ export async function main(argv = process.argv.slice(2)) {
     return;
   }
   if (mode === 'seal-checkpoint') {
-    const checkpoint = sealPrivateLedgerCheckpoint();
+    const checkpoint = sealPrivateDispatchCheckpoint();
     process.stdout.write(`${JSON.stringify({ mode, ...checkpoint })}\n`);
     return;
   }

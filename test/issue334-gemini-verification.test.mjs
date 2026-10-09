@@ -6,12 +6,11 @@ import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, closeSync, re
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  assertNoCodexExecutable, captureAndRemoveWifEnvironment, createFreshLedger,
+  assertNoCodexExecutable, captureAndRemoveWifEnvironment, createPrivateDispatchJournal,
   assertCompletedDecisionResult, buildPreparedVerificationCall, encryptPrivateEvidence,
-  claimSingleVerificationInvocation, installPinnedRuntime, redactedSummary, sealPrivateEvidence, sealPrivateLedgerCheckpoint,
+  claimSingleVerificationInvocation, installPinnedRuntime, redactedSummary, sealPrivateEvidence, sealPrivateDispatchCheckpoint,
   validateAuthorizedRuntimeLock, validateHostedPushContext,
 } from '../scripts/issue334-gemini-verification.mjs';
-import { createVertexVerificationReservation, readVertexVerificationReservationCount } from '../src/vertex-verification-reservation.mjs';
 import { snapshotPreparedGeminiCiReviewInput } from '../src/prepared-gemini-ci-review.mjs';
 
 const SHA = c => c.repeat(40);
@@ -76,31 +75,13 @@ test('rejects a Codex executable in either inherited or fixed child search locat
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('creates one private fsynced ledger and reports consumed reservations without refund', () => {
-  const root = mkdtempSync(join(tmpdir(), 'agk334-ledger-root-')); chmodSync(root, 0o700);
-  let ledger;
-  try {
-    ledger = createFreshLedger(root);
-    assert.equal(readVertexVerificationReservationCount(ledger.fd), 0);
-    const reserve = createVertexVerificationReservation(ledger.fd);
-    assert.equal(reserve(), true);
-    assert.equal(readVertexVerificationReservationCount(ledger.fd), 1);
-    for (let i = 0; i < 4; i++) assert.equal(reserve(), true);
-    assert.equal(reserve(), false);
-    assert.equal(readVertexVerificationReservationCount(ledger.fd), 5);
-  } finally {
-    if (ledger) { closeSync(ledger.fd); rmSync(ledger.directory, { recursive: true, force: true }); }
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-test('retains an exclusive verification start claim and rejects a second invocation before any fresh ledger', () => {
+test('retains an exclusive verification start claim and rejects a duplicate invocation', () => {
   const runtime = mkdtempSync(join(tmpdir(), 'agk334-verification-claim-')); chmodSync(runtime, 0o700);
   try {
     assert.deepEqual(claimSingleVerificationInvocation(runtime), { claimed: true });
     assert.equal(readFileSync(join(runtime, 'verification-start.claim'), 'utf8'), 'AGK334-VERIFICATION-START-V1\n');
     assert.throws(() => claimSingleVerificationInvocation(runtime), /already claimed/i);
-    assert.equal(readdirSync(runtime).filter(name => name.startsWith('agk334-private-ledger-')).length, 0);
+    assert.equal(readdirSync(runtime).filter(name => name.startsWith('dispatch-journal-')).length, 0);
   } finally { rmSync(runtime, { recursive: true, force: true }); }
 });
 
@@ -130,86 +111,71 @@ catch { process.stdout.write('rejected'); }`;
     assert.deepEqual(results.map(result => result.code), [0, 0]);
     assert.deepEqual(results.map(result => result.output).sort(), ['claimed', 'rejected']);
     assert.equal(readFileSync(join(runtime, 'verification-start.claim'), 'utf8'), 'AGK334-VERIFICATION-START-V1\n');
-    assert.equal(readdirSync(runtime).filter(name => name.startsWith('agk334-private-ledger-')).length, 0);
+    assert.equal(readdirSync(runtime).filter(name => name.startsWith('dispatch-journal-')).length, 0);
   } finally { rmSync(runtime, { recursive: true, force: true }); }
 });
 
-test('seals the exact durable ledger after a killed verifier process and preserves its journal', t => {
+test('seals bounded per-invocation dispatch journal after a killed verifier without treating absence as zero', t => {
   const root = mkdtempSync(join(tmpdir(), 'agk334-checkpoint-interrupted-'));
   const runtime = join(root, '.agk334-private-runtime');
   mkdirSync(runtime, { mode: 0o700 });
+  let journal;
   try {
-    const launcherUrl = new URL('../scripts/issue334-gemini-verification.mjs', import.meta.url).href;
-    const reservationUrl = new URL('../src/vertex-verification-reservation.mjs', import.meta.url).href;
-    const childCode = `import { createFreshLedger } from ${JSON.stringify(launcherUrl)};
-import { createVertexVerificationReservation } from ${JSON.stringify(reservationUrl)};
-const ledger = createFreshLedger(${JSON.stringify(runtime)});
-const reserve = createVertexVerificationReservation(ledger.fd);
-if (!reserve() || !reserve()) process.exit(3);
-process.kill(process.pid, 'SIGKILL');`;
-    const child = spawnSync(process.execPath, ['--input-type=module', '-e', childCode], {
-      encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, TMPDIR: process.env.TMPDIR },
-    });
-    assert.equal(child.status, null);
-    assert.equal(child.signal, 'SIGKILL');
-    const ledgerDirectory = readdirSync(runtime).find(name => name.startsWith('agk334-private-ledger-'));
-    const ledgerPath = join(runtime, ledgerDirectory, 'reservation.ledger');
-    const journalBefore = readFileSync(ledgerPath);
+    journal = createPrivateDispatchJournal(runtime);
+    assert.equal(journal.record(1), true);
+    assert.equal(journal.record(2), true);
+    journal.close(); journal = null;
     t.mock.method(process, 'cwd', () => root);
-
-    const checkpoint = sealPrivateLedgerCheckpoint();
+    const checkpoint = sealPrivateDispatchCheckpoint();
     assert.equal(checkpoint.status, 'sealed');
-    assert.equal(checkpoint.reservationCount, 2);
-    assert.equal(checkpoint.ledgerCount, 1);
-    assert.equal(checkpoint.evidenceFile, 'agk334-private-evidence-checkpoint/reservation-checkpoint.enc.json');
+    assert.equal(checkpoint.dispatchCount, 2);
+    assert.equal(checkpoint.journalCount, 1);
     const checkpointPath = join(runtime, checkpoint.evidenceFile);
     const envelopeBytes = readFileSync(checkpointPath);
     const envelope = JSON.parse(envelopeBytes.toString('utf8'));
     assert.equal(envelope.algorithm, 'RSA-OAEP-SHA256+AES-256-GCM');
-    assert.equal(envelope.publicKeySha256, '635e87fee174aaca8b86ae9863fdc26926f969171c67d9678b96176388e80ba3');
-    assert.equal(envelopeBytes.includes(journalBefore), false);
-    assert.deepEqual(readFileSync(ledgerPath), journalBefore);
-    assert.throws(() => sealPrivateLedgerCheckpoint());
-    assert.deepEqual(readFileSync(ledgerPath), journalBefore);
+    assert.equal(envelopeBytes.includes(Buffer.from('1\n2\n')), false);
+    assert.throws(() => sealPrivateDispatchCheckpoint());
+  } finally {
+    if (journal) journal.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('multiple invocation journals remain encrypted but cannot be reported as one session count', t => {
+  const root = mkdtempSync(join(tmpdir(), 'agk334-checkpoint-multiple-'));
+  const runtime = join(root, '.agk334-private-runtime');
+  mkdirSync(runtime, { mode: 0o700 });
+  const first = createPrivateDispatchJournal(runtime);
+  const second = createPrivateDispatchJournal(runtime);
+  try {
+    assert.equal(first.record(1), true);
+    assert.equal(second.record(1), true);
+    first.close(); second.close();
+    t.mock.method(process, 'cwd', () => root);
+    const checkpoint = sealPrivateDispatchCheckpoint();
+    assert.equal(checkpoint.status, 'sealed');
+    assert.equal(checkpoint.dispatchCount, null);
+    assert.equal(checkpoint.journalCount, 2);
+    assert.ok(readFileSync(join(runtime, checkpoint.evidenceFile)).length > 0);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test('checkpoint succeeds with no runtime or an empty pre-dispatch runtime', t => {
+test('checkpoint reports unknown count when no runtime exists and seals empty bounded diagnostics', t => {
   const root = mkdtempSync(join(tmpdir(), 'agk334-checkpoint-empty-'));
   try {
     t.mock.method(process, 'cwd', () => root);
-    assert.deepEqual(sealPrivateLedgerCheckpoint(), { status: 'no-runtime', reservationCount: 0, evidenceFile: null });
+    assert.deepEqual(sealPrivateDispatchCheckpoint(), { status: 'no-runtime', dispatchCount: null, evidenceFile: null });
     const runtime = join(root, '.agk334-private-runtime');
     mkdirSync(runtime, { mode: 0o700 });
-    const checkpoint = sealPrivateLedgerCheckpoint();
+    const checkpoint = sealPrivateDispatchCheckpoint();
     assert.equal(checkpoint.status, 'sealed');
-    assert.equal(checkpoint.reservationCount, 0);
-    assert.equal(checkpoint.ledgerCount, 0);
-    assert.equal(readFileSync(join(runtime, checkpoint.evidenceFile)).length > 0, true);
+    assert.equal(checkpoint.dispatchCount, null);
+    assert.equal(checkpoint.journalCount, 0);
+    assert.ok(readFileSync(join(runtime, checkpoint.evidenceFile)).length > 0);
   } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test('checkpoint fails closed on a corrupt ledger without deleting runtime evidence', t => {
-  const root = mkdtempSync(join(tmpdir(), 'agk334-checkpoint-corrupt-'));
-  const runtime = join(root, '.agk334-private-runtime');
-  mkdirSync(runtime, { mode: 0o700 });
-  let ledger;
-  try {
-    ledger = createFreshLedger(runtime);
-    const ledgerPath = ledger.path;
-    closeSync(ledger.fd);
-    ledger = null;
-    writeFileSync(ledgerPath, 'AGK334-V1\n1\n3\n', { mode: 0o600 });
-    t.mock.method(process, 'cwd', () => root);
-    assert.throws(() => sealPrivateLedgerCheckpoint(), /invalid|incomplete/i);
-    assert.equal(readFileSync(ledgerPath, 'utf8'), 'AGK334-V1\n1\n3\n');
-    assert.equal(readdirSync(runtime).some(name => name.startsWith('agk334-private-evidence-checkpoint')), false);
-  } finally {
-    if (ledger) closeSync(ledger.fd);
-    rmSync(root, { recursive: true, force: true });
-  }
 });
 
 test('encrypts evidence with the pinned-key envelope and rejects another key digest', () => {
@@ -232,12 +198,12 @@ test('redacted summary contains no credential or deployment scope and distinguis
   const c = context();
   const ctx = validateHostedPushContext({ env: c.env, actualHeadSha: c.merge,
     orderedParents: c.parents, expectedPredecessorSha: c.before });
-  const summary = redactedSummary({ context: ctx, reservationCount: 2,
+  const summary = redactedSummary({ context: ctx, dispatchCount: 2,
     clientRequestFinishedCount: 2, httpResponseCount: 1, execution: { status: 'completed' },
     decision: { decision: 'PASS', rationale: 'private' }, evidenceFile: 'verification.enc.json' });
   assert.equal(summary.clientRequestFinishedCount, 2);
   assert.equal(summary.httpResponseCount, 1);
-  assert.equal(summary.reservationCount, 2);
+  assert.equal(summary.dispatchCount, 2);
   assert.equal(Object.hasOwn(summary, 'rationale'), false);
   assert.equal(Object.hasOwn(summary, 'project'), false);
 });

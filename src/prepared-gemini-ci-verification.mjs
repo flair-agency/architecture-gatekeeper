@@ -1,4 +1,4 @@
-/** Internal composition for the owner-selected Issue334 verification allocation only. */
+/** Internal composition for the Issue334 per-session dispatch circuit breaker. */
 import { types } from 'node:util';
 import { snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mjs';
 import { snapshotPreparedReviewData } from './prepared-review-data.mjs';
@@ -9,14 +9,11 @@ const INPUT_KEYS = ['reviewInput', 'authorityProvenance', 'validationRules', 'ma
 const CONTEXT_LIMITS = { maxFiles: 32, maxFileBytes: 131_072, maxTotalBytes: 524_288 };
 
 /**
- * The trusted verification launcher supplies protected prepared inputs and the
- * same exclusively held private allocation fd across sessions. It owns fresh
- * allocation/retention and closes the fd only after this operation settles.
- * Runtime pin verification, WIF acquisition, repository identity, producer
- * binding and reporting/acceptance remain caller responsibilities. This internal
- * operation does not activate ordinary CI or grant an acceptance result.
+ * Each call owns a fresh defensive dispatch counter. Runtime pin verification,
+ * WIF acquisition, repository identity, producer binding and reporting remain
+ * caller responsibilities; this operation does not grant an acceptance result.
  */
-export async function runPreparedGeminiCiVerification(input, reservationFd) {
+export async function runPreparedGeminiCiVerification(input, recordDispatch = () => true) {
   if (!input || typeof input !== 'object' || Array.isArray(input) || types.isProxy(input) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(input))) {
     throw new Error('Gemini verification requires complete explicit prepared decision inputs.');
@@ -39,9 +36,8 @@ export async function runPreparedGeminiCiVerification(input, reservationFd) {
     !Object.hasOwn(limits, key) || !Number.isSafeInteger(limits[key]) || limits[key] < 1 || limits[key] > CONTEXT_LIMITS[key])) {
     throw new Error('Gemini verification context exceeds the selected Issue334 bounds.');
   }
-  // A missing, empty, corrupt or inaccessible ledger fails before proxy/CLI
-  // startup. This composition never initializes or resets an allocation.
-  const reserveDispatch = createVertexVerificationReservation(reservationFd);
-  return runPreparedGeminiCiDecision({ ...input, reviewInput: { ...reviewInput,
-    proxySessionOptions: { ...session, workspaceLimits: limits, reserveDispatch } } });
+  const counter = createVertexVerificationReservation(recordDispatch);
+  const result = await runPreparedGeminiCiDecision({ ...input, reviewInput: { ...reviewInput,
+    proxySessionOptions: { ...session, workspaceLimits: limits, reserveDispatch: counter.reserveDispatch } } });
+  return Object.freeze({ ...result, dispatchDiagnostics: counter.snapshot() });
 }
