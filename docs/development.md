@@ -80,15 +80,16 @@ states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
 PR/run and live queue context, self-amendment scope, and amendment canonical
 readback, OWNER_ADDITION post-merge readback and self-only GitHub App reporting.
 The GitHub ruleset readback, owner-amendment Git change reader, handoff Git
-context and annotated-tag transport are integrated. The existing path helper is
-typed under `src/review-inputs/review-input-path.mts`, retaining
-its flat exports and lexical containment, existing-ancestor realpath and error
-behavior. String inputs and path-operation callback contracts do not establish
-caller authorization, environment authenticity or filesystem isolation.
+context, annotated-tag transport and review-input path helper are integrated.
+This slice types the existing committed-file reader under
+`src/authority-validation/legacy-git-snapshot.mts`, retaining its flat exports
+and regular-file selection, Git arguments, byte limits and digest behavior.
+Its ordinary string, numeric and Buffer contracts do not authenticate caller
+selection or authorize review acceptance.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `abfc928` has twenty-five original modules typed and 71 remaining. This
-source-import correction preserves that count. Migration is partial and does
+Main `a04c777` has twenty-five original modules typed and 71 remaining; this
+candidate has twenty-six typed and 70 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
