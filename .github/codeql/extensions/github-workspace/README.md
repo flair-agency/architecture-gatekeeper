@@ -1,13 +1,14 @@
 # GitHub runner workspace boundary proposal
 
-The proposed local CodeQL model represents the owner-selected premise, recorded
-for canonical adoption in draft PR #467, that the invoking GitHub execution
+The local CodeQL model represents the owner-selected premise, adopted in
+canonical authority on main at
+`62cdc5c302485b35bb459863c79ba9d057f77b1c`, that the invoking GitHub execution
 preserves its original `GITHUB_WORKSPACE` and selects the intended checkout and
 recorded revisions. The model adds only a `path-injection` barrier on the return
 value of `trustedGitHubWorkspaceRoot()` in
 `src/github-runner-workspace.mjs`. It does not authenticate an arbitrary
 environment, establish checkout origin, protect Git or its object store, or
-establish same-user filesystem isolation. Canonical adoption and host
+establish same-user filesystem isolation. Hosted model loading and host
 verification remain pending.
 
 Only the GitHub CLI entrypoints for committed regular-file materialization and
