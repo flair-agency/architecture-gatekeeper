@@ -28,12 +28,13 @@ test('GitHub leaf contracts preserve unknown repository identities and accept No
 test('GitHub leaf contracts reject incomplete expectations, narrowed output, and invalid runner arguments', () => {
   const diagnostics = diagnosticsFor('negative.mts');
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [
-    [2345, 5], [2345, 6], [2345, 7], [2322, 10], [2345, 11], [2322, 12],
+    [2345, 5], [2345, 6], [2345, 7], [2322, 10], [2345, 11], [2345, 12], [2322, 13],
   ]);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /repositoryId/);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[1].messageText, '\n'), /parameter of type.*=> unknown/);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[2].messageText, '\n'), /number/);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[3].messageText, '\n'), /unknown.*string|not assignable/i);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[4].messageText, '\n'), /string/);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[5].messageText, '\n'), /number.*string|string.*number/s);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[5].messageText, '\n'), /readonly unknown\[\]/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[6].messageText, '\n'), /string.*number/);
 });
