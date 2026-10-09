@@ -9,5 +9,6 @@ createGitHubCliRunner(execFileSync, 0);
 const runner = createGitHubCliRunner(execFileSync);
 const narrowedOutput: string = runner('gh', []);
 runner(42, []);
-runner('gh', [1]);
+runner('gh', 'not an array');
+runner('gh', [], { timeout: 'forever' });
 void narrowedOutput;
