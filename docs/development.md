@@ -76,15 +76,16 @@ and unresolved limits. The entrypoint and workflow investigations under
 ## TypeScript source and runtime distribution
 
 The integrated #419 slices type OWNER_ADDITION validation, execution-result
-states, tag and artifact leaves, bounded ZIP extraction and GitHub association/
-CLI helpers. This slice moves PR/run metadata selection, workflow-run live
-merge-group context and the existing self-amendment scope inspection into
-`src/owner-amendment/*.mts`, retaining flat compatibility exports. The
+states, tag and artifact leaves, bounded ZIP extraction, GitHub association/
+CLI helpers, PR/run and live queue context, and self-amendment scope inspection.
+This slice types the GitHub authority source, merge-group event parser, and
+owner-amendment canonical readback under `src/github/*.mts`, retaining flat
+compatibility exports. The
 [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `2bd5ca7` has twelve original modules typed and 84 remaining; this candidate
-has fifteen typed and 81 remaining. Migration is partial and does not change
-consumer architecture or assurance policy.
+Main `5f1f993` has fifteen original modules typed and 81 remaining; this
+candidate has eighteen typed and 78 remaining. Migration is partial and does
+not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, and `checkJs: false`.
@@ -142,7 +143,15 @@ inspection assumes verified CLI output and trusted expectations; it does not
 establish those preconditions. The synchronous CLI invocation leaves returned
 output unknown until its existing JSON parsing and inspection. Its type does
 not exclude asynchronous callbacks, which still fail as malformed output at
-runtime. Other callback contracts remain with their owning modules.
+runtime. Other callback contracts remain with their owning modules. The authority-source
+fetch contract preserves sync, Promise and thenable responses and reader results,
+optional signal/headers, bounded decoding, request counts and existing timeouts.
+Captured validated request strings and computed Buffer output are typed; parsed
+JSON stays unknown. The readback callback composes that streaming response with
+its JSON operation; standard fetch and direct shared callback composition are
+compile-tested. Event and readback properties that are reread stay unknown;
+readback describes canonical placement only, separate from eligibility and
+acceptance.
 
 Runtime coverage follows the emitted and executed `dist/**/*.mjs` files. Report
 those exact paths without counting source files as runtime coverage. CodeQL
