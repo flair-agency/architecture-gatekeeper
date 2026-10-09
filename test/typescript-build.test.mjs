@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse } from 'acorn';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -24,6 +25,12 @@ function emittedFiles(directory) {
     const path = join(directory, entry.name);
     return entry.isDirectory() ? emittedFiles(path).map(file => `${entry.name}/${file}`) : [entry.name];
   }).sort();
+}
+
+function reExportTargets(file) {
+  return parse(readFileSync(file, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' })
+    .body.filter(node => node.type === 'ExportNamedDeclaration' && node.source)
+    .map(node => node.source.value);
 }
 
 test('standard tsc build cleans only dist, copies legacy JavaScript, and emits mixed source paths', { timeout: 240_000 }, t => {
@@ -121,10 +128,10 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'runner-temp-path.mjs',
   ]);
   assert.equal(readFileSync(join(dist, 'legacy.mjs'), 'utf8'), 'export const legacyValue = 7;\n');
-  assert.match(readFileSync(join(dist, 'owner-addition-validation.mjs'), 'utf8'), /from '\.\/owner-addition\/owner-addition-validation\.mjs'/);
-  assert.match(readFileSync(join(dist, 'ci-execution-result.mjs'), 'utf8'), /from '\.\/ci-execution\/ci-execution-result\.mjs'/);
+  assert.deepEqual(reExportTargets(join(dist, 'owner-addition-validation.mjs')), ['./owner-addition/owner-addition-validation.mjs']);
+  assert.deepEqual(reExportTargets(join(dist, 'ci-execution-result.mjs')), ['./ci-execution/ci-execution-result.mjs']);
   assert.match(readFileSync(join(dist, 'ci-execution/ci-execution-result.mjs'), 'utf8'), /export function normalizeCiExecutionResult/);
-  assert.match(readFileSync(join(dist, 'owner-amendment-tag-readback.mjs'), 'utf8'), /from '\.\/owner-amendment\/owner-amendment-tag-readback\.mjs'/);
+  assert.deepEqual(reExportTargets(join(dist, 'owner-amendment-tag-readback.mjs')), ['./owner-amendment/owner-amendment-tag-readback.mjs']);
   assert.match(readFileSync(join(dist, 'owner-amendment/owner-amendment-tag-readback.mjs'), 'utf8'), /export async function readOwnerAmendmentTagForMergeGroup/);
   assert.doesNotMatch(emittedFiles(dist).join('\n'), /stale/);
   assert.equal(runBuild(fixtureRoot).status, 0, 'a second clean build should be deterministic');

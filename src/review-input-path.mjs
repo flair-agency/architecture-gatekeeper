@@ -1,1 +1,1 @@
-export * from './review-inputs/review-input-path.mjs';
+export * from './review-inputs/review-input-path.mts';

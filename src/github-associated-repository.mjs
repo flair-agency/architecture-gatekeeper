@@ -1,1 +1,1 @@
-export { matchesGitHubAssociatedRepository } from './github/github-associated-repository.mjs';
+export { matchesGitHubAssociatedRepository } from './github/github-associated-repository.mts';

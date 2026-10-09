@@ -51,7 +51,9 @@ async function findSourceFiles(root) {
   return files;
 }
 
-async function assertNoSymlinkComponents(root, target, missingMessage = `missing relative .mjs import target: ${displayPath(root, target)}`) {
+async function assertNoSymlinkComponents(root, target) {
+  const extension = path.extname(target);
+  const missingMessage = `missing relative ${extension} import target: ${displayPath(root, target)}`;
   const relative = path.relative(root, target);
   let current = root;
   for (const component of relative.split(path.sep).filter(Boolean)) {
@@ -70,13 +72,13 @@ function relativeSpecifier(specifier) {
 
 async function resolveImport(root, importer, specifier) {
   if (!relativeSpecifier(specifier)) return null;
-  if (!specifier.endsWith('.mjs')) {
-    throw new Error(`unsupported relative import target from ${displayPath(root, importer)}: ${specifier} (only .mjs specifiers are checked)`);
+  if (!specifier.endsWith('.mjs') && !specifier.endsWith('.mts')) {
+    throw new Error(`unsupported relative import target from ${displayPath(root, importer)}: ${specifier} (only .mjs or .mts specifiers are checked)`);
   }
   const requested = path.resolve(path.dirname(importer), specifier);
   if (!isWithin(root, requested)) throw new Error(`relative import escapes source root from ${displayPath(root, importer)}: ${specifier}`);
-  const typedPeer = `${requested.slice(0, -4)}.mts`;
-  const target = await lstat(typedPeer).then(() => typedPeer).catch(error => {
+  const typedPeer = specifier.endsWith('.mjs') ? `${requested.slice(0, -4)}.mts` : null;
+  const target = typedPeer === null ? requested : await lstat(typedPeer).then(() => typedPeer).catch(error => {
     if (error.code === 'ENOENT') return requested;
     throw error;
   });

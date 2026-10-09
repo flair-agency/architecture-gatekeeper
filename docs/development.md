@@ -80,19 +80,26 @@ states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
 PR/run and live queue context, self-amendment scope, and amendment canonical
 readback, OWNER_ADDITION post-merge readback and self-only GitHub App reporting.
 The GitHub ruleset readback, owner-amendment Git change reader, handoff Git
-context and annotated-tag transport are integrated. This slice types the
-existing path helper under `src/review-inputs/review-input-path.mts`, retaining
+context and annotated-tag transport are integrated. The existing path helper is
+typed under `src/review-inputs/review-input-path.mts`, retaining
 its flat exports and lexical containment, existing-ancestor realpath and error
 behavior. String inputs and path-operation callback contracts do not establish
 caller authorization, environment authenticity or filesystem isolation.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `7f099e9` has twenty-four original modules typed and 72 remaining; this
-candidate has twenty-five typed and 71 remaining. Migration is partial and does
+Main `abfc928` has twenty-five original modules typed and 71 remaining. This
+source-import correction preserves that count. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
-uses `rootDir: src`, `outDir: dist`, `allowJs: true`, and `checkJs: false`.
+uses `rootDir: src`, `outDir: dist`, `allowJs: true`, `checkJs: false`, and
+`rewriteRelativeImportExtensions: true`. Relative imports and re-exports name
+the physical source file: `.mts` for typed modules and `.mjs` for JavaScript.
+The standard compiler rewrites relative `.mts` references to `.mjs` on emit,
+including references in JavaScript compatibility facades. This keeps source
+module resolution explicit for analysis tools and preserves runtime paths.
+The source-import regression checks physical source targets, type-only erasure,
+and emitted static module references and targets across both source extensions.
 `npm run check:typescript` runs `tsc --noEmit --project tsconfig.json`.
 `npm run build` clears ignored `dist/` and runs the same project compiler to
 emit `.mjs`. The `allowJs` and `checkJs: false` settings include JavaScript in
@@ -194,8 +201,8 @@ editable runtime `.mjs` and authored `.mts` files. Acorn parses runtime ESM; the
 pinned TypeScript compiler API parses authored syntax. Neither parser loads or
 evaluates candidate modules. Value-bearing relative imports and re-exports
 contribute graph edges. An authored `.mjs` specifier resolves to a sibling
-`.mts` source when present, or to an unmigrated `.mjs` module otherwise, matching
-NodeNext resolution. The checker rejects duplicate authored/runtime module
+`.mts` source when present for compatibility with NodeNext resolution; new
+source references name the physical extension directly. The checker rejects duplicate authored/runtime module
 paths so source and emitted peers cannot mask each other.
 
 The check rejects cycles, invalid syntax, missing relative targets, symbolic

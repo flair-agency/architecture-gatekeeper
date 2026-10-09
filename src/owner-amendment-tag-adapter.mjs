@@ -1,1 +1,1 @@
-export * from './owner-amendment/owner-amendment-tag-adapter.mjs';
+export * from './owner-amendment/owner-amendment-tag-adapter.mts';
