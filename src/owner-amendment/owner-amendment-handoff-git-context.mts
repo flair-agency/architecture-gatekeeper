@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
-import { inspectOwnerAmendmentSelfScope, type OwnerAmendmentSelfScopeResult } from './owner-amendment-scope.mjs';
+import { inspectOwnerAmendmentSelfScope, type OwnerAmendmentSelfScopeResult } from './owner-amendment-scope.mts';
 import { parseAuthorityManifest, validateAuthorityLimits } from '../authority-set.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mjs';
-import type { SynchronousGitCommand, OwnerAmendmentGitChange } from './owner-amendment-git-changes.mjs';
+import type { SynchronousGitCommand, OwnerAmendmentGitChange } from './owner-amendment-git-changes.mts';
 
 type HandoffGitContextInput = Readonly<{
   repository: string;

@@ -4,4 +4,4 @@ export {
   produceRulesetReadback,
   rulesetStorageDirectory,
   readLocalRulesetReadback,
-} from './github/github-ruleset-readback.mjs';
+} from './github/github-ruleset-readback.mts';

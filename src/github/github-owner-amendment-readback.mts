@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { createGitHubAuthoritySource } from './github-authority-source.mjs';
+import { createGitHubAuthoritySource } from './github-authority-source.mts';
 
-import type { GitHubAuthorityFetchOptions, GitHubAuthorityFetchResponse, GitHubAuthorityAwaitable } from './github-authority-source.mjs';
+import type { GitHubAuthorityFetchOptions, GitHubAuthorityFetchResponse, GitHubAuthorityAwaitable } from './github-authority-source.mts';
 
 export type GitHubOwnerAmendmentReadbackFetch = (url: string, options: GitHubAuthorityFetchOptions) =>
   GitHubAuthorityAwaitable<GitHubAuthorityFetchResponse & { json: () => GitHubAuthorityAwaitable<unknown> }>;

@@ -1,1 +1,1 @@
-export { selectOwnerAmendmentHandoffPrRunContext } from './owner-amendment/owner-amendment-handoff-pr-run-context.mjs';
+export { selectOwnerAmendmentHandoffPrRunContext } from './owner-amendment/owner-amendment-handoff-pr-run-context.mts';

@@ -3,4 +3,4 @@ export {
   validateOwnerAdditionEligibilitySchema,
   validateOrdinaryOwnerDecision,
   validateOrdinaryOwnerDecisionSchema,
-} from './owner-addition/owner-addition-validation.mjs';
+} from './owner-addition/owner-addition-validation.mts';
