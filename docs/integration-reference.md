@@ -1109,12 +1109,16 @@ stored M response remains unchanged.
 Digest-bearing schemas and validators are unsupported for initial v1-to-v2
 migration, as are digest-bearing M `PASS` decisions. A digest-bearing `BLOCK`
 or `OWNER_DECISION` can still be retained as an ineligible historical receipt
-when it validates under the predecessor inputs. The successor set digest binds
-the candidate revision. The final migration record separately stores complete
-successor-set snapshots and their computed digests at the integration commit
-and observed target commit. These revision-bound digests may differ even when
-member bytes match; neither can be predicted from or substituted by the
-candidate digest. A fresh ordinary review after integration uses the
+when it validates under the predecessor inputs. For v1-to-v2 migration, the
+successor set digest binds the candidate revision. The final migration record
+separately stores complete successor-set snapshots and their computed digests
+at the integration commit and observed target commit. Same-version v1
+migration also records complete legacy path, byte-length and SHA-256
+descriptors read from each actual committed revision, with the legacy
+canonical digest over those descriptors. Both forms bind the observed
+revision; the completed candidate receipt remains unchanged. When target and
+integration are the same commit, the final record reuses that materialization.
+A fresh ordinary review revalidates the final readback and uses the
 materialized successor set at its selected base and its actual digest.
 The proposed policy/configuration and successor selection are untrusted M inputs;
 they may change only the selected control-plane paths. The successor must

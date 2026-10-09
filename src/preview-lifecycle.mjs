@@ -170,8 +170,28 @@ function validateInitialSuccessorEligibility(root, revision, schemaPath, validat
 function seal(value) { return { ...value, integritySha256: hash(value) }; }
 async function materializeObservedSuccessorSet(receipt, authorityRevision) {
   const candidate = receipt.request.successorAuthoritySet;
-  if (!candidate?.manifest) return null;
   const { root, spec } = receipt.request;
+  if (!candidate) return null;
+  if (!candidate.manifest) {
+    const observedPolicy = resolveCiPolicy(parseCiPolicyJson(utf8(snapshot(root, authorityRevision, '.codex/gatekeeper/ci-policy.json'))), spec.targetBranch);
+    if (!observedPolicy.legacyAuthorityFilesBase64) fail('observed legacy successor policy has no legacy authority selector.');
+    const selectedPaths = JSON.parse(Buffer.from(observedPolicy.legacyAuthorityFilesBase64, 'base64').toString());
+    if (!Array.isArray(selectedPaths) || selectedPaths.length !== candidate.members.length ||
+        selectedPaths.some((file, index) => file !== candidate.members[index].path)) fail('observed legacy successor selector differs from candidate.');
+    let total = 0;
+    const observedMembers = candidate.members.map(member => {
+      if (member.repository !== spec.repository) fail('observed legacy successor authority is not self-owned.');
+      const content = snapshot(root, authorityRevision, member.path, 65536);
+      total += content.length;
+      if (total > 262144) fail('observed legacy successor Authority Set exceeds total limits.');
+      return { repository: spec.repository, resolvedCommit: authorityRevision, path: member.path,
+        byteLength: content.length, sha256: digest(content) };
+    });
+    if (hash(candidate.members) !== hash(observedMembers.map(({ resolvedCommit, ...member }) => member))) {
+      fail('observed legacy successor members differ from candidate bytes.');
+    }
+    return { resolvedRevision: authorityRevision, manifest: null, members: observedMembers, setDigest: hash(observedMembers) };
+  }
   const policy = resolveCiPolicy(parseCiPolicyJson(utf8(snapshot(root, authorityRevision, '.codex/gatekeeper/ci-policy.json'))), spec.targetBranch);
   if (policy.authorityManifestPath !== candidate.manifest.path || !policy.authorityLimitsBase64) fail('observed successor policy or manifest selection differs from candidate.');
   const manifestBytes = snapshot(root, authorityRevision, candidate.manifest.path);
@@ -593,7 +613,7 @@ export async function observePreviewLifecycle(receipt, integrationSha, cwd = rec
     return { path: file, sha256: digest(expected) };
   });
   let successorAuthoritySet;
-  if (passedMigration && receipt.request.successorAuthoritySet?.manifest) {
+  if (passedMigration && receipt.request.successorAuthoritySet) {
     const integration = await materializeObservedSuccessorSet(receipt, integrationSha);
     const target = targetSha === integrationSha ? integration : await materializeObservedSuccessorSet(receipt, targetSha);
     successorAuthoritySet = { integration, target };

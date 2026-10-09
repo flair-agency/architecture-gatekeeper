@@ -278,7 +278,39 @@ test('initial v1-to-v2 migration supports only the named-target v1 shape while v
   await assert.rejects(preparePreviewLifecycle(migrationSpec(multipleNamedEnforced, multipleHead), multipleNamedEnforced.root), /supports only one named enforced target/);
   const sameVersionHead = migrationHead(multipleNamedEnforced, { policy: multipleNamedEnforced.legacyPolicy });
   const sameVersionRequest = await preparePreviewLifecycle(migrationSpec(multipleNamedEnforced, sameVersionHead), multipleNamedEnforced.root);
-  assert.equal((await completePreviewLifecycle(sameVersionRequest, ordinary('PASS'), multipleNamedEnforced.root)).eligibility, 'ELIGIBLE');
+  assert.equal(sameVersionRequest.successorAuthoritySet.manifest, null);
+  const candidateMembers = structuredClone(sameVersionRequest.successorAuthoritySet.members);
+  const sameVersionReceipt = await completePreviewLifecycle(sameVersionRequest, ordinary('PASS'), multipleNamedEnforced.root);
+  assert.equal(sameVersionReceipt.eligibility, 'ELIGIBLE');
+  const rawReceipt = previewReceiptBytes(sameVersionReceipt);
+  const integration = integrate(multipleNamedEnforced, sameVersionHead, sameVersionReceipt);
+  git(multipleNamedEnforced.root, 'commit', '--allow-empty', '-m', 'Synthetic same-version target advance');
+  const target = git(multipleNamedEnforced.root, 'rev-parse', 'HEAD');
+  const final = await observePreviewLifecycle(sameVersionReceipt, integration, multipleNamedEnforced.root);
+  assert.deepEqual(sameVersionReceipt.request.successorAuthoritySet.members, candidateMembers, 'candidate receipt remains unchanged');
+  assert.deepEqual(previewReceiptBytes(sameVersionReceipt), rawReceipt);
+  assert.equal(final.successorAuthoritySet.integration.resolvedRevision, integration);
+  assert.equal(final.successorAuthoritySet.target.resolvedRevision, target);
+  assert.equal(final.successorAuthoritySet.integration.manifest, null);
+  assert.equal(final.successorAuthoritySet.target.manifest, null);
+  assert.notEqual(final.successorAuthoritySet.integration.resolvedRevision, sameVersionRequest.spec.headSha);
+  assert.notEqual(final.successorAuthoritySet.target.resolvedRevision, integration);
+  const expectedMembers = authority.map(path => {
+    const content = execFileSync('git', ['-C', multipleNamedEnforced.root, 'show', `${integration}:${path}`]);
+    return { repository: sameVersionRequest.spec.repository, resolvedCommit: integration, path, byteLength: content.length, sha256: sha(content) };
+  });
+  assert.deepEqual(final.successorAuthoritySet.integration.members, expectedMembers);
+  assert.deepEqual(final.successorAuthoritySet.target.members, expectedMembers.map(member => ({ ...member, resolvedCommit: target })));
+  assert.equal(final.successorAuthoritySet.integration.setDigest, sha(JSON.stringify(expectedMembers.map(member => ({
+    byteLength: member.byteLength, path: member.path, repository: member.repository,
+    resolvedCommit: member.resolvedCommit, sha256: member.sha256 })))));
+  assert.notEqual(final.successorAuthoritySet.integration.setDigest, sameVersionRequest.successorAuthoritySet.setDigest);
+  assert.notEqual(final.successorAuthoritySet.target.setDigest, final.successorAuthoritySet.integration.setDigest);
+  const changedFinal = { ...final, successorAuthoritySet: { ...final.successorAuthoritySet,
+    target: { ...final.successorAuthoritySet.target, setDigest: '0'.repeat(64) } } };
+  const { integritySha256: ignoredIntegrity, ...unsignedFinal } = changedFinal;
+  changedFinal.integritySha256 = sha(previewReceiptBytes(unsignedFinal));
+  await assert.rejects(prepareFreshPreviewReview(changedFinal, sameVersionHead, multipleNamedEnforced.root), /final readback bindings changed/);
 
   const enforcedDefault = fixture(t);
   const changedDefault = migratedPolicy(enforcedDefault);
