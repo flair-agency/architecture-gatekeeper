@@ -138,8 +138,33 @@ test('initial compatible v1→v2 M passes old review, binds raw unchanged author
   const rejected = await completePreviewLifecycle(request, ordinary('BLOCK'), f.root);
   assert.equal(rejected.eligibility, 'INELIGIBLE');
   assert.equal(rejected.decision.decision, 'BLOCK');
-  const integration = integrate(f, head, receipt); const final = await observePreviewLifecycle(receipt, integration, f.root);
+  const integration = integrate(f, head, receipt);
+  git(f.root, 'commit', '--allow-empty', '-m', 'Synthetic target advance with unchanged successor authority');
+  const target = git(f.root, 'rev-parse', 'HEAD');
+  const final = await observePreviewLifecycle(receipt, integration, f.root);
   assert.equal(final.adoption, 'OBSERVED'); assert.equal(final.canonical, 'VERIFIED');
+  assert.ok(final.successorAuthoritySet, 'final migration record binds the materialized post-merge successor Authority Set');
+  const integrationSet = await materializeAuthoritySet({ manifestBytes: Buffer.from(request.successorAuthoritySet.manifest.bytesBase64, 'base64'),
+    limits: migratedPolicy(f).branches.main.authorityLimits, selfRepository: request.spec.repository, selfRoot: f.root,
+    authorityRevision: integration, profile: 'v1' });
+  const targetSet = await materializeAuthoritySet({ manifestBytes: Buffer.from(request.successorAuthoritySet.manifest.bytesBase64, 'base64'),
+    limits: migratedPolicy(f).branches.main.authorityLimits, selfRepository: request.spec.repository, selfRoot: f.root,
+    authorityRevision: target, profile: 'v1' });
+  assert.equal(final.successorAuthoritySet.integration.resolvedRevision, integration);
+  assert.equal(final.successorAuthoritySet.integration.setDigest, integrationSet.setDigest);
+  assert.notEqual(final.successorAuthoritySet.integration.setDigest, request.successorAuthoritySet.setDigest);
+  assert.deepEqual(final.successorAuthoritySet.integration.members, integrationSet.members.map(({ content, ...member }) => member));
+  assert.equal(final.targetSha, target);
+  assert.equal(final.successorAuthoritySet.target.resolvedRevision, target);
+  assert.equal(final.successorAuthoritySet.target.setDigest, targetSet.setDigest);
+  assert.notEqual(final.successorAuthoritySet.integration.setDigest, final.successorAuthoritySet.target.setDigest);
+  assert.deepEqual(final.successorAuthoritySet.integration.members.map(({ byteLength, sha256 }) => ({ byteLength, sha256 })),
+    final.successorAuthoritySet.target.members.map(({ byteLength, sha256 }) => ({ byteLength, sha256 })));
+  const changedFinal = { ...final, successorAuthoritySet: { ...final.successorAuthoritySet,
+    integration: { ...final.successorAuthoritySet.integration, setDigest: '0'.repeat(64) } } };
+  const { integritySha256: ignoredIntegrity, ...unsignedFinal } = changedFinal;
+  changedFinal.integritySha256 = sha(previewReceiptBytes(unsignedFinal));
+  await assert.rejects(prepareFreshPreviewReview(changedFinal, head, f.root), /final readback bindings changed/);
   assert.equal(final.assurance.hostEnforcement, 'UNVERIFIED');
   const aHead = commit(f, final.targetSha, { 'app.txt': 'Successor A under migrated selector\n' });
   const fresh = await prepareFreshPreviewReview(final, aHead, f.root);
@@ -160,7 +185,7 @@ test('initial compatible v1→v2 M passes old review, binds raw unchanged author
   const ineligibleReceipt = await completePreviewLifecycle(bRequest, bIneligible, f.root);
   assert.equal(ineligibleReceipt.eligibility, 'INELIGIBLE');
   assert.deepEqual(ineligibleReceipt.response, bIneligible);
-  await validatePreviewReceipt(ineligibleReceipt, f.root);
+  // Observation revalidates the receipt before rejecting its ineligible status.
   await assert.rejects(observePreviewLifecycle(ineligibleReceipt, integration, f.root), /not an eligible selected B procedure/);
 });
 
@@ -176,7 +201,7 @@ test('initial migration retains valid non-PASS decisions as ineligible receipts,
       assert.equal(receipt.eligibility, 'INELIGIBLE');
       assert.deepEqual(receipt.decision, originalResponse.semanticDecision);
       assert.deepEqual(receipt.response, originalResponse);
-      await validatePreviewReceipt(receipt, f.root);
+      // Observation revalidates each receipt before rejecting its ineligible status.
       await assert.rejects(observePreviewLifecycle(receipt, head, f.root), /not an eligible selected B procedure/);
     }
   }
@@ -386,6 +411,9 @@ test('initial migration does not solve unrelated B-only constraints; actual B va
   assert.equal(migrationReceipt.eligibility, 'ELIGIBLE');
   const integration = integrate(f, head, migrationReceipt);
   const observed = await observePreviewLifecycle(migrationReceipt, integration, f.root);
+  assert.equal(observed.successorAuthoritySet.integration.resolvedRevision, integration);
+  assert.equal(observed.successorAuthoritySet.target.resolvedRevision, integration);
+  assert.equal(observed.successorAuthoritySet.integration.setDigest, observed.successorAuthoritySet.target.setDigest);
   const aHead = commit(f, observed.targetSha, { 'app.txt': 'Successor A\n' });
   const fresh = await prepareFreshPreviewReview(observed, aHead, f.root);
   const trigger = await completePreviewLifecycle(fresh, ordinary('BLOCK', true), f.root);

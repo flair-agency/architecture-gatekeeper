@@ -168,6 +168,26 @@ function validateInitialSuccessorEligibility(root, revision, schemaPath, validat
   }
 }
 function seal(value) { return { ...value, integritySha256: hash(value) }; }
+async function materializeObservedSuccessorSet(receipt, authorityRevision) {
+  const candidate = receipt.request.successorAuthoritySet;
+  if (!candidate?.manifest) return null;
+  const { root, spec } = receipt.request;
+  const policy = resolveCiPolicy(parseCiPolicyJson(utf8(snapshot(root, authorityRevision, '.codex/gatekeeper/ci-policy.json'))), spec.targetBranch);
+  if (policy.authorityManifestPath !== candidate.manifest.path || !policy.authorityLimitsBase64) fail('observed successor policy or manifest selection differs from candidate.');
+  const manifestBytes = snapshot(root, authorityRevision, candidate.manifest.path);
+  if (!manifestBytes.equals(Buffer.from(candidate.manifest.bytesBase64, 'base64'))) fail('observed successor manifest differs from candidate.');
+  const materialized = await materializeAuthoritySet({ manifestBytes,
+    limits: JSON.parse(Buffer.from(policy.authorityLimitsBase64, 'base64').toString()),
+    selfRepository: spec.repository, selfRoot: root, authorityRevision, profile: policy.authorityProfile ?? 'v1' });
+  const candidateMembers = candidate.members;
+  const observedMembers = materialized.members.map(({ content, ...member }) => member);
+  const candidateBytes = candidateMembers.map(({ id, repository, path, byteLength, sha256 }) => ({ id, repository, path, byteLength, sha256 }));
+  const observedBytes = observedMembers.map(({ id, repository, path, byteLength, sha256 }) => ({ id, repository, path, byteLength, sha256 }));
+  if (hash(candidateBytes) !== hash(observedBytes)) fail('observed successor members differ from candidate bytes.');
+  return { resolvedRevision: authorityRevision,
+    manifest: { path: candidate.manifest.path, sha256: materialized.manifestSha256 },
+    members: observedMembers, setDigest: materialized.setDigest };
+}
 function unseal(value, kind) {
   if (value?.version !== 1 || value.profile !== PREVIEW_PROFILE || value.kind !== kind) fail('unsupported record kind/version/profile.');
   const { integritySha256, ...unsigned } = value;
@@ -572,10 +592,16 @@ export async function observePreviewLifecycle(receipt, integrationSha, cwd = rec
     if (digest(snapshot(root, targetSha, file)) !== digest(expected)) fail('target placement differs from exact B bytes.');
     return { path: file, sha256: digest(expected) };
   });
+  let successorAuthoritySet;
+  if (passedMigration && receipt.request.successorAuthoritySet?.manifest) {
+    const integration = await materializeObservedSuccessorSet(receipt, integrationSha);
+    const target = targetSha === integrationSha ? integration : await materializeObservedSuccessorSet(receipt, targetSha);
+    successorAuthoritySet = { integration, target };
+  }
   if (git(root, 'rev-parse', ref) !== targetSha) fail('target moved during readback.');
   return seal({ version: 1, profile: PREVIEW_PROFILE, kind: 'preview-lifecycle-final', receipt,
     receiptSha256, receiptBytesBase64: raw.toString('base64'), targetRef: ref, runtime: receipt.request.runtime,
-    integrationSha, targetSha, treeSha: tree, placement, observedAt: new Date().toISOString(),
+    integrationSha, targetSha, treeSha: tree, placement, ...(successorAuthoritySet ? { successorAuthoritySet } : {}), observedAt: new Date().toISOString(),
     adoption: 'OBSERVED', canonical: 'VERIFIED', assurance });
 }
 
