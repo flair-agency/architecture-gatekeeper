@@ -29,13 +29,16 @@ function fixture(t, mode = 'success') {
   const reportPath = join(root, 'observation.json');
   const cliEntrypoint = join(root, 'fake-cli.mjs');
   writeFileSync(cliEntrypoint, `
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 const mode = ${JSON.stringify(mode)};
 if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); process.exit(0); }
 const forbiddenResponse = await fetch(process.env.GOOGLE_VERTEX_BASE_URL + '/v1/projects/wrong-project/locations/wrong-region/publishers/google/models/wrong-model:generateContent', { method: 'POST', body: '{}' });
 const settings = JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8'));
-writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ endpoint: process.env.GOOGLE_VERTEX_BASE_URL, forbiddenStatus: forbiddenResponse.status, env: process.env, settings, argv: process.argv.slice(2) }));
+const report = ${JSON.stringify(reportPath)};
+const temporaryReport = report + '.tmp';
+writeFileSync(temporaryReport, JSON.stringify({ endpoint: process.env.GOOGLE_VERTEX_BASE_URL, forbiddenStatus: forbiddenResponse.status, env: process.env, settings, argv: process.argv.slice(2) }));
+renameSync(temporaryReport, report);
 if (mode === 'hang') { setInterval(() => {}, 1000); }
 process.stdout.write(JSON.stringify({ response: 'raw proxy-session response text' }));
 `);
