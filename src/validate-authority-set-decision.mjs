@@ -18,8 +18,8 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   try {
     if (process.argv.length !== 3) throw new Error('Usage: validate-authority-set-decision <provenance.json>');
     const provenanceBytes = readFileSync(process.argv[2]);
-    const decisionBytes = readFileSync(0);
     const provenance = JSON.parse(provenanceBytes.toString('utf8'));
+    const decisionBytes = readFileSync(0);
     const decision = JSON.parse(decisionBytes.toString('utf8'));
     validatePreparedAuthorityDecision(decision, provenance);
     // These input identities diagnose this validation call; they do not claim semantic PASS, schema completeness, or adoption.

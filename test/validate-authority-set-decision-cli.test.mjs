@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -109,4 +109,31 @@ test('CLI emits no success identity for invalid inputs, failed reads, or usage e
   assert.equal(usage.status, 2);
   assert.equal(usage.stdout, '');
   assert.equal(usage.stderr, 'Authority Set decision validation failed.\n');
+});
+
+test('CLI rejects malformed provenance before waiting for stdin EOF', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'authority-decision-cli-open-stdin-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const provenancePath = join(root, 'provenance.json');
+  writeFileSync(provenancePath, '{');
+  const child = spawn(process.execPath, [script, provenancePath], { stdio: ['pipe', 'pipe', 'pipe'] });
+  let stdout = '';
+  let stderr = '';
+  child.stdout.setEncoding('utf8').on('data', chunk => { stdout += chunk; });
+  child.stderr.setEncoding('utf8').on('data', chunk => { stderr += chunk; });
+  let timeout;
+  try {
+    const result = await Promise.race([
+      new Promise(resolve => child.once('close', (code, signal) => resolve({ code, signal }))),
+      new Promise(resolve => { timeout = setTimeout(() => resolve(null), 1500); }),
+    ]);
+    assert.ok(result, 'CLI waited for stdin EOF instead of rejecting the malformed provenance');
+    assert.equal(result.code, 2);
+    assert.equal(result.signal, null);
+    assert.equal(stdout, '');
+    assert.equal(stderr, 'Authority Set decision validation failed.\n');
+  } finally {
+    clearTimeout(timeout);
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+  }
 });
