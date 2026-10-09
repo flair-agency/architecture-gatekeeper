@@ -154,7 +154,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'owner-amendment/owner-amendment-tag-api.mjs', 'owner-amendment/owner-amendment-tag-attempt.mjs',
     'owner-amendment/owner-amendment-semantic-tag-object.mjs',
     'owner-amendment/owner-amendment-artifact.mjs', 'owner-amendment/owner-amendment-artifact-discovery.mjs',
-    'owner-amendment/owner-amendment-attestation.mjs'];
+    'owner-amendment/owner-amendment-attestation.mjs', 'owner-amendment/owner-amendment-artifact-zip.mjs',
+    'github/github-associated-repository.mjs', 'github/github-cli-runner.mjs'];
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -217,11 +218,15 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/owner-amendment/owner-amendment-tag-readback.mjs')));
   for (const file of ['owner-amendment-tag-api.mjs', 'owner-amendment-tag-attempt.mjs',
     'owner-amendment-semantic-tag-object.mjs', 'owner-amendment-artifact.mjs',
-    'owner-amendment-artifact-discovery.mjs', 'owner-amendment-attestation.mjs']) {
+    'owner-amendment-artifact-discovery.mjs', 'owner-amendment-attestation.mjs', 'owner-amendment-artifact-zip.mjs']) {
     // Restore the former flat dependency paths only in this synthetic legacy copy.
     writeFileSync(join(flatRoot, 'dist', file),
       readFileSync(join(flatRoot, 'dist/owner-amendment', file), 'utf8').replace(/from '\.\.\//g, "from './"));
   }
+  for (const file of ['github-associated-repository.mjs', 'github-cli-runner.mjs']) {
+    writeFileSync(join(flatRoot, 'dist', file), readFileSync(join(flatRoot, 'dist/github', file)));
+  }
+  rmSync(join(flatRoot, 'dist/github'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
   rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
