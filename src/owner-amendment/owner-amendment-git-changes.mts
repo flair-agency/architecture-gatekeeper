@@ -22,18 +22,19 @@ export type OwnerAmendmentResultingAuthoritySet = Readonly<{
 export type OwnerAmendmentGitProfile = 'completed-block-v1' | 'completed-owner-decision-self-v1';
 export type SynchronousGitCommand = (args: string[]) => Buffer;
 export type SynchronousGitBlobReader = (revision: string, path: string) => Buffer;
-export type DeriveOwnerAmendmentGitChangesInput = Readonly<{
-  profile: OwnerAmendmentGitProfile;
+type DeriveOwnerAmendmentGitChangesCommonInput = Readonly<{
   repository: string;
   baseSha: string;
   bSha: string;
   targetPath: string;
-  selectedAuthorityBytes?: unknown;
-  changedFiles?: unknown;
-  authorityChanges?: unknown;
+  selectedAuthorityBytes: unknown;
   runGit: SynchronousGitCommand;
   readBlob: SynchronousGitBlobReader;
 }>;
+export type DeriveOwnerAmendmentGitChangesInput = DeriveOwnerAmendmentGitChangesCommonInput & (
+  | Readonly<{ profile: 'completed-block-v1'; changedFiles?: unknown; authorityChanges?: unknown }>
+  | Readonly<{ profile: 'completed-owner-decision-self-v1'; changedFiles: unknown; authorityChanges: unknown }>
+);
 export type OwnerAmendmentAuthorityMemberInput = Readonly<{
   id: string;
   repository: string;

@@ -12,8 +12,15 @@ const readBlob: SynchronousGitBlobReader = (revision, path) => Buffer.from(`${re
 const changes = deriveOwnerAmendmentGitChanges({
   profile: 'completed-owner-decision-self-v1', repository: 'owner/repo',
   baseSha: 'a'.repeat(40), bSha: 'b'.repeat(40), targetPath: 'docs/architecture.md',
+  selectedAuthorityBytes: Object.freeze({ base: Buffer.from('before'), head: Buffer.from('after') }),
   changedFiles: [{ status: 'modified', path: 'docs/architecture.md' }],
   authorityChanges: [{ path: 'docs/architecture.md', beforeBytes: Buffer.from('before'), afterBytes: Buffer.from('after') }],
+  runGit, readBlob,
+});
+const blockChanges = deriveOwnerAmendmentGitChanges({
+  profile: 'completed-block-v1', repository: 'owner/repo',
+  baseSha: 'a'.repeat(40), bSha: 'b'.repeat(40), targetPath: 'docs/architecture.md',
+  selectedAuthorityBytes: Object.freeze({ base: Buffer.from('before'), head: Buffer.from('after') }),
   runGit, readBlob,
 });
 const changesResult: OwnerAmendmentGitChangesResult = changes;
@@ -33,4 +40,4 @@ const readonlySet = computeOwnerAmendmentResultingAuthoritySet({
   changes: readonlyChanges, repository: 'owner/repo', baseSha: 'a'.repeat(40),
 });
 const priorDigest: string = authoritySet.priorDigest;
-void [observedDiff, observedBytes, priorDigest, readonlySet];
+void [observedDiff, observedBytes, priorDigest, readonlySet, blockChanges];

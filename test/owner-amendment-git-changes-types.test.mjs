@@ -29,11 +29,15 @@ test('Git change contracts require complete inputs, synchronous callbacks, and r
   const diagnostics = diagnosticsFor('negative.mts');
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [
     [2345, 9], [2540, 11], [2540, 13], [2345, 14], [2540, 15], [2322, 16], [2740, 19], [2322, 21], [2740, 22], [2322, 23],
+    [2345, 24], [2345, 25], [2345, 26], [2345, 27],
   ]);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /profile/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /Argument of type '\{\}' is not assignable/);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[3].messageText, '\n'), /members/);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[6].messageText, '\n'), /Promise.*Buffer|Promise.*not assignable/i);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[7].messageText, '\n'), /unsupported.*OwnerAmendmentGitProfile|not assignable/i);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[8].messageText, '\n'), /Promise.*Buffer|Promise.*not assignable/i);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[9].messageText, '\n'), /unknown.*string|string.*unknown|not assignable/i);
+  for (const index of [10, 11]) assert.match(ts.flattenDiagnosticMessageText(diagnostics[index].messageText, '\n'), /selectedAuthorityBytes/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[12].messageText, '\n'), /changedFiles/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[13].messageText, '\n'), /authorityChanges/);
 });
