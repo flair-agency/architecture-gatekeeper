@@ -27,11 +27,12 @@ later evidence and supersedes earlier status statements where they differ. The
 earlier checkpoint used main `9082001396d1edf0c6457d4d72a91a5fd552d514`; the
 previously reviewed candidate was based on
 `b0cf703f24f9a15925868aafcd2fa80d16c016dd`, where PR #435 was already merged.
-GitHub main is now `74aae0d3cc25cd4621c5181af45c80f38517da13` after PR #440
-merged, and this candidate integrates that main through a normal merge. GitHub
-blob reads confirm that the selector and all six selected authority files
-remain byte-identical at main 74aae0d to the previous checkpoint. PR #440 adds
-package type-migration work; this is package development progress, not consumer
+GitHub main is now `da113eedf8b41053f7f0b9eb757e626c04ba3e12` after PR #442
+merged, and this candidate integrates that main through a normal merge. Git
+blob reads confirm the selector and all six selected authority files remain
+byte-identical at main da113ee to the previous checkpoint at 74aae0d. PR #442
+adds TypeScript coverage and implementations for owner-amendment artifact and
+attestation observations. This is package development progress, not consumer
 operation or LIVE route evidence. The authorized legacy v1 repair remains
 shipped in v0.5.1; neither that repair nor this integration selects or activates
 another route.
@@ -103,11 +104,12 @@ LIVE's adopted state has advanced since the initial snapshot:
   cases and hosted verification remain open; no LIVE incident is established.
 - **Package preview scope:** quality PR #435 merged normally as
   `b0cf703f24f9a15925868aafcd2fa80d16c016dd` (reviewed head
-  `8cf722b7ad8c90b3c05859c2119b4073f8c7d2a9`), and PR #440 merged normally as
+  `8cf722b7ad8c90b3c05859c2119b4073f8c7d2a9`), PR #440 merged normally as
   `74aae0d3cc25cd4621c5181af45c80f38517da13` (reviewed head
-  `e7bb5721d865859da29e7f980235bf0a27f94b6e`). Both #435 and #440 are present
-  in this candidate's current base. They are package-quality progress; neither
-  establishes consumer operation or expands Preview.4 adoption or assurance.
+  `e7bb5721d865859da29e7f980235bf0a27f94b6e`), and PR #442 merged normally as
+  `da113eedf8b41053f7f0b9eb757e626c04ba3e12`. All three are present in this
+  candidate's current base. They are package-quality progress; none establishes
+  consumer operation or expands Preview.4 adoption or assurance.
 - **Separate package PR #423:** reviewed head
   `9c7f29557e374ede784cf276191ea65d0733d0f2` remains OPEN and BEHIND, with its
   exact merge approval pending. It has not merged and does not block recording
