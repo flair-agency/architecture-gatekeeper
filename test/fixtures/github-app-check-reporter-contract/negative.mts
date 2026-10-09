@@ -1,0 +1,10 @@
+import type { GitHubAppReporterFetch, GitHubAppReporterResult } from '../../../src/github/github-app-check-reporter.mjs';
+declare const published: GitHubAppReporterResult;
+const assumedId: number = published.id;
+published.headSha = 'changed';
+const badUrl: GitHubAppReporterFetch = (_url: number, _options) => new Response('{}');
+const badJson: GitHubAppReporterFetch = () => ({ ok: true, json: 'not callable' });
+const wrongName = { ...published, name: 'other' };
+const badName: GitHubAppReporterResult = wrongName;
+const assumedSuccess: 'success' = published.conclusion;
+void [assumedId, badUrl, badJson, badName, assumedSuccess];

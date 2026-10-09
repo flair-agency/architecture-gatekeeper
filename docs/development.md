@@ -76,15 +76,14 @@ and unresolved limits. The entrypoint and workflow investigations under
 ## TypeScript source and runtime distribution
 
 The integrated #419 slices type OWNER_ADDITION validation, execution-result
-states, tag and artifact leaves, bounded ZIP extraction, GitHub association/
-CLI helpers, PR/run and live queue context, and self-amendment scope inspection.
-This slice types the GitHub authority source, merge-group event parser, and
-owner-amendment canonical readback under `src/github/*.mts`, retaining flat
-compatibility exports. The
-[96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
+states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
+PR/run and live queue context, self-amendment scope, and amendment canonical
+readback. This slice types OWNER_ADDITION post-merge readback and the self-only
+GitHub App check reporter under `src/github/*.mts`, retaining flat exports.
+The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `5f1f993` has fifteen original modules typed and 81 remaining; this
-candidate has eighteen typed and 78 remaining. Migration is partial and does
+Main `9397854` has eighteen original modules typed and 78 remaining; this
+candidate has twenty typed and 76 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
@@ -152,6 +151,16 @@ its JSON operation; standard fetch and direct shared callback composition are
 compile-tested. Event and readback properties that are reread stay unknown;
 readback describes canonical placement only, separate from eligibility and
 acceptance.
+
+OWNER_ADDITION readback preserves its existing PR/ordered-parent/tree/ancestry/
+authority-byte checks and performs no network I/O. It reports observed placement
+facts for a separate adoption evaluator. Reporter callbacks retain standard
+fetch and synchronous/Promise/thenable JSON responses. External inputs, payloads
+and output metadata reread after validation stay unknown; exact name/repository
+constants and computed digests are typed. Publishing assumes a protected caller
+already validated the result and does not authenticate that precondition.
+Neither result type supplies owner authorization, producer provenance or route
+activation. Focused accessor regressions retain existing observable rereads.
 
 Runtime coverage follows the emitted and executed `dist/**/*.mjs` files. Report
 those exact paths without counting source files as runtime coverage. CodeQL
