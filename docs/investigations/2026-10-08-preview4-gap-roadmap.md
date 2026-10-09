@@ -7,9 +7,9 @@ proof. It supports #405's finite roadmap. #403 may freeze the planning scope
 after independent review of the complete inventory, gap allocation and
 recorded unknowns; actual consumer completion remains a Preview.4 release gate.
 
-**Authority and inventory snapshot at 939 (2026-10-09).** This roadmap records
-the complete selected six-member Set at main commit
-`93978544ca860860a675afa49b2c95cfad9c11eb` (#447): [architecture contract](../architecture.md),
+**Authority baseline at 939; source inventory through 899 (2026-10-09).** This
+roadmap records the complete selected six-member Set at main commit
+`899dcc524cf09772d8c4a050a1f8eb7885948563` (#448): [architecture contract](../architecture.md),
 [Authority Set](../architecture/authority-set.md),
 [owner addition](../architecture/owner-addition.md),
 [owner amendment](../architecture/owner-amendment.md),
@@ -28,23 +28,43 @@ repair as a target pending integration. This is a documentation status update
 for the existing repair, not a new rule; neither wording establishes adoption
 by a consumer or protected host enforcement.
 
-## Integration checkpoint through PR #447 (2026-10-09)
+## Integration checkpoint through PR #448 (2026-10-09)
 
 At this checkpoint GitHub main was
-`93978544ca860860a675afa49b2c95cfad9c11eb` (#447), directly parented by
-`5f1f993f9491e7dab4998e850038c23e1d714677` (#446). PR #447 adds
-typed GitHub authority-source, merge-group-event and canonical-readback
-mechanisms with focused type and behavior tests, while retaining their
-compatibility entry points. These are package source, test and development
-documentation changes; they provide no consumer-operation, host-enforcement,
-adoption or lifecycle evidence and do not satisfy the separate #407–#409
-gates.
+`899dcc524cf09772d8c4a050a1f8eb7885948563` (#448), directly parented by
+`93978544ca860860a675afa49b2c95cfad9c11eb` (#447). PR #447 added typed GitHub
+authority-source, merge-group-event and canonical-readback mechanisms with
+focused type and behavior tests. PR #448 moves the OWNER_ADDITION canonical
+readback adapter and GitHub App check reporter into typed implementations,
+retaining their compatibility entry points, and adds focused type and behavior
+tests. The implementations are [`src/github/github-owner-addition-readback.mts`](../../src/github/github-owner-addition-readback.mts)
+and [`src/github/github-app-check-reporter.mts`](../../src/github/github-app-check-reporter.mts),
+with readback and reporter tests in `test/github-owner-addition-readback-types.test.mjs`,
+`test/github-owner-addition-readback.test.mjs`, `test/github-app-check-reporter-types.test.mjs`
+and `test/github-app-check-reporter.test.mjs`. These are package source, test
+and development-documentation changes;
+they provide no consumer-operation, host-enforcement, adoption or lifecycle
+evidence and do not satisfy the separate #407–#409 gates.
 
 The selector and all six selected authority files have the same Git blob IDs
-at 5f1f993 and 9397854. Thus #447 does not change the selected inputs. Consumer
-and issue observations below—including the ADA observation and the #423 row—
-remain recorded observations and are not refreshed by this source checkpoint.
-This checkpoint asserts no newer consumer or issue statuses.
+at 5f1f993, 9397854 and 899dcc5. Thus #447 and #448 do not change the selected
+inputs. The initial 426fd78 and historical 5f1f993 checkpoints below remain
+historical; the current source-inventory snapshot is 899dcc5. Consumer and
+issue observations below—including the ADA observation and the #423 row—remain
+recorded observations and are not refreshed by this source checkpoint. This
+checkpoint asserts no newer consumer or issue statuses.
+
+## Historical integration checkpoint through PR #447 (2026-10-09)
+
+This section preserves the earlier source checkpoint at main
+`93978544ca860860a675afa49b2c95cfad9c11eb` (#447); it is historical and
+superseded by the #448 checkpoint above. PR #447 added typed GitHub
+authority-source, merge-group-event and canonical-readback mechanisms with
+focused type and behavior tests, while retaining their compatibility entry
+points. These are package source, test and development-documentation changes;
+they provide no consumer-operation, host-enforcement, adoption or lifecycle
+evidence and do not satisfy the separate #407–#409 gates. The selector and all
+six selected authority files are unchanged from #446 through #448.
 
 ## Historical integration checkpoint through PR #446 (2026-10-09)
 
@@ -335,7 +355,7 @@ or green check substitutes for connection or actual proof.
 | **T5 Compatible migration** | No LIVE migration M is currently identified as necessary; D and C have already been adopted. Any future M would need an exact prior-selected predecessor and ordinary `PASS` for that same M. | Narrow initial v1→v2 preview path: [`src/preview-lifecycle.mjs`](../../src/preview-lifecycle.mjs), [`test/preview-migration-initial.test.mjs`](../../test/preview-migration-initial.test.mjs). This is only a mechanism; it does not prove a LIVE migration or select v4. | #405 records no M task absent a demonstrated consumer need and exact predecessor authority. If needed, #407 captures same-M ordinary `PASS`, pre-integration receipt, ordered integration/tree and target ancestry/readback. The API/receipt alone does not authorize M or prove the adopted v4 connection. #408 verifies actual consumer state. |
 | **T6 Incompatible migration** | No incompatible migration is currently identified. If no selector/tuple is read, status is unknown; for a known selected tuple with no prior-authorized bridge, contract result is `UNSUPPORTED`. | Preview implementation explicitly rejects incompatible migration: [`src/preview-lifecycle.mjs`](../../src/preview-lifecycle.mjs), [`test/preview-migration-initial.test.mjs`](../../test/preview-migration-initial.test.mjs). | #405 classify only after exact predecessor review. If incompatible, retain predecessor and defer; a bridge needs owner-authorized canonical contract decision (#406) and a separately scoped #407. No fallback or release allocation. |
 | **T7 First selection** | C completed LIVE's first v4 selection with `ownerAddition v2`. Post-merge v4 caller/runtime connection is still being verified; selection alone does not prove a working or enforced route. | Policy selection mechanism in [`src/resolve-ci-policy.mjs`](../../src/resolve-ci-policy.mjs), workflow path above, [`test/resolve-ci-policy.test.mjs`](../../test/resolve-ci-policy.test.mjs). | #407 verifies the exact v4 post-merge connection and host evidence. Bootstrap is not selected. Do not claim the normal B route is operational or enforced before that evidence and the B trace. |
-| **T8 Adoption before ACTIVE** | C's control configuration is adopted, but no normal B adoption or full lifecycle is established; this roadmap makes no ACTIVE claim. A later ACTIVE claim requires eligible exact B, owner action, valid final G0 adoption record, ordinary integration and canonical readback, plus the production trace, matching fixture and fail-closed negative evidence for the exact selected lifecycle-v1 tuple. These tuple-level support/ACTIVE facts are distinct from normal G0 adoption and fresh-A evidence. | Mechanisms: addition source/test paths in T1; readback adapters [`src/github-owner-addition-readback.mjs`](../../src/github-owner-addition-readback.mjs), [`test/github-owner-addition-readback.test.mjs`](../../test/github-owner-addition-readback.test.mjs). Source tests are not LIVE host readback or proof that a fixture matches the selected tuple. | #405 records the exact tuple and maps its evidence obligations; #407 maps the selected mechanisms to a matching fixture and fail-closed negatives; #408 captures the actual LIVE production trace alongside normal B, readback, authorized full canonical G0 record building/validation and fresh review of original A. The evaluator subset alone cannot complete normal G0 adoption; stop its operation if the full-record builder/validator or required adoption facts are unavailable. #409 reviews any support/ACTIVE claim against the exact tuple evidence. Separately, withhold lifecycle support, ACTIVE and full-lifecycle claims until the exact-tuple production trace, matching fixture and fail-closed negative evidence are complete. |
+| **T8 Adoption before ACTIVE** | C's control configuration is adopted, but no normal B adoption or full lifecycle is established; this roadmap makes no ACTIVE claim. A later ACTIVE claim requires eligible exact B, owner action, valid final G0 adoption record, ordinary integration and canonical readback, plus the production trace, matching fixture and fail-closed negative evidence for the exact selected lifecycle-v1 tuple. These tuple-level support/ACTIVE facts are distinct from normal G0 adoption and fresh-A evidence. | Mechanisms: addition source/test paths in T1; typed OWNER_ADDITION readback [`src/github/github-owner-addition-readback.mts`](../../src/github/github-owner-addition-readback.mts) and its compatibility entry point [`src/github-owner-addition-readback.mjs`](../../src/github-owner-addition-readback.mjs), with focused type and behavior tests [`test/github-owner-addition-readback-types.test.mjs`](../../test/github-owner-addition-readback-types.test.mjs), [`test/github-owner-addition-readback.test.mjs`](../../test/github-owner-addition-readback.test.mjs). Source tests are not LIVE host readback or proof that a fixture matches the selected tuple. | #405 records the exact tuple and maps its evidence obligations; #407 maps the selected mechanisms to a matching fixture and fail-closed negatives; #408 captures the actual LIVE production trace alongside normal B, readback, authorized full canonical G0 record building/validation and fresh review of original A. The evaluator subset alone cannot complete normal G0 adoption; stop its operation if the full-record builder/validator or required adoption facts are unavailable. #409 reviews any support/ACTIVE claim against the exact tuple evidence. Separately, withhold lifecycle support, ACTIVE and full-lifecycle claims until the exact-tuple production trace, matching fixture and fail-closed negative evidence are complete. |
 | **T9 Later profile-fresh use** | No validated final adoption record, fresh review of original A or resumed-work trace after a normal LIVE B exists; the normal B has not been completed. | Preview fresh review: `prepareFreshPreviewReview` in [`src/preview-lifecycle.mjs`](../../src/preview-lifecycle.mjs), [`test/preview-lifecycle.test.mjs`](../../test/preview-lifecycle.test.mjs). Ordinary CI review is in the consumer workflow above. | #408 requires the authorized full-record builder/validator to validate every canonical G0 identity first (evaluator-only validity is insufficient), then includes fresh review of the original A against current bindings and a separate resumed pending-work observation. #409 handles permitted recovery with regenerated dependent evidence. No fallback on stale evidence or service failure. |
 
 ### T2 route-family dispositions
@@ -378,7 +398,7 @@ guard is treated as satisfied by missing files, package APIs or test fixtures.
 | **B3** Independent exact-scope governance | Bootstrap is not selected. Consumer approval and adoption are recorded for D's setup exception and C's normal controls; no bootstrap authorization is selected. | No shared mechanism can self-authorize. | Keep bootstrap out of scope. #406 remains open for the tracked owner responsibility; completed D approval is not authority for a separate bootstrap route. |
 | **B4** Bind candidate, paths, operations, actors and lineage | Bootstrap not selected; D/C identities and control adoption are recorded, while the later normal B candidate and operation bindings remain unproven. | v4 procedure bindings in `src/owner-addition-ci.mjs`; preview bindings in `src/preview-lifecycle.mjs`. | #405 records the selected D/C and exact missing B facts; #408 records the actual B trace if completed. Do not infer lineage reset or guard satisfaction. |
 | **B5** Verify preparation, limits, inputs, producer and host | Bootstrap not selected; C readback verified the same eight authorities, but the exact v4 post-merge connection and required host source/bypass/order remain unverified. | `src/authority-set.mjs`, `src/prepare-authority-set.mjs`, `src/owner-addition-ci.mjs`. | #407 verifies the exact selected connection/host gap; #408 captures actual operation evidence. Source does not satisfy B5. |
-| **B6** First-operation target/policy/caller readback | Bootstrap not selected. D/C readbacks exist; the first normal B operation and its target/policy/caller readback have not occurred. | [`src/github-owner-addition-readback.mjs`](../../src/github-owner-addition-readback.mjs), [`test/github-owner-addition-readback.test.mjs`](../../test/github-owner-addition-readback.test.mjs). | #407/#408 verify exact target, policy and caller connection for normal B. Tests do not prove LIVE configuration or B6. |
+| **B6** First-operation target/policy/caller readback | Bootstrap not selected. D/C readbacks exist; the first normal B operation and its target/policy/caller readback have not occurred. | Typed OWNER_ADDITION readback [`src/github/github-owner-addition-readback.mts`](../../src/github/github-owner-addition-readback.mts) and compatibility entry point [`src/github-owner-addition-readback.mjs`](../../src/github-owner-addition-readback.mjs); focused type and behavior tests [`test/github-owner-addition-readback-types.test.mjs`](../../test/github-owner-addition-readback-types.test.mjs), [`test/github-owner-addition-readback.test.mjs`](../../test/github-owner-addition-readback.test.mjs). | #407/#408 verify exact target, policy and caller connection for normal B. Tests do not prove LIVE configuration or B6. |
 | **B7** Consume lineage authorization | No bootstrap authorization is selected or proposed. | Preview receipt integrity is not external authorization consumption. | Not applicable to current normal-route plan. If a bootstrap tuple is separately selected, assess under its exact authorizing contract. |
 | **B8** Later normal adoption/readback before ACTIVE | Bootstrap not selected; normal B integration/readback and ordinary T8 remain separate conditions for any ACTIVE claim. | See T8 mechanisms above. | #408 supplies actual B integration/readback and fresh-A proof if the route is adopted. No bootstrap or ACTIVE claim. |
 
