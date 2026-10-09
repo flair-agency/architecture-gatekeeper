@@ -343,7 +343,7 @@ requirement.
 
 ```mermaid
 flowchart LR
-  D[D initial setup exception LIVE #145] --> C[C control adoption LIVE #147; v4 G0 ownerAddition v2]
+  D0[D initial setup exception LIVE #145] --> C[C control adoption LIVE #147; v4 G0 ownerAddition v2]
   C --> A[Review original Change A when selected API is available]
   A -->|PASS| P[Ordinary required validation, report and acceptance]
   A -->|BLOCK or incomplete| S[Preserve result; resolve or wait for actual cause]
@@ -359,8 +359,8 @@ flowchart LR
   G --> F[Fresh ordinary review of original A after actual B adoption]
   F -->|PASS| P
   F -->|BLOCK, OWNER_DECISION or incomplete| S
-  P --> D[Integrate private-document update and read back after required acceptance]
-  D --> W[Observe identified next private cleanup advance]
+  P --> D1[Integrate private-document update and read back after required acceptance]
+  D1 --> W[Observe identified next private cleanup advance]
   X[Historical administrator exception] -. separate, not success proof .-> T
 ```
 
