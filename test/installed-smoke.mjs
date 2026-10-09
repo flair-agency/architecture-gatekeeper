@@ -144,12 +144,15 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   const apiTests = join(root, 'api-tests');
   mkdirSync(apiTests);
   symlinkSync(packageNodeModules, join(root, 'node_modules'), 'dir');
+  mkdirSync(join(apiTests, 'fixtures'));
+  copyFileSync(new URL('./fixtures/preview-lifecycle-runtime.mjs', import.meta.url), join(apiTests, 'fixtures/preview-lifecycle-runtime.mjs'));
   copyFileSync(new URL('./preview-lifecycle.test.mjs', import.meta.url), join(apiTests, 'preview-lifecycle.test.mjs'));
+  copyFileSync(new URL('./preview-runtime-identity.test.mjs', import.meta.url), join(apiTests, 'preview-runtime-identity.test.mjs'));
   copyFileSync(new URL('./preview-amendment-block.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-block.test.mjs'));
   copyFileSync(new URL('./preview-addition.test.mjs', import.meta.url), join(apiTests, 'preview-addition.test.mjs'));
   copyFileSync(new URL('./preview-amendment-owner.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-owner.test.mjs'));
   copyFileSync(new URL('./preview-migration-initial.test.mjs', import.meta.url), join(apiTests, 'preview-migration-initial.test.mjs'));
-  execFileSync(process.execPath, ['--test', join(apiTests, 'preview-lifecycle.test.mjs'), join(apiTests, 'preview-amendment-block.test.mjs'), join(apiTests, 'preview-addition.test.mjs'), join(apiTests, 'preview-amendment-owner.test.mjs'), join(apiTests, 'preview-migration-initial.test.mjs')], {
+  execFileSync(process.execPath, ['--test', join(apiTests, 'preview-lifecycle.test.mjs'), join(apiTests, 'preview-runtime-identity.test.mjs'), join(apiTests, 'preview-amendment-block.test.mjs'), join(apiTests, 'preview-addition.test.mjs'), join(apiTests, 'preview-amendment-owner.test.mjs'), join(apiTests, 'preview-migration-initial.test.mjs')], {
     cwd: root, timeout: 120000, stdio: 'pipe',
   });
 } finally {
