@@ -100,3 +100,29 @@ test('rejects target branch movement during canonical readback', async () => {
   };
   await assert.rejects(verifyGitHubOwnerAmendmentReadback(f.input), /target ref moved/);
 });
+
+
+test('keeps the final tree property reread unknown without treating it as a validated stable SHA', async () => {
+  const f = setup();
+  const url = `${root}/git/commits/${f.mergeSha}`;
+  const merge = f.responses.get(url);
+  const serialized = JSON.stringify(merge);
+  const laterTree = { observed: 'later tree value' };
+  let treeReads = 0;
+  Object.defineProperty(merge.tree, 'sha', { get() {
+    return ++treeReads <= 2 ? oid('a') : laterTree;
+  } });
+  const originalFetch = f.input.fetchImpl;
+  f.input.fetchImpl = async (requestUrl, options) => {
+    if (requestUrl !== url) return originalFetch(requestUrl, options);
+    // Keep the immutable authority-source stream ordinary JSON; expose the
+    // accessor only to the original readback metadata JSON operation.
+    const response = new Response(serialized, { status: 200 });
+    response.json = async () => merge;
+    return response;
+  };
+  const observed = await verifyGitHubOwnerAmendmentReadback(f.input);
+  assert.equal(observed.status, 'VERIFIED_OWNER_AMENDMENT_CANONICAL_READBACK');
+  assert.equal(observed.treeSha, laterTree);
+  assert.equal(treeReads, 3);
+});

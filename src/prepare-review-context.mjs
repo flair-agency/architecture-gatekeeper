@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { lstatSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
@@ -150,6 +151,7 @@ export function prepareReviewContext(input) {
   writeFileSync(outputPath, result.bytes, { flag: 'wx', mode: 0o600 });
   if ((lstatSync(outputPath).mode & 0o777) !== 0o600) fail('final prompt permissions are not private.');
   return { maxPromptBytes: result.maxPromptBytes, finalPromptBytes: result.bytes.length,
+    expandedPromptSha256: createHash('sha256').update(result.bytes).digest('hex'),
     contextBytes: result.contextBytes, changedPaths: result.changedPathList.length };
 }
 
