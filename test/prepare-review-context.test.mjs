@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -77,7 +78,21 @@ test('appends exact base-to-reviewed-merge context across divergent history', t 
   assert.match(readFileSync(join(context.root, 'target-only.md'), 'utf8'), /target line retained/);
   assert.doesNotMatch(JSON.stringify(data), /must not be review scope/);
   assert.equal(result.finalPromptBytes, Buffer.byteLength(prompt));
+  const promptBytes = readFileSync(context.outputPath);
+  assert.equal(result.expandedPromptSha256, createHash('sha256').update(promptBytes).digest('hex'));
+  assert.match(result.expandedPromptSha256, /^[a-f0-9]{64}$/);
+  assert.notEqual(result.expandedPromptSha256,
+    createHash('sha256').update(readFileSync(context.promptPath)).digest('hex'));
   assert.ok(result.finalPromptBytes <= result.maxPromptBytes);
+
+  const repeatedOutputPath = join(context.runnerTemp, 'repeated-final-prompt.md');
+  const repeatedResult = prepareReviewContext({ ...context.input, outputPath: repeatedOutputPath });
+  assert.equal(repeatedResult.expandedPromptSha256, result.expandedPromptSha256);
+
+  const changedContextOutputPath = join(context.runnerTemp, 'changed-context-final-prompt.md');
+  const changedContextResult = prepareReviewContext({ ...context.input, outputPath: changedContextOutputPath,
+    repository: 'example/other-consumer' });
+  assert.notEqual(changedContextResult.expandedPromptSha256, result.expandedPromptSha256);
 });
 
 test('protected CLI derives its prompt and output from runner-temp fixed names', t => {
