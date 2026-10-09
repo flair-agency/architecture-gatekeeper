@@ -1,0 +1,14 @@
+import type { OwnerAmendmentArtifactFetch, OwnerAmendmentArtifactResult } from '../../../src/owner-amendment/owner-amendment-artifact.mjs';
+import type { OwnerAmendmentArtifactDiscoveryResult } from '../../../src/owner-amendment/owner-amendment-artifact-discovery.mjs';
+const wrongUrl: OwnerAmendmentArtifactFetch = (url: number) => ({ ok: true, json: () => url });
+const wrongJson: OwnerAmendmentArtifactFetch = () => ({ ok: true, json: 2 });
+const staleIncomplete = { status: 'INCOMPLETE', reason: 'failed', artifactName: 'stale' } as const;
+const fetchedIncomplete: OwnerAmendmentArtifactResult = staleIncomplete;
+const discoveryIncomplete: OwnerAmendmentArtifactDiscoveryResult = { status: 'INCOMPLETE', reason: 'failed', expiresAt: 'stale' };
+declare const fetched: OwnerAmendmentArtifactResult;
+declare const discovered: OwnerAmendmentArtifactDiscoveryResult;
+const fetchedName: string = fetched.status === 'INCOMPLETE' ? '' : fetched.artifactName;
+const fetchedDigest: string = fetched.status === 'INCOMPLETE' ? '' : fetched.artifactDigest;
+const fetchedSha: string = fetched.status === 'INCOMPLETE' ? '' : fetched.baseSha;
+const discoveredExpiry: string = discovered.status === 'INCOMPLETE' ? '' : discovered.expiresAt;
+void [wrongUrl, wrongJson, staleIncomplete, fetchedIncomplete, discoveryIncomplete, fetchedName, fetchedDigest, fetchedSha, discoveredExpiry];

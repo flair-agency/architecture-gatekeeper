@@ -75,16 +75,16 @@ and unresolved limits. The entrypoint and workflow investigations under
 
 ## TypeScript source and runtime distribution
 
-The #419 slices type the shared OWNER_ADDITION validation leaf at
-`src/owner-addition/owner-addition-validation.mts` and execution-result states at
-`src/ci-execution/ci-execution-result.mts`, plus tag-readback callbacks at
-`src/owner-amendment/owner-amendment-tag-readback.mts`. The next slice types
-`owner-amendment-tag-api`, `owner-amendment-tag-attempt` and
-`owner-amendment-semantic-tag-object` in that owner-amendment folder. The
-[96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
-retains the grouping inventory, runtime limits and #423 preview-lifecycle
-boundary; 90 original modules remain unconverted. TypeScript migration is
-partial and does not change consumer architecture or assurance policy.
+The integrated #419 slices type OWNER_ADDITION validation, execution-result
+states, tag readback, tag API/attempts, semantic tag parsing, artifact
+discovery/fetching and attestation inspection. This slice moves bounded ZIP
+extraction into `src/owner-amendment/*.mts` and repository association/CLI
+runner helpers into `src/github/*.mts`, retaining their flat compatibility
+exports. The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
+retains the inventory, runtime limits and #423 preview-lifecycle boundary.
+Main `da113ee` has nine original modules typed and 87 remaining; this candidate
+has twelve typed and 84 remaining. Migration is partial and does not change
+consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, and `checkJs: false`.
@@ -134,7 +134,15 @@ final absence check narrows the result after its existing re-read. Reader
 callbacks accept synchronous values, Promises and thenables. Parsing a tag
 envelope checks its existing key/profile bindings and decodes bounded evidence
 bytes; unchecked envelope fields remain unknown and do not establish semantic
-eligibility. Other callback contracts remain with their owning modules.
+eligibility. Artifact discovery and fetching preserve exact-attempt metadata, pagination,
+compressed-byte limits and digest checks. Their result types distinguish
+successful observations from incomplete observations without artifact bytes or
+identity fields; repeatedly read external fields remain unknown. Attestation
+inspection assumes verified CLI output and trusted expectations; it does not
+establish those preconditions. The synchronous CLI invocation leaves returned
+output unknown until its existing JSON parsing and inspection. Its type does
+not exclude asynchronous callbacks, which still fail as malformed output at
+runtime. Other callback contracts remain with their owning modules.
 
 Runtime coverage follows the emitted and executed `dist/**/*.mjs` files. Report
 those exact paths without counting source files as runtime coverage. CodeQL

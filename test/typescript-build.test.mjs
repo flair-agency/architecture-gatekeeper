@@ -45,8 +45,14 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   cpSync(join(root, 'src/owner-amendment/owner-amendment-tag-readback.mts'), join(fixtureRoot, 'src/owner-amendment/owner-amendment-tag-readback.mts'));
   cpSync(join(root, 'src/owner-amendment-tag-readback.mjs'), join(fixtureRoot, 'src/owner-amendment-tag-readback.mjs'));
   for (const module of ['owner-amendment-tag-api', 'owner-amendment-tag-attempt',
-    'owner-amendment-semantic-tag-object']) {
+    'owner-amendment-semantic-tag-object', 'owner-amendment-artifact',
+    'owner-amendment-artifact-discovery', 'owner-amendment-attestation', 'owner-amendment-artifact-zip']) {
     cpSync(join(root, `src/owner-amendment/${module}.mts`), join(fixtureRoot, `src/owner-amendment/${module}.mts`));
+    cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
+  }
+  mkdirSync(join(fixtureRoot, 'src/github'), { recursive: true });
+  for (const module of ['github-associated-repository', 'github-cli-runner']) {
+    cpSync(join(root, `src/github/${module}.mts`), join(fixtureRoot, `src/github/${module}.mts`));
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
   }
   for (const module of ['runner-temp-path', 'github-runner-env', 'resolve-ci-policy', 'authority-set']) {
@@ -65,15 +71,27 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'authority-set.mjs',
     'ci-execution-result.mjs',
     'ci-execution/ci-execution-result.mjs',
+    'github-associated-repository.mjs',
+    'github-cli-runner.mjs',
     'github-runner-env.mjs',
+    'github/github-associated-repository.mjs',
+    'github/github-cli-runner.mjs',
     'legacy.mjs',
     'owner-addition-validation.mjs',
     'owner-addition/owner-addition-validation.mjs',
     'owner-addition/peer.mjs',
+    'owner-amendment-artifact-discovery.mjs',
+    'owner-amendment-artifact-zip.mjs',
+    'owner-amendment-artifact.mjs',
+    'owner-amendment-attestation.mjs',
     'owner-amendment-semantic-tag-object.mjs',
     'owner-amendment-tag-api.mjs',
     'owner-amendment-tag-attempt.mjs',
     'owner-amendment-tag-readback.mjs',
+    'owner-amendment/owner-amendment-artifact-discovery.mjs',
+    'owner-amendment/owner-amendment-artifact-zip.mjs',
+    'owner-amendment/owner-amendment-artifact.mjs',
+    'owner-amendment/owner-amendment-attestation.mjs',
     'owner-amendment/owner-amendment-semantic-tag-object.mjs',
     'owner-amendment/owner-amendment-tag-api.mjs',
     'owner-amendment/owner-amendment-tag-attempt.mjs',
