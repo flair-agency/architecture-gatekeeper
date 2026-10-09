@@ -584,7 +584,8 @@ export async function observePreviewLifecycle(receipt, integrationSha, cwd = rec
   const raw = Buffer.from(rawReceiptBytes);
   if (!raw.length || raw.length > 4_194_304) fail('completed raw receipt exceeds 4 MiB.');
   const rawText = utf8(raw); rejectDuplicateJsonKeys(rawText, 'completed receipt', { maxDepth: 64 });
-  if (hash(JSON.parse(rawText)) !== hash(receipt)) fail('raw receipt bytes differ from completed receipt.');
+  JSON.parse(rawText);
+  if (!raw.equals(previewReceiptBytes(receipt))) fail('raw receipt bytes differ from completed receipt.');
   const receiptSha256 = digest(raw);
   const { root, spec } = receipt.request;
   revision(root, integrationSha);

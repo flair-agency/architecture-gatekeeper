@@ -1132,8 +1132,11 @@ After validating the completed receipt, integrate the exact M using the
 supported normal merge form: recorded base first parent, exact M second parent,
 and M's tree as the result. Include exactly one
 `AGK-Preview-Receipt-v1: sha256:<digest>` trailer over the receipt's exact raw
-bytes. `observePreviewLifecycle` verifies that binding and exact target
-readback before `prepareFreshPreviewReview` can prepare a separate successor A.
+bytes. The observer requires those bytes to equal `previewReceiptBytes(receipt)`
+byte-for-byte; whitespace, key-order or other parsed-equivalent JSON
+reserializations do not match. `observePreviewLifecycle` verifies that binding
+and exact target readback before `prepareFreshPreviewReview` can prepare a
+separate successor A.
 Later migrations, incompatible authority bridges, changed/omitted authority,
 changed review settings, and trusted-route activation remain unsupported.
 This procedure reports only observed placement and Git facts; producer,

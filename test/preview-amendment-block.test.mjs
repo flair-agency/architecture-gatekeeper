@@ -122,8 +122,25 @@ test('receipt trailer, merge parent order/tree and target readback are exact', a
   await assert.rejects(observePreviewLifecycle(receipt, wrongTrailerMerge, f.root), /trailer/);
   git(f.root, 'switch', '-c', 'reset-main-to-base', f.base);
   git(f.root, 'branch', '-f', 'main', f.base);
+  const canonicalBytes = previewReceiptBytes(receipt);
+  const reserialized = [
+    Buffer.from(JSON.stringify(receipt, null, 2)),
+    Buffer.from(JSON.stringify(Object.fromEntries(Object.entries(receipt).reverse()))),
+    Buffer.from(canonicalBytes.toString('utf8').replace('"version":1', '"version":1e0')),
+  ];
+  for (const raw of reserialized) {
+    assert.deepEqual(JSON.parse(raw.toString('utf8')), receipt, 'fixture changes serialization while preserving parsed JSON');
+    await assert.rejects(observePreviewLifecycle(receipt, wrongTrailerMerge, f.root, raw), /raw receipt bytes differ/);
+  }
+  const matchingReserialization = reserialized[0];
+  const matchingSubstituteTrailer = integrate(f, b.bHead, receipt, `sha256:${sha(matchingReserialization)}`);
+  await assert.rejects(observePreviewLifecycle(receipt, matchingSubstituteTrailer, f.root, matchingReserialization), /raw receipt bytes differ/);
+  git(f.root, 'switch', '-c', 'reset-main-to-base-again', f.base);
+  git(f.root, 'branch', '-f', 'main', f.base);
   const good = integrate(f, b.bHead, receipt);
-  const raw = Buffer.from(previewReceiptBytes(receipt)); raw[5] ^= 1;
+  const exactBytesFinal = await observePreviewLifecycle(receipt, good, f.root, Buffer.from(canonicalBytes));
+  assert.equal(exactBytesFinal.receiptSha256, sha(canonicalBytes));
+  const raw = Buffer.from(canonicalBytes); raw[5] ^= 1;
   await assert.rejects(observePreviewLifecycle(receipt, good, f.root, raw), /raw receipt bytes differ/);
   const changed = commitOn(f, 'changed-readback', { [files[0]]: 'Post-integration alteration\n' }, good);
   git(f.root, 'branch', '-f', 'main', changed);
