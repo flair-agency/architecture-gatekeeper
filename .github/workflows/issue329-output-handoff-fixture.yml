@@ -1,0 +1,84 @@
+name: Issue 329 synthetic job-output handoff fixture
+
+on:
+  push:
+    branches:
+      - codex/issue329-output-handoff-fixture
+    paths:
+      - .github/workflows/issue329-output-handoff-fixture.yml
+
+permissions: {}
+
+jobs:
+  produce:
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/codex/issue329-output-handoff-fixture'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      final_message: ${{ steps.synthetic.outputs.final_message }}
+      control: ${{ steps.synthetic.outputs.control }}
+    steps:
+      - name: Generate and mask a synthetic marker, then write shaped step outputs
+        id: synthetic
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+
+          const marker = `AGK-ISSUE329-SYNTHETIC-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`;
+          const finalMessage = JSON.stringify({
+            decision: 'PASS',
+            summary: 'Synthetic output-handoff fixture only.',
+            findings: [],
+            fixture_marker: marker,
+          });
+          const control = JSON.stringify({ fixture_control: 'unmasked-control-v1' });
+          console.log(`::add-mask::${marker}`);
+          appendFileSync(process.env.GITHUB_OUTPUT, `final_message=${finalMessage}\ncontrol=${control}\n`);
+          NODE
+      - name: Confirm same-job step output parses and retains the synthetic marker
+        timeout-minutes: 1
+        env:
+          FINAL_MESSAGE: ${{ steps.synthetic.outputs.final_message }}
+          CONTROL: ${{ steps.synthetic.outputs.control }}
+          EXPECTED_MARKER: AGK-ISSUE329-SYNTHETIC-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          node --input-type=module <<'NODE'
+          const message = JSON.parse(process.env.FINAL_MESSAGE);
+          const control = JSON.parse(process.env.CONTROL);
+          if (message.decision !== 'PASS' || !Array.isArray(message.findings) ||
+              message.fixture_marker !== process.env.EXPECTED_MARKER ||
+              control.fixture_control !== 'unmasked-control-v1') {
+            throw new Error('Same-job synthetic step-output parse or forwarding control failed.');
+          }
+          console.log('Same-job synthetic JSON parsed; masked marker and unmasked control are present.');
+          NODE
+
+  inspect-handoff:
+    if: always() && github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/codex/issue329-output-handoff-fixture'
+    needs: produce
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require masked full output to be dropped and unmasked control to arrive
+        timeout-minutes: 1
+        env:
+          PRODUCER_RESULT: ${{ needs.produce.result }}
+          FINAL_MESSAGE: ${{ needs.produce.outputs.final_message }}
+          CONTROL: ${{ needs.produce.outputs.control }}
+        run: |
+          node --input-type=module <<'NODE'
+          if (process.env.PRODUCER_RESULT !== 'success') {
+            throw new Error(`Producer job did not complete its in-job checks: ${process.env.PRODUCER_RESULT}`);
+          }
+          if (process.env.FINAL_MESSAGE !== '') {
+            throw new Error('Expected the runner to suppress the masked job output, but it was present.');
+          }
+          const control = JSON.parse(process.env.CONTROL);
+          if (control.fixture_control !== 'unmasked-control-v1') {
+            throw new Error('Unmasked control job output was missing or malformed.');
+          }
+          console.log('Observed expected split: valid same-job value; masked full job output absent; unmasked control forwarded.');
+          NODE
