@@ -20,24 +20,48 @@ catalogue merged in #411 is a traceability aid, not authority or proof
 ([catalogue](2026-10-08-preview4-lifecycle-clause-catalogue.md)). Source and
 test references below identify mechanisms at the stated revision only.
 
-## Current checkpoint (2026-10-09)
+## Latest integration checkpoint (current base 5f1f993, 2026-10-09)
 
-The original roadmap below remains a dated baseline; this checkpoint records
-later evidence and supersedes earlier status statements where they differ. The
-earlier checkpoint used main `9082001396d1edf0c6457d4d72a91a5fd552d514`; the
-previously reviewed candidate was based on
-`b0cf703f24f9a15925868aafcd2fa80d16c016dd`, where PR #435 was already merged.
-GitHub main is now `da113eedf8b41053f7f0b9eb757e626c04ba3e12` after PR #442
-merged, and this candidate integrates that main through a normal merge. Git
-blob reads confirm the selector and all six selected authority files remain
-byte-identical at main da113ee to the previous checkpoint at 74aae0d. PR #442
-adds TypeScript coverage and implementations for owner-amendment artifact and
-attestation observations. This is package development progress, not consumer
-operation or LIVE route evidence. The authorized legacy v1 repair remains
-shipped in v0.5.1; neither that repair nor this integration selects or activates
-another route.
+At this roadmap refresh, GitHub main is
+`5f1f993f9491e7dab4998e850038c23e1d714677` (#446). Its direct parent is
+`2bd5ca7480b91aabbfcecf08301d9c0fcda57165` (#444), whose parent is
+`da113eedf8b41053f7f0b9eb757e626c04ba3e12` (#442). These immutable commit
+links establish that the current base includes both #444 and #446 after the
+historical #442 checkpoint below.
 
-The compared Git blob IDs (`9082001` / current `74aae0d`) are:
+Between da113ee and 5f1f993, the source and tests add bounded artifact-ZIP and
+GitHub helper leaves (#444), then move amendment PR/run context and self-scope
+inspection into TypeScript with focused tests (#446). The compatibility runtime
+entry points remain in place; documentation also updates the source map and
+development guide. These are package source and test changes. They provide no
+new LIVE consumer-operation, host-enforcement, adoption, or lifecycle evidence
+and do not satisfy the separate #407–#409 gates.
+
+The selector and six selected authority files have the same Git blob IDs at
+da113ee and the current base 5f1f993. The source checkpoint does not change
+those selected inputs. Consumer and issue observations below—including the ADA
+observation and the #423 row—are retained as recorded evidence and are not
+refreshed here. This checkpoint asserts no newer consumer or issue statuses.
+
+## Historical checkpoint through PR #442 (2026-10-09)
+
+This section preserves the roadmap's earlier checkpoint at main
+`da113eedf8b41053f7f0b9eb757e626c04ba3e12`, after #442. Its status statements
+describe that observation point and are not a current consumer-state inventory
+for base 5f1f993. The preceding checkpoint used main
+`9082001396d1edf0c6457d4d72a91a5fd552d514`; the then-reviewed candidate was
+based on `b0cf703f24f9a15925868aafcd2fa80d16c016dd`, where PR #435 was already
+merged. At the #442 checkpoint, this candidate integrated da113ee through a
+normal merge. Git blob reads showed the selector and six selected authority
+files byte-identical between da113ee and the prior comparison endpoint
+74aae0d. PR #442 added TypeScript coverage and implementations for
+owner-amendment artifact and attestation observations. This was package
+development progress, not consumer operation or LIVE route evidence. The
+authorized legacy v1 repair was shipped in v0.5.1; neither that repair nor the
+#442 integration selected or activated another route.
+
+The compared Git blob IDs at those historical endpoints (`9082001` and
+`74aae0d`, not current main) are:
 
 | Selected member | Blob ID |
 |---|---|
@@ -49,7 +73,8 @@ The compared Git blob IDs (`9082001` / current `74aae0d`) are:
 | `docs/architecture/self-profile.md` | `24b2c0bb864fe828e38bc6ace8567726a1dbbf73` |
 | `.codex/gatekeeper/authorities.json` | `0e44628e533c52df787cd58bbe9d140e8b5a1b7a` |
 
-LIVE's adopted state has advanced since the initial snapshot:
+At the #442 checkpoint, LIVE's adopted state had advanced since the initial
+snapshot:
 
 - **D / LIVE #145:** the consumer-approved initial external setup exception
   completed and merged as `b730befa4779d6c2a653a60b11b53832975f4e27`, with
@@ -63,11 +88,12 @@ LIVE's adopted state has advanced since the initial snapshot:
   required CI checks, Code Security and independent review. Security Review
   was optional, not a required check. C selects the enforced v4
   `OWNER_ADDITION / G0` route with `ownerAddition v2`. The retained local v1
-  and older-schema split stays pinned to runtime `3f71fece`; the local schema
-  bytes match the predecessor. This C owner choice remains adopted and is not
-  reopened by the separate evidence-transport gap below. It does not establish
-  a normal B or a completed T1 lifecycle. [Public evidence](https://github.com/flair-agency/architecture-gatekeeper/issues/407#issuecomment-6051350994).
-- **Still open for LIVE:** actual B execution, #139 adoption, fresh A,
+  and older-schema split stayed pinned to runtime `3f71fece`; the local schema
+  bytes matched the predecessor. This C owner choice was reported as adopted
+  at that checkpoint and was not reopened by the separate evidence-transport
+  gap below. It did not establish a normal B or a completed T1 lifecycle.
+  [Public evidence](https://github.com/flair-agency/architecture-gatekeeper/issues/407#issuecomment-6051350994).
+- **Recorded as still open for LIVE at that checkpoint:** actual B execution, #139 adoption, fresh A,
   post-merge v4 connection verification (#407), host-enforcement proof for
   check source, bypass and transition ordering, ordinary-result evidence
   observability through the selected source, and a finite operational trace
@@ -78,13 +104,14 @@ LIVE's adopted state has advanced since the initial snapshot:
   `private=true`; the checking identity reports `admin=true`. This is evidence
   of a plan/visibility capability limit, not proof that protection is absent
   or that caller permission alone caused the 403. No plan upgrade or visibility
-  change has been selected. Host enforcement remains unknown. Issues #405,
-  #406 and #407 remain open; this checkpoint does not itself freeze scope,
+  change had been selected. Host enforcement remained unknown. Issues #405,
+  #406 and #407 were reported open; this checkpoint did not itself freeze scope,
   complete the release gate, or change the date.
-- **Separate ADA operational observation:** ADA PR #83 merged normally at
+- **Separate ADA operational observation recorded at that time:** ADA PR #83 merged normally at
   `f582d0a7abbb14770b112ce290e5650b91b83826` after changing its local/native
   review tooling and CI reusable-workflow pin to published Preview.3. The
-  merged current main still points to `3f71fece350c3b5004cc81a7cb2253569a91e6b5`.
+  ADA main at the recorded observation pointed to
+  `3f71fece350c3b5004cc81a7cb2253569a91e6b5`.
   The PR's own checks ran under its predecessor base selection; the consumer's
   open [issue #7](https://github.com/flair-agency/architecture-decision-authoring/issues/7)
   tracks an eligible later PR to observe the merged Preview.3 pin. This is real
@@ -92,7 +119,7 @@ LIVE's adopted state has advanced since the initial snapshot:
   A→B→canonical→fresh-A trace. No ADA lifecycle B or selected lifecycle
   predecessor is identified here, so do not force LIVE's T1 route onto ADA or
   invent another ADA task. [PR #83](https://github.com/flair-agency/architecture-decision-authoring/pull/83)
-  and the current [ADA main](https://github.com/flair-agency/architecture-decision-authoring/commit/f582d0a7abbb14770b112ce290e5650b91b83826)
+  and the recorded [ADA main](https://github.com/flair-agency/architecture-decision-authoring/commit/f582d0a7abbb14770b112ce290e5650b91b83826)
   are the observed sources.
 - **Separate runner-output finding:** PR #432 and run
   [37721924693](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/37721924693)
@@ -338,7 +365,7 @@ guard is treated as satisfied by missing files, package APIs or test fixtures.
 | [#407](https://github.com/flair-agency/architecture-gatekeeper/issues/407) | Package/host integration workstream role under coordinator. | Exact authority, selector, runtime and caller; host required-check source/bypass/order; #432 output inventory and secret boundary; for the exact selected tuple, map the selected mechanism to a matching fixture and fail-closed negative evidence; assess existing authorized sources and identify/verify a permitted consumer-owned full-record builder/validator for every canonical identity required by selected v4. The public evaluator covers only a subset. If a required fact is demonstrably unavailable and needs a shared producer or custody change, prepare a separate versioned owner-authorized proposal. | No universal preview route implementation or all-route fixture gate. A shared connection or data-custody extension requires separate versioned owner authorization. Plan/visibility 403 is not solved by assuming additional caller permission. Security Review is optional, not a required check. |
 | [#408](https://github.com/flair-agency/architecture-gatekeeper/issues/408) | LIVE operator and consumer-owner action workstream, coordinated by #408 role. | Steps 1–10 above, #407 connection/host and selected-source evidence verification, original A identity, a separately owner-identified authority-only B, normal B procedure, readback, authorized full canonical G0 record building/validation, fresh review of original A, separate actual resumed-work observation, and actual LIVE production trace for the exact selected tuple tied to #407's matching fixture and fail-closed negatives. | Do not claim normal B adoption, ACTIVE, full lifecycle or consumer value until the applicable trace and adoption evidence are complete. |
 | [#409](https://github.com/flair-agency/architecture-gatekeeper/issues/409) | Release/recovery coordinator role; consumer owner for consumer actions. | Step 11 above, observed interruption or completed #408 proof, regenerated current evidence, installed compatibility/recovery checks, approved release plan, and review of any support/ACTIVE claim against the exact tuple's production trace, matching fixture and fail-closed negative evidence. | No automatic recovery or publishing. Withhold any support/ACTIVE claim if exact-tuple evidence is incomplete. Hold/reforecast if the target date arrives before evidence; do not infer a date or scope change now. |
-| [#423](https://github.com/flair-agency/architecture-gatekeeper/pull/423) | PR author/maintainer; separate from #405–#408. | Current head `9c7f29557e374ede784cf276191ea65d0733d0f2` is OPEN against base `d288bb64ee4916c207d378b1695cca0491f49223`, behind current main; exact merge approval is a separate gate. | Do not count it as merged or completed evidence. Its prompt/input-binding fix remains separate until approved and integrated. |
+| [#423](https://github.com/flair-agency/architecture-gatekeeper/pull/423) | PR author/maintainer; separate from #405–#408. | Historical snapshot recorded here: head `9c7f29557e374ede784cf276191ea65d0733d0f2` was OPEN against base `d288bb64ee4916c207d378b1695cca0491f49223` and behind the then-current main; exact merge approval was a separate gate. This status has not been refreshed by the source checkpoint above. | Do not count that recorded snapshot as merged or completed evidence. Its prompt/input-binding fix was separate until approved and integrated; this roadmap makes no newer #423 status claim. |
 
 ## Non-goals and limits
 
