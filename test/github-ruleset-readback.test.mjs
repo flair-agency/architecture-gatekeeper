@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync, mkdirSync, chmodSync,
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { produceRulesetReadback, readLocalRulesetReadback, rulesetStorageDirectory } from '../src/github-ruleset-readback.mjs';
+import { produceRulesetReadback, readLocalRulesetReadback, rulesetStorageDirectory } from '../dist/github-ruleset-readback.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const namespace = 'refs/tags/architecture-gatekeeper/amendments';
@@ -73,7 +73,7 @@ test('workflow App key exists only in isolated readback step; ordinary handoff r
     const source = readFileSync(new URL(`../.github/workflows/owner-amendment-${name}-handoff.yml`, import.meta.url), 'utf8');
     const [before, handoff] = source.split('      - name: Verify');
     assert.match(before, /environment: github-ruleset-readback/);
-    assert.match(before, /env -u GH_TOKEN -u GITHUB_TOKEN node src\/github-ruleset-readback-cli.mjs/);
+    assert.match(before, /env -u GH_TOKEN -u GITHUB_TOKEN node dist\/github-ruleset-readback-cli.mjs/);
     assert.match(before, /RULESET_READBACK_PRIVATE_KEY: \$\{\{ secrets.RULESET_READBACK_PRIVATE_KEY \}\}/);
     assert.doesNotMatch(handoff, /RULESET_READBACK_PRIVATE_KEY|RULESET_READBACK_APP_ID|RULESET_READBACK_INSTALLATION_ID/);
     assert.match(handoff, /GH_TOKEN: \$\{\{ github.token \}\}/);

@@ -6,8 +6,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { assertProceduralV5Acceptance } from '../src/ci-procedural-acceptance.mjs';
-import { changedSelectedAuthorityPaths } from '../src/ci-procedural-authority-change.mjs';
+import { parseWorkflow } from './helpers/workflow-structure.mjs';
+import { assertProceduralV5Acceptance } from '../dist/ci-procedural-acceptance.mjs';
+import { changedSelectedAuthorityPaths } from '../dist/ci-procedural-authority-change.mjs';
 
 const sourceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -76,9 +77,11 @@ test('v5 accepts PASS only without selected-authority changes and keeps OWNER_AD
 
 test('reusable workflow wires protected-base authority comparison to the procedural accept job only', () => {
   const workflow = readFileSync(join(sourceRoot, '.github/workflows/architecture-gate.yml'), 'utf8');
+  const parsed = parseWorkflow(workflow, 'architecture-gate.yml');
   assert.match(workflow, /selected_authority_changed: \$\{\{ steps\.selected-authority-change\.outputs\.changed \}\}/);
   assert.match(workflow, /if: needs\.policy\.outputs\.mode == 'procedural'\n        id: selected-authority-change/);
-  assert.match(workflow, /node \.architecture-gatekeeper-validation-runtime\/src\/ci-procedural-authority-change\.mjs/);
-  assert.match(workflow, /node \.architecture-gatekeeper-runtime\/src\/ci-procedural-acceptance\.mjs/);
+  const authorityChange = parsed.jobs.review.steps.find(step => step.name === 'Detect candidate changes to the selected Authority Set');
+  assert.equal(authorityChange.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-procedural-authority-change.mjs"');
+  assert.match(workflow, /node \.architecture-gatekeeper-runtime\/dist\/ci-procedural-acceptance\.mjs/);
   assert.match(workflow, /if: needs\.policy\.outputs\.mode == 'procedural' \|\| needs\.policy\.outputs\.mode == 'enforced'\n        uses: actions\/checkout@v5\n        with:\n          repository: \$\{\{ job\.workflow_repository \}\}\n          ref: \$\{\{ job\.workflow_sha \}\}/);
 });

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -135,6 +135,23 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   if (multiProvenance.version !== 2 || multiProvenance.members.length !== 2) throw new Error('installed multi-document materialization omitted authority');
   execFileSync(process.execPath, [join(installedSrc, 'validate-authority-set-decision.mjs'), join(multiOutput, 'authority-provenance.json')],
     { cwd: root, input: JSON.stringify({ decision: 'PASS', authorityIds: ['architecture', 'large-authority'], authoritySetDigest: multiProvenance.setDigest }) });
+  // Run the existing ordinary semantic fixture against the installed public
+  // subpath, with Node resolving the package from this isolated consumer.
+  const packageNodeModules = join(process.cwd(), 'node_modules');
+  if (realpathSync(installedBin) !== realpathSync(join(packageNodeModules, '.bin'))) {
+    throw new Error('installed smoke must run from the installation prefix');
+  }
+  const apiTests = join(root, 'api-tests');
+  mkdirSync(apiTests);
+  symlinkSync(packageNodeModules, join(root, 'node_modules'), 'dir');
+  copyFileSync(new URL('./preview-lifecycle.test.mjs', import.meta.url), join(apiTests, 'preview-lifecycle.test.mjs'));
+  copyFileSync(new URL('./preview-amendment-block.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-block.test.mjs'));
+  copyFileSync(new URL('./preview-addition.test.mjs', import.meta.url), join(apiTests, 'preview-addition.test.mjs'));
+  copyFileSync(new URL('./preview-amendment-owner.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-owner.test.mjs'));
+  copyFileSync(new URL('./preview-migration-initial.test.mjs', import.meta.url), join(apiTests, 'preview-migration-initial.test.mjs'));
+  execFileSync(process.execPath, ['--test', join(apiTests, 'preview-lifecycle.test.mjs'), join(apiTests, 'preview-amendment-block.test.mjs'), join(apiTests, 'preview-addition.test.mjs'), join(apiTests, 'preview-amendment-owner.test.mjs'), join(apiTests, 'preview-migration-initial.test.mjs')], {
+    cwd: root, timeout: 120000, stdio: 'pipe',
+  });
 } finally {
   rmSync(parent, { recursive: true, force: true });
 }

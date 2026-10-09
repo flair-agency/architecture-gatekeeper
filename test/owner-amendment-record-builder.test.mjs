@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { buildOwnerAmendmentRecord } from '../src/owner-amendment-record-builder.mjs';
+import { buildOwnerAmendmentRecord } from '../dist/owner-amendment-record-builder.mjs';
 
 const baseSha = 'a'.repeat(40);
 const bSha = 'b'.repeat(40);

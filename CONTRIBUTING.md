@@ -26,7 +26,11 @@ The repository requires Node.js 22 or newer.
 1. Fork the repository and create a focused branch from `main`.
 2. Keep each pull request to one reviewable outcome.
 3. Add or update focused tests for behavior changes.
-4. Run `npm test`.
+4. Run `npm ci --ignore-scripts`, `npm run build`, `npm run check:typescript`,
+   `node scripts/check-source-cycles.mjs`, and `npm test`. For workflow changes,
+   use `node --test test/workflow-structure.test.mjs` for focused feedback.
+   Follow the [risk-based verification guidance](docs/development.md#risk-based-verification)
+   when reusing validators or changing production entrypoints.
 5. Update the README or other public documentation when integration or
    operational behavior changes.
 6. Open a pull request that explains the outcome, affected boundaries and the

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { orchestrateOwnerAmendmentBlockHandoff } from '../src/owner-amendment-block-handoff-orchestrator.mjs';
+import { orchestrateOwnerAmendmentBlockHandoff } from '../dist/owner-amendment-block-handoff-orchestrator.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const baseSha = 'a'.repeat(40), bSha = 'b'.repeat(40), aSha = 'c'.repeat(40);

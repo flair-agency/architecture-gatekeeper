@@ -8,7 +8,7 @@ import { createGitHubAuthoritySource } from './github-authority-source.mjs';
 import { decodeLimits } from './prepare-authority-set.mjs';
 import { validateAuthorityReviewSchema } from './preflight-authority-set-review.mjs';
 import { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema,
-  validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema } from './owner-addition-ci.mjs';
+  validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema } from './owner-addition-validation.mjs';
 import { validateMultiAuthorityAdditionG0Procedure } from './owner-decision-addition.mjs';
 import { assertSameMultiAuthorityProvenance, multiAuthorityProvenance,
   validateMultiAuthorityDecision, validateMultiAuthorityProvenance } from './multi-authority-provenance.mjs';

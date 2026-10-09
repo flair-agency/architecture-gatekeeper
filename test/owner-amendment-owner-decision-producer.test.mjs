@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { produceOwnerAmendmentOwnerDecision } from '../scripts/owner-amendment-owner-decision-producer.mjs';
-import { handoffOwnerAmendmentOwnerDecision } from '../src/owner-amendment-owner-decision-handoff.mjs';
-import { verifyOwnerAmendmentOwnerDecisionContext } from '../src/owner-amendment-owner-decision-context-verifier.mjs';
+import { handoffOwnerAmendmentOwnerDecision } from '../dist/owner-amendment-owner-decision-handoff.mjs';
+import { verifyOwnerAmendmentOwnerDecisionContext } from '../dist/owner-amendment-owner-decision-context-verifier.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const baseSha = 'a'.repeat(40), headSha = 'b'.repeat(40), mergeSha = 'c'.repeat(40);

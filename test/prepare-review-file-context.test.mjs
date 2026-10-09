@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { prepareReviewFileContext } from '../src/prepare-review-file-context.mjs';
+import { prepareReviewFileContext } from '../dist/prepare-review-file-context.mjs';
 
 const limits = { maxFiles: 16, maxFileBytes: 4096, maxTotalBytes: 20_000 };
 const git = (root, ...args) => execFileSync('git', ['--no-replace-objects', ...args], { cwd: root, encoding: 'utf8', env: {

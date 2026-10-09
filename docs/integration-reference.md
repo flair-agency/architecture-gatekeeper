@@ -21,6 +21,135 @@ The consumer owns its architecture and policy; this package supplies review
 mechanics. For plan limits and this repository's host setup, see
 [GitHub assurance](github-assurance.md).
 
+## Manual review
+
+This walkthrough creates a small consumer repository, installs the exact
+published runtime, commits every review input, and runs one local review. It
+uses the Codex provider selected by the sample settings. The CLI evaluates the
+task you supply against the committed authority; it does not automatically
+review an uncommitted working-tree diff. Describe the proposed change clearly
+in the task or include a concise diff summary.
+
+Before starting, use Node.js 22 or later and Git. Authenticate npm to GitHub
+Packages with `read:packages` outside the project, and sign in to the local
+Codex CLI with `codex login`; configure a Git author identity so the consumer
+inputs can be committed. Do not put a package token in the repository.
+The package entrypoint below is pinned to `0.6.0-preview.3`.
+
+Create the complete consumer input set and package lock:
+
+```sh
+set -eu
+mkdir -p architecture-review-demo/.codex/gatekeeper architecture-review-demo/docs
+cd architecture-review-demo
+git init -b main
+npm init --yes
+npm pkg set private=true --json
+npm pkg set type=module
+
+cat > docs/architecture.md <<'EOF'
+# Demo consumer architecture
+
+The API layer validates each request before storage. The storage layer persists
+validated records. The consumer repository owns this architecture.
+EOF
+
+cat > .codex/gatekeeper/config.json <<'EOF'
+{
+  "version": 1,
+  "authorityFiles": ["docs/architecture.md"],
+  "promptPath": ".codex/gatekeeper/prompt.md",
+  "schemaPath": ".codex/gatekeeper/decision.schema.json",
+  "reviewerConfigPath": ".codex/gatekeeper/reviewer.config.json",
+  "requiredReportedAuthorityFiles": ["docs/architecture.md"],
+  "requiredPassArrays": ["reviewedScope"],
+  "reviewTimeoutMs": 180000
+}
+EOF
+
+cat > .codex/gatekeeper/prompt.md <<'EOF'
+Review the proposed change only against the committed consumer architecture
+included in the request. Return PASS if it follows that design, BLOCK if it
+conflicts with an existing rule, or OWNER_DECISION if the architecture does not
+decide the question. Report docs/architecture.md in authorityFiles and briefly
+describe the reviewed scope. Do not implement changes.
+EOF
+
+cat > .codex/gatekeeper/decision.schema.json <<'EOF'
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "summary", "authorityFiles", "reviewedScope"],
+  "properties": {
+    "decision": { "enum": ["PASS", "BLOCK", "OWNER_DECISION"] },
+    "summary": { "type": "string", "minLength": 1 },
+    "authorityFiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "reviewedScope": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}
+EOF
+
+cat > .codex/gatekeeper/reviewer.config.json <<'EOF'
+{
+  "model": "gpt-6.1-sol",
+  "reasoningEffort": "low"
+}
+EOF
+
+cat > .gitignore <<'EOF'
+node_modules/
+EOF
+
+npm install --package-lock-only --save-exact @flair-agency/architecture-gatekeeper@0.6.0-preview.3 --registry=https://npm.pkg.github.com
+git add package.json package-lock.json docs/architecture.md .codex/gatekeeper .gitignore
+git commit -m "Add consumer architecture review inputs"
+npm ci
+git status --short
+```
+
+The status command should print no paths. The config, prompt, schema, reviewer
+settings, authority document and exact package pin are committed before the
+review starts. Run the installed CLI with a specific proposed decision:
+
+```sh
+./node_modules/.bin/architecture-review \
+  "For the proposed API change, should request validation stay in the API layer before storage persistence?"
+```
+
+The CLI prints a schema-validated JSON decision, the reported authority and
+scope, and `reviewedRevision`. That field must equal `git rev-parse HEAD` from
+the consumer repository. The process exits 0 for a schema-valid `PASS`,
+`BLOCK`, or `OWNER_DECISION`; these are semantic review outcomes, not acceptance.
+`PASS` means the described proposal fits this
+sample authority; `BLOCK` means it conflicts with a stated rule;
+`OWNER_DECISION` means the authority leaves that question open. The result is
+review evidence only and does not authorize implementation or repository
+acceptance. The semantic result depends on the actual proposal and consumer
+authority; the sample is not a test oracle.
+
+For other local provider settings, the terminal adapter follows the committed
+reviewer configuration: Codex uses child `codex exec`, while Gemini uses the
+asynchronous API transport without starting Codex. Both consume the committed
+configuration, prompt, schema, reviewer settings and authority files. This
+terminal route is separate from the Codex-hosted Skill and does not reuse Hook
+input, prior Hook context or CI policy. See [local execution composition](#local-reviewer-execution-composition)
+and [reviewer host permissions](reviewer-host-permissions.md) for provider
+boundaries.
+
+If authentication, configuration, authority files or reviewer execution fail,
+the command exits 2 without a valid decision. Resolve that input or host failure
+and rerun against the intended committed revision. A timeout or malformed
+response is incomplete review, not `PASS`. For CI and acceptance responsibilities,
+continue to [CI integration](#ci-integration); for escalation and recovery, see
+[owner intervention](owner-intervention.md).
+
 Consumers may also own an optional decision-validation policy. The output
 schema uses the following fail-closed subset of the JSON Schema constructs
 accepted by OpenAI Structured Outputs: `$schema`, `description`, `$defs`, local
@@ -43,57 +172,13 @@ When an authority is inside a Git submodule, the local runtime reads it from the
 parent revision's pinned gitlink. It never fetches a missing component;
 unavailable pinned objects fail closed.
 
+<a id="adopt-the-protected-selection-before-relying-on-the-new-gate"></a>
+
 ## Upgrading legacy v1 consumers
 
-Check the installed package version and the caller's immutable workflow pin
-before choosing an upgrade procedure. A consumer still on 0.5.0 is not a
-0.5.1-compatible consumer merely because a newer package is installed locally.
-The 0.5.1 legacy v1 repair intentionally rejects enforced policies that lack
-base-selected authority and instruction paths.
-
-The ordinary reusable `architecture-gate-consumer.yml` needs `contents: read` and
-`pull-requests: write` from its caller. It contains no self-only OIDC or
-attestation signer. This repository's existing `architecture-gate.yml`
-retains those signing jobs and its attestation signer identity; ordinary consumers must not add `id-token: write`
-or `attestations: write` to work around a self-only permission requirement.
-This source change does not modify the already published 0.6.0-preview.1;
-consume it only through a separately verified corrected release and exact pin.
-
-### Adopt the protected selection before relying on the new gate
-
-1. Inventory the existing consumer-owned canonical authority files, CI prompt,
-   decision schema and optional validation file at the recorded base. Check
-   the proposed selectors against those exact bytes; copying this repository's
-   policy is not consumer adoption.
-2. Prepare explicit v1 `authorityFiles`, `promptPath`, `schemaPath`, and
-   `validationPath` (`null` if no additional validation is selected). Keep
-   the existing model, effort and authority meaning. The caller must use
-   protected review instructions and select the matching `validation-path`
-   (empty when the recorded selection is `null`).
-3. Check whether the previous consumer policy already authorizes an adoption
-   process that can make this selection and its base-owned caller canonical.
-   An owner must authorize the exact adoption under that consumer's governance;
-   package installation, a PR comment, and this runbook do not grant that power.
-4. If the old resolver rejects the new fields and the new resolver rejects the
-   old base, stop the normal upgrade PR at this adoption boundary. There is no
-   automatic bridge in this implementation, and this procedure authorizes no
-   administrative bypass or exception. The consumer owner must identify an
-   adoption process already permitted by its canonical governance and record
-   the exact authorized scope and failed/incomplete Gate result. If no such
-   process exists, the owner must settle that governance decision before
-   proceeding. Do not temporarily drop the
-   required check, enable an unselected owner route, infer selectors from the
-   candidate, or convert the failure to PASS.
-5. After actual adoption, read back the target branch and exact authority,
-   policy and caller identities. Refresh the upgrade PR against that base and
-   run the new gate. Verify least-privilege startup, protected snapshots,
-   decision validation and required acceptance on the exact refreshed head.
-   Local/native preparation alone is not successful CI acceptance.
-
-Update package/lockfile and any used Skill/workflow pins consistently with the
-selected corrected release. Preserve unsuccessful runs as history and report
-consumer adoption and host enforcement separately. This procedure enables no
-OWNER_AMENDMENT, App, merge queue, Environment migration or new owner route.
+The operator procedure now lives in [Owner intervention](owner-intervention.md#legacy-v1-consumer-upgrade).
+This reference retains the old heading and subsection fragments for links from
+release and consumer documentation.
 
 ## Local integration
 
@@ -109,10 +194,12 @@ runHookCli();
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
 inputs. See `examples/config.json`. Package resolution is local and fixed: the
 launcher imports its already installed exact package version and must not use
-`npx` or another registry fallback. The Hook adapter invokes an installed
-`codex` binary with hooks disabled and a read-only sandbox.
-See [reviewer host permissions](reviewer-host-permissions.md) for the
-child-process authorization boundary.
+`npx` or another registry fallback. The Hook adapter selects the provider from
+committed reviewer settings. Codex uses an installed `codex` binary with hooks
+disabled and a read-only sandbox; Gemini uses its asynchronous API adapter and
+does not inherit the Codex child-process sandbox. See [local execution
+composition](#local-reviewer-execution-composition) and [reviewer host
+permissions](reviewer-host-permissions.md) for the provider-specific boundary.
 When `validationPath` is configured, the local and manual review paths apply
 that committed policy after structured generation and fail closed on a rule
 violation or malformed policy.
@@ -211,31 +298,8 @@ deduplicated. Read Hook context in the active turn or a later user turn; an
 idle session does not wake to deliver it. Treat all results as after-the-fact
 development feedback and check the revision, request, and snapshot identities
 before relating them to a candidate. The actual ordinary-checkout CLI loop is
-recorded in the [dogfood investigation](investigations/2026-10-01-local-screening-adapter-dogfood.md).
+recorded in the [dogfood investigation](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-01-local-screening-adapter-dogfood.md).
 Linked-worktree discovery remains unresolved in [Issue #250](https://github.com/flair-agency/architecture-gatekeeper/issues/250); it does not block an ordinary-checkout trial.
-
-## Manual review
-
-After installing a fixed package version, invoke the package-owned entrypoint
-with the architecture question or proposed change:
-
-```sh
-architecture-review 'Should this responsibility move from Runtime to the Provider?'
-```
-
-The task may instead be supplied on standard input. This standalone terminal
-adapter selects the provider from committed reviewer settings: Codex uses child
-`codex exec`, while Gemini uses the asynchronous API transport without starting
-Codex. It is separate from the Codex-hosted Skill. Provider configuration is
-specified in [local execution composition](#local-reviewer-execution-composition).
-The Codex child host boundary is described in
-[reviewer host permissions](reviewer-host-permissions.md).
-The command uses the same
-committed consumer-owned configuration, prompt, schema, reviewer settings and
-authority files as the local gate. It emits the structured `PASS`, `BLOCK` or
-`OWNER_DECISION` result with the reviewed Git revision. It does not reuse Hook
-input, prior Hook context or CI policy, and it does not turn a decision into
-repository acceptance or implementation authority.
 
 ## Codex Skill installation
 
@@ -311,6 +375,29 @@ credential-bearing dependency under the
 The migration retires the temporary Flair fork and its additional lifecycle
 controls; it does not establish that hosted hangs are fixed. `local-only`
 records an explicit waiver and makes no OpenAI API call.
+
+On the protected Authority Set and legacy v1 consumer routes, the reviewer
+receives the exact event base/head revisions, verified merge revision and the
+base-to-merge committed diff as untrusted task data. Untracked helper checkouts
+are excluded from that diff. The complete prompt, including task data, must fit
+the selected limit; missing revisions, mismatched merge parents or excess bytes
+leave review incomplete. These parent checks validate GitHub's synthetic review
+checkout against the recorded event tuple; they do not restrict the eventual PR
+merge strategy or prove canonical transition or host enforcement. A stale or
+mismatched checkout requires a fresh review run. Other compatibility routes are
+unchanged.
+
+When the pinned Action supplies them, the reviewer job emits bounded numeric
+Codex usage and tool counts to its Actions log, including on the ordinary
+review path. It does not publish raw Codex JSONL, per-request API cost, or proof
+of the provider's effective service tier; missing or malformed usage remains
+unavailable for cost attribution.
+
+#### Self-review credential migration
+
+This repository-only procedure now lives in [GitHub assurance](github-assurance.md#self-review-credential-migration).
+It describes self-review Environment credential selection; ordinary consumers
+are unaffected.
 
 ### Gemini CI Review Runner
 
@@ -531,7 +618,7 @@ jobs on each review. This reduces repeated work and adopts upstream dependency
 trust; it does not preserve the previous source/bundle verification claim.
 Review jobs retain policy dependencies and credential isolation. A revision
 update remains a reviewed workflow change. Git history retains the retired fork manifests. The
-[Issue #45 trust investigation](investigations/2026-09-23-codex-action-integrity-trust-design.md)
+[Issue #45 trust investigation](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-09-23-codex-action-integrity-trust-design.md)
 documents the retired mechanism, not active authorization.
 
 To enforce consumer-owned cross-field invariants in CI, pass
@@ -740,8 +827,12 @@ native preparation read one recorded commit, require exact `authorityIds`,
 and report set digest and member provenance. The complete local prompt must
 fit its limit. An external member leaves local review incomplete; it cannot
 fall back or use a source token. Version 1 public request/review APIs remain.
-Working-tree content is evidence, not authority. Native self-review fails
-closed after its 180-second deadline.
+Working-tree content is evidence, not authority. The native Skill prepare
+command reports the configured `reviewTimeoutMs`, but the package does not
+enforce a hard wall-clock limit on a host-native reviewer. Host cancellation or
+other time bounds are environment-specific; physical termination is not
+verified. See the [Codex Skill installation and execution boundary](#codex-skill-installation)
+and the [review execution contract](architecture/review-execution.md#local-and-manual-review).
 
 Lifecycle-workaround adoption evidence and repeat dogfood results are tracked
 in [architecture-gatekeeper issue #15](https://github.com/flair-agency/architecture-gatekeeper/issues/15).
@@ -884,3 +975,297 @@ separate work tracked by #210. This slice does not establish full amendment
 adoption, queue acceptance, host enforcement, or preview activation. #326 tracks
 future reduction of GitHub write privilege required for readback; it does not
 relax the current fail-closed restriction checks.
+
+## Unverified preview lifecycle API
+
+The `preview-unverified-procedure-v1` package surface implements ordinary review
+(`mode: "review"`), a completed-`BLOCK` amendment (`mode: "amendment"`),
+missing-decision addition (`mode: "addition"`), existing-choice amendment
+(`mode: "amendment"` with predecessor-selected
+`amendmentTriggerProfile: "completed-owner-decision-v1"`), and one initial
+compatible legacy v1-to-v1/v2 control-plane migration (`mode: "migration"`).
+It resolves the committed
+selection and all review inputs from the exact predecessor, materializes the
+entire selected Authority Set, and creates a request using the unchanged
+predecessor semantic schema and validators. Preparation reads Git objects and
+returns model/reasoning settings with the request; it does not contact a model
+or use credentials.
+
+Commit this version-1 selection at `.codex/gatekeeper/preview-lifecycle.json`
+before the reviewed change. Its policy, prompt, schema, validator and caller must
+match the predecessor's model-backed Codex policy; governance and `authorityPaths`
+must belong to its complete Authority Set. `authorityPaths` and `migrationPaths`
+remain required compatibility fields. For review and B routes, `migrationPaths`
+is inert. The initial migration alone requires it to name exactly the selection
+file, `.codex/gatekeeper/ci-policy.json`, and
+`.github/workflows/architecture-gate.yml`.
+The selected eligibility schema and validator are used for B routes. A
+completed-`BLOCK` amendment additionally requires the predecessor to select
+`amendmentTriggerProfile: "completed-block-v1"`; existing-choice amendment
+requires `completed-owner-decision-v1`.
+
+```json
+{
+  "version": 1,
+  "profile": "preview-unverified-procedure-v1",
+  "repository": "example/consumer",
+  "targetBranch": "main",
+  "governancePath": "docs/governance.md",
+  "authorization": "Owner selected ordinary unverified review preview",
+  "policyPath": ".codex/gatekeeper/ci-policy.json",
+  "promptPath": ".codex/gatekeeper/ci-prompt.md",
+  "schemaPath": ".codex/gatekeeper/decision.schema.json",
+  "validationPath": null,
+  "eligibilitySchemaPath": ".codex/gatekeeper/preview-eligibility.schema.json",
+  "eligibilityValidationPath": null,
+  "amendmentTriggerProfile": "completed-block-v1",
+  "callerPath": ".github/workflows/architecture-gate.yml",
+  "authorityPaths": ["docs/architecture.md"],
+  "migrationPaths": [".codex/gatekeeper/ci-policy.json"],
+  "maxPromptBytes": 524288
+}
+```
+
+```json
+{
+  "version": 1,
+  "repository": "example/consumer",
+  "targetBranch": "main",
+  "baseSha": "<exact predecessor commit>",
+  "headSha": "<exact proposed review commit>",
+  "mode": "review",
+  "selectionPath": ".codex/gatekeeper/preview-lifecycle.json",
+  "trigger": null,
+  "record": null
+}
+```
+
+Run from the consumer repository and pass its root explicitly to the API calls.
+Preparation reads committed inputs only; it does not call a model or use
+credentials. The caller is responsible for obtaining an actual review response
+through its selected review-only process.
+
+```js
+import {
+  preparePreviewLifecycle,
+  completePreviewLifecycle,
+} from '@flair-agency/architecture-gatekeeper/preview-lifecycle';
+
+const root = process.cwd();
+const request = await preparePreviewLifecycle(spec, root);
+// Send request.prompt and request.schema to the selected review-only reviewer.
+const receipt = await completePreviewLifecycle(request, actualResponse, root);
+```
+
+Send the emitted prompt and response schema to a review-only reviewer using the
+recorded `reviewer.model` and `reviewer.reasoningEffort`, then pass its actual
+structured response to `completePreviewLifecycle`. Completion rechecks the exact
+committed inputs, predecessor decision schema, full selected authority IDs or
+paths, and every selected deterministic validator. Ordinary completion accepts
+`PASS`, `BLOCK` or `OWNER_DECISION`; unresolved owner choices remain escalations.
+
+The initial migration is available only when the exact predecessor has an
+enforced legacy v1 policy and a compatible preview selection already recorded
+under predecessor governance. That selection must bind the exact repository
+and target, governance and authority scope, migration control-plane paths, and
+the v1 policy and instruction inputs. The selected policy snapshot binds the
+reviewer settings. The candidate must retain the recorded selection
+byte-for-byte; it cannot replace or expand that authorization. The predecessor
+must not select a trusted
+acceptance route, and the authority inputs must be compatible and self-owned.
+The migration retains the legacy ceiling of 16 authority members and the
+legacy per-file, total-authority and prompt bounds.
+The v1-to-v2 conversion supports only a local-only default, exactly one named
+enforced target, and unchanged local-only settings on any other named branches.
+It cannot introduce an enforced default or convert multiple named enforced
+branches; a same-version v1 migration does not use this conversion limit.
+Prepare M with
+`mode: "migration"`, `trigger: null`, and `record: null`, using the exact old
+and proposed commits. M must receive `PASS` under the predecessor's unchanged
+prompt, schema, validator, reviewer settings and complete Authority Set. The
+same predecessor semantics retain a schema-valid `BLOCK` or `OWNER_DECISION`
+as an `INELIGIBLE` completed receipt, including a rejection that reports missing
+predecessor authorization. Such a receipt preserves the result for validation
+and history; it cannot be integrated or used as a B trigger. Only an authorized
+`PASS` makes M eligible for integration.
+For the initial v1-to-v2 conversion, M checks a narrow B-core projection: the
+successor B schema must be a simple top-level object requiring self-contained
+`decision` and `authorityIds` properties, the decision schema must admit both
+`ELIGIBLE` and `INELIGIBLE`, and the IDs property must admit the exact successor
+IDs. Core schema forms outside this bounded grammar, including references,
+composition, and core-field constraints that cannot be checked from the known
+decision and IDs, are unsupported. A B validator may require an exact known ID
+at a fixed `/authorityIds/<index>` path or require the same decision value
+under a known `decision` condition. Other authority-field rules and
+unknown-condition rules on core fields are unsupported. These checks do not
+establish that arbitrary B-only schema or validator requirements are
+satisfiable. M never supplies B-only values; the full selected schema and
+validator run against the actual B response. A schema that requires legacy
+`authorityFiles` is unsupported. Separately, M's proposed successor ID view
+must validate against both the unchanged predecessor schema and validator;
+closed predecessor schemas may use paths-only or IDs-only alternatives. The
+stored M response remains unchanged.
+
+Digest-bearing schemas and validators are unsupported for initial v1-to-v2
+migration, as are digest-bearing M `PASS` decisions. A digest-bearing `BLOCK`
+or `OWNER_DECISION` can still be retained as an ineligible historical receipt
+when it validates under the predecessor inputs. The successor set digest binds
+the candidate revision; after integration, the set digest binds the different
+integration revision. The migration cannot predict or substitute that later
+digest. A fresh ordinary review after integration uses the materialized
+successor set and its actual digest.
+The proposed policy/configuration and successor selection are untrusted M inputs;
+they may change only the selected control-plane paths. The successor must
+preserve every predecessor-selected authority member in the same order with
+identical raw bytes, preserve reviewer settings and limits, and not select a
+trusted acceptance route. The successor selects an explicit B eligibility
+schema and validator. The migration receipt is ordinary M evidence marked
+`ELIGIBLE` only for the later migration procedure; it is not B eligibility.
+
+After validating the completed receipt, integrate the exact M using the
+supported normal merge form: recorded base first parent, exact M second parent,
+and M's tree as the result. Include exactly one
+`AGK-Preview-Receipt-v1: sha256:<digest>` trailer over the receipt's exact raw
+bytes. `observePreviewLifecycle` verifies that binding and exact target
+readback before `prepareFreshPreviewReview` can prepare a separate successor A.
+Later migrations, incompatible authority bridges, changed/omitted authority,
+changed review settings, and trusted-route activation remain unsupported.
+This procedure reports only observed placement and Git facts; producer,
+execution, owner, custody, policy-protection and host-enforcement assurances
+remain `UNVERIFIED`.
+
+The M request uses the same exported lifecycle API; its mode does not itself
+authorize or apply the proposed policy:
+
+```js
+const migrationSpec = {
+  version: 1,
+  repository: 'example/consumer',
+  targetBranch: 'main',
+  baseSha: '<exact legacy-v1 predecessor commit>',
+  headSha: '<exact proposed migration commit M>',
+  mode: 'migration',
+  selectionPath: '.codex/gatekeeper/preview-lifecycle.json',
+  trigger: null,
+  record: null,
+};
+const request = await preparePreviewLifecycle(migrationSpec, root);
+// Obtain the actual predecessor-schema review response, then:
+const receipt = await completePreviewLifecycle(request, actualResponse, root);
+```
+
+Only a completed ordinary `BLOCK` receipt can trigger the selected amendment
+route. Build a B spec with `mode: "amendment"`, the completed receipt as
+`trigger`, and the exact externally recorded amendment record as `record`.
+Preparation rejects other trigger outcomes and profiles, and scopes B to selected
+authority paths. Send its prompt and eligibility schema to the recorded reviewer
+and complete it with the actual response; only `ELIGIBLE` may proceed to
+`observePreviewLifecycle`. Observation verifies the exact receipt trailer, normal
+merge parents and tree, and canonical readback. `prepareFreshPreviewReview`
+requires a new A based on the observed successor. These APIs validate records;
+they do not integrate changes or contact a reviewer.
+
+A missing-decision addition is triggered only by a completed ordinary
+`OWNER_DECISION` that carries a nonempty `ownerDecisionId`. Build a B spec with
+`mode: "addition"`, that receipt as `trigger`, and an external
+`preview-addition-record` whose target is the exact same ID. The B change must
+append only the missing decision to selected authority, preserving all existing
+authority bytes; replacement, deletion, unrelated or mixed-scope changes are
+rejected or ineligible. Complete the request with the selected eligibility
+schema and validator. Only `ELIGIBLE` may proceed through the same observation
+and fresh-review APIs described above.
+
+An existing-choice amendment requires a completed ordinary `OWNER_DECISION`
+and the predecessor-selected `completed-owner-decision-v1` profile. Its
+external `preview-amendment-record` names the existing target decision. The
+trigger must require an owner choice to change an existing decision; a missing,
+mixed, insufficient or unrelated trigger is ineligible. The record identifies
+a proposed target and is not authenticated owner approval. B must materially
+resolve only that target while preserving unrelated decisions and rules. An
+`ownerDecisionId` is required only if the unchanged predecessor schema requires
+one. Complete with the selected eligibility schema and validator; only
+`ELIGIBLE` may proceed through observation and a fresh successor review.
+
+The receipt remains `adoption=PENDING` and `canonical=PENDING`; all producer,
+execution, owner, custody, policy-protection and host-enforcement assurances are
+`UNVERIFIED`. It is not trusted acceptance evidence. This package surface exposes
+`preparePreviewLifecycle`, `completePreviewLifecycle`, `validatePreviewReceipt`,
+`observePreviewLifecycle`, `prepareFreshPreviewReview` and `previewReceiptBytes`
+from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
+
+Preparation rejects other unsupported modes, and receipt revalidation repeats
+the route checks so unsupported receipts cannot be treated as supported
+results. No consumer should infer route support from inert selection
+declarations.
+
+### Preview support and recovery status
+
+The published [`0.6.0-preview.3` release](https://github.com/flair-agency/architecture-gatekeeper/releases/tag/v0.6.0-preview.3),
+built from source commit `3f71fece350c`, implements these five API procedures.
+Its release and synthetic fixture evidence do not establish trusted
+acceptance, real-consumer adoption, or an `ACTIVE` lifecycle claim; all six
+assurance dimensions remain `UNVERIFIED`. Support is limited to the exact
+predecessor-selected tuple and trigger described above; installing the package
+or adding inert fields to a selection does not select a route.
+
+| Procedure | Required predecessor state | Release behavior |
+| --- | --- | --- |
+| Ordinary review | Supported model-backed predecessor policy, complete selected Authority Set, and committed version-1 preview selection binding the exact repository, target, governance and authority scope, and review inputs | `review` may return `PASS`, `BLOCK` or `OWNER_DECISION`; the receipt remains unverified evidence. |
+| BLOCK amendment | Ordinary completed `BLOCK`; the same exact predecessor selection must select `completed-block-v1` and the B schema/validator | B must resolve only the exact bound trigger; unsupported or mixed changes are ineligible. |
+| Missing-decision addition | Ordinary completed `OWNER_DECISION` naming a missing decision ID; exact predecessor selection includes B schema/validator | B appends only that decision and preserves existing authority bytes. |
+| Existing-choice amendment | Ordinary completed `OWNER_DECISION`; exact predecessor selection chooses `completed-owner-decision-v1` and the B schema/validator | B proposes a material resolution of the exact existing target; the record is not authenticated owner approval. |
+| Initial legacy migration | Enforced legacy v1 policy, a compatible preview selection already recorded in the exact predecessor and binding repository, target, governance, authority scope, migration paths and v1 review inputs; no trusted acceptance selection | M must receive predecessor-schema `PASS`. One compatible v1/v2 successor only; preserve the selection, complete authority bytes, reviewer settings and limits, and change only the selected control-plane paths. |
+
+The previously documented source-matched archive at
+`9822ab915d63faadd8b2671f3a2f2507cb09e29d` and its installed-package fixtures
+exercise all five procedures, including negative eligibility cases under an
+earlier implementation. That implementation did not enforce the
+already-required predecessor-recorded migration selection, so its cycle does
+not verify that contract or the current runtime. Its local synthetic consumer
+packet records a model-reviewed migration M `PASS`, successor A
+positive and negative reviews, B positive `ELIGIBLE` and negative `INELIGIBLE`
+reviews, and a fresh successor A `PASS`. It records successful normal
+integration and readback for the positive M and B transitions. These local
+fixture results do not establish that a downstream consumer selected the route,
+that its protected caller ran the package, or that a protected acceptance check
+passed. Preview receipts do not supply trusted acceptance.
+
+The [preview.3 release record](https://github.com/flair-agency/architecture-gatekeeper/releases/tag/v0.6.0-preview.3)
+reports a fresh five-procedure synthetic matrix using the installed pinned API,
+including the initial migration, positive/negative B cases where applicable,
+and normal integration/readback for positive B and migration. Its matrix digest
+is `e5d0e896f8702a63b5333d8bd28142dda2416133efc400c1e0044b4b4286f4c7`. This
+addresses the earlier migration-selection fixture gap for that exact release
+and recorded predecessor tuple. It does not establish a real consumer's route
+selection, host enforcement, trusted adoption, or `ACTIVE` status. A changed
+runtime or predecessor tuple requires its own fresh cycle. This paragraph
+records the release report; it is not a new execution or independent
+verification of that matrix.
+
+The migration procedure does not support later migrations, incompatible
+bridges, changed or omitted authority members, changed reviewer settings,
+trusted-route or recovery activation, root or host enforcement, or an
+external/backend enforcement claim. If the exact predecessor tuple does not
+meet the stated conditions, stop with the existing policy and treat migration
+as unsupported. Do not infer a fallback, bootstrap, or recovery exception.
+
+#### Package and pin recovery
+
+Recovery is a compatibility check over an exact package, workflow, Skill,
+protected policy and caller tuple. Package installation alone changes none of
+those protected consumer inputs. Before recommending an update or pin change,
+record and test each component against the same committed fixture and preserve
+the authority and receipt history.
+
+Until exact evidence for the relevant recovery question is recorded, make no
+recovery recommendation. A package pin alone cannot reverse adopted authority;
+any recovery must preserve history and follow the consumer's already-authorized
+procedure. If no compatible procedure is demonstrated, stop and escalate the
+unresolved consumer decision rather than inventing a downgrade or exception.
+
+The historical preview.2-to-preview.3 rehearsal, including its limits and
+source-matched fixture results, is preserved in the [repository investigation
+record](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-07-preview-package-pin-recovery-history.md).
+For present package support boundaries, see [preview support and recovery
+status](#preview-support-and-recovery-status). The investigation filename date
+marks its 2026-10-07 extraction; the rehearsal event date was not recorded.

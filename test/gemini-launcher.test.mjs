@@ -6,7 +6,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
-import { buildIsolatedRunnerEnv, runIsolatedGeminiSession } from '../src/gemini-launcher.mjs';
+import { buildIsolatedRunnerEnv, runIsolatedGeminiSession } from '../dist/gemini-launcher.mjs';
 
 test('buildIsolatedRunnerEnv allowlists operational variables and sets REVIEW_PROXY_URL', () => {
   const dirtyEnv = {
@@ -124,7 +124,7 @@ test('runIsolatedGeminiSession starts proxy, runs runner in isolated environment
       mockRunnerScript,
       `
 import assert from 'node:assert/strict';
-import { runGeminiCiReview } from '${join(process.cwd(), 'src/gemini-ci-runner.mjs')}';
+import { runGeminiCiReview } from '${join(process.cwd(), 'dist/gemini-ci-runner.mjs')}';
 
 // Verify secrets are NOT inherited
 assert.equal(process.env.GEMINI_API_KEY, undefined, 'GEMINI_API_KEY must not be inherited by runner');
@@ -189,7 +189,7 @@ test('launcher pins bearer proxy scope from every supported project and region a
   try {
     await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
     const runner = join(dir, 'runner.mjs');
-    writeFileSync(runner, `import { runGeminiReviewer } from '${join(process.cwd(), 'src/gemini-transport.mjs')}';
+    writeFileSync(runner, `import { runGeminiReviewer } from '${join(process.cwd(), 'dist/gemini-transport.mjs')}';
 const result = await runGeminiReviewer({ prompt: 'scope', schema: { type: 'object' }, reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' } });
 if (result.decision !== 'PASS') process.exit(2);
 `);
@@ -412,7 +412,7 @@ test('spawned runner receives EOF on stdin even when supervisor stdin contains s
   const supervisor = join(dir, 'supervisor.mjs');
   try {
     writeFileSync(runner, `let byteCount = 0; for await (const chunk of process.stdin) byteCount += chunk.length; if (byteCount !== 0) process.exit(42);`);
-    writeFileSync(supervisor, `import { runIsolatedGeminiSession } from '${join(process.cwd(), 'src/gemini-launcher.mjs')}';\nprocess.exit(await runIsolatedGeminiSession(['--model', 'gemini-2.5-flash'], { runnerScript: process.argv[2], credentialsOptions: { apiKey: 'stdin-fixture-key' } }));\n`);
+  writeFileSync(supervisor, `import { runIsolatedGeminiSession } from '${join(process.cwd(), 'dist/gemini-launcher.mjs')}';\nprocess.exit(await runIsolatedGeminiSession(['--model', 'gemini-2.5-flash'], { runnerScript: process.argv[2], credentialsOptions: { apiKey: 'stdin-fixture-key' } }));\n`);
     const child = spawn(process.execPath, [supervisor, runner], { stdio: ['pipe', 'ignore', 'pipe'] });
     const closed = new Promise((resolve, reject) => { child.once('close', (code, signal) => resolve({ code, signal })); child.once('error', reject); });
     child.stdin.end('supervisor-secret-renewal-handle');

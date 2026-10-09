@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { buildOwnerAdditionFinalRecord, summarizeG0TagRefReadback, verifyG0TagObjectEvidence,
   verifyMergeAncestorComparison, parsePinnedGatekeeperWorkflow, parseGatekeeperWorkflowDefaults,
-  readG0TagObjectReadback, validateOwnerAdditionProducerJobName, finalizeOwnerAddition } from '../src/owner-addition-finalize.mjs';
-import { digestOwnerDecisionAddition } from '../src/owner-decision-addition.mjs';
+  readG0TagObjectReadback, validateOwnerAdditionProducerJobName, finalizeOwnerAddition } from '../dist/owner-addition-finalize.mjs';
+import { digestOwnerDecisionAddition } from '../dist/owner-decision-addition.mjs';
 
 const sha = char => char.repeat(40);
 const digest = char => char.repeat(64);

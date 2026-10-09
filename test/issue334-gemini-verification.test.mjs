@@ -5,13 +5,14 @@ import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, closeSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { parseWorkflow } from './helpers/workflow-structure.mjs';
 import {
   assertNoCodexExecutable, captureAndRemoveWifEnvironment, createPrivateDispatchJournal,
   assertCompletedDecisionResult, buildPreparedVerificationCall, encryptPrivateEvidence,
   claimSingleVerificationInvocation, installPinnedRuntime, redactedSummary, sealPrivateEvidence, sealPrivateDispatchCheckpoint,
   validateAuthorizedRuntimeLock, validateHostedPushContext,
 } from '../scripts/issue334-gemini-verification.mjs';
-import { snapshotPreparedGeminiCiReviewInput } from '../src/prepared-gemini-ci-review.mjs';
+import { snapshotPreparedGeminiCiReviewInput } from '../dist/prepared-gemini-ci-review.mjs';
 
 const SHA = c => c.repeat(40);
 const AUTHORIZED_RUNTIME_LOCK = readFileSync(new URL('../.codex/gatekeeper/gemini-verification-package-lock.json', import.meta.url));
@@ -239,4 +240,18 @@ test('pins the complete committed Gemini CLI dependency graph, not only tarball 
   const mutation = Buffer.from(JSON.stringify(changedGraph));
   assert.match(changedGraph.packages['node_modules/@lydell/node-pty-linux-x64'].integrity, /^sha512-[A-Za-z0-9+/=]+$/);
   assert.throws(() => validateAuthorizedRuntimeLock(mutation), /pinned complete dependency graph/i);
+});
+
+
+test('disabled verification builds the selected dist runtime before WIF issuance', () => {
+  const workflow = parseWorkflow(readFileSync(new URL('../.github/workflows/issue334-gemini-verification.yml', import.meta.url), 'utf8'), 'issue334-gemini-verification.yml');
+  const job = workflow.jobs.verify;
+  assert.equal(job.if, '${{ false }}');
+  const buildIndex = job.steps.findIndex(step => step.name === 'Build the selected Gatekeeper runtime before WIF issuance');
+  const installIndex = job.steps.findIndex(step => step.name === 'Install pinned CLI before WIF issuance');
+  const authIndex = job.steps.findIndex(step => step.name === 'Exchange existing WIF identity');
+  assert.ok(buildIndex >= 0 && buildIndex < installIndex && installIndex < authIndex);
+  const build = job.steps[buildIndex];
+  assert.equal(build.run.trim(), 'npm ci --ignore-scripts\nnpm run build');
+  assert.equal(build.env, undefined);
 });

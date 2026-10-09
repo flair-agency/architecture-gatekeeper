@@ -5,8 +5,8 @@ import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { materializeAuthoritySet, parseAuthorityManifest, validateAuthoritySetDecision } from '../src/authority-set.mjs';
-import { validateDecision as validateLegacyDecision } from '../src/review-contract.mjs';
+import { materializeAuthoritySet, parseAuthorityManifest, validateAuthoritySetDecision } from '../dist/authority-set.mjs';
+import { validateDecision as validateLegacyDecision } from '../dist/review-contract.mjs';
 
 const limits = { maxManifestBytes: 4_096, maxMembers: 3, maxFileBytes: 1_024, maxTotalBytes: 2_048, maxPromptBytes: 8_192 };
 const externalSha = 'a'.repeat(40);

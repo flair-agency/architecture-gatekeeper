@@ -4,10 +4,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
-import { encodeGeminiCliPromptForTransport } from '../src/gemini-cli-process.mjs';
-import { composePreparedGeminiCiPrompt } from '../src/prepared-gemini-ci-review.mjs';
-import { prepareGeminiCiVerificationInput } from '../src/prepare-gemini-ci-verification-input.mjs';
-import { validatePreparedCiDecision } from '../src/prepared-ci-decision.mjs';
+import { encodeGeminiCliPromptForTransport } from '../dist/gemini-cli-process.mjs';
+import { composePreparedGeminiCiPrompt } from '../dist/prepared-gemini-ci-review.mjs';
+import { prepareGeminiCiVerificationInput } from '../dist/prepare-gemini-ci-verification-input.mjs';
+import { validatePreparedCiDecision } from '../dist/prepared-ci-decision.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const paths = {

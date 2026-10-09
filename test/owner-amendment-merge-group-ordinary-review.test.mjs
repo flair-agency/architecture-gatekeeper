@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { prepareOwnerAmendmentMergeGroupOrdinaryReview,
-  validateOwnerAmendmentMergeGroupOrdinaryDecision } from '../src/owner-amendment-merge-group-ordinary-review.mjs';
+  validateOwnerAmendmentMergeGroupOrdinaryDecision } from '../dist/owner-amendment-merge-group-ordinary-review.mjs';
 
 const repo = 'flair-agency/architecture-gatekeeper';
 const limits = { maxManifestBytes: 16_384, maxMembers: 16, maxFileBytes: 65_536,

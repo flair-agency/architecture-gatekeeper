@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertOwnerAmendmentTagAbsentAtAcceptance, classifyOwnerAmendmentTagAttempt } from '../src/owner-amendment-tag-attempt.mjs';
-import { assertEnforcedAcceptance } from '../src/ci-enforced-acceptance.mjs';
-import { inspectOwnerAmendmentSelfScope } from '../src/owner-amendment-scope.mjs';
+import { assertOwnerAmendmentTagAbsentAtAcceptance, classifyOwnerAmendmentTagAttempt } from '../dist/owner-amendment-tag-attempt.mjs';
+import { assertEnforcedAcceptance } from '../dist/ci-enforced-acceptance.mjs';
+import { inspectOwnerAmendmentSelfScope } from '../dist/owner-amendment-scope.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const baseSha = 'a'.repeat(40);
@@ -41,6 +41,13 @@ test('protected exact-B tag classification distinguishes only the exact absent r
     ({ status: 503, requestedUrl: request.expectedUrl }) }), /unexpected HTTP status 503/);
   await assert.rejects(classifyOwnerAmendmentTagAttempt({ ...context, readTagRef: async () =>
     ({ status: 404, requestedUrl: 'https://attacker.invalid/ref' }) }), /does not match the exact protected self ref/);
+});
+
+test('malformed scalar tag readback responses retain the exact-ref error', async () => {
+  for (const response of [null, 7, 'malformed']) {
+    await assert.rejects(classifyOwnerAmendmentTagAttempt({ ...context, readTagRef: async () => response }),
+      /does not match the exact protected self ref request/);
+  }
 });
 
 test('tagged amendment eligibility cannot fall through to an unimplemented acceptance route', async () => {
@@ -111,4 +118,23 @@ test('legacy OWNER_ADDITION_G0 acceptance remains unchanged', () => {
   assert.deepEqual(assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'OWNER_ADDITION_G0',
     ownerAdditionSelected: 'G0', ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE' }),
   { route: 'owner-addition-pending' });
+});
+
+// Awaited reader timing is independent of the exact-ref response validation.
+test('tag reader accepts immediate, Promise and minimal thenable responses', async () => {
+  for (const wrap of [value => value, value => Promise.resolve(value),
+    value => ({ then(resolve) { resolve(value); } })]) {
+    const seen = [];
+    const readTagRef = request => {
+      seen.push(request);
+      return wrap({ status: 404, requestedUrl: request.expectedUrl });
+    };
+    const first = await classifyOwnerAmendmentTagAttempt({ ...context, readTagRef });
+    const final = await assertOwnerAmendmentTagAbsentAtAcceptance({ ...context, readTagRef });
+    assert.deepEqual(first, final);
+    assert.deepEqual(final, { status: 'OWNER_AMENDMENT_NOT_APPLICABLE', attempted: false, tagRef: null });
+    assert.equal(Object.isFrozen(final), true);
+    assert.equal(seen.length, 2);
+    assert.deepEqual(seen[0], seen[1]);
+  }
 });

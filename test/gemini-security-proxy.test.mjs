@@ -7,10 +7,10 @@ import { Readable } from 'node:stream';
 import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createVertexVerificationReservation } from '../src/vertex-verification-reservation.mjs';
+import { createVertexVerificationReservation } from '../dist/vertex-verification-reservation.mjs';
 import { syncBuiltinESMExports } from 'node:module';
-import { validateGeminiRoute, startGeminiSecurityProxy, MAX_PROXY_REQUEST_BYTES, remainingDeadlineMs } from '../src/gemini-security-proxy.mjs';
-import { validateLoopbackEndpoint } from '../src/review-security-proxy.mjs';
+import { validateGeminiRoute, startGeminiSecurityProxy, MAX_PROXY_REQUEST_BYTES, remainingDeadlineMs } from '../dist/gemini-security-proxy.mjs';
+import { validateLoopbackEndpoint } from '../dist/review-security-proxy.mjs';
 
 test('validateLoopbackEndpoint validates local loopback addresses', () => {
   assert.throws(() => validateLoopbackEndpoint(''), /non-empty string/);

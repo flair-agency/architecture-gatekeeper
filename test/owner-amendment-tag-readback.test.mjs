@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { readOwnerAmendmentTagForMergeGroup } from '../src/owner-amendment-tag-readback.mjs';
+import { readOwnerAmendmentTagForMergeGroup } from '../dist/owner-amendment-tag-readback.mjs';
 
 const repository = 'flair-agency/example';
 const bSha = 'b'.repeat(40);
@@ -54,6 +54,66 @@ test('reads raw tag bytes, checks live ruleset and repeats exact ref mapping', a
   assert.equal(result.observedTagRefOid, f.raw.objectOid);
   assert.equal(f.calls.length, 3);
   assert.ok(f.calls.every(call => call.options.headers.authorization === 'Bearer test-token'));
+});
+
+test('preserves sync, Promise and thenable returns at every awaited readback callback', async t => {
+  const wrappers = [
+    ['sync', value => value],
+    ['Promise', value => Promise.resolve(value)],
+    ['thenable', value => ({ then(resolve) { resolve(value); } })],
+  ];
+  for (const [name, wrap] of wrappers) {
+    await t.test(name, async () => {
+      const raw = tagObject();
+      const calls = [];
+      const fetchImpl = (url, options) => {
+        calls.push({ url, options });
+        const value = new URL(url).pathname.endsWith(`/rulesets/${rulesetId}`)
+          ? ruleset() : { ref: tagRef, object: { type: 'tag', sha: raw.objectOid } };
+        return wrap({ ok: true, status: 200, json: () => wrap(value) });
+      };
+      const result = await readOwnerAmendmentTagForMergeGroup({ repository, bSha, tagNamespace, tagRef, rulesetId, token: 'test-token',
+        fetchImpl, readTagObject: () => wrap(raw.objectBytes) });
+      assert.equal(result.rulesetReadback.id, rulesetId);
+      assert.equal(result.refReadback.object.sha, raw.objectOid);
+      assert.equal(result.tag.objectOid, raw.objectOid);
+      assert.equal(result.tag.objectBytes, raw.objectBytes);
+      assert.deepEqual(calls.map(call => new URL(call.url).pathname), [
+        `/repos/${repository}/rulesets/${rulesetId}`, `/repos/${repository}/git/ref/tags/${tagName}`, `/repos/${repository}/git/ref/tags/${tagName}`,
+      ]);
+      assert.ok(calls.every(call => call.options.redirect === 'error' && call.options.headers.authorization === 'Bearer test-token'));
+    });
+  }
+});
+
+test('scalar JSON transport results still fail at the existing ruleset validator', async () => {
+  const f = fixture();
+  await assert.rejects(readOwnerAmendmentTagForMergeGroup(input(f, {
+    fetchImpl: () => ({ ok: true, json: () => 17 }),
+  })), /selected active tag ruleset/);
+});
+
+test('preserves unknown coercible object OIDs through callback and strict hash rejection', async () => {
+  const raw = tagObject();
+  let callbackOid;
+  let lengthReads = 0;
+  const oid = { toString: () => raw.objectOid, get length() { lengthReads += 1; return 40; } };
+  const f = fixture({ firstOid: oid });
+  await assert.rejects(readOwnerAmendmentTagForMergeGroup(input(f, { readTagObject: (_repo, _ref, _name, observed) => { callbackOid = observed; return raw.objectBytes; } })), /raw annotated tag bytes do not match/);
+  assert.equal(callbackOid, oid);
+  assert.equal(lengthReads, 1);
+});
+
+test('accepts changing OID accessors when their captured string reads bind the raw bytes', async () => {
+  const raw = tagObject();
+  let reads = 0;
+  const firstRef = { ref: tagRef, object: { type: 'tag', get sha() { reads += 1; return reads === 1 ? { toString: () => raw.objectOid } : raw.objectOid; } } };
+  const f = fixture();
+  const result = await readOwnerAmendmentTagForMergeGroup(input(f, {
+    fetchImpl: async (url, options) => ({ ok: true, status: 200, json: async () => new URL(url).pathname.endsWith(`/rulesets/${rulesetId}`) ? ruleset() : (reads === 0 ? firstRef : { ref: tagRef, object: { type: 'tag', sha: raw.objectOid } }) }),
+  }));
+  assert.equal(result.tag.objectOid, raw.objectOid);
+  assert.equal(reads, 2);
 });
 
 test('rejects malformed expected B/ref/OID inputs and a wrong remote ref', async () => {

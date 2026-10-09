@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createVertexVerificationReservation } from '../src/vertex-verification-reservation.mjs';
+import { createVertexVerificationReservation } from '../dist/vertex-verification-reservation.mjs';
 
 test('session cap allows ten pre-send reservations and denies the eleventh', () => {
   const counter = createVertexVerificationReservation();
