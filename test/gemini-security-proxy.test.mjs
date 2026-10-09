@@ -490,7 +490,7 @@ test('per-session dispatch cap includes concurrent and failed upstream calls and
       return response.status;
     }));
     assert.equal(statuses.filter(status => status === 503).length, 10);
-    assert.equal(statuses.filter(status => status === 429).length, 2);
+    assert.equal(statuses.filter(status => status === 403).length, 2);
     assert.equal(sent, 10);
     const freshProxy = await startGeminiSecurityProxy({
       credentials: { type: 'bearer', value: 'fixture' }, allowedMode: 'vertex', allowedProject: 'p',
@@ -508,7 +508,7 @@ test('per-session dispatch cap includes concurrent and failed upstream calls and
   }
 });
 
-test('reservation failure and asynchronous or nonliteral grants never send or expose private errors', async () => {
+test('reservation refusal is non-retryable and never sends or exposes private errors', async () => {
   let sent = 0;
   const upstream = createServer((_req, res) => { sent++; res.end('{}'); });
   await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
@@ -522,7 +522,7 @@ test('reservation failure and asynchronous or nonliteral grants never send or ex
       });
       try {
         const response = await fetch(proxy.endpointUrl + '/v1/projects/p/locations/global/publishers/google/models/gemini-3.8-flash:generateContent', { method: 'POST', body: '{}' });
-        assert.equal(response.status, 429);
+        assert.equal(response.status, 403);
         assert.equal(await response.text(), '{"error":"Upstream dispatch reservation unavailable."}');
       } finally { await proxy.shutdown(); }
     }
