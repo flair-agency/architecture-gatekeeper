@@ -117,15 +117,15 @@ snapshot `3a51f0a5380b6b5b5adc33edfeecee5c4bab8bdb` is based on
 fresh-A result exists. Do not transfer prior candidate checks to a later
 head.
 
-Separate LIVE PR #157 remains a Draft at head
-`71e00f18e45e1fa9d25fcdf2adcc23aecf27c952`, based on
+Separate [LIVE PR #157](https://github.com/flair-agency/live-agency/pull/157)
+remains a Draft at head `71e00f18e45e1fa9d25fcdf2adcc23aecf27c952`, based on
 `d92392ed247162244253cfed5488f4843f437720`. Its `docs/domain/model.md`
-§10 documentation edit (+12/−16) is independent of #139 and records private
-cleanup work; it does not establish that #139 is unblocked or that all cleanup/public
-qualification is complete. Local native review passed, fixed Preview.3
-validation exited 0, and its two ordinary CI checks succeeded; Gate was skipped
-(run `114009570827`). It remains unmerged and unaccepted. These Preview.3
-results do not validate #139 or Preview.4.
+§10 documentation edit (+12/−16) is independent existing Preview.3 preparation,
+not evidence that #139 is unblocked, that work resumed, or that all
+cleanup/public qualification is complete. Local native review passed, fixed
+Preview.3 validation exited 0, and its two ordinary CI checks succeeded; Gate
+was skipped (run `114009570827`). It remains unmerged and unaccepted. These
+Preview.3 results do not validate #139 or Preview.4.
 
 This candidate is based on current main `abfc9283a8011667d3a0d0581e863a35001a0ed7`.
 The selector and all six authority blobs remain byte-identical to the fixed
@@ -346,15 +346,19 @@ flowchart LR
   D[D initial setup exception LIVE #145] --> C[C control adoption LIVE #147; v4 G0 ownerAddition v2]
   C --> A[Review original Change A when selected API is available]
   A -->|PASS| P[Ordinary required validation, report and acceptance]
-  A -->|BLOCK| S[Preserve BLOCK; resolve under existing policy]
-  A -->|incomplete| S
+  A -->|BLOCK or incomplete| S[Preserve result; resolve or wait for actual cause]
   A -->|exact OWNER_DECISION and selected context requires addition| I[Assess separately identified authority-only B]
   A -->|OWNER_DECISION without selected addition path| S
-  I --> T[Bind exact B and decision ID; run selected v4 procedure]
-  T --> R[Required eligibility, producer, pre-merge evidence, merge and canonical readback]
-  R --> F[Fresh A after actual B adoption]
+  I --> T[Bind exact B, AdditionRecord, tag, policy and Set]
+  T --> O[Same-run ordinary B review: exact OWNER_DECISION and complete authorityIds]
+  O --> Prep[Prepare verifies exact B, tag, decision ID and selected Set]
+  Prep --> E[Separate B eligibility: eligible, selected producer, pre-merge]
+  E --> M[Normal selected B integration]
+  M --> R[Canonical target and authority readback]
+  R --> G[Validate full selected v4 G0 adoption record]
+  G --> F[Fresh ordinary review of original A after actual B adoption]
   F -->|PASS| P
-  F -->|non-PASS or incomplete| S
+  F -->|BLOCK, OWNER_DECISION or incomplete| S
   P --> D[Integrate private-document update and read back after required acceptance]
   D --> W[Observe identified next private cleanup advance]
   X[Historical administrator exception] -. separate, not success proof .-> T
