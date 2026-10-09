@@ -7,9 +7,9 @@ proof. It supports #405's finite roadmap. #403 may freeze the planning scope
 after independent review of the complete inventory, gap allocation and
 recorded unknowns; actual consumer completion remains a Preview.4 release gate.
 
-**Authority baseline at 939; source inventory through 899 (2026-10-09).** This
+**Authority and source-inventory snapshot at 70c (2026-10-09).** This
 roadmap records the complete selected six-member Set at main commit
-`899dcc524cf09772d8c4a050a1f8eb7885948563` (#448): [architecture contract](../architecture.md),
+`70c921463f19c1b57d7e17f2f871db447ae32953` (#449): [architecture contract](../architecture.md),
 [Authority Set](../architecture/authority-set.md),
 [owner addition](../architecture/owner-addition.md),
 [owner amendment](../architecture/owner-amendment.md),
@@ -28,10 +28,11 @@ repair as a target pending integration. This is a documentation status update
 for the existing repair, not a new rule; neither wording establishes adoption
 by a consumer or protected host enforcement.
 
-## Integration checkpoint through PR #448 (2026-10-09)
+## Integration checkpoint through PR #449 (2026-10-09)
 
 At this checkpoint GitHub main was
-`899dcc524cf09772d8c4a050a1f8eb7885948563` (#448), directly parented by
+`70c921463f19c1b57d7e17f2f871db447ae32953` (#449), directly parented by
+`899dcc524cf09772d8c4a050a1f8eb7885948563` (#448), which is directly parented by
 `93978544ca860860a675afa49b2c95cfad9c11eb` (#447). PR #447 added typed GitHub
 authority-source, merge-group-event and canonical-readback mechanisms with
 focused type and behavior tests. PR #448 moves the OWNER_ADDITION canonical
@@ -41,24 +42,30 @@ tests. The implementations are [`src/github/github-owner-addition-readback.mts`]
 and [`src/github/github-app-check-reporter.mts`](../../src/github/github-app-check-reporter.mts),
 with readback and reporter tests in `test/github-owner-addition-readback-types.test.mjs`,
 `test/github-owner-addition-readback.test.mjs`, `test/github-app-check-reporter-types.test.mjs`
-and `test/github-app-check-reporter.test.mjs`. These are package source, test
-and development-documentation changes;
-they provide no consumer-operation, host-enforcement, adoption or lifecycle
-evidence and do not satisfy the separate #407–#409 gates.
+and `test/github-app-check-reporter.test.mjs`. The #448 route-mechanism
+inventory is unchanged at #449. PR #449 changes only the synthetic proxy-session
+fixture in `test/gemini-cli-proxy-session.test.mjs`: it writes the JSON
+observation to a temporary file and renames it into place atomically; its
+assertion, 1800 ms timeout and runtime are unchanged. This is fixture report
+publication only, not a matching fixture for a selected lifecycle tuple or
+consumer-operation evidence. It adds no release gate. These are package source,
+test and development-documentation changes; they provide no consumer-operation,
+host-enforcement, adoption or lifecycle evidence and do not satisfy the separate
+#407–#409 gates.
 
 The selector and all six selected authority files have the same Git blob IDs
-at 5f1f993, 9397854 and 899dcc5. Thus #447 and #448 do not change the selected
-inputs. The initial 426fd78 and historical 5f1f993 checkpoints below remain
-historical; the current source-inventory snapshot is 899dcc5. Consumer and
-issue observations below—including the ADA observation and the #423 row—remain
-recorded observations and are not refreshed by this source checkpoint. This
-checkpoint asserts no newer consumer or issue statuses.
+at 5f1f993, 9397854, 899dcc5 and 70c9214. Thus #447, #448 and #449 do not
+change the selected inputs. The initial 426fd78 and historical 5f1f993
+checkpoints below remain historical; the current source-inventory snapshot is
+70c9214. Consumer and issue observations below—including the ADA observation
+and the #423 row—remain recorded observations and are not refreshed by this
+source checkpoint. This checkpoint asserts no newer consumer or issue statuses.
 
 ## Historical integration checkpoint through PR #447 (2026-10-09)
 
 This section preserves the earlier source checkpoint at main
 `93978544ca860860a675afa49b2c95cfad9c11eb` (#447); it is historical and
-superseded by the #448 checkpoint above. PR #447 added typed GitHub
+superseded by the later #448/#449 checkpoint above. PR #447 added typed GitHub
 authority-source, merge-group-event and canonical-readback mechanisms with
 focused type and behavior tests, while retaining their compatibility entry
 points. These are package source, test and development-documentation changes;
