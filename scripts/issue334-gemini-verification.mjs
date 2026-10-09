@@ -20,7 +20,7 @@ const PROMPT_PATH = '.codex/gatekeeper/ci-prompt.md';
 const SCHEMA_PATH = '.codex/gatekeeper/ci-decision.schema.json';
 const VALIDATION_PATH = '.codex/gatekeeper/decision.validation.json';
 const RUNTIME_LOCK_PATH = '.codex/gatekeeper/gemini-verification-package-lock.json';
-const EXPECTED_PREDECESSOR_SHA = '80b0e1df2ff7d2f0829e133505b0b94285f47ca4';
+const EXPECTED_PREDECESSOR_SHA = '9ee404f32d13ba97bf638393f91a293ac24bd5f1';
 const PUBLIC_KEY_PEM='-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAnZVHMkUmRdmwVbfIAhb+\nQAAIezgXahPDeOGtQvy6P2kn97TIhekWCYTO7krC3aUUpk1MvRzdxnkpJ/Z5sPXt\nrvmdwvWKcjXrtPVyd3zDJ6wJWuQigblUET+qAjZ1+YIdJnj+pRl4LM+nzHvEryX1\navwoZcL52CUh9LwiR+N8knGJMYOCFTUv5NMdx0esEk5UaadaoJquKY+iJKnExGK3\n6hbrR1KlItgRj+vBBImcwTpsJx6d6NkUSkPX2TnVqLtTQljqqBFViCTxK64pvSPW\nAbpXBNn4RJEFiTTfQczaQ9RAo1txJonYhaSX4iIAqEG1FYHm00Q6wN7tKiHdzpW7\nsXfqQ5PZWmKCkJCiMiHAx4XbRGbPxNKqclCkJRVJ4ZOGHtVzB7Btu7hI3LQFyoyK\nTEvzi+reS+xUvMd/XKmGFlXreATQqZwWP1E0m4Yv6GQsmOhSV+nmTQXdX31qe4B9\nB+/SQO4EhyCopV7ZbtwbgKtFj6TV7dkMUinpcXdXps2BAgMBAAE=\n-----END PUBLIC KEY-----\n';
 const PUBLIC_KEY_SHA256 = '635e87fee174aaca8b86ae9863fdc26926f969171c67d9678b96176388e80ba3';
 const CLI_TARBALL_INTEGRITY = 'sha512-A1rw0Tf2sHLpGncfYdaq5WaJIufKAP8il4BmHD5Yw4ewmB/Wo0vRQb2bEvx7OqyaPFPZCh0hVhcMKsICZyIBww==';
