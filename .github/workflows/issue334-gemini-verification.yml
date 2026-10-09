@@ -11,7 +11,7 @@ permissions:
 jobs:
   verify:
     # Exact-source coordinator admission remains external to this consistency condition.
-    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == 'acc78d31ede7e68a549c7158a2a613321820a387' && github.run_attempt == 1
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == '9c4668cdf4a59a3dbafbf5b7e9ddf1ef2a951b99' && github.run_attempt == 1
     permissions:
       contents: read
       id-token: write
