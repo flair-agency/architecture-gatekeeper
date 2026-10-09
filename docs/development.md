@@ -79,13 +79,14 @@ The integrated #419 slices type OWNER_ADDITION validation, execution-result
 states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
 PR/run and live queue context, self-amendment scope, and amendment canonical
 readback, OWNER_ADDITION post-merge readback and self-only GitHub App reporting.
-The GitHub ruleset readback and owner-amendment Git change reader are integrated.
-This slice types the existing handoff Git context under
-`src/owner-amendment/owner-amendment-handoff-git-context.mts`, retaining its flat export.
+The GitHub ruleset readback, owner-amendment Git change reader and handoff Git
+context are integrated. This slice types the existing tag transport under
+`src/owner-amendment/owner-amendment-tag-adapter.mts`, retaining its flat export
+and existing creation, retry and remote readback behavior.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `c9f7b754` has twenty-two original modules typed and 74 remaining; this
-candidate has twenty-three typed and 73 remaining. Migration is partial and does
+Main `d56e398` has twenty-three original modules typed and 73 remaining; this
+candidate has twenty-four typed and 72 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
