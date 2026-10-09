@@ -7,9 +7,9 @@ proof. It supports #405's finite roadmap. #403 may freeze the planning scope
 after independent review of the complete inventory, gap allocation and
 recorded unknowns; actual consumer completion remains a Preview.4 release gate.
 
-**Authority and baseline.** This roadmap is based on the complete selected
-six-member Set at `origin/main` commit
-`426fd7832dd5b32e6e74df74f63ba29926b7d717`: [architecture contract](../architecture.md),
+**Authority and baseline.** The current baseline for this roadmap is the
+complete selected six-member Set at main commit
+`93978544ca860860a675afa49b2c95cfad9c11eb` (#447): [architecture contract](../architecture.md),
 [Authority Set](../architecture/authority-set.md),
 [owner addition](../architecture/owner-addition.md),
 [owner amendment](../architecture/owner-amendment.md),
@@ -20,13 +20,39 @@ catalogue merged in #411 is a traceability aid, not authority or proof
 ([catalogue](2026-10-08-preview4-lifecycle-clause-catalogue.md)). Source and
 test references below identify mechanisms at the stated revision only.
 
-## Latest integration checkpoint (current base 5f1f993, 2026-10-09)
+The earlier initial Set snapshot was `426fd7832dd5b32e6e74df74f63ba29926b7d717`.
+Compared with that snapshot, the current `review-execution.md` records that
+PR #126 implemented and regression-tested the authorized legacy v1 repair and
+that it shipped in v0.5.1. The earlier text described that same authorized
+repair as a target pending integration. This is a documentation status update
+for the existing repair, not a new rule; neither wording establishes adoption
+by a consumer or protected host enforcement.
 
-At this roadmap refresh, GitHub main is
-`5f1f993f9491e7dab4998e850038c23e1d714677` (#446). Its direct parent is
+## Latest integration checkpoint (main 9397854, 2026-10-09)
+
+GitHub main is `93978544ca860860a675afa49b2c95cfad9c11eb` (#447), directly
+parented by `5f1f993f9491e7dab4998e850038c23e1d714677` (#446). PR #447 adds
+typed GitHub authority-source, merge-group-event and canonical-readback
+mechanisms with focused type and behavior tests, while retaining their
+compatibility entry points. These are package source, test and development
+documentation changes; they provide no consumer-operation, host-enforcement,
+adoption or lifecycle evidence and do not satisfy the separate #407–#409
+gates.
+
+The selector and all six selected authority files have the same Git blob IDs
+at 5f1f993 and 9397854. Thus #447 does not change the selected inputs. Consumer
+and issue observations below—including the ADA observation and the #423 row—
+remain recorded observations and are not refreshed by this source checkpoint.
+This checkpoint asserts no newer consumer or issue statuses.
+
+## Historical integration checkpoint through PR #446 (2026-10-09)
+
+This section preserves the earlier roadmap checkpoint at main
+`5f1f993f9491e7dab4998e850038c23e1d714677` (#446); it is historical, not the
+current baseline. At that checkpoint, its direct parent was
 `2bd5ca7480b91aabbfcecf08301d9c0fcda57165` (#444), whose parent is
 `da113eedf8b41053f7f0b9eb757e626c04ba3e12` (#442). These immutable commit
-links establish that the current base includes both #444 and #446 after the
+links establish that the #446 checkpoint included both #444 and #446 after the
 historical #442 checkpoint below.
 
 Between da113ee and 5f1f993, the source and tests add bounded artifact-ZIP and
@@ -38,10 +64,10 @@ new LIVE consumer-operation, host-enforcement, adoption, or lifecycle evidence
 and do not satisfy the separate #407–#409 gates.
 
 The selector and six selected authority files have the same Git blob IDs at
-da113ee and the current base 5f1f993. The source checkpoint does not change
-those selected inputs. Consumer and issue observations below—including the ADA
-observation and the #423 row—are retained as recorded evidence and are not
-refreshed here. This checkpoint asserts no newer consumer or issue statuses.
+da113ee and 5f1f993. The source checkpoint did not change those selected
+inputs. Consumer and issue observations below—including the ADA observation
+and the #423 row—are retained as recorded evidence and were not refreshed at
+that checkpoint. It asserted no newer consumer or issue statuses.
 
 ## Historical checkpoint through PR #442 (2026-10-09)
 
