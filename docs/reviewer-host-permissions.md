@@ -73,7 +73,7 @@ exits. A parent model response of `None` after context injection establishes
 non-reporting by that response, not transport failure. If host or model access
 fails, the result remains incomplete under the existing review contract; it
 does not select a weaker fallback. The corresponding #244 evidence is
-documented in the [local screening dogfood investigation](investigations/2026-10-01-local-screening-adapter-dogfood.md).
+documented in the [local screening dogfood investigation](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-01-local-screening-adapter-dogfood.md).
 
 For the dated synthetic fixture, host observations, and a separate model
 availability diagnostic, see the

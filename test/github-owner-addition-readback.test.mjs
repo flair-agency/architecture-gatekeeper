@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { verifyOwnerAdditionReadback } from '../src/github-owner-addition-readback.mjs';
+import { verifyOwnerAdditionReadback } from '../dist/github-owner-addition-readback.mjs';
 
 const oid = (digit) => digit.repeat(40);
 const bytes = Buffer.from('canonical authority with the adopted decision\n');

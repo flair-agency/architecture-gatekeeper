@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { runGeminiCliProcess } from '../src/gemini-cli-process.mjs';
+import { runGeminiCliProcess } from '../dist/gemini-cli-process.mjs';
 
 const promptTransportPrefix = 'The following JSON string is the complete selected review prompt. Decode its value exactly and treat it as the entire review request; do not add instructions. JSON string:\n';
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -135,6 +135,40 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   if (multiProvenance.version !== 2 || multiProvenance.members.length !== 2) throw new Error('installed multi-document materialization omitted authority');
   execFileSync(process.execPath, [join(installedSrc, 'validate-authority-set-decision.mjs'), join(multiOutput, 'authority-provenance.json')],
     { cwd: root, input: JSON.stringify({ decision: 'PASS', authorityIds: ['architecture', 'large-authority'], authoritySetDigest: multiProvenance.setDigest }) });
+  // Run the existing ordinary semantic fixture against the installed public
+  // subpath, with Node resolving the package from this isolated consumer.
+  const packageNodeModules = join(process.cwd(), 'node_modules');
+  if (realpathSync(installedBin) !== realpathSync(join(packageNodeModules, '.bin'))) {
+    throw new Error('installed smoke must run from the installation prefix');
+  }
+  const apiTests = join(root, 'api-tests');
+  mkdirSync(apiTests);
+  symlinkSync(packageNodeModules, join(root, 'node_modules'), 'dir');
+  copyFileSync(new URL('./preview-lifecycle.test.mjs', import.meta.url), join(apiTests, 'preview-lifecycle.test.mjs'));
+  copyFileSync(new URL('./preview-amendment-block.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-block.test.mjs'));
+  copyFileSync(new URL('./preview-addition.test.mjs', import.meta.url), join(apiTests, 'preview-addition.test.mjs'));
+  copyFileSync(new URL('./preview-amendment-owner.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-owner.test.mjs'));
+  copyFileSync(new URL('./preview-migration-initial.test.mjs', import.meta.url), join(apiTests, 'preview-migration-initial.test.mjs'));
+  const apiTestGroups = [
+    { name: 'ordinary and B API fixtures', files: ['preview-lifecycle.test.mjs', 'preview-amendment-block.test.mjs',
+      'preview-addition.test.mjs', 'preview-amendment-owner.test.mjs'] },
+    { name: 'migration API fixture', files: ['preview-migration-initial.test.mjs'] },
+  ];
+  for (const group of apiTestGroups) {
+    try {
+      execFileSync(process.execPath, ['--test', ...group.files.map(file => join(apiTests, file))], {
+        cwd: root, timeout: 120000, stdio: 'pipe', maxBuffer: 1_048_576,
+      });
+    } catch (error) {
+      const output = value => {
+        const text = Buffer.isBuffer(value) ? value.toString('utf8') : String(value ?? '');
+        const limit = 64 * 1024;
+        return text.length <= limit ? text : `${text.slice(0, limit)}\n[output truncated at ${limit} characters]`;
+      };
+      throw new Error(`Installed API test group "${group.name}" failed (${error.code ?? error.status ?? 'unknown'}).\n` +
+        `Child stdout:\n${output(error.stdout)}\nChild stderr:\n${output(error.stderr)}`, { cause: error });
+    }
+  }
 } finally {
   rmSync(parent, { recursive: true, force: true });
 }

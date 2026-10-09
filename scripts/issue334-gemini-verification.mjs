@@ -10,7 +10,7 @@ import {
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { prepareGeminiCiVerificationInput } from '../src/prepare-gemini-ci-verification-input.mjs';
+import { prepareGeminiCiVerificationInput } from '../dist/prepare-gemini-ci-verification-input.mjs';
 
 const REPOSITORY = 'flair-agency/architecture-gatekeeper';
 const BRANCH = 'feature/gemini-ci';
@@ -500,7 +500,7 @@ export async function runOneHostedVerification({ env = process.env, cwd = proces
     journal = createPrivateDispatchJournal(runtime.privateDirectory);
     observation = installPrivateObservation(runtime.entry);
     const runInput = buildPreparedVerificationCall({ prepared, credential, runtimeEntry: runtime.entry, runnerTemp });
-    const { runPreparedGeminiCiVerification } = await import('../src/prepared-gemini-ci-verification.mjs');
+    const { runPreparedGeminiCiVerification } = await import('../dist/prepared-gemini-ci-verification.mjs');
     result = assertCompletedDecisionResult(await runPreparedGeminiCiVerification(runInput, journal.record));
     dispatchDiagnostics = result.dispatchDiagnostics;
   } catch (error) { failure = error; }

@@ -6,14 +6,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { validateJsonSchema } from '../src/json-schema.mjs';
-import { MULTI_AUTHORITY_PROFILE, validateAuthorityLimits } from '../src/authority-set.mjs';
-import { prepareAuthoritySet } from '../src/prepare-authority-set.mjs';
-import { resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
-import { validatePreparedAuthorityDecision } from '../src/validate-authority-set-decision.mjs';
+import { validateJsonSchema } from '../dist/json-schema.mjs';
+import { MULTI_AUTHORITY_PROFILE, validateAuthorityLimits } from '../dist/authority-set.mjs';
+import { prepareAuthoritySet } from '../dist/prepare-authority-set.mjs';
+import { resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
+import { validatePreparedAuthorityDecision } from '../dist/validate-authority-set-decision.mjs';
 import { prepareMultiAuthorityAddition, validateMultiAuthorityEligibility,
-  validateMultiAuthorityEligibilitySchema } from '../src/owner-addition-multiauthority.mjs';
-import { classifyReview, parseOwnerAdditionProcedure, renderReport } from '../src/ci-report.mjs';
+  validateMultiAuthorityEligibilitySchema } from '../dist/owner-addition-multiauthority.mjs';
+import { classifyReview, parseOwnerAdditionProcedure, renderReport } from '../dist/ci-report.mjs';
 
 const sourceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const schema = JSON.parse(readFileSync(join(sourceRoot, 'examples/owner-addition-v2/eligibility.schema.json'), 'utf8'));
@@ -109,7 +109,7 @@ test('v4 selects new limits and record version without expanding existing policy
 
 test('real Git CLI path includes the complete base set and reports bound v2 procedure', async t => {
   const f = await fixture(t, { other: `# Migration\n${'x'.repeat(153_920)}\n` });
-  execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'], { cwd: f.root, env: f.env });
+  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.root, env: f.env });
   const prompt = readFileSync(join(f.env.OUTPUT_DIR, 'eligibility-prompt.md'), 'utf8');
   assert.ok(prompt.includes('x'.repeat(153_920)));
   assert.match(prompt, /every unchanged authority/);
@@ -117,7 +117,7 @@ test('real Git CLI path includes the complete base set and reports bound v2 proc
   const procedure = parseOwnerAdditionProcedure(readFileSync(f.env.GITHUB_OUTPUT, 'utf8').match(/procedure_base64=(.+)/)[1], true);
   assert.equal(procedure.version, 2); assert.equal(procedure.policySha256, hash(f.policyBytes));
   assert.deepEqual(procedure.authoritySet, f.provenance);
-  execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'validate'], { cwd: f.root, env: { ...f.env, DECISION: JSON.stringify(eligible(f)) } });
+  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'], { cwd: f.root, env: { ...f.env, DECISION: JSON.stringify(eligible(f)) } });
   const classified = classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: f.env.ORDINARY_DECISION,
     ownerAdditionSelected: true, ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE', ownerAdditionProcedure: procedure });
   assert.equal(classified.conclusion, 'OWNER_ADDITION_G0');
@@ -177,9 +177,9 @@ test('procedural v5 emits exact raw pre-merge evidence for the selected producer
       workflowPath: '.github/workflows/architecture-gate.yml', jobName: 'Architecture Gate / owner-addition' };
   } });
   const env = { ...f.env, PR_NUMBER: '42', POLICY_VERSION: '5', GITHUB_RUN_ID: '1234', GITHUB_RUN_ATTEMPT: '2' };
-  execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'], { cwd: f.root, env });
+  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.root, env });
   const decision = JSON.stringify(eligible(f));
-  execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'validate'],
+  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'],
     { cwd: f.root, env: { ...env, DECISION: decision } });
   const evidence = JSON.parse(readFileSync(join(env.OUTPUT_DIR, 'eligibility-evidence.json'), 'utf8'));
   assert.deepEqual([evidence.version, evidence.repository, evidence.targetBranch, evidence.prNumber,

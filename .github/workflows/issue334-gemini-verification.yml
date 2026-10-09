@@ -28,6 +28,11 @@ jobs:
         timeout-minutes: 3
         with:
           node-version: '22'
+      - name: Build the selected Gatekeeper runtime before WIF issuance
+        timeout-minutes: 3
+        run: |
+          npm ci --ignore-scripts
+          npm run build
       - name: Install pinned CLI before WIF issuance
         timeout-minutes: 6
         run: node scripts/issue334-gemini-verification.mjs install-runtime

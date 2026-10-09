@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeCiExecutionResult } from '../src/ci-execution-result.mjs';
+import { normalizeCiExecutionResult } from '../dist/ci-execution-result.mjs';
 
 const expectedExecution = {
   provider: 'codex', requestedModel: 'gpt-6.1-sol', requestedSettings: { reasoningEffort: 'medium' },
@@ -68,6 +68,22 @@ test('does not expose response bytes when the host reports failure despite avail
   assert.equal(result.status, 'incomplete');
   assert.equal(result.observations.rawResponse.status, 'available');
   assert.equal(Object.hasOwn(result, 'responseBytes'), false);
+});
+
+test('preserves the original two reads of an accessor-backed host outcome', () => {
+  for (const secondRead of ['failure', 'unexpected', { changed: true }]) {
+    const candidate = input();
+    let reads = 0;
+    Object.defineProperty(candidate, 'hostStepOutcome', {
+      enumerable: true,
+      get() { reads++; return reads === 1 ? 'success' : secondRead; },
+    });
+    const result = normalizeCiExecutionResult(candidate);
+    assert.equal(reads, 2);
+    assert.equal(result.status, 'incomplete');
+    assert.strictEqual(result.observations.hostStepOutcome, secondRead);
+    assert.equal(Object.hasOwn(result, 'responseBytes'), false);
+  }
 });
 
 test('requires a bounded explicit expected identity and response limit', () => {

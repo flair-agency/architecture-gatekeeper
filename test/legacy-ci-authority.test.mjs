@@ -4,8 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { prepareLegacyAuthority, validateLegacyAuthorityDecision } from '../src/prepare-legacy-ci-authority.mjs';
-import { verifyLegacyValidationSelection } from '../src/verify-legacy-validation-selection.mjs';
+import { prepareLegacyAuthority, validateLegacyAuthorityDecision } from '../dist/prepare-legacy-ci-authority.mjs';
+import { verifyLegacyValidationSelection } from '../dist/verify-legacy-validation-selection.mjs';
 
 test('caller validation selection must match explicit base path or null', () => {
   assert.deepEqual(verifyLegacyValidationSelection('', ''), { validationPath: null });

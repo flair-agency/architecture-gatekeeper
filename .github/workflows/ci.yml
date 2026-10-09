@@ -25,6 +25,16 @@ jobs:
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: 22
+      - name: Install development dependencies
+        run: npm ci --ignore-scripts
+      - name: Check strict TypeScript and generated output
+        run: npm run check:typescript
+      - name: Build the runtime distribution
+        run: npm run build
+      - name: Validate parsed workflow structure
+        run: node --test test/workflow-structure.test.mjs
+      - name: Check static source import cycles
+        run: node scripts/check-source-cycles.mjs
       - name: Run tests
         run: npm test
       - name: Pack, install, and smoke-test the distributable package
@@ -36,7 +46,7 @@ jobs:
           esac
           ARCHIVE_PATH="$GITHUB_WORKSPACE/$ARCHIVE"
           test -f "$ARCHIVE_PATH"
-          node -e "const p=require(process.argv[1])[0]; const names=new Set(p.files.map(f=>f.path)); for (const required of ['package.json','README.md','docs/architecture.md','docs/architecture/authority-set.md','docs/architecture/owner-addition.md','docs/architecture/owner-amendment.md','docs/architecture/review-execution.md','docs/architecture/self-profile.md','docs/integration-reference.md','src/local-gate.mjs','src/manual-review.mjs','src/native-review.mjs']) if (!names.has(required)) throw new Error('archive missing '+required)" "$RUNNER_TEMP/pack.json"
+          node -e "const p=require(process.argv[1])[0]; const names=new Set(p.files.map(f=>f.path)); for (const required of ['package.json','README.md','docs/architecture.md','docs/architecture/authority-set.md','docs/architecture/owner-addition.md','docs/architecture/owner-amendment.md','docs/architecture/review-execution.md','docs/architecture/self-profile.md','docs/integration-reference.md','dist/local-gate.mjs','dist/manual-review.mjs','dist/native-review.mjs','dist/preview-lifecycle.mjs']) if (!names.has(required)) throw new Error('archive missing '+required); const pkg=JSON.parse(require('node:fs').readFileSync(process.argv[2])); if(pkg.exports?.['./preview-lifecycle']!=='./dist/preview-lifecycle.mjs') throw new Error('preview lifecycle API export missing')" "$RUNNER_TEMP/pack.json" "$GITHUB_WORKSPACE/package.json"
           mkdir "$RUNNER_TEMP/install"
           cd "$RUNNER_TEMP/install"
           npm init -y >/dev/null

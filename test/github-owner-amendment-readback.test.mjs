@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { verifyGitHubOwnerAmendmentReadback } from '../src/github-owner-amendment-readback.mjs';
+import { verifyGitHubOwnerAmendmentReadback } from '../dist/github-owner-amendment-readback.mjs';
 
 const repository = 'flair-agency/example';
 const root = `https://api.github.com/repos/${repository}`;

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { assertMissingOwnerAmendmentTagHasNoSuccessfulSigner,
-  inspectOwnerAmendmentSemanticProducerAttempts } from '../src/owner-amendment-semantic-producer-attempts.mjs';
+  inspectOwnerAmendmentSemanticProducerAttempts } from '../dist/owner-amendment-semantic-producer-attempts.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const bHeadSha = 'a'.repeat(40);

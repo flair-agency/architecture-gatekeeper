@@ -6,12 +6,21 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { classifyReview, parseOwnerAdditionProcedure, renderReport } from '../src/ci-report.mjs';
+import { classifyReview, parseOwnerAdditionProcedure, renderReport } from '../dist/ci-report.mjs';
 import { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema,
   validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema,
-  resolveSingleOwnerAdditionAuthorityId } from '../src/owner-addition-ci.mjs';
+  resolveSingleOwnerAdditionAuthorityId } from '../dist/owner-addition-ci.mjs';
+import { validateOwnerAdditionEligibility as sharedEligibility, validateOwnerAdditionEligibilitySchema as sharedEligibilitySchema,
+  validateOrdinaryOwnerDecision as sharedOrdinaryDecision, validateOrdinaryOwnerDecisionSchema as sharedOrdinaryDecisionSchema } from '../dist/owner-addition-validation.mjs';
 
 const sourceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+test('CI module preserves the shared validator exports', () => {
+  assert.equal(validateOwnerAdditionEligibility, sharedEligibility);
+  assert.equal(validateOwnerAdditionEligibilitySchema, sharedEligibilitySchema);
+  assert.equal(validateOrdinaryOwnerDecision, sharedOrdinaryDecision);
+  assert.equal(validateOrdinaryOwnerDecisionSchema, sharedOrdinaryDecisionSchema);
+});
 const schema = { type: 'object', additionalProperties: false,
   required: ['eligible', 'onlyMissingDecision', 'preservesExistingRules', 'noContradiction', 'noUnsupportedCompletionClaim', 'noUnrelatedUnresolvedChoices', 'matchesOrdinaryOwnerDecision', 'summary'],
   properties: Object.fromEntries(['eligible', 'onlyMissingDecision', 'preservesExistingRules', 'noContradiction', 'noUnsupportedCompletionClaim', 'noUnrelatedUnresolvedChoices', 'matchesOrdinaryOwnerDecision'].map(key => [key, { type: 'boolean' }]).concat([['summary', { type: 'string' }]])) };
@@ -71,7 +80,7 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
     ORDINARY_SCHEMA_PATH: '.codex/gatekeeper/ordinary.schema.json',
     ORDINARY_DECISION: '{"decision":"OWNER_DECISION","ownerDecisionId":"reporting-owner","summary":"reporting owner is not selected"}',
     OUTPUT_DIR: outputDir, GITHUB_OUTPUT: outputFile };
-  execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'], { cwd: root, env });
+  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: root, env });
   assert.ok(Buffer.byteLength(readFileSync(join(outputDir, 'eligibility-prompt.md'))) <= 524288);
   const output = readFileSync(outputFile, 'utf8');
   const procedure = parseOwnerAdditionProcedure(output.match(/^procedure_base64=(.+)$/m)[1], true);
@@ -165,7 +174,7 @@ test('G0 applies protected file and total limits to both authority snapshots', t
   assert.ok(Buffer.byteLength(oldAuthority) <= maxFileBytes);
   assert.ok(Buffer.byteLength(oldAuthority) + Buffer.byteLength(newAuthority) > maxTotalBytes);
   assert.ok(Buffer.byteLength(newAuthority) > maxFileBytes);
-  assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'],
+  assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'],
     { cwd: root, env }), /Protected file has invalid size: docs\/architecture\.md/);
 
   // A protected limit must apply to the base snapshot too, even when B makes it smaller.
@@ -176,7 +185,7 @@ test('G0 applies protected file and total limits to both authority snapshots', t
   write(root, 'docs/architecture.md', oldAuthority);
   run(root, 'git', 'add', 'docs/architecture.md'); run(root, 'git', 'commit', '-qm', 'smaller proposed authority');
   const smallerHeadSha = run(root, 'git', 'rev-parse', 'HEAD');
-  assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'],
+  assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'],
     { cwd: root, env: { ...env, BASE_SHA: oversizedBaseSha, HEAD_SHA: smallerHeadSha } }),
   /Protected file has invalid size: docs\/architecture\.md/);
 });
@@ -226,7 +235,7 @@ test('G0 applies the protected maxPromptBytes to the complete eligibility prompt
     ORDINARY_SCHEMA_PATH: '.codex/gatekeeper/ordinary.schema.json',
     ORDINARY_DECISION: '{"decision":"OWNER_DECISION","ownerDecisionId":"reporting-owner","summary":"missing"}',
     OUTPUT_DIR: join(root, 'output'), GITHUB_OUTPUT: join(root, 'output.txt') };
-  assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'src/owner-addition-ci.mjs'), 'prepare'],
+  assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'],
     { cwd: root, env }), /Owner-addition complete prompt exceeds the review limit/);
 });
 

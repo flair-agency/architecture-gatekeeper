@@ -5,14 +5,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
+import { resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
+import { parseWorkflow } from './helpers/workflow-structure.mjs';
 
 for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
   test(`${file} binds observation to exact ordinary Action inputs and preserves validators`, () => {
     const text = readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), 'utf8');
     const block = text.split('      - name: Record ordinary execution observation\n')[1]?.split('      - name:')[0];
+    const observation = parseWorkflow(text, file).jobs.review.steps.find(step => step.name === 'Record ordinary execution observation');
     assert.ok(block);
-    assert.match(block, /if: always\(\) && !cancelled\(\) && needs\.policy\.outputs\.execution_selection == 'policy' && steps\.validation_runtime\.outcome == 'success'/);
+    assert.match(block, /if: always\(\) && !cancelled\(\) && needs\.policy\.outputs\.execution_selection == 'policy' && steps\.validation_runtime\.outcome == 'success' && steps\.validation_runtime_location\.outcome == 'success'/);
     for (const [name, expression] of Object.entries({
       REVIEW_PROVIDER: 'needs.policy.outputs.provider',
       REVIEW_MODEL: 'needs.policy.outputs.model',
@@ -21,7 +23,8 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
       REVIEW_RESPONSE: 'steps.codex.outputs.final-message',
     })) assert.ok(block.includes(`${name}: \${{ ${expression} }}`));
     assert.match(text, /execution_settings_base64: \$\{\{ steps\.resolve\.outputs\.executionSettingsBase64 \}\}/);
-    assert.match(block, /run: node \.architecture-gatekeeper-validation-runtime\/src\/ci-execution-observation\.mjs --github-response/);
+    assert.equal(observation.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github-response');
+    assert.equal(observation.env.GATEKEEPER_RUNTIME_ROOT, '${{ steps.validation_runtime_location.outputs.root }}');
     const checkout = text.split('name: Check out the pinned validation runtime')[1]?.split('      - name:')[0];
     assert.match(checkout, /id: validation_runtime/);
     assert.match(checkout, /execution_selection == 'policy'/);
@@ -35,17 +38,18 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
   });
 }
 
-function evaluateObserverCondition(expression, { cancelled, selection, checkoutOutcome }) {
+function evaluateObserverCondition(expression, { cancelled, selection, checkoutOutcome, relocationOutcome }) {
   return expression.split(/\s*&&\s*/).every((term) => {
     if (term === 'always()') return true;
     if (term === '!cancelled()') return !cancelled;
     if (term === "needs.policy.outputs.execution_selection == 'policy'") return selection === 'policy';
     if (term === "steps.validation_runtime.outcome == 'success'") return checkoutOutcome === 'success';
+    if (term === "steps.validation_runtime_location.outcome == 'success'") return relocationOutcome === 'success';
     throw new Error(`Unexpected observer condition term: ${term}`);
   });
 }
 
-test('candidate-path observer cannot execute unless the pinned runtime checkout succeeded', () => {
+test('candidate-path observer cannot execute unless the pinned runtime checkout and relocation succeeded', () => {
   for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
     const text = readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), 'utf8');
     const block = text.split('      - name: Record ordinary execution observation\n')[1]?.split('      - name:')[0];
@@ -54,8 +58,8 @@ test('candidate-path observer cannot execute unless the pinned runtime checkout 
 
     const temp = mkdtempSync(join(tmpdir(), 'agk-runtime-checkout-'));
     try {
-      const candidateScript = join(temp, '.architecture-gatekeeper-validation-runtime', 'src', 'ci-execution-observation.mjs');
-      mkdirSync(join(temp, '.architecture-gatekeeper-validation-runtime', 'src'), { recursive: true });
+      const candidateScript = join(temp, 'dist', 'ci-execution-observation.mjs');
+      mkdirSync(join(temp, 'dist'), { recursive: true });
       const marker = join(temp, 'executed');
       writeFileSync(candidateScript, `import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 'ran');\n`);
       const invokeWhenEnabled = (state) => {
@@ -65,12 +69,16 @@ test('candidate-path observer cannot execute unless the pinned runtime checkout 
       };
 
       for (const outcome of ['failure', 'skipped']) {
-        invokeWhenEnabled({ cancelled: false, selection: 'policy', checkoutOutcome: outcome });
+        invokeWhenEnabled({ cancelled: false, selection: 'policy', checkoutOutcome: outcome, relocationOutcome: 'success' });
         assert.equal(existsSync(marker), false, `${file}: candidate script ran after checkout ${outcome}`);
       }
-      invokeWhenEnabled({ cancelled: true, selection: 'policy', checkoutOutcome: 'success' });
+      for (const outcome of ['failure', 'skipped']) {
+        invokeWhenEnabled({ cancelled: false, selection: 'policy', checkoutOutcome: 'success', relocationOutcome: outcome });
+        assert.equal(existsSync(marker), false, `${file}: candidate script ran after relocation ${outcome}`);
+      }
+      invokeWhenEnabled({ cancelled: true, selection: 'policy', checkoutOutcome: 'success', relocationOutcome: 'success' });
       assert.equal(existsSync(marker), false, `${file}: candidate script ran after cancellation`);
-      invokeWhenEnabled({ cancelled: false, selection: 'policy', checkoutOutcome: 'success' });
+      invokeWhenEnabled({ cancelled: false, selection: 'policy', checkoutOutcome: 'success', relocationOutcome: 'success' });
       assert.equal(existsSync(marker), true, `${file}: successful pinned checkout did not enable observer`);
     } finally {
       rmSync(temp, { recursive: true, force: true });
@@ -82,10 +90,10 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
   // These are local subprocesses with injected host observations. They do not run
   // GitHub Actions or establish the host's real step/job outcome semantics.
   const root = fileURLToPath(new URL('..', import.meta.url));
-  const observer = fileURLToPath(new URL('../src/ci-execution-observation.mjs', import.meta.url));
-  const reporter = fileURLToPath(new URL('../src/ci-report.mjs', import.meta.url));
-  const enforced = fileURLToPath(new URL('../src/ci-enforced-acceptance.mjs', import.meta.url));
-  const procedural = fileURLToPath(new URL('../src/ci-procedural-acceptance.mjs', import.meta.url));
+  const observer = fileURLToPath(new URL('../dist/ci-execution-observation.mjs', import.meta.url));
+  const reporter = fileURLToPath(new URL('../dist/ci-report.mjs', import.meta.url));
+  const enforced = fileURLToPath(new URL('../dist/ci-enforced-acceptance.mjs', import.meta.url));
+  const procedural = fileURLToPath(new URL('../dist/ci-procedural-acceptance.mjs', import.meta.url));
   const workflowMappings = [
     '.github/workflows/architecture-gate.yml',
     '.github/workflows/architecture-gate-consumer.yml',
@@ -94,7 +102,10 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
     const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
     const observe = text.split('      - name: Record ordinary execution observation\n')[1]?.split('      - name:')[0];
     assert.ok(observe, file);
-    assert.match(observe, /run: node \.architecture-gatekeeper-validation-runtime\/src\/ci-execution-observation\.mjs --github-response/);
+    const parsed = parseWorkflow(text, file);
+    const observation = parsed.jobs.review.steps.find(step => step.name === 'Record ordinary execution observation');
+    assert.equal(observation.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github-response');
+    assert.equal(observation.env.GATEKEEPER_RUNTIME_ROOT, '${{ steps.validation_runtime_location.outputs.root }}');
     assert.doesNotMatch(observe, /continue-on-error/);
     assert.match(text, /final_message: \$\{\{ \(needs\.policy\.outputs\.execution_selection != 'policy' && steps\.codex\.outputs\.final-message\) \|\| steps\.execution\.outputs\.final_message \}\}/);
     const reportJob = text.match(/  report:\n([\s\S]*?)\n  accept:/)?.[1];
@@ -240,6 +251,7 @@ test('self selects existing effective Codex limits without changing governance s
 
 test('self protected review binds the exact PR task context before Codex consumes it', () => {
   const workflow = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
+  const parsed = parseWorkflow(workflow, 'architecture-gate.yml');
   const context = workflow.split('      - name: Attach exact pull request task context to protected review\n')[1]?.split('      - name:')[0];
   assert.ok(context);
   assert.match(context, /if: needs\.policy\.outputs\.authority_manifest_path != '' \|\| needs\.policy\.outputs\.policy_version == '1'/);
@@ -251,8 +263,10 @@ test('self protected review binds the exact PR task context before Codex consume
     AUTHORITY_PROFILE: 'needs.policy.outputs.authority_profile || \'v1\'',
     POLICY_VERSION: 'needs.policy.outputs.policy_version',
   })) assert.ok(context.includes(`${name}: \${{ ${expression} }}`));
-  assert.match(context, /run: node \.architecture-gatekeeper-validation-runtime\/src\/prepare-review-context\.mjs/);
-  assert.match(workflow, /preflight-authority-set-review\.mjs \\\s*"\$RUNNER_TEMP\/architecture-gate-decision\.schema\.json" \\\s*"\$RUNNER_TEMP\/architecture-gate-review-prompt\.md"/);
+  const contextStep = parsed.jobs.review.steps.find(step => step.name === 'Attach exact pull request task context to protected review');
+  assert.equal(contextStep.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-review-context.mjs"');
+  const preflight = parsed.jobs.review.steps.find(step => step.name === 'Check protected Authority Set schema and complete prompt');
+  assert.match(preflight.run, /^node "\$GATEKEEPER_RUNTIME_ROOT\/dist\/preflight-authority-set-review\.mjs" \\\n\s+"\$RUNNER_TEMP\/architecture-gate-decision\.schema\.json" \\\n\s+"\$RUNNER_TEMP\/architecture-gate-review-prompt\.md"\n?$/);
   assert.match(workflow, /prompt-file: \$\{\{ needs\.policy\.outputs\.policy_version == '1' && format\('\{0\}\/architecture-gate-review-prompt\.md', runner\.temp\) \|\| needs\.policy\.outputs\.authority_manifest_path != '' && format\('\{0\}\/architecture-gate-review-prompt\.md', runner\.temp\)/);
   assert.match(workflow, /prompt-file:[\s\S]*?inputs\.protected-review-instructions && format\('\{0\}\/architecture-gate-prompt\.md', runner\.temp\) \|\| inputs\.prompt-path/);
   assert.ok(workflow.indexOf('name: Attach exact pull request task context to protected review') < workflow.indexOf('id: codex\n'));
