@@ -76,15 +76,16 @@ and unresolved limits. The entrypoint and workflow investigations under
 ## TypeScript source and runtime distribution
 
 The integrated #419 slices type OWNER_ADDITION validation, execution-result
-states, tag readback, tag API/attempts, semantic tag parsing, artifact
-discovery/fetching and attestation inspection. This slice moves bounded ZIP
-extraction into `src/owner-amendment/*.mts` and repository association/CLI
-runner helpers into `src/github/*.mts`, retaining their flat compatibility
-exports. The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
+states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
+PR/run and live queue context, self-amendment scope, and amendment canonical
+readback, OWNER_ADDITION post-merge readback and self-only GitHub App reporting.
+The integrated slices also type GitHub ruleset readback and amendment Git-change
+inspection under their respective grouped source directories, retaining flat exports.
+The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `da113ee` has nine original modules typed and 87 remaining; this candidate
-has twelve typed and 84 remaining. Migration is partial and does not change
-consumer architecture or assurance policy.
+The synchronized main `c9f7b75` has twenty-two original modules typed and 74
+remaining. Migration is partial and does not change consumer architecture or
+assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, and `checkJs: false`.
@@ -142,7 +143,35 @@ inspection assumes verified CLI output and trusted expectations; it does not
 establish those preconditions. The synchronous CLI invocation leaves returned
 output unknown until its existing JSON parsing and inspection. Its type does
 not exclude asynchronous callbacks, which still fail as malformed output at
-runtime. Other callback contracts remain with their owning modules.
+runtime. Other callback contracts remain with their owning modules. The authority-source
+fetch contract preserves sync, Promise and thenable responses and reader results,
+optional signal/headers, bounded decoding, request counts and existing timeouts.
+Captured validated request strings and computed Buffer output are typed; parsed
+JSON stays unknown. The readback callback composes that streaming response with
+its JSON operation; standard fetch and direct shared callback composition are
+compile-tested. Event and readback properties that are reread stay unknown;
+readback describes canonical placement only, separate from eligibility and
+acceptance.
+
+OWNER_ADDITION readback preserves its existing PR/ordered-parent/tree/ancestry/
+authority-byte checks and performs no network I/O. It reports observed placement
+facts for a separate adoption evaluator. Reporter callbacks retain standard
+fetch and synchronous/Promise/thenable JSON responses. External inputs, payloads
+and output metadata reread after validation stay unknown; exact name/repository
+constants and computed digests are typed. Publishing assumes a protected caller
+already validated the result and does not authenticate that precondition.
+Neither result type supplies owner authorization, producer provenance or route
+activation. Focused accessor regressions retain existing observable rereads.
+
+Ruleset readback retains the fixed protected-main workflow context, App
+installation binding, single-repository administration grant and token
+revocation in `finally` before a snapshot is returned. Storage remains anchored
+to the real checkout, with private regular-file modes and same-run/base/freshness
+checks. Environment fields and API JSON are unknown; the captured workflow and
+fixed constants are typed, while context fields read again remain unknown.
+Readonly annotations prevent typed reassignment but do not freeze returned
+objects. A local snapshot is same-job launcher input, not a portable receipt or
+proof of host enforcement; the unchanged runtime validators still own its use.
 
 Runtime coverage follows the emitted and executed `dist/**/*.mjs` files. Report
 those exact paths without counting source files as runtime coverage. CodeQL

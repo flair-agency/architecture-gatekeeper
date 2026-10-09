@@ -1,0 +1,12 @@
+import type { GitHubOwnerAmendmentReadbackFetch, GitHubOwnerAmendmentReadbackResult } from '../../../src/github/github-owner-amendment-readback.mjs';
+import type { GitHubAuthorityFetchOptions, GitHubAuthorityFetchResponse } from '../../../src/github/github-authority-source.mjs';
+declare const result: GitHubOwnerAmendmentReadbackResult;
+const assumedTree: string = result.treeSha;
+result.authorityDigest = 'changed';
+const wrongUrl: GitHubOwnerAmendmentReadbackFetch = (_url: number, _options) => new Response('{}');
+const wrongJson: GitHubOwnerAmendmentReadbackFetch = () => ({ status: 200, json: 'not callable' });
+declare const streamOnly: (url: string, options: GitHubAuthorityFetchOptions) => GitHubAuthorityFetchResponse;
+const missingJson: GitHubOwnerAmendmentReadbackFetch = streamOnly;
+const acceptanceClaim = { ...result, assurance: 'accepted' };
+const wrongAssurance: GitHubOwnerAmendmentReadbackResult = acceptanceClaim;
+void [assumedTree, wrongUrl, wrongJson, missingJson, wrongAssurance];

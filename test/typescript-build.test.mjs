@@ -46,12 +46,15 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   cpSync(join(root, 'src/owner-amendment-tag-readback.mjs'), join(fixtureRoot, 'src/owner-amendment-tag-readback.mjs'));
   for (const module of ['owner-amendment-tag-api', 'owner-amendment-tag-attempt',
     'owner-amendment-semantic-tag-object', 'owner-amendment-artifact',
-    'owner-amendment-artifact-discovery', 'owner-amendment-attestation', 'owner-amendment-artifact-zip']) {
+    'owner-amendment-artifact-discovery', 'owner-amendment-attestation', 'owner-amendment-artifact-zip',
+    'owner-amendment-handoff-pr-run-context', 'owner-amendment-workflow-run-merge-group-context', 'owner-amendment-scope']) {
     cpSync(join(root, `src/owner-amendment/${module}.mts`), join(fixtureRoot, `src/owner-amendment/${module}.mts`));
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
   }
   mkdirSync(join(fixtureRoot, 'src/github'), { recursive: true });
-  for (const module of ['github-associated-repository', 'github-cli-runner']) {
+  for (const module of ['github-associated-repository', 'github-cli-runner',
+    'github-authority-source', 'github-merge-group-event', 'github-owner-amendment-readback',
+    'github-owner-addition-readback', 'github-app-check-reporter', 'github-ruleset-readback']) {
     cpSync(join(root, `src/github/${module}.mts`), join(fixtureRoot, `src/github/${module}.mts`));
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
   }
@@ -71,11 +74,23 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'authority-set.mjs',
     'ci-execution-result.mjs',
     'ci-execution/ci-execution-result.mjs',
+    'github-app-check-reporter.mjs',
     'github-associated-repository.mjs',
+    'github-authority-source.mjs',
     'github-cli-runner.mjs',
+    'github-merge-group-event.mjs',
+    'github-owner-addition-readback.mjs',
+    'github-owner-amendment-readback.mjs',
+    'github-ruleset-readback.mjs',
     'github-runner-env.mjs',
+    'github/github-app-check-reporter.mjs',
     'github/github-associated-repository.mjs',
+    'github/github-authority-source.mjs',
     'github/github-cli-runner.mjs',
+    'github/github-merge-group-event.mjs',
+    'github/github-owner-addition-readback.mjs',
+    'github/github-owner-amendment-readback.mjs',
+    'github/github-ruleset-readback.mjs',
     'legacy.mjs',
     'owner-addition-validation.mjs',
     'owner-addition/owner-addition-validation.mjs',
@@ -84,18 +99,24 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'owner-amendment-artifact-zip.mjs',
     'owner-amendment-artifact.mjs',
     'owner-amendment-attestation.mjs',
+    'owner-amendment-handoff-pr-run-context.mjs',
+    'owner-amendment-scope.mjs',
     'owner-amendment-semantic-tag-object.mjs',
     'owner-amendment-tag-api.mjs',
     'owner-amendment-tag-attempt.mjs',
     'owner-amendment-tag-readback.mjs',
+    'owner-amendment-workflow-run-merge-group-context.mjs',
     'owner-amendment/owner-amendment-artifact-discovery.mjs',
     'owner-amendment/owner-amendment-artifact-zip.mjs',
     'owner-amendment/owner-amendment-artifact.mjs',
     'owner-amendment/owner-amendment-attestation.mjs',
+    'owner-amendment/owner-amendment-handoff-pr-run-context.mjs',
+    'owner-amendment/owner-amendment-scope.mjs',
     'owner-amendment/owner-amendment-semantic-tag-object.mjs',
     'owner-amendment/owner-amendment-tag-api.mjs',
     'owner-amendment/owner-amendment-tag-attempt.mjs',
     'owner-amendment/owner-amendment-tag-readback.mjs',
+    'owner-amendment/owner-amendment-workflow-run-merge-group-context.mjs',
     'resolve-ci-policy.mjs',
     'runner-temp-path.mjs',
   ]);

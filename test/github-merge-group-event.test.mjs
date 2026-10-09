@@ -50,3 +50,24 @@ test('fails closed for missing or malformed event fields', async t => {
     assert.equal(Object.hasOwn(result, 'headSha'), false);
   });
 });
+
+
+test('keeps reread event properties as observations when accessors change after checks', () => {
+  const event = payload();
+  const laterSha = { observed: 'later SHA value' };
+  const laterAction = { observed: 'later action value' };
+  let shaReads = 0;
+  let actionReads = 0;
+  Object.defineProperty(event.merge_group, 'base_sha', { get() {
+    return ++shaReads <= 3 ? 'a'.repeat(40) : laterSha;
+  } });
+  Object.defineProperty(event, 'action', { get() {
+    return ++actionReads === 1 ? 'checks_requested' : laterAction;
+  } });
+  const observed = parseGithubMergeGroupEvent(event);
+  assert.equal(observed.status, 'PARSED_MERGE_GROUP_EVENT');
+  assert.equal(observed.baseSha, laterSha);
+  assert.equal(observed.action, laterAction);
+  assert.equal(shaReads, 4);
+  assert.equal(actionReads, 2);
+});
