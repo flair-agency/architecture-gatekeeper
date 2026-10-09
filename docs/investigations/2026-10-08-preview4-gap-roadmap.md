@@ -129,7 +129,8 @@ Preview.3 validation exited 0, and its two ordinary CI checks succeeded; Gate
 was skipped (run `114009570827`). It remains unmerged and unaccepted. These
 Preview.3 results do not validate #139 or Preview.4.
 
-This candidate is based on current main `abfc9283a8011667d3a0d0581e863a35001a0ed7`.
+This current-path planning snapshot was reviewed against main
+`abfc9283a8011667d3a0d0581e863a35001a0ed7`.
 The selector and all six authority blobs remain byte-identical to the fixed
 #450/#451 source inventory; that inventory remains a historical mechanism
 snapshot and is not extended here. The TypeScript quality/source work tracked
