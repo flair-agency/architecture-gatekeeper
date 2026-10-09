@@ -131,7 +131,13 @@ test('binds complete Gemini review inputs to protected base objects and the exac
   const taskContext = prepared.protectedPromptText.split('## Pull request task context')[1];
   assert.match(taskContext, /physical snapshot filenames listed in manifest\.json under evidence\//);
   assert.match(taskContext, /Independent read_file calls may be grouped in one tool turn/);
-  assert.match(taskContext, /continue with bounded start_line\/end_line reads/);
+  assert.match(taskContext, /manifest\.json as the exhaustive inventory of selected evidence/);
+  assert.match(taskContext, /Track retrieval coverage for every listed snapshot/);
+  assert.match(taskContext, /An untruncated full read covers a snapshot in one response/);
+  assert.match(taskContext, /use its reported total line count to request bounded start_line\/end_line ranges/);
+  assert.match(taskContext, /Do not use directory listings or search results to establish the selected inventory or byte completeness/);
+  assert.match(taskContext, /Search tools may still support semantic investigation/);
+  assert.match(taskContext, /avoid redundant full rereads solely to prove completeness/);
   assert.match(taskContext, /Never omit or summarize a snapshot/);
   assert.match(taskContext, /stop without returning a semantic decision; the execution is incomplete/);
   assert.match(prepared.protectedPromptText, /exactBaseToReviewedMergeDiff/);
