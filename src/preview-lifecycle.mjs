@@ -398,6 +398,7 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
   if (isEligibility) {
     if (changedPaths.some(p => !selection.authorityPaths.includes(p) || inputPaths.includes(p))) fail('B procedure is outside selected authority-only scope.');
     const trigger = await validatePreviewReceipt(spec.trigger, root);
+    if (trigger.request.spec.headSha === spec.headSha) fail('B must differ from the ordinary reviewed A.');
     if (trigger.request.spec.mode !== 'review' || trigger.request.spec.baseSha !== spec.baseSha ||
         trigger.request.spec.repository !== spec.repository || trigger.request.spec.targetBranch !== spec.targetBranch ||
         trigger.request.spec.selectionPath !== spec.selectionPath || hash(trigger.request.selection) !== hash(selection) ||

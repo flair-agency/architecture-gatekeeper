@@ -70,6 +70,36 @@ function integrate(f, head, receipt) {
   git(f.root, 'switch', 'main'); git(f.root, 'merge', '--no-ff', '-m', `Synthetic integration\n\nAGK-Preview-Receipt-v1: sha256:${receiptSha256}`, head);
   return git(f.root, 'rev-parse', 'HEAD');
 }
+for (const route of [
+  { name: 'BLOCK amendment', mode: 'amendment', result: 'BLOCK', ownerAmendment: false },
+  { name: 'OWNER_DECISION amendment', mode: 'amendment', result: 'OWNER_DECISION', ownerAmendment: true },
+  { name: 'OWNER_DECISION addition', mode: 'addition', result: 'OWNER_DECISION', ownerAmendment: false },
+]) {
+  test(`manifested ${route.name} rejects the ordinary A head reused as B`, async t => {
+    const f = fixture(t, true, route.ownerAmendment);
+    put(f.root, f.selection.policyPath, { version: 2, default: { mode: 'local-only' }, branches: { main: {
+      mode: 'enforced', model: f.branch.model, reasoningEffort: f.branch.reasoningEffort,
+      authorityManifestPath: '.codex/gatekeeper/authorities.json',
+      authorityLimits: { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536,
+        maxTotalBytes: 262144, maxPromptBytes: 524288 },
+    } } });
+    git(f.root, 'add', '.'); git(f.root, 'commit', '-m', 'Select manifested predecessor');
+    f.base = git(f.root, 'rev-parse', 'HEAD');
+    const before = readFileSync(join(f.root, files[0]), 'utf8');
+    const aHead = commitOn(f, 'ordinary-authority-change', { [files[0]]: `${before}Proposed authority change in ordinary A.\n` });
+    const a = await preparePreviewLifecycle(spec(f, 'review', aHead), f.root);
+    const trigger = await completePreviewLifecycle(a, ordinary(decision(route.result, true)), f.root);
+    const record = bSha => ({ version: 1, kind: route.mode === 'addition' ? 'preview-addition-record' : 'preview-amendment-record',
+      baseSha: f.base, bSha, triggerReceiptSha256: createHash('sha256').update(previewReceiptBytes(trigger)).digest('hex'),
+      target: route.mode === 'addition' ? 'choice-1' : 'existing-rule', purpose: 'Synthetic B resolution' });
+    await assert.rejects(preparePreviewLifecycle(spec(f, route.mode, aHead, trigger, record(aHead)), f.root),
+      /B must differ from the ordinary reviewed A/);
+    const bHead = commitOn(f, 'separate-authority-only-b', { [files[0]]: `${before}Separate B resolution.\n` });
+    const b = await preparePreviewLifecycle(spec(f, route.mode, bHead, trigger, record(bHead)), f.root);
+    assert.equal(b.spec.headSha, bHead);
+    assert.equal(b.spec.trigger.request.spec.headSha, aHead);
+  });
+}
 test('ordinary materializes added, deleted and empty files with exact null-versus-empty semantics', async t => {
   const f = fixture(t);
   git(f.root, 'switch', '-c', 'ordinary-materialization', f.base);
