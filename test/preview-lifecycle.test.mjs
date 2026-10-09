@@ -75,7 +75,7 @@ for (const route of [
   { name: 'OWNER_DECISION amendment', mode: 'amendment', result: 'OWNER_DECISION', ownerAmendment: true },
   { name: 'OWNER_DECISION addition', mode: 'addition', result: 'OWNER_DECISION', ownerAmendment: false },
 ]) {
-  test(`manifested ${route.name} rejects the ordinary A head reused as B`, async t => {
+  test(`manifested ${route.name} rejects the ordinary A head or tree reused as B`, async t => {
     const f = fixture(t, true, route.ownerAmendment);
     put(f.root, f.selection.policyPath, { version: 2, default: { mode: 'local-only' }, branches: { main: {
       mode: 'enforced', model: f.branch.model, reasoningEffort: f.branch.reasoningEffort,
@@ -94,10 +94,27 @@ for (const route of [
       target: route.mode === 'addition' ? 'choice-1' : 'existing-rule', purpose: 'Synthetic B resolution' });
     await assert.rejects(preparePreviewLifecycle(spec(f, route.mode, aHead, trigger, record(aHead)), f.root),
       /B must differ from the ordinary reviewed A/);
+    // Exercise both ways of repackaging A across the shared eligibility boundary.
+    let sameTreeHead;
+    if (route.ownerAmendment) {
+      sameTreeHead = commitOn(f, 'copied-a-content', { [files[0]]: `${before}Proposed authority change in ordinary A.\n` });
+    } else {
+      git(f.root, 'commit', '--allow-empty', '-m', 'Same A content with a new commit');
+      sameTreeHead = git(f.root, 'rev-parse', 'HEAD');
+    }
+    assert.notEqual(sameTreeHead, aHead);
+    assert.equal(git(f.root, 'rev-parse', `${sameTreeHead}^{tree}`), git(f.root, 'rev-parse', `${aHead}^{tree}`));
+    await assert.rejects(preparePreviewLifecycle(spec(f, route.mode, sameTreeHead, trigger, record(sameTreeHead)), f.root),
+      /B must contain different content from the ordinary reviewed A/);
     const bHead = commitOn(f, 'separate-authority-only-b', { [files[0]]: `${before}Separate B resolution.\n` });
     const b = await preparePreviewLifecycle(spec(f, route.mode, bHead, trigger, record(bHead)), f.root);
     assert.equal(b.spec.headSha, bHead);
     assert.equal(b.spec.trigger.request.spec.headSha, aHead);
+    if (route.result === 'BLOCK') {
+      git(f.root, 'replace', sameTreeHead, bHead);
+      await assert.rejects(preparePreviewLifecycle(spec(f, route.mode, sameTreeHead, trigger, record(sameTreeHead)), f.root),
+        /B must contain different content from the ordinary reviewed A/);
+    }
   });
 }
 test('ordinary materializes added, deleted and empty files with exact null-versus-empty semantics', async t => {
