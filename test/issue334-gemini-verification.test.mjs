@@ -243,10 +243,15 @@ test('pins the complete committed Gemini CLI dependency graph, not only tarball 
 });
 
 
-test('disabled verification builds the selected dist runtime before WIF issuance', () => {
+test('single selected feature verification builds the dist runtime before WIF issuance', () => {
   const workflow = parseWorkflow(readFileSync(new URL('../.github/workflows/issue334-gemini-verification.yml', import.meta.url), 'utf8'), 'issue334-gemini-verification.yml');
   const job = workflow.jobs.verify;
-  assert.equal(job.if, '${{ false }}');
+  assert.equal(job.if, "github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == '632ad571978ebd9274422067df11c7349b1a0c3e' && github.run_attempt == 1");
+  const c = context();
+  c.parents[0] = '632ad571978ebd9274422067df11c7349b1a0c3e';
+  assert.equal(validateHostedPushContext({ env: c.env, actualHeadSha: c.merge, orderedParents: c.parents }).beforeSha, '632ad571978ebd9274422067df11c7349b1a0c3e');
+  c.parents[0] = SHA('a');
+  assert.throws(() => validateHostedPushContext({ env: c.env, actualHeadSha: c.merge, orderedParents: c.parents }));
   const buildIndex = job.steps.findIndex(step => step.name === 'Build the selected Gatekeeper runtime before WIF issuance');
   const installIndex = job.steps.findIndex(step => step.name === 'Install pinned CLI before WIF issuance');
   const authIndex = job.steps.findIndex(step => step.name === 'Exchange existing WIF identity');

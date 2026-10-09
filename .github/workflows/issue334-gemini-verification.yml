@@ -10,9 +10,8 @@ permissions:
   contents: read
 jobs:
   verify:
-    # Staging only: a follow-up PR must bind and admit the exact hosted execution.
-    if: ${{ false }}
-    # Previous consistency condition: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == '21731bf98e998cddf13c085cc4a02bb51bfda498' && github.run_attempt == 1
+    # Exact-source coordinator admission remains external to this consistency condition.
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == '632ad571978ebd9274422067df11c7349b1a0c3e' && github.run_attempt == 1
     permissions:
       contents: read
       id-token: write
