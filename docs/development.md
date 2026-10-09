@@ -239,15 +239,24 @@ for your OS, including the standard query packs. Add its `codeql` directory to
 exits with installation guidance before creating a scan directory. Supported
 systems follow CodeQL's official requirements; allow several GB of disk space.
 The command analyzes JavaScript/TypeScript and Actions with the default suites,
-including the local threat model used by CI. The repository-owned model pack in
-`.github/codeql/extensions/github-output` represents only the adopted GitHub
-runner output boundary. Local analysis explicitly loads the same pack that
-GitHub default setup discovers from this directory.
+including the local threat model used by CI. Repository-owned model packs under
+`.github/codeql/extensions/` represent the selected GitHub runner output
+boundary and the owner-selected workspace boundary for two legacy GitHub CLI
+entrypoints. Local analysis explicitly loads both packs that GitHub default
+setup discovers from this directory, using the platform path delimiter for
+`--additional-packs`.
 
 Before scanning the repository, the command runs the standard path-injection
-query with and without the model against a generated fixture. Only the trusted
-accessor finding may disappear; unrelated environment, CLI, and checked-path
-findings must remain. Model or query incompatibility fails this regression and
+query with and without both models against generated fixtures. The output
+regression retains unrelated environment, CLI, other-accessor and checked-path
+findings. The workspace regression copies the production accessor and CLI
+entrypoints, then checks flows through actual Git snapshot and legacy authority
+operations. It retains direct workspace environment reads, other environment
+and CLI sources, same-file alternate exports, caller-selected roots, copied
+same-named accessors, and generic reader/preparer API flows, including the
+preparer's `git diff` working directory. Shared sink alert identity may persist
+because those negative flows remain; SARIF counts do not claim a production
+finding reduction. Model or query incompatibility fails the regression and
 stops analysis. `npm run codeql:model` runs only this regression; the CI
 `codeql-model` job runs it with the official CodeQL CLI independently of the
 existing default-setup scan. The fixture, baseline/modeled SARIF, and regression result are
