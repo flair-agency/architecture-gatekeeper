@@ -317,7 +317,10 @@ export async function startGeminiSecurityProxy(config) {
               reserved = result === true;
             } catch { /* fail closed */ }
             if (!reserved) {
-              res.writeHead(429, { 'Content-Type': 'application/json' });
+              // Admission was permanently refused by the trusted parent. Use
+              // client-denial status rather than advertising transient throttling.
+              // The pinned CLI treats this refusal as terminal.
+              res.writeHead(403, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ error: 'Upstream dispatch reservation unavailable.' }));
               return;
             }
