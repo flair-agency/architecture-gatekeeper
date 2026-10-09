@@ -53,6 +53,15 @@ the ADA observation and the #423 row—remain recorded observations and are not
 refreshed by this source checkpoint. This checkpoint asserts no newer consumer
 or issue statuses.
 
+Main later advanced to `678cb4ab1fda0e9415190e1140a79951d811b2e4` (#451).
+That source-only change adjusts the typed GitHub CLI runner contract in
+[`src/github/github-cli-runner.mts`](../../src/github/github-cli-runner.mts)
+and adds composition, type and runtime tests, including passing the runner to
+`verifyOwnerAmendmentBlockEvidence`. The #450 T0–T9 matrix remains a fixed
+mechanism inventory; this note accounts for the later #451 source delta without
+treating its tests as consumer, host, adoption, or lifecycle evidence. It adds
+no route selection, owner decision, or release gate.
+
 ## Historical integration checkpoint through PR #449 (2026-10-09)
 
 This section preserves the preceding source inventory at main
