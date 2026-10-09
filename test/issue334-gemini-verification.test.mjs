@@ -246,10 +246,10 @@ test('pins the complete committed Gemini CLI dependency graph, not only tarball 
 test('single selected feature verification builds the dist runtime before WIF issuance', () => {
   const workflow = parseWorkflow(readFileSync(new URL('../.github/workflows/issue334-gemini-verification.yml', import.meta.url), 'utf8'), 'issue334-gemini-verification.yml');
   const job = workflow.jobs.verify;
-  assert.equal(job.if, "github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == '9ee404f32d13ba97bf638393f91a293ac24bd5f1' && github.run_attempt == 1");
+  assert.equal(job.if, "github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/feature/gemini-ci' && github.event.before == 'acc78d31ede7e68a549c7158a2a613321820a387' && github.run_attempt == 1");
   const c = context();
-  c.parents[0] = '9ee404f32d13ba97bf638393f91a293ac24bd5f1';
-  assert.equal(validateHostedPushContext({ env: c.env, actualHeadSha: c.merge, orderedParents: c.parents }).beforeSha, '9ee404f32d13ba97bf638393f91a293ac24bd5f1');
+  c.parents[0] = 'acc78d31ede7e68a549c7158a2a613321820a387';
+  assert.equal(validateHostedPushContext({ env: c.env, actualHeadSha: c.merge, orderedParents: c.parents }).beforeSha, 'acc78d31ede7e68a549c7158a2a613321820a387');
   c.parents[0] = SHA('a');
   assert.throws(() => validateHostedPushContext({ env: c.env, actualHeadSha: c.merge, orderedParents: c.parents }));
   const buildIndex = job.steps.findIndex(step => step.name === 'Build the selected Gatekeeper runtime before WIF issuance');
