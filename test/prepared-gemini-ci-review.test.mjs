@@ -114,7 +114,7 @@ test('composes the protected schema into the bounded prompt and returns raw resp
   assert.equal(await runPreparedGeminiCiReview(input(f)), 'raw protected-CI response text');
   const observed = JSON.parse(readFileSync(f.reportPath, 'utf8'));
   const supplied = input(f);
-  const completePrompt = `${supplied.protectedPromptText}\n\nProtected output schema (follow this schema exactly; downstream CI validation remains authoritative):\n${supplied.protectedDecisionSchemaText}\n`;
+  const completePrompt = `${supplied.protectedPromptText}\n\nProtected output schema (follow this schema exactly; downstream CI validation remains authoritative):\n${supplied.protectedDecisionSchemaText}\n\nOutput format: Return exactly one JSON object matching this schema. Do not wrap it in Markdown fences or include prose before or after it.\n`;
   assert.equal(observed.prompt, encodeGeminiCliPromptForTransport(completePrompt));
   assert.equal(observed.prompt.includes('@'), false);
   assert.equal(JSON.parse(observed.prompt.slice(observed.prompt.lastIndexOf('\n') + 1)), completePrompt);
@@ -206,7 +206,7 @@ test('accounts for JSON-envelope expansion within the explicit prompt byte limit
   const f = fixture(t);
   const value = input(f);
   value.protectedPromptText = '@evidence/@manifest.json '.repeat(8);
-  const completePrompt = `${value.protectedPromptText}\n\nProtected output schema (follow this schema exactly; downstream CI validation remains authoritative):\n${value.protectedDecisionSchemaText}\n`;
+  const completePrompt = `${value.protectedPromptText}\n\nProtected output schema (follow this schema exactly; downstream CI validation remains authoritative):\n${value.protectedDecisionSchemaText}\n\nOutput format: Return exactly one JSON object matching this schema. Do not wrap it in Markdown fences or include prose before or after it.\n`;
   const plaintextBytes = Buffer.byteLength(completePrompt, 'utf8');
   const envelopeBytes = Buffer.byteLength(encodeGeminiCliPromptForTransport(completePrompt), 'utf8');
   assert.ok(envelopeBytes > plaintextBytes);

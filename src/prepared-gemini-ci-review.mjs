@@ -43,7 +43,7 @@ export function snapshotPreparedGeminiCiReviewInput(input) {
 }
 
 export function composePreparedGeminiCiPrompt(protectedPromptText, schemaText) {
-  return `${protectedPromptText}\n\nProtected output schema (follow this schema exactly; downstream CI validation remains authoritative):\n${schemaText}\n`;
+  return `${protectedPromptText}\n\nProtected output schema (follow this schema exactly; downstream CI validation remains authoritative):\n${schemaText}\n\nOutput format: Return exactly one JSON object matching this schema. Do not wrap it in Markdown fences or include prose before or after it.\n`;
 }
 
 /**
