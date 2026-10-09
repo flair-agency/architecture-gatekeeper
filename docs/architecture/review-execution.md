@@ -397,6 +397,32 @@ Publication supplies no semantic acceptance authority and activates no CI
 route. This decision does not change the fixed runner-temp paths used for
 protected review inputs and other temporary artifacts.
 
+#### GitHub workspace boundary for legacy committed snapshots (owner decision, 2026-10-10)
+
+The GitHub-specific CLI entrypoints for committed regular-file materialization
+and legacy CI authority preparation use the invoking runner's original
+`GITHUB_WORKSPACE` as the checkout root. The invoking execution must preserve
+that runner-provided value and establish the intended reviewed-repository
+checkout and recorded revisions under the applicable host mechanism. It must
+not derive or override the root from candidate code, repository content,
+request JSON, model output, or caller-selected path arguments.
+
+A dedicated no-argument `trustedGitHubWorkspaceRoot()` accessor exposes this
+invoker-supplied value. A repository-scoped CodeQL `path-injection` barrier may
+model only that accessor's return value. It must not generalize to direct
+`process.env.GITHUB_WORKSPACE` reads, other environment variables or exports,
+caller-selected roots, generic Git readers, or filesystem/path validation.
+The same root is used for committed snapshot reads and legacy authority Git
+diff operations; the boundary therefore covers both uses in these entrypoints.
+
+This accessor and model do not authenticate an arbitrary environment, prove
+checkout origin, protect the Git executable/object store, or establish
+same-user filesystem isolation. Recorded-base SHA/path selection, regular-file
+snapshot checks, candidate-authority change rejection, and applicable host
+enforcement requirements remain unchanged. A candidate-controlled invocation
+or workflow cannot establish protected canonical acceptance through this
+model. CodeQL modeling alone supplies no acceptance or release authority.
+
 #### Target: legacy v1 CI authority repair (Issue #120 owner decision)
 
 The LIVE Agency #106 trial exposed a false acceptance: an enforced legacy v1
