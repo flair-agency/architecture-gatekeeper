@@ -96,6 +96,37 @@ Profiles/adapters specify producer/actor IDs, execution/credential boundaries, e
 
 See OWNER_ADDITION and target evidence/acceptance sections for route rules.
 
+#### Consumer-selected assurance requirements (owner decision, 2026-10-03)
+
+Gatekeeper defines the meaning and verification conditions of each supported
+assurance profile; the consumer owner selects the required assurances through
+canonical authority and the applicable prior policy. Host enforcement is not
+a universal prerequisite for the concept of `OWNER_AMENDMENT`. An explicitly
+defined procedural amendment profile may establish legitimate adoption without
+claiming that the host prevented other writes. An enforced profile must verify
+its selected host conditions and fail closed when they are unavailable.
+
+These profiles must preserve the separate assurance dimensions below. Existing
+`G0` retains its principal-authentication meaning; this decision introduces no
+`G1`/`G2` hierarchy or scalar minimum-assurance field. Procedural adoption does
+not by itself authenticate an owner or establish exact-claim authorization.
+Each report identifies the selected profile, required and observed properties,
+evidence and unavailable or unverified facts without upgrading their meaning.
+
+This decision authorizes design of a separately versioned consumer procedural
+amendment profile, not activation of a route. Before implementation enables
+acceptance, its contract must define completed trigger evidence and producer
+verification, full prior-policy/Authority Set eligibility, exact amendment
+scope and bindings, legitimate transition and canonical readback, applicable
+fresh review, first-opt-in procedure and failure conditions. Candidate policy
+cannot select the profile, and an enforced failure cannot fall back to it.
+
+Existing self-only trigger/producer/transition requirements, legacy v1
+authority-change rejection and formal v0.6.0 lifecycle requirements remain
+unchanged. This decision does not adopt a consumer's authority selection,
+amendment or host configuration, or establish that a historical review log
+satisfies a newly defined evidence contract.
+
 Enforced-profile diagram; procedural profiles retain separate assurance.
 
 ```mermaid
