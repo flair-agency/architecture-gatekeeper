@@ -76,13 +76,14 @@ and unresolved limits. The entrypoint and workflow investigations under
 ## TypeScript source and runtime distribution
 
 The integrated #419 slices type OWNER_ADDITION validation, execution-result
-states, tag readback, tag API/attempts and semantic tag parsing. The next slice
-moves artifact discovery, bounded archive fetching and attestation inspection
-into `src/owner-amendment/*.mts`, retaining their flat compatibility exports.
-The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
+states, tag readback, tag API/attempts, semantic tag parsing, artifact
+discovery/fetching and attestation inspection. This slice moves bounded ZIP
+extraction into `src/owner-amendment/*.mts` and repository association/CLI
+runner helpers into `src/github/*.mts`, retaining their flat compatibility
+exports. The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `74aae0d` has six original modules typed and 90 remaining; this candidate
-has nine typed and 87 remaining. Migration is partial and does not change
+Main `da113ee` has nine original modules typed and 87 remaining; this candidate
+has twelve typed and 84 remaining. Migration is partial and does not change
 consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
