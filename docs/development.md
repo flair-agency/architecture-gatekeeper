@@ -79,13 +79,13 @@ The integrated #419 slices type OWNER_ADDITION validation, execution-result
 states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
 PR/run and live queue context, self-amendment scope, and amendment canonical
 readback, OWNER_ADDITION post-merge readback and self-only GitHub App reporting.
-This slice types the isolated GitHub ruleset readback under
-`src/github/github-ruleset-readback.mts`, retaining its flat exports.
+The integrated slices also type GitHub ruleset readback and amendment Git-change
+inspection under their respective grouped source directories, retaining flat exports.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `70c9214` has twenty original modules typed and 76 remaining; this
-candidate has twenty-one typed and 75 remaining. Migration is partial and does
-not change consumer architecture or assurance policy.
+The synchronized main `c9f7b75` has twenty-two original modules typed and 74
+remaining. Migration is partial and does not change consumer architecture or
+assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, and `checkJs: false`.
