@@ -122,3 +122,20 @@ test('readback reports canonical state independently and rejects a changed autho
   assert.equal(result.adoption, 'invalid');
   assert.equal(result.canonical, 'invalid');
 });
+
+
+test('eligibility output preserves the unchecked second result read', () => {
+  const input = fixture();
+  input.merge = null;
+  input.targetReadback = null;
+  let reads = 0;
+  Object.defineProperty(input.eligibility, 'result', {
+    enumerable: true,
+    get() { reads += 1; return reads === 1 ? 'eligible' : 42; },
+  });
+  const result = evaluateOwnerAdditionAdoption(input);
+  assert.equal(reads, 2);
+  assert.equal(result.eligibility, 42);
+  assert.equal(result.adoption, 'pending');
+  assert.equal(result.canonical, 'pending');
+});
