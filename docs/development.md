@@ -131,10 +131,19 @@ with their original generic input/output risk and alert locations; no dismissal
 or trust-model expansion is made. Types provide no
 authentication, owner authorization, immutable evidence or protected acceptance.
 
+The current BLOCK handoff stack types `owner-amendment-block-handoff`,
+`owner-amendment-block-handoff-compose`, and `owner-amendment-block-handoff-orchestrator`.
+Flat exports retain their existing callers. The grouped implementations preserve
+exact record/bundle binding, artifact and producer verification, protected
+builder invocation, and annotated-tag transport/readback. Generated digests and
+tag-message bytes are typed; coercible SHA inputs and external property rereads
+retain their existing runtime meaning. Preparing or transporting a tag does not
+establish semantic eligibility, owner authorization or acceptance.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `196d5e8` has 42 of the original 96 modules typed and 54 remaining; this
-candidate has 47 typed and 49 remaining. Migration is partial and does
+Main `ed4aba2` has 47 of the original 96 modules typed and 49 remaining; this
+candidate has 50 typed and 46 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
