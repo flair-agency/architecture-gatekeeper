@@ -10,14 +10,11 @@ import { types } from 'node:util';
 import { snapshotPreparedReviewData } from './prepared-review-data.mjs';
 
 const SELECTORS = Object.freeze({
-  policyPath: '.codex/gatekeeper/ci-policy.json',
-  promptPath: '.codex/gatekeeper/ci-prompt.md',
-  schemaPath: '.codex/gatekeeper/ci-decision.schema.json',
-  validationPath: '.codex/gatekeeper/decision.validation.json',
   runtimeLockPath: '.codex/gatekeeper/gemini-verification-package-lock.json',
 });
 const SHA = /^[a-f0-9]{40}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+const RELATIVE_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
 const PREPARATIONS = new WeakMap();
 
 function exactRecord(value, keys, label) {
@@ -43,7 +40,7 @@ function git(root, args, maxBuffer = 8_192) {
 
 function validateHost(host) {
   const context = exactRecord(host, ['root', 'repository', 'baseBranch', 'baseSha', 'headSha', 'reviewedSha',
-    'runId', 'runAttempt', 'workflowRef'], 'Ordinary Gemini host context');
+    'runId', 'runAttempt', 'workflowRef', 'policyPath', 'promptPath', 'schemaPath', 'validationPath'], 'Ordinary Gemini host context');
   if (typeof context.root !== 'string' || !context.root || typeof context.repository !== 'string' ||
       !REPOSITORY.test(context.repository) || context.repository.endsWith('.git') || context.repository.includes('..') ||
       typeof context.baseBranch !== 'string' || !context.baseBranch ||
@@ -51,13 +48,15 @@ function validateHost(host) {
       new Set([context.baseSha, context.headSha, context.reviewedSha]).size !== 3 ||
       typeof context.runId !== 'string' || !/^[0-9]{1,20}$/.test(context.runId) ||
       typeof context.runAttempt !== 'string' || !/^[1-9][0-9]{0,5}$/.test(context.runAttempt) ||
-      typeof context.workflowRef !== 'string' || !context.workflowRef || context.workflowRef.length > 512) {
+      typeof context.workflowRef !== 'string' || !context.workflowRef || context.workflowRef.length > 512 ||
+      ![context.policyPath, context.promptPath, context.schemaPath].every(value => typeof value === 'string' && value.length <= 240 && RELATIVE_PATH.test(value) && !value.split('/').some(part => part === '.' || part === '..')) ||
+      (context.validationPath !== null && (typeof context.validationPath !== 'string' || context.validationPath.length > 240 || !RELATIVE_PATH.test(context.validationPath) || context.validationPath.split('/').some(part => part === '.' || part === '..')))) {
     throw new Error('Ordinary Gemini host context is incomplete or malformed.');
   }
   const head = git(context.root, ['rev-parse', 'HEAD']);
   const parents = git(context.root, ['rev-list', '--parents', '-n', '1', context.reviewedSha]).split(/\s+/).slice(1);
-  if (head !== context.reviewedSha || parents.length !== 2 || parents[0] !== context.baseSha || parents[1] !== context.headSha) {
-    throw new Error('Checked-out review commit does not match the host base, head, and ordered merge parents.');
+  if ((head !== context.baseSha && head !== context.reviewedSha) || parents.length !== 2 || parents[0] !== context.baseSha || parents[1] !== context.headSha) {
+    throw new Error('Git input checkout does not match the host base, head, and ordered merge parents.');
   }
   return Object.freeze({ ...context, orderedParents: Object.freeze([...parents]) });
 }
@@ -90,10 +89,10 @@ export async function prepareOrdinaryGeminiCiAdapter(supplied) {
     baseSha: host.baseSha,
     headSha: host.headSha,
     reviewedSha: host.reviewedSha,
-    policyPath: SELECTORS.policyPath,
-    promptPath: SELECTORS.promptPath,
-    schemaPath: SELECTORS.schemaPath,
-    validationPath: SELECTORS.validationPath,
+    policyPath: host.policyPath,
+    promptPath: host.promptPath,
+    schemaPath: host.schemaPath,
+    validationPath: host.validationPath,
     referencePaths: [],
   }, fetchExternal);
   const preparation = Object.freeze({ context: host, runtime: pinnedRuntime });
@@ -121,6 +120,7 @@ export async function executeOrdinaryGeminiCiAdapter(supplied) {
   const execution = Object.freeze(result.execution.status === 'completed'
     ? { ...result.execution, responseBytes: Buffer.from(result.execution.responseBytes) }
     : { ...result.execution });
-  return Object.freeze({ context: state.context, bindings: snapshotPreparedReviewData(state.prepared.bindings), execution,
+  return Object.freeze({ context: state.context, bindings: snapshotPreparedReviewData(state.prepared.bindings),
+    authorityProvenance: snapshotPreparedReviewData(state.prepared.authorityProvenance), execution,
     decision: result.decision, dispatchDiagnostics: result.dispatchDiagnostics });
 }

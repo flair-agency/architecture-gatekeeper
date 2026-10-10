@@ -137,3 +137,14 @@ test('preserves UTF-8 BOM and empty file bytes in the recorded snapshots', t => 
   assert.deepEqual(Buffer.from(snapshot.text, 'utf8'), bom);
   assert.equal(packet.files.find(file => file.path === 'empty.txt').after.text, '');
 });
+
+
+test('protected base checkout produces identical candidate evidence without materializing candidate files', t => {
+  const context = fixture(t, root => writeFileSync(join(root, 'candidate-only.mjs'), 'throw new Error("must not execute");\n'));
+  const mergePacket = build(context);
+  git(context.root, 'checkout', '--detach', context.baseSha);
+  assert.equal(existsSync(join(context.root, 'candidate-only.mjs')), false);
+  assert.deepEqual(build(context), mergePacket);
+  git(context.root, 'checkout', '--detach', context.headSha);
+  assert.throws(() => build(context), /neither the protected base nor the reviewed merge/);
+});

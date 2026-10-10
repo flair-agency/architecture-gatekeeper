@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -17,7 +17,7 @@ const head = 'b'.repeat(40);
 const reviewed = 'c'.repeat(40);
 
 function fixtureRoot(t) {
-  const root = mkdtempSync(join(tmpdir(), 'ci-report-entrypoint-'));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'ci-report-entrypoint-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   return root;
 }
@@ -276,6 +276,6 @@ test('real ci-report CLI fails closed when the selected output sink cannot be wr
   mkdirSync(outputDirectory);
   const result = runCli(root, { GITHUB_OUTPUT: outputDirectory });
   assert.notEqual(result.status, 0, result.stdout);
-  assert.match(result.stderr, /EISDIR|illegal operation on a directory/);
+  assert.match(result.stderr, /runner-created output is not a direct regular file/);
   assert.equal(result.requests.some(request => request.method === 'POST' && request.url.endsWith('/issues/17/comments')), true);
 });

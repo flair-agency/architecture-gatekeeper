@@ -97,6 +97,7 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
   const workflowMappings = [
     '.github/workflows/architecture-gate.yml',
     '.github/workflows/architecture-gate-consumer.yml',
+    '.github/workflows/architecture-gate-providers.yml',
   ];
   for (const file of workflowMappings) {
     const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
@@ -112,9 +113,12 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
     const acceptJob = text.match(/  accept:\n([\s\S]*)$/)?.[1];
     assert.ok(reportJob, file);
     assert.ok(acceptJob, file);
-    assert.match(reportJob, /REVIEW_RESULT: \$\{\{ needs\.review\.result \}\}/);
+    const selectedResult = parsed.jobs['gemini-review']
+      ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}"
+      : '${{ needs.review.result }}';
+    assert.equal(parsed.jobs.report.steps.find(step => step.env?.REVIEW_RESULT)?.env.REVIEW_RESULT, selectedResult);
     assert.match(reportJob, /DECISION: \$\{\{ needs\.review\.outputs\.final_message \}\}/);
-    assert.match(acceptJob, /REVIEW_RESULT: \$\{\{ needs\.review\.result \}\}/);
+    assert.equal(parsed.jobs.accept.steps.find(step => step.env?.REVIEW_RESULT)?.env.REVIEW_RESULT, selectedResult);
     assert.match(acceptJob, /CONCLUSION: \$\{\{ needs\.report\.outputs\.conclusion \}\}/);
   }
 
@@ -150,7 +154,7 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
     const files = nextFiles(`report-${label}`);
     const result = spawnSync(process.execPath, [reporter], {
       cwd: root,
-      env: { ...baseEnv, GITHUB_OUTPUT: files.output,
+      env: { ...baseEnv, GITHUB_OUTPUT: realpathSync(files.output),
         REPORT_PATH: join(files.dir, 'report.md'), GITHUB_STEP_SUMMARY: join(files.dir, 'summary.md'),
         GITHUB_API_URL: 'https://example.invalid',
         MODE: 'enforced', POLICY_RESULT: 'success', REVIEW_RESULT: reviewResult,

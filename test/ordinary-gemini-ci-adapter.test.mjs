@@ -101,7 +101,9 @@ else {
   const runtimeEntry = join(runtimeDirectory, 'node_modules/@google/gemini-cli/bundle/gemini.js');
   const host = { root, repository: 'flair-agency/architecture-gatekeeper', baseBranch: 'feature/gemini-ordinary',
     baseSha, headSha, reviewedSha, runId: '12345', runAttempt: '1',
-    workflowRef: 'flair-agency/architecture-gatekeeper/.github/workflows/ordinary-gemini.yml@refs/heads/main' };
+    workflowRef: 'flair-agency/architecture-gatekeeper/.github/workflows/ordinary-gemini.yml@refs/heads/main',
+    policyPath: '.codex/gatekeeper/ci-policy.json', promptPath: '.codex/gatekeeper/ci-prompt.md',
+    schemaPath: '.codex/gatekeeper/ci-decision.schema.json', validationPath: '.codex/gatekeeper/decision.validation.json' };
   const runtime = { directory: runtimeDirectory };
   return { parent, root, host, runtime, runtimeEntry, observationPath, invocationPath, baseSha, headSha, reviewedSha };
 }
@@ -228,8 +230,14 @@ test('parent launcher prepares before WIF issuance and completes one synthetic s
         : { accessToken: 'fixture-parent-only-vertex-token', expireTime: new Date(Date.now() + 300_000).toISOString() };
     return new Response(JSON.stringify(response), { status: 200 });
   };
+  const registered = [];
   const result = await runOrdinaryGeminiCiLauncher({ host: f.host, runtime: f.runtime,
-    sourceToken: null, wif: syntheticWif }, issuerFetch);
+    sourceToken: null, wif: syntheticWif }, issuerFetch, secret => {
+      assert.equal(existsSync(f.invocationPath), false, 'credentials masked before CLI session');
+      registered.push(secret);
+    });
+  assert.deepEqual(registered, ['fixture-github-request-capability', 'fixture-github-oidc-assertion',
+    'fixture-sts-federated-token', 'fixture-parent-only-vertex-token']);
   assert.equal(calls.length, 3);
   assert.equal(result.decision.decision, 'PASS');
   assert.equal(result.bindings.reviewedMergeSha, f.reviewedSha);
@@ -253,4 +261,21 @@ test('parent launcher stops before issuance on preparation failure and before CL
     sourceToken: null, wif: syntheticWif }, rejectedFetch));
   assert.equal(calls, 1, 'WIF error has no retry or fallback');
   assert.equal(existsSync(f.invocationPath), false);
+});
+
+
+test('base checkout validates the same exact candidate review without materializing candidate code', async t => {
+  const f = fixture(t);
+  const credential = { token: 'fixture-parent-token', project: 'fixture-project', region: 'global' };
+  const mergePrepared = await prepareOrdinaryGeminiCiAdapter({ host: f.host, runtime: f.runtime, sourceToken: null });
+  const mergeResult = await executeOrdinaryGeminiCiAdapter({ preparation: mergePrepared, credential });
+  git(f.root, 'checkout', '--detach', f.baseSha);
+  assert.equal(existsSync(join(f.root, 'src/candidate.mjs')), false);
+  const basePrepared = await prepareOrdinaryGeminiCiAdapter({ host: f.host, runtime: f.runtime, sourceToken: null });
+  const baseResult = await executeOrdinaryGeminiCiAdapter({ preparation: basePrepared, credential });
+  assert.deepEqual(baseResult.bindings, mergeResult.bindings);
+  assert.deepEqual(baseResult.authorityProvenance, mergeResult.authorityProvenance);
+  assert.deepEqual(baseResult.decision, mergeResult.decision);
+  git(f.root, 'checkout', '--detach', f.headSha);
+  await assert.rejects(prepareOrdinaryGeminiCiAdapter({ host: f.host, runtime: f.runtime, sourceToken: null }), /does not match the host base, head, and ordered merge parents/);
 });
