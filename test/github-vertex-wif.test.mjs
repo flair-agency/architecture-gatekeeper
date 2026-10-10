@@ -41,6 +41,20 @@ test('performs the exact parent-only GitHub OIDC, STS, and IAM token exchange', 
   for (const call of f.calls) assert.equal(call.init.signal instanceof AbortSignal, true);
 });
 
+test('preserves all supported Vertex endpoint location identifiers', async () => {
+  for (const region of ['global', 'us', 'eu', 'us-central1']) {
+    const f = fetchSequence();
+    const result = await acquireGitHubVertexWifCredential({ ...input, region }, f.fetch);
+    assert.equal(result.region, region);
+    assert.equal(f.calls.length, 3);
+  }
+  for (const region of ['US', 'europe', 'us/evil', '']) {
+    let sends = 0;
+    await assert.rejects(acquireGitHubVertexWifCredential({ ...input, region }, async () => { sends++; }), /failed at input/);
+    assert.equal(sends, 0);
+  }
+});
+
 test('rejects invalid exact input records before sending', async () => {
   const accessor = { ...input };
   Object.defineProperty(accessor, 'region', { enumerable: true, get() { throw new Error('secret'); } });

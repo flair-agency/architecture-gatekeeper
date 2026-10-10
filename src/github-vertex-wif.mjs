@@ -39,7 +39,7 @@ function validBindings(input) {
   if (typeof provider !== 'string' || !/^projects\/[1-9][0-9]{4,19}\/locations\/global\/workloadIdentityPools\/[a-z][a-z0-9-]{2,31}\/providers\/[a-z][a-z0-9-]{2,31}$/.test(provider) ||
       typeof account !== 'string' || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$/.test(account) ||
       typeof project !== 'string' || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(project) ||
-      typeof region !== 'string' || !(region === 'global' || /^[a-z]+-[a-z0-9]+[0-9]$/.test(region)) ||
+      typeof region !== 'string' || !(region === 'global' || region === 'us' || region === 'eu' || /^[a-z]+-[a-z0-9]+[0-9]$/.test(region)) ||
       typeof token !== 'string' || token.length < 1 || token.length > 8192 || /[\u0000-\u0020\u007f]/.test(token)) fail('input');
   if (typeof config.oidcRequestUrl !== 'string' || config.oidcRequestUrl.length > 2048) fail('input');
   let requestUrl;
