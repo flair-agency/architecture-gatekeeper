@@ -110,7 +110,7 @@ Ordinary routing returns an unknown reread; legacy path selection returns its
 checked string or null. Types describe existing operations and supply no
 authentication or acceptance evidence.
 
-The current BLOCK helper stack types `owner-amendment-block-semantic-record`, `owner-amendment-block-context-verifier`.
+The current BLOCK helper stack types `owner-amendment-block-semantic-record`, `owner-amendment-block-context-verifier`, `owner-amendment-block-evidence-composer`.
 Flat exports and all runtime validation/rereads are retained. External context
 and record fields stay unknown; computed byte digests and status variants
 describe observations, not authentication, semantic eligibility or acceptance.
@@ -118,7 +118,7 @@ describe observations, not authentication, semantic eligibility or acceptance.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
 Main `208b055` has 32 of the original 96 modules typed and 64 remaining; this
-candidate has 34 typed and 62 remaining. Migration is partial and does
+candidate has 35 typed and 61 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
