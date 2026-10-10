@@ -110,7 +110,7 @@ Ordinary routing returns an unknown reread; legacy path selection returns its
 checked string or null. Types describe existing operations and supply no
 authentication or acceptance evidence.
 
-The current review-input stack types `validate-decision`, `validate-authority-set-decision`, `preflight-authority-set-review`.
+The current review-input stack types `validate-decision`, `validate-authority-set-decision`, `preflight-authority-set-review`, `materialize-regular-git-snapshot`, `prepare-review-file-context`, `prepare-review-context`.
 Flat exports, CLI dispatch and runtime operations remain intact. Untrusted JSON
 and unchecked property rereads retain unknown types; type declarations do not
 prove authority provenance or protected acceptance.
@@ -118,7 +118,7 @@ prove authority provenance or protected acceptance.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
 Main `8d12a04` has 35 of the original 96 modules typed and 61 remaining; this
-candidate has 38 typed and 58 remaining. Migration is partial and does
+candidate has 41 typed and 55 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
