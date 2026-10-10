@@ -65,7 +65,9 @@ function expected(projection) {
 }
 function referencedWorkflow(value, overrides = {}) {
   const reference = value.workflowRef.slice(value.workflowRepository.length + 1);
-  const [path, ref] = reference.split('@');
+  const at = reference.indexOf('@');
+  const path = reference.slice(0, at);
+  const ref = reference.slice(at + 1);
   return { path: `${value.workflowRepository}/${path}@${value.workflowSha}`, ref, sha: value.workflowSha, ...overrides };
 }
 function maskedLog(projection) {
@@ -176,6 +178,59 @@ test('fetch accepts SHA-pinned reusable workflow metadata when GitHub omits ref'
   };
   const fetched = await retrieveOrdinaryGeminiPublication({ apiToken: 'fixture', expected: tuple, outputPath, fetchImpl: fakeFetch });
   assert.equal(fetched.report.validatedConclusion, 'PASS');
+});
+
+test('run.path accepts plain and ref-qualified REST forms only for the protected caller workflow ref', async t => {
+  const parent = mkdtempSync(join(tmpdir(), 'ordinary-gemini-caller-path-'));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  const temp = join(parent, 'runner-temp'); const { mkdirSync } = await import('node:fs'); mkdirSync(temp, { mode: 0o700 });
+  setRunnerTemp(t, temp);
+
+  const cases = [
+    { kind: 'plain', path: '.github/workflows/architecture-gate.yml' },
+    { kind: 'full-branch-ref', path: '.github/workflows/architecture-gate.yml@refs/heads/main' },
+    { kind: 'short-branch-ref', path: '.github/workflows/architecture-gate.yml@main' },
+    { kind: 'wrong-branch-ref', path: '.github/workflows/architecture-gate.yml@refs/heads/attacker', reject: true },
+    { kind: 'short-tag-ref', callerRef: 'refs/tags/release-v1', path: '.github/workflows/architecture-gate.yml@release-v1' },
+    { kind: 'tag-as-branch', callerRef: 'refs/tags/release-v1', path: '.github/workflows/architecture-gate.yml@refs/heads/release-v1', reject: true },
+    { kind: 'branch-at-short', callerRef: 'refs/heads/release@next', path: '.github/workflows/architecture-gate.yml@release@next' },
+    { kind: 'branch-at-full', callerRef: 'refs/heads/release@next', path: '.github/workflows/architecture-gate.yml@refs/heads/release@next' },
+    { kind: 'branch-at-wrong', callerRef: 'refs/heads/release@next', path: '.github/workflows/architecture-gate.yml@release@other', reject: true },
+    { kind: 'tag-at-short', callerRef: 'refs/tags/release@next', path: '.github/workflows/architecture-gate.yml@release@next' },
+    { kind: 'reusable-branch-at', reusableRef: 'refs/heads/release@next', path: '.github/workflows/architecture-gate.yml' },
+    { kind: 'caller-other-repository', repository: 'other/repository', reject: true },
+  ];
+  for (const [index, scenario] of cases.entries()) {
+    const callerContext = { ...context(), runId: String(712350 + index) };
+    if (scenario.callerRef) callerContext.callerWorkflowRef = `${callerContext.repository}/.github/workflows/architecture-gate.yml@${scenario.callerRef}`;
+    if (scenario.reusableRef) callerContext.workflowRef = `${callerContext.workflowRepository}/.github/workflows/architecture-gate-consumer.yml@${scenario.reusableRef}`;
+    if (scenario.repository) callerContext.callerWorkflowRef = `${scenario.repository}/.github/workflows/architecture-gate.yml@refs/heads/main`;
+    const value = createOrdinaryGeminiPublication({ context: callerContext, decision: decision('PASS'), authorityProvenance: provenance,
+      policyVersion: '6', mode: 'enforced', policyResult: 'success', reviewResult: 'success', conclusion: 'PASS',
+      decisionDigest: digestDecision(decision('PASS')) });
+    const tuple = expected(value);
+    const path = scenario.path ?? '.github/workflows/architecture-gate.yml';
+    const run = { id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: tuple.headSha, path,
+      repository: { full_name: tuple.repository }, referenced_workflows: [referencedWorkflow(tuple)] };
+    const job = { id: 9981, run_id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: tuple.headSha,
+      status: 'completed', conclusion: 'success', steps: [{ name: ORDINARY_GEMINI_PUBLICATION_STEP, status: 'completed', conclusion: 'success' }] };
+    const log = maskedLog(value);
+    const fakeFetch = async url => {
+      const request = String(url);
+      if (request.endsWith(`/attempts/${tuple.runAttempt}`)) return Response.json(run);
+      if (request.endsWith(`/attempts/${tuple.runAttempt}/jobs?per_page=100`)) return Response.json({ total_count: 1, jobs: [job] });
+      if (request.endsWith(`/actions/jobs/${job.id}/logs`)) return new Response(null, { status: 302, headers: { location: `https://signed.blob.core.windows.net/logs/${tuple.runId}` } });
+      if (request === `https://signed.blob.core.windows.net/logs/${tuple.runId}`) return new Response(log);
+      throw new Error('unexpected fetch URL');
+    };
+    const outputPath = join(temp, `agk-ordinary-gemini-report-${tuple.runId}-${tuple.runAttempt}.json`);
+    if (scenario.reject) {
+      await assert.rejects(retrieveOrdinaryGeminiPublication({ apiToken: 'fixture', expected: tuple, outputPath, fetchImpl: fakeFetch }));
+    } else {
+      const fetched = await retrieveOrdinaryGeminiPublication({ apiToken: 'fixture', expected: tuple, outputPath, fetchImpl: fakeFetch });
+      assert.equal(fetched.report.validatedConclusion, 'PASS');
+    }
+  }
 });
 
 test('fetch rejects ambiguous job attribution and wrong run-attempt metadata', async t => {

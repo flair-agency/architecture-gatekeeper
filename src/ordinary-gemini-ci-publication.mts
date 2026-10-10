@@ -176,15 +176,31 @@ export async function retrieveOrdinaryGeminiPublication(input: {
     if (runResult.response.status !== 200) fail();
     const run = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(runResult.bytes)) as JsonRecord;
     const runRepository = run.repository;
+    if (!tuple.callerWorkflowRef.startsWith(`${tuple.repository}/.github/workflows/`)) fail();
+    const callerReference = tuple.callerWorkflowRef.slice(tuple.repository.length + 1);
+    // Workflow filenames are selected from protected repository paths; split
+    // at their first ref delimiter so branch/tag names may themselves contain '@'.
+    const callerReferenceAt = callerReference.indexOf('@');
+    if (callerReferenceAt < 1 || callerReferenceAt === callerReference.length - 1) fail();
+    const callerPath = callerReference.slice(0, callerReferenceAt);
+    const callerRef = callerReference.slice(callerReferenceAt + 1);
+    if (!callerPath.startsWith('.github/workflows/') || callerPath.includes('@')) fail();
+    const callerRestPathWithRef = `${callerPath}@${callerRef}`;
+    const shorthandRef = callerRef.startsWith('refs/heads/') || callerRef.startsWith('refs/tags/')
+      ? callerRef.slice(callerRef.indexOf('/', 'refs/'.length) + 1) : null;
+    const callerRestPathWithShorthand = shorthandRef ? `${callerPath}@${shorthandRef}` : null;
+    const runPathMatches = run.path === callerPath || run.path === callerRestPathWithRef ||
+      (callerRestPathWithShorthand !== null && run.path === callerRestPathWithShorthand);
     if (!own(runRepository) || String(run.id) !== tuple.runId || String(run.run_attempt) !== tuple.runAttempt ||
         runRepository.full_name !== tuple.repository || run.head_sha !== tuple.headSha ||
-        run.path !== tuple.callerWorkflowRef.split('@')[0].split('/').slice(2).join('/')) fail();
+        !runPathMatches) fail();
     if (!Array.isArray(run.referenced_workflows)) fail();
     const reusableReference = tuple.workflowRef.slice(tuple.workflowRepository.length + 1);
-    const referenceAt = reusableReference.lastIndexOf('@');
+    const referenceAt = reusableReference.indexOf('@');
     if (referenceAt < 1 || referenceAt === reusableReference.length - 1) fail();
     const reusableWorkflowPath = reusableReference.slice(0, referenceAt);
     const reusableRef = reusableReference.slice(referenceAt + 1);
+    if (!reusableWorkflowPath.startsWith('.github/workflows/') || reusableWorkflowPath.includes('@')) fail();
     const expectedReferencedPath = `${tuple.workflowRepository}/${reusableWorkflowPath}@${tuple.workflowSha}`;
     const reusable = run.referenced_workflows.filter((item: unknown) => {
       if (!own(item) || item.path !== expectedReferencedPath || item.sha !== tuple.workflowSha) return false;
