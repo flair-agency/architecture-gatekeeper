@@ -2,15 +2,14 @@ import { constants, openSync, readSync, closeSync, fstatSync, mkdirSync, writeFi
 import { resolve } from 'node:path';
 import { MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys, validateAuthorityLimits } from '../authority-set.mjs';
 import { createGitHubAuthoritySource } from '../github-authority-source.mjs';
-import type { GitHubAuthorityRequest } from '../github/github-authority-source.mts';
 const MAX_LIMITS_BYTES = 4 * 1024;
 const MAX_MANIFEST_INPUT_BYTES = 1024 * 1024;
 export interface AuthorityLimits {
-  maxManifestBytes: number;
-  maxMembers: number;
-  maxFileBytes: number;
-  maxTotalBytes: number;
-  maxPromptBytes: number;
+  readonly maxManifestBytes: number;
+  readonly maxMembers: number;
+  readonly maxFileBytes: number;
+  readonly maxTotalBytes: number;
+  readonly maxPromptBytes: number;
 }
 interface AuthorityManifest {
   authorities: Array<{ id: string; repository: string; revision: string; path: string }>;
@@ -105,7 +104,13 @@ export interface AuthorityFetchResultView {
   type: unknown;
   content: unknown;
 }
-export type AuthorityFetcher = (request: GitHubAuthorityRequest) => AuthorityFetchResultView | PromiseLike<AuthorityFetchResultView>;
+export interface AuthorityFetchRequest {
+  repository: string;
+  revision: string;
+  path: string;
+  maxBytes: number;
+}
+export type AuthorityFetcher = (request: AuthorityFetchRequest) => AuthorityFetchResultView | PromiseLike<AuthorityFetchResultView>;
 export interface PrepareAuthoritySetInput {
   manifestPath?: string;
   manifestBytes?: Buffer | string;

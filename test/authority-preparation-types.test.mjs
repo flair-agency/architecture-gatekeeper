@@ -34,9 +34,14 @@ test('authority preparation rejects malformed inputs and narrowing unresolved ge
     (diagnostic.file?.getLineAndCharacterOfPosition(diagnostic.start ?? 0).line ?? -1) + 1,
     ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
   ]));
-  assert.equal(diagnostics.length, 4);
-  assert.match(diagnosticsByLine.get(3), /number.*string/i, 'numeric selfRoot must be rejected');
-  assert.match(diagnosticsByLine.get(4), /number.*string.*Buffer/i, 'numeric manifestBytes must be rejected');
-  assert.match(diagnosticsByLine.get(6), /string.*number/i, 'generated digest must remain a string');
-  assert.match(diagnosticsByLine.get(7), /unknown.*number/i, 'unresolved member byte length must remain unknown');
+  assert.equal(diagnostics.length, 11);
+  assert.match(diagnosticsByLine.get(5), /number.*string/i, 'numeric selfRoot must be rejected');
+  assert.match(diagnosticsByLine.get(6), /number.*string.*Buffer/i, 'numeric manifestBytes must be rejected');
+  assert.match(diagnosticsByLine.get(8), /string.*number/i, 'generated digest must remain a string');
+  assert.match(diagnosticsByLine.get(9), /unknown.*number/i, 'unresolved member byte length must remain unknown');
+  assert.match(diagnosticsByLine.get(12), /number.*string/i, 'fetch request repository must be a string');
+  assert.match(diagnosticsByLine.get(13), /not assignable to type 'AuthorityFetcher'/, 'bad custom fetcher request fields must be rejected');
+  for (const line of [17, 18, 19, 20, 21]) {
+    assert.match(diagnosticsByLine.get(line), /read-only property/, `decoded limit mutation at line ${line} must be rejected`);
+  }
 });
