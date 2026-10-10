@@ -16,12 +16,18 @@ assert.equal(config.options.noImplicitAny, true);
 assert.equal(config.options.noEmitOnError, true);
 const options = { ...config.options, rootDir: root, noEmit: true };
 
+const fixturePaths = {
+  positive: join(fixtureRoot, 'positive.mts'),
+  negative: join(fixtureRoot, 'negative.mts'),
+};
+const program = ts.createProgram(Object.values(fixturePaths), options);
+const allDiagnostics = ts.getPreEmitDiagnostics(program);
 function diagnosticsFor(name) {
-  const file = join(fixtureRoot, name);
-  const program = ts.createProgram([file], options);
-  const all = ts.getPreEmitDiagnostics(program);
-  assert.deepEqual(all.filter(diagnostic => diagnostic.file?.fileName !== file), [], 'physical and facade imports must resolve cleanly');
-  return all.filter(diagnostic => diagnostic.file?.fileName === file);
+  const file = fixturePaths[name];
+  const other = allDiagnostics.filter(diagnostic => diagnostic.file?.fileName !== fixturePaths.positive &&
+    diagnostic.file?.fileName !== fixturePaths.negative);
+  assert.deepEqual(other, [], 'physical, facade, and shared imports must resolve cleanly');
+  return allDiagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
 }
 
 test('validation helpers expose descriptive input and identity types through both imports', () => {
