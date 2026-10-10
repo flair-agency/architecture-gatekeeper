@@ -120,9 +120,28 @@ export interface PrepareAuthoritySetInput {
   profile?: string;
   affectedAuthority?: AffectedAuthority;
 }
+/** Generated member metadata; it does not authenticate or make the observed evidence immutable. */
+export interface PreparedAuthoritySetMemberView {
+  id: string;
+  repository: string;
+  resolvedCommit: string;
+  path: string;
+  /** Preserves caller-owned content.length rereads without asserting a numeric value. */
+  byteLength: unknown;
+  sha256: string;
+}
+/** Describes the generated provenance metadata shape; it is not authentication or immutable evidence. */
+export interface PreparedAuthoritySetProvenanceView {
+  version: number;
+  selfRepository: string;
+  authorityRevision: string;
+  manifestSha256: string;
+  setDigest: string;
+  members: PreparedAuthoritySetMemberView[];
+}
 export interface PreparedAuthoritySet {
   outputDir: string;
-  provenance: unknown;
+  provenance: PreparedAuthoritySetProvenanceView;
 }
 /** Materialize into a new private directory; remove it completely if any output write fails. */
 export async function prepareAuthoritySet({

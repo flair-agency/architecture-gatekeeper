@@ -56,6 +56,18 @@ test('external source credentials are not serialized to either output', async t 
   for (const name of ['authority-prompt.md', 'authority-provenance.json']) assert.equal(readFileSync(join(outputDir, name), 'utf8').includes(secret), false);
 });
 
+test('external content length remains an unchecked provenance value', async t => {
+  const f = fixture(t); const outputDir = join(f.root, 'bundle');
+  const external = { id: 'external-contract', repository: 'flair-agency/parent', revision: 'a'.repeat(40), path: 'docs/parent.md' };
+  writeFileSync(f.manifestPath, JSON.stringify({ version: 1, authorities: [external] }));
+  const content = Buffer.from('# external\n');
+  Object.defineProperty(content, 'length', { value: '11' });
+  const fetchExternal = async input => ({ repository: input.repository, resolvedCommit: input.revision, path: input.path, type: 'file', content });
+  const { provenance } = await prepareAuthoritySet({ ...f, selfRepository: 'flair-agency/example', outputDir, fetchExternal });
+  assert.equal(provenance.members[0].byteLength, '11');
+  assert.equal(JSON.parse(readFileSync(join(outputDir, 'authority-provenance.json'), 'utf8')).members[0].byteLength, '11');
+});
+
 test('preserves complete two-member order and provenance digest', async t => {
   const f = fixture(t); const outputDir = join(f.root, 'bundle');
   const external = { id: 'external-contract', repository: 'flair-agency/parent', revision: 'a'.repeat(40), path: 'docs/parent.md' };
