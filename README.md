@@ -142,6 +142,9 @@ operations, development and release guides, or normative contract.
 
 The predecessor-selected `preview-unverified-procedure-v1` lifecycle API and
 its route-specific limits are documented in the [integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api).
+An installed `architecture-preview-lifecycle` command exposes prepare,
+complete, finalize and fresh through bounded JSON on stdin/stdout, using the
+invoking checkout as its fixed root.
 All preview procedures remain `UNVERIFIED` and do not provide protected
 acceptance.
 
