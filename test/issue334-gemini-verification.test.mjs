@@ -13,6 +13,7 @@ import {
   validateAuthorizedRuntimeLock, validateHostedPushContext,
 } from '../scripts/issue334-gemini-verification.mjs';
 import { snapshotPreparedGeminiCiReviewInput } from '../dist/prepared-gemini-ci-review.mjs';
+import { buildPreparedGeminiCiCall } from '../dist/prepared-gemini-ci-call.mjs';
 
 const SHA = c => c.repeat(40);
 const AUTHORIZED_RUNTIME_LOCK = readFileSync(new URL('../.codex/gatekeeper/gemini-verification-package-lock.json', import.meta.url));
@@ -224,6 +225,45 @@ test('composes the exact shared-adapter call and fails closed on incomplete or i
   assert.deepEqual(assertCompletedDecisionResult({ execution: { status: 'completed' }, decision: { decision: 'PASS' } }).decision, { decision: 'PASS' });
   assert.throws(() => assertCompletedDecisionResult({ execution: { status: 'incomplete' }, decision: { decision: 'PASS' } }));
   assert.throws(() => assertCompletedDecisionResult({ execution: { status: 'completed' }, decision: { decision: 'MAYBE' } }));
+});
+
+test('ordinary call builder snapshots plain prepared materials and fixes the complete Issue334 profile', () => {
+  const prepared = { protectedPromptText: 'protected prompt', protectedDecisionSchemaText: '{"type":"object"}',
+    protectedReviewer: { provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM' }, packet: { files: [] },
+    workspaceLimits: { maxFiles: 32, maxFileBytes: 131072, maxTotalBytes: 524288 }, authorityProvenance: { version: 1 },
+    validationRules: null, maxResponseBytes: 65536, maxSchemaBytes: 1048576 };
+  const credential = { token: 'test-token-value', project: 'test-project-123', region: 'us-central1' };
+  const call = buildPreparedGeminiCiCall({ prepared, credential, runtimeEntry: '/trusted/gemini.js', privateParentDirectory: '/private/tmp' });
+  const options = call.reviewInput.proxySessionOptions;
+  assert.deepEqual(options.processOptions, { cliEntrypoint: '/trusted/gemini.js', privateParentDirectory: '/private/tmp',
+    model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM', maxOutputTokens: 16384, project: credential.project,
+    region: credential.region, timeoutMs: 180000, maxPromptBytes: 196608, maxStdoutBytes: 65536, maxStderrBytes: 65536 });
+  assert.deepEqual(options.credentials, { type: 'bearer', value: credential.token });
+  assert.equal(options.workspaceParentDirectory, '/private/tmp');
+  prepared.packet.files.push({ path: 'later', content: 'mutation' });
+  prepared.authorityProvenance.version = 2;
+  assert.deepEqual(options.packet.files, []);
+  assert.equal(call.authorityProvenance.version, 1);
+});
+
+test('ordinary call builder rejects accessors, proxies, unsupported fields and execution overrides before launch', () => {
+  let reads = 0;
+  const prepared = { protectedPromptText: 'p', protectedDecisionSchemaText: '{}',
+    protectedReviewer: { provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM' }, packet: {},
+    workspaceLimits: { maxFiles: 32, maxFileBytes: 131072, maxTotalBytes: 524288 }, authorityProvenance: {},
+    validationRules: null, maxResponseBytes: 65536, maxSchemaBytes: 1048576 };
+  const credential = { token: 'test-token-value', project: 'test-project-123', region: 'us-central1' };
+  const args = { prepared, credential, runtimeEntry: '/trusted/gemini.js', privateParentDirectory: '/private/tmp' };
+  for (const supplied of [
+    new Proxy(args, { get() { reads++; throw new Error('getter executed'); } }),
+    Object.defineProperty({ ...args }, 'credential', { get() { reads++; throw new Error('getter executed'); }, enumerable: true }),
+    { ...args, outputPath: '/attacker/output' },
+    { ...args, prepared: { ...prepared, model: 'attacker-model' } },
+    { ...args, prepared: Object.defineProperty({ ...prepared }, 'protectedPromptText', { get() { reads++; throw new Error('getter executed'); }, enumerable: true }) },
+    { ...args, credential: { ...credential, outputPath: '/attacker/output' } },
+    { ...args, credential: Object.defineProperty({ ...credential }, 'token', { get() { reads++; throw new Error('getter executed'); }, enumerable: true }) },
+  ]) assert.throws(() => buildPreparedGeminiCiCall(supplied));
+  assert.equal(reads, 0);
 });
 
 test('install mode refuses to run after WIF variables are present', () => {

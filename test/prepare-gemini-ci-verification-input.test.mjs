@@ -527,6 +527,7 @@ test('composes Git-backed protected preparation through offline dispatch, report
   const { composePreparedGeminiCiPrompt } = await import('../dist/prepared-gemini-ci-review.mjs');
   const { classifyReview, renderReport } = await import('../dist/ci-report.mjs');
   const { assertEnforcedAcceptance } = await import('../dist/ci-enforced-acceptance.mjs');
+  const { buildPreparedGeminiCiCall } = await import('../dist/prepared-gemini-ci-call.mjs');
   const f = fixture({ candidate: { 'src/candidate.mjs': 'export const candidateEvidence = "fixture candidate";\n' } });
   t.after(f.cleanup);
   const prepared = await prepareGeminiCiInput(f.input);
@@ -556,9 +557,8 @@ test('composes Git-backed protected preparation through offline dispatch, report
     const privateRoot = mkdtempSync(join(tmpdir(), `agk-gemini-compose-${name}-`));
     t.after(() => rmSync(privateRoot, { recursive: true, force: true }));
     const workspaceParentDirectory = join(privateRoot, 'workspace-parent');
-    const privateParentDirectory = join(privateRoot, 'process-private');
     mkdirSync(workspaceParentDirectory);
-    mkdirSync(privateParentDirectory);
+    const privateParentDirectory = workspaceParentDirectory;
     const observationPath = join(privateRoot, 'fake-cli-observation.json');
     const cliEntrypoint = join(privateRoot, 'fake-cli.mjs');
     const responseText = JSON.stringify(response);
@@ -575,24 +575,12 @@ writeFileSync(${JSON.stringify(observationPath)}, JSON.stringify({ prompt, env: 
 if (mode === 'nonzero-stale-pass') { process.stdout.write(JSON.stringify({ response: responseText })); process.exit(7); }
 process.stdout.write(JSON.stringify({ response: responseText }));
 `);
-    const reviewInput = {
-      protectedReviewer: prepared.protectedReviewer,
-      protectedPromptText: prepared.protectedPromptText,
-      protectedDecisionSchemaText: prepared.protectedDecisionSchemaText,
-      proxySessionOptions: {
-        packet: prepared.packet,
-        workspaceLimits: contextLimits,
-        workspaceParentDirectory,
-        credentials: { type: 'bearer', value: 'fixture-only-parent-token-never-forwarded' },
-        processOptions: { cliEntrypoint, privateParentDirectory, model: reviewerModel,
-          thinkingLevel: 'MEDIUM', maxOutputTokens: 16_384, project: 'fixture-project', region: 'global',
-          timeoutMs: 180_000, maxPromptBytes: 196_608, maxStdoutBytes: 65_536, maxStderrBytes: 65_536,
-          ...processOverrides },
-      },
-    };
-    const invoke = () => runPreparedGeminiCiProfileDecision({ reviewInput,
-      authorityProvenance: prepared.authorityProvenance, validationRules: prepared.validationRules,
-      maxResponseBytes: prepared.maxResponseBytes, maxSchemaBytes: prepared.maxSchemaBytes });
+    const call = buildPreparedGeminiCiCall({ prepared,
+      credential: { token: 'fixture-only-parent-token-never-forwarded', project: 'fixture-project', region: 'global' },
+      runtimeEntry: cliEntrypoint, privateParentDirectory });
+    call.reviewInput.proxySessionOptions.workspaceLimits = contextLimits;
+    Object.assign(call.reviewInput.proxySessionOptions.processOptions, { model: reviewerModel, ...processOverrides });
+    const invoke = () => runPreparedGeminiCiProfileDecision(call);
     if (expectedError) {
       await assert.rejects(invoke(), expectedError, name);
       assert.equal(existsSync(observationPath), expectedStarted, `${name} fake CLI start boundary`);
