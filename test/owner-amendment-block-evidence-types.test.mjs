@@ -36,6 +36,12 @@ test('BLOCK evidence composer rejects an invalid gh callback', () => {
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /Type 'string' is not assignable to type 'OwnerAmendmentGhRunner'/);
 });
 
+test('BLOCK evidence composer rejects a missing required inline envelope field', () => {
+  const diagnostics = fixtureDiagnostics('negative-missing-envelope-field.mts');
+  assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [[2741, 4]]);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /Property 'tagRef' is missing in type/);
+});
+
 test('BLOCK evidence result narrows incomplete and verified states', () => {
   const diagnostics = fixtureDiagnostics('negative-result-state.mts');
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [[2339, 6]]);

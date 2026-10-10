@@ -24,7 +24,12 @@ export type OwnerAmendmentBlockEvidenceTrustedContext = Readonly<{
   authority: unknown;
 }>;
 export type OwnerAmendmentBlockEvidenceTagEnvelope = Readonly<{
+  headSha: unknown;
+  tag: Readonly<{ ref: unknown; objectOid: unknown; objectBytes: unknown }>;
+  tagRef: unknown;
+  observedTagRefOid: unknown;
   reviewRecordBytes: unknown;
+  amendmentRecordBytes: unknown;
   attestationBundleBytes: unknown;
 }>;
 export type OwnerAmendmentBlockEvidenceInput = Readonly<{
