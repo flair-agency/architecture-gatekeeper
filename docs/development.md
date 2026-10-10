@@ -110,10 +110,15 @@ Ordinary routing returns an unknown reread; legacy path selection returns its
 checked string or null. Types describe existing operations and supply no
 authentication or acceptance evidence.
 
+The current BLOCK helper stack types `owner-amendment-block-semantic-record`.
+Flat exports and all runtime validation/rereads are retained. External context
+and record fields stay unknown; computed byte digests and status variants
+describe observations, not authentication, semantic eligibility or acceptance.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `e9bb72c` has 29 of the original 96 modules typed and 67 remaining; this
-candidate has 32 typed and 64 remaining. Migration is partial and does
+Main `208b055` has 32 of the original 96 modules typed and 64 remaining; this
+candidate has 33 typed and 63 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
@@ -133,6 +138,15 @@ the build while strict type checking applies to `.mts`. Keep established flat
 bins; their runtime targets are in `dist/`. Source-location-sensitive modules
 such as preview lifecycle retain their flat emitted path. Audit `import.meta.url`,
 relative resources and child-script locations before moving implementations.
+
+Direct execution or import from `src/` requires native TypeScript loading,
+including JavaScript facades that transitively import `.mts`. Use Node 22.18
+or newer on the Node 22 line for default type stripping; earlier supported
+Node 22 versions should run the emitted `dist/` tree for development commands.
+This is a source-development requirement, not a change to the installed
+package engine: installed runtime files are compiled JavaScript.
+The [Node 22.18 TypeScript documentation](https://nodejs.org/download/release/v22.18.0/docs/api/typescript.html)
+describes the native loading behavior.
 
 Install locked development dependencies with lifecycle scripts disabled, then:
 
