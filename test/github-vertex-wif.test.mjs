@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { acquireGitHubVertexWifCredential } from '../src/github-vertex-wif.mjs';
+import { acquireGitHubVertexWifCredential } from '../dist/github-vertex-wif.mjs';
 
 const input = Object.freeze({
   workloadIdentityProvider: 'projects/123456789012/locations/global/workloadIdentityPools/ci-pool/providers/github',

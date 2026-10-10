@@ -1,7 +1,7 @@
 /** Inactive parent-process composition; the invoking host still owns admission. */
 import { types } from 'node:util';
 import { prepareOrdinaryGeminiCiAdapter, executeOrdinaryGeminiCiAdapter } from './ordinary-gemini-ci-adapter.mjs';
-import { acquireGitHubVertexWifCredential } from './github-vertex-wif.mjs';
+import { acquireGitHubVertexWifCredential, type WifFetch } from './github-vertex-wif.mts';
 
 /**
  * Prepare complete protected inputs before issuing a Vertex credential, then
@@ -11,7 +11,7 @@ import { acquireGitHubVertexWifCredential } from './github-vertex-wif.mjs';
  * it publishes no output and activates no workflow or acceptance route.
  * fetchImpl is the parent-only HTTP implementation, including offline fixtures.
  */
-export async function runOrdinaryGeminiCiLauncher(supplied, fetchImpl = globalThis.fetch) {
+export async function runOrdinaryGeminiCiLauncher(supplied: unknown, fetchImpl: WifFetch = globalThis.fetch): Promise<unknown> {
   const keys = ['host', 'runtime', 'sourceToken', 'wif'];
   if (!supplied || typeof supplied !== 'object' || Array.isArray(supplied) || types.isProxy(supplied) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(supplied))) {
@@ -22,7 +22,7 @@ export async function runOrdinaryGeminiCiLauncher(supplied, fetchImpl = globalTh
     !Object.hasOwn(descriptors, key) || !Object.hasOwn(descriptors[key], 'value') || !descriptors[key].enumerable)) {
     throw new Error('Ordinary Gemini launcher has unsupported or missing fields.');
   }
-  const input = Object.fromEntries(keys.map(key => [key, descriptors[key].value]));
+  const input = Object.fromEntries(keys.map(key => [key, descriptors[key].value])) as Record<string, unknown>;
   const preparation = await prepareOrdinaryGeminiCiAdapter({ host: input.host,
     runtime: input.runtime, sourceToken: input.sourceToken });
   const credential = await acquireGitHubVertexWifCredential(input.wif, fetchImpl);

@@ -13,9 +13,22 @@ const JWT_TYPE = 'urn:ietf:params:oauth:token-type:jwt';
 const MAX_RESPONSE_BYTES = 65_536;
 const TOTAL_TIMEOUT_MS = 60_000;
 
-function fail(stage) { throw new Error(`GitHub Vertex WIF failed at ${stage}.`); }
+export type WifFetch = (input: string | URL, init: RequestInit) => Response | Promise<Response>;
 
-function record(value, keys) {
+interface ValidatedBindings {
+  provider: string;
+  account: string;
+  project: string;
+  region: string;
+  requestUrl: URL;
+  requestToken: string;
+}
+
+type Wait = <T>(promise: T | PromiseLike<T>) => Promise<T>;
+
+function fail(stage: string): never { throw new Error(`GitHub Vertex WIF failed at ${stage}.`); }
+
+function record(value: unknown, keys: Set<string>): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value) || types.isProxy(value)) return null;
   try {
     const proto = Object.getPrototypeOf(value);
@@ -24,11 +37,11 @@ function record(value, keys) {
     const ownKeys = Reflect.ownKeys(descriptors);
     if (ownKeys.length !== keys.size || ownKeys.some(key => typeof key !== 'string' || !keys.has(key) ||
       !Object.hasOwn(descriptors[key], 'value') || !descriptors[key].enumerable)) return null;
-    return Object.fromEntries(ownKeys.map(key => [key, descriptors[key].value]));
+    return Object.fromEntries(ownKeys.map(key => [key as string, descriptors[key as string].value]));
   } catch { return null; }
 }
 
-function validBindings(input) {
+function validBindings(input: unknown): ValidatedBindings {
   const config = record(input, INPUT_KEYS);
   if (!config || Object.keys(config).length !== INPUT_KEYS.size) fail('input');
   const provider = config.workloadIdentityProvider;
@@ -41,9 +54,10 @@ function validBindings(input) {
       typeof project !== 'string' || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(project) ||
       typeof region !== 'string' || !(region === 'global' || region === 'us' || region === 'eu' || /^[a-z]+-[a-z0-9]+[0-9]$/.test(region)) ||
       typeof token !== 'string' || token.length < 1 || token.length > 8192 || /[\u0000-\u0020\u007f]/.test(token)) fail('input');
-  if (typeof config.oidcRequestUrl !== 'string' || config.oidcRequestUrl.length > 2048) fail('input');
-  let requestUrl;
-  try { requestUrl = new URL(config.oidcRequestUrl); } catch { fail('input'); }
+  const oidcRequestUrl = config.oidcRequestUrl;
+  if (typeof oidcRequestUrl !== 'string' || oidcRequestUrl.length > 2048) fail('input');
+  let requestUrl: URL;
+  try { requestUrl = new URL(oidcRequestUrl); } catch { fail('input'); }
   const githubOidcHost = requestUrl.hostname === 'actions.githubusercontent.com' ||
     requestUrl.hostname.endsWith('.actions.githubusercontent.com');
   if (requestUrl.protocol !== 'https:' || requestUrl.username || requestUrl.password || requestUrl.hash ||
@@ -51,11 +65,12 @@ function validBindings(input) {
   return { provider, account, project, region, requestUrl, requestToken: token };
 }
 
-async function readBoundedJson(response, controller, stage, wait) {
-  if (!response || response.status < 200 || response.status >= 300 || response.redirected ||
-      (response.type && response.type === 'opaqueredirect') || !response.body || typeof response.body.getReader !== 'function') fail(stage);
-  const reader = response.body.getReader();
-  const chunks = [];
+async function readBoundedJson(response: Response | null | undefined, controller: AbortController, stage: string, wait: Wait): Promise<unknown> {
+  const candidate = response;
+  if (!candidate || candidate.status < 200 || candidate.status >= 300 || candidate.redirected ||
+      (candidate.type && candidate.type === 'opaqueredirect') || !candidate.body || typeof candidate.body.getReader !== 'function') fail(stage);
+  const reader = candidate.body.getReader();
+  const chunks: Uint8Array[] = [];
   let total = 0;
   try {
     while (true) {
@@ -83,19 +98,19 @@ async function readBoundedJson(response, controller, stage, wait) {
   } catch { fail(stage); }
 }
 
-function bearer(value) { return `Bearer ${value}`; }
+function bearer(value: string): string { return `Bearer ${value}`; }
 
 /** Exchange GitHub Actions OIDC for a short-lived cloud-platform SA token. */
-export async function acquireGitHubVertexWifCredential(input, fetchImpl = globalThis.fetch) {
+export async function acquireGitHubVertexWifCredential(input: unknown, fetchImpl: WifFetch = globalThis.fetch): Promise<Readonly<{ token: string; project: string; region: string }>> {
   const { provider, account, project, region, requestUrl, requestToken } = validBindings(input);
   if (typeof fetchImpl !== 'function') fail('input');
   const controller = new AbortController();
   let timedOut = false;
-  let rejectTimeout;
-  const timeout = new Promise((_, reject) => { rejectTimeout = reject; });
+  let rejectTimeout!: (reason: Error) => void;
+  const timeout = new Promise<never>((_, reject) => { rejectTimeout = reject; });
   const timer = setTimeout(() => { timedOut = true; controller.abort(); rejectTimeout(new Error('timeout')); }, TOTAL_TIMEOUT_MS);
-  const wait = promise => Promise.race([promise, timeout]);
-  const request = async (stage, url, init) => {
+  const wait = <T,>(promise: T | PromiseLike<T>): Promise<T> => Promise.race([promise, timeout]);
+  const request = async (stage: string, url: string, init: RequestInit): Promise<unknown> => {
     try {
       const response = await wait(fetchImpl(url, { ...init, redirect: 'manual', signal: controller.signal }));
       if (timedOut) fail('timeout');
@@ -112,31 +127,38 @@ export async function acquireGitHubVertexWifCredential(input, fetchImpl = global
       method: 'GET', headers: { authorization: bearer(requestToken), accept: 'application/json' },
     });
     if (!assertionResponse || typeof assertionResponse !== 'object' || Array.isArray(assertionResponse) ||
-        typeof assertionResponse.value !== 'string' || assertionResponse.value.length < 1 || assertionResponse.value.length > 16_384 ||
-        /[\u0000-\u0020\u007f]/.test(assertionResponse.value)) fail('oidc_response');
+        typeof (assertionResponse as Record<string, unknown>).value !== 'string' ||
+        ((assertionResponse as Record<string, unknown>).value as string).length < 1 ||
+        ((assertionResponse as Record<string, unknown>).value as string).length > 16_384 ||
+        /[\u0000-\u0020\u007f]/.test((assertionResponse as Record<string, unknown>).value as string)) fail('oidc_response');
+    const assertion = (assertionResponse as { value: string }).value;
 
     const sts = await request('sts_exchange', STS_URL, {
       method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' },
       body: JSON.stringify({ grantType: 'urn:ietf:params:oauth:grant-type:token-exchange', audience: `//iam.googleapis.com/${provider}`,
         scope: CLOUD_PLATFORM, requestedTokenType: ACCESS_TOKEN_TYPE, subjectTokenType: JWT_TYPE,
-        subjectToken: assertionResponse.value }),
+        subjectToken: assertion }),
     });
-    if (!sts || typeof sts !== 'object' || Array.isArray(sts) || typeof sts.access_token !== 'string' ||
-        sts.access_token.length < 1 || sts.access_token.length > 16_384 || /[\u0000-\u0020\u007f]/.test(sts.access_token) ||
-        sts.issued_token_type !== ACCESS_TOKEN_TYPE || sts.token_type !== 'Bearer' ||
-        !Number.isSafeInteger(sts.expires_in) || sts.expires_in < 120 || sts.expires_in > 3600) fail('sts_response');
+    // These views describe JSON properties; the checks below validate each used value.
+    const stsRecord = sts as Record<string, unknown> | null;
+    if (!stsRecord || typeof stsRecord !== 'object' || Array.isArray(stsRecord) || typeof stsRecord.access_token !== 'string' ||
+        stsRecord.access_token.length < 1 || stsRecord.access_token.length > 16_384 || /[\u0000-\u0020\u007f]/.test(stsRecord.access_token) ||
+        stsRecord.issued_token_type !== ACCESS_TOKEN_TYPE || stsRecord.token_type !== 'Bearer' ||
+        !Number.isSafeInteger(stsRecord.expires_in) || (stsRecord.expires_in as number) < 120 || (stsRecord.expires_in as number) > 3600) fail('sts_response');
+    const stsAccessToken = stsRecord.access_token as string;
 
     const iam = await request('service_account_token', `${IAM_BASE}${encodeURIComponent(account)}:generateAccessToken`, {
-      method: 'POST', headers: { authorization: bearer(sts.access_token), 'content-type': 'application/json', accept: 'application/json' },
+      method: 'POST', headers: { authorization: bearer(stsAccessToken), 'content-type': 'application/json', accept: 'application/json' },
       body: JSON.stringify({ scope: [CLOUD_PLATFORM], lifetime: '300s' }),
     });
-    if (!iam || typeof iam !== 'object' || Array.isArray(iam) || typeof iam.accessToken !== 'string' ||
-        iam.accessToken.length < 1 || iam.accessToken.length > 16_384 || /[\u0000-\u0020\u007f]/.test(iam.accessToken) ||
-        typeof iam.expireTime !== 'string' || !Number.isFinite(Date.parse(iam.expireTime))) fail('service_account_response');
-    const tokenExpiry = Date.parse(iam.expireTime);
+    const iamRecord = iam as Record<string, unknown> | null;
+    if (!iamRecord || typeof iamRecord !== 'object' || Array.isArray(iamRecord) || typeof iamRecord.accessToken !== 'string' ||
+        iamRecord.accessToken.length < 1 || iamRecord.accessToken.length > 16_384 || /[\u0000-\u0020\u007f]/.test(iamRecord.accessToken) ||
+        typeof iamRecord.expireTime !== 'string' || !Number.isFinite(Date.parse(iamRecord.expireTime))) fail('service_account_response');
+    const tokenExpiry = Date.parse(iamRecord.expireTime as string);
     const now = Date.now();
     if (tokenExpiry < now + 240_000 || tokenExpiry > now + 360_000) fail('service_account_response');
-    return Object.freeze({ token: iam.accessToken, project, region });
+    return Object.freeze({ token: iamRecord.accessToken, project, region });
   } finally {
     clearTimeout(timer);
     controller.abort();
