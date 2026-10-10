@@ -104,7 +104,7 @@ explicit input set, UTF-8 and byte ceilings, JSON depth and duplicate-key
 checks, and protected-material composition. External parsed decisions remain
 unknown; descriptive input contracts do not authenticate caller-selected
 materials or authorize acceptance.
-The current CI helper stack types `ci-decision-kind`.
+The current CI helper stack types `ci-decision-kind`, `verify-legacy-validation-selection`.
 Flat facades retain their original direct-run guards and export surfaces.
 Ordinary routing returns an unknown reread; legacy path selection returns its
 checked string or null. Types describe existing operations and supply no
@@ -113,7 +113,7 @@ authentication or acceptance evidence.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
 Main `e9bb72c` has 29 of the original 96 modules typed and 67 remaining; this
-candidate has 30 typed and 66 remaining. Migration is partial and does
+candidate has 31 typed and 65 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
