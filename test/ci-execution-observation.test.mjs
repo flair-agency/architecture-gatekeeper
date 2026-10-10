@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
+import * as observationFacade from '../dist/ci-execution-observation.mjs';
 import { runCiExecutionObservationCli } from '../dist/ci-execution-observation.mjs';
 
 const cli = fileURLToPath(new URL('../dist/ci-execution-observation.mjs', import.meta.url));
@@ -159,6 +160,10 @@ test('counts the input limit across stream chunks', async () => {
 });
 
 test('importing the module has no process I/O side effects', () => {
+  assert.deepEqual(Object.keys(observationFacade).sort(), [
+    'runCiExecutionObservationCli',
+    'runCiExecutionObservationGitHubCli',
+  ]);
   const program = `import(${JSON.stringify(new URL('../dist/ci-execution-observation.mjs', import.meta.url).href)});`;
   const result = spawnSync(process.execPath, ['--input-type=module', '-e', program], {
     encoding: 'utf8', timeout: 5_000,
