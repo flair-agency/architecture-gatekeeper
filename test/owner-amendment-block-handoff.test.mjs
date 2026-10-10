@@ -76,6 +76,30 @@ test('runs gh attestation verify over exact record and bundle paths and construc
   assert.match(result.tagMessage, /"bSha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"/);
 });
 
+test('preserves unchecked Buffer.toString output in generated base64 envelope fields', t => {
+  const f = fixture(t);
+  const provenanceResult = verifyOwnerAmendmentBlockEvidence({ recordBytes: f.recordBytes,
+    bundleBytes: f.bundleBytes, expected, runGh: f.runGh });
+  f.recordBytes.toString = encoding => encoding === 'base64' ? 42 : Buffer.prototype.toString.call(f.recordBytes, encoding);
+  const result = prepareOwnerAmendmentBlockHandoff({ recordBytes: f.recordBytes, bundleBytes: f.bundleBytes,
+    amendmentRecordBytes: f.amendmentBytes, expected, bSha, provenanceResult });
+  assert.equal(result.status, 'PREPARED_BLOCK_HANDOFF_TAG_MESSAGE');
+  assert.equal(result.envelope.reviewRecordBase64, 42);
+  assert.equal(typeof result.envelope.reviewRecordBase64, 'number');
+});
+
+test('retains RegExp string coercion for B before the exact parsed AmendmentRecord comparison', t => {
+  const f = fixture(t);
+  const provenanceResult = verifyOwnerAmendmentBlockEvidence({ recordBytes: f.recordBytes,
+    bundleBytes: f.bundleBytes, expected, runGh: f.runGh });
+  let coerced = false;
+  const coercedB = { [Symbol.toPrimitive]() { coerced = true; return bSha; } };
+  assert.throws(() => prepareOwnerAmendmentBlockHandoff({ recordBytes: f.recordBytes, bundleBytes: f.bundleBytes,
+    amendmentRecordBytes: f.amendmentBytes, expected, bSha: coercedB, provenanceResult }),
+  /AmendmentRecord does not bind these exact BLOCK ReviewRecord/);
+  assert.equal(coerced, true);
+});
+
 test('rejects malformed verifier output, malformed bundle verification, and raw-byte mismatch', t => {
   const f = fixture(t);
   const malformed = verifyOwnerAmendmentBlockEvidence({ recordBytes: f.recordBytes, bundleBytes: f.bundleBytes,
