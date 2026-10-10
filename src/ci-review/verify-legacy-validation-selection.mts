@@ -6,12 +6,3 @@ export function verifyLegacyValidationSelection(baseValidationPath: unknown, cal
   }
   return { validationPath: baseValidationPath || null };
 }
-
-/** Internal CLI runner for the flat compatibility entrypoint. */
-export function runVerifyLegacyValidationSelection(argv: readonly string[]): void {
-  const [, , baseValidationPath, callerValidationPath] = argv;
-  if (baseValidationPath === undefined || callerValidationPath === undefined) {
-    throw new Error('Usage: verify-legacy-validation-selection.mjs <base-path-or-empty> <caller-path-or-empty>');
-  }
-  verifyLegacyValidationSelection(baseValidationPath, callerValidationPath);
-}

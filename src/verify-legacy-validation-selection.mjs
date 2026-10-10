@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 
-import { verifyLegacyValidationSelection, runVerifyLegacyValidationSelection } from './ci-review/verify-legacy-validation-selection.mts';
+import { verifyLegacyValidationSelection } from './ci-review/verify-legacy-validation-selection.mts';
 
 export { verifyLegacyValidationSelection };
 
 if (process.argv[1]?.endsWith('/verify-legacy-validation-selection.mjs')) {
-  runVerifyLegacyValidationSelection(process.argv);
+  const [, , baseValidationPath, callerValidationPath] = process.argv;
+  if (baseValidationPath === undefined || callerValidationPath === undefined) {
+    throw new Error('Usage: verify-legacy-validation-selection.mjs <base-path-or-empty> <caller-path-or-empty>');
+  }
+  verifyLegacyValidationSelection(baseValidationPath, callerValidationPath);
 }
