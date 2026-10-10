@@ -1,5 +1,3 @@
-import { appendFileSync } from 'node:fs';
-
 const DECISIONS = new Set<unknown>(['PASS', 'BLOCK', 'OWNER_DECISION']);
 
 /** Routing only; acceptance still comes from the separate report and accept jobs. */
@@ -17,9 +15,3 @@ export function ordinaryDecisionKind(raw: unknown): unknown {
   return (value as { decision?: unknown }).decision;
 }
 
-/** Internal flat-facade delegation for the existing direct-run behavior. */
-export function runCiDecisionKindCli(): void {
-  const kind = ordinaryDecisionKind(process.env.DECISION);
-  if (!process.env.GITHUB_OUTPUT) throw new Error('GITHUB_OUTPUT is required.');
-  appendFileSync(process.env.GITHUB_OUTPUT, `kind=${kind}\n`);
-}
