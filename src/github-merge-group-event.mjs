@@ -1,1 +1,1 @@
-export { parseGithubMergeGroupEvent } from './github/github-merge-group-event.mjs';
+export { parseGithubMergeGroupEvent } from './github/github-merge-group-event.mts';

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { delimiter } from 'node:path';
 import { runCodeql } from '../scripts/codeql-local.mjs';
+import { githubModelArgs, githubOutputModelArgs, githubWorkspaceModelArgs } from '../scripts/codeql-model-regression.mjs';
 
 function harness({ missing = false, failure = 0, home = '/home/developer', redirected = false } = {}) {
   const calls = [], writes = new Map(), made = [], messages = [];
@@ -59,4 +61,27 @@ test('both languages retain SARIF summaries and report findings without a clean 
   assert.ok(summary.completedAt);
   assert.match(summary.scan, /^\/home\/developer\//);
   assert.match(h.messages.at(-1), /does not mean zero findings/);
+});
+
+test('both repository models are loaded by local JavaScript analysis with platform pack path separators', () => {
+  assert.deepEqual(githubOutputModelArgs('/repo'), [
+    '--model-packs=flair-agency/github-output-model',
+    '--additional-packs=/repo/.github/codeql/extensions/github-output',
+  ]);
+  assert.deepEqual(githubWorkspaceModelArgs('/repo'), [
+    '--model-packs=flair-agency/github-workspace-model',
+    '--additional-packs=/repo/.github/codeql/extensions/github-workspace',
+  ]);
+  assert.deepEqual(githubModelArgs('/repo'), [
+    '--model-packs=flair-agency/github-output-model',
+    '--model-packs=flair-agency/github-workspace-model',
+    `--additional-packs=${['/repo/.github/codeql/extensions/github-output', '/repo/.github/codeql/extensions/github-workspace'].join(delimiter)}`,
+  ]);
+  const h = harness(); h.run();
+  const javascript = h.calls.find(call => call.args[0] === 'database' && call.args[1] === 'analyze' && call.args[2].endsWith('/db-javascript'));
+  assert.ok(javascript.args.includes('--model-packs=flair-agency/github-output-model'));
+  assert.ok(javascript.args.includes('--model-packs=flair-agency/github-workspace-model'));
+  assert.ok(javascript.args.includes(`--additional-packs=${['/repo/.github/codeql/extensions/github-output', '/repo/.github/codeql/extensions/github-workspace'].join(delimiter)}`));
+  const actions = h.calls.find(call => call.args[0] === 'database' && call.args[1] === 'analyze' && call.args[2].endsWith('/db-actions'));
+  assert.equal(actions.args.some(argument => argument.startsWith('--model-packs=')), false);
 });

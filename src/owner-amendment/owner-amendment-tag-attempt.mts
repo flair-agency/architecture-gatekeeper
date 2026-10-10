@@ -1,5 +1,5 @@
 import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mjs';
-import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from './owner-amendment-tag-api.mjs';
+import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from './owner-amendment-tag-api.mts';
 
 const SELF_REPOSITORY = 'flair-agency/architecture-gatekeeper';
 const SHA1 = /^[a-f0-9]{40}$/;

@@ -1,1 +1,1 @@
-export { inspectOwnerAmendmentSelfScope } from './owner-amendment/owner-amendment-scope.mjs';
+export { inspectOwnerAmendmentSelfScope } from './owner-amendment/owner-amendment-scope.mts';

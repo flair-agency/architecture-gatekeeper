@@ -11,7 +11,8 @@
     "types": ["node"],
     "outDir": "dist",
     "allowJs": true,
-    "checkJs": false
+    "checkJs": false,
+    "rewriteRelativeImportExtensions": true
   },
   "include": ["src/**/*.mjs", "src/**/*.mts"]
 }

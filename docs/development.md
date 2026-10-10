@@ -79,16 +79,52 @@ The integrated #419 slices type OWNER_ADDITION validation, execution-result
 states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
 PR/run and live queue context, self-amendment scope, and amendment canonical
 readback, OWNER_ADDITION post-merge readback and self-only GitHub App reporting.
-The integrated slices also type GitHub ruleset readback and amendment Git-change
-inspection under their respective grouped source directories, retaining flat exports.
+The GitHub ruleset readback, owner-amendment Git change reader, handoff Git
+context, annotated-tag transport and review-input path helper are integrated.
+The committed-file reader is integrated under
+`src/authority-validation/legacy-git-snapshot.mts`, retaining its flat exports
+and regular-file selection, Git arguments, byte limits and digest behavior.
+Its ordinary string, numeric and Buffer contracts do not authenticate caller
+selection or authorize review acceptance.
+The JSON Schema validator is integrated under
+`src/authority-validation/json-schema.mts`, retaining its two flat function
+exports, supported dialect, property rereads, budgets, memo behavior and
+exceptions. Input-preserving generics and nullable numeric options describe
+existing operations; they do not infer instance types from schemas or certify
+caller-owned mutable properties.
+The existing multi-authority provenance helper is integrated under
+`src/authority-validation/multi-authority-provenance.mts`, retaining its four
+flat function exports, exact-key and digest checks, property rereads and
+exceptions. Its contracts describe same-run metadata operations and caller
+identity; they do not establish authentication, immutable snapshots or
+independent acceptance evidence.
+The prepared CI decision validator is integrated under
+`src/ci-review/prepared-ci-decision.mts`, preserving its flat function export,
+explicit input set, UTF-8 and byte ceilings, JSON depth and duplicate-key
+checks, and protected-material composition. External parsed decisions remain
+unknown; descriptive input contracts do not authenticate caller-selected
+materials or authorize acceptance.
+The current CI helper stack types `ci-decision-kind`, `verify-legacy-validation-selection`, `ci-execution-observation`.
+Flat facades retain their original direct-run guards and export surfaces.
+Ordinary routing returns an unknown reread; legacy path selection returns its
+checked string or null. Types describe existing operations and supply no
+authentication or acceptance evidence.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-The synchronized main `c9f7b75` has twenty-two original modules typed and 74
-remaining. Migration is partial and does not change consumer architecture or
-assurance policy.
+The synchronized main `208b055` has 32 of the original 96 modules typed and
+64 remaining. Migration is partial and does
+not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
-uses `rootDir: src`, `outDir: dist`, `allowJs: true`, and `checkJs: false`.
+uses `rootDir: src`, `outDir: dist`, `allowJs: true`, `checkJs: false`, and
+`rewriteRelativeImportExtensions: true`. Relative imports and re-exports name
+the physical source file: `.mts` for typed modules and `.mjs` for JavaScript.
+The standard compiler rewrites relative `.mts` references to `.mjs` on emit,
+including references in JavaScript compatibility facades. This keeps source
+module resolution explicit for analysis tools and preserves runtime paths.
+The source-import regression checks physical source targets, type-only erasure,
+and emitted static module references and targets across both source extensions.
 `npm run check:typescript` runs `tsc --noEmit --project tsconfig.json`.
 `npm run build` clears ignored `dist/` and runs the same project compiler to
 emit `.mjs`. The `allowJs` and `checkJs: false` settings include JavaScript in
@@ -190,8 +226,8 @@ editable runtime `.mjs` and authored `.mts` files. Acorn parses runtime ESM; the
 pinned TypeScript compiler API parses authored syntax. Neither parser loads or
 evaluates candidate modules. Value-bearing relative imports and re-exports
 contribute graph edges. An authored `.mjs` specifier resolves to a sibling
-`.mts` source when present, or to an unmigrated `.mjs` module otherwise, matching
-NodeNext resolution. The checker rejects duplicate authored/runtime module
+`.mts` source when present for compatibility with NodeNext resolution; new
+source references name the physical extension directly. The checker rejects duplicate authored/runtime module
 paths so source and emitted peers cannot mask each other.
 
 The check rejects cycles, invalid syntax, missing relative targets, symbolic
@@ -227,15 +263,24 @@ for your OS, including the standard query packs. Add its `codeql` directory to
 exits with installation guidance before creating a scan directory. Supported
 systems follow CodeQL's official requirements; allow several GB of disk space.
 The command analyzes JavaScript/TypeScript and Actions with the default suites,
-including the local threat model used by CI. The repository-owned model pack in
-`.github/codeql/extensions/github-output` represents only the adopted GitHub
-runner output boundary. Local analysis explicitly loads the same pack that
-GitHub default setup discovers from this directory.
+including the local threat model used by CI. Repository-owned model packs under
+`.github/codeql/extensions/` represent the selected GitHub runner output
+boundary and the owner-selected workspace boundary for two legacy GitHub CLI
+entrypoints. Local analysis explicitly loads both packs that GitHub default
+setup discovers from this directory, using the platform path delimiter for
+`--additional-packs`.
 
 Before scanning the repository, the command runs the standard path-injection
-query with and without the model against a generated fixture. Only the trusted
-accessor finding may disappear; unrelated environment, CLI, and checked-path
-findings must remain. Model or query incompatibility fails this regression and
+query with and without both models against generated fixtures. The output
+regression retains unrelated environment, CLI, other-accessor and checked-path
+findings. The workspace regression copies the production accessor and CLI
+entrypoints, then checks flows through actual Git snapshot and legacy authority
+operations. It retains direct workspace environment reads, other environment
+and CLI sources, same-file alternate exports, caller-selected roots, copied
+same-named accessors, and generic reader/preparer API flows, including the
+preparer's `git diff` working directory. Shared sink alert identity may persist
+because those negative flows remain; SARIF counts do not claim a production
+finding reduction. Model or query incompatibility fails the regression and
 stops analysis. `npm run codeql:model` runs only this regression; the CI
 `codeql-model` job runs it with the official CodeQL CLI independently of the
 existing default-setup scan. The fixture, baseline/modeled SARIF, and regression result are

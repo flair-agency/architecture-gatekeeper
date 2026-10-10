@@ -1,12 +1,8 @@
 #!/usr/bin/env node
 
-export function verifyLegacyValidationSelection(baseValidationPath, callerValidationPath) {
-  if (typeof baseValidationPath !== 'string' || typeof callerValidationPath !== 'string' ||
-      baseValidationPath !== callerValidationPath) {
-    throw new Error('Caller validation-path must exactly match the recorded-base v1 policy selection; use an empty string only when the base policy explicitly selects null.');
-  }
-  return { validationPath: baseValidationPath || null };
-}
+import { verifyLegacyValidationSelection } from './ci-review/verify-legacy-validation-selection.mts';
+
+export { verifyLegacyValidationSelection };
 
 if (process.argv[1]?.endsWith('/verify-legacy-validation-selection.mjs')) {
   const [, , baseValidationPath, callerValidationPath] = process.argv;
