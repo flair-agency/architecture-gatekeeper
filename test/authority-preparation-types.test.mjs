@@ -28,8 +28,10 @@ test('authority preparation contracts accept existing generic inputs and returns
   assert.deepEqual(diagnosticsFor('positive.mts'), []);
 });
 
-test('authority preparation rejects malformed roots and treating external decision JSON as trusted', () => {
+test('authority preparation rejects malformed roots and manifest byte inputs', () => {
   const diagnostics = diagnosticsFor('negative.mts');
-  assert.equal(diagnostics.length, 1);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /number.*string/i);
+  assert.equal(diagnostics.length, 2);
+  const messages = diagnostics.map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
+  assert.ok(messages.some(message => /number.*string/i.test(message)), 'numeric selfRoot must be rejected');
+  assert.ok(messages.some(message => /number.*string.*Buffer/i.test(message)), 'numeric manifestBytes must be rejected');
 });

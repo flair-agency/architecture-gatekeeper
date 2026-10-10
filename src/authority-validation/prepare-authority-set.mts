@@ -108,7 +108,7 @@ export interface AuthorityFetchResultView {
 export type AuthorityFetcher = (request: GitHubAuthorityRequest) => AuthorityFetchResultView | PromiseLike<AuthorityFetchResultView>;
 export interface PrepareAuthoritySetInput {
   manifestPath?: string;
-  manifestBytes?: Buffer;
+  manifestBytes?: Buffer | string;
   selfRepository: string;
   selfRoot: string;
   authorityRevision: string;

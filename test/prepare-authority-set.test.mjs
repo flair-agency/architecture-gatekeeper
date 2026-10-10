@@ -69,6 +69,23 @@ test('preserves complete two-member order and provenance digest', async t => {
   assert.equal(provenance.setDigest, expectedDigest);
 });
 
+test('string manifests match Buffer provenance and materialized bytes', async t => {
+  const f = fixture(t);
+  const manifestBytes = readFileSync(f.manifestPath);
+  const stringOutputDir = join(f.root, 'string-bundle');
+  const bufferOutputDir = join(f.root, 'buffer-bundle');
+  const common = { ...f, selfRepository: 'flair-agency/example' };
+  const fromString = await prepareAuthoritySet({ ...common, manifestBytes: manifestBytes.toString('utf8'), outputDir: stringOutputDir });
+  const fromBuffer = await prepareAuthoritySet({ ...common, manifestBytes, outputDir: bufferOutputDir });
+
+  assert.deepEqual(fromString.provenance, fromBuffer.provenance);
+  assert.equal(readFileSync(join(stringOutputDir, 'authority-prompt.md'), 'utf8'), readFileSync(join(bufferOutputDir, 'authority-prompt.md'), 'utf8'));
+  assert.equal(readFileSync(join(stringOutputDir, 'authority-provenance.json'), 'utf8'), readFileSync(join(bufferOutputDir, 'authority-provenance.json'), 'utf8'));
+  assert.equal(fromString.provenance.manifestSha256, fromBuffer.provenance.manifestSha256);
+  assert.equal(fromString.provenance.setDigest, fromBuffer.provenance.setDigest);
+  assert.equal(fromString.provenance.members[0].byteLength, Buffer.byteLength('# committed authority\n'));
+});
+
 test('external CLI without its explicit token fails without creating output', t => {
   const f = fixture(t); const outputDir = join(f.root, 'bundle');
   writeFileSync(f.manifestPath, JSON.stringify({ version: 1, authorities: [{ id: 'external-contract', repository: 'flair-agency/parent', revision: 'a'.repeat(40), path: 'docs/parent.md' }] }));
