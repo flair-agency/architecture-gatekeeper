@@ -55,6 +55,25 @@ test('preserves all supported Vertex endpoint location identifiers', async () =>
   }
 });
 
+test('accepts valid WIF ID boundaries and rejects malformed or reserved identifiers before exchange', async () => {
+  const provider = (pool, id) => `projects/123456789012/locations/global/workloadIdentityPools/${pool}/providers/${id}`;
+  for (const [pool, id] of [['1-ci-pool', '2-provider'], ['1234', '5678'], ['a'.repeat(32), '9'.repeat(32)]]) {
+    const f = fetchSequence();
+    const selected = provider(pool, id);
+    await acquireGitHubVertexWifCredential({ ...input, workloadIdentityProvider: selected }, f.fetch);
+    assert.equal(f.calls.length, 3);
+    assert.equal(new URL(f.calls[0].url).searchParams.get('audience'), `https://iam.googleapis.com/${selected}`);
+    assert.equal(JSON.parse(f.calls[1].init.body).audience, `//iam.googleapis.com/${selected}`);
+  }
+  for (const invalid of ['abc', 'a'.repeat(33), 'Aabc', 'a_bc', 'a/../b', 'gcp-reserved']) {
+    for (const selected of [provider(invalid, 'valid'), provider('valid', invalid)]) {
+      let sends = 0;
+      await assert.rejects(acquireGitHubVertexWifCredential({ ...input, workloadIdentityProvider: selected }, async () => { sends++; }), /failed at input/);
+      assert.equal(sends, 0);
+    }
+  }
+});
+
 test('rejects invalid exact input records before sending', async () => {
   const accessor = { ...input };
   Object.defineProperty(accessor, 'region', { enumerable: true, get() { throw new Error('secret'); } });

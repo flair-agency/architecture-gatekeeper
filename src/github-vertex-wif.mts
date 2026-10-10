@@ -49,7 +49,7 @@ function validBindings(input: unknown): ValidatedBindings {
   const project = config.project;
   const region = config.region;
   const token = config.oidcRequestToken;
-  if (typeof provider !== 'string' || !/^projects\/[1-9][0-9]{4,19}\/locations\/global\/workloadIdentityPools\/[a-z][a-z0-9-]{2,31}\/providers\/[a-z][a-z0-9-]{2,31}$/.test(provider) ||
+  if (typeof provider !== 'string' || !/^projects\/[1-9][0-9]{4,19}\/locations\/global\/workloadIdentityPools\/(?!gcp-)[a-z0-9-]{4,32}\/providers\/(?!gcp-)[a-z0-9-]{4,32}$/.test(provider) ||
       typeof account !== 'string' || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$/.test(account) ||
       typeof project !== 'string' || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(project) ||
       typeof region !== 'string' || !(region === 'global' || region === 'us' || region === 'eu' || /^[a-z]+-[a-z0-9]+[0-9]$/.test(region)) ||
