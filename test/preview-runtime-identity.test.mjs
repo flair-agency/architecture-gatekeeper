@@ -29,7 +29,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'github/github-authority-source.mjs', 'github/github-merge-group-event.mjs', 'github/github-owner-amendment-readback.mjs',
     'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs',
     'github/github-ruleset-readback.mjs', 'review-inputs/review-input-path.mjs',
-    'authority-validation/legacy-git-snapshot.mjs', 'authority-validation/json-schema.mjs'];
+    'authority-validation/legacy-git-snapshot.mjs', 'authority-validation/json-schema.mjs',
+    'authority-validation/multi-authority-provenance.mjs'];
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -109,6 +110,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/authority-validation/legacy-git-snapshot.mjs')));
   writeFileSync(join(flatRoot, 'dist/json-schema.mjs'),
     readFileSync(join(flatRoot, 'dist/authority-validation/json-schema.mjs')));
+  writeFileSync(join(flatRoot, 'dist/multi-authority-provenance.mjs'),
+    readFileSync(join(flatRoot, 'dist/authority-validation/multi-authority-provenance.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   rmSync(join(flatRoot, 'dist/authority-validation'), { recursive: true });
   rmSync(join(flatRoot, 'dist/review-inputs'), { recursive: true });
   rmSync(join(flatRoot, 'dist/github'), { recursive: true });

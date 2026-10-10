@@ -86,16 +86,22 @@ The committed-file reader is integrated under
 and regular-file selection, Git arguments, byte limits and digest behavior.
 Its ordinary string, numeric and Buffer contracts do not authenticate caller
 selection or authorize review acceptance.
-This slice types the existing JSON Schema validator under
+The JSON Schema validator is integrated under
 `src/authority-validation/json-schema.mts`, retaining its two flat function
 exports, supported dialect, property rereads, budgets, memo behavior and
 exceptions. Input-preserving generics and nullable numeric options describe
 existing operations; they do not infer instance types from schemas or certify
 caller-owned mutable properties.
+This slice types the existing multi-authority provenance helper under
+`src/authority-validation/multi-authority-provenance.mts`, retaining its four
+flat function exports, exact-key and digest checks, property rereads and
+exceptions. Its contracts describe same-run metadata operations and caller
+identity; they do not establish authentication, immutable snapshots or
+independent acceptance evidence.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `5a0817b` has twenty-six original modules typed and 70 remaining; this
-candidate has twenty-seven typed and 69 remaining. Migration is partial and does
+Main `68761c4` has twenty-seven original modules typed and 69 remaining; this
+candidate has twenty-eight typed and 68 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
