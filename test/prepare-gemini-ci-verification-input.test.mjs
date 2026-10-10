@@ -523,13 +523,13 @@ test('counts the complete authority, task, and schema bytes in the encoded stdin
 });
 
 test('composes Git-backed protected preparation through offline dispatch, reporting, and the in-memory acceptance validator', async t => {
-  const { runPreparedGeminiCiDecision } = await import('../dist/prepared-gemini-ci-decision.mjs');
+  const { runPreparedGeminiCiProfileDecision } = await import('../dist/prepared-gemini-ci-profile-decision.mjs');
   const { composePreparedGeminiCiPrompt } = await import('../dist/prepared-gemini-ci-review.mjs');
   const { classifyReview, renderReport } = await import('../dist/ci-report.mjs');
   const { assertEnforcedAcceptance } = await import('../dist/ci-enforced-acceptance.mjs');
   const f = fixture({ candidate: { 'src/candidate.mjs': 'export const candidateEvidence = "fixture candidate";\n' } });
   t.after(f.cleanup);
-  const prepared = await prepareGeminiCiVerificationInput(f.input);
+  const prepared = await prepareGeminiCiInput(f.input);
   const sourceFixtureBytes = new Map([
     [paths.prompt, 'Protected base review instructions.\n'],
     ...authorityPaths.map((path, index) => [path, `Protected authority ${ids[index]}.\n`]),
@@ -551,7 +551,8 @@ test('composes Git-backed protected preparation through offline dispatch, report
   assert.equal(changedCandidate.before, null);
 
   // All source bytes below are synthetic fixture content in a temporary Git repository. The local fake CLI and loopback proxy exercise composition only; they do not establish canonical authority, producer authentication, host-attempt proof, or protected acceptance.
-  async function runCase({ name, mode = 'success', response, reviewerModel = 'gemini-3.8-flash', expectedError, expectedStarted = false } = {}) {
+  async function runCase({ name, mode = 'success', response, reviewerModel = 'gemini-3.8-flash',
+    processOverrides = {}, contextLimits = prepared.workspaceLimits, expectedError, expectedStarted = false } = {}) {
     const privateRoot = mkdtempSync(join(tmpdir(), `agk-gemini-compose-${name}-`));
     t.after(() => rmSync(privateRoot, { recursive: true, force: true }));
     const workspaceParentDirectory = join(privateRoot, 'workspace-parent');
@@ -580,15 +581,16 @@ process.stdout.write(JSON.stringify({ response: responseText }));
       protectedDecisionSchemaText: prepared.protectedDecisionSchemaText,
       proxySessionOptions: {
         packet: prepared.packet,
-        workspaceLimits: prepared.workspaceLimits,
+        workspaceLimits: contextLimits,
         workspaceParentDirectory,
         credentials: { type: 'bearer', value: 'fixture-only-parent-token-never-forwarded' },
         processOptions: { cliEntrypoint, privateParentDirectory, model: reviewerModel,
           thinkingLevel: 'MEDIUM', maxOutputTokens: 16_384, project: 'fixture-project', region: 'global',
-          timeoutMs: 180_000, maxPromptBytes: 196_608, maxStdoutBytes: 65_536, maxStderrBytes: 65_536 },
+          timeoutMs: 180_000, maxPromptBytes: 196_608, maxStdoutBytes: 65_536, maxStderrBytes: 65_536,
+          ...processOverrides },
       },
     };
-    const invoke = () => runPreparedGeminiCiDecision({ reviewInput,
+    const invoke = () => runPreparedGeminiCiProfileDecision({ reviewInput,
       authorityProvenance: prepared.authorityProvenance, validationRules: prepared.validationRules,
       maxResponseBytes: prepared.maxResponseBytes, maxSchemaBytes: prepared.maxSchemaBytes });
     if (expectedError) {
@@ -603,6 +605,7 @@ process.stdout.write(JSON.stringify({ response: responseText }));
 
   const pass = { decision: 'PASS', authorityIds: ids, summary: 'fixture PASS' };
   const passRun = await runCase({ name: 'pass', response: pass });
+  assert.deepEqual(passRun.result.dispatchDiagnostics, { count: 0, maximum: 10 });
   const observed = JSON.parse(readFileSync(passRun.observationPath, 'utf8'));
   const completePrompt = composePreparedGeminiCiPrompt(prepared.protectedPromptText, prepared.protectedDecisionSchemaText);
   assert.equal(observed.prompt, encodeGeminiCliPromptForTransport(completePrompt));
@@ -640,6 +643,7 @@ process.stdout.write(JSON.stringify({ response: responseText }));
 
   const documentedBlock = { decision: 'BLOCK', authorityIds: ids, summary: 'documented' };
   const blockRun = await runCase({ name: 'documented-block', response: documentedBlock });
+  assert.deepEqual(blockRun.result.dispatchDiagnostics, { count: 0, maximum: 10 });
   const blockClassified = classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success',
     rawDecision: blockRun.result.execution.responseBytes.toString('utf8') });
   assert.equal(blockClassified.conclusion, 'BLOCK');
@@ -655,5 +659,10 @@ process.stdout.write(JSON.stringify({ response: responseText }));
   assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'failure', conclusion: failedClassified.conclusion }), /did not complete successfully/);
 
   await runCase({ name: 'provider-model-mismatch', response: pass, reviewerModel: 'gemini-2.5-flash',
-    expectedError: /process settings disagree with the protected reviewer/ });
+    expectedError: /settings disagree with the selected Issue334 profile/ });
+  await runCase({ name: 'profile-timeout-mismatch', response: pass, processOverrides: { timeoutMs: 180_001 },
+    expectedError: /settings disagree with the selected Issue334 profile/, expectedStarted: false });
+  await runCase({ name: 'context-limit-mismatch', response: pass,
+    contextLimits: { ...prepared.workspaceLimits, maxTotalBytes: prepared.workspaceLimits.maxTotalBytes + 1 },
+    expectedError: /context exceeds the selected Issue334 bounds/, expectedStarted: false });
 });
