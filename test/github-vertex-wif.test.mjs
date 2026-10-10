@@ -170,3 +170,39 @@ test('aborts a hanging fetch and response stream at the finite overall deadline'
   assert.doesNotMatch(thirdFailure.message, /final-secret|assertion|sts-token-secret/);
   assert.equal(thirdCalls.length, 3);
 });
+
+// Registration belongs to the trusted parent; no candidate callback is accepted in input.
+test('registers each credential before its next use and before returning the final token', async () => {
+  const registered = [];
+  const f = fetchSequence();
+  const result = await acquireGitHubVertexWifCredential(input, async (url, init) => {
+    const required = ['request-secret', 'github-assertion-secret', 'sts-token-secret'][f.calls.length];
+    assert.ok(registered.includes(required));
+    return f.fetch(url, init);
+  }, secret => { registered.push(secret); });
+  assert.deepEqual(registered, ['request-secret', 'github-assertion-secret', 'sts-token-secret', 'final-secret']);
+  assert.ok(registered.includes(result.token));
+});
+
+test('registration failure prevents credential use and exposes no secret in diagnostics', async () => {
+  for (const failingSecret of ['request-secret', 'github-assertion-secret', 'sts-token-secret', 'final-secret']) {
+    const f = fetchSequence();
+    await assert.rejects(acquireGitHubVertexWifCredential(input, f.fetch, secret => {
+      if (secret === failingSecret) throw new Error(secret);
+    }), error => {
+      assert.match(error.message, /secret_registration/);
+      assert.doesNotMatch(error.message, /request-secret|github-assertion-secret|sts-token-secret|final-secret/);
+      return true;
+    });
+    assert.equal(f.calls.length, ['request-secret', 'github-assertion-secret', 'sts-token-secret', 'final-secret'].indexOf(failingSecret));
+  }
+});
+
+test('rejects asynchronous registration before any credential dispatch', async () => {
+  for (const registrar of [async () => {}, async () => { throw new Error('private-secret'); },
+    () => ({ then() { throw new Error('thenable must not be called'); } })]) {
+    const f = fetchSequence();
+    await assert.rejects(acquireGitHubVertexWifCredential(input, f.fetch, registrar), /secret_registration/);
+    assert.equal(f.calls.length, 0);
+  }
+});

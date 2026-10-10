@@ -97,10 +97,14 @@ reference. Record end-to-end evidence with the
 ### Pull-request gate
 
 The reusable [CI workflow](docs/integration-reference.md#ci-integration) uses
-the consumer's protected-base policy. Gemini CI and other unwired provider
-targets are not activated consumer routes. This repository's self-only workflow
-settings do not establish consumer support or acceptance. See the [caller
-authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
+the consumer's protected-base policy. The separate
+[provider-capable workflow](.github/workflows/architecture-gate-providers.yml)
+implements ordinary Gemini review with a pinned profile and a
+masked, full-detail report handoff. It remains inactive until a consumer adopts
+that workflow and selects Gemini in protected-base policy; the existing
+Codex-only consumer workflow and this repository's self policy remain unchanged.
+This implementation does not establish consumer support or acceptance. See the
+[caller authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
 
 #### Self-repository Fork contributions
 

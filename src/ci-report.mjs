@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-import { appendFile, writeFile } from 'node:fs/promises';
+import { appendFile, lstat, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { appendGitHubOutput } from './runner-temp-path.mjs';
+import { MAX_ORDINARY_GEMINI_PROJECTION_BYTES } from './ordinary-gemini-ci-publication.mts';
 import { assertSameMultiAuthorityProvenance, validateMultiAuthorityDecision,
   validateMultiAuthorityProvenance } from './multi-authority-provenance.mjs';
 
@@ -611,49 +613,103 @@ export async function upsertPullRequestComment({ fetchImpl = fetch, apiUrl, repo
   return { status: existing ? 'updated' : 'created' };
 }
 
-async function main() {
-  const ordinary = classifyReview({
-    mode: process.env.MODE, policyResult: process.env.POLICY_RESULT,
-    reviewResult: process.env.REVIEW_RESULT, rawDecision: process.env.DECISION || '',
-  });
+async function readOrdinaryGeminiProjection(env) {
+  const path = env.REPORT_PROJECTION_PATH;
+  const fail = () => { throw new Error('Masked ordinary Gemini report projection failed its protected binding checks.'); };
+  if (typeof path !== 'string' || !path.startsWith('/') || typeof env.REPORT_EXPECTED_PROVIDER !== 'string' || env.REPORT_EXPECTED_PROVIDER !== 'gemini') fail();
+  const expectedPath = `${env.RUNNER_TEMP}/agk-ordinary-gemini-report-${env.GITHUB_RUN_ID}-${env.GITHUB_RUN_ATTEMPT}.json`;
+  if (path !== expectedPath) fail();
+  const info = await lstat(path);
+  if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 || (info.mode & 0o777) !== 0o600 ||
+      info.size < 1 || info.size > MAX_ORDINARY_GEMINI_PROJECTION_BYTES + 1) fail();
+  const bytes = await readFile(path);
+  if (bytes.length !== info.size) fail();
+  let projection;
+  try { projection = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); } catch { fail(); }
+  if (!projection || projection.version !== 1 || projection.kind !== 'display-only' || !projection.context || !projection.report) fail();
+  const context = projection.context;
+  const expected = {
+    repository: env.GITHUB_REPOSITORY, runId: env.GITHUB_RUN_ID, runAttempt: env.GITHUB_RUN_ATTEMPT,
+    eventSha: env.GITHUB_SHA, callerWorkflowSha: env.GITHUB_WORKFLOW_SHA,
+    callerWorkflowRef: env.GITHUB_WORKFLOW_REF,
+    workflowRepository: env.GATEKEEPER_WORKFLOW_REPOSITORY,
+    workflowSha: env.GATEKEEPER_WORKFLOW_SHA, workflowRef: env.GATEKEEPER_WORKFLOW_REF,
+    baseSha: env.BASE_SHA, headSha: env.HEAD_SHA, reviewedSha: env.REVIEWED_SHA,
+    provider: env.REPORT_EXPECTED_PROVIDER, nonce: env.REPORT_EXPECTED_NONCE,
+  };
+  for (const [key, value] of Object.entries(expected)) if (context[key] !== value) fail();
+  const report = projection.report;
+  if (report.policyVersion !== env.POLICY_VERSION || report.mode !== env.MODE || report.policyResult !== env.POLICY_RESULT ||
+      report.reviewResult !== env.REVIEW_RESULT || report.policyVersion !== '6' || report.mode !== 'enforced' ||
+      report.policyResult !== 'success' || report.reviewResult !== 'success' || !report.decision ||
+      !['PASS', 'BLOCK', 'OWNER_DECISION'].includes(report.decision.decision) ||
+      report.validatedConclusion !== env.REPORT_EXPECTED_CONCLUSION || report.validatedDecisionDigest !== env.REPORT_EXPECTED_DECISION_DIGEST) fail();
+  return {
+    ...env,
+    DECISION: JSON.stringify(report.decision),
+    REVIEWED_SHA: context.reviewedSha,
+    AUTHORITY_PROVENANCE_BASE64: Buffer.from(JSON.stringify(report.authorityProvenance), 'utf8').toString('base64'),
+    LEGACY_AUTHORITY_PROVENANCE_BASE64: '',
+    OWNER_ADDITION_SELECTED: 'false',
+    OWNER_ADDITION_RESULT: 'skipped',
+    OWNER_ADDITION_ELIGIBILITY: '',
+    OWNER_ADDITION_PROCEDURE_BASE64: '',
+  };
+}
+
+export async function main(fetchImpl = fetch) {
+  const suppliedEnv = process.env;
+  if (suppliedEnv.REPORT_EXPECTED_PROVIDER === 'gemini' && !suppliedEnv.REPORT_PROJECTION_PATH) {
+    throw new Error('Selected Gemini report has no masked publication projection.');
+  }
+  const env = suppliedEnv.REPORT_PROJECTION_PATH ? await readOrdinaryGeminiProjection(suppliedEnv) : suppliedEnv;
+  const projectionSelected = Boolean(env.REPORT_PROJECTION_PATH);
+  const projectedDecision = projectionSelected ? JSON.parse(env.DECISION) : null;
+  const ordinary = projectionSelected
+    ? { conclusion: env.REPORT_EXPECTED_CONCLUSION, decision: projectedDecision }
+    : classifyReview({ mode: env.MODE, policyResult: env.POLICY_RESULT,
+      reviewResult: env.REVIEW_RESULT, rawDecision: env.DECISION || '' });
   const requiresAdditionProcedure = ordinary.conclusion === 'OWNER_DECISION' &&
-    process.env.OWNER_ADDITION_SELECTED === 'true' && process.env.OWNER_ADDITION_RESULT === 'success' &&
-    process.env.OWNER_ADDITION_ELIGIBILITY === 'ELIGIBLE';
+    env.OWNER_ADDITION_SELECTED === 'true' && env.OWNER_ADDITION_RESULT === 'success' &&
+    env.OWNER_ADDITION_ELIGIBILITY === 'ELIGIBLE';
   const ownerAdditionProcedure = requiresAdditionProcedure
-    ? parseOwnerAdditionProcedure(process.env.OWNER_ADDITION_PROCEDURE_BASE64, true) : null;
-  if (ownerAdditionProcedure && (ownerAdditionProcedure.repository !== process.env.GITHUB_REPOSITORY ||
-      ownerAdditionProcedure.baseSha !== process.env.BASE_SHA ||
-      ownerAdditionProcedure.headSha !== process.env.HEAD_SHA)) {
+    ? parseOwnerAdditionProcedure(env.OWNER_ADDITION_PROCEDURE_BASE64, true) : null;
+  if (ownerAdditionProcedure && (ownerAdditionProcedure.repository !== env.GITHUB_REPOSITORY ||
+      ownerAdditionProcedure.baseSha !== env.BASE_SHA ||
+      ownerAdditionProcedure.headSha !== env.HEAD_SHA)) {
     throw new Error('G0 owner-addition procedure does not match this pull request.');
   }
-  const authorityProvenance = parseAuthorityProvenance(process.env.AUTHORITY_PROVENANCE_BASE64,
-    process.env.AUTHORITY_ROUTE_SELECTED === 'true' && process.env.REVIEW_RESULT === 'success');
+  const authorityProvenance = parseAuthorityProvenance(env.AUTHORITY_PROVENANCE_BASE64,
+    env.AUTHORITY_ROUTE_SELECTED === 'true' && env.REVIEW_RESULT === 'success' || Boolean(env.REPORT_PROJECTION_PATH));
   if (ownerAdditionProcedure?.version === 2) assertSameMultiAuthorityProvenance(authorityProvenance, ownerAdditionProcedure.authoritySet);
-  const classified = classifyReview({
-    mode: process.env.MODE,
-    policyResult: process.env.POLICY_RESULT,
-    reviewResult: process.env.REVIEW_RESULT,
-    rawDecision: process.env.DECISION || '',
-    ownerAdditionSelected: process.env.OWNER_ADDITION_SELECTED === 'true',
-    ownerAdditionResult: process.env.OWNER_ADDITION_RESULT,
-    ownerAdditionEligibility: process.env.OWNER_ADDITION_ELIGIBILITY,
-    ownerAdditionProcedure,
-  });
-  const legacyAuthorityProvenance = parseLegacyAuthorityProvenance(process.env.LEGACY_AUTHORITY_PROVENANCE_BASE64,
-    process.env.POLICY_VERSION === '1' && process.env.REVIEW_RESULT === 'success');
-  if (legacyAuthorityProvenance && (legacyAuthorityProvenance.baseSha !== process.env.BASE_SHA ||
-      legacyAuthorityProvenance.headSha !== process.env.HEAD_SHA ||
-      legacyAuthorityProvenance.reviewedSha !== process.env.REVIEWED_SHA)) {
+  const classified = projectionSelected
+    ? { conclusion: env.REPORT_EXPECTED_CONCLUSION,
+      summary: typeof projectedDecision.summary === 'string' && projectedDecision.summary.trim()
+        ? projectedDecision.summary : 'No summary was supplied by the architecture reviewer.',
+      decision: projectedDecision }
+    : classifyReview({ mode: env.MODE, policyResult: env.POLICY_RESULT,
+      reviewResult: env.REVIEW_RESULT, rawDecision: env.DECISION || '',
+      ownerAdditionSelected: env.OWNER_ADDITION_SELECTED === 'true', ownerAdditionResult: env.OWNER_ADDITION_RESULT,
+      ownerAdditionEligibility: env.OWNER_ADDITION_ELIGIBILITY, ownerAdditionProcedure });
+  if (env.REPORT_PROJECTION_PATH && (classified.conclusion !== env.REPORT_EXPECTED_CONCLUSION ||
+      !classified.decision || classified.decision.decision !== env.REPORT_EXPECTED_CONCLUSION)) {
+    throw new Error('Masked ordinary Gemini report projection disagrees with the protected conclusion.');
+  }
+  const legacyAuthorityProvenance = parseLegacyAuthorityProvenance(env.LEGACY_AUTHORITY_PROVENANCE_BASE64,
+    env.POLICY_VERSION === '1' && env.REVIEW_RESULT === 'success');
+  if (legacyAuthorityProvenance && (legacyAuthorityProvenance.baseSha !== env.BASE_SHA ||
+      legacyAuthorityProvenance.headSha !== env.HEAD_SHA ||
+      legacyAuthorityProvenance.reviewedSha !== env.REVIEWED_SHA)) {
     throw new Error('Legacy authority provenance does not match this pull request.');
   }
   let inlineDelivery = null;
   let reportApiContext = null;
   try {
     reportApiContext = sanitizeReportApiContext({
-      apiUrl: process.env.GITHUB_API_URL || GITHUB_COM_API,
-      repository: process.env.GITHUB_REPOSITORY,
-      pullRequest: process.env.PR_NUMBER,
-      expectedHead: process.env.HEAD_SHA,
+      apiUrl: env.GITHUB_API_URL || GITHUB_COM_API,
+      repository: env.GITHUB_REPOSITORY,
+      pullRequest: env.PR_NUMBER,
+      expectedHead: env.HEAD_SHA,
     });
   } catch (error) {
     console.warn(`::warning title=Architecture Gate report API context rejected::${cleanText(error.message, 300)}`);
@@ -662,7 +718,8 @@ async function main() {
     try {
       inlineDelivery = await postInlineReview({
         ...reportApiContext,
-        token: process.env.GITHUB_TOKEN,
+        fetchImpl,
+        token: env.GITHUB_TOKEN,
         decision: classified.decision?.decision,
         findings: classified.decision?.findings,
       });
@@ -680,34 +737,40 @@ async function main() {
     console.log(`Architecture Gate inline review: ${inlineDelivery.status}${inlineDelivery.count ? ` (${inlineDelivery.count} finding(s))` : ''}${inlineDelivery.reason ? ` (${inlineDelivery.reason})` : ''}`);
   }
   if (inlineDelivery?.linkWarning) console.warn(`::warning title=Architecture Gate inline comment links unavailable::${cleanText(inlineDelivery.linkWarning, 500)}`);
+  const decisionDigest = env.REPORT_PROJECTION_PATH ? env.REPORT_EXPECTED_DECISION_DIGEST : digestDecision(classified.decision);
   const report = renderReport(classified, {
-    reviewedSha: process.env.REVIEWED_SHA,
-    headSha: process.env.HEAD_SHA,
-    runUrl: process.env.RUN_URL,
-    workflowRef: process.env.WORKFLOW_REF,
+    reviewedSha: env.REVIEWED_SHA,
+    headSha: env.HEAD_SHA,
+    runUrl: env.RUN_URL,
+    workflowRef: env.WORKFLOW_REF,
+    decisionDigest,
     authorityProvenance,
     legacyAuthorityProvenance,
     ownerAdditionProcedure,
     inlineDelivery,
   });
-  const decisionDigest = digestDecision(classified.decision);
-  if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, report);
-  if (process.env.REPORT_PATH) await writeFile(process.env.REPORT_PATH, report);
+  if (env.GITHUB_STEP_SUMMARY) await appendFile(env.GITHUB_STEP_SUMMARY, report);
+  if (env.REPORT_PATH) await writeFile(env.REPORT_PATH, report);
   try {
     if (!reportApiContext) throw new Error('Report API context failed validation.');
     const result = await upsertPullRequestComment({
+      fetchImpl,
       apiUrl: reportApiContext.apiUrl,
       repository: reportApiContext.repository,
       pullRequest: reportApiContext.pullRequest,
-      token: process.env.GITHUB_TOKEN,
+      token: env.GITHUB_TOKEN,
       body: report,
     });
     console.log(`Architecture Gate PR comment: ${result.status}${result.reason ? ` (${result.reason})` : ''}`);
   } catch (error) {
+    if (env.REPORT_PROJECTION_PATH) throw new Error('Required Architecture Gate report publication failed.');
     console.warn(`::warning title=Architecture Gate comment unavailable::${cleanText(error.message, 500)}`);
   }
-  if (process.env.GITHUB_OUTPUT) {
-    await appendFile(process.env.GITHUB_OUTPUT, `conclusion=${classified.conclusion}\ndecision_digest=${decisionDigest}\n`);
+  if (env.REPORT_PROJECTION_PATH && (classified.conclusion !== env.REPORT_EXPECTED_CONCLUSION || decisionDigest !== env.REPORT_EXPECTED_DECISION_DIGEST)) {
+    throw new Error('Masked ordinary Gemini projection does not match the protected semantic outcome.');
+  }
+  if (env.GITHUB_OUTPUT) {
+    appendGitHubOutput(`conclusion=${classified.conclusion}\ndecision_digest=${decisionDigest}\n`);
   }
 }
 

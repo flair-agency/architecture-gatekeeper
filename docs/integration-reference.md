@@ -480,8 +480,16 @@ settings remain separate. The candidate self policy selects its existing effecti
 7-minute job, 5-minute step and standard Codex profile for staged verification.
 Protected adoption and a subsequent opted-in hosted run remain required;
 configuration alone proves neither backend identity nor process termination.
-Consumer adoption stays unavailable pending representative hosted verification.
-Gemini remains unwired.
+The provider-capable reusable workflow implements an ordinary Gemini review
+path with a pinned profile, protected selector inputs, parent-held WIF
+credentials, and a separate report job. The reporter retrieves only the unique
+completed projection step from the same run attempt, verifies its protected
+tuple, and renders the full report and inline findings through the existing
+report path. Masked display data cannot supply the semantic conclusion or
+decision digest, and report failure blocks acceptance. The existing
+Codex-only consumer workflow and this repository's protected self policy remain
+unchanged; consumer adoption remains inactive pending workflow adoption and
+representative hosted verification.
 
 Opted-in staged ordinary reviews pass the exact Action final-message source
 through shared execution normalization before existing semantic validators.
