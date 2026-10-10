@@ -26,7 +26,7 @@ type TagEnvelopeView = { reviewRecordBytes: unknown; amendmentRecordBytes: unkno
 type TagEnvelopeInput = { headSha: unknown; tag: unknown; tagRef: unknown; observedTagRefOid: unknown;
   reviewRecordBytes: unknown; amendmentRecordBytes: unknown; attestationBundleBytes: unknown };
 
-export type OwnerAmendmentBlockContextInput = { tagEnvelope: unknown; trustedContext: unknown };
+export type OwnerAmendmentBlockContextInput = { tagEnvelope: TagEnvelopeInput; trustedContext: unknown };
 export type OwnerAmendmentBlockContextResult = Readonly<{
   status: 'VERIFIED_BLOCK_AMENDMENT_CONTEXT'; repository: unknown; baseSha: unknown; bSha: unknown; policyRevision: unknown;
   authorityId: unknown; reviewRecordSha256: string; amendmentRecordSha256: string; tagObjectOid: unknown;

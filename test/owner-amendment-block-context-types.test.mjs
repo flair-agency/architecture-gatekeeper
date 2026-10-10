@@ -29,8 +29,9 @@ test('BLOCK context type contract rejects narrowed metadata, extra arguments, an
   const diagnostics = diagnosticsFor('negative.mts');
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1,
     ts.flattenDiagnosticMessageText(item.messageText, '\n')]), [
-    [1360, 5, "Type 'unknown' does not satisfy the expected type 'number'."],
-    [1360, 6, "Type 'unknown' does not satisfy the expected type 'string'."],
-    [2554, 7, 'Expected 1 arguments, but got 2.'],
+    [2741, 6, "Property 'tagRef' is missing in type '{ headSha: string; tag: string; observedTagRefOid: string; reviewRecordBytes: string; amendmentRecordBytes: string; attestationBundleBytes: string; }' but required in type 'TagEnvelopeInput'."],
+    [1360, 7, "Type 'unknown' does not satisfy the expected type 'number'."],
+    [1360, 8, "Type 'unknown' does not satisfy the expected type 'string'."],
+    [2554, 9, 'Expected 1 arguments, but got 2.'],
   ]);
 });
