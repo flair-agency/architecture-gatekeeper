@@ -70,6 +70,14 @@ test('rejects mismatched trusted previous policy, B, or affected authority', () 
   }
 });
 
+test('retains trusted context property rereads instead of capturing an accessor value', () => {
+  const f = fixture();
+  let reads = 0;
+  Object.defineProperty(f.trustedContext, 'baseSha', { enumerable: true, get() { reads += 1; return reads === 1 ? a : c; } });
+  assert.throws(() => verifyOwnerAmendmentBlockContext({ trustedContext: f.trustedContext, tagEnvelope: f.envelopeArgs }));
+  assert.ok(reads > 1);
+});
+
 test('rejects ReviewRecord and AmendmentRecord byte or semantic mismatches', () => {
   const cases = [
     ['review bytes', f => { f.envelopeArgs.reviewRecordBytes = Buffer.from('forged'); }],
