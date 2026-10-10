@@ -1,14 +1,9 @@
 #!/usr/bin/env node
 import { writeFileSync } from 'node:fs';
-import { readRegularGitSnapshot } from './legacy-git-snapshot.mjs';
+import { materializeRegularGitSnapshot } from './review-inputs/materialize-regular-git-snapshot.mts';
 import { trustedGitHubWorkspaceRoot } from './github-runner-workspace.mjs';
 
-export function materializeRegularGitSnapshot({ root, commit, path, outputPath, maxBytes }) {
-  if (!outputPath) throw new Error('Missing committed snapshot output path.');
-  const snapshot = readRegularGitSnapshot({ root, commit, path, maxBytes });
-  writeFileSync(outputPath, snapshot.bytes, { mode: 0o600 });
-  return { path, sha256: snapshot.sha256 };
-}
+export { materializeRegularGitSnapshot };
 
 if (process.argv[1]?.endsWith('/materialize-regular-git-snapshot.mjs')) {
   const [, , commit, path, outputPath] = process.argv;
