@@ -431,6 +431,31 @@ full Authority Set, schema, consumer rules and reporting/acceptance handoff
 before making any usable-route claim. Governance-provider activation and
 standby/parallel execution remain outside this verification scope.
 
+#### Initial ordinary Gemini CI execution profile (Issue #334 owner decision, 2026-10-10)
+
+The owner adopts the initial ordinary Gemini CI execution profile, with
+implementation proceeding on the feature branch first: Gemini CLI `0.62.0`,
+`gemini-3.8-flash`,
+`thinkingLevel: MEDIUM`, and no `thinkingBudget`, with a 180-second per-session
+deadline and `maxOutputTokens` of 16,384. The complete encoded stdin prompt is
+bounded at 192 KiB. The committed review context is bounded to 32 selected
+files, 128 KiB per file, and 512 KiB total serialized packet. A review session
+has a defensive cap of 10 upstream requests, including CLI-internal retries
+and uncertain sends, counted before dispatch; reaching it stops further
+dispatch. Automatic workflow retry and provider fallback remain disabled.
+These settings extend the bounded feature-verification profile above and do
+not change its historical development-attempt or verification accounting.
+
+This adoption authorizes neither main nor consumer route activation,
+additional development retries, paid model execution, or WIF credential
+issuance. Exact target deployment bindings remain private and must be
+explicitly selected and verified before activation. Codex remains a supported
+rollback path; rollback does not authorize provider fallback or parallel
+result adoption. Implementations retain the existing launcher/proxy
+credential-isolation
+boundary. The common schema, complete Authority Set, consumer rules, and
+reporting/acceptance validation remain required.
+
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
 The GitHub-specific step-output adapter treats `GITHUB_OUTPUT` as a trusted
