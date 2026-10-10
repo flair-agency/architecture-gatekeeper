@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -8,6 +9,8 @@ import { encodeGeminiCliPromptForTransport } from '../dist/gemini-cli-process.mj
 import { composePreparedGeminiCiPrompt } from '../dist/prepared-gemini-ci-review.mjs';
 import { prepareGeminiCiVerificationInput } from '../dist/prepare-gemini-ci-verification-input.mjs';
 import { validatePreparedCiDecision } from '../dist/prepared-ci-decision.mjs';
+import { readCommittedAuthorityFile } from '../dist/authority-set.mjs';
+import { prepareProtectedCiInput } from '../dist/prepare-protected-ci-input.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const paths = {
@@ -73,6 +76,20 @@ function manifest() {
 }
 
 function json(value) { return `${JSON.stringify(value, null, 2)}\n`; }
+
+function coreInput(f, { authorityManifestPath = paths.manifest, authorityLimits = limits, overrides = {} } = {}) {
+  const selectedPaths = [paths.policy, paths.prompt, paths.schema, authorityManifestPath, paths.rules];
+  const snapshots = selectedPaths.map(path => ({ path, revision: f.baseSha,
+    bytes: readCommittedAuthorityFile(f.root, f.baseSha, path,
+      path === authorityManifestPath ? authorityLimits.maxManifestBytes : 131_072) }));
+  return {
+    selection: { ...f.input, manifestPath: authorityManifestPath },
+    limits: { workspace: { maxFiles: 32, maxFileBytes: 131_072, maxTotalBytes: 524_288 },
+      authority: authorityLimits, maxSchemaBytes: 131_072, maxResponseBytes: 65_536,
+      maxDiffBytes: Math.min(authorityLimits.maxPromptBytes, 196_608) },
+    snapshots, fetchExternal: null, ...overrides,
+  };
+}
 
 function fixture({ base = {}, candidate = {} } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'agk-gemini-input-git-'));
@@ -286,6 +303,137 @@ test('fails closed for unsupported external Authority Set members and executable
   await assert.rejects(prepareGeminiCiVerificationInput(accessor));
   const proxied = new Proxy({ ...f.input }, { ownKeys() { getterRuns += 1; return Reflect.ownKeys(f.input); } });
   await assert.rejects(prepareGeminiCiVerificationInput(proxied));
+  assert.equal(getterRuns, 0);
+});
+
+test('core binds an injected external authority snapshot and exact source identity without self-path reads', async t => {
+  const externalPath = 'docs/authority.md';
+  const externalRevision = 'a'.repeat(40);
+  const externalText = 'Externally selected protected authority bytes.\n';
+  const externalManifest = { version: 1, authorities: ids.map((id, index) => index === 0
+    ? { id, repository: 'flair-agency/policy', revision: externalRevision, path: externalPath }
+    : { id, repository: 'self', revision: 'authority-revision', path: authorityPaths[index] }) };
+  const f = fixture({ base: { [paths.manifest]: json(externalManifest) }, candidate: { 'src/change.mjs': 'candidate patch\n' } });
+  t.after(f.cleanup);
+  const substituted = coreInput(f);
+  const suppliedManifest = substituted.snapshots.find(snapshot => snapshot.path === paths.manifest);
+  suppliedManifest.bytes = Buffer.from(json({ version: 1, authorities: [{ id: 'attacker-selected', repository: 'flair-agency/other',
+    revision: 'b'.repeat(40), path: 'docs/other.md' }] }));
+  let fetchCalls = 0;
+  substituted.fetchExternal = async () => { fetchCalls += 1; throw new Error('must not fetch'); };
+  await assert.rejects(prepareProtectedCiInput(substituted), /differs from its base packet bytes/);
+  assert.equal(fetchCalls, 0);
+
+  const input = coreInput(f);
+  input.fetchExternal = async request => {
+    assert.deepEqual(request, { repository: 'flair-agency/policy', revision: externalRevision,
+      path: externalPath, maxBytes: limits.maxFileBytes });
+    return { repository: request.repository, resolvedCommit: request.revision, path: request.path,
+      type: 'file', content: Buffer.from(externalText) };
+  };
+  const prepared = await prepareProtectedCiInput(input);
+  const member = prepared.authorityProvenance.members[0];
+  assert.deepEqual({ repository: member.repository, resolvedCommit: member.resolvedCommit, path: member.path,
+    byteLength: member.byteLength, sha256: member.sha256 }, {
+    repository: 'flair-agency/policy', resolvedCommit: externalRevision, path: externalPath,
+    byteLength: Buffer.byteLength(externalText), sha256: createHash('sha256').update(externalText).digest('hex'),
+  });
+  assert.equal(prepared.bindings.authorityManifestPath, paths.manifest);
+  assert.equal(prepared.bindings.authorityManifestSha256, createHash('sha256').update(input.snapshots.find(s => s.path === paths.manifest).bytes).digest('hex'));
+  assert.equal(prepared.packet.revisions.baseSha, f.baseSha);
+  assert.equal(prepared.packet.revisions.headSha, f.headSha);
+  assert.equal(prepared.packet.revisions.reviewedMergeSha, f.reviewedSha);
+  assert.equal(prepared.packet.references.some(reference => reference.path === externalPath), false);
+  assert.deepEqual(prepared.authorityProvenance.members.map(item => item.id), ids);
+  assert.deepEqual(prepared.authorityProvenance.members.slice(1).map(item => item.path), authorityPaths.slice(1));
+  assert.deepEqual(validatePreparedCiDecision({ responseBytes: Buffer.from(json({ decision: 'PASS', authorityIds: ids })),
+    schemaBytes: Buffer.from(prepared.protectedDecisionSchemaText), authorityProvenance: prepared.authorityProvenance,
+    validationRules: prepared.validationRules, maxResponseBytes: prepared.maxResponseBytes,
+    maxSchemaBytes: prepared.maxSchemaBytes }), { decision: 'PASS', authorityIds: ids });
+  assert.match(prepared.protectedPromptText, /Externally selected protected authority bytes/);
+  assert.match(prepared.protectedPromptText, /exactBaseToReviewedMergeDiff/);
+  assert.match(prepared.protectedPromptText, /candidate patch/);
+
+  input.fetchExternal = async request => ({ repository: request.repository, resolvedCommit: 'b'.repeat(40),
+    path: 'docs/wrong.md', type: 'file', content: Buffer.from(externalText) });
+  await assert.rejects(prepareProtectedCiInput(input), /did not verify requested repository, commit, path, type and bytes/);
+  input.fetchExternal = async () => { throw new Error('source unavailable'); };
+  await assert.rejects(prepareProtectedCiInput(input), /could not be fetched/);
+});
+
+test('core rejects protected snapshot bytes that do not match the exact base packet', async t => {
+  const f = fixture();
+  t.after(f.cleanup);
+  const input = coreInput(f);
+  input.snapshots.find(snapshot => snapshot.path === paths.prompt).bytes = Buffer.from('substituted prompt bytes\n');
+  await assert.rejects(prepareProtectedCiInput(input), /differs from its base packet bytes/);
+});
+
+test('core applies the complete protected prompt limit after adding task context and diff', async t => {
+  const largePrompt = 'base prompt '.repeat(2_700);
+  const selectedLimits = { ...limits, maxPromptBytes: 30_000 };
+  const f = fixture({ base: { [paths.manifest]: json(manifest()), [paths.prompt]: largePrompt },
+    candidate: { [paths.prompt]: largePrompt, 'src/large-change.mjs': 'small candidate change\n' } });
+  t.after(f.cleanup);
+  const input = coreInput(f, { authorityLimits: selectedLimits });
+  await assert.rejects(prepareProtectedCiInput(input), /complete protected prompt exceeds the selected authority prompt byte limit/);
+});
+
+test('core snapshots selectors, limits, and byte buffers before awaiting external materialization', async t => {
+  const externalPath = 'docs/authority.md';
+  const externalRevision = 'a'.repeat(40);
+  const externalText = 'Captured external bytes.\n';
+  const externalManifest = { version: 1, authorities: ids.map((id, index) => index === 0
+    ? { id, repository: 'flair-agency/policy', revision: externalRevision, path: externalPath }
+    : { id, repository: 'self', revision: 'authority-revision', path: authorityPaths[index] }) };
+  const f = fixture({ base: { [paths.manifest]: json(externalManifest) } });
+  t.after(f.cleanup);
+  const input = coreInput(f);
+  let entered;
+  const started = new Promise(resolve => { entered = resolve; });
+  let release;
+  const blocked = new Promise(resolve => { release = resolve; });
+  input.fetchExternal = async request => {
+    entered(request);
+    await blocked;
+    return { repository: request.repository, resolvedCommit: request.revision, path: request.path,
+      type: 'file', content: Buffer.from(externalText) };
+  };
+  const pending = prepareProtectedCiInput(input);
+  try {
+    await Promise.race([started, pending.then(() => { throw new Error('preparation completed before external source request'); })]);
+    input.selection.repository = 'attacker/changed';
+    input.limits.workspace.maxFileBytes = 1;
+    input.snapshots.find(snapshot => snapshot.path === paths.prompt).bytes.fill(0x58);
+    release();
+    const prepared = await pending;
+    assert.equal(prepared.bindings.repository, repository);
+    assert.equal(prepared.bindings.baseSha, f.baseSha);
+    assert.match(prepared.protectedPromptText, /Protected base review instructions/);
+  } finally {
+    release();
+  }
+});
+
+test('core rejects executable or proxied protected snapshot collections without running accessors', async t => {
+  const f = fixture();
+  t.after(f.cleanup);
+  const input = coreInput(f);
+  let getterRuns = 0;
+  const accessor = { path: paths.rules, revision: f.baseSha, bytes: Buffer.from(json(rules)) };
+  Object.defineProperty(accessor, 'path', { enumerable: true, get() { getterRuns += 1; return paths.rules; } });
+  await assert.rejects(prepareProtectedCiInput({ ...input, snapshots: [...input.snapshots.slice(0, 4), accessor] }), /complete explicit data/);
+  await assert.rejects(prepareProtectedCiInput({ ...input, snapshots: new Proxy(input.snapshots, { get: () => {
+    getterRuns += 1;
+    return input.snapshots;
+  } }) }), /explicit array/);
+  const proxyBytes = new Proxy(Buffer.from(json(rules)), { get: () => {
+    getterRuns += 1;
+    return 0;
+  } });
+  const proxyByteSnapshots = [...input.snapshots];
+  proxyByteSnapshots[4] = { ...proxyByteSnapshots[4], bytes: proxyBytes };
+  await assert.rejects(prepareProtectedCiInput({ ...input, snapshots: proxyByteSnapshots }), /protected snapshots/);
   assert.equal(getterRuns, 0);
 });
 
