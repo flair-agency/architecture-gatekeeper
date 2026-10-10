@@ -116,11 +116,11 @@ prepareLegacyAuthority({ root: process.argv[2], baseSha: 'a'.repeat(40), headSha
   const accessorLine = 3;
   const hasAccessor = (list, callFile, callLine, sinkFile, sinkLine) => threads(list).some(thread =>
     threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine) && threadHas(thread, callFile, callLine) && threadHas(thread, sinkFile, sinkLine));
-  assert.ok(hasAccessor(results.false, 'src/materialize-regular-git-snapshot.mjs', 16, 'src/authority-validation/legacy-git-snapshot.mts', 31),
+  assert.ok(hasAccessor(results.false, 'src/materialize-regular-git-snapshot.mjs', 11, 'src/authority-validation/legacy-git-snapshot.mts', 31),
     'Baseline must trace accessor through materializer into Git snapshot cwd');
   assert.ok(hasAccessor(results.false, 'src/prepare-legacy-ci-authority.mjs', 84, 'src/prepare-legacy-ci-authority.mjs', 32),
     'Baseline must trace accessor into preparer git diff cwd');
-  assert.equal(hasAccessor(results.true, 'src/materialize-regular-git-snapshot.mjs', 16, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
+  assert.equal(hasAccessor(results.true, 'src/materialize-regular-git-snapshot.mjs', 11, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
     'Model must remove materializer accessor flow');
   assert.equal(hasAccessor(results.true, 'src/prepare-legacy-ci-authority.mjs', 84, 'src/prepare-legacy-ci-authority.mjs', 32), false,
     'Model must remove preparer accessor flow to git diff cwd');
