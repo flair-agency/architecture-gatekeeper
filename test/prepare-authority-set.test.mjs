@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync }
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { prepareAuthoritySet } from '../dist/prepare-authority-set.mjs';
+import { decodeLimits, prepareAuthoritySet } from '../dist/prepare-authority-set.mjs';
 
 const limits = { maxManifestBytes: 4096, maxMembers: 3, maxFileBytes: 1024, maxTotalBytes: 2048, maxPromptBytes: 8192 };
 const authority = { id: 'self-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' };
@@ -51,9 +51,34 @@ test('external source credentials are not serialized to either output', async t 
   const f = fixture(t); const outputDir = join(f.root, 'bundle'); const secret = 'sensitive-fixture-token';
   const external = { id: 'external-contract', repository: 'flair-agency/parent', revision: 'a'.repeat(40), path: 'docs/parent.md' };
   writeFileSync(f.manifestPath, JSON.stringify({ version: 1, authorities: [external] }));
-  const fetchExternal = async input => ({ repository: input.repository, resolvedCommit: input.revision, path: input.path, type: 'file', content: Buffer.from('# external\n') });
+  let observedRequest;
+  const fetchExternal = async input => {
+    observedRequest = input;
+    return { repository: input.repository, resolvedCommit: input.revision, path: input.path, type: 'file', content: Buffer.from('# external\n') };
+  };
   await prepareAuthoritySet({ ...f, selfRepository: 'flair-agency/example', outputDir, token: secret, fetchExternal });
+  assert.deepEqual(observedRequest, { repository: external.repository, revision: external.revision, path: external.path, maxBytes: limits.maxFileBytes });
   for (const name of ['authority-prompt.md', 'authority-provenance.json']) assert.equal(readFileSync(join(outputDir, name), 'utf8').includes(secret), false);
+});
+
+test('decoded authority limits are frozen snapshots', () => {
+  const encoded = Buffer.from(JSON.stringify(limits)).toString('base64');
+  const decoded = decodeLimits(encoded);
+  assert.deepEqual(decoded, limits);
+  assert.equal(Object.isFrozen(decoded), true);
+  assert.throws(() => { decoded.maxMembers = 1; }, TypeError);
+});
+
+test('external content length remains an unchecked provenance value', async t => {
+  const f = fixture(t); const outputDir = join(f.root, 'bundle');
+  const external = { id: 'external-contract', repository: 'flair-agency/parent', revision: 'a'.repeat(40), path: 'docs/parent.md' };
+  writeFileSync(f.manifestPath, JSON.stringify({ version: 1, authorities: [external] }));
+  const content = Buffer.from('# external\n');
+  Object.defineProperty(content, 'length', { value: '11' });
+  const fetchExternal = async input => ({ repository: input.repository, resolvedCommit: input.revision, path: input.path, type: 'file', content });
+  const { provenance } = await prepareAuthoritySet({ ...f, selfRepository: 'flair-agency/example', outputDir, fetchExternal });
+  assert.equal(provenance.members[0].byteLength, '11');
+  assert.equal(JSON.parse(readFileSync(join(outputDir, 'authority-provenance.json'), 'utf8')).members[0].byteLength, '11');
 });
 
 test('preserves complete two-member order and provenance digest', async t => {
@@ -67,6 +92,23 @@ test('preserves complete two-member order and provenance digest', async t => {
   const records = provenance.members;
   const expectedDigest = await import('node:crypto').then(({ createHash }) => createHash('sha256').update(JSON.stringify(records)).digest('hex'));
   assert.equal(provenance.setDigest, expectedDigest);
+});
+
+test('string manifests match Buffer provenance and materialized bytes', async t => {
+  const f = fixture(t);
+  const manifestBytes = readFileSync(f.manifestPath);
+  const stringOutputDir = join(f.root, 'string-bundle');
+  const bufferOutputDir = join(f.root, 'buffer-bundle');
+  const common = { ...f, selfRepository: 'flair-agency/example' };
+  const fromString = await prepareAuthoritySet({ ...common, manifestBytes: manifestBytes.toString('utf8'), outputDir: stringOutputDir });
+  const fromBuffer = await prepareAuthoritySet({ ...common, manifestBytes, outputDir: bufferOutputDir });
+
+  assert.deepEqual(fromString.provenance, fromBuffer.provenance);
+  assert.equal(readFileSync(join(stringOutputDir, 'authority-prompt.md'), 'utf8'), readFileSync(join(bufferOutputDir, 'authority-prompt.md'), 'utf8'));
+  assert.equal(readFileSync(join(stringOutputDir, 'authority-provenance.json'), 'utf8'), readFileSync(join(bufferOutputDir, 'authority-provenance.json'), 'utf8'));
+  assert.equal(fromString.provenance.manifestSha256, fromBuffer.provenance.manifestSha256);
+  assert.equal(fromString.provenance.setDigest, fromBuffer.provenance.setDigest);
+  assert.equal(fromString.provenance.members[0].byteLength, Buffer.byteLength('# committed authority\n'));
 });
 
 test('external CLI without its explicit token fails without creating output', t => {
