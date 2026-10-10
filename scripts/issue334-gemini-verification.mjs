@@ -11,6 +11,7 @@ import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import { prepareGeminiCiVerificationInput } from '../dist/prepare-gemini-ci-verification-input.mjs';
+import { buildPreparedGeminiCiCall } from '../dist/prepared-gemini-ci-call.mjs';
 
 const REPOSITORY = 'flair-agency/architecture-gatekeeper';
 const BRANCH = 'feature/gemini-ci';
@@ -45,7 +46,6 @@ const MAX_EVIDENCE_PLAINTEXT_BYTES = 2_097_152;
 const MAX_JOURNAL_BYTES = 128;
 const MAX_UPSTREAM_CAPTURE_BYTES = 262_144;
 const MAX_UPSTREAM_RESPONSE_BYTES = 65_536;
-const MAX_PROMPT_BYTES = 196_608;
 const MAX_STDIO_BYTES = 65_536;
 
 function fail(message) { throw new Error(`Issue334 verification: ${message}`); }
@@ -459,19 +459,7 @@ export function installPinnedRuntime(root, env = process.env) {
 /** Fixed adapter composition for the selected producer output and one parent-only bearer credential. */
 export function buildPreparedVerificationCall({ prepared, credential, runtimeEntry, runnerTemp }) {
   if (!prepared || !credential || !runtimeEntry || typeof runnerTemp !== 'string') fail('complete prepared execution inputs are required.');
-  return { reviewInput: {
-    protectedPromptText: prepared.protectedPromptText,
-    protectedDecisionSchemaText: prepared.protectedDecisionSchemaText,
-    protectedReviewer: prepared.protectedReviewer,
-    proxySessionOptions: { packet: prepared.packet, workspaceLimits: prepared.workspaceLimits,
-      workspaceParentDirectory: runnerTemp,
-      processOptions: { cliEntrypoint: runtimeEntry, privateParentDirectory: runnerTemp,
-        model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM', maxOutputTokens: 16_384,
-        project: credential.project, region: credential.region, timeoutMs: 180_000,
-        maxPromptBytes: MAX_PROMPT_BYTES, maxStdoutBytes: MAX_STDIO_BYTES, maxStderrBytes: MAX_STDIO_BYTES },
-      credentials: { type: 'bearer', value: credential.token } },
-  }, authorityProvenance: prepared.authorityProvenance, validationRules: prepared.validationRules,
-    maxResponseBytes: prepared.maxResponseBytes, maxSchemaBytes: prepared.maxSchemaBytes };
+  return buildPreparedGeminiCiCall({ prepared, credential, runtimeEntry, privateParentDirectory: runnerTemp });
 }
 
 /** One invocation with no retry path, fallback, or output-path selector. */
