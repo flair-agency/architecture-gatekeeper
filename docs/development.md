@@ -81,15 +81,21 @@ PR/run and live queue context, self-amendment scope, and amendment canonical
 readback, OWNER_ADDITION post-merge readback and self-only GitHub App reporting.
 The GitHub ruleset readback, owner-amendment Git change reader, handoff Git
 context, annotated-tag transport and review-input path helper are integrated.
-This slice types the existing committed-file reader under
+The committed-file reader is integrated under
 `src/authority-validation/legacy-git-snapshot.mts`, retaining its flat exports
 and regular-file selection, Git arguments, byte limits and digest behavior.
 Its ordinary string, numeric and Buffer contracts do not authenticate caller
 selection or authorize review acceptance.
+This slice types the existing JSON Schema validator under
+`src/authority-validation/json-schema.mts`, retaining its two flat function
+exports, supported dialect, property rereads, budgets, memo behavior and
+exceptions. Input-preserving generics and nullable numeric options describe
+existing operations; they do not infer instance types from schemas or certify
+caller-owned mutable properties.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `a04c777` has twenty-five original modules typed and 71 remaining; this
-candidate has twenty-six typed and 70 remaining. Migration is partial and does
+Main `5a0817b` has twenty-six original modules typed and 70 remaining; this
+candidate has twenty-seven typed and 69 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
