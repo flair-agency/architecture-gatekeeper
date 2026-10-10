@@ -7,3 +7,6 @@ const packet = prepareReviewFileContext({
 });
 const observedLimit: number = packet.limits.maxFiles;
 void observedLimit;
+packet.revisions.baseSha = 'changed';
+packet.files[0].path = 'changed';
+packet.files.push(packet.files[0]);

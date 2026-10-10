@@ -19,14 +19,14 @@ export interface PrepareReviewFileContextInput {
   baseSha: string;
   headSha: string;
   reviewedSha: string;
-  referencePaths: string[];
+  referencePaths: readonly string[];
   limits: ReviewFileContextLimits;
 }
 
 interface ObservedReviewFileContextLimits {
-  maxFiles: unknown;
-  maxFileBytes: unknown;
-  maxTotalBytes: unknown;
+  readonly maxFiles: unknown;
+  readonly maxFileBytes: unknown;
+  readonly maxTotalBytes: unknown;
 }
 
 interface SnapshotEntry {
@@ -41,25 +41,25 @@ interface GitChange {
 }
 
 interface ReviewSnapshot {
-  path: string;
-  mode: string;
-  gitObjectId: string;
-  sha256: string;
-  text: string;
+  readonly path: string;
+  readonly mode: string;
+  readonly gitObjectId: string;
+  readonly sha256: string;
+  readonly text: string;
 }
 
 interface ReviewFileChange {
-  path: string;
-  before: ReviewSnapshot | null;
-  after: ReviewSnapshot | null;
+  readonly path: string;
+  readonly before: ReviewSnapshot | null;
+  readonly after: ReviewSnapshot | null;
 }
 
 export interface ReviewFileContextPacket {
-  version: 1;
-  revisions: { baseSha: string; headSha: string; reviewedMergeSha: string };
-  files: ReviewFileChange[];
-  references: ReviewSnapshot[];
-  limits: ObservedReviewFileContextLimits;
+  readonly version: 1;
+  readonly revisions: { readonly baseSha: string; readonly headSha: string; readonly reviewedMergeSha: string };
+  readonly files: readonly ReviewFileChange[];
+  readonly references: readonly ReviewSnapshot[];
+  readonly limits: ObservedReviewFileContextLimits;
 }
 
 function fail(message: string): never { throw new Error(`Review file context: ${message}`); }

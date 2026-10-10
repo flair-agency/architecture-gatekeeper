@@ -34,10 +34,13 @@ test('review input fixture rejects an invalid effective limit field', () => {
   const diagnostics = diagnosticsFor(negativeFixture);
   const expected = [
     { needle: "maxFiles: 'many'", message: "Type 'string' is not assignable to type 'number'." },
-    { needle: 'const observedLimit: number', message: "Type 'unknown' is not assignable to type 'number'." },
-  ].map(({ needle, message }) => ({
+    { needle: 'const observedLimit: number', message: "Type 'unknown' is not assignable to type 'number'.", code: 2322 },
+    { needle: 'packet.revisions.baseSha =', message: "Cannot assign to 'baseSha' because it is a read-only property.", code: 2540 },
+    { needle: 'packet.files[0].path =', message: "Cannot assign to 'path' because it is a read-only property.", code: 2540 },
+    { needle: 'packet.files.push(', message: "Property 'push' does not exist on type 'readonly ReviewFileChange[]'.", code: 2339 },
+  ].map(({ needle, message, code = 2322 }) => ({
     line: source.slice(0, source.indexOf(needle)).split('\n').length,
-    code: 2322,
+    code,
     message,
   }));
   assert.deepEqual(diagnostics.map(diagnostic => ({

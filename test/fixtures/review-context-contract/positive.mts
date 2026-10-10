@@ -11,7 +11,7 @@ materializeRegularGitSnapshot({ root: '/checkout', commit: 'a'.repeat(40), path:
 materializeRegularGitSnapshot({ root: '/checkout', commit: 'a'.repeat(40), path: 'docs/architecture.md', outputPath: 3 });
 const fileContext = prepareReviewFileContext({
   root: '/checkout', baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), reviewedSha: 'c'.repeat(40),
-  referencePaths: ['docs/architecture.md'], limits: { maxFiles: 8, maxFileBytes: 4096, maxTotalBytes: 16_384 },
+  referencePaths: Object.freeze(['docs/architecture.md']), limits: { maxFiles: 8, maxFileBytes: 4096, maxTotalBytes: 16_384 },
 });
 const taskContext = {
   root: '/checkout', baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), reviewedSha: 'c'.repeat(40),
