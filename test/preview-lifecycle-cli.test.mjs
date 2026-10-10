@@ -9,7 +9,7 @@ import { observePreviewLifecycle, previewReceiptBytes } from '../src/preview-lif
 import { rejectDuplicateJsonKeys } from '../src/authority-set.mjs';
 import { decision, fixture, ordinary, spec, selectionPath, commitOn, put } from './fixtures/preview-lifecycle-runtime.mjs';
 
-const cli = new URL('../src/preview-lifecycle-cli.mjs', import.meta.url);
+const cli = new URL('../src/preview-lifecycle-cli.mts', import.meta.url);
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8' }).trim();
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 function invoke(root, command, input, args = [], entry = cli) {
