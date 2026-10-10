@@ -121,7 +121,7 @@ and runtime operations remain intact. Untrusted JSON and unchecked property
 rereads retain unknown types; types do not prove authority provenance, risk
 reduction or protected acceptance.
 
-The current authority-contract stack types `review-contract`, `resolve-ci-policy`.
+The current authority-contract stack types `review-contract`, `resolve-ci-policy`, `prepare-authority-set`.
 Flat facades retain public exports and the original CLI guards; policy CLI stays in its original flat file. Grouped authority runners
 preserve asynchronous dispatch and runtime operations. External
 JSON and unchecked property rereads remain unknown. The legacy CI preparer and multi-authority addition migrations remain deferred,
@@ -132,7 +132,7 @@ authentication, owner authorization, immutable evidence or protected acceptance.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
 Main `196d5e8` has 42 of the original 96 modules typed and 54 remaining; this
-candidate has 44 typed and 52 remaining. Migration is partial and does
+candidate has 45 typed and 51 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
