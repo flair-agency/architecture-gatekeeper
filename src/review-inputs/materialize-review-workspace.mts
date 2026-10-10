@@ -75,7 +75,7 @@ function validatePacket(packet: unknown, limits: Limits): { entries: ValidatedEn
   if (((packet as Record<string, unknown>).files as unknown[]).length + ((packet as Record<string, unknown>).references as unknown[]).length > (limits.maxFiles as number)) fail('selected files exceed maxFiles.');
   const entries: Array<{ kind: 'file' | 'reference'; index: number; item: Record<string, unknown> }> = [];
   const filePaths = new Set<unknown>();
-  for (const [index, item] of ((packet as Record<string, unknown>).files as unknown[]).entries()) {
+  for (const [index, item] of ((packet as Record<string, unknown>).files as Record<string, unknown>[]).entries()) {
     if (!item || typeof item !== 'object' || !validOriginalPath((item as Record<string, unknown>).path) ||
         !(((item as Record<string, unknown>).before === null) || ((item as Record<string, unknown>).before && typeof (item as Record<string, unknown>).before === 'object')) ||
         !(((item as Record<string, unknown>).after === null) || ((item as Record<string, unknown>).after && typeof (item as Record<string, unknown>).after === 'object')) ||
@@ -85,14 +85,14 @@ function validatePacket(packet: unknown, limits: Limits): { entries: ValidatedEn
     for (const side of ['before', 'after']) {
       if ((item as Record<string, unknown>)[side] && ((item as Record<string, unknown>)[side] as Record<string, unknown>).path !== (item as Record<string, unknown>).path) fail(`file entry ${index + 1} ${side} path does not match its file path.`);
     }
-    entries.push({ kind: 'file', index, item: item as Record<string, unknown> });
+    entries.push({ kind: 'file', index, item });
   }
   const referencePaths = new Set<unknown>();
-  for (const [index, item] of ((packet as Record<string, unknown>).references as unknown[]).entries()) {
+  for (const [index, item] of ((packet as Record<string, unknown>).references as Record<string, unknown>[]).entries()) {
     if (!item || typeof item !== 'object' || !validOriginalPath((item as Record<string, unknown>).path)) fail(`reference entry ${index + 1} is malformed.`);
     if (referencePaths.has((item as Record<string, unknown>).path)) fail('protected reference paths must be unique.');
     referencePaths.add((item as Record<string, unknown>).path);
-    entries.push({ kind: 'reference', index, item: item as Record<string, unknown> });
+    entries.push({ kind: 'reference', index, item });
   }
   let totalBytes = 0;
   const validated: ValidatedEntry[] = entries.map(entry => {
