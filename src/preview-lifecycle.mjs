@@ -539,7 +539,9 @@ export async function observePreviewLifecycle(receipt, integrationSha, cwd = rec
   if (!eligibleB && !passedMigration) fail('step is not an eligible selected B procedure.');
   const raw = Buffer.from(rawReceiptBytes);
   if (!raw.length || raw.length > 4_194_304) fail('completed raw receipt exceeds 4 MiB.');
-  const rawText = utf8(raw); rejectDuplicateJsonKeys(rawText, 'completed receipt', { maxDepth: 64 });
+  // A bounded response or prior A receipt may be nested at the fixed
+  // receipt.request.spec.trigger.response path (four wrapper levels).
+  const rawText = utf8(raw); rejectDuplicateJsonKeys(rawText, 'completed receipt', { maxDepth: 68 });
   if (hash(JSON.parse(rawText)) !== hash(receipt)) fail('raw receipt bytes differ from completed receipt.');
   const receiptSha256 = digest(raw);
   const { root, spec } = receipt.request;
