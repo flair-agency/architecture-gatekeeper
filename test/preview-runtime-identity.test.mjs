@@ -30,7 +30,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs',
     'github/github-ruleset-readback.mjs', 'review-inputs/review-input-path.mjs',
     'authority-validation/legacy-git-snapshot.mjs', 'authority-validation/json-schema.mjs',
-    'authority-validation/multi-authority-provenance.mjs', 'ci-review/prepared-ci-decision.mjs', 'ci-review/ci-decision-kind.mjs', 'ci-review/verify-legacy-validation-selection.mjs'];
+    'authority-validation/multi-authority-provenance.mjs', 'ci-review/prepared-ci-decision.mjs', 'ci-review/ci-decision-kind.mjs', 'ci-review/verify-legacy-validation-selection.mjs', 'ci-execution/ci-execution-observation.mjs'];
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -118,6 +118,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/ci-review/ci-decision-kind.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/verify-legacy-validation-selection.mjs'),
     readFileSync(join(flatRoot, 'dist/ci-review/verify-legacy-validation-selection.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+  writeFileSync(join(flatRoot, 'dist/ci-execution-observation.mjs'),
+    readFileSync(join(flatRoot, 'dist/ci-execution/ci-execution-observation.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   rmSync(join(flatRoot, 'dist/ci-review'), { recursive: true });
   rmSync(join(flatRoot, 'dist/authority-validation'), { recursive: true });
   rmSync(join(flatRoot, 'dist/review-inputs'), { recursive: true });
