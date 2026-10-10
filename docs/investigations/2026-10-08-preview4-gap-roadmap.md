@@ -75,6 +75,18 @@ entrypoints, classify the recorded v1-to-v4 selector change, supply
 prior-authorized compatibility or bridge evidence, or demonstrate a T7
 transition. It activates no consumer route.
 
+Main later advanced to `5a0817b04ad1a9021fa4b78bc89152eb27710805` (#466).
+That source change implements the selected workspace boundary with
+[`src/github-runner-workspace.mjs`](../../src/github-runner-workspace.mjs) and
+routes the committed-snapshot CLI entrypoints
+[`src/materialize-regular-git-snapshot.mjs`](../../src/materialize-regular-git-snapshot.mjs)
+and [`src/prepare-legacy-ci-authority.mjs`](../../src/prepare-legacy-ci-authority.mjs)
+through its accessor. It adds the scoped CodeQL model and focused caller/model
+regressions. This is a later, bounded implementation checkpoint; it does not
+extend the fixed #450/#451 source/test inventory, establish LIVE consumer
+adoption or host enforcement, or classify the v1-to-v4 change under T5/T6.
+No broader quality-work inventory or release gate is added.
+
 ## Current LIVE decision path (2026-10-10 JST)
 
 The current operational question is whether the existing private-document
