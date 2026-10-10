@@ -3,7 +3,6 @@ import { lstatSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
 import { decodeLimits } from '../prepare-authority-set.mjs';
 
