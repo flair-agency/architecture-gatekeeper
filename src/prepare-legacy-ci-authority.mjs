@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { TextDecoder } from 'node:util';
 import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
 import { readRegularGitSnapshot } from './legacy-git-snapshot.mjs';
+import { trustedGitHubWorkspaceRoot } from './github-runner-workspace.mjs';
 
 const SHA = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -80,7 +81,7 @@ export function validateLegacyAuthorityDecision(decisionJson, provenance) {
 
   if (process.argv[1]?.endsWith('/prepare-legacy-ci-authority.mjs')) {
   if (process.argv[2] === 'prepare') {
-    const result = prepareLegacyAuthority({ root: process.env.GITHUB_WORKSPACE, baseSha: process.env.BASE_SHA,
+    const result = prepareLegacyAuthority({ root: trustedGitHubWorkspaceRoot(), baseSha: process.env.BASE_SHA,
       headSha: process.env.HEAD_SHA, reviewedSha: process.env.REVIEWED_SHA, baseBranch: process.env.BASE_BRANCH,
       policyPath: process.env.POLICY_PATH, expectedPolicySha256: process.env.POLICY_SHA256,
       expectedAuthorityFilesBase64: process.env.AUTHORITY_FILES_BASE64,

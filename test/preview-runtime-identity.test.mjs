@@ -28,7 +28,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'owner-amendment/owner-amendment-workflow-run-merge-group-context.mjs', 'owner-amendment/owner-amendment-scope.mjs',
     'github/github-authority-source.mjs', 'github/github-merge-group-event.mjs', 'github/github-owner-amendment-readback.mjs',
     'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs',
-    'github/github-ruleset-readback.mjs', 'review-inputs/review-input-path.mjs'];
+    'github/github-ruleset-readback.mjs', 'review-inputs/review-input-path.mjs',
+    'authority-validation/legacy-git-snapshot.mjs'];
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -104,6 +105,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   }
   writeFileSync(join(flatRoot, 'dist/review-input-path.mjs'),
     readFileSync(join(flatRoot, 'dist/review-inputs/review-input-path.mjs')));
+  writeFileSync(join(flatRoot, 'dist/legacy-git-snapshot.mjs'),
+    readFileSync(join(flatRoot, 'dist/authority-validation/legacy-git-snapshot.mjs')));
+  rmSync(join(flatRoot, 'dist/authority-validation'), { recursive: true });
   rmSync(join(flatRoot, 'dist/review-inputs'), { recursive: true });
   rmSync(join(flatRoot, 'dist/github'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
