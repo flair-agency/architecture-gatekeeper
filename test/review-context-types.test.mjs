@@ -13,20 +13,25 @@ assert.equal(read.error, undefined, 'the adopted tsconfig must parse');
 const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, root, undefined, configPath);
 assert.deepEqual(parsed.errors, [], 'the adopted tsconfig must not contain errors');
 
-function diagnosticsFor(name) {
-  const file = join(fixtures, name);
-  const program = ts.createProgram([file], { ...parsed.options, noEmit: true, rootDir: root });
-  return ts.getPreEmitDiagnostics(program);
-}
+const positiveFixture = join(fixtures, 'positive.mts');
+const negativeFixture = join(fixtures, 'negative.mts');
+const fixtureProgram = ts.createProgram([positiveFixture, negativeFixture], {
+  ...parsed.options, noEmit: true, rootDir: root,
+});
+const fixtureDiagnostics = ts.getPreEmitDiagnostics(fixtureProgram);
+const diagnosticsFor = file => fixtureDiagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
 
 test('review input physical leaf and flat facade compose under strict project options', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  const knownFixtures = new Set([positiveFixture, negativeFixture]);
+  assert.ok(fixtureDiagnostics.every(diagnostic => knownFixtures.has(diagnostic.file?.fileName)),
+    'all fixture diagnostics must be owned by one of the two fixtures');
+  assert.deepEqual(diagnosticsFor(positiveFixture), []);
 });
 
 test('review input fixture rejects an invalid effective limit field', () => {
-  const file = join(fixtures, 'negative.mts');
+  const file = negativeFixture;
   const source = readFileSync(file, 'utf8');
-  const diagnostics = diagnosticsFor('negative.mts');
+  const diagnostics = diagnosticsFor(negativeFixture);
   const expected = [
     { needle: "maxFiles: 'many'", message: "Type 'string' is not assignable to type 'number'." },
     { needle: 'const observedLimit: number', message: "Type 'unknown' is not assignable to type 'number'." },
