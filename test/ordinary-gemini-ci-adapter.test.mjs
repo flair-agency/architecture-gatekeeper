@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { prepareOrdinaryGeminiCiAdapter, executeOrdinaryGeminiCiAdapter } from '../dist/ordinary-gemini-ci-adapter.mjs';
+import { runOrdinaryGeminiCiLauncher } from '../dist/ordinary-gemini-ci-launcher.mjs';
 
 const authorityIds = ['architecture-contract', 'architecture-authority-set', 'architecture-owner-addition',
   'architecture-owner-amendment', 'architecture-review-execution', 'architecture-self-profile'];
@@ -205,4 +206,51 @@ test('rejects absent and invalid CLI outcomes without retry or fallback', async 
       credential: { token: 'fixture-parent-token', project: 'fixture-project', region: 'global' } }));
     assert.equal(readFileSync(failed.invocationPath, 'utf8').trim().split('\n').length, 1, `${cliMode} must not retry`);
   }
+});
+
+const syntheticWif = Object.freeze({
+  workloadIdentityProvider: 'projects/123456789/locations/global/workloadIdentityPools/fixture-pool/providers/fixture-provider',
+  serviceAccount: 'fixture-reviewer@fixture-project.iam.gserviceaccount.com',
+  project: 'fixture-project', region: 'global',
+  oidcRequestUrl: 'https://pipelines.actions.githubusercontent.com/fixture/idtoken?api-version=2.0',
+  oidcRequestToken: 'fixture-github-request-capability',
+});
+
+test('parent launcher prepares before WIF issuance and completes one synthetic session without credential inheritance', async t => {
+  const f = fixture(t);
+  const calls = [];
+  const issuerFetch = async (url, options) => {
+    assert.equal(existsSync(f.invocationPath), false, 'no CLI session before WIF completion');
+    calls.push({ url: String(url), options });
+    const response = calls.length === 1 ? { value: 'fixture-github-oidc-assertion' }
+      : calls.length === 2 ? { access_token: 'fixture-sts-federated-token', token_type: 'Bearer',
+        issued_token_type: 'urn:ietf:params:oauth:token-type:access_token', expires_in: 300 }
+        : { accessToken: 'fixture-parent-only-vertex-token', expireTime: new Date(Date.now() + 300_000).toISOString() };
+    return new Response(JSON.stringify(response), { status: 200 });
+  };
+  const result = await runOrdinaryGeminiCiLauncher({ host: f.host, runtime: f.runtime,
+    sourceToken: null, wif: syntheticWif }, issuerFetch);
+  assert.equal(calls.length, 3);
+  assert.equal(result.decision.decision, 'PASS');
+  assert.equal(result.bindings.reviewedMergeSha, f.reviewedSha);
+  assert.equal(readFileSync(f.invocationPath, 'utf8').trim(), 'called');
+  const observed = JSON.parse(readFileSync(f.observationPath, 'utf8'));
+  for (const secret of ['fixture-github-request-capability', 'fixture-github-oidc-assertion',
+    'fixture-sts-federated-token', 'fixture-parent-only-vertex-token']) {
+    assert.equal(JSON.stringify(observed).includes(secret), false);
+    assert.equal(JSON.stringify(result).includes(secret), false);
+  }
+});
+
+test('parent launcher stops before issuance on preparation failure and before CLI on WIF failure', async t => {
+  const f = fixture(t);
+  let calls = 0;
+  const rejectedFetch = async () => { calls += 1; return new Response('private upstream detail', { status: 403 }); };
+  await assert.rejects(runOrdinaryGeminiCiLauncher({ host: { ...f.host, baseSha: f.headSha, headSha: f.baseSha },
+    runtime: f.runtime, sourceToken: null, wif: syntheticWif }, rejectedFetch), /ordered merge parents/);
+  assert.equal(calls, 0);
+  await assert.rejects(runOrdinaryGeminiCiLauncher({ host: f.host, runtime: f.runtime,
+    sourceToken: null, wif: syntheticWif }, rejectedFetch));
+  assert.equal(calls, 1, 'WIF error has no retry or fallback');
+  assert.equal(existsSync(f.invocationPath), false);
 });
