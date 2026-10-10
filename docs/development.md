@@ -92,16 +92,22 @@ exports, supported dialect, property rereads, budgets, memo behavior and
 exceptions. Input-preserving generics and nullable numeric options describe
 existing operations; they do not infer instance types from schemas or certify
 caller-owned mutable properties.
-This slice types the existing multi-authority provenance helper under
+The existing multi-authority provenance helper is integrated under
 `src/authority-validation/multi-authority-provenance.mts`, retaining its four
 flat function exports, exact-key and digest checks, property rereads and
 exceptions. Its contracts describe same-run metadata operations and caller
 identity; they do not establish authentication, immutable snapshots or
 independent acceptance evidence.
+This slice types the prepared CI decision validator under
+`src/ci-review/prepared-ci-decision.mts`, preserving its flat function export,
+explicit input set, UTF-8 and byte ceilings, JSON depth and duplicate-key
+checks, and protected-material composition. External parsed decisions remain
+unknown; descriptive input contracts do not authenticate caller-selected
+materials or authorize acceptance.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `68761c4` has twenty-seven original modules typed and 69 remaining; this
-candidate has twenty-eight typed and 68 remaining. Migration is partial and does
+Main `fa0defd` has twenty-eight original modules typed and 68 remaining; this
+candidate has twenty-nine typed and 67 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
