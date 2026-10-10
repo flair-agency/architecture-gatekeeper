@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -444,4 +444,140 @@ test('counts the complete authority, task, and schema bytes in the encoded stdin
   const f = fixture({ base });
   t.after(f.cleanup);
   await assert.rejects(prepareGeminiCiVerificationInput(f.input), /complete encoded stdin prompt/);
+});
+
+test('composes Git-backed protected preparation through offline dispatch, reporting, and the in-memory acceptance validator', async t => {
+  const { runPreparedGeminiCiDecision } = await import('../dist/prepared-gemini-ci-decision.mjs');
+  const { composePreparedGeminiCiPrompt } = await import('../dist/prepared-gemini-ci-review.mjs');
+  const { classifyReview, renderReport } = await import('../dist/ci-report.mjs');
+  const { assertEnforcedAcceptance } = await import('../dist/ci-enforced-acceptance.mjs');
+  const f = fixture({ candidate: { 'src/candidate.mjs': 'export const candidateEvidence = "fixture candidate";\n' } });
+  t.after(f.cleanup);
+  const prepared = await prepareGeminiCiVerificationInput(f.input);
+  const sourceFixtureBytes = new Map([
+    [paths.prompt, 'Protected base review instructions.\n'],
+    ...authorityPaths.map((path, index) => [path, `Protected authority ${ids[index]}.\n`]),
+  ]);
+  assert.equal(prepared.bindings.baseSha, f.baseSha);
+  assert.equal(prepared.bindings.headSha, f.headSha);
+  assert.equal(prepared.bindings.reviewedMergeSha, f.reviewedSha);
+  assert.equal(prepared.bindings.authoritySetDigest, prepared.authorityProvenance.setDigest);
+  for (const [path, text] of sourceFixtureBytes) {
+    const reference = prepared.packet.references.find(item => item.path === path);
+    assert.equal(reference?.text, text, `protected fixture source ${path}`);
+    assert.equal(reference?.sha256, createHash('sha256').update(text).digest('hex'), `protected fixture digest ${path}`);
+  }
+  assert.equal(prepared.protectedDecisionSchemaText, json(schema));
+  assert.match(prepared.protectedPromptText, /Protected base review instructions/);
+  for (const id of ids) assert.match(prepared.protectedPromptText, new RegExp(`Protected authority ${id}`));
+  const changedCandidate = prepared.packet.files.find(item => item.path === 'src/candidate.mjs');
+  assert.equal(changedCandidate.after.text, 'export const candidateEvidence = "fixture candidate";\n');
+  assert.equal(changedCandidate.before, null);
+
+  // All source bytes below are synthetic fixture content in a temporary Git repository. The local fake CLI and loopback proxy exercise composition only; they do not establish canonical authority, producer authentication, host-attempt proof, or protected acceptance.
+  async function runCase({ name, mode = 'success', response, reviewerModel = 'gemini-3.8-flash', expectedError, expectedStarted = false } = {}) {
+    const privateRoot = mkdtempSync(join(tmpdir(), `agk-gemini-compose-${name}-`));
+    t.after(() => rmSync(privateRoot, { recursive: true, force: true }));
+    const workspaceParentDirectory = join(privateRoot, 'workspace-parent');
+    const privateParentDirectory = join(privateRoot, 'process-private');
+    mkdirSync(workspaceParentDirectory);
+    mkdirSync(privateParentDirectory);
+    const observationPath = join(privateRoot, 'fake-cli-observation.json');
+    const cliEntrypoint = join(privateRoot, 'fake-cli.mjs');
+    const responseText = JSON.stringify(response);
+    writeFileSync(cliEntrypoint, `
+import { readFileSync, writeFileSync } from 'node:fs';
+const mode = ${JSON.stringify(mode)};
+const responseText = ${JSON.stringify(responseText)};
+if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); process.exit(0); }
+let prompt = '';
+for await (const chunk of process.stdin) prompt += chunk;
+const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
+const evidence = Object.fromEntries(manifest.files.flatMap(item => ['before', 'after'].filter(side => item[side]).map(side => [item[side].filename, readFileSync(item[side].filename, 'utf8')])).concat(manifest.references.map(item => [item.filename, readFileSync(item.filename, 'utf8')])));
+writeFileSync(${JSON.stringify(observationPath)}, JSON.stringify({ prompt, env: process.env, manifest, evidence }));
+if (mode === 'nonzero-stale-pass') { process.stdout.write(JSON.stringify({ response: responseText })); process.exit(7); }
+process.stdout.write(JSON.stringify({ response: responseText }));
+`);
+    const reviewInput = {
+      protectedReviewer: prepared.protectedReviewer,
+      protectedPromptText: prepared.protectedPromptText,
+      protectedDecisionSchemaText: prepared.protectedDecisionSchemaText,
+      proxySessionOptions: {
+        packet: prepared.packet,
+        workspaceLimits: prepared.workspaceLimits,
+        workspaceParentDirectory,
+        credentials: { type: 'bearer', value: 'fixture-only-parent-token-never-forwarded' },
+        processOptions: { cliEntrypoint, privateParentDirectory, model: reviewerModel,
+          thinkingLevel: 'MEDIUM', maxOutputTokens: 16_384, project: 'fixture-project', region: 'global',
+          timeoutMs: 180_000, maxPromptBytes: 196_608, maxStdoutBytes: 65_536, maxStderrBytes: 65_536 },
+      },
+    };
+    const invoke = () => runPreparedGeminiCiDecision({ reviewInput,
+      authorityProvenance: prepared.authorityProvenance, validationRules: prepared.validationRules,
+      maxResponseBytes: prepared.maxResponseBytes, maxSchemaBytes: prepared.maxSchemaBytes });
+    if (expectedError) {
+      await assert.rejects(invoke(), expectedError, name);
+      assert.equal(existsSync(observationPath), expectedStarted, `${name} fake CLI start boundary`);
+      assert.deepEqual(readdirSync(workspaceParentDirectory), [], `${name} workspace cleanup`);
+      assert.deepEqual(readdirSync(privateParentDirectory), [], `${name} private cleanup`);
+      return null;
+    }
+    return { result: await invoke(), observationPath, workspaceParentDirectory, privateParentDirectory };
+  }
+
+  const pass = { decision: 'PASS', authorityIds: ids, summary: 'fixture PASS' };
+  const passRun = await runCase({ name: 'pass', response: pass });
+  const observed = JSON.parse(readFileSync(passRun.observationPath, 'utf8'));
+  const completePrompt = composePreparedGeminiCiPrompt(prepared.protectedPromptText, prepared.protectedDecisionSchemaText);
+  assert.equal(observed.prompt, encodeGeminiCliPromptForTransport(completePrompt));
+  assert.equal(JSON.stringify(observed.env).includes('fixture-only-parent-token-never-forwarded'), false);
+  assert.equal(observed.manifest.revisions.baseSha, f.baseSha);
+  assert.equal(observed.manifest.revisions.headSha, f.headSha);
+  assert.equal(observed.manifest.revisions.reviewedMergeSha, f.reviewedSha);
+  const materializedReferences = new Map(observed.manifest.references.map(item => [item.path, observed.evidence[item.filename]]));
+  assert.equal(materializedReferences.get(paths.prompt), 'Protected base review instructions.\n');
+  assert.equal(materializedReferences.get(paths.schema), json(schema));
+  for (let index = 0; index < ids.length; index++) assert.equal(materializedReferences.get(authorityPaths[index]), `Protected authority ${ids[index]}.\n`);
+  const candidateEntry = Object.entries(observed.evidence).find(([, content]) => content === 'export const candidateEvidence = "fixture candidate";\n');
+  assert.ok(candidateEntry, 'candidate source bytes reach the fake reviewer as evidence');
+  const classifiedPass = classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success',
+    rawDecision: passRun.result.execution.responseBytes.toString('utf8') });
+  assert.equal(classifiedPass.conclusion, 'PASS');
+  const report = renderReport(classifiedPass, { repository, reviewedSha: f.reviewedSha, headSha: f.headSha,
+    authorityProvenance: prepared.authorityProvenance });
+  assert.match(report, new RegExp(f.reviewedSha));
+  assert.match(report, new RegExp(f.headSha));
+  assert.match(report, new RegExp(prepared.authorityProvenance.setDigest));
+  assert.deepEqual(assertEnforcedAcceptance({ reviewResult: 'success', conclusion: classifiedPass.conclusion }), { route: 'ordinary-pass' });
+  const endpoint = observed.env.GOOGLE_VERTEX_BASE_URL;
+  const match = /^http:\/\/127\.0\.0\.1:(\d+)$/.exec(endpoint);
+  assert.ok(match, 'the fake reviewer receives only the controlled loopback proxy endpoint');
+  const { request } = await import('node:http');
+  await assert.rejects(new Promise((resolve, reject) => {
+    const req = request({ hostname: '127.0.0.1', port: Number(match[1]), method: 'POST', path: '/not-allowed' }, response => {
+      response.resume(); resolve(response.statusCode);
+    });
+    req.once('error', reject); req.end('{}');
+  }), error => error?.code === 'ECONNREFUSED');
+  assert.deepEqual(readdirSync(passRun.workspaceParentDirectory), []);
+  assert.deepEqual(readdirSync(passRun.privateParentDirectory), []);
+
+  const documentedBlock = { decision: 'BLOCK', authorityIds: ids, summary: 'documented' };
+  const blockRun = await runCase({ name: 'documented-block', response: documentedBlock });
+  const blockClassified = classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success',
+    rawDecision: blockRun.result.execution.responseBytes.toString('utf8') });
+  assert.equal(blockClassified.conclusion, 'BLOCK');
+  assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'success', conclusion: blockClassified.conclusion }), /requires model-backed PASS/);
+
+  await runCase({ name: 'consumer-rule-block', response: { decision: 'BLOCK', authorityIds: ids },
+    expectedError: /BLOCK requires a recorded reason/, expectedStarted: true });
+  await runCase({ name: 'failed-host-stale-pass', mode: 'nonzero-stale-pass', response: pass,
+    expectedError: /exited unsuccessfully \(7\)/, expectedStarted: true });
+  const failedClassified = classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'failure',
+    rawDecision: JSON.stringify(pass) });
+  assert.equal(failedClassified.conclusion, 'ERROR');
+  assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'failure', conclusion: failedClassified.conclusion }), /did not complete successfully/);
+
+  await runCase({ name: 'provider-model-mismatch', response: pass, reviewerModel: 'gemini-2.5-flash',
+    expectedError: /process settings disagree with the protected reviewer/ });
 });
