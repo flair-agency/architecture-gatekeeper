@@ -1,17 +1,18 @@
 /** One private hosted Gemini verification for Issue334. */
 import { createHash, createCipheriv, publicEncrypt, randomBytes, constants } from 'node:crypto';
-import childProcess, { execFileSync, spawnSync } from 'node:child_process';
+import childProcess, { execFileSync } from 'node:child_process';
 import https from 'node:https';
 import { syncBuiltinESMExports } from 'node:module';
 import {
   closeSync, existsSync, fstatSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync,
-  readFileSync, readSync, realpathSync, rmSync, statSync, writeFileSync, writeSync,
+  readFileSync, readSync, realpathSync, statSync, writeFileSync, writeSync,
 } from 'node:fs';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deflateSync } from 'node:zlib';
 import { prepareGeminiCiVerificationInput } from '../dist/prepare-gemini-ci-verification-input.mjs';
 import { buildPreparedGeminiCiCall } from '../dist/prepared-gemini-ci-call.mjs';
+import { installPinnedGeminiCiRuntime, inspectPinnedGeminiCiRuntime,
+  validatePinnedGeminiCiRuntimeLock, GeminiCiRuntimeError } from '../dist/gemini-ci-runtime.mjs';
 
 const REPOSITORY = 'flair-agency/architecture-gatekeeper';
 const BRANCH = 'feature/gemini-ci';
@@ -24,10 +25,6 @@ const RUNTIME_LOCK_PATH = '.codex/gatekeeper/gemini-verification-package-lock.js
 const EXPECTED_PREDECESSOR_SHA = '9c4668cdf4a59a3dbafbf5b7e9ddf1ef2a951b99';
 const PUBLIC_KEY_PEM='-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAnZVHMkUmRdmwVbfIAhb+\nQAAIezgXahPDeOGtQvy6P2kn97TIhekWCYTO7krC3aUUpk1MvRzdxnkpJ/Z5sPXt\nrvmdwvWKcjXrtPVyd3zDJ6wJWuQigblUET+qAjZ1+YIdJnj+pRl4LM+nzHvEryX1\navwoZcL52CUh9LwiR+N8knGJMYOCFTUv5NMdx0esEk5UaadaoJquKY+iJKnExGK3\n6hbrR1KlItgRj+vBBImcwTpsJx6d6NkUSkPX2TnVqLtTQljqqBFViCTxK64pvSPW\nAbpXBNn4RJEFiTTfQczaQ9RAo1txJonYhaSX4iIAqEG1FYHm00Q6wN7tKiHdzpW7\nsXfqQ5PZWmKCkJCiMiHAx4XbRGbPxNKqclCkJRVJ4ZOGHtVzB7Btu7hI3LQFyoyK\nTEvzi+reS+xUvMd/XKmGFlXreATQqZwWP1E0m4Yv6GQsmOhSV+nmTQXdX31qe4B9\nB+/SQO4EhyCopV7ZbtwbgKtFj6TV7dkMUinpcXdXps2BAgMBAAE=\n-----END PUBLIC KEY-----\n';
 const PUBLIC_KEY_SHA256 = '635e87fee174aaca8b86ae9863fdc26926f969171c67d9678b96176388e80ba3';
-const CLI_TARBALL_INTEGRITY = 'sha512-A1rw0Tf2sHLpGncfYdaq5WaJIufKAP8il4BmHD5Yw4ewmB/Wo0vRQb2bEvx7OqyaPFPZCh0hVhcMKsICZyIBww==';
-const RUNTIME_PACKAGE_NAME = '@google/gemini-cli';
-const RUNTIME_VERSION = '0.62.0';
-const AUTHORIZED_RUNTIME_LOCK_SHA256 = 'ffc6d0296558b2bcd12278f45c48151cf720d4cdfcbdb06a09ee87b24cf97b42';
 const DEFENSIVE_SESSION_DISPATCH_CAP = 10;
 const VERIFICATION_START_CLAIM = 'verification-start.claim';
 const VERIFICATION_START_CLAIM_BYTES = Buffer.from('AGK334-VERIFICATION-START-V1\n');
@@ -41,7 +38,6 @@ const REFERENCE_PATHS = Object.freeze([
 ]);
 const WIF_ENV = Object.freeze({ token: 'AGK_VERTEX_ACCESS_TOKEN', project: 'AGK_VERTEX_PROJECT', region: 'AGK_VERTEX_LOCATION' });
 const DENIED_CREDENTIAL_NAMES = Object.freeze(['OPENAI_API_KEY', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN']);
-const ENTRYPOINT = 'bundle/gemini.js';
 const MAX_EVIDENCE_PLAINTEXT_BYTES = 2_097_152;
 const MAX_JOURNAL_BYTES = 128;
 const MAX_UPSTREAM_CAPTURE_BYTES = 262_144;
@@ -52,23 +48,8 @@ function fail(message) { throw new Error(`Issue334 verification: ${message}`); }
 function sha256(value) { return createHash('sha256').update(value).digest('hex'); }
 
 export function validateAuthorizedRuntimeLock(lockBytes) {
-  if (!Buffer.isBuffer(lockBytes) || sha256(lockBytes) !== AUTHORIZED_RUNTIME_LOCK_SHA256) {
-    fail('runtime package lock does not match the pinned complete dependency graph.');
-  }
-  let lock;
-  try { lock = JSON.parse(lockBytes.toString('utf8')); }
-  catch { fail('pinned runtime package lock is invalid JSON.'); }
-  const rootDependencies = lock.packages?.['']?.dependencies;
-  const packages = lock.packages;
-  if (lock.lockfileVersion !== 3 || !packages || Object.keys(packages).length !== 13 ||
-      !rootDependencies || Object.keys(rootDependencies).length !== 1 ||
-      rootDependencies[RUNTIME_PACKAGE_NAME] !== RUNTIME_VERSION ||
-      packages[`node_modules/${RUNTIME_PACKAGE_NAME}`]?.version !== RUNTIME_VERSION ||
-      packages[`node_modules/${RUNTIME_PACKAGE_NAME}`]?.integrity !== CLI_TARBALL_INTEGRITY ||
-      !Object.values(packages).filter(pkg => pkg?.resolved).every(pkg => typeof pkg.integrity === 'string' && /^sha[0-9]+-[A-Za-z0-9+/=]+$/.test(pkg.integrity))) {
-    fail('pinned runtime package lock does not contain the verified Gemini CLI dependency graph.');
-  }
-  return lock;
+  try { return validatePinnedGeminiCiRuntimeLock(lockBytes); }
+  catch (error) { if (error instanceof GeminiCiRuntimeError) fail(error.message); throw error; }
 }
 
 /** Checks consistency among observed runner metadata and Git revisions only.
@@ -400,20 +381,9 @@ export function sealPrivateDispatchCheckpoint() {
 
 function runtimeEntryPoint(root) {
   const runtimeRoot = join(root, '.agk334-private-runtime');
-  const runtimeStat = lstatSync(runtimeRoot);
-  if (!runtimeStat.isDirectory() || runtimeStat.isSymbolicLink() || (runtimeStat.mode & 0o777) !== 0o700 ||
-      (typeof process.getuid === 'function' && runtimeStat.uid !== process.getuid())) fail('private runtime directory is not protected.');
-  const installedLockBytes = readFileSync(join(runtimeRoot, 'package-lock.json'));
-  validateAuthorizedRuntimeLock(installedLockBytes);
-  const packageRoot = join(runtimeRoot, 'node_modules', '@google', 'gemini-cli');
-  const packageJson = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
-  if (packageJson.name !== RUNTIME_PACKAGE_NAME || packageJson.version !== RUNTIME_VERSION) fail('installed Gemini CLI package does not match the pinned runtime version.');
-  const entry = join(packageRoot, ENTRYPOINT);
-  const stat = lstatSync(entry);
-  if (!stat.isFile() || stat.isSymbolicLink()) fail('installed Gemini CLI entrypoint is not a regular file.');
-  return { entry, privateDirectory: runtimeRoot, version: RUNTIME_VERSION, cliTarballIntegrity: CLI_TARBALL_INTEGRITY,
-    lockSha256: sha256(installedLockBytes), lockDeflateBase64: deflateSync(installedLockBytes).toString('base64'),
-    packageJsonSha256: sha256(readFileSync(join(packageRoot, 'package.json'))), entrySha256: sha256(readFileSync(entry)) };
+  const lockBytes = readFileSync(join(root, RUNTIME_LOCK_PATH));
+  try { return inspectPinnedGeminiCiRuntime({ runtimeDirectory: runtimeRoot, lockBytes }); }
+  catch (error) { if (error instanceof GeminiCiRuntimeError) fail(error.message); throw error; }
 }
 
 function readPushContextConsistency(root, env) {
@@ -428,32 +398,9 @@ export function installPinnedRuntime(root, env = process.env) {
   if (Object.values(WIF_ENV).some(name => Object.hasOwn(env, name)) || DENIED_CREDENTIAL_NAMES.some(name => Object.hasOwn(env, name))) {
     fail('runtime installation must finish before provider credentials are present.');
   }
-  const target = join(root, '.agk334-private-runtime');
-  try { lstatSync(target); fail('private runtime target already exists; refusing reuse.'); }
-  catch (error) { if (error?.code !== 'ENOENT') throw error; }
-  mkdirSync(target, { mode: 0o700 });
-  try {
-    if ((lstatSync(target).mode & 0o777) !== 0o700) fail('private runtime directory permissions are not 0700.');
-    const lockBytes = readFileSync(join(root, RUNTIME_LOCK_PATH));
-    const authorizedLock = validateAuthorizedRuntimeLock(lockBytes);
-    writeFileSync(join(target, 'package.json'), JSON.stringify({ private: true, dependencies: authorizedLock.packages[''].dependencies }),
-      { mode: 0o600, flag: 'wx' });
-    writeFileSync(join(target, 'package-lock.json'), lockBytes, { mode: 0o600, flag: 'wx' });
-    writeFileSync(join(target, '.npmrc'), 'registry=https://registry.npmjs.org/\nignore-scripts=true\n', { mode: 0o600, flag: 'wx' });
-    const npmEnv = { PATH: [...new Set([dirname(process.execPath), '/usr/bin', '/bin'])].join(delimiter),
-      HOME: target, TMPDIR: target, CI: 'true', NO_COLOR: '1', npm_config_userconfig: join(target, '.npmrc'),
-      npm_config_globalconfig: '/dev/null', npm_config_registry: 'https://registry.npmjs.org/' };
-    const install = spawnSync('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], {
-      cwd: target, encoding: 'utf8', timeout: 300_000, env: npmEnv, stdio: ['ignore', 'ignore', 'ignore'],
-    });
-    if (install.error || install.status !== 0) fail('private runtime installation failed.');
-    const installedLockBytes = readFileSync(join(target, 'package-lock.json'));
-    if (!installedLockBytes.equals(lockBytes)) fail('installed runtime lock differs from the authorized complete dependency graph.');
-    return Object.freeze(runtimeEntryPoint(root));
-  } catch (error) {
-    rmSync(target, { recursive: true, force: true });
-    throw error;
-  }
+  const lockBytes = readFileSync(join(root, RUNTIME_LOCK_PATH));
+  try { return installPinnedGeminiCiRuntime({ runtimeDirectory: join(root, '.agk334-private-runtime'), lockBytes }); }
+  catch (error) { if (error instanceof GeminiCiRuntimeError) fail(error.message); throw error; }
 }
 
 /** Fixed adapter composition for the selected producer output and one parent-only bearer credential. */
