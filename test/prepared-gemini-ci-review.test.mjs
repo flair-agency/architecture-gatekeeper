@@ -11,6 +11,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { runPreparedGeminiCiReview } from '../dist/prepared-gemini-ci-review.mjs';
 import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT } from '../dist/gemini-cli-process.mjs';
 import { runPreparedGeminiCiVerification } from '../dist/prepared-gemini-ci-verification.mjs';
+import { runPreparedGeminiCiProfileDecision } from '../dist/prepared-gemini-ci-profile-decision.mjs';
 import { completePreparedCiReview } from '../dist/complete-prepared-ci-review.mjs';
 import { runPreparedGeminiCiDecision } from '../dist/prepared-gemini-ci-decision.mjs';
 
@@ -629,6 +630,51 @@ test('selected verification rejects settings and injected reservation but retain
 test('selected verification blocks when synchronous private dispatch journaling fails', async t => {
   const f = fixture(t, 'budget');
   await assert.rejects(runPreparedGeminiCiVerification(verificationInput(f), () => false), /exit|failed/i);
+  const observation = JSON.parse(readFileSync(f.reportPath, 'utf8'));
+  assert.equal(observation.env.reserveDispatch, undefined);
+  await assertProxyClosed(observation.endpoint);
+});
+
+test('ordinary profile decision runs the shared validation path and starts a fresh session counter', async t => {
+  const validResponse = JSON.stringify({ decision: 'PASS', authorityIds });
+  for (let index = 0; index < 2; index += 1) {
+    const f = fixture(t, 'success', validResponse);
+    const journal = [];
+    const result = await runPreparedGeminiCiProfileDecision(verificationInput(f), count => {
+      journal.push(count);
+      return true;
+    });
+    assert.equal(result.decision.decision, 'PASS');
+    assert.equal(result.execution.status, 'completed');
+    assert.deepEqual(journal, []);
+    assert.deepEqual(result.dispatchDiagnostics, { count: 0, maximum: 10 });
+    await assertProxyClosed(JSON.parse(readFileSync(f.reportPath, 'utf8')).endpoint);
+  }
+
+  const invalid = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds: authorityIds.slice(1) }));
+  await assert.rejects(runPreparedGeminiCiProfileDecision(verificationInput(invalid)), /too few items|authority/i);
+  await assertProxyClosed(JSON.parse(readFileSync(invalid.reportPath, 'utf8')).endpoint);
+});
+
+test('ordinary profile rejects changed profile or context bounds before launching the CLI', async t => {
+  const f = fixture(t, 'success', JSON.stringify({ decision: 'PASS', authorityIds }));
+  const wrongProfile = verificationInput(f);
+  wrongProfile.reviewInput.proxySessionOptions.processOptions.maxOutputTokens += 1;
+  await assert.rejects(runPreparedGeminiCiProfileDecision(wrongProfile), /settings disagree/);
+  const wrongContext = verificationInput(f);
+  wrongContext.reviewInput.proxySessionOptions.workspaceLimits = { ...workspaceLimits, maxFiles: 33 };
+  await assert.rejects(runPreparedGeminiCiProfileDecision(wrongContext), /context exceeds/);
+  assert.equal(existsSync(f.reportPath), false);
+});
+
+test('ordinary profile journal refusal fails before any upstream dispatch', async t => {
+  const f = fixture(t, 'budget');
+  const journal = [];
+  await assert.rejects(runPreparedGeminiCiProfileDecision(verificationInput(f), count => {
+    journal.push(count);
+    return false;
+  }), /exit|failed/i);
+  assert.deepEqual(journal, [1]);
   const observation = JSON.parse(readFileSync(f.reportPath, 'utf8'));
   assert.equal(observation.env.reserveDispatch, undefined);
   await assertProxyClosed(observation.endpoint);
