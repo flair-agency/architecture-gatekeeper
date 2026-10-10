@@ -8,6 +8,7 @@ import test from 'node:test';
 import { encodeGeminiCliPromptForTransport } from '../dist/gemini-cli-process.mjs';
 import { composePreparedGeminiCiPrompt } from '../dist/prepared-gemini-ci-review.mjs';
 import { prepareGeminiCiVerificationInput } from '../dist/prepare-gemini-ci-verification-input.mjs';
+import { prepareGeminiCiInput } from '../dist/prepare-gemini-ci-input.mjs';
 import { validatePreparedCiDecision } from '../dist/prepared-ci-decision.mjs';
 import { readCommittedAuthorityFile } from '../dist/authority-set.mjs';
 import { prepareProtectedCiInput } from '../dist/prepare-protected-ci-input.mjs';
@@ -304,6 +305,81 @@ test('fails closed for unsupported external Authority Set members and executable
   const proxied = new Proxy({ ...f.input }, { ownKeys() { getterRuns += 1; return Reflect.ownKeys(f.input); } });
   await assert.rejects(prepareGeminiCiVerificationInput(proxied));
   assert.equal(getterRuns, 0);
+});
+
+test('ordinary Gemini input preparation shares protected-base selection and supports a bounded external snapshot', async t => {
+  const externalPath = 'docs/authority.md';
+  const externalRevision = 'a'.repeat(40);
+  const externalText = 'Ordinary external authority snapshot.\n';
+  const externalManifest = { version: 1, authorities: ids.map((id, index) => index === 0
+    ? { id, repository: 'flair-agency/policy', revision: externalRevision, path: externalPath }
+    : { id, repository: 'self', revision: 'authority-revision', path: authorityPaths[index] }) };
+  const f = fixture({ base: { [paths.manifest]: json(externalManifest) },
+    candidate: { [paths.manifest]: json(manifest()), [paths.prompt]: 'candidate prompt replacement\n' } });
+  t.after(f.cleanup);
+  let fetchCalls = 0;
+  const prepared = await prepareGeminiCiInput(f.input, async request => {
+    fetchCalls += 1;
+    assert.deepEqual(request, { repository: 'flair-agency/policy', revision: externalRevision,
+      path: externalPath, maxBytes: limits.maxFileBytes });
+    return { repository: request.repository, resolvedCommit: request.revision, path: request.path,
+      type: 'file', content: Buffer.from(externalText) };
+  });
+  assert.equal(fetchCalls, 1);
+  assert.equal(prepared.packet.revisions.baseSha, f.baseSha);
+  assert.equal(prepared.packet.revisions.headSha, f.headSha);
+  assert.equal(prepared.packet.revisions.reviewedMergeSha, f.reviewedSha);
+  assert.equal(prepared.bindings.authorityManifestSha256,
+    createHash('sha256').update(readCommittedAuthorityFile(f.root, f.baseSha, paths.manifest, limits.maxManifestBytes)).digest('hex'));
+  assert.equal(prepared.authorityProvenance.members[0].repository, 'flair-agency/policy');
+  assert.equal(prepared.authorityProvenance.members[0].resolvedCommit, externalRevision);
+  assert.equal(prepared.authorityProvenance.members[0].path, externalPath);
+  assert.equal(prepared.authorityProvenance.members[0].sha256,
+    createHash('sha256').update(externalText).digest('hex'));
+  assert.match(prepared.protectedPromptText, /Ordinary external authority snapshot/);
+  assert.doesNotMatch(prepared.protectedPromptText.split('## Pull request task context')[0], /candidate prompt replacement/);
+  assert.match(prepared.protectedPromptText.split('## Pull request task context')[1], /candidate prompt replacement/);
+  assert.ok(prepared.bindings.completeEncodedPromptBytes <= prepared.bindings.effectivePromptLimit);
+  assert.equal(prepared.maxSchemaBytes, 1_048_576);
+  assert.deepEqual(validatePreparedCiDecision({ responseBytes: Buffer.from(json({ decision: 'PASS', authorityIds: ids })),
+    schemaBytes: Buffer.from(prepared.protectedDecisionSchemaText), authorityProvenance: prepared.authorityProvenance,
+    validationRules: prepared.validationRules, maxResponseBytes: prepared.maxResponseBytes,
+    maxSchemaBytes: prepared.maxSchemaBytes }), { decision: 'PASS', authorityIds: ids });
+});
+
+test('ordinary Gemini source capability rejects invalid metadata, failed fetches, and invalid capability values', async t => {
+  const externalManifest = { version: 1, authorities: [{ id: 'external-authority', repository: 'flair-agency/policy',
+    revision: 'a'.repeat(40), path: 'docs/authority.md' }, ...ids.slice(1).map((id, index) => ({ id,
+    repository: 'self', revision: 'authority-revision', path: authorityPaths[index + 1] }))] };
+  const f = fixture({ base: { [paths.manifest]: json(externalManifest) } });
+  t.after(f.cleanup);
+  await assert.rejects(prepareGeminiCiInput(f.input, {}), /capability must be a function or null/);
+  const badSnapshots = [
+    [{ repository: 'flair-agency/other' }, /did not verify requested/],
+    [{ resolvedCommit: 'b'.repeat(40) }, /did not verify requested/],
+    [{ path: 'docs/other.md' }, /did not verify requested/],
+    [{ type: 'symlink' }, /did not verify requested/],
+    [{ content: 'not bytes' }, /did not verify requested/],
+    [{ content: Buffer.alloc(0) }, /exceeds file limits/],
+    [{ content: Buffer.alloc(limits.maxFileBytes + 1, 0x41) }, /exceeds file limits/],
+    [{ content: Buffer.from([0xff]) }, /not UTF-8/],
+  ];
+  for (const [override, expected] of badSnapshots) {
+    await assert.rejects(prepareGeminiCiInput(f.input, async request => ({ repository: request.repository,
+      resolvedCommit: request.revision, path: request.path, type: 'file', content: Buffer.from('snapshot'),
+      ...override })), expected);
+  }
+  await assert.rejects(prepareGeminiCiInput(f.input, async () => { throw new Error('private source detail'); }),
+    /external member external-authority could not be fetched/);
+  await assert.rejects(prepareGeminiCiInput(f.input), /external source adapter is required/);
+});
+
+test('ordinary Gemini self-only preparation preserves the verification result contract', async t => {
+  const f = fixture();
+  t.after(f.cleanup);
+  const ordinary = await prepareGeminiCiInput(f.input);
+  const verification = await prepareGeminiCiVerificationInput(f.input);
+  assert.deepEqual(ordinary, verification);
 });
 
 test('core binds an injected external authority snapshot and exact source identity without self-path reads', async t => {
