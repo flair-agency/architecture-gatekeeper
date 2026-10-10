@@ -89,80 +89,68 @@ No broader quality-work inventory or release gate is added.
 
 ## Current LIVE decision path (2026-10-10 JST)
 
-The current operational question is whether the existing private-document
-update can resume LIVE work and what the next private cleanup step is. LIVE
-#145's initial setup exception and #147's control selection are already
-adopted; they are not approval requests to repeat. LIVE PR #139 remains the
-original four-file Change A, not a B. Its hosted review run
+The earlier quota failure in hosted run
 [37982817641](https://github.com/flair-agency/live-agency/actions/runs/37982817641)
-reached the selected OpenAI API and failed before producing a structured
-decision because the API returned `Quota exceeded. Check your plan and billing
-details.` The job therefore supplies neither `PASS`, `OWNER_DECISION`, nor
-`BLOCK`, and deterministic validation did not run. This is service
-unavailability, not a semantic result, GitHub host limitation, or evidence
-that B is required. Do not rerun until the human confirms the existing API
-quota has recovered; no billing change or alternate service is selected.
+remains historical. It is not the trigger for the completed B and does not
+block the later work. LIVE #145's initial setup exception and #147's control
+selection remain adopted.
 
-Once a complete review is available, follow its result:
+The exact owner-decision attempt 2 led to the normal v4 `OWNER_ADDITION / G0`
+B in LIVE PR #159. Its GitHub checkpoint records merge commit
+`89bc2c3fa263ed9cadeb062428f4935bb65305b2`, ordered parents
+`d92392ed247162244253cfed5488f4843f437720` and
+`80b978451887983e56446424875c338defcba163`, tree
+`8afaf633ad19f7b87dcd90bdc899e1d5eded97ad`, and matching bytes for all eight
+selected authority members. The selected producer/check/completion-time binding
+is retained; protected run `38002166166` attempt 1 and eligibility job
+`114063010349` completed before merge. The v4 selected normal-procedure
+validation outputs record `eligibility=eligible`, `adoption=valid`,
+`canonical=verified`.
+Principal authentication and host enforcement remain `NOT_VERIFIED`.
+[PR #159 checkpoint](https://github.com/flair-agency/live-agency/pull/159#issuecomment-6090979269)
 
-- **`PASS`:** use the existing ordinary route and acceptance policy to verify
-  whether the already-approved private update can merge and resume the
-  identified next private cleanup. Record the exact candidate, ordinary
-  validation, integration/readback and actual work advanced. Do not force a B
-  or claim all cleanup or public qualification is complete.
-- **Exact `OWNER_DECISION`:** preserve the exact unresolved choice and original
-  A identity. Only if the selected route and owner-provided context call for an
-  addition, assess a separately identified authority-only B through the
-  already selected v4 procedure. Do not infer or invent its missing-decision
-  ID, B, or approval.
-- **`BLOCK`:** retain it as `BLOCK`; do not relabel it as an addition trigger.
-  Resolve the stated blocker under existing policy before proceeding.
-- **Incomplete/service failure:** retain the failure and wait for the selected
-  service to be available. It does not authorize fallback, billing changes,
-  or a semantic classification.
+After B #159 became canonical, the existing A in LIVE PR #139 was refreshed to
+head `470b4692bdf85aaf4775a1785ef3e44d1d57be8c` over base
+`89bc2c3fa263ed9cadeb062428f4935bb65305b2`. Fresh ordinary run
+[38004420331](https://github.com/flair-agency/live-agency/actions/runs/38004420331)
+returned PASS and acceptance succeeded. Its four residual files remained
+byte-identical to prior A; all eight authorities matched the adopted base. The
+structured result and Set digest were validated. PR #139 merged at
+`2026-10-09T23:41:24Z` as
+`0ad0fb23d7e286be3e8f5302218fa521bcebbabf`, parents
+`89bc2c3fa263ed9cadeb062428f4935bb65305b2` and
+`470b4692bdf85aaf4775a1785ef3e44d1d57be8c`, tree
+`e049f3597d7b75c72dd3de0c8146b8e77095d5da`. This advances the previously
+blocked artifact/procedure update through B and the same A's fresh PASS/merge.
+The exact completion record still needs an independent audit; that audit does
+not change the checkpoint's recorded valid adoption unless it finds a specific
+mismatch.
+[Issue #123 checkpoint](https://github.com/flair-agency/live-agency/issues/123#issuecomment-6091039966)
 
-The adopted v4 `OWNER_ADDITION / G0` procedure has its own selected
-eligibility, producer, pre-merge and canonical-readback requirements.
-Host-enforcement proof is a separate assurance dimension: its absence alone
-does not invalidate an otherwise valid G0 procedure that satisfies the
-selected obligations. Record enforcement as unknown where evidence is absent;
-do not claim enforcement. Earlier 2026-10-09 403 observations and the
-withdrawn Team/public-repository hypothesis remain dated history, not a
-current prerequisite or a proposed visibility/protection/Team change.
+The separately approved 12-file public artifact is published in
+[flair-agency/live-agency-domain](https://github.com/flair-agency/live-agency-domain),
+created `2026-10-09T23:59:12Z` as public. Its [PR #1](https://github.com/flair-agency/live-agency-domain/pull/1)
+remains OPEN, Ready and unmerged at head
+`a0b16664f6c655314a963b19c74a94e31ae21888`, base
+`92b9b4867615c8099cd003e77f11f33372f2e2d3`. On that exact head, source run
+`38009828256` and Gate run `38009828646` succeeded, including review
+`114087063561`, report `114087272873` and accept `114087314506`. This does not
+merge the PR, activate business behavior, or establish whole-public
+qualification. No AGK release gate is added.
 
-The LIVE integrated-source join correction is recorded at
-`d92392ed247162244253cfed5488f4843f437720`; its predecessor integrations are
-source work only and do not prove an actual B.
-The prior #139 review attempt at native candidate
-`d412f4e88890b50423dfca59da572ba248a59e5b` passed local native review and
-fixed Preview.3 validation, but it is not the hosted result: run
-37982817641 failed quota before a structured decision. The remote Ready PR #139
-snapshot `3a51f0a5380b6b5b5adc33edfeecee5c4bab8bdb` is based on
-`d92392ed247162244253cfed5488f4843f437720`; no merge, adoption, readback, or
-fresh-A result exists. Do not transfer prior candidate checks to a later
-head.
+The consumer-owned next priority is the selected execution foundation and
+public migration before Skills, alongside the independent completion-record
+audit. LIVE PR #157 is a separate `docs/domain/model.md` §10 cleanup; it does
+not substitute for that public migration. The v1-to-v4 T5/T6 classification
+remains unknown unless exact evidence resolves it. The previously private
+LIVE plan, visibility and protection remain unchanged. The separately approved
+public artifact remains a distinct publication. Operational consumer value is
+evidenced; AGK's agreed package-release and broader lifecycle gates remain
+separate.
 
-Separate [LIVE PR #157](https://github.com/flair-agency/live-agency/pull/157)
-remains a Draft at head `71e00f18e45e1fa9d25fcdf2adcc23aecf27c952`, based on
-`d92392ed247162244253cfed5488f4843f437720`. Its `docs/domain/model.md`
-§10 documentation edit (+12/−16) is the currently prepared candidate for the
-identified next private-cleanup item, independently prepared under the existing
-Preview.3 path while #139 is blocked. It remains Draft, unmerged and unadopted;
-its existence and local checks do not show #139 resumption, cleanup progress
-through resumed work, or Preview.4 proof. Local native review passed, fixed
-Preview.3 validation exited 0, and its two ordinary CI checks succeeded; Gate
-was skipped (run `114009570827`). It remains unmerged and unaccepted. These
-Preview.3 results do not validate #139 or Preview.4.
-
-This current-path planning snapshot was reviewed against main
-`abfc9283a8011667d3a0d0581e863a35001a0ed7`.
-Main #467 subsequently changed the selected `review-execution.md` member; the
-selector and other five selected authority blobs remain unchanged from the
-fixed #450/#451 source snapshot. That source/test inventory remains historical
-and is not extended here. The #467 boundary does not establish the LIVE
-v1-to-v4 migration evidence described below. The TypeScript quality/source
-work tracked by #412/#417/#419 and the separate Gemini work do not create new
-Preview.4 release gates or substitute for the LIVE #407–#409 evidence.
+All later LIVE status observations and next-work allocations in this roadmap
+are from the prior planning checkpoint and are superseded by this current
+evidence; the source and classification analysis remains fixed.
 
 ## Historical integration checkpoint through PR #449 (2026-10-09)
 
@@ -422,6 +410,11 @@ receipt alone proves neither.
 
 ### Conditional LIVE B operation and verification plan (#407–#409)
 
+**Status note (2026-10-10):** this planned step sequence predates B #159 and
+fresh A #139. Their completion is recorded above; retain this table as the
+original verification plan, with the independent completion-record audit and
+execution/public-migration work still outstanding.
+
 This plan is for the still-open real LIVE work only. It does not make an
 operation successful in advance. #407 owns connection and package-path
 verification; #408 owns the real consumer transition and resumed-work trace;
@@ -489,6 +482,11 @@ requested integration form. No diagram, source file, test fixture, issue state
 or green check substitutes for connection or actual proof.
 
 ## Transition coverage T0–T9
+
+**Status note (2026-10-10):** this fixed mechanism matrix and its LIVE status
+observations predate the completed B #159 and fresh A #139 recorded above.
+Treat only those LIVE status observations as superseded; retain the source
+analysis and the still-unknown T5/T6 classification.
 
 | Case | Applicability and exact evidence status | Source/test evidence at fixed main #450 (`a5b84dfd71859547d95f5a9fe64c26cc7aa85665`; mechanism only) | Specific next task and proposed allocation |
 |---|---|---|---|
@@ -566,30 +564,29 @@ guard is treated as satisfied by missing files, package APIs or test fixtures.
 ### Proposed Preview.4 can/cannot statement (not a scope freeze)
 
 **Can:** carry forward the shipped preview mechanisms for their previously
-selected, explicitly UNVERIFIED paths; record LIVE's completed D setup exception
-and C control adoption accurately; and give #407/#408 a concrete, finite
-decision path for the current #139 review, then resume the already approved
-private update and identified next cleanup when the result permits. A separate
-B follows only if an exact result and selected owner context require it. ADA's
-merged Preview.3 pin is a separate bounded consumer integration datapoint.
+selected, explicitly UNVERIFIED paths; record LIVE's completed B adoption,
+fresh A PASS/merge, and the operational value now evidenced; and record the
+separately approved 12-file public artifact publication. The public PR remains
+open and unmerged. ADA's merged Preview.3 pin remains a separate bounded
+consumer integration datapoint.
 
 **Cannot:** establish that LIVE's selected host check is required or enforced,
-classify the quota-failed #139 attempt, force #139 into B, convert #139/#144
-history to normal success, or claim canonical readback, fresh A where required,
-resumed work, `ACTIVE`, trusted acceptance, self-profile readiness, or release
-completion. ADA's PR #83 does
+retroactively rewrite the quota-failed attempt, convert #144 history to normal
+success, or claim whole-public qualification, `ACTIVE`, self-profile readiness,
+or overall Preview.4/package release completion. ADA's PR #83 does
 not yet establish post-merge Preview.3 CI use or a lifecycle trace. No package
 source, policy, host setup, credential capability or route activation is
 included here. The October 10, 2026 18:00 JST target remains unchanged; if the
-normal consumer proof and review gates are incomplete then #409 holds and
-reforecasts from evidence rather than treating the date as a waiver.
+agreed remaining consumer and release evidence is incomplete then #409 holds
+and reforecasts from evidence rather than treating the date as a waiver.
 
 No package code, schema, workflow, canonical authority or consumer repository is
 changed by this roadmap. It does not enable a route, authorize an admin
-exception, or decide whether a consumer's architecture is complete. D setup
-and C control adoption are recorded; this roadmap makes no claim of LIVE host
-enforcement, normal B adoption, full lifecycle completion, fresh A,
-resumed-work completion, self-profile readiness, or broad support.
+exception, or decide whether a consumer's architecture is complete. D setup,
+C control adoption, B adoption/canonical placement and refreshed #139 fresh A
+PASS/merge are recorded; this roadmap makes no claim of LIVE host enforcement,
+full lifecycle completion, whole-public qualification, self-profile readiness,
+or broad support.
 The `ci-policy v5` procedural alternative, trusted self amendment route, and
 Issue #147 BLOCK procedural target remain deferred pending their own explicit
 prior selection and end-to-end gates. Existing preview APIs are mechanism
