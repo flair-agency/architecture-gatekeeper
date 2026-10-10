@@ -83,3 +83,48 @@ test('fails closed on explicit operation, depth and nonprogress cycle limits', (
   assert.throws(() => validateJsonSchema(linked(20), schema, { maxOperations: 100000, maxDepth: 5 }), /depth budget exceeded \(5\)/);
   assert.throws(() => validateJsonSchema('primitive', { $ref: '#' }), /without instance progress/);
 });
+
+test('retains schema property rereads across definition and instance validation', () => {
+  let typeReads = 0;
+  const schema = {
+    get type() {
+      typeReads += 1;
+      return typeReads === 1 ? 'string' : 'number';
+    }
+  };
+  assert.throws(() => validateJsonSchema('value', schema), /must match type number/);
+  assert.equal(typeReads, 3);
+});
+
+test('preserves truthy fatal markers and arbitrary cached error messages', () => {
+  const fatal = { fatal: 'budget-like', message: 'sentinel' };
+  let fatalReads = 0;
+  const fatalSchema = {
+    get type() {
+      fatalReads += 1;
+      if (fatalReads === 2) throw fatal;
+      return 'string';
+    }
+  };
+  assert.throws(() => validateJsonSchema('value', fatalSchema), error => error === fatal);
+
+  let typeReads = 0;
+  let cachedMessageStringifications = 0;
+  const schemaLeaf = {
+    get type() {
+      typeReads += 1;
+      if (typeReads === 3) {
+        throw {
+          message: {
+            replace() {
+              return { toString() { cachedMessageStringifications += 1; return 'cached'; } };
+            }
+          }
+        };
+      }
+      return 'string';
+    }
+  };
+  assert.throws(() => validateJsonSchema('value', { anyOf: [schemaLeaf, schemaLeaf] }), /does not match any anyOf branch/);
+  assert.equal(cachedMessageStringifications, 1);
+});

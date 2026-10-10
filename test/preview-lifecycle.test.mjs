@@ -1,75 +1,13 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, cpSync, copyFileSync, mkdtempSync, mkdirSync, readdirSync, writeFileSync, rmSync, readFileSync, unlinkSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync, unlinkSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
-import { PREVIEW_PROFILE, preparePreviewLifecycle, completePreviewLifecycle, validatePreviewReceipt, previewReceiptBytes } from '@flair-agency/architecture-gatekeeper/preview-lifecycle';
+import { preparePreviewLifecycle, completePreviewLifecycle, validatePreviewReceipt, previewReceiptBytes } from '@flair-agency/architecture-gatekeeper/preview-lifecycle';
+import { git, files, ordinary, decision, put, gitSchema, fixture, spec, commitOn } from './fixtures/preview-lifecycle-runtime.mjs';
 
-const git = (root, ...args) => execFileSync('git', ['-C', root, ...args],
-  { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-const files = ['docs/authority.md', 'docs/governance.md'];
-const selectionPath = '.codex/gatekeeper/preview-lifecycle.json';
-const ordinary = semanticDecision => ({ semanticDecision, checks: { predecessorAuthorized: true } });
-const decision = (value = 'PASS', ids = false) => ({ decision: value, summary: 'Synthetic model response; no semantic correctness claim.',
-  authorityFiles: files, ...(ids ? { authorityIds: ['contract', 'governance'] } : {}), valid: true, ...(value === 'OWNER_DECISION' ? { ownerDecisionId: 'choice-1', summary: 'Missing choice-1: add the missing new decision only.' } : {}) });
-function put(root, file, value) {
-  mkdirSync(dirname(join(root, file)), { recursive: true });
-  writeFileSync(join(root, file), typeof value === 'string' ? value : JSON.stringify(value));
-}
-function gitSchema(root, path) { return readFileSync(join(root, path), 'utf8'); }
-function fixture(t, selected = true, ownerAmendment = false, sharedValidator = false) {
-  const root = mkdtempSync(join(tmpdir(), 'preview-lifecycle-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Synthetic fixture');
-  git(root, 'config', 'user.email', 'fixture@example.invalid');
-  const selection = { version: 1, profile: PREVIEW_PROFILE, repository: 'fixture/example', targetBranch: 'main',
-    eligibilitySchemaPath: '.codex/gatekeeper/eligibility.schema.json', eligibilityValidationPath: sharedValidator ? '.codex/gatekeeper/rules.json' : '.codex/gatekeeper/eligibility-rules.json', amendmentTriggerProfile: ownerAmendment ? 'completed-owner-decision-v1' : 'completed-block-v1',
-    governancePath: files[1], authorization: 'Synthetic owner-selected unverified preview procedure.',
-    policyPath: '.codex/gatekeeper/ci-policy.json', promptPath: '.codex/gatekeeper/ci-prompt.md',
-    schemaPath: '.codex/gatekeeper/decision.schema.json', validationPath: '.codex/gatekeeper/rules.json',
-    callerPath: '.github/workflows/architecture-gate.yml', authorityPaths: [files[0]],
-    migrationPaths: [selectionPath, '.codex/gatekeeper/ci-policy.json', '.github/workflows/architecture-gate.yml'], maxPromptBytes: 524288 };
-  put(root, files[0], 'Existing rule: keep selected predecessor rules.\n');
-  put(root, files[1], 'Owner may select explicit preview assurance; integration is owner controlled.\n');
-  put(root, 'app.txt', 'Original application\n');
-  put(root, selection.promptPath, 'Review actual proposed change under full prior authority.\n');
-  put(root, selection.callerPath, 'uses: owner/runtime@1111111111111111111111111111111111111111\n');
-  put(root, selection.schemaPath, { type: 'object', additionalProperties: false,
-    required: ['decision', 'summary', 'authorityFiles', 'valid'], properties: {
-      decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] }, summary: { type: 'string' },
-      authorityFiles: { type: 'array', items: { type: 'string' } }, ownerDecisionId: { type: 'string' }, authorityIds: { type: 'array', items: { type: 'string' } }, valid: { type: 'boolean' } } });
-  const eligibilitySchema = JSON.parse(gitSchema(root, selection.schemaPath)); eligibilitySchema.properties.decision.enum = ['ELIGIBLE', 'INELIGIBLE'];
-  put(root, selection.eligibilitySchemaPath, eligibilitySchema);
-  put(root, selection.eligibilityValidationPath, { version: 1, rules: [{ when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/valid', equals: true }, message: 'Synthetic mandatory consumer validator' }] });
-  put(root, selection.validationPath, { version: 1, rules: [{ when: { path: '/decision', equals: 'PASS' },
-    require: { path: '/valid', equals: true }, message: 'Synthetic mandatory consumer validator' }, ...(sharedValidator ? [{ when: { path: '/decision', equals: 'ELIGIBLE' }, require: { path: '/valid', equals: true }, message: 'Shared B validator' }] : [])] });
-  const branch = { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authorityFiles: files,
-    promptPath: selection.promptPath, schemaPath: selection.schemaPath, validationPath: selection.validationPath };
-  put(root, selection.policyPath, { version: 1, default: { mode: 'local-only' }, branches: { main: branch } });
-  put(root, '.codex/gatekeeper/authorities.json', { version: 1, authorities: files.map((path, index) => ({
-    id: index ? 'governance' : 'contract', repository: 'self', revision: 'authority-revision', path })) });
-  if (selected) put(root, selectionPath, selection);
-  git(root, 'add', '.'); git(root, 'commit', '-m', 'Synthetic predecessor');
-  const base = git(root, 'rev-parse', 'HEAD');
-  return { root, base, selection, branch };
-}
-function spec(f, mode, headSha, trigger = null, record = null, baseSha = f.base) {
-  return { version: 1, repository: 'fixture/example', targetBranch: 'main', mode, baseSha, headSha, selectionPath, trigger, record };
-}
-function commitOn(f, name, changes, base = f.base) {
-  git(f.root, 'switch', '-c', name, base);
-  for (const [file, value] of Object.entries(changes)) put(f.root, file, value);
-  git(f.root, 'add', '.'); git(f.root, 'commit', '-m', `Synthetic ${name}`);
-  return git(f.root, 'rev-parse', 'HEAD');
-}
-function integrate(f, head, receipt) {
-  const receiptSha256 = createHash('sha256').update(previewReceiptBytes(receipt)).digest('hex');
-  git(f.root, 'switch', 'main'); git(f.root, 'merge', '--no-ff', '-m', `Synthetic integration\n\nAGK-Preview-Receipt-v1: sha256:${receiptSha256}`, head);
-  return git(f.root, 'rev-parse', 'HEAD');
-}
 for (const route of [
   { name: 'BLOCK amendment', mode: 'amendment', result: 'BLOCK', ownerAmendment: false },
   { name: 'OWNER_DECISION amendment', mode: 'amendment', result: 'OWNER_DECISION', ownerAmendment: true },
@@ -138,114 +76,6 @@ test('ordinary materializes added, deleted and empty files with exact null-versu
   assert.equal(task.changes.find(change => change.path === 'app.txt').before, 'Original application\n');
   assert.equal(task.changes.find(change => change.path === 'app.txt').after, null);
   await completePreviewLifecycle(request, ordinary(decision()), f.root);
-});
-
-test('runtime identity binds nested emitted modules and invalidates stale requests and receipts', async t => {
-  const packageRoot = dirname(dirname(fileURLToPath(import.meta.resolve('@flair-agency/architecture-gatekeeper/preview-lifecycle'))));
-  const runtimeRoot = mkdtempSync(join(tmpdir(), 'preview-runtime-layout-'));
-  t.after(() => rmSync(runtimeRoot, { recursive: true, force: true }));
-  cpSync(join(packageRoot, 'dist'), join(runtimeRoot, 'dist'), { recursive: true });
-  copyFileSync(join(packageRoot, 'package.json'), join(runtimeRoot, 'package.json'));
-  const runtime = await import(pathToFileURL(join(runtimeRoot, 'dist/preview-lifecycle.mjs')).href);
-  const f = fixture(t);
-  const head = commitOn(f, 'runtime-identity-nested-module', { 'app.txt': 'Runtime identity fixture\n' });
-  const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-  const nestedPaths = ['owner-addition/owner-addition-validation.mjs', 'ci-execution/ci-execution-result.mjs', 'owner-amendment/owner-amendment-tag-readback.mjs',
-    'owner-amendment/owner-amendment-tag-api.mjs', 'owner-amendment/owner-amendment-tag-attempt.mjs',
-    'owner-amendment/owner-amendment-semantic-tag-object.mjs',
-    'owner-amendment/owner-amendment-artifact.mjs', 'owner-amendment/owner-amendment-artifact-discovery.mjs',
-    'owner-amendment/owner-amendment-attestation.mjs', 'owner-amendment/owner-amendment-artifact-zip.mjs',
-    'github/github-associated-repository.mjs', 'github/github-cli-runner.mjs',
-    'owner-amendment/owner-amendment-handoff-pr-run-context.mjs',
-    'owner-amendment/owner-amendment-workflow-run-merge-group-context.mjs', 'owner-amendment/owner-amendment-scope.mjs',
-    'github/github-authority-source.mjs', 'github/github-merge-group-event.mjs', 'github/github-owner-amendment-readback.mjs',
-    'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs',
-    'github/github-ruleset-readback.mjs'];
-  assert.ok(request.runtime.files['preview-lifecycle.mjs']);
-  assert.ok(request.runtime.files['../package.json']);
-  for (const nestedPath of nestedPaths) {
-    assert.equal(request.runtime.files[nestedPath], createHash('sha256')
-      .update(readFileSync(join(runtimeRoot, 'dist', nestedPath))).digest('hex'));
-  }
-  assert.ok(readdirSync(join(runtimeRoot, 'dist')).filter(file => file.endsWith('.mjs')).every(file => request.runtime.files[file]));
-  const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
-  await runtime.validatePreviewReceipt(receipt, f.root);
-
-  const unchangedPaths = [...nestedPaths.map(path => path.split('/').at(-1)),
-    'preview-lifecycle.mjs', '../package.json'];
-  const unchangedDigests = unchangedPaths.map(file => {
-    const path = join(runtimeRoot, 'dist', file);
-    return [path, createHash('sha256').update(readFileSync(path)).digest('hex')];
-  });
-  const packageBefore = request.runtime.files['../package.json'];
-  for (const nestedPath of nestedPaths) {
-    const path = join(runtimeRoot, 'dist', nestedPath);
-    const originalBytes = readFileSync(path);
-    try {
-      appendFileSync(path, '\n// isolated runtime-byte mutation\n');
-      const changedRequest = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-      assert.notEqual(changedRequest.runtime.files[nestedPath], request.runtime.files[nestedPath]);
-      assert.equal(changedRequest.runtime.files[nestedPath], createHash('sha256').update(readFileSync(path)).digest('hex'));
-      for (const otherPath of nestedPaths.filter(other => other !== nestedPath)) {
-        assert.equal(changedRequest.runtime.files[otherPath], request.runtime.files[otherPath]);
-      }
-      for (const [unchangedPath, digest] of unchangedDigests) {
-        assert.equal(createHash('sha256').update(readFileSync(unchangedPath)).digest('hex'), digest);
-      }
-      await assert.rejects(runtime.completePreviewLifecycle(request, ordinary(decision()), f.root), /request differs from immutable predecessor inputs/);
-      await assert.rejects(runtime.validatePreviewReceipt(receipt, f.root), /request differs from immutable predecessor inputs/);
-    } finally {
-      // Each rejection is attributed to one leaf, against the same valid baseline.
-      writeFileSync(path, originalBytes);
-    }
-  }
-  // One fresh request/receipt covers the changed bytes of every grouped leaf.
-  // Per-leaf stale rejection above remains independent; repeated fresh Git
-  // reconstruction for every leaf adds no distinct success-path assertion.
-  for (const nestedPath of nestedPaths) appendFileSync(join(runtimeRoot, 'dist', nestedPath), '\n// combined runtime-byte mutation\n');
-  const freshRequest = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-  for (const nestedPath of nestedPaths) {
-    assert.notEqual(freshRequest.runtime.files[nestedPath], request.runtime.files[nestedPath]);
-    assert.equal(freshRequest.runtime.files[nestedPath], createHash('sha256').update(readFileSync(join(runtimeRoot, 'dist', nestedPath))).digest('hex'));
-  }
-  const freshReceipt = await runtime.completePreviewLifecycle(freshRequest, ordinary(decision()), f.root);
-  await runtime.validatePreviewReceipt(freshReceipt, f.root);
-
-  const flatRoot = mkdtempSync(join(tmpdir(), 'preview-runtime-flat-layout-'));
-  t.after(() => rmSync(flatRoot, { recursive: true, force: true }));
-  cpSync(join(packageRoot, 'dist'), join(flatRoot, 'dist'), { recursive: true });
-  copyFileSync(join(packageRoot, 'package.json'), join(flatRoot, 'package.json'));
-  writeFileSync(join(flatRoot, 'dist/owner-addition-validation.mjs'),
-    readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-validation.mjs')));
-  writeFileSync(join(flatRoot, 'dist/ci-execution-result.mjs'),
-    readFileSync(join(flatRoot, 'dist/ci-execution/ci-execution-result.mjs')));
-  writeFileSync(join(flatRoot, 'dist/owner-amendment-tag-readback.mjs'),
-    readFileSync(join(flatRoot, 'dist/owner-amendment/owner-amendment-tag-readback.mjs')));
-  for (const file of ['owner-amendment-tag-api.mjs', 'owner-amendment-tag-attempt.mjs',
-    'owner-amendment-semantic-tag-object.mjs', 'owner-amendment-artifact.mjs',
-    'owner-amendment-artifact-discovery.mjs', 'owner-amendment-attestation.mjs', 'owner-amendment-artifact-zip.mjs',
-    'owner-amendment-handoff-pr-run-context.mjs', 'owner-amendment-workflow-run-merge-group-context.mjs', 'owner-amendment-scope.mjs']) {
-    // Restore the former flat dependency paths only in this synthetic legacy copy.
-    writeFileSync(join(flatRoot, 'dist', file),
-      readFileSync(join(flatRoot, 'dist/owner-amendment', file), 'utf8').replace(/from '\.\.\//g, "from './"));
-  }
-  for (const file of ['github-associated-repository.mjs', 'github-cli-runner.mjs',
-    'github-authority-source.mjs', 'github-merge-group-event.mjs', 'github-owner-amendment-readback.mjs',
-    'github-owner-addition-readback.mjs', 'github-app-check-reporter.mjs', 'github-ruleset-readback.mjs']) {
-    writeFileSync(join(flatRoot, 'dist', file), readFileSync(join(flatRoot, 'dist/github', file)));
-  }
-  rmSync(join(flatRoot, 'dist/github'), { recursive: true });
-  rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
-  rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
-  rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
-  const flatRuntime = await import(pathToFileURL(join(flatRoot, 'dist/preview-lifecycle.mjs')).href);
-  const flatRequest = await flatRuntime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-  const expectedFlatPaths = readdirSync(join(flatRoot, 'dist')).filter(file => file.endsWith('.mjs')).sort();
-  assert.equal(flatRequest.runtime.nodeVersion, process.version);
-  assert.deepEqual(Object.keys(flatRequest.runtime.files).filter(file => file !== '../package.json').sort(), expectedFlatPaths);
-  assert.equal(flatRequest.runtime.files['../package.json'], packageBefore);
-  const flatReceipt = await flatRuntime.completePreviewLifecycle(flatRequest, ordinary(decision()), f.root);
-  await flatRuntime.validatePreviewReceipt(flatReceipt, f.root);
 });
 
 test('ordinary diff ignores configured textconv during preparation and receipt revalidation', async t => {

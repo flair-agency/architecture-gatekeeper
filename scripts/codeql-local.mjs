@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { githubOutputModelArgs, verifyGithubOutputModel } from './codeql-model-regression.mjs';
+import { githubModelArgs, verifyGithubOutputModel } from './codeql-model-regression.mjs';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -44,13 +44,15 @@ export function runCodeql(overrides = {}) {
   const summary = { source, binary, scan, startedAt: new Date().toISOString(), languages: [] };
   writeFileSync(join(scan, 'summary.json'), JSON.stringify(summary, null, 2));
   verifyGithubOutputModel({ run, source, scan });
-  console.log('GitHub output CodeQL model regression passed.');
+  console.log('GitHub output/workspace CodeQL model regressions passed.');
   if (modelOnly) return;
   for (const [language, suite] of [['javascript-typescript', 'javascript'], ['actions', 'actions']]) {
     const db = join(scan, `db-${suite}`);
     run(['database', 'create', db, `--language=${language}`, `--source-root=${source}`, '--threads=2', '--ram=4096']);
     const sarif = join(scan, `${suite}.sarif`);
-    run(['database', 'analyze', db, `codeql/${suite}-queries:codeql-suites/${suite}-code-scanning.qls`, '--threat-model=local', ...(suite === 'javascript' ? githubOutputModelArgs(source) : []), '--format=sarif-latest', `--output=${sarif}`, '--threads=2', '--ram=4096']);
+    run(['database', 'analyze', db, `codeql/${suite}-queries:codeql-suites/${suite}-code-scanning.qls`,
+      '--threat-model=local', ...(suite === 'javascript' ? githubModelArgs(source) : []),
+      '--format=sarif-latest', `--output=${sarif}`, '--threads=2', '--ram=4096']);
     const results = JSON.parse(readFileSync(sarif, 'utf8')).runs.flatMap(run => run.results || []);
     const counts = {};
     for (const finding of results) counts[finding.ruleId] = (counts[finding.ruleId] || 0) + 1;

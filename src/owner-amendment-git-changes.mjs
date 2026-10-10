@@ -1,1 +1,1 @@
-export * from './owner-amendment/owner-amendment-git-changes.mjs';
+export * from './owner-amendment/owner-amendment-git-changes.mts';

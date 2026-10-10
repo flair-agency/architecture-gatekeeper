@@ -1,1 +1,1 @@
-export { normalizeCiExecutionResult } from './ci-execution/ci-execution-result.mjs';
+export { normalizeCiExecutionResult } from './ci-execution/ci-execution-result.mts';

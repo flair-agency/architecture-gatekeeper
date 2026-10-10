@@ -1,1 +1,1 @@
-export { createGitHubAuthoritySource } from './github/github-authority-source.mjs';
+export { createGitHubAuthoritySource } from './github/github-authority-source.mts';
