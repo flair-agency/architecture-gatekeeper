@@ -30,7 +30,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs',
     'github/github-ruleset-readback.mjs', 'review-inputs/review-input-path.mjs',
     'authority-validation/legacy-git-snapshot.mjs', 'authority-validation/json-schema.mjs',
-    'authority-validation/multi-authority-provenance.mjs', 'ci-review/prepared-ci-decision.mjs', 'ci-review/ci-decision-kind.mjs', 'ci-review/verify-legacy-validation-selection.mjs', 'ci-execution/ci-execution-observation.mjs', 'owner-amendment/owner-amendment-block-semantic-record.mjs', 'owner-amendment/owner-amendment-block-context-verifier.mjs', 'owner-amendment/owner-amendment-block-evidence-composer.mjs', 'authority-validation/validate-decision.mjs', 'authority-validation/validate-authority-set-decision.mjs', 'authority-validation/preflight-authority-set-review.mjs', 'review-inputs/materialize-regular-git-snapshot.mjs', 'review-inputs/prepare-review-file-context.mjs', 'review-inputs/prepare-review-context.mjs'];
+    'authority-validation/multi-authority-provenance.mjs', 'ci-review/prepared-ci-decision.mjs', 'ci-review/ci-decision-kind.mjs', 'ci-review/verify-legacy-validation-selection.mjs', 'ci-execution/ci-execution-observation.mjs', 'owner-amendment/owner-amendment-block-semantic-record.mjs', 'owner-amendment/owner-amendment-block-context-verifier.mjs', 'owner-amendment/owner-amendment-block-evidence-composer.mjs', 'authority-validation/validate-decision.mjs', 'authority-validation/validate-authority-set-decision.mjs', 'authority-validation/preflight-authority-set-review.mjs', 'review-inputs/prepare-review-file-context.mjs', 'review-inputs/prepare-review-context.mjs'];
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -132,8 +132,6 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/authority-validation/validate-authority-set-decision.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/preflight-authority-set-review.mjs'),
     readFileSync(join(flatRoot, 'dist/authority-validation/preflight-authority-set-review.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
-  writeFileSync(join(flatRoot, 'dist/materialize-regular-git-snapshot.mjs'),
-    readFileSync(join(flatRoot, 'dist/review-inputs/materialize-regular-git-snapshot.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/prepare-review-file-context.mjs'),
     readFileSync(join(flatRoot, 'dist/review-inputs/prepare-review-file-context.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/prepare-review-context.mjs'),
