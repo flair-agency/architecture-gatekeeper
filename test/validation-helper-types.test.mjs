@@ -31,11 +31,11 @@ function diagnosticsFor(name) {
 }
 
 test('validation helpers expose descriptive input and identity types through both imports', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(diagnosticsFor('positive'), []);
 });
 
 test('validation helpers reject malformed typed calls and unsupported external narrowing', () => {
-  const diagnostics = diagnosticsFor('negative.mts');
+  const diagnostics = diagnosticsFor('negative');
   assert.equal(diagnostics.length, 3);
   const intended = [
     { line: 6, code: 2322, message: /unknown.*decision/i },
