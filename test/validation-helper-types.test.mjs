@@ -31,8 +31,15 @@ test('validation helpers expose descriptive input and identity types through bot
 test('validation helpers reject malformed typed calls and unsupported external narrowing', () => {
   const diagnostics = diagnosticsFor('negative.mts');
   assert.equal(diagnostics.length, 3);
-  const messages = diagnostics.map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
-  assert.match(messages[0], /unknown.*decision/i);
-  assert.match(messages[1], /unknown.*decision/i);
-  assert.match(messages[2], /unknown.*type.*object/i);
+  const intended = [
+    { line: 6, code: 2322, message: /unknown.*decision/i },
+    { line: 7, code: 2322, message: /unknown.*decision/i },
+    { line: 8, code: 2322, message: /unknown.*type.*object/i },
+  ];
+  for (const expected of intended) {
+    const diagnostic = diagnostics.find(item => item.file.getLineAndCharacterOfPosition(item.start).line + 1 === expected.line);
+    assert.ok(diagnostic, `expected diagnostic on negative fixture line ${expected.line}`);
+    assert.equal(diagnostic.code, expected.code);
+    assert.match(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'), expected.message);
+  }
 });

@@ -12,40 +12,35 @@ function valueAt(document: unknown, path: unknown): unknown {
 }
 
 function validateCondition(condition: unknown): void {
-  const item = condition as Record<string, unknown> | null | undefined;
-  const equalsType = typeof item?.equals;
+  const equalsType = typeof (condition as Record<string, unknown> | null | undefined)?.equals;
   if (!condition || typeof condition !== 'object' || Array.isArray(condition) ||
       !Object.hasOwn(condition, 'equals') ||
-      !((item!.equals === null) || ['string', 'boolean'].includes(equalsType) ||
-        (equalsType === 'number' && Number.isFinite(item!.equals))) ||
+      !(((condition as Record<string, unknown>).equals === null) || ['string', 'boolean'].includes(equalsType) ||
+        (equalsType === 'number' && Number.isFinite((condition as Record<string, unknown>).equals))) ||
       Object.keys(condition).some(key => !['path', 'equals'].includes(key))) {
     fail('Decision validation rule has an invalid condition.');
   }
-  valueAt({}, item!.path);
+  valueAt({}, (condition as Record<string, unknown>).path);
 }
 
 function conditionMatches(document: unknown, condition: unknown): boolean {
-  const item = condition as Record<string, unknown>;
-  return valueAt(document, item.path) === item.equals;
+  return valueAt(document, (condition as Record<string, unknown>).path) === (condition as Record<string, unknown>).equals;
 }
 
 /** Validate existing policy rules and return the same decision object. */
 export function validateDecisionRules<TDecision>(decision: TDecision, policy: unknown): TDecision {
-  const candidate = policy as Record<string, unknown> | null | undefined;
-  if (!candidate || candidate.version !== 1 || !Array.isArray(candidate.rules)) fail('Decision validation policy is unsupported.');
-  for (const rawRule of candidate.rules) {
-    const rule = rawRule as Record<string, unknown> | null;
-    if (!rule || typeof rule !== 'object' || Array.isArray(rule) || typeof rule.message !== 'string' || !rule.message.trim() ||
-        Object.keys(rule).some(key => !['when', 'require', 'message'].includes(key)) || !rule.when || !rule.require) {
+  if (!(policy as Record<string, unknown> | null | undefined) || (policy as Record<string, unknown>).version !== 1 || !Array.isArray((policy as Record<string, unknown>).rules)) fail('Decision validation policy is unsupported.');
+  for (const rule of (policy as { rules: unknown[] }).rules) {
+    if (!rule || typeof rule !== 'object' || Array.isArray(rule) || typeof (rule as Record<string, unknown>).message !== 'string' || !((rule as Record<string, unknown>).message as string).trim() ||
+        Object.keys(rule).some(key => !['when', 'require', 'message'].includes(key)) || !(rule as Record<string, unknown>).when || !(rule as Record<string, unknown>).require) {
       fail('Decision validation policy contains an invalid rule.');
     }
-    validateCondition(rule.when);
-    validateCondition(rule.require);
+    validateCondition((rule as Record<string, unknown>).when);
+    validateCondition((rule as Record<string, unknown>).require);
   }
-  for (const rawRule of candidate.rules) {
-    const rule = rawRule as Record<string, unknown>;
-    if (conditionMatches(decision, rule.when) && !conditionMatches(decision, rule.require)) {
-      fail(`Decision validation failed: ${rule.message as string}`);
+  for (const rule of (policy as { rules: unknown[] }).rules) {
+    if (conditionMatches(decision, (rule as Record<string, unknown>).when) && !conditionMatches(decision, (rule as Record<string, unknown>).require)) {
+      fail(`Decision validation failed: ${(rule as Record<string, unknown>).message as string}`);
     }
   }
   return decision;
