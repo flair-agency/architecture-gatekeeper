@@ -40,24 +40,39 @@ test('flat facade import is inert and source/emitted direct paths append the sam
     const output = join(directory, 'output');
     writeFileSync(output, 'existing=true\n');
     const modulePath = new URL('../dist/ci-decision-kind.mjs', import.meta.url).pathname;
-    const importResult = spawnSync(process.execPath, ['--input-type=module', '-e',
-      `const mod = await import(${JSON.stringify(pathToFileURL(modulePath).href)}); process.stdout.write(Object.keys(mod).join(','));`], {
-      encoding: 'utf8', env: { ...process.env, DECISION: '{"decision":"PASS"}', GITHUB_OUTPUT: output },
-    });
-    assert.equal(importResult.status, 0, importResult.stderr);
-    assert.equal(importResult.stdout, 'ordinaryDecisionKind');
-    assert.equal(readFileSync(output, 'utf8'), 'existing=true\n');
-
-    for (const script of [
+    const scripts = [
       new URL('../src/ci-decision-kind.mjs', import.meta.url).pathname,
       modulePath,
-    ]) {
+    ];
+    for (const script of scripts) {
+      const importResult = spawnSync(process.execPath, ['--input-type=module', '-e',
+        `const mod = await import(${JSON.stringify(pathToFileURL(script).href)}); process.stdout.write(Object.keys(mod).join(','));`], {
+        encoding: 'utf8', env: { ...process.env, DECISION: '{"decision":"PASS"}', GITHUB_OUTPUT: output },
+      });
+      assert.equal(importResult.status, 0, importResult.stderr);
+      assert.equal(importResult.stdout, 'ordinaryDecisionKind');
+      assert.equal(readFileSync(output, 'utf8'), 'existing=true\n');
+
       const result = spawnSync(process.execPath, [script], {
         encoding: 'utf8', env: { ...process.env, DECISION: '{"decision":"BLOCK"}', GITHUB_OUTPUT: output },
       });
       assert.equal(result.status, 0, result.stderr);
-      assert.equal(readFileSync(output, 'utf8'), 'existing=true\nkind=BLOCK\n'.repeat(1));
+      assert.equal(readFileSync(output, 'utf8'), 'existing=true\nkind=BLOCK\n');
       writeFileSync(output, 'existing=true\n');
+
+      const malformed = spawnSync(process.execPath, [script], {
+        encoding: 'utf8', env: { ...process.env, DECISION: '{', GITHUB_OUTPUT: output },
+      });
+      assert.notEqual(malformed.status, 0);
+      assert.match(malformed.stderr, /Ordinary decision is not JSON\./);
+      assert.equal(readFileSync(output, 'utf8'), 'existing=true\n');
+
+      const missingOutput = spawnSync(process.execPath, [script], {
+        encoding: 'utf8', env: { ...process.env, DECISION: '{"decision":"PASS"}', GITHUB_OUTPUT: '' },
+      });
+      assert.notEqual(missingOutput.status, 0);
+      assert.match(missingOutput.stderr, /GITHUB_OUTPUT is required\./);
+      assert.equal(readFileSync(output, 'utf8'), 'existing=true\n');
     }
   } finally {
     rmSync(directory, { recursive: true, force: true });
