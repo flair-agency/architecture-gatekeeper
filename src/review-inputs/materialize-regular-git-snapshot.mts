@@ -1,11 +1,11 @@
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, type PathOrFileDescriptor } from 'node:fs';
 import { readRegularGitSnapshot } from '../legacy-git-snapshot.mjs';
 
 export interface MaterializeRegularGitSnapshotInput {
   root: string;
   commit: string;
   path: string;
-  outputPath: string;
+  outputPath: PathOrFileDescriptor;
   maxBytes?: number;
 }
 

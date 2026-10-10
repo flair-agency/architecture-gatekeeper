@@ -23,6 +23,12 @@ export interface PrepareReviewFileContextInput {
   limits: ReviewFileContextLimits;
 }
 
+interface ObservedReviewFileContextLimits {
+  maxFiles: unknown;
+  maxFileBytes: unknown;
+  maxTotalBytes: unknown;
+}
+
 interface SnapshotEntry {
   mode: string;
   oid: string;
@@ -53,7 +59,7 @@ export interface ReviewFileContextPacket {
   revisions: { baseSha: string; headSha: string; reviewedMergeSha: string };
   files: ReviewFileChange[];
   references: ReviewSnapshot[];
-  limits: ReviewFileContextLimits;
+  limits: ObservedReviewFileContextLimits;
 }
 
 function fail(message: string): never { throw new Error(`Review file context: ${message}`); }
@@ -70,18 +76,19 @@ function validPath(path: unknown): path is string {
     !path.startsWith('/') && !path.split('/').some(part => part === '' || part === '.' || part === '..');
 }
 
-function validateLimits(limits: unknown): ReviewFileContextLimits {
+function validateLimits(limits: unknown): ObservedReviewFileContextLimits {
   if (!limits || typeof limits !== 'object' || Array.isArray(limits)) fail('explicit limits are required.');
   if (Object.keys(limits).some(name => !Object.hasOwn(RUNTIME_LIMITS, name))) fail('limits contain an unsupported field.');
-  const candidate = limits as Record<string, unknown>;
-  for (const name of Object.keys(RUNTIME_LIMITS) as (keyof ReviewFileContextLimits)[]) {
-    const value = candidate[name];
-    if (!Number.isSafeInteger(value) || (value as number) < 1 || (value as number) > RUNTIME_LIMITS[name]) {
+  for (const name of Object.keys(RUNTIME_LIMITS)) {
+    const value = (limits as Record<string, unknown>)[name];
+    if (!Number.isSafeInteger(value) || (value as number) < 1 ||
+        (value as number) > RUNTIME_LIMITS[name as keyof ReviewFileContextLimits]) {
       fail(`${name} is missing, invalid, or exceeds the runtime ceiling.`);
     }
   }
-  return { maxFiles: candidate.maxFiles as number, maxFileBytes: candidate.maxFileBytes as number,
-    maxTotalBytes: candidate.maxTotalBytes as number };
+  return { maxFiles: (limits as Record<string, unknown>).maxFiles,
+    maxFileBytes: (limits as Record<string, unknown>).maxFileBytes,
+    maxTotalBytes: (limits as Record<string, unknown>).maxTotalBytes };
 }
 
 function decodePath(bytes: Buffer): string {
@@ -153,7 +160,7 @@ function readReference(root: string, baseSha: string, path: string, maxFileBytes
   const exact = records.map(record => {
     const match = /^(\d{6}) (blob|commit|tree) ([a-f0-9]{40}|[a-f0-9]{64})\t([\s\S]+)$/.exec(record);
     return match && match[4] === path ? match : null;
-  }).filter((match): match is RegExpExecArray => Boolean(match));
+  }).filter(Boolean) as RegExpExecArray[];
   if (exact.length !== 1) fail(`protected reference ${JSON.stringify(path)} is missing or ambiguous in base.`);
   const [, mode, type, oid] = exact[0];
   if (type !== 'blob' || !['100644', '100755'].includes(mode)) fail(`protected reference ${JSON.stringify(path)} is not a regular file.`);
@@ -208,13 +215,13 @@ export function prepareReviewFileContext({ root, baseSha, headSha, reviewedSha, 
     return path;
   });
   if (new Set(refs).size !== refs.length) fail('protected reference paths must be unique.');
-  if (changes.length + refs.length > bounded.maxFiles) fail('selected files exceed maxFiles.');
+  if (changes.length + refs.length > (bounded.maxFiles as number)) fail('selected files exceed maxFiles.');
   const files = changes.map(change => ({ path: change.path,
-    before: change.before ? readBlob(checkout, change.path, change.before, bounded.maxFileBytes) : null,
-    after: change.after ? readBlob(checkout, change.path, change.after, bounded.maxFileBytes) : null }));
-  const references = refs.map(path => readReference(checkout, baseSha, path, bounded.maxFileBytes));
+    before: change.before ? readBlob(checkout, change.path, change.before, bounded.maxFileBytes as number) : null,
+    after: change.after ? readBlob(checkout, change.path, change.after, bounded.maxFileBytes as number) : null }));
+  const references = refs.map(path => readReference(checkout, baseSha, path, bounded.maxFileBytes as number));
   const packet = { version: 1 as const, revisions: { baseSha, headSha, reviewedMergeSha: reviewedSha }, files, references, limits: bounded };
   const serializedBytes = Buffer.byteLength(JSON.stringify(packet), 'utf8');
-  if (serializedBytes > bounded.maxTotalBytes) fail('serialized review context exceeds maxTotalBytes.');
+  if (serializedBytes > (bounded.maxTotalBytes as number)) fail('serialized review context exceeds maxTotalBytes.');
   return deepFreeze(packet);
 }

@@ -6,6 +6,9 @@ import { prepareReviewContext } from '../../../src/review-inputs/prepare-review-
 const snapshot = materializeRegularGitSnapshot({
   root: '/checkout', commit: 'a'.repeat(40), path: 'docs/architecture.md', outputPath: '/tmp/snapshot', maxBytes: 4096,
 });
+materializeRegularGitSnapshot({ root: '/checkout', commit: 'a'.repeat(40), path: 'docs/architecture.md', outputPath: Buffer.from('/tmp/snapshot-buffer') });
+materializeRegularGitSnapshot({ root: '/checkout', commit: 'a'.repeat(40), path: 'docs/architecture.md', outputPath: new URL('file:///tmp/snapshot-url') });
+materializeRegularGitSnapshot({ root: '/checkout', commit: 'a'.repeat(40), path: 'docs/architecture.md', outputPath: 3 });
 const fileContext = prepareReviewFileContext({
   root: '/checkout', baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), reviewedSha: 'c'.repeat(40),
   referencePaths: ['docs/architecture.md'], limits: { maxFiles: 8, maxFileBytes: 4096, maxTotalBytes: 16_384 },
