@@ -80,15 +80,16 @@ states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
 PR/run and live queue context, self-amendment scope, and amendment canonical
 readback, OWNER_ADDITION post-merge readback and self-only GitHub App reporting.
 The GitHub ruleset readback, owner-amendment Git change reader, handoff Git
-context and annotated-tag transport are integrated. The existing path helper is
-typed under `src/review-inputs/review-input-path.mts`, retaining
-its flat exports and lexical containment, existing-ancestor realpath and error
-behavior. String inputs and path-operation callback contracts do not establish
-caller authorization, environment authenticity or filesystem isolation.
+context, annotated-tag transport and review-input path helper are integrated.
+This slice types the existing committed-file reader under
+`src/authority-validation/legacy-git-snapshot.mts`, retaining its flat exports
+and regular-file selection, Git arguments, byte limits and digest behavior.
+Its ordinary string, numeric and Buffer contracts do not authenticate caller
+selection or authorize review acceptance.
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `abfc928` has twenty-five original modules typed and 71 remaining. This
-source-import correction preserves that count. Migration is partial and does
+Main `a04c777` has twenty-five original modules typed and 71 remaining; this
+candidate has twenty-six typed and 70 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
@@ -238,15 +239,24 @@ for your OS, including the standard query packs. Add its `codeql` directory to
 exits with installation guidance before creating a scan directory. Supported
 systems follow CodeQL's official requirements; allow several GB of disk space.
 The command analyzes JavaScript/TypeScript and Actions with the default suites,
-including the local threat model used by CI. The repository-owned model pack in
-`.github/codeql/extensions/github-output` represents only the adopted GitHub
-runner output boundary. Local analysis explicitly loads the same pack that
-GitHub default setup discovers from this directory.
+including the local threat model used by CI. Repository-owned model packs under
+`.github/codeql/extensions/` represent the selected GitHub runner output
+boundary and the owner-selected workspace boundary for two legacy GitHub CLI
+entrypoints. Local analysis explicitly loads both packs that GitHub default
+setup discovers from this directory, using the platform path delimiter for
+`--additional-packs`.
 
 Before scanning the repository, the command runs the standard path-injection
-query with and without the model against a generated fixture. Only the trusted
-accessor finding may disappear; unrelated environment, CLI, and checked-path
-findings must remain. Model or query incompatibility fails this regression and
+query with and without both models against generated fixtures. The output
+regression retains unrelated environment, CLI, other-accessor and checked-path
+findings. The workspace regression copies the production accessor and CLI
+entrypoints, then checks flows through actual Git snapshot and legacy authority
+operations. It retains direct workspace environment reads, other environment
+and CLI sources, same-file alternate exports, caller-selected roots, copied
+same-named accessors, and generic reader/preparer API flows, including the
+preparer's `git diff` working directory. Shared sink alert identity may persist
+because those negative flows remain; SARIF counts do not claim a production
+finding reduction. Model or query incompatibility fails the regression and
 stops analysis. `npm run codeql:model` runs only this regression; the CI
 `codeql-model` job runs it with the official CodeQL CLI independently of the
 existing default-setup scan. The fixture, baseline/modeled SARIF, and regression result are

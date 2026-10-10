@@ -1,0 +1,8 @@
+# Model only the owner-selected runner workspace accessor's returned value.
+# This is not an environment authenticator or generic path sanitizer.
+extensions:
+  - addsTo:
+      pack: codeql/javascript-all
+      extensible: barrierModel
+    data:
+      - ['file:src/github-runner-workspace.mjs', 'Member[trustedGitHubWorkspaceRoot].ReturnValue', 'path-injection']
