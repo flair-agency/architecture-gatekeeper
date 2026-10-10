@@ -69,7 +69,7 @@ function validatePacket(packet: unknown, limits: Limits): { entries: ValidatedEn
   const { baseSha, headSha, reviewedMergeSha } = (packet as Record<string, unknown>).revisions as Record<string, unknown>;
   if (![baseSha, headSha, reviewedMergeSha].every(value => typeof value === 'string' && OID.test(value)) ||
       new Set([baseSha, headSha, reviewedMergeSha]).size !== 3) fail('revision metadata is invalid.');
-  if (!(packet as Record<string, unknown>).limits || Object.keys(LIMITS).some(key => ((packet as Record<string, unknown>).limits as Record<string, unknown>)[key] !== limits[key])) {
+  if (!(packet as Record<string, unknown>).limits || Object.keys(LIMITS).some(key => ((packet as Record<string, unknown>).limits as Record<string, unknown>)[key] !== limits[key as keyof Limits])) {
     fail('packet limits must match the explicit effective limits.');
   }
   if (((packet as Record<string, unknown>).files as unknown[]).length + ((packet as Record<string, unknown>).references as unknown[]).length > (limits.maxFiles as number)) fail('selected files exceed maxFiles.');
