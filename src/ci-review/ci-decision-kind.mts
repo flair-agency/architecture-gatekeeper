@@ -14,4 +14,3 @@ export function ordinaryDecisionKind(raw: unknown): unknown {
   // value after validation, so the observed return type remains unknown.
   return (value as { decision?: unknown }).decision;
 }
-
