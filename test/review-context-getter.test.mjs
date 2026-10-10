@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { prepareReviewFileContext } from '../src/review-inputs/prepare-review-file-context.mts';
+import { prepareReviewFileContext } from '../dist/prepare-review-file-context.mjs';
 
 function git(root, ...args) {
   return execFileSync('git', ['--no-replace-objects', ...args], { cwd: root, encoding: 'utf8', env: {
