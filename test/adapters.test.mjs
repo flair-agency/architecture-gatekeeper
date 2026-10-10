@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { parseWorkflow } from './helpers/workflow-structure.mjs';
 
 test('declares separate installed adapters', () => {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
@@ -9,7 +13,65 @@ test('declares separate installed adapters', () => {
   assert.equal(manifest.bin['architecture-review'], 'dist/manual-review.mjs');
   assert.equal(manifest.bin['architecture-review-native'], 'dist/native-review.mjs');
   assert.equal(manifest.bin['architecture-owner-addition-finalize'], 'dist/owner-addition-finalize.mjs');
+  assert.equal(manifest.bin['architecture-preview-lifecycle'], 'dist/preview-lifecycle-cli.mjs');
   assert.equal(manifest.publishConfig.registry, 'https://npm.pkg.github.com');
+});
+
+test('CI and publish archive guards require the installed preview lifecycle CLI', () => {
+  const workflows = [
+    ['CI', '../.github/workflows/ci.yml', 'Pack, install, and smoke-test the distributable package'],
+    ['publish', '../.github/workflows/publish-package.yml', 'Pack, inspect, install and smoke the package archive'],
+  ];
+  const workspace = mkdtempSync(join(tmpdir(), 'agk-preview-cli-archive-guard-'));
+  try {
+    const runnerTemp = join(workspace, 'runner-temp');
+    const githubWorkspace = join(workspace, 'checkout');
+    mkdirSync(runnerTemp); mkdirSync(githubWorkspace);
+    for (const [label, path, stepName] of workflows) {
+      const workflow = parseWorkflow(readFileSync(new URL(path, import.meta.url), 'utf8'), path);
+      const step = workflow.jobs[ label === 'CI' ? 'test' : 'publish' ].steps.find(candidate => candidate.name === stepName);
+      assert.ok(step, `${label} archive gate exists`);
+      assert.match(step.run, /test -x node_modules\/\.bin\/architecture-preview-lifecycle/, `${label} checks the installed CLI executable`);
+      const guardLine = step.run.split('\n').find(line => /^\s*node -e /.test(line));
+      assert.ok(guardLine, `${label} archive step contains its manifest guard`);
+      const match = guardLine.match(/^\s*node -e "([^"]+)" "\$RUNNER_TEMP\/pack\.json" "\$GITHUB_WORKSPACE\/package\.json"\s*$/);
+      assert.ok(match, `${label} archive manifest guard has the expected explicit inputs`);
+      const script = match[1];
+      const requiredMatch = script.match(/required of \[(.*?)\]/);
+      assert.ok(requiredMatch, `${label} archive guard declares required entries`);
+      const required = [...requiredMatch[1].matchAll(/'([^']+)'/g)].map(item => item[1]);
+      assert.ok(required.includes('dist/preview-lifecycle-cli.mjs'), `${label} requires the emitted CLI`);
+      const packPath = join(runnerTemp, 'pack.json');
+      const packagePath = join(githubWorkspace, 'package.json');
+      const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+      const runGuard = () => spawnSync(process.execPath, ['-e', script, packPath, packagePath], {
+        timeout: 5000, encoding: 'utf8',
+      });
+      const assertGuardFailure = (result, message) => {
+        assert.equal(result.status, 1, message);
+        assert.equal(result.error, undefined, `${message}: process must not fail to launch or time out`);
+        assert.equal(result.signal, null, `${message}: process must exit normally`);
+      };
+      const writeInputs = (paths, packageManifest) => {
+        writeFileSync(packPath, JSON.stringify([{ files: paths.map(filePath => ({ path: filePath })) }]));
+        writeFileSync(packagePath, JSON.stringify(packageManifest));
+      };
+      writeInputs(required, manifest);
+      assert.equal(runGuard().status, 0, `${label} guard accepts its complete declared archive and bin mapping`);
+      writeInputs(required.filter(filePath => filePath !== 'dist/preview-lifecycle-cli.mjs'), manifest);
+      const missingCli = runGuard();
+      assertGuardFailure(missingCli, `${label} guard rejects an archive missing the emitted CLI`);
+      assert.match(missingCli.stderr, /archive missing dist\/preview-lifecycle-cli\.mjs/);
+      const wrongBin = structuredClone(manifest);
+      wrongBin.bin['architecture-preview-lifecycle'] = 'dist/preview-lifecycle.mjs';
+      writeInputs(required, wrongBin);
+      const mismatchedBin = runGuard();
+      assertGuardFailure(mismatchedBin, `${label} guard rejects a mismatched CLI bin target`);
+      assert.match(mismatchedBin.stderr, /preview lifecycle CLI bin missing/);
+    }
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
 });
 
 test('keeps child Codex execution out of the shared contract and Skill adapter', () => {
@@ -32,6 +94,7 @@ test('publishes only an exact tested tag through GitHub Packages', () => {
   assert.match(workflow, /id: archive/);
   assert.match(workflow, /npm install --ignore-scripts --offline "\$ARCHIVE_PATH"/);
   assert.match(workflow, /installed-smoke\.mjs/);
+  assert.match(workflow, /test -x node_modules\/\.bin\/architecture-preview-lifecycle/);
   assert.match(workflow, /npm publish "\$ARCHIVE_PATH" --ignore-scripts/);
   assert.match(workflow, /EXPECTED_INTEGRITY: \$\{\{ steps\.archive\.outputs\.integrity \}\}/);
   assert.match(workflow, /test "\$ACTUAL_INTEGRITY" = "\$EXPECTED_INTEGRITY"/);

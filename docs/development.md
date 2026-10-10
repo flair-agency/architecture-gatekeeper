@@ -110,15 +110,21 @@ Ordinary routing returns an unknown reread; legacy path selection returns its
 checked string or null. Types describe existing operations and supply no
 authentication or acceptance evidence.
 
-The current BLOCK helper stack types `owner-amendment-block-semantic-record`.
-Flat exports and all runtime validation/rereads are retained. External context
-and record fields stay unknown; computed byte digests and status variants
-describe observations, not authentication, semantic eligibility or acceptance.
+The current review-input stack types `validate-decision`,
+`validate-authority-set-decision`, `preflight-authority-set-review`,
+`prepare-review-file-context`, `prepare-review-context`,
+`materialize-review-workspace`, and `review-security-proxy`.
+The materializer migration is deferred: hosted HIGH217 assigns a new identity
+to an existing generic CLI risk. Its original `.mjs` implementation and risk
+remain; no dismissal or model expansion is made. Flat exports, CLI dispatch
+and runtime operations remain intact. Untrusted JSON and unchecked property
+rereads retain unknown types; types do not prove authority provenance, risk
+reduction or protected acceptance.
 
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `208b055` has 32 of the original 96 modules typed and 64 remaining; this
-candidate has 33 typed and 63 remaining. Migration is partial and does
+Main `8d12a04` has 35 of the original 96 modules typed and 61 remaining; this
+candidate has 42 typed and 54 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation

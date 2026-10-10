@@ -55,13 +55,14 @@ function fixture(t, mode = 'success', responseText = 'raw protected-CI response 
   const reportPath = join(root, 'observation.json');
   const cliEntrypoint = join(root, 'fake-cli.mjs');
   writeFileSync(cliEntrypoint, `
-import { writeFileSync } from 'node:fs';
+import { renameSync, writeFileSync } from 'node:fs';
 const mode = ${JSON.stringify(mode)};
 const responseText = ${JSON.stringify(responseText)};
 if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); process.exit(0); }
 let prompt = '';
 for await (const chunk of process.stdin) prompt += chunk;
-writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env }));
+writeFileSync(${JSON.stringify(`${reportPath}.pending`)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env }));
+renameSync(${JSON.stringify(`${reportPath}.pending`)}, ${JSON.stringify(reportPath)});
 if (mode === 'failure') { process.stderr.write('fixture execution failure'); process.exit(7); }
 if (mode === 'hang') { setInterval(() => {}, 1000); }
 process.stdout.write(JSON.stringify({ response: responseText }));
