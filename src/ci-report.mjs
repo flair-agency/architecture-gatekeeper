@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appendGitHubOutput } from './runner-temp-path.mjs';
+import { MAX_ORDINARY_GEMINI_PROJECTION_BYTES } from './ordinary-gemini-ci-publication.mts';
 import { assertSameMultiAuthorityProvenance, validateMultiAuthorityDecision,
   validateMultiAuthorityProvenance } from './multi-authority-provenance.mjs';
 
@@ -619,7 +620,8 @@ async function readOrdinaryGeminiProjection(env) {
   const expectedPath = `${env.RUNNER_TEMP}/agk-ordinary-gemini-report-${env.GITHUB_RUN_ID}-${env.GITHUB_RUN_ATTEMPT}.json`;
   if (path !== expectedPath) fail();
   const info = await lstat(path);
-  if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 || (info.mode & 0o777) !== 0o600 || info.size < 1 || info.size > 65_536) fail();
+  if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 || (info.mode & 0o777) !== 0o600 ||
+      info.size < 1 || info.size > MAX_ORDINARY_GEMINI_PROJECTION_BYTES + 1) fail();
   const bytes = await readFile(path);
   if (bytes.length !== info.size) fail();
   let projection;

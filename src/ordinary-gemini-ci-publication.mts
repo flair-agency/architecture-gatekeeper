@@ -4,7 +4,10 @@ import { dirname, join, resolve } from 'node:path';
 
 export const ORDINARY_GEMINI_PUBLICATION_FRAME = 'AGK_ORDINARY_GEMINI_REPORT_V1 ';
 export const ORDINARY_GEMINI_PUBLICATION_STEP = 'Review with Gemini and emit the masked report projection';
-export const MAX_ORDINARY_GEMINI_PROJECTION_BYTES = 65_536;
+// This independent 256 KiB transport cap leaves room for a 64 KiB validated
+// decision plus bounded provenance/context; it changes neither decision nor
+// rendered-report limits. Job logs retain their separate 1 MiB transport cap.
+export const MAX_ORDINARY_GEMINI_PROJECTION_BYTES = 4 * 65_536;
 export const MAX_ORDINARY_GEMINI_JOB_LOG_BYTES = 1_048_576;
 const DISPLAY_DECISION_KEYS = ['decision', 'findings', 'summary', 'authority', 'authorityFiles', 'authorityIds',
   'responsibility', 'capabilitySurface', 'qualityGuarantees', 'reviewedScope', 'prohibitedChanges', 'gates'];

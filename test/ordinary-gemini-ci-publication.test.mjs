@@ -6,9 +6,10 @@ import test from 'node:test';
 const publicationModule = new URL('../dist/ordinary-gemini-ci-publication.mjs', import.meta.url);
 const { createOrdinaryGeminiPublication, emitOrdinaryGeminiPublication,
   parseOrdinaryGeminiPublicationLog, retrieveOrdinaryGeminiPublication, ORDINARY_GEMINI_PUBLICATION_FRAME,
-  ORDINARY_GEMINI_PUBLICATION_STEP } = await import(publicationModule);
+  ORDINARY_GEMINI_PUBLICATION_STEP, MAX_ORDINARY_GEMINI_PROJECTION_BYTES } = await import(publicationModule);
 const { digestDecision, renderReport, postInlineReview, main: runCiReport } =
   await import(new URL('../dist/ci-report.mjs', import.meta.url));
+const { validatePreparedCiDecision } = await import(new URL('../dist/prepared-ci-decision.mjs', import.meta.url));
 
 async function withProcessEnv(values, action) {
   const previous = new Map(Object.keys(values).map(key => [key, process.env[key]]));
@@ -58,6 +59,32 @@ function makeProjection(outcome = 'PASS') {
   return createOrdinaryGeminiPublication({ context: context(), decision: value, authorityProvenance: provenance,
     policyVersion: '6', mode: 'enforced', policyResult: 'success', reviewResult: 'success',
     conclusion: outcome, decisionDigest: digestDecision(value) });
+}
+function makeNearDecisionLimitProjection(outcome = 'PASS') {
+  const ids = ['architecture-contract', 'architecture-authority-set', 'architecture-owner-addition',
+    'architecture-owner-amendment', 'architecture-review-execution', 'architecture-self-profile'];
+  const paths = ['docs/architecture.md', 'docs/architecture/authority-set.md', 'docs/architecture/owner-addition.md',
+    'docs/architecture/owner-amendment.md', 'docs/architecture/review-execution.md', 'docs/architecture/self-profile.md'];
+  const selectedProvenance = { version: 1, manifestSha256: '1'.repeat(64), setDigest: '2'.repeat(64), members: ids.map((id, index) => ({
+    id, repository: context().repository, resolvedCommit: sha('c'), path: paths[index], sha256: `${index + 3}`.repeat(64),
+  })) };
+  const value = decision(outcome);
+  value.authorityIds = ids;
+  value.authorityFiles = paths;
+  value.summary = '';
+  const responseLimit = 65_536;
+  const baseBytes = Buffer.byteLength(JSON.stringify(value), 'utf8');
+  const targetBytes = 65_500;
+  value.summary = 'x'.repeat(targetBytes - baseBytes);
+  const responseBytes = Buffer.from(JSON.stringify(value), 'utf8');
+  assert.equal(responseBytes.length, targetBytes);
+  const schemaBytes = readFileSync(new URL('../.codex/gatekeeper/ci-decision.schema.json', import.meta.url));
+  const validationRules = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/decision.validation.json', import.meta.url), 'utf8'));
+  assert.deepEqual(validatePreparedCiDecision({ responseBytes, schemaBytes, authorityProvenance: selectedProvenance,
+    validationRules, maxResponseBytes: responseLimit, maxSchemaBytes: 1_048_576 }), value);
+  return createOrdinaryGeminiPublication({ context: context(), decision: value, authorityProvenance: selectedProvenance,
+    policyVersion: '6', mode: 'enforced', policyResult: 'success', reviewResult: 'success', conclusion: outcome,
+    decisionDigest: digestDecision(value) });
 }
 function expected(projection) {
   return { ...projection.context, conclusion: projection.report.validatedConclusion,
@@ -114,6 +141,24 @@ test('publication parsing rejects missing, duplicate, truncated, altered, or dif
   ]) assert.throws(() => parseOrdinaryGeminiPublicationLog(log, { ...expected(projection), ...changes }));
   const altered = log.replace('"validatedConclusion":"BLOCK"', '"validatedConclusion":"PASS"');
   assert.throws(() => parseOrdinaryGeminiPublicationLog(altered, expected(projection)));
+});
+
+test('publication permits a valid decision near the bounded projection ceiling and rejects an oversized projection', () => {
+  const projection = makeNearDecisionLimitProjection('BLOCK');
+  const largeDecision = projection.report.decision;
+  const decisionBytes = Buffer.byteLength(JSON.stringify(largeDecision), 'utf8');
+  const bytes = Buffer.byteLength(JSON.stringify(projection), 'utf8');
+  assert.ok(decisionBytes <= 65_536, 'the shared prepared-decision validator accepted it under its response ceiling');
+  assert.ok(bytes > 65_536, 'valid decision plus protected metadata exceeds the former 65 KiB projection ceiling');
+  assert.ok(bytes < MAX_ORDINARY_GEMINI_PROJECTION_BYTES);
+  const log = maskedLog(projection);
+  assert.ok(Buffer.byteLength(log, 'utf8') < 1_048_576, 'frame remains below the bounded job-log ceiling');
+  assert.equal(parseOrdinaryGeminiPublicationLog(log, expected(projection)).report.validatedConclusion, 'BLOCK');
+
+  largeDecision.summary = 'x'.repeat(MAX_ORDINARY_GEMINI_PROJECTION_BYTES);
+  assert.throws(() => createOrdinaryGeminiPublication({ context: context(), decision: largeDecision, authorityProvenance: provenance,
+    policyVersion: '6', mode: 'enforced', policyResult: 'success', reviewResult: 'success', conclusion: 'BLOCK',
+    decisionDigest: digestDecision(largeDecision) }), /fixed boundary check/);
 });
 
 test('fetch selects one completed attributed job, verifies the protected tuple, and writes a private projection', async t => {
@@ -317,6 +362,8 @@ test('selected Gemini report fails closed on missing or altered projection and n
     REVIEWED_SHA: tuple.reviewedSha, RUNNER_TEMP: temp, POLICY_VERSION: '6', MODE: 'enforced',
     POLICY_RESULT: 'success', REVIEW_RESULT: 'success' };
   await withProcessEnv(env, async () => assert.rejects(runCiReport(), /ENOENT/));
+  writeFileSync(path, ' '.repeat(MAX_ORDINARY_GEMINI_PROJECTION_BYTES + 2), { mode: 0o600 }); chmodSync(path, 0o600);
+  await withProcessEnv(env, async () => assert.rejects(runCiReport(), /protected binding checks/));
   writeFileSync(path, `${JSON.stringify(projection)}\n`, { mode: 0o600 }); chmodSync(path, 0o600);
   const altered = { ...env, REPORT_EXPECTED_CONCLUSION: 'PASS' };
   await withProcessEnv(altered, async () => assert.rejects(runCiReport(), /protected binding checks/));
@@ -363,16 +410,35 @@ test('ci-report publishes full projected PASS/BLOCK bodies and emits outputs onl
   const temp = join(parent, 'runner-temp');
   const { mkdirSync } = await import('node:fs'); mkdirSync(temp, { mode: 0o700 });
 
-  for (const outcome of ['PASS', 'BLOCK', 'publish-failure']) {
-    const protectedOutcome = outcome === 'publish-failure' ? 'BLOCK' : outcome;
-    const projection = makeProjection(protectedOutcome);
-    projection.report.decision.summary = 'candidate includes ***';
+  for (const outcome of ['PASS', 'BLOCK', 'large-projection', 'host-sink-binding', 'publish-failure']) {
+    const protectedOutcome = outcome === 'publish-failure' ? 'BLOCK' : outcome === 'large-projection' || outcome === 'host-sink-binding' ? 'PASS' : outcome;
+    const projection = outcome === 'large-projection' ? makeNearDecisionLimitProjection('PASS') : makeProjection(protectedOutcome);
+    if (outcome !== 'large-projection') projection.report.decision.summary = 'candidate includes ***';
     projection.report.decision.findings[0].body = 'candidate includes ***';
     const tuple = expected(projection);
     const projectionPath = join(temp, `agk-ordinary-gemini-report-${tuple.runId}-${tuple.runAttempt}.json`);
     const summaryPath = join(temp, `${outcome}-summary.md`);
+    const hostReportPath = join(temp, `${outcome}-host-report.md`);
     const outputPath = join(temp, `${outcome}-output.txt`);
+    const candidateReportPath = join(parent, `${outcome}-candidate-report.md`);
+    const candidateSummaryPath = join(parent, `${outcome}-candidate-summary.md`);
+    const candidateProjectionPath = join(parent, `${outcome}-candidate-projection.json`);
+    const candidateOutputPath = join(parent, `${outcome}-candidate-output.txt`);
+    if (outcome === 'host-sink-binding') {
+      for (const path of [candidateReportPath, candidateSummaryPath, candidateProjectionPath, candidateOutputPath]) {
+        writeFileSync(path, 'candidate must not choose this file');
+      }
+      const hostileFields = { REPORT_PATH: candidateReportPath, GITHUB_STEP_SUMMARY: candidateSummaryPath,
+        REPORT_PROJECTION_PATH: candidateProjectionPath, GITHUB_OUTPUT: candidateOutputPath };
+      Object.assign(projection, hostileFields);
+      Object.assign(projection.report, hostileFields);
+      Object.assign(projection.report.decision, hostileFields);
+    }
     writeFileSync(projectionPath, `${JSON.stringify(projection)}\n`, { mode: 0o600 }); chmodSync(projectionPath, 0o600);
+    if (outcome === 'large-projection') {
+      assert.ok(statSync(projectionPath).size > 65_536, 'report reader must accept a valid projection above the former 65 KiB limit');
+      assert.ok(statSync(projectionPath).size <= MAX_ORDINARY_GEMINI_PROJECTION_BYTES + 1);
+    }
     writeFileSync(outputPath, '');
     const env = { REPORT_PROJECTION_PATH: projectionPath, REPORT_EXPECTED_PROVIDER: 'gemini',
       REPORT_EXPECTED_NONCE: tuple.nonce, REPORT_EXPECTED_CONCLUSION: tuple.conclusion,
@@ -383,7 +449,7 @@ test('ci-report publishes full projected PASS/BLOCK bodies and emits outputs onl
       GATEKEEPER_WORKFLOW_REF: tuple.workflowRef, BASE_SHA: tuple.baseSha, HEAD_SHA: tuple.headSha,
       REVIEWED_SHA: tuple.reviewedSha, RUNNER_TEMP: temp, POLICY_VERSION: '6', MODE: 'enforced',
       POLICY_RESULT: 'success', REVIEW_RESULT: 'success', PR_NUMBER: '77', GITHUB_TOKEN: 'fixture-token',
-      GITHUB_STEP_SUMMARY: summaryPath, GITHUB_OUTPUT: outputPath, WORKFLOW_REF: tuple.workflowRef };
+      GITHUB_STEP_SUMMARY: summaryPath, REPORT_PATH: hostReportPath, GITHUB_OUTPUT: outputPath, WORKFLOW_REF: tuple.workflowRef };
     const apiCalls = [];
     const fetchImpl = async (url, options = {}) => {
       const value = String(url); apiCalls.push({ url: value, options });
@@ -409,6 +475,14 @@ test('ci-report publishes full projected PASS/BLOCK bodies and emits outputs onl
     await withProcessEnv(env, () => runCiReport(fetchImpl));
     const body = readFileSync(summaryPath, 'utf8');
     const output = readFileSync(outputPath, 'utf8');
+    assert.match(readFileSync(hostReportPath, 'utf8'), new RegExp(`Architecture Gate — ${protectedOutcome}`));
+    if (outcome === 'host-sink-binding') {
+      for (const path of [candidateReportPath, candidateSummaryPath, candidateProjectionPath, candidateOutputPath]) {
+        assert.equal(readFileSync(path, 'utf8'), 'candidate must not choose this file');
+      }
+      assert.match(body, /Architecture Gate — PASS/);
+      assert.match(output, /conclusion=PASS/);
+    }
     assert.match(body, new RegExp(`Architecture Gate — ${protectedOutcome}`));
     assert.match(body, /candidate includes \*\*\*/);
     assert.match(body, /Authority mismatch/);
