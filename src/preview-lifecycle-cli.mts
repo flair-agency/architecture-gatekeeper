@@ -7,7 +7,7 @@ import { rejectDuplicateJsonKeys } from './authority-set.mjs';
 type CliCommand = 'prepare' | 'complete' | 'finalize' | 'fresh';
 type CliFailureCode = 'usage' | 'input' | 'input-too-large' | 'invalid-utf8' | 'duplicate-json' |
   'json-depth' | 'receipt-too-large' | 'invalid-json' | 'invalid-input' | 'checkout-mismatch' |
-  'prepare-failed' | 'complete-failed' | 'finalize-failed' | 'fresh-failed';
+  'prepare-failed' | 'complete-failed' | 'finalize-failed' | 'fresh-failed' | 'output-failed';
 type JsonObject = Record<string, unknown>;
 
 const MAX_INPUT_BYTES = 16 * 1024 * 1024;
@@ -27,9 +27,10 @@ function exact(value: unknown, keys: readonly string[], label: string): asserts 
 }
 
 function parse(source: string, label: string, maxDepth = 128): unknown {
+  let value: unknown;
   try {
     rejectDuplicateJsonKeys(source, label, { maxDepth });
-    return JSON.parse(source) as unknown;
+    value = JSON.parse(source) as unknown;
   } catch (error: unknown) {
     const message = typeof (error as { message?: unknown } | null | undefined)?.message === 'string'
       ? (error as { message: string }).message : '';
@@ -37,6 +38,15 @@ function parse(source: string, label: string, maxDepth = 128): unknown {
     if (/nesting is too deep/.test(message)) throw new CliFailure('json-depth');
     throw new CliFailure('invalid-json');
   }
+  if (containsNonFiniteNumber(value)) throw new CliFailure('invalid-json');
+  return value;
+}
+
+function containsNonFiniteNumber(value: unknown): boolean {
+  if (typeof value === 'number') return !Number.isFinite(value);
+  if (Array.isArray(value)) return value.some(containsNonFiniteNumber);
+  if (value && typeof value === 'object') return Object.values(value).some(containsNonFiniteNumber);
+  return false;
 }
 
 async function input(): Promise<unknown> {
@@ -66,7 +76,9 @@ function rootOf(value: unknown): string {
 async function run(command: CliCommand, value: unknown, cwd: string): Promise<unknown> {
   if (command === 'prepare') {
     exact(value, ['spec'], 'prepare input'); spec(value.spec);
-    return preparePreviewLifecycle(value.spec, cwd);
+    const request = await preparePreviewLifecycle(value.spec, cwd);
+    if (request.root !== cwd) throw new CliFailure('checkout-mismatch');
+    return request;
   }
   if (command === 'complete') {
     exact(value, ['request', 'responseJson'], 'complete input');
@@ -79,6 +91,9 @@ async function run(command: CliCommand, value: unknown, cwd: string): Promise<un
     exact(value, ['receiptJson', 'integrationSha'], 'finalize input');
     if (typeof value.receiptJson !== 'string') throw new Error('receiptJson must be an exact UTF-8 JSON string.');
     const receipt = parse(value.receiptJson, 'exact receipt', 68);
+    if (!Buffer.from(value.receiptJson, 'utf8').equals(previewReceiptBytes(receipt))) {
+      throw new CliFailure('finalize-failed');
+    }
     const cwd = rootOf((receipt as { request?: { root?: unknown } | null } | null | undefined)?.request?.root);
     return observePreviewLifecycle(receipt, value.integrationSha, cwd, Buffer.from(value.receiptJson, 'utf8'));
   }
@@ -88,6 +103,28 @@ async function run(command: CliCommand, value: unknown, cwd: string): Promise<un
       rootOf((value.finalRecord as { receipt?: { request?: { root?: unknown } | null } | null } | null | undefined)?.receipt?.request?.root));
   }
   throw new Error('command must be prepare, complete, finalize, or fresh.');
+}
+
+async function writeStdout(output: Buffer): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const fail = (error: Error): void => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
+    // Keep this listener through process exit: some Writable paths invoke the
+    // callback with an error before emitting the matching `error` event.
+    process.stdout.on('error', fail);
+    process.stdout.on('close', () => fail(new Error('stdout closed')));
+    process.stdout.write(output, (error?: Error | null) => {
+      if (error) fail(error);
+      else if (!settled) {
+        settled = true;
+        resolve();
+      }
+    });
+  });
 }
 
 async function main(): Promise<void> {
@@ -103,7 +140,8 @@ async function main(): Promise<void> {
     const result = await run(command, value, cwd);
     const output = previewReceiptBytes(result);
     if (command === 'complete' && output.length > 4_194_304) throw new CliFailure('receipt-too-large');
-    process.stdout.write(output);
+    category = 'output-failed';
+    await writeStdout(output);
   } catch (error: unknown) {
     // Input and core messages may contain repository values or JSON keys.
     // Emit only a fixed category, never untrusted content or core diagnostics.
@@ -115,7 +153,8 @@ async function main(): Promise<void> {
       'invalid-json': 'JSON is invalid.', 'invalid-input': 'stdin is empty or invalid.',
       'checkout-mismatch': 'record checkout does not match the invoking working directory.',
       'prepare-failed': 'prepare failed.', 'complete-failed': 'complete failed.',
-      'finalize-failed': 'finalize failed.', 'fresh-failed': 'fresh failed.' };
+      'finalize-failed': 'finalize failed.', 'fresh-failed': 'fresh failed.',
+      'output-failed': 'stdout write failed; the result may be incomplete.' };
     process.stderr.write(`architecture-preview-lifecycle: ${descriptions[code] ?? 'operation failed; no result was produced.'}\n`);
     process.exitCode = 1;
   }

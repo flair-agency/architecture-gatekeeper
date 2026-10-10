@@ -1197,12 +1197,16 @@ from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
 
 The installed `architecture-preview-lifecycle` command runs these same API
 operations without acquiring credentials or contacting a reviewer. Run it from
-the consumer checkout. It has no root-path option: the invoking process working
-directory is the checkout root, and record roots must match it. Each operation
-reads one JSON object from stdin and writes one compact canonical JSON result to
-stdout with no trailing newline. Diagnostics are bounded on stderr; failures
-exit nonzero and write no result to stdout. Stdin is limited to 16 MiB, parsed
-as fatal UTF-8 with duplicate-key checks and a 128-level envelope depth bound;
+the consumer checkout root, not a subdirectory. It has no root-path option: the
+invoking process working directory is the checkout root, and record roots must
+match it. Each operation reads one JSON object from stdin and writes one compact
+canonical JSON result to stdout with no trailing newline. Diagnostics are
+bounded on stderr. Validation failures exit nonzero before writing stdout; if a
+downstream closes stdout during result transport, the command exits nonzero and
+reports a fixed bounded diagnostic where stderr remains writable, but an
+incomplete output prefix may already have been delivered. Stdin is limited to
+16 MiB, parsed as fatal UTF-8 with duplicate-key checks, rejection of non-finite
+numbers, and a 128-level envelope depth bound;
 the nested `responseJson` is separately bounded to 64 levels, and
 `receiptJson` accepts a bounded 68 levels to allow the four fixed wrapping
 levels when an ordinary A receipt is carried as a B trigger. Each command
@@ -1215,7 +1219,10 @@ under 16 MiB without changing the core receipt or response limits.
 `responseJson` and `receiptJson` are JSON text carried as strings to preserve
 the exact receipt bytes bound by the integration trailer. Completion refuses
 to emit a receipt larger than the existing 4 MiB observation limit, since that
-receipt could not proceed to the later CLI finalization step.
+receipt could not proceed to the later CLI finalization step. `finalize` accepts
+only the byte-for-byte canonical receipt output from `complete`; a reordered or
+reformatted JSON object is rejected even if a Git trailer commits to those
+altered bytes.
 
 ```sh
 architecture-preview-lifecycle prepare < spec.json

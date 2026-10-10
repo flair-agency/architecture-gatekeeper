@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -47,6 +47,13 @@ function depthBoundedDecision(kind, childCount = 62) {
   let nested = {};
   for (let index = 0; index < childCount; index++) nested = { child: nested };
   return { ...decision(kind), nested };
+}
+function reverseKeys(value) {
+  if (Array.isArray(value)) return value.map(reverseKeys);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().reverse().map(key => [key, reverseKeys(value[key])]));
+  }
+  return value;
 }
 function failed(root, command, input, pattern) {
   const result = invoke(root, command, input);
@@ -104,6 +111,20 @@ test('depth-64 A response triggers depth-68 B receipt through finalize and fresh
   git(f.root, 'switch', 'release/preview');
   git(f.root, 'merge', '--no-ff', '-m', `Synthetic integration\n\nAGK-Preview-Receipt-v1: sha256:${sha(Buffer.from(receiptText))}`, bHead);
   const integrationSha = git(f.root, 'rev-parse', 'HEAD');
+  const nonFiniteReceiptText = receiptText.replace(/"version":1/, '"version":1e400');
+  assert.notEqual(nonFiniteReceiptText, receiptText);
+  failed(f.root, 'finalize', Buffer.from(JSON.stringify({ receiptJson: nonFiniteReceiptText, integrationSha })), /JSON is invalid/);
+  const reorderedReceiptText = JSON.stringify(reverseKeys(receipt));
+  assert.notEqual(reorderedReceiptText, receiptText);
+  const reorderedIntegrationSha = execFileSync('git', ['-C', f.root, '-c', 'commit.gpgsign=false', 'commit-tree',
+    `${bHead}^{tree}`, '-p', f.base, '-p', bHead], {
+    input: `Synthetic reordered receipt integration\n\nAGK-Preview-Receipt-v1: sha256:${sha(Buffer.from(reorderedReceiptText))}\n`,
+    encoding: 'utf8' }).trim();
+  git(f.root, 'update-ref', 'refs/heads/release/preview', reorderedIntegrationSha);
+  await observePreviewLifecycle(receipt, reorderedIntegrationSha, f.root, Buffer.from(reorderedReceiptText));
+  failed(f.root, 'finalize', Buffer.from(JSON.stringify({ receiptJson: reorderedReceiptText,
+    integrationSha: reorderedIntegrationSha })), /finalize failed/);
+  git(f.root, 'update-ref', 'refs/heads/release/preview', integrationSha);
   failed(f.root, 'finalize', Buffer.from(JSON.stringify({ receiptJson: oneLevelDeeper, integrationSha })), /JSON nesting exceeds the supported depth/);
   await assert.rejects(observePreviewLifecycle(receipt, integrationSha, f.root, Buffer.from(oneLevelDeeper)), /nesting is too deep/);
   await observePreviewLifecycle(receipt, integrationSha, f.root, Buffer.from(receiptText));
@@ -126,8 +147,15 @@ test('depth-64 A response triggers depth-68 B receipt through finalize and fresh
 
 test('CLI rejects malformed envelopes, duplicate keys, invalid UTF-8, oversized input and unknown commands without stdout', t => {
   const f = fixture(t);
+  const responseSchema = JSON.parse(readFileSync(join(f.root, f.selection.schemaPath), 'utf8'));
+  responseSchema.properties.magnitude = { type: 'number' };
+  put(f.root, f.selection.schemaPath, responseSchema);
+  git(f.root, 'add', f.selection.schemaPath);
+  git(f.root, 'commit', '-m', 'Allow a finite numeric response field');
+  f.base = git(f.root, 'rev-parse', 'HEAD');
   const head = commitOn(f, 'cli-invalid-target', { 'app.txt': 'invalid target negative\n' });
   failed(f.root, 'prepare', Buffer.from('{"spec":{},"extra":true}'), /prepare failed/);
+  failed(f.root, 'prepare', Buffer.from('{"spec":{"version":1e400}}'), /JSON is invalid/);
   const duplicate = invoke(f.root, 'prepare', Buffer.from('{"spec":{"token-value":"dont-print"},"spec":{}}'));
   assert.notEqual(duplicate.status, 0);
   assert.equal(duplicate.stdout.length, 0);
@@ -141,6 +169,13 @@ test('CLI rejects malformed envelopes, duplicate keys, invalid UTF-8, oversized 
   failed(f.root, 'prepare', Buffer.from(JSON.stringify({ spec: { ...spec(f, 'review', head), targetBranch: 'unselected-target' } })), /prepare failed/);
 
   const aRequest = JSON.parse(run(f.root, 'prepare', { spec: spec(f, 'review', head) }).toString());
+  const finiteResponse = JSON.stringify(ordinary({ ...decision('PASS'), magnitude: 1 }));
+  const finiteReceipt = JSON.parse(run(f.root, 'complete', { request: aRequest, responseJson: finiteResponse }).toString());
+  assert.equal(finiteReceipt.response.semanticDecision.magnitude, 1);
+  failed(f.root, 'complete', Buffer.from(JSON.stringify({ request: aRequest,
+    responseJson: '{"semanticDecision":{"decision":"PASS","summary":"ok","authorityFiles":["docs/authority.md","docs/governance.md"],"valid":true,"magnitude":1e400},"checks":{"predecessorAuthorized":true}}' })), /JSON is invalid/);
+  failed(f.root, 'complete', Buffer.from(JSON.stringify({ request: aRequest,
+    responseJson: '{"semanticDecision":{"decision":"PASS","summary":"ok","authorityFiles":["docs/authority.md","docs/governance.md"],"valid":true,"magnitude":-1e400},"checks":{"predecessorAuthorized":true}}' })), /JSON is invalid/);
   const passTrigger = JSON.parse(run(f.root, 'complete', { request: aRequest,
     responseJson: JSON.stringify(ordinary(decision('PASS'))) }).toString());
   const bHead = commitOn(f, 'cli-invalid-trigger-b', { 'docs/authority.md': 'Proposed unrelated trigger target change.\n' });
@@ -152,6 +187,39 @@ test('CLI rejects malformed envelopes, duplicate keys, invalid UTF-8, oversized 
 
   const excessive = `${'['.repeat(130)}0${']'.repeat(130)}`;
   failed(f.root, 'prepare', Buffer.from(`{"spec":${excessive}}`), /supported depth/);
+});
+
+test('CLI rejects prepare from a checkout subdirectory so its emitted root remains reusable', t => {
+  const f = fixture(t);
+  const head = commitOn(f, 'cli-subdirectory-prepare', { 'app.txt': 'subdirectory invocation\n' });
+  const nested = join(f.root, 'nested');
+  mkdirSync(nested);
+  failed(nested, 'prepare', Buffer.from(JSON.stringify({ spec: spec(f, 'review', head) })), /checkout does not match/);
+  const request = JSON.parse(run(f.root, 'prepare', { spec: spec(f, 'review', head) }).toString());
+  assert.equal(request.root, realpathSync(f.root));
+});
+
+test('CLI contains an actual broken-pipe stdout failure without leaking a stack', async t => {
+  const f = fixture(t);
+  const head = commitOn(f, 'cli-broken-stdout', { 'app.txt': 'broken stdout regression\n' });
+  const child = spawn(process.execPath, [cli.pathname, 'prepare'], { cwd: f.root, stdio: ['pipe', 'pipe', 'pipe'] });
+  const stderr = [];
+  child.stderr.on('data', chunk => stderr.push(chunk));
+  const timeout = setTimeout(() => child.kill('SIGKILL'), 30_000);
+  t.after(() => clearTimeout(timeout));
+  const closed = new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', (code, signal) => resolve({ code, signal }));
+  });
+  child.stdout.destroy();
+  child.stdin.end(Buffer.from(JSON.stringify({ spec: spec(f, 'review', head) })));
+  const { code, signal } = await closed;
+  assert.equal(signal, null);
+  assert.notEqual(code, 0);
+  const message = Buffer.concat(stderr).toString('utf8');
+  assert.ok(Buffer.byteLength(message) <= 600);
+  assert.match(message, /stdout write failed; the result may be incomplete/);
+  assert.doesNotMatch(message, /Error:|\bat\s+.+:\d+:\d+/);
 });
 
 test('CLI withholds a completed receipt that exceeds the existing 4 MiB observation limit', t => {
