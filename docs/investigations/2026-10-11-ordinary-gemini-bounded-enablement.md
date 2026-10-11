@@ -1,0 +1,22 @@
+# Ordinary Gemini bounded enablement source proposal
+
+This is a source proposal for a draft stacked change targeting the inactive staging branch `codex/ordinary-gemini-feature-caller-stage`. The current draft is unadopted preparation only; it grants no activation or paid-execution authorization. If deployed, its narrowly conditioned caller can issue WIF credentials and run the selected review for the exact matching context. The selected deployment must be privately verified before any separate execution authorization.
+
+The caller trigger is limited to `pull_request_target` on `feature/gemini-ci` with only `ready_for_review`. The reusable job condition requires the trusted classifier output `same-repository`, event name `pull_request_target`, action `ready_for_review`, a non-draft PR, PR number 517, head SHA `c4b0057d9dd47f79df2a896143f7ac6db5da2c2e`, and run attempt 1. The classifier body remains verbatim. The reusable workflow remains pinned to `7dc99525b4ff1510f1de310f6f5b877ab05bbfd2`; its protected Gemini selectors, declared permissions and two existing GCP WIF secrets remain unchanged.
+
+This source condition is a consistency guard only. It is not execution admission and does not prevent replay across distinct run IDs. A later second transition to ready-for-review can create a distinct run whose `run_attempt` is again 1. The workflow does not automatically repeat an event, rerun, or fall back to another provider. Every possible later execution needs a separate coordinator admission for the exact context; no subsequent run is automatically authorized by this change.
+
+## Dependencies before any execution
+
+1. Adopt stage PR 516 into `feature/gemini-ci` only through its own normal review and merge authorization. The stacked enablement proposal targets `codex/ordinary-gemini-feature-caller-stage` for draft review isolation and must never be merged into that staging branch, because doing so would alter PR 516.
+2. After stage adoption, retarget the bounded enablement proposal to `feature/gemini-ci` and freshly review its source and base. The enablement proposal's eventual merge into `feature/gemini-ci` activates the narrow caller and therefore requires the existing separate authorization; this draft preparation provides none.
+3. Privately read back the selected WIF provider and service-account binding and verify them against the intended workload identity. Do not place private binding values in this document or public logs.
+4. After enablement source changes alter the base, prepare a fresh actual base/head/merge context. Confirm the selected policy and complete Authority Set from the intended protected base.
+5. Separately admit one ready-for-review transition and retain the first actual run identity. Do not authorize automatic reruns, retries or fallback. Treat an uncertain outcome as uncertain; any later possible execution requires its own exact-context coordinator admission.
+6. Retain the full result and verify same-run, same-attempt, base/head/merge and reviewed-revision identity, complete Authority Set, schema, consumer acceptance, reporting and full-authority validation. Record acceptance only if those checks succeed.
+
+No paid execution, WIF credential issuance, active route, or live host proof is claimed by this source preparation. The selected deployment and private WIF bindings remain unverified here. A separate execution authorization remains necessary.
+
+## Focused test boundary
+
+The focused test retains execution of the copied metadata classifier and its same-repository, fork and malformed-metadata cases. It checks the closed event trigger, exact source condition, immutable workflow pin, protected selectors, permissions and existing secret mapping. A clearly labeled synthetic JavaScript harness parses and evaluates the actual narrow condition string against one positive context and negatives that alter each bound field, including unknown classification and missing action, draft, or head metadata. It strictly compares parsed JavaScript values and consumes the complete expression string; GitHub's expression engine may have different type/coercion behavior. This local harness is not the GitHub Actions expression engine and is not live workflow execution. Static structure and synthetic evaluation establish neither GitHub host protection nor execution admission, replay prevention across distinct run IDs, private WIF binding correctness, or provider outcome.

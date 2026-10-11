@@ -1,11 +1,11 @@
-# Inactive staging only. Leave this job disabled; any enablement requires a separately reviewed, bounded exact-source admission.
+# Bounded source proposal only. The condition is a consistency guard, not execution admission or replay authorization.
 # This caller does not change main policy, main routing, or the protected source pin.
 name: Issue334 Ordinary Gemini Feature Caller
 
 on:
   pull_request_target:
     branches: [feature/gemini-ci]
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [ready_for_review]
 
 jobs:
   classify-self-repository:
@@ -60,7 +60,7 @@ jobs:
   architecture-gate:
     name: architecture-gate
     needs: classify-self-repository
-    if: false
+    if: ${{ needs.classify-self-repository.outputs.classification == 'same-repository' && github.event_name == 'pull_request_target' && github.event.action == 'ready_for_review' && github.event.pull_request.draft == false && github.event.pull_request.number == 517 && github.event.pull_request.head.sha == 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' && github.run_attempt == 1 }}
     permissions:
       contents: read
       actions: read
