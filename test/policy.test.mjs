@@ -301,7 +301,10 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(revision.run, /printf 'sha=%s\\n' "\$EXPECTED_MERGE_SHA"/);
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
-  assert.match(workflow, /report:\n[\s\S]*?permissions:\n      contents: read\n      pull-requests: write/);
+  assert.deepEqual(parsed.jobs.report.permissions, { contents: 'read', actions: 'read', 'pull-requests': 'write' },
+    'only the protected reporter gains exact job-log readback alongside its existing report permissions');
+  assert.deepEqual(parsed.jobs.review.permissions, { contents: 'read' },
+    'the model reviewer keeps its read-only token without report/log-read capabilities');
   const reportJob = workflow.match(/  report:\n([\s\S]*?)\n  accept:/)?.[1];
   const reviewJob = workflow.match(/  review:\n([\s\S]*?)\n  block-review-record:/)?.[1];
   assert.ok(reportJob);

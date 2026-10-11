@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { assertSameMultiAuthorityProvenance, validateMultiAuthorityDecision,
   validateMultiAuthorityProvenance } from './multi-authority-provenance.mjs';
 
+import { expectedOf, requireSelfPassContext } from './ci-review/codex-pass-publication.mts';
+import { retrievePassDisplay } from './github/codex-pass-log.mts';
+
 export const COMMENT_MARKER = '<!-- architecture-gatekeeper:result:v1 -->';
 const OWNER_INTERVENTION_URL = 'https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/owner-intervention.md';
 const MAX_ITEM_LENGTH = 2_000;
@@ -611,10 +614,34 @@ export async function upsertPullRequestComment({ fetchImpl = fetch, apiUrl, repo
   return { status: existing ? 'updated' : 'created' };
 }
 
+/** Ordinary self PASS only; never use masked display as governance evidence. */
+export async function loadCodexPassReport(env, fetchImpl = fetch) {
+  const raw = classifyReview({ mode: env.MODE, policyResult: env.POLICY_RESULT,
+    reviewResult: env.REVIEW_RESULT, rawDecision: env.DECISION || '' });
+  const hasMetadata = Boolean(env.CODEX_PASS_CONCLUSION || env.CODEX_PASS_DIGEST || env.CODEX_PASS_NONCE);
+  const selected = env.CODEX_PASS_SELECTED === 'true' || hasMetadata ||
+    env.CODEX_PASS_ELIGIBLE === 'true' && raw.conclusion === 'PASS';
+  if (!selected) return null;
+  if (env.CODEX_PASS_ELIGIBLE !== 'true' || env.MODE !== 'enforced' || env.POLICY_RESULT !== 'success' ||
+      env.REVIEW_RESULT !== 'success' || env.CODEX_PASS_KIND !== 'PASS' || env.GITHUB_EVENT_NAME !== 'pull_request_target' ||
+      env.BASE_BRANCH !== 'main') throw new Error('Selected protected Codex PASS reporting context is incomplete.');
+  const expected = expectedOf({ repository:env.GITHUB_REPOSITORY, runId:env.GITHUB_RUN_ID, runAttempt:env.GITHUB_RUN_ATTEMPT,
+    eventSha:env.GITHUB_SHA, callerWorkflowSha:env.GITHUB_WORKFLOW_SHA, callerWorkflowRef:env.GITHUB_WORKFLOW_REF,
+    workflowRepository:env.GATEKEEPER_WORKFLOW_REPOSITORY, workflowSha:env.GATEKEEPER_WORKFLOW_SHA,
+    workflowRef:env.GATEKEEPER_WORKFLOW_REF, baseSha:env.BASE_SHA, headSha:env.HEAD_SHA, reviewedSha:env.REVIEWED_SHA,
+    nonce:env.CODEX_PASS_NONCE, conclusion:env.CODEX_PASS_CONCLUSION, decisionDigest:env.CODEX_PASS_DIGEST });
+  const { nonce, conclusion, decisionDigest, ...context } = expected;
+  requireSelfPassContext(context);
+  const decision = await retrievePassDisplay(expected,env.GITHUB_TOKEN,fetchImpl);
+  return { decision, decisionDigest:expected.decisionDigest };
+}
+
 async function main() {
+  const passReport = await loadCodexPassReport(process.env);
+  const reportDecision = passReport ? JSON.stringify(passReport.decision) : process.env.DECISION || '';
   const ordinary = classifyReview({
     mode: process.env.MODE, policyResult: process.env.POLICY_RESULT,
-    reviewResult: process.env.REVIEW_RESULT, rawDecision: process.env.DECISION || '',
+    reviewResult: process.env.REVIEW_RESULT, rawDecision: reportDecision,
   });
   const requiresAdditionProcedure = ordinary.conclusion === 'OWNER_DECISION' &&
     process.env.OWNER_ADDITION_SELECTED === 'true' && process.env.OWNER_ADDITION_RESULT === 'success' &&
@@ -633,7 +660,7 @@ async function main() {
     mode: process.env.MODE,
     policyResult: process.env.POLICY_RESULT,
     reviewResult: process.env.REVIEW_RESULT,
-    rawDecision: process.env.DECISION || '',
+    rawDecision: reportDecision,
     ownerAdditionSelected: process.env.OWNER_ADDITION_SELECTED === 'true',
     ownerAdditionResult: process.env.OWNER_ADDITION_RESULT,
     ownerAdditionEligibility: process.env.OWNER_ADDITION_ELIGIBILITY,
@@ -689,8 +716,9 @@ async function main() {
     legacyAuthorityProvenance,
     ownerAdditionProcedure,
     inlineDelivery,
+    decisionDigest: passReport?.decisionDigest,
   });
-  const decisionDigest = digestDecision(classified.decision);
+  const decisionDigest = passReport?.decisionDigest || digestDecision(classified.decision);
   if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, report);
   if (process.env.REPORT_PATH) await writeFile(process.env.REPORT_PATH, report);
   try {
