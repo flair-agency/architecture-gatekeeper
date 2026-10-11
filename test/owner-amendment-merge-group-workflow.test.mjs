@@ -53,7 +53,7 @@ test('missing-tag merge-group route selects fresh exact-tuple ordinary PASS veri
   assert.match(attempts, /successful pre-queue semantic eligibility signer result but no protected amendment tag/);
   assert.match(script, /selectRoute\('ordinary', selection\)/);
   assert.match(script, /fresh ordinary review of the exact current base\/B tuple/);
-  const ordinary = readFileSync(new URL('../src/owner-amendment-merge-group-ordinary-review.mjs', import.meta.url), 'utf8');
+  const ordinary = readFileSync(new URL('../dist/owner-amendment/owner-amendment-merge-group-ordinary-review.mjs', import.meta.url), 'utf8');
   assert.match(ordinary, /prepareOwnerAmendmentMergeGroupOrdinaryReview/);
   assert.match(ordinary, /validateOwnerAmendmentMergeGroupOrdinaryDecision/);
   assert.match(ordinary, /decision\.decision !== 'PASS'/);
