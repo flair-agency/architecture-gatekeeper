@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prepareReviewContext } from '../dist/prepare-review-context.mjs';
+import { prepareSelectedReviewReferences } from '../dist/prepare-selected-review-references.mjs';
 
 const git = (root, ...args) => execFileSync('git', ['--no-replace-objects', ...args], { cwd: root, encoding: 'utf8', env: {
   ...process.env, GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 'test@example.com',
@@ -93,6 +94,31 @@ test('appends exact base-to-reviewed-merge context across divergent history', t 
   const changedContextResult = prepareReviewContext({ ...context.input, outputPath: changedContextOutputPath,
     repository: 'example/other-consumer' });
   assert.notEqual(changedContextResult.expandedPromptSha256, result.expandedPromptSha256);
+});
+
+test('selected references reach the emitted ordinary prompt that the workflow hands to Codex', async t => {
+  const context = makeReview(t);
+  process.env.RUNNER_TEMP = context.runnerTemp;
+  t.after(() => { delete process.env.RUNNER_TEMP; });
+  const limits = { maxManifestBytes: 16384, maxMembers: 4, maxFileBytes: 1024, maxTotalBytes: 2048, maxPromptBytes: 8192 };
+  const bodyA = Buffer.from('# A Skill\nSelected A body.\n');
+  const bodyB = Buffer.from('# B Skill\nSelected B body.\n');
+  const referenceManifest = Buffer.from(JSON.stringify({ version: 1, maxReferenceBytes: 1024, maxTotalBytes: 2048,
+    references: ['vendor/a/SKILL.md', 'vendor/b/SKILL.md'] }));
+  const preparedReferences = await prepareSelectedReviewReferences({ manifestBytes: referenceManifest,
+    authorityLimitsBase64: Buffer.from(JSON.stringify(limits)).toString('base64'), parentBaseSha: context.input.baseSha,
+    gitlinks: [
+      { path: 'vendor/a', repository: 'public/a', revision: 'a'.repeat(40) },
+      { path: 'vendor/b', repository: 'public/b', revision: 'b'.repeat(40) },
+    ], readSnapshot: async ({ repository, revision, path }) => ({ repository, resolvedCommit: revision, path,
+      type: 'file', content: repository === 'public/a' ? bodyA : bodyB }) });
+  writeFileSync(context.promptPath, `Protected reviewer instructions.\n\n${preparedReferences.promptContext}\n`);
+  const result = prepareReviewContext(context.input);
+  const finalPrompt = readFileSync(context.outputPath, 'utf8');
+  assert.ok(finalPrompt.includes('Selected A body.'));
+  assert.ok(finalPrompt.includes('Selected B body.'));
+  assert.match(finalPrompt, /parent base [a-f0-9]{40}/);
+  assert.ok(result.finalPromptBytes <= result.maxPromptBytes);
 });
 
 test('protected CLI derives its prompt and output from runner-temp fixed names', t => {

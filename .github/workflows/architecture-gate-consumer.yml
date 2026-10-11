@@ -15,6 +15,9 @@ on:
       validation-path:
         type: string
         default: ''
+      review-reference-manifest-path:
+        type: string
+        default: ''
       protected-review-instructions:
         type: boolean
         default: false
@@ -54,6 +57,7 @@ jobs:
       execution_settings_base64: ${{ steps.resolve.outputs.executionSettingsBase64 }}
       codex_args: ${{ steps.resolve.outputs.codexArgs }}
       authority_manifest_path: ${{ steps.resolve.outputs.authorityManifestPath }}
+      review_reference_manifest_path: ${{ steps.resolve.outputs.reviewReferenceManifestPath }}
       authority_limits_base64: ${{ steps.resolve.outputs.authorityLimitsBase64 }}
       authority_profile: ${{ steps.resolve.outputs.authorityProfile }}
       owner_addition_version: ${{ steps.resolve.outputs.ownerAdditionVersion }}
@@ -281,6 +285,14 @@ jobs:
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" prepare
+      - name: Verify supplemental reference selection matches protected-base policy
+        if: needs.policy.outputs.review_reference_manifest_path != '' || inputs.review-reference-manifest-path != ''
+        env:
+          POLICY_REFERENCE_MANIFEST_PATH: ${{ needs.policy.outputs.review_reference_manifest_path }}
+          CALLER_REFERENCE_MANIFEST_PATH: ${{ inputs.review-reference-manifest-path }}
+        run: |
+          test -n "$POLICY_REFERENCE_MANIFEST_PATH"
+          test "$CALLER_REFERENCE_MANIFEST_PATH" = "$POLICY_REFERENCE_MANIFEST_PATH"
       - name: Materialize protected Authority Set before review
         if: needs.policy.outputs.authority_manifest_path != ''
         id: authority
@@ -293,6 +305,8 @@ jobs:
           AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
           OWNER_AUTHORITY_ID: ${{ needs.policy.outputs.owner_addition_authority_id }}
           OWNER_AUTHORITY_PATH: ${{ needs.policy.outputs.owner_addition_authority_path }}
+          REVIEW_REFERENCE_MANIFEST_PATH: ${{ needs.policy.outputs.review_reference_manifest_path }}
+          CALLER_REVIEW_REFERENCE_MANIFEST_PATH: ${{ inputs.review-reference-manifest-path }}
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: |
           umask 077
@@ -310,9 +324,21 @@ jobs:
             --profile "$AUTHORITY_PROFILE" \
             "${PROFILE_ARGS[@]}" \
             --output-dir "$RUNNER_TEMP/architecture-gate-authority-set"
-          cat "$RUNNER_TEMP/architecture-gate-prompt.md" \
-            "$RUNNER_TEMP/architecture-gate-authority-set/authority-prompt.md" \
-            > "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
+          if test -n "$REVIEW_REFERENCE_MANIFEST_PATH"; then
+            test "$CALLER_REVIEW_REFERENCE_MANIFEST_PATH" = "$REVIEW_REFERENCE_MANIFEST_PATH"
+            node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-selected-review-references.mjs"
+          else
+            test -z "$CALLER_REVIEW_REFERENCE_MANIFEST_PATH"
+          fi
+          if test -n "$REVIEW_REFERENCE_MANIFEST_PATH"; then
+            cat "$RUNNER_TEMP/architecture-gate-prompt.md" \
+              "$RUNNER_TEMP/architecture-gate-authority-set/authority-prompt.md" \
+              "$RUNNER_TEMP/architecture-gate-selected-references.md" > "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
+          else
+            cat "$RUNNER_TEMP/architecture-gate-prompt.md" \
+              "$RUNNER_TEMP/architecture-gate-authority-set/authority-prompt.md" \
+              > "$RUNNER_TEMP/architecture-gate-complete-prompt.md"
+          fi
           echo "provenance=$(base64 -w0 "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json")" >> "$GITHUB_OUTPUT"
       - name: Detect candidate changes to the selected Authority Set
         if: needs.policy.outputs.mode == 'procedural'

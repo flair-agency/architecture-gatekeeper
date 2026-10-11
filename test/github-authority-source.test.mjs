@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { createGitHubAuthoritySource } from '../dist/github-authority-source.mjs';
+import { createGitHubAuthoritySource, createGitHubPublicAuthoritySource } from '../dist/github-authority-source.mjs';
 
 const repository = 'flair-agency/private-authority';
 const revision = 'a'.repeat(40);
@@ -56,6 +56,7 @@ test('fetches a private pinned regular file through exact Git objects', async ()
 });
 
 test('fails closed on missing or rejected private credentials', async () => {
+  assert.throws(() => createGitHubAuthoritySource({}), /could not be verified/);
   assert.throws(() => createGitHubAuthoritySource({ token: '' }), /could not be verified/);
   const routes = fixture();
   routes.set(root, new Response('{}', { status: 401 }));
@@ -63,6 +64,24 @@ test('fails closed on missing or rejected private credentials', async () => {
   await assert.rejects(createGitHubAuthoritySource({ token: 'private-test-token', fetchImpl: async () => {
     throw new Error('secret network detail');
   } })(args), error => !error.message.includes('secret network detail'));
+});
+
+test('anonymous source reads require a public repository and send no Authorization header', async () => {
+  const routes = fixture();
+  routes.set(root, { full_name: repository, private: false });
+  const calls = [];
+  const result = await createGitHubPublicAuthoritySource({ fetchImpl: async (url, options) => {
+    calls.push({ url, options });
+    const value = routes.get(url);
+    return new Response(JSON.stringify(value), { status: 200, headers: { 'content-type': 'application/json' } });
+  } })(args);
+  assert.deepEqual(result.content, content);
+  assert.ok(calls.every(call => !Object.hasOwn(call.options.headers, 'Authorization')));
+  const privateRoutes = fixture();
+  await assert.rejects(createGitHubPublicAuthoritySource({ fetchImpl: async url => {
+    const value = privateRoutes.get(url);
+    return new Response(JSON.stringify(value), { status: 200, headers: { 'content-type': 'application/json' } });
+  } })(args), /could not be verified/);
 });
 
 test('rejects redirects, repository substitution and commit substitution', async () => {
