@@ -58,7 +58,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'gemini-cli/gemini-cli-proxy-session.mjs',
     'gemini-cli/gemini-cli-session.mjs',
     'gemini-cli/prepared-gemini-ci-review.mjs',
-    'reviewer-transports/codex-transport.mjs');
+    'reviewer-transports/codex-transport.mjs',
+    'reviewer-transports/local-reviewer-execution.mjs',
+    'runner-paths/runner-temp-path.mjs');
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -203,6 +205,13 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   }
   writeFileSync(join(flatRoot, 'dist/codex-transport.mjs'),
     readFileSync(join(flatRoot, 'dist/reviewer-transports/codex-transport.mjs'), 'utf8'));
+  writeFileSync(join(flatRoot, 'dist/local-reviewer-execution.mjs'),
+    readFileSync(join(flatRoot, 'dist/reviewer-transports/local-reviewer-execution.mjs'), 'utf8')
+      .replace("from '../gemini-transport.mjs'", "from './gemini-transport.mjs'"));
+  writeFileSync(join(flatRoot, 'dist/runner-temp-path.mjs'),
+    readFileSync(join(flatRoot, 'dist/runner-paths/runner-temp-path.mjs'), 'utf8')
+      .replace(/from '\.\.\//g, "from './"));
+  rmSync(join(flatRoot, 'dist/runner-paths'), { recursive: true });
   rmSync(join(flatRoot, 'dist/reviewer-transports'), { recursive: true });
   rmSync(join(flatRoot, 'dist/gemini-cli'), { recursive: true });
   rmSync(join(flatRoot, 'dist/review-contract'), { recursive: true });
@@ -220,6 +229,11 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
   rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
+  const flatCodexTransport = await import(pathToFileURL(join(flatRoot, 'dist/codex-transport.mjs')).href);
+  const flatLocalReviewer = await import(pathToFileURL(join(flatRoot, 'dist/local-reviewer-execution.mjs')).href);
+  assert.equal(typeof flatCodexTransport.runCodexReviewer, 'function');
+  assert.equal(typeof flatLocalReviewer.executeLocalReviewerSync, 'function');
+  assert.equal(typeof flatLocalReviewer.executeLocalReviewer, 'function');
   const flatRuntime = await import(pathToFileURL(join(flatRoot, 'dist/preview-lifecycle.mjs')).href);
   const flatRequest = await flatRuntime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
   const expectedFlatPaths = readdirSync(join(flatRoot, 'dist')).filter(file => file.endsWith('.mjs')).sort();

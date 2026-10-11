@@ -231,10 +231,22 @@ mandatory model-specific thinking controls. Parsed Codex output remains unknown.
 Flat exports, read-only invocation, validation, proxy scope and cleanup preserve
 their original operations. The parent proxy composes the typed session directly.
 
+The local-review and runner-path slice types local reviewer composition and
+fixed runner temporary paths. The native CLI remains at its original flat
+`.mjs` implementation and is outside this typed migration. Required async
+deadlines, synchronous versus awaited callbacks and complete envelope fields
+have explicit contracts. External decisions, JSON and manifest readbacks remain
+unknown; exact byte reads return Buffer and successful paths return strings.
+Native CLI guards and operations, runtime default adapters,
+deadline/cancellation, closed path tables and GitHub output checks retain their
+original operations.
+The approved runner environment accessor remains at its original model path.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-The Gemini CLI candidate has 72 of the original 96 modules typed and
-24 remaining. This internal-adapter candidate has 75 typed and 21 remaining.
+The internal-adapter candidate has 75 of the original 96 modules typed and
+21 remaining. This local-review/runner-path candidate has 77 `.mts` modules;
+19 original modules remain outside the typed migration.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
@@ -249,7 +261,7 @@ and emitted static module references and targets across both source extensions.
 `npm run check:typescript` runs `tsc --noEmit --project tsconfig.json`.
 `npm run build` clears ignored `dist/` and runs the same project compiler to
 emit `.mjs`. The `allowJs` and `checkJs: false` settings include JavaScript in
-the build while strict type checking applies to `.mts`. Keep established flat
+the build; `.mjs` files opt into strict checking with `// @ts-check`. Keep established flat
 `src/*.mjs` facades and package aliases and
 bins; their runtime targets are in `dist/`. Source-location-sensitive modules
 such as preview lifecycle retain their flat emitted path. Audit `import.meta.url`,
