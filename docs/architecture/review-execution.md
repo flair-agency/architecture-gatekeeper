@@ -380,6 +380,47 @@ Before activation, explicitly select and verify the remaining deployment setting
 and obtain authenticated route evidence for quality, cost, latency and decision
 consistency; determinism is not promised.
 
+#### Target bounded default-branch ordinary Gemini caller deployment (owner decision, 2026-10-12)
+
+The owner authorizes placing the existing caller on the default development
+branch, currently `main`, for one session on PR #517. The selected proposal
+targets `feature/gemini-ci`, with head `c4b0057d9dd47f79df2a896143f7ac6db5da2c2e`,
+protected base `43e9a28571ad0508a425220256a18d6b140525b2`, and reviewed merge
+`20cc0c1a58ee8263898a56c8df34472bd14ea173`. The reusable workflow remains
+pinned to `7dc99525b4ff1510f1de310f6f5b877ab05bbfd2`. Existing event, classifier,
+PR/head and attempt selectors do not bind the base or merge; the coordinator
+must read back that exact context before the authorized session.
+
+This does not select Gemini for PRs targeting `main` or another branch, or
+import FEATURE authority into the default-branch canonical Set. The caller
+continues to resolve its protected feature policy
+(`.codex/gatekeeper/gemini-verification-policy.json`), prompt, schema,
+decision-validation files and complete six-member Authority Set from the
+consumer target. This deployment makes the existing reusable credentialed job
+reachable for that selection under its existing execution boundary.
+
+The owner confirms the configured WIF provider, service account and target
+repository binding match the intended selection. This is not independent
+Google Cloud readback, proof of authentication for the new session, or
+host-protection evidence. Existing [Gemini WIF authentication](#target-gemini-ci-authentication-selection-issue-252-owner-decision-2026-10-04)
+and [credential-isolated proxy](#target-multi-provider-credential-isolated-review-proxy-boundary-issue-252-owner-decision-2026-10-02)
+clauses govern the trusted CI OIDC exchange; the credential-isolated
+launcher/proxy uses the resulting provider credential.
+
+Approval covers one operator-admitted workflow session, not a second session,
+workflow rerun, repeated-ready re-admission or provider fallback. Calls and
+internal retries within that session remain subject to existing caps and
+deadlines. The guard is not durable one-use control: another ready event can
+create an attempt-1 run at this head. The coordinator must admit the exact
+PR, target branch, head, protected base and reviewed merge tuple once, then
+stop after the approved session.
+
+This record does not adopt itself. Canonical adoption and protected
+transition/readback must follow previously selected owner-amendment governance
+before deployment. It grants no semantic or merge-acceptance authority, changes
+no validation or acceptance requirements, and does not reclassify the preserved
+protected `BLOCK` or activate a broader route.
+
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
 The GitHub-specific step-output adapter treats `GITHUB_OUTPUT` as a trusted
