@@ -4,7 +4,7 @@ import type { CodexReviewRequest } from './codex-transport.mts';
 export type LocalReviewerResult = { decision: unknown; execution: unknown };
 export type LocalReviewerEnvelope = { decision: unknown; execution: unknown };
 type ThenMember<Result> = Result extends { then?: infer Then } ? Then : never;
-type CallableThen = (...args: never[]) => unknown;
+type CallableThen = Function | (abstract new (...args: never[]) => unknown);
 type LocalReviewerSyncRequestFor<Request extends ReviewRequest> = Request extends ReviewRequest
   ? Omit<Request, 'reviewer'> & { reviewer: Omit<ReviewReviewerSettings, 'provider'> & { provider?: 'codex' } }
   : never;

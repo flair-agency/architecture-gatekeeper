@@ -105,6 +105,8 @@ void [syncResult, unknownSyncResult, pending, rawDecision, canonicalSyncResult, 
 groupedSync(codexRequest, { reviewer: () => ({ then: false, decision: external }) });
 groupedSync(codexRequest, { reviewer: () => ({ then: 'text', decision: external }) });
 groupedSync(codexRequest, { reviewer: () => ({ then: false, decision: external, execution: external }), reviewerResultFormat: 'envelope' });
+groupedSync(codexRequest, { reviewer: () => ({ then: { observation: external }, decision: external }) });
+groupedSync(codexRequest, { reviewer: () => ({ then: external, decision: external }) });
 declare const task: Parameters<typeof createReviewRequest>[0];
 executeLocalReviewer(createReviewRequest(task));
 executeLocalReviewer(await createReviewRequestAsync(task));

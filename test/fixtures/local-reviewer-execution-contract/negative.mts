@@ -96,3 +96,18 @@ executeLocalReviewerSync(codexRequest, { reviewer: optionalCallableThen });
 declare const mixedOptionalThen: (request: LocalReviewerSyncRequest) => { decision: unknown; then?: (() => void) | string };
 // @ts-expect-error A union containing a callable then member can still be asynchronous.
 executeLocalReviewerSync(codexRequest, { reviewer: mixedOptionalThen });
+declare const broadFunctionThen: (request: LocalReviewerSyncRequest) => { then: Function };
+// @ts-expect-error Broad Function results include values the runtime recognizes as callable.
+executeLocalReviewerSync(codexRequest, { reviewer: broadFunctionThen });
+declare const optionalBroadFunctionThen: (request: LocalReviewerSyncRequest) => { then?: Function };
+// @ts-expect-error An optional broad Function member can still be present at runtime.
+executeLocalReviewerSync(codexRequest, { reviewer: optionalBroadFunctionThen });
+declare const mixedBroadFunctionThen: (request: LocalReviewerSyncRequest) => { then?: Function | string };
+// @ts-expect-error A mixed union with broad Function can still be callable.
+executeLocalReviewerSync(codexRequest, { reviewer: mixedBroadFunctionThen });
+declare const callableFunctionThen: (request: LocalReviewerSyncRequest) => { then: CallableFunction };
+// @ts-expect-error CallableFunction is a known thenable return shape.
+executeLocalReviewerSync(codexRequest, { reviewer: callableFunctionThen });
+declare const constructFunctionThen: (request: LocalReviewerSyncRequest) => { then: abstract new () => unknown };
+// @ts-expect-error A class constructor has runtime typeof "function" and is rejected by the existing then check.
+executeLocalReviewerSync(codexRequest, { reviewer: constructFunctionThen });
