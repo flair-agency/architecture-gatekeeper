@@ -3,7 +3,8 @@
 This is implementation evidence for Issue #329, not canonical authority, a new
 acceptance route, or proof of hosted enforcement. The implementation starts
 from main's protected Codex workflow and the diagnosis-only #527 change.
-PR #522 remains on hold. No paid review is part of this development work.
+PR #522 remains on hold. Local tests and the synthetic fixture make no provider
+requests; required protected CI reviews remain separate.
 
 ## Boundary and compatibility
 
@@ -78,3 +79,29 @@ Architecture Gate acceptance. Hosted synthetic runner masking/readback remains
 a separate coordinator-owned proof; local tests simulate masking and API data.
 Independent integrated/architecture review, full/package/CodeQL verification
 and protected-source adoption remain separate before any usable-route claim.
+## Execution SHA versus REST PR association SHA
+
+Independent public API readback for [#528 run 38157015446](https://api.github.com/repos/flair-agency/architecture-gatekeeper/actions/runs/38157015446)
+and its [attempt-1 jobs](https://api.github.com/repos/flair-agency/architecture-gatekeeper/actions/runs/38157015446/attempts/1/jobs)
+shows `run.head_sha` and every job's `head_sha` equal the PR head
+`5ddb96f276adbbbe6ff67163acc993e561979cc7`. The attached PR base and resolved
+reusable workflow SHA are `e22d46867f21980b978b5cd75c279f7a4f2aa1da`.
+The earlier [#527 run 38155954885](https://api.github.com/repos/flair-agency/architecture-gatekeeper/actions/runs/38155954885)
+and its [attempt-1 jobs](https://api.github.com/repos/flair-agency/architecture-gatekeeper/actions/runs/38155954885/attempts/1/jobs)
+similarly report PR head `0561795154b91c211c18be1b87bed62013f943b5`, while the
+referenced reusable workflow resolves to `bb7c6078766e2d63cbcaf91e8eab72a7bd46a83f`.
+
+For `pull_request_target`, execution `GITHUB_SHA` is the default-branch commit
+([GitHub event documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target));
+that execution identity is distinct from these REST PR association fields.
+The producer retains both identities. Retrieval correctly compares REST run/job
+`head_sha` with `expected.headSha`, while checking resolved producer workflow
+SHA separately. Changing either comparison to `expected.eventSha` would reject
+these observed legitimate identities.
+
+The regression uses the observed #528 API identity fields with a **synthetic**
+successful publication step and validated PASS frame. It accepts the observed
+PR-head binding and separately rejects substituting the base SHA in either the
+run or job. It does not reclassify the historical protected BLOCK, establish an
+actual model-backed PASS, or replace the required fresh-head review/acceptance.
+No production comparison, authority, consumer or G0 guard changes accompany it.

@@ -232,3 +232,40 @@ test('bounded log streams reject declared/actual oversize and malformed UTF-8 be
   }))) : h.fetchImpl(url,init)));
   assert.equal(canceled,true);
 });
+
+// Identity fields independently read from the public run/attempt-job APIs for
+// #528. Only the PASS step/frame below is synthetic: the historic run was BLOCK.
+test('observed pull_request_target API identities bind PR head, separately from execution base',async()=>{
+  const base='e22d46867f21980b978b5cd75c279f7a4f2aa1da';
+  const head='5ddb96f276adbbbe6ff67163acc993e561979cc7';
+  const observedRun={id:38157015446,event:'pull_request_target',run_attempt:1,
+    repository:{full_name:repository},head_sha:head,path:'.github/workflows/self-architecture-gate.yml',
+    pull_requests:[{number:528,base:{sha:base},head:{sha:head}}],
+    referenced_workflows:[{path:`${repository}/.github/workflows/architecture-gate.yml@${base}`,sha:base,ref:'refs/heads/main'}]};
+  const observedJob={id:114522052692,run_id:38157015446,run_attempt:1,head_sha:head,name:'architecture-gate / review'};
+  const actualIdentityContext={...context,runId:String(observedRun.id),runAttempt:'1',
+    eventSha:base,baseSha:base,headSha:head,callerWorkflowSha:base,workflowSha:base,
+    workflowRef:`${repository}/.github/workflows/architecture-gate.yml@refs/heads/main`};
+  // reviewedSha and the validated decision/publication are synthetic, not a
+  // claim about the historic reviewed merge or its protected BLOCK conclusion.
+  const p=validateCodexPass(input(decision(),{context:actualIdentityContext}));
+  assert.notEqual(p.expected.eventSha,p.expected.headSha);
+  assert.equal(p.expected.workflowSha,observedRun.pull_requests[0].base.sha);
+  async function retrieve(mutate=()=>{}) {
+    const run=structuredClone(observedRun);
+    const job={...observedJob,status:'completed',conclusion:'success',
+      steps:[{name:CODEX_PASS_STEP,status:'completed',conclusion:'success'}]};
+    mutate(run,job);
+    const fetchImpl=async(url)=>{
+      const path=new URL(url).pathname;
+      if(path===`/repos/${repository}/actions/runs/38157015446/attempts/1`)return Response.json(run);
+      if(path===`/repos/${repository}/actions/runs/38157015446/attempts/1/jobs`)return Response.json({total_count:1,jobs:[job]});
+      assert.equal(path,`/repos/${repository}/actions/jobs/114522052692/logs`);
+      return new Response(frame(p));
+    };
+    return retrievePassDisplay(p.expected,'synthetic-token',fetchImpl);
+  }
+  assert.equal((await retrieve()).decision,'PASS');
+  await assert.rejects(retrieve(run=>{run.head_sha=base}));
+  await assert.rejects(retrieve((_run,job)=>{job.head_sha=base}));
+});
