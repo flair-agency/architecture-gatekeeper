@@ -102,6 +102,12 @@ targets are not activated consumer routes. This repository's self-only workflow
 settings do not establish consumer support or acceptance. See the [caller
 authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
 
+For ordinary policy-selected consumer reviews with a protected Authority Set,
+the prompt also carries the executing reusable-workflow identity, Git tree,
+blob and content digest, plus its relocated checkout path. This is availability
+evidence; the unchanged consumer prompt and authority still govern review, and
+a different or missing candidate pin does not qualify this source.
+
 An enforced v4 consumer policy may optionally select a protected-base
 `reviewReferenceManifestPath` containing up to two exact `<gitlink>/SKILL.md`
 paths. The reusable workflow requires its optional

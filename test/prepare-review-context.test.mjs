@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -61,6 +61,22 @@ function makeReview(t, { maliciousDiffConfig = false, submoduleIgnoreAll = false
   return { root, runnerTemp, input, promptPath, outputPath };
 }
 
+function makeExecutionSource(context, content = 'name: Architecture gate consumer\n# immutable workflow fixture\n', { symlink = false } = {}) {
+  const root = mkdtempSync(join(context.runnerTemp, 'relocated-workflow-source-'));
+  mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
+  writeFileSync(join(root, '.gitignore'), readFileSync(new URL('../.gitignore', import.meta.url)));
+  const workflowPath = join(root, '.github', 'workflows', 'architecture-gate-consumer.yml');
+  if (symlink) {
+    writeFileSync(join(root, 'workflow-target.yml'), content);
+    symlinkSync('../../../workflow-target.yml', workflowPath);
+  } else writeFileSync(workflowPath, content);
+  git(root, 'init', '-q');
+  git(root, 'config', 'core.autocrlf', 'false');
+  git(root, 'add', '.');
+  git(root, 'commit', '-qm', 'immutable workflow fixture');
+  return { root, sha: git(root, 'rev-parse', 'HEAD') };
+}
+
 test('appends exact base-to-reviewed-merge context across divergent history', t => {
   const context = makeReview(t);
   process.env.RUNNER_TEMP = context.runnerTemp;
@@ -69,6 +85,7 @@ test('appends exact base-to-reviewed-merge context across divergent history', t 
   const prompt = readFileSync(context.outputPath, 'utf8');
   const data = JSON.parse(prompt.slice(prompt.indexOf('{', prompt.indexOf('untrusted candidate data'))));
   assert.match(prompt, /^Protected reviewer instructions\./);
+  assert.doesNotMatch(prompt, /Executing consumer workflow source/);
   assert.equal(data.repository, 'example/consumer');
   assert.equal(data.baseSha, context.input.baseSha);
   assert.equal(data.headSha, context.input.headSha);
@@ -94,6 +111,119 @@ test('appends exact base-to-reviewed-merge context across divergent history', t 
   const changedContextResult = prepareReviewContext({ ...context.input, outputPath: changedContextOutputPath,
     repository: 'example/other-consumer' });
   assert.notEqual(changedContextResult.expandedPromptSha256, result.expandedPromptSha256);
+});
+
+test('accepts the relocated runtime after normal ignored dist and node_modules builds', t => {
+  const context = makeReview(t);
+  process.env.RUNNER_TEMP = context.runnerTemp;
+  t.after(() => { delete process.env.RUNNER_TEMP; });
+  const workflow = readFileSync(new URL('../.github/workflows/architecture-gate-consumer.yml', import.meta.url), 'utf8');
+  const source = makeExecutionSource(context, workflow);
+  mkdirSync(join(source.root, 'dist'), { recursive: true });
+  writeFileSync(join(source.root, 'dist', 'prepare-review-context.mjs'), 'generated build output\n');
+  mkdirSync(join(source.root, 'node_modules', 'example-package'), { recursive: true });
+  writeFileSync(join(source.root, 'node_modules', 'example-package', 'package.json'), '{}\n');
+  const limits = { maxManifestBytes: 16384, maxMembers: 32, maxFileBytes: 131072,
+    maxTotalBytes: 524288, maxPromptBytes: 1048576 };
+  const result = prepareReviewContext({ ...context.input,
+    authorityLimitsBase64: Buffer.from(JSON.stringify(limits)).toString('base64'),
+    executionSourceEnabled: 'true',
+    executionSourceRepository: 'flair-agency/architecture-gatekeeper', executionSourceSha: source.sha,
+    executionSourcePath: '.github/workflows/architecture-gate-consumer.yml', executionSourceRoot: source.root });
+  const prompt = readFileSync(context.outputPath, 'utf8');
+  const heading = '## Executing consumer workflow source (non-Authority evidence)';
+  const sourceJson = JSON.parse(prompt.slice(prompt.indexOf('{', prompt.indexOf(heading))));
+  assert.equal(sourceJson.contentSha256, createHash('sha256').update(workflow).digest('hex'));
+  assert.equal(sourceJson.byteSize, Buffer.byteLength(workflow));
+  assert.equal(sourceJson.workflowSha, source.sha);
+  assert.equal(sourceJson.contentUtf8, undefined);
+  assert.equal(readFileSync(join(sourceJson.readOnlyRoot, '.github/workflows/architecture-gate-consumer.yml'), 'utf8'), workflow);
+  assert.ok(result.finalPromptBytes <= result.maxPromptBytes);
+});
+
+test('attaches the exact actual reusable workflow Git identity within existing prompt limits', t => {
+  const context = makeReview(t);
+  process.env.RUNNER_TEMP = context.runnerTemp;
+  t.after(() => { delete process.env.RUNNER_TEMP; });
+  const workflow = readFileSync(new URL('../.github/workflows/architecture-gate-consumer.yml', import.meta.url), 'utf8');
+  const source = makeExecutionSource(context, workflow);
+  const limits = { maxManifestBytes: 16384, maxMembers: 32, maxFileBytes: 131072,
+    maxTotalBytes: 524288, maxPromptBytes: 1048576 };
+  const input = { ...context.input, authorityLimitsBase64: Buffer.from(JSON.stringify(limits)).toString('base64'),
+    executionSourceEnabled: 'true', executionSourceRepository: 'flair-agency/architecture-gatekeeper',
+    executionSourceSha: source.sha, executionSourcePath: '.github/workflows/architecture-gate-consumer.yml',
+    executionSourceRoot: source.root };
+  const result = prepareReviewContext(input);
+  const prompt = readFileSync(context.outputPath, 'utf8');
+  const heading = '## Executing consumer workflow source (non-Authority evidence)';
+  const sourceJson = JSON.parse(prompt.slice(prompt.indexOf('{', prompt.indexOf(heading))));
+  assert.equal(sourceJson.workflowSha, source.sha);
+  assert.equal(sourceJson.workflowPath, '.github/workflows/architecture-gate-consumer.yml');
+  assert.equal(sourceJson.tree, git(source.root, 'rev-parse', 'HEAD^{tree}'));
+  assert.equal(sourceJson.blob, git(source.root, 'rev-parse', `${source.sha}:.github/workflows/architecture-gate-consumer.yml`));
+  assert.equal(sourceJson.byteSize, Buffer.byteLength(workflow));
+  assert.equal(sourceJson.contentSha256, createHash('sha256').update(workflow).digest('hex'));
+  assert.equal(sourceJson.contentUtf8, undefined);
+  assert.equal(Buffer.byteLength(workflow), readFileSync(join(source.root, '.github/workflows/architecture-gate-consumer.yml')).length);
+  assert.ok(result.finalPromptBytes <= limits.maxPromptBytes);
+});
+
+test('attaches the immutable executing consumer workflow as non-Authority evidence', t => {
+  const context = makeReview(t);
+  process.env.RUNNER_TEMP = context.runnerTemp;
+  t.after(() => { delete process.env.RUNNER_TEMP; });
+  const workflow = 'name: Architecture gate consumer\n# exact source bytes\n';
+  const source = makeExecutionSource(context, workflow);
+  const result = prepareReviewContext({ ...context.input, executionSourceEnabled: 'true',
+    executionSourceRepository: 'flair-agency/architecture-gatekeeper', executionSourceSha: source.sha,
+    executionSourcePath: '.github/workflows/architecture-gate-consumer.yml', executionSourceRoot: source.root });
+  const prompt = readFileSync(context.outputPath, 'utf8');
+  const heading = '## Executing consumer workflow source (non-Authority evidence)';
+  assert.ok(prompt.includes(heading));
+  assert.ok(prompt.includes('availabilityOnly'));
+  assert.ok(prompt.includes(source.root));
+  const sourceJson = JSON.parse(prompt.slice(prompt.indexOf('{', prompt.indexOf(heading))));
+  assert.equal(sourceJson.contentUtf8, undefined);
+  assert.equal(sourceJson.contentSha256, createHash('sha256').update(workflow).digest('hex'));
+  assert.equal(sourceJson.byteSize, Buffer.byteLength(workflow));
+  assert.ok(prompt.includes('same repository, workflow SHA, and fixed workflow path'));
+  assert.equal(result.finalPromptBytes, Buffer.byteLength(prompt));
+  assert.ok(result.finalPromptBytes <= result.maxPromptBytes);
+  assert.equal(readFileSync(join(source.root, '.github/workflows/architecture-gate-consumer.yml'), 'utf8'), workflow,
+    'the relocated read-only inspection pointer resolves to the same source file');
+  assert.doesNotMatch(prompt, /name: Architecture gate consumer\n# exact source bytes/,
+    'the prompt carries identity and digest without implementation bytes');
+});
+
+test('rejects mismatched execution identity, candidate-workspace source, binary source and source overflow', t => {
+  const context = makeReview(t);
+  process.env.RUNNER_TEMP = context.runnerTemp;
+  t.after(() => { delete process.env.RUNNER_TEMP; });
+  const source = makeExecutionSource(context);
+  const input = { ...context.input, executionSourceEnabled: 'true',
+    executionSourceRepository: 'flair-agency/architecture-gatekeeper', executionSourceSha: source.sha,
+    executionSourcePath: '.github/workflows/architecture-gate-consumer.yml', executionSourceRoot: source.root };
+  assert.throws(() => prepareReviewContext({ ...input, outputPath: join(context.runnerTemp, 'missing-source.md'),
+    executionSourceRoot: '' }), /identity or protected review route is missing or invalid/);
+  assert.throws(() => prepareReviewContext({ ...input, outputPath: join(context.runnerTemp, 'missing-identity.md'),
+    executionSourceRepository: '' }), /identity or protected review route is missing or invalid/);
+  assert.throws(() => prepareReviewContext({ ...input, outputPath: join(context.runnerTemp, 'wrong-sha.md'),
+    executionSourceSha: 'a'.repeat(40) }), /HEAD does not equal the trusted workflow SHA/);
+  assert.throws(() => prepareReviewContext({ ...input, outputPath: join(context.runnerTemp, 'consumer-workspace.md'),
+    executionSourceRoot: context.root }), /must be a relocated checkout under runner temp/);
+  const binary = makeExecutionSource(context, Buffer.from([0x61, 0x00, 0x62]));
+  assert.throws(() => prepareReviewContext({ ...input, outputPath: join(context.runnerTemp, 'binary.md'),
+    executionSourceSha: binary.sha, executionSourceRoot: binary.root }), /binary or has an invalid size/);
+  const symlink = makeExecutionSource(context, 'linked workflow bytes\n', { symlink: true });
+  assert.throws(() => prepareReviewContext({ ...input, outputPath: join(context.runnerTemp, 'symlink.md'),
+    executionSourceSha: symlink.sha, executionSourceRoot: symlink.root }), /regular Git blob at the fixed path/);
+  const dirty = makeExecutionSource(context);
+  writeFileSync(join(dirty.root, '.github/workflows/architecture-gate-consumer.yml'), 'changed after relocation\n');
+  assert.throws(() => prepareReviewContext({ ...input, outputPath: join(context.runnerTemp, 'dirty-tree.md'),
+    executionSourceSha: dirty.sha, executionSourceRoot: dirty.root }), /checkout is not clean/);
+  const tooLarge = makeExecutionSource(context, 'x'.repeat(2049));
+  assert.throws(() => prepareReviewContext({ ...input, outputPath: join(context.runnerTemp, 'overflow.md'),
+    executionSourceSha: tooLarge.sha, executionSourceRoot: tooLarge.root }), /exceeds the selected per-file limit/);
 });
 
 test('selected references reach the emitted ordinary prompt that the workflow hands to Codex', async t => {
@@ -123,24 +253,31 @@ test('selected references reach the emitted ordinary prompt that the workflow ha
 
 test('protected CLI derives its prompt and output from runner-temp fixed names', t => {
   const context = makeReview(t);
+  const source = makeExecutionSource(context);
+  cpSync(fileURLToPath(new URL('../dist', import.meta.url)), join(source.root, 'dist'), { recursive: true });
   const protectedPromptPath = join(context.runnerTemp, 'architecture-gate-complete-prompt.md');
   const attackerPromptPath = join(context.runnerTemp, 'attacker-selected-prompt.md');
   const attackerOutputPath = join(context.root, 'attacker-selected-output.md');
   const finalPromptPath = join(context.runnerTemp, 'architecture-gate-review-prompt.md');
   writeFileSync(protectedPromptPath, 'Protected fixed-name prompt.');
   writeFileSync(attackerPromptPath, 'Attacker-selected prompt.');
-  const output = execFileSync(process.execPath, [fileURLToPath(new URL('../dist/prepare-review-context.mjs', import.meta.url))], {
+  const output = execFileSync(process.execPath, [join(source.root, 'dist/prepare-review-context.mjs')], {
     encoding: 'utf8', env: { ...process.env, GITHUB_WORKSPACE: context.root, RUNNER_TEMP: context.runnerTemp,
       GITHUB_REPOSITORY: context.input.repository, BASE_SHA: context.input.baseSha,
       HEAD_SHA: context.input.headSha, REVIEWED_SHA: context.input.reviewedSha,
       AUTHORITY_ROUTE_SELECTED: 'true', AUTHORITY_LIMITS_BASE64: context.input.authorityLimitsBase64,
       AUTHORITY_PROFILE: 'v1', POLICY_VERSION: '', PROMPT_PATH: attackerPromptPath,
+      EXECUTION_SOURCE_ENABLED: 'true', EXECUTION_SOURCE_REPOSITORY: 'flair-agency/architecture-gatekeeper',
+      EXECUTION_SOURCE_SHA: source.sha, EXECUTION_SOURCE_PATH: '.github/workflows/architecture-gate-consumer.yml',
       OUTPUT_PATH: attackerOutputPath },
   });
   const prompt = readFileSync(finalPromptPath, 'utf8');
   assert.equal(JSON.parse(output).changedPaths, 2);
   assert.match(prompt, /^Protected fixed-name prompt\./);
   assert.doesNotMatch(prompt, /Attacker-selected prompt/);
+  const sourceHeading = '## Executing consumer workflow source (non-Authority evidence)';
+  const sourceJson = JSON.parse(prompt.slice(prompt.indexOf('{', prompt.indexOf(sourceHeading))));
+  assert.equal(sourceJson.workflowSha, source.sha);
   assert.equal(existsSync(attackerOutputPath), false);
 });
 

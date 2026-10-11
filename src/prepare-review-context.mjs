@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { isAbsolute, join } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { realpathSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { prepareReviewContext } from './review-inputs/prepare-review-context.mts';
@@ -24,7 +24,12 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
       repository: process.env.GITHUB_REPOSITORY, promptPath: join(runnerTemp, promptName),
       outputPath: join(runnerTemp, 'architecture-gate-review-prompt.md'), authorityRouteSelected,
       authorityLimitsBase64: process.env.AUTHORITY_LIMITS_BASE64, authorityProfile: process.env.AUTHORITY_PROFILE,
-      policyVersion });
+      policyVersion, executionSourceEnabled: process.env.EXECUTION_SOURCE_ENABLED,
+      executionSourceRepository: process.env.EXECUTION_SOURCE_REPOSITORY,
+      executionSourceSha: process.env.EXECUTION_SOURCE_SHA,
+      executionSourcePath: process.env.EXECUTION_SOURCE_PATH,
+      executionSourceRoot: process.env.EXECUTION_SOURCE_ENABLED === 'true' ?
+        realpathSync(resolve(dirname(fileURLToPath(import.meta.url)), '..')) : undefined });
     process.stdout.write(`${JSON.stringify(result)}\n`);
   } catch (error) {
     process.stderr.write(`${error.message}\n`);

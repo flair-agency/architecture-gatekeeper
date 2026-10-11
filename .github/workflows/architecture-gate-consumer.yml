@@ -358,6 +358,10 @@ jobs:
           AUTHORITY_LIMITS_BASE64: ${{ needs.policy.outputs.authority_limits_base64 }}
           AUTHORITY_PROFILE: ${{ needs.policy.outputs.authority_profile || 'v1' }}
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
+          EXECUTION_SOURCE_ENABLED: ${{ needs.policy.outputs.execution_selection == 'policy' && needs.policy.outputs.authority_manifest_path != '' }}
+          EXECUTION_SOURCE_REPOSITORY: ${{ needs.policy.outputs.execution_selection == 'policy' && needs.policy.outputs.authority_manifest_path != '' && job.workflow_repository || '' }}
+          EXECUTION_SOURCE_SHA: ${{ needs.policy.outputs.execution_selection == 'policy' && needs.policy.outputs.authority_manifest_path != '' && job.workflow_sha || '' }}
+          EXECUTION_SOURCE_PATH: ${{ needs.policy.outputs.execution_selection == 'policy' && needs.policy.outputs.authority_manifest_path != '' && '.github/workflows/architecture-gate-consumer.yml' || '' }}
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-review-context.mjs"
       - name: Check protected Authority Set schema and complete prompt
