@@ -55,23 +55,57 @@ test('preserves all supported Vertex endpoint location identifiers', async () =>
   }
 });
 
-test('accepts valid WIF ID boundaries and rejects malformed or reserved identifiers before exchange', async () => {
-  const provider = (pool, id) => `projects/123456789012/locations/global/workloadIdentityPools/${pool}/providers/${id}`;
-  for (const [pool, id] of [['1-ci-pool', '2-provider'], ['1234', '5678'], ['a'.repeat(32), '9'.repeat(32)]]) {
+test('serializes bounded provider text to fixed endpoints and leaves naming decisions to STS', async () => {
+  const providers = ['1-ci-pool', 'gcp-reserved', 'a'.repeat(33), 'pool_name', 'UPPER', 'with.dot',
+    'projects/999999999999999999999999/locations/global/workloadIdentityPools/./providers/..',
+    'https://attacker.example/path?x=1#fragment', `?/#%"quoted"\u0027`];
+  for (const selected of providers) {
     const f = fetchSequence();
-    const selected = provider(pool, id);
     await acquireGitHubVertexWifCredential({ ...input, workloadIdentityProvider: selected }, f.fetch);
     assert.equal(f.calls.length, 3);
+    assert.equal(f.calls[0].url.startsWith('https://pipelines.actions.githubusercontent.com/fixture/idtoken?'), true);
+    assert.equal(f.calls[1].url, 'https://sts.googleapis.com/v1/token');
+    assert.equal(f.calls[2].url, `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(input.serviceAccount)}:generateAccessToken`);
     assert.equal(new URL(f.calls[0].url).searchParams.get('audience'), `https://iam.googleapis.com/${selected}`);
     assert.equal(JSON.parse(f.calls[1].init.body).audience, `//iam.googleapis.com/${selected}`);
   }
-  for (const invalid of ['abc', 'a'.repeat(33), 'Aabc', 'a_bc', 'a/../b', 'gcp-reserved']) {
-    for (const selected of [provider(invalid, 'valid'), provider('valid', invalid)]) {
-      let sends = 0;
-      await assert.rejects(acquireGitHubVertexWifCredential({ ...input, workloadIdentityProvider: selected }, async () => { sends++; }), /failed at input/);
-      assert.equal(sends, 0);
-    }
+});
+
+test('matches auth Action edge trimming for bounded provider and service-account inputs', async () => {
+  const f = fetchSequence();
+  const result = await acquireGitHubVertexWifCredential({ ...input,
+    workloadIdentityProvider: ` \t${input.workloadIdentityProvider}\n`,
+    serviceAccount: ` \t${input.serviceAccount}\n` }, f.fetch);
+  assert.deepEqual(result, { token: 'final-secret', project: 'sample-project', region: 'us-central1' });
+  assert.match(new URL(f.calls[0].url).searchParams.get('audience'), /projects\/123456789012\//);
+  assert.match(f.calls[2].url, /gemini-ci%40sample-project/);
+  for (const candidate of [
+    { workloadIdentityProvider: ' '.repeat(257) + input.workloadIdentityProvider, serviceAccount: input.serviceAccount },
+    { workloadIdentityProvider: input.workloadIdentityProvider, serviceAccount: ' '.repeat(321) + input.serviceAccount },
+    { workloadIdentityProvider: '', serviceAccount: input.serviceAccount },
+    { workloadIdentityProvider: ' \t\n', serviceAccount: input.serviceAccount },
+    { workloadIdentityProvider: 'provider value', serviceAccount: input.serviceAccount },
+    { workloadIdentityProvider: 'provider\nvalue', serviceAccount: input.serviceAccount },
+    { workloadIdentityProvider: 'provider\u007fvalue', serviceAccount: input.serviceAccount },
+  ]) {
+    let sends = 0;
+    await assert.rejects(acquireGitHubVertexWifCredential({ ...input, ...candidate }, async () => { sends++; }), /failed at input/);
+    assert.equal(sends, 0);
   }
+});
+
+test('Google STS rejection stops after the exchange with a sanitized failure', async () => {
+  const calls = [];
+  const error = await acquireGitHubVertexWifCredential({ ...input,
+    workloadIdentityProvider: 'https://attacker.example/?audience=fixture' }, async (url, init) => {
+    calls.push({ url: String(url), init });
+    if (calls.length === 1) return jsonResponse({ value: 'github-assertion-secret' });
+    return jsonResponse({ error: 'invalid_target: provider does not exist' }, 400);
+  }).then(() => null, failure => failure);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].url, 'https://sts.googleapis.com/v1/token');
+  assert.match(error.message, /sts_exchange/);
+  assert.doesNotMatch(error.message, /invalid_target|attacker|github-assertion-secret/);
 });
 
 test('rejects invalid exact input records before sending', async () => {
@@ -82,7 +116,6 @@ test('rejects invalid exact input records before sending', async () => {
     { ...input, oidcRequestUrl: 'https://evilactions.githubusercontent.com/token' },
     { ...input, oidcRequestUrl: 'https://trusted.actions.githubusercontent.com/' },
     { ...input, oidcRequestUrl: 'https://user@pipelines.actions.githubusercontent.com/token' },
-    { ...input, workloadIdentityProvider: 'https://attacker.example/provider' },
     { ...input, serviceAccount: 'attacker@example.com' } ];
   for (const candidate of invalid) {
     let sends = 0;

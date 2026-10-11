@@ -1,11 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { fetchOrdinaryGeminiReviewedObject } from '../dist/ordinary-gemini-ci-workflow.mjs';
+import { fetchOrdinaryGeminiReviewedObject, normalizeOrdinaryGeminiWifInputs } from '../dist/ordinary-gemini-ci-workflow.mjs';
 
 const sha = character => character.repeat(40);
 const sourceToken = 'fixture-github-source-read-token';
 const input = { root: '/runner/work/repository', repository: 'flair-agency/architecture-gatekeeper',
   reviewedSha: sha('a'), sourceToken };
+
+test('trims WIF inputs before deriving the project from the service account', () => {
+  assert.deepEqual(normalizeOrdinaryGeminiWifInputs(
+    ' \tprojects/123456789012/locations/global/workloadIdentityPools/gcp-pool/providers/Upper.Name\n',
+    ' \tgemini-ci@sample-project.iam.gserviceaccount.com\n'), {
+    provider: 'projects/123456789012/locations/global/workloadIdentityPools/gcp-pool/providers/Upper.Name',
+    serviceAccount: 'gemini-ci@sample-project.iam.gserviceaccount.com', project: 'sample-project',
+  });
+  for (const [provider, account] of [
+    [' '.repeat(257) + 'provider', 'gemini-ci@sample-project.iam.gserviceaccount.com'],
+    ['provider', ' '.repeat(321) + 'gemini-ci@sample-project.iam.gserviceaccount.com'],
+  ]) assert.throws(() => normalizeOrdinaryGeminiWifInputs(provider, account));
+});
 
 test('fetches only the exact reviewed commit through child-only, masked Git credentials', () => {
   const calls = [];

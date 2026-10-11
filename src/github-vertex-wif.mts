@@ -12,6 +12,8 @@ const ACCESS_TOKEN_TYPE = 'urn:ietf:params:oauth:token-type:access_token';
 const JWT_TYPE = 'urn:ietf:params:oauth:token-type:jwt';
 const MAX_RESPONSE_BYTES = 65_536;
 const TOTAL_TIMEOUT_MS = 60_000;
+const MAX_PROVIDER_BYTES = 256;
+const MAX_SERVICE_ACCOUNT_BYTES = 320;
 
 /** Trusted parent hook; must return undefined synchronously before credential use. */
 export type WifSecretRegistrar = (secret: string) => void;
@@ -31,6 +33,11 @@ type Wait = <T>(promise: T | PromiseLike<T>) => Promise<T>;
 
 function fail(stage: string): never { throw new Error(`GitHub Vertex WIF failed at ${stage}.`); }
 
+function edgeTrimmedInput(value: unknown, maximumBytes: number): string | null {
+  if (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') > maximumBytes) return null;
+  return value.trim();
+}
+
 function record(value: unknown, keys: Set<string>): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value) || types.isProxy(value)) return null;
   try {
@@ -47,13 +54,13 @@ function record(value: unknown, keys: Set<string>): Record<string, unknown> | nu
 function validBindings(input: unknown): ValidatedBindings {
   const config = record(input, INPUT_KEYS);
   if (!config || Object.keys(config).length !== INPUT_KEYS.size) fail('input');
-  const provider = config.workloadIdentityProvider;
-  const account = config.serviceAccount;
+  const provider = edgeTrimmedInput(config.workloadIdentityProvider, MAX_PROVIDER_BYTES);
+  const account = edgeTrimmedInput(config.serviceAccount, MAX_SERVICE_ACCOUNT_BYTES);
   const project = config.project;
   const region = config.region;
   const token = config.oidcRequestToken;
-  if (typeof provider !== 'string' || !/^projects\/[1-9][0-9]{4,19}\/locations\/global\/workloadIdentityPools\/(?!gcp-)[a-z0-9-]{4,32}\/providers\/(?!gcp-)[a-z0-9-]{4,32}$/.test(provider) ||
-      typeof account !== 'string' || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$/.test(account) ||
+  if (provider === null || !provider || /[\u0000-\u0020\u007f]/.test(provider) ||
+      account === null || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$/.test(account) ||
       typeof project !== 'string' || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(project) ||
       typeof region !== 'string' || !(region === 'global' || region === 'us' || region === 'eu' || /^[a-z]+-[a-z0-9]+[0-9]$/.test(region)) ||
       typeof token !== 'string' || token.length < 1 || token.length > 8192 || /[\u0000-\u0020\u007f]/.test(token)) fail('input');

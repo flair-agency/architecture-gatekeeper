@@ -12,6 +12,18 @@ const RELATIVE_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
 function fail(): never { throw new Error('Protected ordinary Gemini CI did not complete.'); }
 function env(name: string): string { const value = process.env[name]; if (typeof value !== 'string' || !value) fail(); return value; }
 
+export function normalizeOrdinaryGeminiWifInputs(providerRaw: string, serviceAccountRaw: string): {
+  provider: string; serviceAccount: string; project: string;
+} {
+  if (typeof providerRaw !== 'string' || typeof serviceAccountRaw !== 'string' ||
+      Buffer.byteLength(providerRaw, 'utf8') > 256 || Buffer.byteLength(serviceAccountRaw, 'utf8') > 320) fail();
+  const provider = providerRaw.trim();
+  const serviceAccount = serviceAccountRaw.trim();
+  const projectMatch = /@([a-z][a-z0-9-]{4,28}[a-z0-9])\.iam\.gserviceaccount\.com$/.exec(serviceAccount);
+  if (!provider || !projectMatch) fail();
+  return { provider, serviceAccount, project: projectMatch[1] };
+}
+
 function maskCommand(value: string): string {
   if (!value || /[\u0000\u007f]/.test(value) || value.length > 16_384) fail();
   return `::add-mask::${value.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A')}\n`;
@@ -100,12 +112,10 @@ export async function runOrdinaryGeminiCiWorkflow(): Promise<void> {
       !root.startsWith('/') || !runnerTemp.startsWith('/') || root === runnerTemp) fail();
 
   const sourceToken = env('GATEKEEPER_SOURCE_READ_TOKEN');
-  const provider = env('GCP_WIF_PROVIDER');
-  const serviceAccount = env('GCP_WIF_SERVICE_ACCOUNT');
+  const { provider, serviceAccount, project } = normalizeOrdinaryGeminiWifInputs(
+    env('GCP_WIF_PROVIDER'), env('GCP_WIF_SERVICE_ACCOUNT'));
   const oidcRequestUrl = env('ACTIONS_ID_TOKEN_REQUEST_URL');
   const oidcRequestToken = env('ACTIONS_ID_TOKEN_REQUEST_TOKEN');
-  const projectMatch = /@([a-z][a-z0-9-]{4,28}[a-z0-9])\.iam\.gserviceaccount\.com$/.exec(serviceAccount);
-  if (!projectMatch) fail();
   const registerSecret = (secret: string): void => { process.stdout.write(maskCommand(secret)); };
   // Register the source capability before it can be used to prepare protected input.
   registerSecret(sourceToken);
@@ -117,7 +127,7 @@ export async function runOrdinaryGeminiCiWorkflow(): Promise<void> {
     host: { root, repository, baseBranch, baseSha, headSha, reviewedSha, runId, runAttempt, workflowRef,
       policyPath, promptPath, schemaPath, validationPath },
     runtime: { directory: runtimeDirectory }, sourceToken,
-    wif: { workloadIdentityProvider: provider, serviceAccount, project: projectMatch[1], region: 'global',
+    wif: { workloadIdentityProvider: provider, serviceAccount, project, region: 'global',
       oidcRequestUrl, oidcRequestToken },
   }, globalThis.fetch, registerSecret) as {
     context: { repository: string; runId: string; runAttempt: string; workflowRef: string };
