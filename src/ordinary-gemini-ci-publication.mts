@@ -204,12 +204,23 @@ export async function retrieveOrdinaryGeminiPublication(input: {
     const reusableWorkflowPath = reusableReference.slice(0, referenceAt);
     const reusableRef = reusableReference.slice(referenceAt + 1);
     if (!reusableWorkflowPath.startsWith('.github/workflows/') || reusableWorkflowPath.includes('@')) fail();
-    const expectedReferencedPath = `${tuple.workflowRepository}/${reusableWorkflowPath}@${tuple.workflowSha}`;
+    // GitHub normally preserves the selected uses: ref in `path`. For a
+    // same-repository local call, it can instead report the resolved SHA in
+    // `path` and preserve the selected branch/tag in `ref`.
+    const selectedReferencedPath = `${tuple.workflowRepository}/${reusableWorkflowPath}@${reusableRef}`;
+    const selectedShortRef = reusableRef.startsWith('refs/heads/') ? reusableRef.slice('refs/heads/'.length)
+      : reusableRef.startsWith('refs/tags/') ? reusableRef.slice('refs/tags/'.length) : null;
+    const shortReferencedPath = selectedShortRef === null ? null
+      : `${tuple.workflowRepository}/${reusableWorkflowPath}@${selectedShortRef}`;
+    const resolvedReferencedPath = `${tuple.workflowRepository}/${reusableWorkflowPath}@${tuple.workflowSha}`;
     const reusable = run.referenced_workflows.filter((item: unknown) => {
-      if (!own(item) || item.path !== expectedReferencedPath || item.sha !== tuple.workflowSha) return false;
-      if (Object.hasOwn(item, 'ref')) {
-        if (item.ref !== reusableRef) return false;
-      } else if (reusableRef !== tuple.workflowSha) return false;
+      if (!own(item) || item.sha !== tuple.workflowSha) return false;
+      const selectedPath = item.path === selectedReferencedPath ||
+        (shortReferencedPath !== null && item.path === shortReferencedPath);
+      const resolvedShaPath = item.path === resolvedReferencedPath;
+      if (!selectedPath && !resolvedShaPath) return false;
+      if (Object.hasOwn(item, 'ref') && item.ref !== reusableRef) return false;
+      if (resolvedShaPath && reusableRef !== tuple.workflowSha && (!Object.hasOwn(item, 'ref') || item.ref !== reusableRef)) return false;
       if (!Object.hasOwn(item, 'repository')) return true;
       return own(item.repository) && item.repository.full_name === tuple.workflowRepository;
     });

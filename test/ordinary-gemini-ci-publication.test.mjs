@@ -95,7 +95,7 @@ function referencedWorkflow(value, overrides = {}) {
   const at = reference.indexOf('@');
   const path = reference.slice(0, at);
   const ref = reference.slice(at + 1);
-  return { path: `${value.workflowRepository}/${path}@${value.workflowSha}`, ref, sha: value.workflowSha, ...overrides };
+  return { path: `${value.workflowRepository}/${path}@${ref}`, ref, sha: value.workflowSha, ...overrides };
 }
 function maskedLog(projection) {
   const lines = [];
@@ -196,7 +196,7 @@ test('fetch selects one completed attributed job, verifies the protected tuple, 
   assert.equal(requests[3].options.headers.authorization, undefined, 'signed log host receives no GitHub credential');
 });
 
-test('fetch accepts SHA-pinned reusable workflow metadata when GitHub omits ref', async t => {
+test('fetch accepts SHA-pinned reusable workflow metadata when GitHub omits the separate ref field', async t => {
   const pinned = { ...context(), workflowRef: `flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-consumer.yml@${sha('c')}` };
   const value = createOrdinaryGeminiPublication({ context: pinned, decision: decision('PASS'), authorityProvenance: provenance,
     policyVersion: '6', mode: 'enforced', policyResult: 'success', reviewResult: 'success', conclusion: 'PASS',
@@ -225,6 +225,27 @@ test('fetch accepts SHA-pinned reusable workflow metadata when GitHub omits ref'
   assert.equal(fetched.report.validatedConclusion, 'PASS');
 });
 
+test('fetch rejects null referenced workflow paths for a SHA-pinned selection', async t => {
+  const pinned = { ...context(), workflowRef: `flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-consumer.yml@${sha('c')}` };
+  const projection = createOrdinaryGeminiPublication({ context: pinned, decision: decision('PASS'), authorityProvenance: provenance,
+    policyVersion: '6', mode: 'enforced', policyResult: 'success', reviewResult: 'success', conclusion: 'PASS',
+    decisionDigest: digestDecision(decision('PASS')) });
+  const tuple = expected(projection);
+  const parent = mkdtempSync(join(tmpdir(), 'ordinary-gemini-null-path-'));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  const temp = join(parent, 'runner-temp'); const { mkdirSync } = await import('node:fs'); mkdirSync(temp, { mode: 0o700 });
+  setRunnerTemp(t, temp);
+  const outputPath = join(temp, `agk-ordinary-gemini-report-${tuple.runId}-${tuple.runAttempt}.json`);
+  const run = { id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: tuple.headSha,
+    path: '.github/workflows/architecture-gate.yml', repository: { full_name: tuple.repository },
+    referenced_workflows: [{ path: null, sha: tuple.workflowSha }] };
+  const requests = [];
+  const fakeFetch = async url => { requests.push(String(url)); return Response.json(run); };
+  await assert.rejects(retrieveOrdinaryGeminiPublication({ apiToken: 'fixture', expected: tuple, outputPath, fetchImpl: fakeFetch }));
+  assert.equal(requests.length, 1, 'malformed referenced workflow metadata is rejected before fetching jobs');
+  assert.equal(statSync(outputPath, { throwIfNoEntry: false }), undefined);
+});
+
 test('run.path accepts plain and ref-qualified REST forms only for the protected caller workflow ref', async t => {
   const parent = mkdtempSync(join(tmpdir(), 'ordinary-gemini-caller-path-'));
   t.after(() => rmSync(parent, { recursive: true, force: true }));
@@ -242,7 +263,9 @@ test('run.path accepts plain and ref-qualified REST forms only for the protected
     { kind: 'branch-at-full', callerRef: 'refs/heads/release@next', path: '.github/workflows/architecture-gate.yml@refs/heads/release@next' },
     { kind: 'branch-at-wrong', callerRef: 'refs/heads/release@next', path: '.github/workflows/architecture-gate.yml@release@other', reject: true },
     { kind: 'tag-at-short', callerRef: 'refs/tags/release@next', path: '.github/workflows/architecture-gate.yml@release@next' },
-    { kind: 'reusable-branch-at', reusableRef: 'refs/heads/release@next', path: '.github/workflows/architecture-gate.yml' },
+    { kind: 'reusable-branch-at', reusableRef: 'refs/heads/release@next', referencedPathRef: 'release@next', omitReferencedRef: true, path: '.github/workflows/architecture-gate.yml' },
+    { kind: 'reusable-tag-ref', reusableRef: 'refs/tags/release-v2', referencedPathRef: 'release-v2', omitReferencedRef: true, path: '.github/workflows/architecture-gate.yml' },
+    { kind: 'same-repository-local-call', reusableRef: 'refs/heads/main', resolvedShaPath: true, path: '.github/workflows/architecture-gate.yml' },
     { kind: 'caller-other-repository', repository: 'other/repository', reject: true },
   ];
   for (const [index, scenario] of cases.entries()) {
@@ -257,6 +280,11 @@ test('run.path accepts plain and ref-qualified REST forms only for the protected
     const path = scenario.path ?? '.github/workflows/architecture-gate.yml';
     const run = { id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: tuple.headSha, path,
       repository: { full_name: tuple.repository }, referenced_workflows: [referencedWorkflow(tuple)] };
+    if (scenario.referencedPathRef || scenario.resolvedShaPath) {
+      const reference = run.referenced_workflows[0];
+      reference.path = `${tuple.workflowRepository}/.github/workflows/architecture-gate-consumer.yml@${scenario.resolvedShaPath ? tuple.workflowSha : scenario.referencedPathRef}`;
+      if (scenario.omitReferencedRef) delete reference.ref;
+    }
     const job = { id: 9981, run_id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: tuple.headSha,
       status: 'completed', conclusion: 'success', steps: [{ name: ORDINARY_GEMINI_PUBLICATION_STEP, status: 'completed', conclusion: 'success' }] };
     const log = maskedLog(value);
@@ -292,25 +320,35 @@ test('fetch rejects ambiguous job attribution and wrong run-attempt metadata', a
     referenced_workflows: [referencedWorkflow(tuple)] };
   const baseJob = { id: 9981, run_id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: tuple.headSha,
     status: 'completed', conclusion: 'success', steps: [{ name: ORDINARY_GEMINI_PUBLICATION_STEP, status: 'completed', conclusion: 'success' }] };
-  for (const scenario of ['duplicate', 'wrong-attempt', 'wrong-run-head', 'wrong-job-head', 'missing-branch-ref', 'wrong-repository', 'wrong-ref', 'wrong-sha']) {
+  for (const scenario of ['duplicate', 'wrong-attempt', 'wrong-run-head', 'wrong-job-head', 'wrong-repository', 'wrong-ref', 'wrong-ref-tag-collision', 'wrong-ref-field', 'wrong-sha', 'missing-ref-sha-path', 'wrong-null-path']) {
     const goodReference = referencedWorkflow(tuple);
     const badReference = scenario === 'wrong-repository'
       ? { ...goodReference, path: goodReference.path.replace(tuple.workflowRepository, 'other/repository') }
-      : scenario === 'wrong-ref' ? { ...goodReference, ref: 'refs/heads/attacker' }
-        : { ...goodReference, path: goodReference.path.replace(tuple.workflowSha, sha('9')), sha: sha('9') };
+      : scenario === 'wrong-ref' ? { ...goodReference, path: goodReference.path.replace('refs/heads/main', 'refs/heads/attacker') }
+        : scenario === 'wrong-ref-tag-collision' ? { ...goodReference, path: goodReference.path.replace('@refs/heads/main', '@main'), ref: 'refs/tags/main' }
+          : scenario === 'wrong-ref-field' ? { ...goodReference, ref: 'refs/heads/attacker' }
+            : scenario === 'missing-ref-sha-path' ? { ...goodReference, path: goodReference.path.replace('refs/heads/main', tuple.workflowSha), ref: undefined }
+            : scenario === 'wrong-null-path' ? { ...goodReference, path: null }
+              : { ...goodReference, sha: sha('9') };
+    if (scenario === 'missing-ref-sha-path') delete badReference.ref;
     const runForScenario = scenario === 'wrong-attempt' ? { ...baseRun, run_attempt: 1 }
       : scenario === 'wrong-run-head' ? { ...baseRun, head_sha: tuple.eventSha }
-        : scenario === 'missing-branch-ref' ? { ...baseRun, referenced_workflows: [{ path: goodReference.path, sha: goodReference.sha }] }
-          : scenario.startsWith('wrong-') ? { ...baseRun, referenced_workflows: [badReference] } : baseRun;
+        : (['wrong-repository', 'wrong-ref', 'wrong-ref-tag-collision', 'wrong-ref-field', 'wrong-sha', 'missing-ref-sha-path', 'wrong-null-path'].includes(scenario))
+            ? { ...baseRun, referenced_workflows: [badReference] } : baseRun;
+    const requests = [];
     const fakeFetch = async url => {
       const value = String(url);
+      requests.push(value);
       if (value.endsWith(`/attempts/${tuple.runAttempt}`)) return Response.json(runForScenario);
-      if (value.endsWith(`/attempts/${tuple.runAttempt}/jobs?per_page=100`)) return Response.json({ total_count: 2,
+      if (value.endsWith(`/attempts/${tuple.runAttempt}/jobs?per_page=100`)) return Response.json({ total_count: scenario === 'duplicate' ? 2 : 1,
         jobs: scenario === 'duplicate' ? [baseJob, { ...baseJob, id: 9982 }]
         : scenario === 'wrong-job-head' ? [{ ...baseJob, head_sha: tuple.eventSha }] : [baseJob] });
       throw new Error('unexpected log retrieval after rejected metadata');
     };
     await assert.rejects(retrieveOrdinaryGeminiPublication({ apiToken: 'fixture', expected: tuple, outputPath, fetchImpl: fakeFetch }));
+    assert.equal(requests.length, ['duplicate', 'wrong-job-head'].includes(scenario) ? 2 : 1,
+      `${scenario} is rejected before fetching logs`);
+    assert.equal(statSync(outputPath, { throwIfNoEntry: false }), undefined, `${scenario} writes no projection`);
   }
 });
 
