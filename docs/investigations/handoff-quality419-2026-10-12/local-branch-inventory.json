@@ -1,0 +1,482 @@
+[
+  {
+    "path": "/workspace/pr-ci-composition-after-538",
+    "head": "cd17970917410309ea8debcec8c03b3da2ff1a62",
+    "branch": "codex/quality419-ci-composition-after-538",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "cd17970917410309ea8debcec8c03b3da2ff1a62",
+    "sameAsRemote": true
+  },
+  {
+    "path": "/workspace/pr-github-cli-bridge-after-539",
+    "head": "efeb70d07b884261a82276461649f36b70a159a0",
+    "branch": "codex/quality419-github-cli-bridge-after-539",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "efeb70d07b884261a82276461649f36b70a159a0",
+    "sameAsRemote": true
+  },
+  {
+    "path": "/workspace/pr-legacy-validator-host-proof",
+    "head": "17e3b6768b5173d897a59059a4e9608c53806b04",
+    "branch": "codex/quality419-legacy-validator-host-proof",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "17e3b6768b5173d897a59059a4e9608c53806b04",
+    "sameAsRemote": true
+  },
+  {
+    "path": "/workspace/pr-local-entrypoints-final-main",
+    "head": "bf9fdc5027b6bc9b91be5a6090bd7612b1a64367",
+    "branch": "codex/quality419-local-entrypoints-ready-14e14fc",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "bf9fdc5027b6bc9b91be5a6090bd7612b1a64367",
+    "sameAsRemote": true
+  },
+  {
+    "path": "/workspace/pr-native-bridge-after-orchestration",
+    "head": "9aa613e35984bed025e194a4346fa1ba00e25f03",
+    "branch": "codex/quality419-native-bridge-after-orchestration",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "9aa613e35984bed025e194a4346fa1ba00e25f03",
+    "sameAsRemote": true
+  },
+  {
+    "path": "/workspace/pr-orchestration-after-github",
+    "head": "baa8a2821ef9e30bb4bf0b74e382d49656c40a53",
+    "branch": "codex/quality419-orchestration-after-github",
+    "trackedChanges": [],
+    "untracked": [
+      "verification-logs/"
+    ],
+    "remoteHead": "baa8a2821ef9e30bb4bf0b74e382d49656c40a53",
+    "sameAsRemote": true
+  },
+  {
+    "path": "/workspace/pr-owner-addition-pure-helpers",
+    "head": "4ae58ed7b4dba5175dd1ceffc7c378b86659d094",
+    "branch": "codex/quality419-owner-addition-pure-helpers",
+    "trackedChanges": [],
+    "untracked": [
+      "verification-logs-after-legacy/",
+      "verification-logs/"
+    ],
+    "remoteHead": "4ae58ed7b4dba5175dd1ceffc7c378b86659d094",
+    "sameAsRemote": true
+  },
+  {
+    "path": "/workspace/pr522-union-correlation-fix",
+    "head": "e93a6a00cb3e87547835b76ec0c6484ed2f6be32",
+    "branch": "codex/pr522-union-correlation-fix",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/pr523-main-integration",
+    "head": "6ab5324a6dbcf76412cf6cfdf6eb81ce90d39807",
+    "branch": "codex/pr523-latest-main-integration",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/pr524-bridge-latest-main",
+    "head": "d53a542a06b85b3abff9f806f4fc62c8b696add2",
+    "branch": "codex/pr524-bridge-latest-main",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/pr524-final-main",
+    "head": "053191453d4daa4a939cdab61d6d1830487123cc",
+    "branch": "codex/pr524-final-main",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/pr524-final-provider-main",
+    "head": "5d104ff4f006cbca0456da05ed3f95cef62466d5",
+    "branch": "codex/pr524-final-provider-main",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/pr524-final-sync-main",
+    "head": "edc53119714df88f74bd2656623559fcc18f1f17",
+    "branch": "codex/pr524-final-sync-main",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/pr524-flat-native-check",
+    "head": "e2a5679e51ffa6ded306296a6f08d103de29ec06",
+    "branch": "codex/pr524-flat-native-check",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/pr524-main-integration",
+    "head": "001ae87e502a28f6f58d0a3e9c6d8d585ba475dd",
+    "branch": "codex/pr524-main-integration",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/pr524-provider-callbacks",
+    "head": "d422b20aa58c5acc034271386309934142c7b4f6",
+    "branch": "codex/pr524-provider-callbacks",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/pr524-sync-contract-fix",
+    "head": "68de6737156e83a132729df8c24d693d2a44fd27",
+    "branch": "codex/pr524-sync-contract-fix",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-amendment-core",
+    "head": "9eee9198184b363ed7fea2bdaf82f36b683a082f",
+    "branch": "codex/quality419-amendment-core-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "750d436ef8825083dde68d439212bcd2405a8f19",
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-block-records",
+    "head": "1742dc7aec281204be033b33b7e86c123db72d2b",
+    "branch": "codex/quality419-block-record-bridge-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "e17e5dc5573da08f6a602fd42ebae44a5b142832",
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-ci-acceptance",
+    "head": "285275c7ee2544e2859034c0cd821cb5e18ce976",
+    "branch": "codex/quality419-ci-acceptance-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "be9c43692f99a5b9f79d0c998c07ed69da9086b1",
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-ci-composition-final",
+    "head": "d540c5950bb9190fa7c90dd6bf7c0f3bdfc7de50",
+    "branch": "codex/quality419-ci-composition-final",
+    "trackedChanges": [],
+    "untracked": [
+      "verification-logs/"
+    ],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-ci-report",
+    "head": "322522030a359a5f468f45080a5116f83a952981",
+    "branch": "codex/quality419-ci-report-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-ci-report-integrated",
+    "head": "840955d3286ac148e306bf4609587e3a5c9f41e3",
+    "branch": "codex/quality419-ci-report-integrated",
+    "trackedChanges": [],
+    "untracked": [
+      "verification-logs/"
+    ],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-ci-report-jsdoc-cli",
+    "head": "09a78846acdbbb3b58ba7ca2477bfb721b131329",
+    "branch": "codex/quality419-ci-report-jsdoc-cli",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-ci-report-sink-preserve",
+    "head": "ea86723a04595d76dbc943ec5d7f6f209cc99fb0",
+    "branch": "codex/quality419-ci-report-sink-preserve-prototype",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-decision-handoff",
+    "head": "2ea482f540aec8e2de1599e7327854127db8fe2b",
+    "branch": "codex/quality419-owner-decision-handoff-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "64e093bc33c0dfb6f89e906f9d72be2b1bdd5183",
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-decision-records",
+    "head": "b23d22313ce40e0cfaaa30615d89f3f01ef4a577",
+    "branch": "codex/quality419-owner-decision-record-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "842b7a3e01324a33f1fdc05253350b2ea26efc7c",
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-final-record-types",
+    "head": "9d7cc970cc1c65f9ddb9ed0bc4b709e22cd420c3",
+    "branch": "codex/quality419-final-record-types",
+    "trackedChanges": [],
+    "untracked": [
+      "verification-logs/"
+    ],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-gemini-cli",
+    "head": "80bb1bf40cdaebaf196d71d7565fa3b44d13965c",
+    "branch": "codex/quality419-gemini-cli-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "e839d0f6487a1c6497a4b22b3b34ba9e1278db24",
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-github-cli-bridge-integrated",
+    "head": "aebb410bd83cadd08fd09b626f80f60a6e31ba86",
+    "branch": "codex/quality419-github-cli-bridge-integrated",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-legacy-validator-import-position",
+    "head": "e4f448724d16dce65159b9eda43850562377ade6",
+    "branch": "codex/legacy-validator-import-position",
+    "trackedChanges": [
+      "M scripts/codeql-model-regression.mjs",
+      " M src/prepare-legacy-ci-authority.mjs"
+    ],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-legacy-validator-types",
+    "head": "e4f448724d16dce65159b9eda43850562377ade6",
+    "branch": "codex/quality419-legacy-validator-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-legacy-validator-wrapper-experiment",
+    "head": "e4f448724d16dce65159b9eda43850562377ade6",
+    "branch": "codex/legacy-validator-wrapper-fingerprint",
+    "trackedChanges": [
+      "M scripts/codeql-model-regression.mjs",
+      " M src/prepare-legacy-ci-authority.mjs"
+    ],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-local-entrypoints",
+    "head": "0f8ed7a8a7c8ec8157e08c11664a26db4a7a4418",
+    "branch": "codex/quality419-local-entrypoints-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-local-entrypoints-callable-final",
+    "head": "07420d61031d7e984e745db7274494809200eb36",
+    "branch": "codex/quality419-local-entrypoints-callable-final",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-local-entrypoints-contract-final",
+    "head": "3cd4d61e5d22a9b2b77c4e87b426c8a603c4ee1c",
+    "branch": "codex/quality419-local-entrypoints-contract-final",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-local-entrypoints-final",
+    "head": "1be9d844bde2a604fae842fcdea58868c04d5db4",
+    "branch": "codex/quality419-local-entrypoints-final",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-local-entrypoints-provider-final",
+    "head": "71e4465e4927911ffc7540ad78d79e4ec57605f2",
+    "branch": "codex/quality419-local-entrypoints-provider-final",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-local-review",
+    "head": "38316965c7b8c9451d43a9c80f5e48f3edff84d8",
+    "branch": "codex/quality419-local-review-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "5d104ff4f006cbca0456da05ed3f95cef62466d5",
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-materializer-types",
+    "head": "5ccb0e5a1a7ee2bd18511f813d3bc165f3ea7bef",
+    "branch": "codex/materialize-regular-git-snapshot-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-merge-group-evidence",
+    "head": "c63967cc2ea7cba796a2446f4fe5badbd454fb2e",
+    "branch": "codex/quality419-merge-group-evidence-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "36cb100982094c2a41694b37b1955bf4d4f6a953",
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-native-cli-jsdoc-bridge",
+    "head": "8bae100a5dacd6b91888cbdff7d836406339b12e",
+    "branch": "codex/native-cli-jsdoc-bridge",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-owner-addition-ci-member",
+    "head": "b6b9f03002b178553a1a52d08a49452ae5b63c5a",
+    "branch": "codex/quality419-owner-addition-ci-member",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-owner-addition-multiauthority-types",
+    "head": "b6a177b1c68d7c68a92f44b81be85131142fbc2b",
+    "branch": "codex/quality419-owner-addition-multiauthority-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-owner-addition-zip-types",
+    "head": "42b316b047c47f0f79db074ac8c8fc6c04002bfc",
+    "branch": "codex/quality419-owner-addition-zip-types",
+    "trackedChanges": [],
+    "untracked": [
+      "verification-logs/"
+    ],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-owner-procedure",
+    "head": "45c28c873cf64437aaf02e2903af6bf75b4ab714",
+    "branch": "codex/quality419-owner-procedure-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "2bdb0f56c61243ba19be12f8c16524f7b9c5248d",
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-procedural-route-types",
+    "head": "fe6abb14664cb561456d31e0dd3b8469a983748d",
+    "branch": "codex/quality419-procedural-route-types",
+    "trackedChanges": [],
+    "untracked": [
+      "verification-logs/"
+    ],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-review-adapters",
+    "head": "d0cce651fab0f622ebfa7b2cd2f59e8071b1ec65",
+    "branch": "codex/quality419-review-adapters-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "6ab5324a6dbcf76412cf6cfdf6eb81ce90d39807",
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-ruleset-cli",
+    "head": "8839e7c7692b0a3a9dd8b9274cc12ee9f57f7f0a",
+    "branch": "codex/quality419-ruleset-cli",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-runner-env-types",
+    "head": "018f6b3270e5ac0643775b6f6946a819bdf450e0",
+    "branch": "codex/quality419-runner-env-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": null,
+    "sameAsRemote": false
+  },
+  {
+    "path": "/workspace/quality419-semantic-producer",
+    "head": "6362cb30a8c4671ffaf63a0de238e853826d0b30",
+    "branch": "codex/quality419-semantic-producer-types",
+    "trackedChanges": [],
+    "untracked": [],
+    "remoteHead": "f32c6ec5c74863f862d8cdafd84bfa30188548e4",
+    "sameAsRemote": false
+  }
+]

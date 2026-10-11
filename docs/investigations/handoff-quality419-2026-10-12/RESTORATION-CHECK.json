@@ -1,0 +1,23 @@
+[
+  {
+    "id": "legacy-import-position",
+    "base": "1789221578ebb5cbeb38ffe5479f67f5cc98267b",
+    "patchApplyCheck": "PASS",
+    "restoredBytes": "MATCH",
+    "verifiedFileCount": 2
+  },
+  {
+    "id": "legacy-wrapper-experiment",
+    "base": "1789221578ebb5cbeb38ffe5479f67f5cc98267b",
+    "patchApplyCheck": "PASS",
+    "restoredBytes": "MATCH",
+    "verifiedFileCount": 2
+  },
+  {
+    "id": "ci-report-feasibility",
+    "base": "1789221578ebb5cbeb38ffe5479f67f5cc98267b",
+    "patchApplyCheck": "PASS",
+    "restoredBytes": "MATCH",
+    "verifiedFileCount": 1
+  }
+]

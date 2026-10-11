@@ -1,0 +1,114 @@
+{
+  "format": "agk-development-handoff-v1",
+  "createdAtJst": "2026-10-12",
+  "status": "Paused; inert snapshots only; no production changes or activation",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "remoteDirectory": "docs/investigations/handoff-quality419-2026-10-12",
+  "archiveBranch": "codex/handoff-quality419-2026-10-12",
+  "archiveBase": "1789221578ebb5cbeb38ffe5479f67f5cc98267b",
+  "activePr": 549,
+  "activePrHead": "4ae58ed7b4dba5175dd1ceffc7c378b86659d094",
+  "activePrTree": "2907fb35c41c9fe88850aa1cad68244abb01569d",
+  "snapshots": [
+    {
+      "id": "legacy-import-position",
+      "worktree": "/workspace/quality419-legacy-validator-import-position",
+      "base": "1789221578ebb5cbeb38ffe5479f67f5cc98267b",
+      "originalLocalHead": "e4f448724d16dce65159b9eda43850562377ade6",
+      "paths": [
+        "scripts/codeql-model-regression.mjs",
+        "src/prepare-legacy-ci-authority.mjs"
+      ],
+      "kind": "tracked-rejected-experiment",
+      "patch": "patches/legacy-import-position.patch",
+      "patchSha256": "a8e5851ca93debf3b293a4de6f8d661baa3a534b7673aced3ddf9e65d3270ddd",
+      "files": [
+        {
+          "path": "scripts/codeql-model-regression.mjs",
+          "sha256": "e659746fc04a0cb88e3a0bc45c9a74991a44b366ba82e01c7012920dec216b7e",
+          "bytes": 12352
+        },
+        {
+          "path": "src/prepare-legacy-ci-authority.mjs",
+          "sha256": "115b508055abf3f7dfb149c985cd406bdbdc07ed7d06fc66b7219716617fdf9d",
+          "bytes": 6564
+        }
+      ]
+    },
+    {
+      "id": "legacy-wrapper-experiment",
+      "worktree": "/workspace/quality419-legacy-validator-wrapper-experiment",
+      "base": "1789221578ebb5cbeb38ffe5479f67f5cc98267b",
+      "originalLocalHead": "e4f448724d16dce65159b9eda43850562377ade6",
+      "paths": [
+        "scripts/codeql-model-regression.mjs",
+        "src/prepare-legacy-ci-authority.mjs"
+      ],
+      "kind": "tracked-rejected-experiment",
+      "patch": "patches/legacy-wrapper-experiment.patch",
+      "patchSha256": "df63c7e12dbea4f5d32556985312d9982e94c3e6d3226d94c699a0026c7d6635",
+      "files": [
+        {
+          "path": "scripts/codeql-model-regression.mjs",
+          "sha256": "2d0e3febb18ce3d60e90fbc55a4e972b781541e037ef4edb6ea64b30629e10d7",
+          "bytes": 12352
+        },
+        {
+          "path": "src/prepare-legacy-ci-authority.mjs",
+          "sha256": "245cfa22aaa4bc2e9277e17ff9e4477a867a3122f6f3c36c1cdea5794ebbb7b9",
+          "bytes": 6797
+        }
+      ]
+    },
+    {
+      "id": "ci-report-feasibility",
+      "worktree": "/tmp/ci-report-jsdoc-feasibility-9aa613e3",
+      "base": "1789221578ebb5cbeb38ffe5479f67f5cc98267b",
+      "originalLocalHead": "9aa613e35984bed025e194a4346fa1ba00e25f03",
+      "paths": [
+        "src/ci-report.mjs"
+      ],
+      "kind": "unadopted-feasibility-snapshot",
+      "patch": "patches/ci-report-feasibility.patch",
+      "patchSha256": "523472cae044428acfb030933cab0738ba3ffde114bcd94d363415bfbeee1c44",
+      "files": [
+        {
+          "path": "src/ci-report.mjs",
+          "sha256": "5cbc38475bc960636f6618ad193f3f91b7a8a36625b229eb3a039bedd42b4cf6",
+          "bytes": 7163
+        }
+      ]
+    }
+  ],
+  "restorationVerification": [
+    {
+      "id": "legacy-import-position",
+      "base": "1789221578ebb5cbeb38ffe5479f67f5cc98267b",
+      "patchApplyCheck": "PASS",
+      "restoredBytes": "MATCH",
+      "verifiedFileCount": 2
+    },
+    {
+      "id": "legacy-wrapper-experiment",
+      "base": "1789221578ebb5cbeb38ffe5479f67f5cc98267b",
+      "patchApplyCheck": "PASS",
+      "restoredBytes": "MATCH",
+      "verifiedFileCount": 2
+    },
+    {
+      "id": "ci-report-feasibility",
+      "base": "1789221578ebb5cbeb38ffe5479f67f5cc98267b",
+      "patchApplyCheck": "PASS",
+      "restoredBytes": "MATCH",
+      "verifiedFileCount": 1
+    }
+  ],
+  "privateEvidenceAvailability": "Raw verification logs, CodeQL DB/SARIF and local branch bundle remain in the prior local environment; use public hosted checks or reverify if changing environments.",
+  "privateBundle": {
+    "path": "/workspace/agk-task-artifacts/chat-handoff-2026-10-12/local-quality419-branches.bundle",
+    "branchCount": 33,
+    "bytes": 3186617,
+    "sha256": "ee50d6202065f5be4fe0db286b9a7dedd1c0be239efd85bc59b65357737230fe"
+  },
+  "baseNote": "The original experimental e4 head is local-only. Public restore base is the already merged #548 commit. Patches reproduce only listed file bytes; this does not adopt obsolete experimental model-test coordinates or certify a composed runtime."
+}

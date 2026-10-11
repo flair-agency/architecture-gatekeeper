@@ -1,0 +1,66 @@
+diff --git a/scripts/codeql-model-regression.mjs b/scripts/codeql-model-regression.mjs
+index 79aa479..3013606 100644
+--- a/scripts/codeql-model-regression.mjs
++++ b/scripts/codeql-model-regression.mjs
+@@ -116,20 +116,20 @@ prepareLegacyAuthority({ root: process.argv[2], baseSha: 'a'.repeat(40), headSha
+   const accessorLine = 3;
+   const hasAccessor = (list, callFile, callLine, sinkFile, sinkLine) => threads(list).some(thread =>
+     threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine) && threadHas(thread, callFile, callLine) && threadHas(thread, sinkFile, sinkLine));
+-  assert.ok(hasAccessor(results.false, 'src/materialize-regular-git-snapshot.mjs', 27, 'src/authority-validation/legacy-git-snapshot.mts', 31),
++  assert.ok(hasAccessor(results.false, 'src/materialize-regular-git-snapshot.mjs', 16, 'src/authority-validation/legacy-git-snapshot.mts', 31),
+     'Baseline must trace accessor through materializer into Git snapshot cwd');
+-  assert.ok(hasAccessor(results.false, 'src/prepare-legacy-ci-authority.mjs', 76, 'src/prepare-legacy-ci-authority.mjs', 34),
++  assert.ok(hasAccessor(results.false, 'src/prepare-legacy-ci-authority.mjs', 80, 'src/prepare-legacy-ci-authority.mjs', 13),
+     'Baseline must trace accessor into preparer git diff cwd');
+-  assert.equal(hasAccessor(results.true, 'src/materialize-regular-git-snapshot.mjs', 27, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
++  assert.equal(hasAccessor(results.true, 'src/materialize-regular-git-snapshot.mjs', 16, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
+     'Model must remove materializer accessor flow');
+-  assert.equal(hasAccessor(results.true, 'src/prepare-legacy-ci-authority.mjs', 76, 'src/prepare-legacy-ci-authority.mjs', 34), false,
++  assert.equal(hasAccessor(results.true, 'src/prepare-legacy-ci-authority.mjs', 80, 'src/prepare-legacy-ci-authority.mjs', 13), false,
+     'Model must remove preparer accessor flow to git diff cwd');
+   assert.ok(threads(results.true).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-cli-reader')) &&
+     threadHas(thread, 'src/authority-validation/legacy-git-snapshot.mts', 31)), 'Generic reader CLI root flow must remain');
+   assert.ok(threads(results.true).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli')) &&
+-    threadHas(thread, 'src/prepare-legacy-ci-authority.mjs', 34)), 'Generic preparer CLI root flow to git diff cwd must remain');
++    threadHas(thread, 'src/prepare-legacy-ci-authority.mjs', 13)), 'Generic preparer CLI root flow to git diff cwd must remain');
+   assert.ok(threads(results.true).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli')) &&
+-    threadHas(thread, 'src/prepare-legacy-ci-authority.mjs', 36) && threadHas(thread, 'src/authority-validation/legacy-git-snapshot.mts', 31)),
++    threadHas(thread, 'src/prepare-legacy-ci-authority.mjs', 35) && threadHas(thread, 'src/authority-validation/legacy-git-snapshot.mts', 31)),
+     'Generic preparer CLI root flow to snapshot reader must remain');
+ 
+   assert.equal(threads(results.true).some(thread => threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine)), false,
+@@ -145,7 +145,7 @@ prepareLegacyAuthority({ root: process.argv[2], baseSha: 'a'.repeat(40), headSha
+   }
+   const diffSinkResults = results.true.filter(result => result.locations.some(location =>
+     location.physicalLocation.artifactLocation.uri === 'src/prepare-legacy-ci-authority.mjs' &&
+-    location.physicalLocation.region.startLine === 14));
++    location.physicalLocation.region.startLine === 13));
+   assert.ok(threads(diffSinkResults).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli'))),
+     'Generic preparer CLI root must remain at the actual git diff cwd sink');
+   const workspaceAlerts = list => alerts(list).filter(alert => alert.file === 'workspace-probe.mjs');
+diff --git a/src/prepare-legacy-ci-authority.mjs b/src/prepare-legacy-ci-authority.mjs
+index a5300a8..84ea153 100644
+--- a/src/prepare-legacy-ci-authority.mjs
++++ b/src/prepare-legacy-ci-authority.mjs
+@@ -5,8 +5,7 @@ import { TextDecoder } from 'node:util';
+ import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
+ import { readRegularGitSnapshot } from './legacy-git-snapshot.mjs';
+ import { trustedGitHubWorkspaceRoot } from './github-runner-workspace.mjs';
+-import { validateLegacyAuthorityDecision } from './ci-review/legacy-authority-decision.mts';
+-export { validateLegacyAuthorityDecision };
++import { validateLegacyAuthorityDecision as validateLegacyAuthorityDecisionTyped } from './ci-review/legacy-authority-decision.mts';
+ 
+ const SHA = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
+ const decoder = new TextDecoder('utf-8', { fatal: true });
+@@ -71,6 +70,11 @@ export function prepareLegacyAuthority({ root, baseSha, headSha, reviewedSha, ba
+ }
+ 
+ 
++/** @param {unknown} decisionJson @param {unknown} provenance @returns {unknown} */
++export function validateLegacyAuthorityDecision(decisionJson, provenance) {
++  return validateLegacyAuthorityDecisionTyped(decisionJson, provenance);
++}
++
+   if (process.argv[1]?.endsWith('/prepare-legacy-ci-authority.mjs')) {
+   if (process.argv[2] === 'prepare') {
+     const result = prepareLegacyAuthority({ root: trustedGitHubWorkspaceRoot(), baseSha: process.env.BASE_SHA,

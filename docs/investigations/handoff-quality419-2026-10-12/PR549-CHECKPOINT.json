@@ -1,0 +1,47 @@
+{
+  "pr": 549,
+  "url": "https://github.com/flair-agency/architecture-gatekeeper/pull/549",
+  "draft": true,
+  "head": "4ae58ed7b4dba5175dd1ceffc7c378b86659d094",
+  "tree": "2907fb35c41c9fe88850aa1cad68244abb01569d",
+  "base": "1789221578ebb5cbeb38ffe5479f67f5cc98267b",
+  "worktree": "/workspace/pr-owner-addition-pure-helpers",
+  "branch": "codex/quality419-owner-addition-pure-helpers",
+  "ownedPaths": 13,
+  "verification": {
+    "strict": "pass",
+    "build": "pass",
+    "cycles": "pass",
+    "focused": "66/66 pass",
+    "independentIntegrationReview": "No findings",
+    "offlinePackInstallOfficialSmoke": "pass",
+    "archiveSHA256": "5c280887089b6b93c2b516c0c3fb1952956426204f199b311cf4222a91b2178c",
+    "archiveBytes": 330481,
+    "codeql": "Official 2.27.1, unchanged JS 2.4.6/Actions 0.6.36/models; model regression pass; JS 58 / Actions 0; 596/596 JS/TS +11/11 Actions",
+    "comparisons": "57/58 primary fingerprints and all 58 flows vs d980; only legacy sink mismatch already in merged #548. 58/58 primary/full normalized results/flows vs prior reviewed e4 source scan (not a new exact-base #548 scan).",
+    "evidence": [
+      "/workspace/pr-owner-addition-pure-helpers/verification-logs-after-legacy",
+      "/workspace/agk-task-artifacts/quality419-owner-addition-pure-helpers"
+    ]
+  },
+  "resume": "Read actual #549 head/base/checks; assess hosted full/package/CodeQL. Only after preparation mark Ready, then exact-head Code Review+zero findings+protected accept success before merging. Do not resume without user instruction.",
+  "hostedChecks": {
+    "head": "4ae58ed7b4dba5175dd1ceffc7c378b86659d094",
+    "testPackage": {
+      "job": 114601277682,
+      "conclusion": "success"
+    },
+    "CodeQL": {
+      "check": 114601414909,
+      "conclusion": "success"
+    },
+    "codeqlModel": {
+      "job": 114601277533,
+      "conclusion": "success"
+    },
+    "ArchitectureReview": "skipped while Draft",
+    "accept": "skipped while Draft",
+    "CodeReview": "not run",
+    "unresolvedReviewThreads": 0
+  }
+}
