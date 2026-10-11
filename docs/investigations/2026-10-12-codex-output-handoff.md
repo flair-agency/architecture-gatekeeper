@@ -1,7 +1,7 @@
 # Ordinary self-Codex PASS output handoff
 
 This is implementation evidence for Issue #329, not canonical authority, a new
-acceptance route, or proof of hosted enforcement. The implementation starts
+acceptance route, or general proof of hosted enforcement. The implementation starts
 from main's protected Codex workflow and the diagnosis-only #527 change.
 PR #522 remains on hold. Local tests and the synthetic fixture make no provider
 requests; required protected CI reviews remain separate.
@@ -75,10 +75,10 @@ Risk/invariant → production boundary → retained tests:
 Pure APIs permit exact explicit fixture context for isolated host verification;
 production CLI and reporter separately require the fixed main self caller and
 selected architecture-gate producer. A fixture result is not model review or
-Architecture Gate acceptance. Hosted synthetic runner masking/readback remains
-a separate coordinator-owned proof; local tests simulate masking and API data.
-Independent integrated/architecture review, full/package/CodeQL verification
-and protected-source adoption remain separate before any usable-route claim.
+Architecture Gate acceptance. The completed hosted synthetic observation and
+protected-source adoption are recorded below. A fresh model-backed observation
+using the adopted protected source remains pending.
+
 ## Execution SHA versus REST PR association SHA
 
 Independent public API readback for [#528 run 38157015446](https://api.github.com/repos/flair-agency/architecture-gatekeeper/actions/runs/38157015446)
@@ -105,3 +105,60 @@ PR-head binding and separately rejects substituting the base SHA in either the
 run or job. It does not reclassify the historical protected BLOCK, establish an
 actual model-backed PASS, or replace the required fresh-head review/acceptance.
 No production comparison, authority, consumer or G0 guard changes accompany it.
+
+## Completed observations and adopted source
+
+The isolated [synthetic fixture run 38156807751](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38156807751),
+attempt 1, ran head `5ddb96f276adbbbe6ff67163acc993e561979cc7`, tree
+`043832ef6b5d8f4985946b0be1d4b06f6ef3bd11`. It observed runner masking to
+`***`, exact same producer-job log retrieval, structured reporting with original
+canonical digest `f4233d751314140211663444c5c0b4cc3036a7a0a110e9fae2cac9cf374fedc2`,
+and the selected G0 negative acceptance case. This synthetic fixture used only
+the read-only Actions token for log retrieval, with no provider credentials or
+model call. Its direct-source push context does not prove the
+production self caller/reusable workflow or semantic Architecture Gate acceptance.
+
+Local full verification passed 1,437/1,437 tests on tree `043832ef6b5d8f4985946b0be1d4b06f6ef3bd11`.
+The later hosted suite on candidate head `99254cb` passed 1,438/1,438 in
+255,747.995522 ms; package/install smoke also passed. Hosted CodeQL and model
+regression checks were green. These checks retain their own source identities;
+package checks do not establish live workflow behavior, and green CodeQL does
+not mean findings are absent. The retained local comparison had JavaScript
+58→58 findings with three added/three removed records and Actions 0→0; equal
+counts do not establish equivalence or erase existing findings. Full SARIF
+comparison retained the same fingerprints and flows; the three changed records
+were source-line shifts in `ci-report.mjs`.
+
+[PR #528](https://github.com/flair-agency/architecture-gatekeeper/pull/528)
+merged as `92aed162b83c2b0ae9a293ac4696204bb72937e4`, tree
+`f351af560b4ab4daa0d84ece79b671a56e06fdb2`, with parent
+`e22d46867f21980b978b5cd75c279f7a4f2aa1da`. Its final CodeReview completed at
+2026-10-11T17:05:48.318366Z with zero open findings. Protected
+[run 38157885797](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38157885797)
+completed review job `114524597200`, report job `114525052218` and accept job
+`114525121454` successfully. Its reviewed merge was
+`28d36082e70cfc02721aeb892bde6d53e02c1679`, and its decision digest was
+`1aa8e9749604e6aecec84a3294ff6115cc6d6532ec20f751df445ece51d774d8`.
+That adoption review executed the **old protected e22d producer**. It approved
+the candidate but cannot prove the newly merged handoff runtime.
+
+## Post-adoption production observation: pending
+
+This documentation-only follow-up starts from that actual merged main source
+and supplies an ordinary representative candidate for the normal protected
+workflow. It does not predict the model decision or assert a future PASS.
+The remaining observation must bind the actual main self caller and resolved
+architecture-gate producer, repository, run/attempt, execution base, PR head
+and reviewed merge. On an actual ordinary PASS, verify the validated producer
+frame and narrow outputs, exact same-job retrieval, structured report carrying
+the original canonical digest, and successful final acceptance after the
+unchanged selected G0 guards. A synthetic result or digest alone is insufficient.
+If the decision is BLOCK/OWNER_DECISION or any boundary fails, retain that
+outcome without a projection substitute or bypass.
+
+One successful production observation would establish one representative
+model-backed same-run handoff. It would not prove a real model-output secret
+collision, every governance path, portable evidence, host isolation or broader
+rollout. PR #522 remains on hold; no evidence here authorizes its rerun or merge.
+No authority, acceptance route, consumer, provider or production change is
+introduced by this evidence follow-up.
