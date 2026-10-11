@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { appendFileSync, cpSync, copyFileSync, mkdtempSync, readdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { appendFileSync, cpSync, copyFileSync, mkdtempSync, readdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -8,6 +9,8 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import '@flair-agency/architecture-gatekeeper/preview-lifecycle';
 import { ordinary, decision, fixture, spec, commitOn } from './fixtures/preview-lifecycle-runtime.mjs';
+
+const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 test('runtime identity binds nested emitted modules and invalidates stale requests and receipts', async t => {
   const packageRoot = dirname(dirname(fileURLToPath(import.meta.resolve('@flair-agency/architecture-gatekeeper/preview-lifecycle'))));
@@ -29,7 +32,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'owner-amendment/owner-amendment-workflow-run-merge-group-context.mjs', 'owner-amendment/owner-amendment-scope.mjs',
     'github/github-authority-source.mjs', 'github/github-merge-group-event.mjs', 'github/github-owner-amendment-readback.mjs',
     'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs',
-    'github/github-ruleset-readback.mjs', 'review-inputs/review-input-path.mjs',
+    'github/github-ruleset-readback.mjs', 'github/github-ruleset-readback-cli.mjs', 'review-inputs/review-input-path.mjs',
     'authority-validation/legacy-git-snapshot.mjs', 'authority-validation/json-schema.mjs',
     'authority-validation/multi-authority-provenance.mjs', 'ci-review/prepared-ci-decision.mjs', 'ci-review/ci-decision-kind.mjs', 'ci-review/verify-legacy-validation-selection.mjs', 'ci-execution/ci-execution-observation.mjs', 'owner-amendment/owner-amendment-block-semantic-record.mjs', 'owner-amendment/owner-amendment-block-context-verifier.mjs', 'owner-amendment/owner-amendment-block-evidence-composer.mjs', 'authority-validation/validate-decision.mjs', 'authority-validation/validate-authority-set-decision.mjs', 'authority-validation/preflight-authority-set-review.mjs', 'review-inputs/prepare-review-file-context.mjs', 'review-inputs/prepare-review-context.mjs', 'review-inputs/materialize-review-workspace.mjs', 'review-inputs/review-security-proxy.mjs', 'review-contract/review-contract.mjs', 'authority-validation/resolve-ci-policy.mjs', 'authority-validation/prepare-authority-set.mjs', 'owner-addition/owner-addition-adoption.mjs', 'owner-addition/owner-decision-addition.mjs'];
   nestedPaths.push('owner-amendment/owner-amendment-block-handoff.mjs',
@@ -140,6 +143,31 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'github-owner-addition-readback.mjs', 'github-app-check-reporter.mjs', 'github-ruleset-readback.mjs']) {
     writeFileSync(join(flatRoot, 'dist', file), readFileSync(join(flatRoot, 'dist/github', file)));
   }
+  // The legacy CLI was an unconditional flat side effect, not a re-exporting facade.
+  // Restore its exact original bytes before removing the grouped directory so the
+  // synthetic predecessor exercises the old collection layout without importing it.
+  const legacyRulesetCli = [
+    "import { writeFileSync, mkdirSync } from 'node:fs';",
+    "import { join } from 'node:path';",
+    "import { produceRulesetReadback, rulesetStorageDirectory } from './github-ruleset-readback.mjs';",
+    '',
+    '// Only this step inherits the App key. No JWT or installation token is output,',
+    '// written to disk, placed in workflow outputs, or passed to normal handoff code.',
+    'try {',
+    '  const directory = rulesetStorageDirectory(process.env);',
+    "  if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) throw new Error('Ordinary credentials must not enter the isolated process.');",
+    '  const result = await produceRulesetReadback({ env: process.env });',
+    '  mkdirSync(directory, { mode: 0o700 });',
+    "  if (Buffer.byteLength(JSON.stringify(result)) > 65_536) throw new Error('Local readback exceeds bounds.');",
+    "  writeFileSync(join(directory, 'snapshot.json'), `${JSON.stringify(result)}\n`, { mode: 0o600, flag: 'wx' });",
+    "  process.stdout.write('Complete local ruleset readback stored after installation-token revocation.\n');",
+    '} catch {',
+    "  process.stderr.write('Isolated ruleset readback incomplete; no handoff authorization or credential output.\n');",
+    '  process.exitCode = 1;',
+    '}',
+    '',
+  ].join('\n');
+  writeFileSync(join(flatRoot, 'dist/github-ruleset-readback-cli.mjs'), legacyRulesetCli);
   writeFileSync(join(flatRoot, 'dist/review-input-path.mjs'),
     readFileSync(join(flatRoot, 'dist/review-inputs/review-input-path.mjs')));
   writeFileSync(join(flatRoot, 'dist/legacy-git-snapshot.mjs'),
@@ -282,6 +310,36 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   assert.equal(flatRequest.runtime.nodeVersion, process.version);
   assert.deepEqual(Object.keys(flatRequest.runtime.files).filter(file => file !== '../package.json').sort(), expectedFlatPaths);
   assert.equal(flatRequest.runtime.files['../package.json'], packageBefore);
+  assert.equal(flatRequest.runtime.files['github-ruleset-readback-cli.mjs'], createHash('sha256').update(legacyRulesetCli).digest('hex'));
   const flatReceipt = await flatRuntime.completePreviewLifecycle(flatRequest, ordinary(decision()), f.root);
   await flatRuntime.validatePreviewReceipt(flatReceipt, f.root);
+});
+
+
+test('ruleset CLI source and emitted entrypoint fail closed before external access without RUNNER_TEMP', () => {
+  const safeEnv = { PATH: process.env.PATH ?? '' };
+  for (const name of Object.keys(process.env)) {
+    if (name.startsWith('GITHUB_') || name.startsWith('OWNER_AMENDMENT_') || name.startsWith('RULESET_READBACK_') || name === 'GH_TOKEN' || name === 'RUNNER_TEMP') {
+      delete safeEnv[name];
+    }
+  }
+  const packageRoot = dirname(dirname(fileURLToPath(import.meta.resolve('@flair-agency/architecture-gatekeeper/preview-lifecycle'))));
+  const entrypoints = [
+    ...(existsSync(join(repositoryRoot, 'src/github-ruleset-readback-cli.mjs'))
+      ? [join(repositoryRoot, 'src/github-ruleset-readback-cli.mjs')]
+      : []),
+    join(packageRoot, 'dist/github-ruleset-readback-cli.mjs'),
+  ];
+  for (const entrypoint of entrypoints) {
+    const result = spawnSync(process.execPath, [entrypoint], {
+      cwd: repositoryRoot,
+      env: safeEnv,
+      encoding: 'utf8',
+      timeout: 10_000,
+    });
+    assert.equal(result.error, undefined, `${entrypoint} must exit without spawn errors`);
+    assert.equal(result.status, 1, `${entrypoint} must reject a missing RUNNER_TEMP`);
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, 'Isolated ruleset readback incomplete; no handoff authorization or credential output.\n');
+  }
 });

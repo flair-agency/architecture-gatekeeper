@@ -262,6 +262,13 @@ GET/acknowledgement responses. The report CLI and its filesystem output sinks
 remain at the original flat path with their original operations; that original
 module is only partially migrated. Flat entrypoints and guards remain intact.
 
+The GitHub command slice types the existing ruleset-readback CLI and adds a
+checked JavaScript return contract to the runner-environment accessor. Ruleset
+readback retains unconditional module-load execution, credential revocation
+before storage, bounded readbacks and the original private file modes. The
+runner accessor stays at its approved model path and returns only the string
+established by its existing runtime check; this does not authenticate provenance.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
 The internal-adapter candidate has 75 of the original 96 modules typed and
@@ -270,6 +277,9 @@ The internal-adapter candidate has 75 of the original 96 modules typed and
 entrypoint foundation has 80 `.mts` modules and 16 original modules remaining.
 This CI composition candidate brings the count to 81 `.mts` modules and
 15 originals remaining; the partially typed report is included in the latter.
+The GitHub command candidate reaches 82 original modules in `.mts` and
+14 originals remaining. One of those 14 has a checked JavaScript contract; the
+partially typed CI report is also still counted among the remaining originals.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
