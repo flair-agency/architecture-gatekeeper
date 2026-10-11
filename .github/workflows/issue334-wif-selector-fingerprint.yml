@@ -1,8 +1,9 @@
 name: Issue 334 WIF selector fingerprint diagnostic
 
 # The path filter requires this workflow file among the push's changed paths;
-# it does not prove this is the only changed path. The job is limited to the
-# first run (attempt 1) for the fixed repository's push to its current `main`.
+# it does not prove this is the only changed path. This changed-source
+# diagnostic is limited to run 2 (attempt 1) of this same workflow on the
+# fixed repository's push to its current `main`.
 # This bounded metadata diagnostic does not authenticate or validate a Google
 # provider configuration; independent Google-side evidence remains necessary.
 on:
@@ -15,7 +16,7 @@ permissions: {}
 
 jobs:
   fingerprint:
-    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_number == 1 && github.run_attempt == 1
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_number == 2 && github.run_attempt == 1
     permissions: {}
     runs-on: ubuntu-latest
     steps:
@@ -31,28 +32,51 @@ jobs:
           const fs = require('node:fs');
           const path = require('node:path');
 
+          let failurePhase = 'execution';
+          let failureReason = 'unexpected_failure';
+
+          function setFailure(phase, reason) {
+            failurePhase = phase;
+            failureReason = reason;
+          }
+
+          function stage(phase, reason, operation) {
+            setFailure(phase, reason);
+            return operation();
+          }
+
+          function check(condition, phase, reason) {
+            if (!condition) {
+              setFailure(phase, reason);
+              throw new Error();
+            }
+          }
+
           function fail() {
-            console.error('WIF selector fingerprint validation failed');
+            console.error(JSON.stringify({ kind: 'wif-selector-fingerprint-failure', phase: failurePhase, reason: failureReason }));
             process.exitCode = 1;
           }
 
           try {
-            const provider = process.env.GCP_WIF_PROVIDER;
-            const serviceAccount = process.env.GCP_WIF_SERVICE_ACCOUNT;
-            if (typeof provider !== 'string' || typeof serviceAccount !== 'string') throw new Error();
+            const provider = stage('selector_input', 'provider_missing', () => process.env.GCP_WIF_PROVIDER);
+            check(typeof provider === 'string' && provider.length > 0, 'selector_input', 'provider_missing');
+            const serviceAccount = stage('selector_input', 'service_account_missing', () => process.env.GCP_WIF_SERVICE_ACCOUNT);
+            check(typeof serviceAccount === 'string' && serviceAccount.length > 0, 'selector_input', 'service_account_missing');
 
-            const providerBytes = Buffer.byteLength(provider, 'utf8');
-            const serviceAccountBytes = Buffer.byteLength(serviceAccount, 'utf8');
-            if (providerBytes < 1 || providerBytes > 256 || serviceAccountBytes < 1 || serviceAccountBytes > 320) throw new Error();
-            if (!/^projects\/[1-9][0-9]{4,19}\/locations\/global\/workloadIdentityPools\/(?!gcp-)[a-z0-9-]{4,32}\/providers\/(?!gcp-)[a-z0-9-]{4,32}$/.test(provider)) throw new Error();
-            if (!/^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$/.test(serviceAccount)) throw new Error();
+            const providerBytes = stage('selector_validation', 'provider_byte_length', () => Buffer.byteLength(provider, 'utf8'));
+            check(providerBytes >= 1 && providerBytes <= 256, 'selector_validation', 'provider_byte_length');
+            check(/^projects\/[1-9][0-9]{4,19}\/locations\/global\/workloadIdentityPools\/(?!gcp-)[a-z0-9-]{4,32}\/providers\/(?!gcp-)[a-z0-9-]{4,32}$/.test(provider), 'selector_validation', 'provider_resource_shape');
+            const serviceAccountBytes = stage('selector_validation', 'service_account_byte_length', () => Buffer.byteLength(serviceAccount, 'utf8'));
+            check(serviceAccountBytes >= 1 && serviceAccountBytes <= 320, 'selector_validation', 'service_account_byte_length');
+            check(/^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$/.test(serviceAccount), 'selector_validation', 'service_account_email_shape');
 
-            const expectedServiceAccountSha256 = process.env.EXPECTED_SERVICE_ACCOUNT_SHA256;
-            if (!/^[a-f0-9]{64}$/.test(expectedServiceAccountSha256 || '')) throw new Error();
-            const serviceAccountSha256 = crypto.createHash('sha256').update(Buffer.from(serviceAccount, 'utf8')).digest('hex');
-            if (serviceAccountSha256 !== expectedServiceAccountSha256) throw new Error();
+            const expectedServiceAccountSha256 = stage('expected_hash', 'expected_hash_missing', () => process.env.EXPECTED_SERVICE_ACCOUNT_SHA256);
+            check(typeof expectedServiceAccountSha256 === 'string' && expectedServiceAccountSha256.length > 0, 'expected_hash', 'expected_hash_missing');
+            check(/^[a-f0-9]{64}$/.test(expectedServiceAccountSha256), 'expected_hash', 'expected_hash_shape');
+            const serviceAccountSha256 = stage('expected_hash', 'service_account_hash_compute', () => crypto.createHash('sha256').update(Buffer.from(serviceAccount, 'utf8')).digest('hex'));
+            check(serviceAccountSha256 === expectedServiceAccountSha256, 'expected_hash', 'service_account_hash_mismatch');
 
-            const source = {
+            const source = stage('metadata', 'metadata_read', () => ({
               repository: process.env.GITHUB_REPOSITORY,
               workflow: process.env.GITHUB_WORKFLOW,
               run_id: process.env.GITHUB_RUN_ID,
@@ -62,35 +86,63 @@ jobs:
               ref: process.env.GITHUB_REF,
               sha: process.env.GITHUB_SHA,
               workflow_sha: process.env.GITHUB_WORKFLOW_SHA
-            };
-            if (!/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(source.repository || '')) throw new Error();
-            if (!/^[A-Za-z0-9_. -]{1,200}$/.test(source.workflow || '')) throw new Error();
-            if (!/^[0-9]{1,20}$/.test(source.run_id || '') || !/^[1-9][0-9]{0,5}$/.test(source.run_attempt || '')) throw new Error();
-            if (!/^[1-9][0-9]{0,19}$/.test(source.run_number || '')) throw new Error();
-            if (!/^[a-z_]{1,40}$/.test(source.event_name || '') || !/^refs\/[A-Za-z0-9_./-]{1,200}$/.test(source.ref || '')) throw new Error();
-            if (!/^[a-f0-9]{40,64}$/.test(source.sha || '')) throw new Error();
-            if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(source.workflow_sha || '')) throw new Error();
+            }));
+            check(/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(source.repository || ''), 'metadata', 'repository_shape');
+            check(/^[A-Za-z0-9_. -]{1,200}$/.test(source.workflow || ''), 'metadata', 'workflow_shape');
+            check(/^[0-9]{1,20}$/.test(source.run_id || ''), 'metadata', 'run_id_shape');
+            check(/^[1-9][0-9]{0,19}$/.test(source.run_number || ''), 'metadata', 'run_number_shape');
+            check(/^[1-9][0-9]{0,5}$/.test(source.run_attempt || ''), 'metadata', 'run_attempt_shape');
+            check(/^[a-z_]{1,40}$/.test(source.event_name || ''), 'metadata', 'event_name_shape');
+            check(/^refs\/[A-Za-z0-9_./-]{1,200}$/.test(source.ref || ''), 'metadata', 'ref_shape');
+            check(/^[a-f0-9]{40,64}$/.test(source.sha || ''), 'metadata', 'sha_shape');
+            check(/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(source.workflow_sha || ''), 'metadata', 'workflow_sha_shape');
 
-            const providerSha256 = crypto.createHash('sha256').update(Buffer.from(provider, 'utf8')).digest('hex');
-            if (!/^[a-f0-9]{64}$/.test(providerSha256) || !/^[a-f0-9]{64}$/.test(serviceAccountSha256)) throw new Error();
-            const outputContents = `provider_sha256=${providerSha256}\nservice_account_sha256=${serviceAccountSha256}\n`;
-            if (outputContents.length === 0 || Buffer.byteLength(outputContents, 'utf8') > 16_384 || outputContents.includes('\0')) throw new Error();
+            const providerSha256 = stage('fingerprint', 'provider_hash_compute', () => crypto.createHash('sha256').update(Buffer.from(provider, 'utf8')).digest('hex'));
+            check(/^[a-f0-9]{64}$/.test(providerSha256), 'fingerprint', 'provider_hash_shape');
+            check(/^[a-f0-9]{64}$/.test(serviceAccountSha256), 'fingerprint', 'service_account_hash_shape');
+            const outputContents = stage('output_payload', 'construct', () => `provider_sha256=${providerSha256}\nservice_account_sha256=${serviceAccountSha256}\n`);
+            check(typeof outputContents === 'string' && outputContents.length > 0 && !outputContents.includes('\0'), 'output_payload', 'payload_shape');
+            const outputBytes = stage('output_payload', 'byte_length', () => Buffer.byteLength(outputContents, 'utf8'));
+            check(outputBytes <= 16_384, 'output_payload', 'payload_bound');
 
-            const outputPath = process.env.GITHUB_OUTPUT;
-            if (typeof outputPath !== 'string' || outputPath.length === 0 || !path.isAbsolute(outputPath) || path.resolve(outputPath) !== outputPath) throw new Error();
-            const before = fs.lstatSync(outputPath);
-            if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || fs.realpathSync(outputPath) !== outputPath) throw new Error();
-            if (typeof fs.constants.O_NOFOLLOW !== 'number') throw new Error();
+            const outputPath = stage('output_sink', 'path_read', () => process.env.GITHUB_OUTPUT);
+            check(typeof outputPath === 'string' && outputPath.length > 0, 'output_sink', 'path_missing');
+            check(path.isAbsolute(outputPath) && path.resolve(outputPath) === outputPath, 'output_sink', 'path_noncanonical');
+            const before = stage('output_sink', 'lstat', () => fs.lstatSync(outputPath));
+            check(!before.isSymbolicLink(), 'output_sink', 'is_symlink');
+            check(before.isFile(), 'output_sink', 'not_regular_file');
+            check(before.nlink === 1, 'output_sink', 'is_hardlinked');
+            const realOutputPath = stage('output_sink', 'realpath', () => fs.realpathSync(outputPath));
+            check(realOutputPath === outputPath, 'output_sink', 'path_identity_mismatch');
+            check(typeof fs.constants.O_NOFOLLOW === 'number', 'output_sink', 'nofollow_unavailable');
 
             let fd;
+            let sinkFailure;
             try {
-              fd = fs.openSync(outputPath, fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_NOFOLLOW);
-              const opened = fs.fstatSync(fd);
-              if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== before.dev || opened.ino !== before.ino) throw new Error();
-              fs.writeFileSync(fd, outputContents);
+              fd = stage('output_sink', 'open', () => fs.openSync(outputPath, fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_NOFOLLOW));
+              const opened = stage('output_sink', 'fstat', () => fs.fstatSync(fd));
+              check(opened.isFile(), 'output_sink', 'opened_not_regular_file');
+              check(opened.nlink === 1, 'output_sink', 'opened_is_hardlinked');
+              check(opened.dev === before.dev && opened.ino === before.ino, 'output_sink', 'opened_identity_mismatch');
+              stage('output_sink', 'write', () => fs.writeFileSync(fd, outputContents));
+            } catch {
+              sinkFailure = { phase: failurePhase, reason: failureReason };
+              throw new Error();
             } finally {
-              if (fd !== undefined) fs.closeSync(fd);
+              if (fd !== undefined) {
+                try {
+                  fs.closeSync(fd);
+                } catch {
+                  if (sinkFailure === undefined) {
+                    setFailure('output_sink', 'close');
+                  } else {
+                    setFailure(sinkFailure.phase, sinkFailure.reason);
+                  }
+                  throw new Error();
+                }
+              }
             }
+            setFailure('report', 'success_log');
             console.log(JSON.stringify({ kind: 'wif-selector-fingerprint', source, provider_sha256: providerSha256, service_account_sha256: serviceAccountSha256 }));
           } catch {
             fail();
