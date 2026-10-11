@@ -5,6 +5,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import '@flair-agency/architecture-gatekeeper/preview-lifecycle';
 import { ordinary, decision, fixture, spec, commitOn } from './fixtures/preview-lifecycle-runtime.mjs';
 
@@ -52,6 +53,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'authority-validation/authority-set.mjs',
     'ci-review/ci-enforced-acceptance.mjs',
     'ci-review/ci-procedural-authority-change.mjs',
+    'ci-review/ci-procedural-acceptance.mjs',
+    'ci-review/ci-report.mjs',
     'owner-amendment/owner-amendment.mjs',
     'gemini-cli/gemini-cli-response.mjs',
     'gemini-cli/gemini-cli-process.mjs',
@@ -233,6 +236,24 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
       readFileSync(join(flatRoot, 'dist/ci-review', file), 'utf8')
         .replace(/from '\.\.\/authority-validation\//g, "from './"));
   }
+  writeFileSync(join(flatRoot, 'dist/ci-report-helpers.mjs'),
+    readFileSync(join(flatRoot, 'dist/ci-review/ci-report.mjs'), 'utf8')
+      .replace(/from '\.\.\/authority-validation\//g, "from './")
+      .replace(/from '\.\.\/github\//g, "from './"));
+  writeFileSync(join(flatRoot, 'dist/ci-procedural-acceptance-helpers.mjs'),
+    readFileSync(join(flatRoot, 'dist/ci-review/ci-procedural-acceptance.mjs'), 'utf8'));
+  const proceduralAcceptanceCliPath = join(flatRoot, 'dist/ci-procedural-acceptance.mjs');
+  writeFileSync(proceduralAcceptanceCliPath, readFileSync(proceduralAcceptanceCliPath, 'utf8')
+    .replace(/from ["']\.\/ci-review\/ci-procedural-acceptance\.mjs["']/, "from './ci-procedural-acceptance-helpers.mjs'"));
+  writeFileSync(join(flatRoot, 'dist/codex-pass-publication.mjs'),
+    readFileSync(join(flatRoot, 'dist/ci-review/codex-pass-publication.mjs'), 'utf8')
+      .replace(/from '\.\.\/authority-set\.mjs'/g, "from './authority-set.mjs'"));
+  writeFileSync(join(flatRoot, 'dist/codex-pass-log.mjs'),
+    readFileSync(join(flatRoot, 'dist/github/codex-pass-log.mjs'), 'utf8')
+      .replace(/from '\.\.\/ci-review\/codex-pass-publication\.mjs'/g, "from './codex-pass-publication.mjs'"));
+  const reportCliPath = join(flatRoot, 'dist/ci-report.mjs');
+  writeFileSync(reportCliPath, readFileSync(reportCliPath, 'utf8')
+    .replace(/from ["']\.\/ci-review\/ci-report\.mjs["']/, "from './ci-report-helpers.mjs'"));
   rmSync(join(flatRoot, 'dist/ci-review'), { recursive: true });
   rmSync(join(flatRoot, 'dist/authority-validation'), { recursive: true });
   rmSync(join(flatRoot, 'dist/review-inputs'), { recursive: true });
@@ -240,6 +261,16 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
   rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
+  const flatProceduralAcceptance = await import(pathToFileURL(proceduralAcceptanceCliPath).href);
+  assert.deepEqual(Object.keys(flatProceduralAcceptance), ['assertProceduralV5Acceptance']);
+  assert.deepEqual(flatProceduralAcceptance.assertProceduralV5Acceptance({ policyVersion: '5', evidenceProducer: 'github-actions',
+    reviewResult: 'success', conclusion: 'PASS', selectedAuthorityChanged: 'false' }), { route: 'ordinary-pass' });
+  const proceduralCli = spawnSync(process.execPath, [proceduralAcceptanceCliPath], { encoding: 'utf8', env: {
+    POLICY_VERSION: '5', EVIDENCE_PRODUCER: 'github-actions', REVIEW_RESULT: 'success',
+    CONCLUSION: 'PASS', SELECTED_AUTHORITY_CHANGED: 'false',
+  } });
+  assert.equal(proceduralCli.status, 0, proceduralCli.stderr);
+  assert.equal(proceduralCli.stdout, 'Procedural v5 acceptance route: ordinary-pass\n');
   const flatCodexTransport = await import(pathToFileURL(join(flatRoot, 'dist/codex-transport.mjs')).href);
   const flatLocalReviewer = await import(pathToFileURL(join(flatRoot, 'dist/local-reviewer-execution.mjs')).href);
   assert.equal(typeof flatCodexTransport.runCodexReviewer, 'function');
