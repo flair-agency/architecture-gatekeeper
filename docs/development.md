@@ -172,12 +172,20 @@ Promise and thenable composition. External observations and unchecked Buffer
 method results remain unknown. Constructing records or selecting evidence does
 not authenticate owner authorization or establish protected acceptance.
 
+The merge-group evidence slice types `owner-amendment-merge-group-b-context`,
+`owner-amendment-merge-group-evidence`, and
+`owner-amendment-merge-group-ordinary-review`. It preserves exact queue/base/B
+selection, protected tag and producer evidence binding, fresh ordinary review
+inputs from the current protected base, and deterministic PASS validation. These
+existing stages keep distinct results; typing adds no acceptance route. External
+API results, parsed JSON and changing accessor observations remain unknown;
+callback contracts retain the original synchronous and asynchronous behavior.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-The #508 foundation (`4ddf39e`) has 53 of the original 96 modules typed. The
-#509 record/context tree has 56 typed and 40 remaining; this BLOCK record/bridge
-candidate has 59 typed and 37 remaining. Migration is partial and does
-not change consumer architecture or assurance policy.
+The #511 BLOCK record/bridge tree has 59 of the original 96 modules typed and
+37 remaining. This merge-group evidence candidate has 62 typed and 34 remaining.
+Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, `checkJs: false`, and
