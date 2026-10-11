@@ -33,7 +33,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs',
     'github/github-ruleset-readback.mjs', 'github/github-ruleset-readback-cli.mjs', 'review-inputs/review-input-path.mjs',
     'authority-validation/legacy-git-snapshot.mjs', 'authority-validation/json-schema.mjs',
-    'authority-validation/multi-authority-provenance.mjs', 'ci-review/prepared-ci-decision.mjs', 'ci-review/ci-decision-kind.mjs', 'ci-review/verify-legacy-validation-selection.mjs', 'ci-execution/ci-execution-observation.mjs', 'owner-amendment/owner-amendment-block-semantic-record.mjs', 'owner-amendment/owner-amendment-block-context-verifier.mjs', 'owner-amendment/owner-amendment-block-evidence-composer.mjs', 'authority-validation/validate-decision.mjs', 'authority-validation/validate-authority-set-decision.mjs', 'authority-validation/preflight-authority-set-review.mjs', 'review-inputs/prepare-review-file-context.mjs', 'review-inputs/prepare-review-context.mjs', 'review-inputs/materialize-review-workspace.mjs', 'review-inputs/review-security-proxy.mjs', 'review-contract/review-contract.mjs', 'authority-validation/resolve-ci-policy.mjs', 'authority-validation/prepare-authority-set.mjs', 'owner-addition/owner-addition-adoption.mjs', 'owner-addition/owner-decision-addition.mjs'];
+    'authority-validation/multi-authority-provenance.mjs', 'ci-review/legacy-authority-decision.mjs', 'ci-review/prepared-ci-decision.mjs', 'ci-review/ci-decision-kind.mjs', 'ci-review/verify-legacy-validation-selection.mjs', 'ci-execution/ci-execution-observation.mjs', 'owner-amendment/owner-amendment-block-semantic-record.mjs', 'owner-amendment/owner-amendment-block-context-verifier.mjs', 'owner-amendment/owner-amendment-block-evidence-composer.mjs', 'authority-validation/validate-decision.mjs', 'authority-validation/validate-authority-set-decision.mjs', 'authority-validation/preflight-authority-set-review.mjs', 'review-inputs/prepare-review-file-context.mjs', 'review-inputs/prepare-review-context.mjs', 'review-inputs/materialize-review-workspace.mjs', 'review-inputs/review-security-proxy.mjs', 'review-contract/review-contract.mjs', 'authority-validation/resolve-ci-policy.mjs', 'authority-validation/prepare-authority-set.mjs', 'owner-addition/owner-addition-adoption.mjs', 'owner-addition/owner-decision-addition.mjs'];
   nestedPaths.push('owner-amendment/owner-amendment-block-handoff.mjs',
     'owner-amendment/owner-amendment-block-handoff-compose.mjs',
     'owner-amendment/owner-amendment-block-handoff-orchestrator.mjs',
@@ -82,7 +82,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   await runtime.validatePreviewReceipt(receipt, f.root);
 
   const unchangedPaths = [...new Set([...nestedPaths.map(path => path.split('/').at(-1)),
-    'preview-lifecycle.mjs'].filter(file => existsSync(join(runtimeRoot, 'dist', file))))];
+    'preview-lifecycle.mjs']
+    .filter(file => existsSync(join(runtimeRoot, 'dist', file))))];
   unchangedPaths.push('../package.json');
   const unchangedDigests = unchangedPaths.map(file => {
     const path = join(runtimeRoot, 'dist', file);
@@ -185,6 +186,11 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/authority-validation/json-schema.mjs')));
   writeFileSync(join(flatRoot, 'dist/multi-authority-provenance.mjs'),
     readFileSync(join(flatRoot, 'dist/authority-validation/multi-authority-provenance.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+  writeFileSync(join(flatRoot, 'dist/legacy-authority-decision-helpers.mjs'),
+    readFileSync(join(flatRoot, 'dist/ci-review/legacy-authority-decision.mjs'), 'utf8'));
+  const legacyAuthorityCliPath = join(flatRoot, 'dist/prepare-legacy-ci-authority.mjs');
+  writeFileSync(legacyAuthorityCliPath, readFileSync(legacyAuthorityCliPath, 'utf8')
+    .replace(/from ["']\.\/ci-review\/legacy-authority-decision\.mjs["']/, "from './legacy-authority-decision-helpers.mjs'"));
   writeFileSync(join(flatRoot, 'dist/prepared-ci-decision.mjs'),
     readFileSync(join(flatRoot, 'dist/ci-review/prepared-ci-decision.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/ci-decision-kind.mjs'),
@@ -310,6 +316,13 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
   rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
+  const flatLegacyAuthorityCli = await import(pathToFileURL(legacyAuthorityCliPath).href);
+  assert.equal(typeof flatLegacyAuthorityCli.prepareLegacyAuthority, 'function');
+  assert.equal(typeof flatLegacyAuthorityCli.validateLegacyAuthorityDecision, 'function');
+  assert.deepEqual(flatLegacyAuthorityCli.validateLegacyAuthorityDecision(
+    JSON.stringify({ decision: 'PASS', authorityFiles: ['docs/architecture.md'] }),
+    { members: [{ path: 'docs/architecture.md' }] }),
+  { decision: 'PASS', authorityFiles: ['docs/architecture.md'] });
   const flatFinalizer = await import(pathToFileURL(finalizerCliPath).href);
   assert.equal(typeof flatFinalizer.buildOwnerAdditionFinalRecord, 'function');
   const flatMultiAuthority = await import(pathToFileURL(multiAuthorityCliPath).href);
@@ -337,6 +350,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   assert.deepEqual(Object.keys(flatRequest.runtime.files).filter(file => file !== '../package.json').sort(), expectedFlatPaths);
   assert.equal(flatRequest.runtime.files['../package.json'], packageBefore);
   assert.equal(flatRequest.runtime.files['github-ruleset-readback-cli.mjs'], createHash('sha256').update(legacyRulesetCli).digest('hex'));
+  assert.equal(flatRequest.runtime.files['legacy-authority-decision-helpers.mjs'], createHash('sha256')
+    .update(readFileSync(join(flatRoot, 'dist/legacy-authority-decision-helpers.mjs'))).digest('hex'));
   const flatReceipt = await flatRuntime.completePreviewLifecycle(flatRequest, ordinary(decision()), f.root);
   await flatRuntime.validatePreviewReceipt(flatReceipt, f.root);
 });
