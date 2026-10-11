@@ -269,6 +269,20 @@ before storage, bounded readbacks and the original private file modes. The
 runner accessor stays at its approved model path and returns only the string
 established by its existing runtime check; this does not authenticate provenance.
 
+Two checked JavaScript bridges remain at their existing source paths: the
+runner-environment accessor and snapshot materializer. The materializer retains
+two narrow `@ts-expect-error` boundaries where it composes the existing Git
+reader and filesystem writer. They preserve those operations without claiming
+that `outputPath` is a string: the original truthy guard permits native path-like
+and file-descriptor inputs. The finalizer and multi-authority orchestration
+files also remain partial migrations; their selected typed helpers do not move
+the rest of either adapter.
+
+The legacy snapshot extraction stays deferred because a trial move changed an
+existing CodeQL source fingerprint. Its current metadata retains 57 of 58
+hashes and all 58 flows. Keep that source location and the current model; do
+not infer that extraction removed the risk.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
 The internal-adapter candidate has 75 of the original 96 modules typed and
@@ -278,8 +292,12 @@ entrypoint foundation has 80 `.mts` modules and 16 original modules remaining.
 This CI composition candidate brings the count to 81 `.mts` modules and
 15 originals remaining; the partially typed report is included in the latter.
 The GitHub command candidate reaches 82 original modules in `.mts` and
-14 originals remaining. One of those 14 has a checked JavaScript contract; the
-partially typed CI report is also still counted among the remaining originals.
+14 originals remaining. Of those 14, two have checked JavaScript contracts
+(the runner-environment accessor and snapshot materializer), and three are
+partial helper migrations (CI report, owner-addition finalizer and
+multi-authority orchestration). The other nine remain JavaScript modules
+outside these migrations. These source-layout counts do not change the selected
+CodeQL model or establish acceptance evidence.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation

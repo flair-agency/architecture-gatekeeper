@@ -68,7 +68,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'runner-paths/runner-temp-path.mjs',
     'local-review/local-gate.mjs',
     'local-review/local-post-tool-screen.mjs',
-    'local-review/manual-review.mjs');
+    'local-review/manual-review.mjs',
+    'owner-addition/owner-addition-finalize.mjs',
+    'owner-addition/multi-authority-eligibility.mjs');
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -79,8 +81,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
   await runtime.validatePreviewReceipt(receipt, f.root);
 
-  const unchangedPaths = [...nestedPaths.map(path => path.split('/').at(-1)),
-    'preview-lifecycle.mjs', '../package.json'];
+  const unchangedPaths = [...new Set([...nestedPaths.map(path => path.split('/').at(-1)),
+    'preview-lifecycle.mjs'].filter(file => existsSync(join(runtimeRoot, 'dist', file))))];
+  unchangedPaths.push('../package.json');
   const unchangedDigests = unchangedPaths.map(file => {
     const path = join(runtimeRoot, 'dist', file);
     return [path, createHash('sha256').update(readFileSync(path)).digest('hex')];
@@ -220,6 +223,18 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-adoption.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/owner-decision-addition.mjs'),
     readFileSync(join(flatRoot, 'dist/owner-addition/owner-decision-addition.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+  writeFileSync(join(flatRoot, 'dist/owner-addition-finalize-helper.mjs'),
+    readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-finalize.mjs'), 'utf8')
+      .replace(/from (["'])\.\.\/authority-validation\//g, "from $1./"));
+  const finalizerCliPath = join(flatRoot, 'dist/owner-addition-finalize.mjs');
+  writeFileSync(finalizerCliPath, readFileSync(finalizerCliPath, 'utf8')
+    .replace(/from (["'])\.\/owner-addition\/owner-addition-finalize\.mjs\1/, "from './owner-addition-finalize-helper.mjs'"));
+  writeFileSync(join(flatRoot, 'dist/multi-authority-eligibility-helper.mjs'),
+    readFileSync(join(flatRoot, 'dist/owner-addition/multi-authority-eligibility.mjs'), 'utf8')
+      .replace(/from (["'])\.\.\//g, "from $1./"));
+  const multiAuthorityCliPath = join(flatRoot, 'dist/owner-addition-multiauthority.mjs');
+  writeFileSync(multiAuthorityCliPath, readFileSync(multiAuthorityCliPath, 'utf8')
+    .replace(/from (["'])\.\/owner-addition\/multi-authority-eligibility\.mjs\1/, "from './multi-authority-eligibility-helper.mjs'"));
   for (const file of ['owner-amendment-block-handoff.mjs',
     'owner-amendment-block-handoff-compose.mjs', 'owner-amendment-block-handoff-orchestrator.mjs',
     'owner-amendment-owner-decision-handoff.mjs', 'owner-amendment-owner-decision-handoff-cli.mjs',
@@ -295,6 +310,11 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
   rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
+  const flatFinalizer = await import(pathToFileURL(finalizerCliPath).href);
+  assert.equal(typeof flatFinalizer.buildOwnerAdditionFinalRecord, 'function');
+  const flatMultiAuthority = await import(pathToFileURL(multiAuthorityCliPath).href);
+  assert.equal(typeof flatMultiAuthority.validateMultiAuthorityEligibility, 'function');
+  assert.equal(typeof flatMultiAuthority.validateMultiAuthorityEligibilitySchema, 'function');
   const flatProceduralAcceptance = await import(pathToFileURL(proceduralAcceptanceCliPath).href);
   assert.deepEqual(Object.keys(flatProceduralAcceptance), ['assertProceduralV5Acceptance']);
   assert.deepEqual(flatProceduralAcceptance.assertProceduralV5Acceptance({ policyVersion: '5', evidenceProducer: 'github-actions',
