@@ -9,8 +9,51 @@ import { readWorkflow } from './helpers/workflow-structure.mjs';
 const callerPath = '../../.github/workflows/issue334-ordinary-feature-caller.yml';
 const source = await readFile(new URL('../.github/workflows/issue334-ordinary-feature-caller.yml', import.meta.url), 'utf8');
 const workflow = readWorkflow(callerPath).workflow;
+const expectedCondition = "${{ needs.classify-self-repository.outputs.classification == 'same-repository' && github.event_name == 'pull_request_target' && github.event.action == 'ready_for_review' && github.event.pull_request.draft == false && github.event.pull_request.number == 517 && github.event.pull_request.head.sha == 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' && github.run_attempt == 1 }}";
 
-function assertStaged(candidate) {
+// SYNTHETIC JS expression harness: parses and evaluates this narrow condition grammar locally.
+// It is not the GitHub Actions expression engine and does not represent live workflow execution.
+function evaluateCondition(expression, context) {
+  const match = /^\$\{\{\s*([\s\S]*?)\s*\}\}$/.exec(expression);
+  assert.ok(match, 'condition must use a complete GitHub expression');
+  const expressionBody = match[1];
+  const tokens = expressionBody.match(/\s*(==|&&|\.|'[^']*'|[0-9]+|true|false|[A-Za-z_][A-Za-z0-9_-]*)\s*/gy);
+  assert.ok(tokens, 'condition must use the supported expression tokens');
+  assert.equal(tokens.join(''), expressionBody, 'condition must be consumed completely by the synthetic parser');
+  const normalized = tokens.map(token => token.trim()).filter(Boolean);
+  let index = 0;
+  const take = token => {
+    assert.equal(normalized[index], token, `expected ${token} in condition`);
+    index++;
+  };
+  const value = () => {
+    const token = normalized[index++];
+    assert.ok(token !== undefined, 'expected value');
+    if (token.startsWith("'")) return token.slice(1, -1);
+    if (token === 'true') return true;
+    if (token === 'false') return false;
+    if (/^[0-9]+$/.test(token)) return Number(token);
+    const path = [token];
+    while (normalized[index] === '.') {
+      index++;
+      path.push(normalized[index++]);
+    }
+    return path.reduce((current, key) => current?.[key], context);
+  };
+  const comparisons = [];
+  do {
+    const left = value();
+    take('==');
+    comparisons.push(left === value());
+    if (normalized[index] !== '&&') break;
+    index++;
+  } while (true);
+  assert.equal(index, normalized.length, 'condition contains unsupported or trailing syntax');
+  return comparisons.every(Boolean);
+}
+
+// This also checks the synthetic YAML parser, not GitHub's expression engine.
+function assertCandidate(candidate) {
   assert.deepEqual(candidate.on.pull_request_target, {
     branches: ['feature/gemini-ci'],
     types: ['ready_for_review'],
@@ -18,7 +61,7 @@ function assertStaged(candidate) {
   assert.deepEqual(Object.keys(candidate.on), ['pull_request_target']);
   assert.deepEqual(candidate.jobs['classify-self-repository'].permissions,
     { contents: 'none', 'id-token': 'none' });
-  assert.equal(candidate.jobs['architecture-gate'].if, false);
+  assert.equal(candidate.jobs['architecture-gate'].if, expectedCondition);
   assert.deepEqual(candidate.jobs['architecture-gate'].permissions,
     { contents: 'read', actions: 'read', 'pull-requests': 'write', 'id-token': 'write' });
   assert.equal(candidate.jobs['architecture-gate'].uses,
@@ -37,12 +80,41 @@ function assertStaged(candidate) {
   assert.doesNotMatch(JSON.stringify(candidate), /secrets:\s*inherit|OPENAI_API_KEY|CI_SOURCE_READ_TOKEN|workflow_dispatch|schedule|push:/);
 }
 
-test('ordinary Gemini caller is ready-only, pinned, least privilege, and unconditionally inactive', () => {
-  assertStaged(workflow);
-  assert.match(source, /if: false\n/);
-  assert.match(source, /Proposed activation guard for separately authorized activation; this text is not active admission:[\s\S]*\n    if: false/);
-  assert.match(source, /# if: \$\{\{ needs\.classify-self-repository\.outputs\.classification == 'same-repository' && github\.event_name == 'pull_request_target' && github\.event\.action == 'ready_for_review' && github\.event\.pull_request\.draft == false && github\.event\.pull_request\.number == 517 && github\.event\.pull_request\.head\.sha == 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' && github\.run_attempt == 1 \}\}/);
+test('ordinary Gemini caller has the reviewed exact-context candidate guard and pinned least-privilege selectors', () => {
+  assertCandidate(workflow);
+  assert.ok(source.includes('if: ' + expectedCondition));
+  assert.match(source, /Local candidate activation only; separate owner deployment approval is required\.[\s\S]*consistency bound, not admission authority/);
   assert.doesNotMatch(source, /workflow_dispatch|workflow_run|pull_request:\s|branches:\s*\[main\]|secrets:\s*inherit/);
+});
+
+test('synthetic condition harness admits only the exact selected context', () => {
+  const context = {
+    needs: { 'classify-self-repository': { outputs: { classification: 'same-repository' } } },
+    github: { event_name: 'pull_request_target', event: { action: 'ready_for_review', pull_request: {
+      draft: false, number: 517, head: { sha: 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' },
+    } }, run_attempt: 1 },
+  };
+  assert.equal(evaluateCondition(workflow.jobs['architecture-gate'].if, context), true);
+  const mutate = [
+    c => { c.needs['classify-self-repository'].outputs.classification = 'cross-repository'; },
+    c => { c.needs['classify-self-repository'].outputs.classification = 'unknown'; },
+    c => { c.github.event_name = 'pull_request'; },
+    c => { c.github.event.action = 'synchronize'; },
+    c => { c.github.event.pull_request.draft = true; },
+    c => { delete c.github.event.pull_request.draft; },
+    c => { delete c.github.event.action; },
+    c => { c.github.event.pull_request.number = 518; },
+    c => { c.github.event.pull_request.head.sha = 'd'.repeat(40); },
+    c => { delete c.github.event.pull_request.head.sha; },
+    c => { c.github.run_attempt = 2; },
+  ];
+  for (const change of mutate) {
+    const negative = structuredClone(context);
+    change(negative);
+    assert.equal(evaluateCondition(workflow.jobs['architecture-gate'].if, negative), false);
+  }
+  assert.equal((workflow.jobs['architecture-gate'].if.match(/&&/g) ?? []).length, 6);
+  assert.doesNotMatch(workflow.jobs['architecture-gate'].if, /\|\|/);
 });
 
 test('caller retains the existing strict self classifier verbatim', async () => {
@@ -56,10 +128,11 @@ test('caller retains the existing strict self classifier verbatim', async () => 
   assert.equal(classifier(source), classifier(self));
 });
 
-test('mutated caller fixtures that widen activation, selectors, credentials, or triggers fail the staged invariant', () => {
+test('mutated caller fixtures that widen activation, selectors, credentials, or triggers fail the synthetic invariant', () => {
   for (const mutate of [
     c => { c.jobs['architecture-gate']['if'] = true; },
     c => { delete c.jobs['architecture-gate']['if']; },
+    c => { c.jobs['architecture-gate']['if'] = expectedCondition.replace('github.run_attempt == 1', 'github.run_attempt >= 1'); },
     c => { c.on.pull_request_target.branches.push('main'); },
     c => { c.on.pull_request_target.types.push('synchronize'); },
     c => { c.jobs['architecture-gate'].uses = c.jobs['architecture-gate'].uses.replace(/@.*/, '@main'); },
@@ -69,7 +142,7 @@ test('mutated caller fixtures that widen activation, selectors, credentials, or 
   ]) {
     const fixture = structuredClone(workflow);
     mutate(fixture);
-    assert.throws(() => assertStaged(fixture));
+    assert.throws(() => assertCandidate(fixture));
   }
 });
 
