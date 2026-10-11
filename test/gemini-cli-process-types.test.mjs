@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
@@ -20,12 +21,23 @@ const compact = diagnostic => ({
 assert.deepEqual(parsed.errors.map(compact), []);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
 
-function diagnosticsFor(name) {
-  const file = join(fixtureRoot, name);
+function diagnosticsForFile(file) {
   const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([file], options));
   assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file).map(compact), [],
     'Gemini CLI process source graph must type-check with project settings');
   return diagnostics.filter(item => item.file?.fileName === file).map(compact);
+}
+function diagnosticsFor(name) { return diagnosticsForFile(join(fixtureRoot, name)); }
+
+function diagnosticsForSource(name, source) {
+  const directory = mkdtempSync(join(root, 'test/.gemini-cli-process-contract-'));
+  const file = join(directory, name);
+  try {
+    writeFileSync(file, source);
+    return diagnosticsForFile(file);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 test('Gemini CLI process contracts compose flat/grouped entrypoints, native process options and observed results', () => {
@@ -53,4 +65,47 @@ test('Gemini CLI process requires every named option and keeps nullable child ou
   assert.match(diagnostics[23].message, /undefined|thinkingBudget|thinkingLevel/);
   assert.match(diagnostics[24].message, /undefined|thinkingBudget/);
   assert.match(diagnostics[25].message, /undefined|thinkingLevel/);
+});
+
+test('Gemini CLI process option unions preserve model and thinking-control correlation', () => {
+  const diagnostics = diagnosticsForSource('union-positive.mts', `
+import { runGeminiCliProcess } from '../../src/gemini-cli-process.mjs';
+import type { GeminiCliProcessOptions } from '../../src/gemini-cli/gemini-cli-process.mts';
+const common = { cliEntrypoint: '/opt/gemini/cli.mjs', workspaceDirectory: '/work', privateParentDirectory: '/tmp/private', prompt: 'Review.', project: 'review', region: 'us', proxyUrl: 'http://127.0.0.1:45678/', timeoutMs: 60_000, maxPromptBytes: 4096, maxStdoutBytes: 2048, maxStderrBytes: 1024 };
+type SupportedModel = 'gemini-3.8-flash' | 'gemini-2.5-flash';
+declare const model: SupportedModel;
+declare const broadModel: string;
+const correlated: GeminiCliProcessOptions<SupportedModel> = model === 'gemini-3.8-flash'
+  ? { ...common, model, thinkingLevel: 'LOW' }
+  : { ...common, model, thinkingBudget: 512 };
+const correlatedResult = runGeminiCliProcess(correlated);
+const inferredCorrelated = runGeminiCliProcess(model === 'gemini-3.8-flash'
+  ? { ...common, model, thinkingLevel: 'MEDIUM' }
+  : { ...common, model, thinkingBudget: 512 });
+const inferredFlash = runGeminiCliProcess({ ...common, model: 'gemini-3.8-flash', thinkingLevel: 'HIGH' });
+const inferredOther = runGeminiCliProcess({ ...common, model: 'gemini-2.5-flash', thinkingBudget: 256 });
+const broadLevel = runGeminiCliProcess({ ...common, model: broadModel, thinkingLevel: 'LOW' });
+const broadBudget = runGeminiCliProcess({ ...common, model: broadModel, thinkingBudget: 256 });
+void [correlatedResult, inferredCorrelated, inferredFlash, inferredOther, broadLevel, broadBudget];
+`);
+  assert.deepEqual(diagnostics, []);
+});
+
+test('Gemini CLI process rejects uncorrelated union and inferred model/control combinations', () => {
+  const diagnostics = diagnosticsForSource('union-negative.mts', `
+import { runGeminiCliProcess } from '../../src/gemini-cli-process.mjs';
+import type { GeminiCliProcessOptions } from '../../src/gemini-cli/gemini-cli-process.mts';
+const common = { cliEntrypoint: '/opt/gemini/cli.mjs', workspaceDirectory: '/work', privateParentDirectory: '/tmp/private', prompt: 'Review.', project: 'review', region: 'us', proxyUrl: 'http://127.0.0.1:45678/', timeoutMs: 60_000, maxPromptBytes: 4096, maxStdoutBytes: 2048, maxStderrBytes: 1024 };
+declare const model: 'gemini-3.8-flash' | 'gemini-2.5-flash';
+const explicitUnion: GeminiCliProcessOptions<typeof model> = { ...common, model, thinkingBudget: 512 };
+const inferredUnion = runGeminiCliProcess({ ...common, model, thinkingBudget: 512 });
+const inferredFlash = runGeminiCliProcess({ ...common, model: 'gemini-3.8-flash', thinkingBudget: 512 });
+const inferredOther = runGeminiCliProcess({ ...common, model: 'gemini-2.5-flash', thinkingLevel: 'HIGH' });
+void [explicitUnion, inferredUnion, inferredFlash, inferredOther];
+`);
+  assert.deepEqual(diagnostics.map(({ code }) => code), [2322, 2345, 2322, 2322]);
+  assert.match(diagnostics[0].message, /GeminiCliProcessOptions/);
+  assert.match(diagnostics[1].message, /GeminiCliProcessInputForModel/);
+  assert.match(diagnostics[2].message, /thinkingBudget|not assignable/i);
+  assert.match(diagnostics[3].message, /thinkingLevel|not assignable/i);
 });

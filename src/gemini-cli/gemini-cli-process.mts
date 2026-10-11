@@ -31,8 +31,16 @@ export type GeminiCliThinkingOptions<Model extends string = string> = string ext
   : Model extends 'gemini-3.8-flash'
     ? { readonly thinkingLevel: GeminiCliThinkingLevel; readonly thinkingBudget?: undefined }
     : { readonly thinkingBudget: number; readonly thinkingLevel?: undefined };
+type GeminiCliProcessModelOptions<Model extends string> = Model extends string
+  ? { readonly model: Model } & GeminiCliThinkingOptions<Model>
+  : never;
+type GeminiCliProcessOptionsForModel<Model extends string> = string extends Model
+  ? { readonly model: Model } & GeminiCliThinkingOptions<Model>
+  : GeminiCliProcessModelOptions<Model>;
 export type GeminiCliProcessOptions<Model extends string = string> = GeminiCliProcessCommonOptions &
-  { readonly model: Model } & GeminiCliThinkingOptions<Model>;
+  GeminiCliProcessOptionsForModel<Model>;
+type GeminiCliProcessInputForModel<Model extends string> = GeminiCliProcessCommonOptions &
+  { readonly model: Model } & NoInfer<GeminiCliProcessOptionsForModel<Model>>;
 
 type GeminiCliProcessRuntimeOptions = GeminiCliProcessCommonOptions & {
   model: string;
@@ -268,7 +276,7 @@ function spawnBounded(executable: string, args: string[], { cwd, env, deadline, 
  * The caller owns private-parent integrity and protected-request preflight;
  * the version probe checks the reported version string only.
  */
-export async function runGeminiCliProcess<Model extends string>(options: GeminiCliProcessOptions<Model>): Promise<GeminiCliProcessResult> {
+export async function runGeminiCliProcess<const Model extends string>(options: GeminiCliProcessInputForModel<Model>): Promise<GeminiCliProcessResult> {
   const encodedPrompt = validate(options);
   const start = Date.now(); const deadline = start + options.timeoutMs;
   if (options.signal?.aborted) throw new Error('Gemini CLI execution cancelled before setup.');

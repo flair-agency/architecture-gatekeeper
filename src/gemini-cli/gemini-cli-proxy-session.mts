@@ -24,8 +24,14 @@ interface GeminiCliProxySessionProcessOptionsCommon {
   signal?: AbortSignal;
 }
 
+type GeminiCliProxySessionModelOptions<Model extends string> = Model extends string
+  ? { model: Model } & GeminiCliThinkingOptions<Model>
+  : never;
+type GeminiCliProxySessionProcessOptionsForModel<Model extends string> = string extends Model
+  ? { model: Model } & GeminiCliThinkingOptions<Model>
+  : GeminiCliProxySessionModelOptions<Model>;
 export type GeminiCliProxySessionProcessOptions<Model extends string = string> = GeminiCliProxySessionProcessOptionsCommon &
-  { model: Model } & GeminiCliThinkingOptions<Model>;
+  GeminiCliProxySessionProcessOptionsForModel<Model>;
 
 export interface GeminiCliProxySessionInput<Model extends string = string> {
   packet: ReviewFileContextPacket;
@@ -75,12 +81,18 @@ function validateInput<Model extends string>(input: GeminiCliProxySessionInput<M
   return input;
 }
 
+type GeminiCliProxySessionInputForModel<Model extends string> =
+  Omit<GeminiCliProxySessionInput<Model>, 'processOptions'> & {
+    processOptions: GeminiCliProxySessionProcessOptionsCommon & { model: Model } &
+      NoInfer<GeminiCliProxySessionProcessOptionsForModel<Model>>;
+  };
+
 /**
  * Start one trusted Vertex-only proxy and run the materialized CLI session
  * through it. Credentials remain in this parent and are only passed to the
  * proxy. The returned value is extracted response text, never a decision.
  */
-export async function runGeminiCliProxySession<Model extends string = string>(input: GeminiCliProxySessionInput<Model>): Promise<string> {
+export async function runGeminiCliProxySession<const Model extends string = string>(input: GeminiCliProxySessionInputForModel<Model>): Promise<string> {
   validateInput(input);
   const { processOptions } = input;
   if (processOptions.signal?.aborted) throw new Error('Gemini CLI proxy session cancelled before startup.');
