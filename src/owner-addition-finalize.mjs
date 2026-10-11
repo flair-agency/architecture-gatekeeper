@@ -6,10 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { resolveCiPolicy, parseCiPolicyJson } from './resolve-ci-policy.mjs';
 import { verifyOwnerAdditionEligibilityProvenance } from './github-owner-addition-provenance.mjs';
 import { verifyOwnerAdditionReadback } from './github-owner-addition-readback.mjs';
-import { evaluateOwnerAdditionAdoption } from './owner-addition-adoption.mjs';
 import { digestOwnerDecisionAddition } from './owner-decision-addition.mjs';
 import { rejectDuplicateJsonKeys } from './authority-set.mjs';
-import { validateMultiAuthorityProvenance } from './multi-authority-provenance.mjs';
+import { buildOwnerAdditionFinalRecord } from './owner-addition/owner-addition-finalize.mts';
+export { buildOwnerAdditionFinalRecord };
 
 const api = 'https://api.github.com';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -182,70 +182,6 @@ export function parseGatekeeperWorkflowDefaults(workflowBytes) {
 }
 
 /** Create a serializable final record only from the trusted facts passed by adapters. */
-export function buildOwnerAdditionFinalRecord({ repository, targetBranch, pullRequestNumber, baseSha, bSha, bTree,
-  authorityDigest, policy, selected, policySha256, policyPath, procedure, ordinaryDecision, authoritySet, eligibility,
-  authoritySetProvenance, eligibilityEvidence, eligibilityArtifactBinding, merge, targetReadback,
-  identities = {}, generatedAt = new Date().toISOString() }) {
-  if (!eligibilityArtifactBinding || !/^\d+$/.test(eligibilityArtifactBinding.checkRunId) ||
-      !/^\d+$/.test(eligibilityArtifactBinding.artifactId) ||
-      !/^sha256:[a-f0-9]{64}$/.test(eligibilityArtifactBinding.artifactDigest) ||
-      eligibilityArtifactBinding.annotationTitle !== 'AGK_OWNER_ADDITION_ARTIFACT_V1' ||
-      typeof eligibilityArtifactBinding.annotationMessage !== 'string') {
-    fail('verified eligibility artifact identity is missing from the final record.');
-  }
-  validateMultiAuthorityProvenance(authoritySetProvenance);
-  if (authoritySetProvenance.selfRepository !== repository || authoritySetProvenance.authorityRevision !== baseSha ||
-      authoritySetProvenance.setDigest !== authoritySet.digest ||
-      authoritySetProvenance.members.length !== authoritySet.ids.length ||
-      authoritySetProvenance.members.some((member, index) => member.id !== authoritySet.ids[index])) {
-    fail('verified Authority Set provenance does not match the final record binding.');
-  }
-  // Keep the evaluator's intentionally closed evidence shape separate from
-  // the richer serialized record that carries the tag's authority binding.
-  const adoptionProcedure = { status: procedure.status, digest: procedure.digest, repository: procedure.repository,
-    baseSha: procedure.baseSha, bSha: procedure.bSha, targetBranch: procedure.targetBranch,
-    pullRequestNumber: procedure.pullRequestNumber, tagTargetSha: procedure.tagTargetSha,
-    tagObjectOid: procedure.tagObjectOid, ownerDecisionId: procedure.ownerDecisionId,
-    authoritySetDigest: procedure.authoritySetDigest, authorityIds: procedure.authorityIds };
-  const result = evaluateOwnerAdditionAdoption({ candidate: { repository, targetBranch,
-    pullRequest: { number: pullRequestNumber }, baseSha, bSha, bTree, authorityDigest }, procedure: adoptionProcedure,
-  ordinaryDecision, authoritySet, eligibility, eligibilityEvidence, merge, targetReadback });
-  return {
-    version: 1,
-    generatedAt: new Date(Date.parse(generatedAt)).toISOString(),
-    candidate: { repository, targetBranch, pullRequestNumber, baseSha, bSha, bTree },
-    selectedPolicy: { path: policyPath, revision: baseSha, version: policy.version, sha256: policySha256,
-      mode: selected.mode, producer: selected.adoptionEvidenceProducer,
-      workflowPath: selected.adoptionEvidenceWorkflowPath, jobName: selected.adoptionEvidenceJobName },
-    authoritySet: { ids: [...authoritySet.ids], digest: authoritySet.digest,
-      repository: authoritySetProvenance.selfRepository, revision: authoritySetProvenance.authorityRevision,
-      manifestSha256: authoritySetProvenance.manifestSha256,
-      members: authoritySetProvenance.members.map(member => ({ ...member })) },
-    addition: { authorityId: procedure.authorityId, authorityPath: procedure.authorityPath,
-      tagRef: procedure.tagRef, tagObjectOid: procedure.tagObjectOid,
-      additionRecordSha256: procedure.additionRecordSha256, ownerDecisionId: procedure.missingDecisionId,
-      authoritySha256: authorityDigest, refReadback: identities.g0TagReadback ?? { status: 'unavailable' } },
-    eligibility: { result: eligibility.result, digest: eligibility.digest,
-      producer: result.eligibilityProducer, completedAt: result.eligibilityCompletedAt,
-      artifactBinding: { ...eligibilityArtifactBinding } },
-    merge: { sha: merge.commit.sha, parents: [...merge.commit.parents], tree: merge.commit.tree,
-      mergedAt: merge.hostMetadata.mergedAt },
-    canonical: { ref: targetReadback.targetRef, observedSha: targetReadback.targetSha,
-      authoritySha256: targetReadback.authorityDigest },
-    callerWorkflow: identities.callerWorkflow ?? { path: null, revision: baseSha, sha256: null, status: 'unavailable' },
-    gatekeeper: identities.gatekeeper ?? { workflowPath: selected.adoptionEvidenceWorkflowPath,
-      runtimeRevision: null, status: 'unavailable' },
-    reviewInputs: { ordinary: { prompt: identities.ordinaryPrompt ?? { path: null, sha256: null, status: 'unavailable' },
-        schema: identities.ordinarySchema ?? { path: null, sha256: null, status: 'unavailable' },
-        validation: identities.validation ?? { path: null, sha256: null, status: 'not_selected' } },
-      ownerAddition: { prompt: identities.prompt ?? { path: null, sha256: null, status: 'unavailable' },
-        schema: identities.schema ?? { path: null, sha256: null, status: 'unavailable' } } },
-    assurance: { principalAuthentication: result.principalAuthentication,
-      hostEnforcement: 'not_verified', policyProtection: 'not_claimed',
-      eligibilityProducerTime: result.eligibilityCompletedAt },
-    outcome: result,
-  };
-}
 
 /**
  * Fetch, validate and bind a merged B adoption. No consumer-repository files are

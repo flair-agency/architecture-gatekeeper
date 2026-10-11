@@ -363,7 +363,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(additionJob, /steps\.eligibility-evidence\.outputs\.artifact-digest/);
   assert.match(additionJob, /AGK_OWNER_ADDITION_ARTIFACT_V1/);
   assert.match(workflow, /ci-procedural-acceptance\.mjs/);
-  const proceduralAcceptance = readFileSync(join(root, 'src/ci-procedural-acceptance.mjs'), 'utf8');
+  const proceduralAcceptance = readFileSync(join(root, 'src/ci-review/ci-procedural-acceptance.mts'), 'utf8');
   assert.match(proceduralAcceptance, /OWNER_ADDITION_G0_PENDING/);
   assert.match(proceduralAcceptance, /selected authority requires successful OWNER_ADDITION/);
   assert.match(workflow, /POLICY_VERSION: \$\{\{ needs\.policy\.outputs\.policy_version \}\}/);
