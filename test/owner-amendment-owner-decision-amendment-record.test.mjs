@@ -30,13 +30,13 @@ const review = { version: 1, kind: 'owner-amendment-owner-decision-review-record
   inputDigests: Object.fromEntries(['manifest','policy','prompt','schema','validation'].map(key => [key, sha(key)])),
   decisionSha256: sha(decisionBytes), decisionBytesBase64: decisionBytes.toString('base64'), decision };
 const reviewBytes = Buffer.from(`${JSON.stringify(review)}\n`);
-const call = () => buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecordBytes: reviewBytes,
+const call = (authorityChanges = [
+  { path: 'docs/architecture.md', beforeBytes: before, afterBytes: after },
+  { path: pathSecurity, beforeBytes: beforeSecurity, afterBytes: afterSecurity },
+]) => buildOwnerAmendmentOwnerDecisionAmendmentRecord({ reviewRecordBytes: reviewBytes,
   attestationBundleBytes: bundle, repository: review.repository, baseSha: base, bSha,
   authorityId: 'architecture', authorityPath: 'docs/architecture.md', previousAuthorityBytes: before,
-  amendedAuthorityBytes: after, authorityChanges: [
-    { path: 'docs/architecture.md', beforeBytes: before, afterBytes: after },
-    { path: pathSecurity, beforeBytes: beforeSecurity, afterBytes: afterSecurity },
-  ], priorAuthoritySetDigest, resultingAuthoritySetDigest,
+  amendedAuthorityBytes: after, authorityChanges, priorAuthoritySetDigest, resultingAuthoritySetDigest,
   purpose: 'Resolve the selected existing architecture decision.' });
 
 test('builds a closed OWNER_DECISION AmendmentRecord bound to exact trigger and authority bytes', () => {
@@ -58,6 +58,22 @@ test('builds a closed OWNER_DECISION AmendmentRecord bound to exact trigger and 
     'authorityId', 'authorityPath', 'changes', 'targetValidated', 'purpose'].sort());
   assert.equal(result.authorityId, 'architecture');
   assert.equal(result.authorityPath, 'docs/architecture.md');
+});
+
+test('preserves the final path getter reread before target binding rejects its changed value', () => {
+  let pathReads = 0;
+  const changingPath = {
+    get path() {
+      pathReads += 1;
+      return pathReads <= 5 ? 'docs/architecture.md' : 17;
+    },
+    beforeBytes: before,
+    afterBytes: after,
+  };
+  assert.throws(() => call([changingPath,
+    { path: pathSecurity, beforeBytes: beforeSecurity, afterBytes: afterSecurity },
+  ]), /complete authority changes do not bind the selected amendment target/);
+  assert.equal(pathReads, 6);
 });
 
 test('rejects a different trigger digest, extra decision ID claim, or changed authority bytes', () => {
