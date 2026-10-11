@@ -1,0 +1,332 @@
+# Default-main registration only; all admission settings are pending, so inactive.
+# This caller does not change main policy, main routing, or the protected source pin.
+name: Issue334 Ordinary Gemini Feature Caller
+
+on:
+  pull_request_target:
+    branches: [feature/gemini-ci]
+    types: [ready_for_review]
+
+  # Deliberately do not add a second trigger. The bounded ordinal is consumed
+  # by the first run of this protected workflow, whatever its event outcome.
+
+jobs:
+  classify-self-repository:
+    name: classify-self-repository
+    permissions:
+      contents: none
+      id-token: none
+    outputs:
+      classification: ${{ steps.classify.outputs.classification }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Classify trusted base and head repository IDs
+        id: classify
+        env:
+          EXPECTED_REPOSITORY_ID: ${{ github.repository_id }}
+          EXPECTED_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node --input-type=module <<'NODE'
+          import * as fs from 'node:fs';
+          import * as path from 'node:path';
+
+          function appendRunnerOutput(contents) {
+            let fd;
+            let primaryFailure;
+            try {
+              const target = process.env.GITHUB_OUTPUT;
+              if (typeof target !== 'string' || !target || !path.isAbsolute(target) || path.resolve(target) !== target ||
+                  !/^(?:classification=(?:same-repository|cross-repository|unknown)|admitted=(?:true|false))\n$/.test(contents) ||
+                  Buffer.byteLength(contents, 'utf8') > 64) throw new Error('runner output rejected');
+              const before = fs.lstatSync(target);
+              if (before.isSymbolicLink() || !before.isFile() || before.nlink !== 1) throw new Error('runner output rejected');
+              if (fs.realpathSync(target) !== target || typeof fs.constants.O_NOFOLLOW !== 'number') throw new Error('runner output rejected');
+              fd = fs.openSync(target, fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_NOFOLLOW);
+              const opened = fs.fstatSync(fd);
+              if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== before.dev || opened.ino !== before.ino) {
+                throw new Error('runner output rejected');
+              }
+              fs.writeFileSync(fd, contents);
+            } catch (error) {
+              primaryFailure = error;
+              throw error;
+            } finally {
+              if (fd !== undefined) {
+                try { fs.closeSync(fd); }
+                catch (error) { if (primaryFailure === undefined) throw error; }
+              }
+            }
+          }
+
+          const validId = value => Number.isSafeInteger(value) && value > 0;
+          let classification = 'unknown';
+          try {
+            const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+            const rawExpected = process.env.EXPECTED_REPOSITORY_ID;
+            const expected = /^[1-9][0-9]*$/.test(rawExpected) ? Number(rawExpected) : NaN;
+            const rawPullRequestNumber = process.env.EXPECTED_PULL_REQUEST_NUMBER;
+            const expectedPullRequestNumber = /^[1-9][0-9]*$/.test(rawPullRequestNumber)
+              ? Number(rawPullRequestNumber) : NaN;
+            const pullRequest = event.pull_request;
+            const eventRepositoryId = event.repository?.id;
+            const baseRepositoryId = pullRequest?.base?.repo?.id;
+            const headRepositoryId = pullRequest?.head?.repo?.id;
+            const validCommit = value => typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
+            if (process.env.GITHUB_EVENT_NAME === 'pull_request_target' &&
+                validId(expected) && validId(expectedPullRequestNumber) &&
+                validId(eventRepositoryId) &&
+                validId(baseRepositoryId) && validId(headRepositoryId) &&
+                validId(pullRequest?.number) && pullRequest.number === expectedPullRequestNumber &&
+                validCommit(pullRequest?.base?.sha) &&
+                validCommit(pullRequest?.head?.sha) && expected === eventRepositoryId &&
+                expected === baseRepositoryId) {
+              classification = headRepositoryId === baseRepositoryId
+                ? 'same-repository' : 'cross-repository';
+            }
+          } catch {
+            classification = 'unknown';
+          }
+          try {
+            appendRunnerOutput(`classification=${classification}\n`);
+          } catch {
+            console.error('Unable to safely update GitHub output.');
+            process.exitCode = 1;
+          }
+          NODE
+
+  protected-admission:
+    name: protected-admission
+    needs: classify-self-repository
+    if: needs.classify-self-repository.outputs.classification == 'same-repository'
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      id-token: none
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      admitted: ${{ steps.admission.outputs.admitted }}
+    steps:
+      - name: Verify bounded deployment admission from immutable protected sources
+        id: admission
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          GCP_WIF_PROVIDER_SELECTOR: ${{ secrets.GCP_WIF_PROVIDER }}
+          GCP_WIF_SERVICE_ACCOUNT_SELECTOR: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import * as fs from 'node:fs';
+          import * as path from 'node:path';
+
+          function appendRunnerOutput(contents) {
+            let fd;
+            let primaryFailure;
+            try {
+              const target = process.env.GITHUB_OUTPUT;
+              if (typeof target !== 'string' || !target || !path.isAbsolute(target) || path.resolve(target) !== target ||
+                  !/^(?:classification=(?:same-repository|cross-repository|unknown)|admitted=(?:true|false))\n$/.test(contents) ||
+                  Buffer.byteLength(contents, 'utf8') > 64) throw new Error('runner output rejected');
+              const before = fs.lstatSync(target);
+              if (before.isSymbolicLink() || !before.isFile() || before.nlink !== 1) throw new Error('runner output rejected');
+              if (fs.realpathSync(target) !== target || typeof fs.constants.O_NOFOLLOW !== 'number') throw new Error('runner output rejected');
+              fd = fs.openSync(target, fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_NOFOLLOW);
+              const opened = fs.fstatSync(fd);
+              if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== before.dev || opened.ino !== before.ino) {
+                throw new Error('runner output rejected');
+              }
+              fs.writeFileSync(fd, contents);
+            } catch (error) {
+              outputWriteFailed = true;
+              primaryFailure = error;
+              throw error;
+            } finally {
+              if (fd !== undefined) {
+                try { fs.closeSync(fd); }
+                catch (error) {
+                  if (primaryFailure === undefined) {
+                    outputWriteFailed = true;
+                    throw error;
+                  }
+                }
+              }
+            }
+          }
+
+          const EXPECTED = Object.freeze({
+            repository: 'flair-agency/architecture-gatekeeper', pr: 517,
+            targetBranch: 'feature/gemini-ci',
+            head: 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e',
+            base: 'c5686f63909af2e83b749ffa0b91d33cb9ea96ad',
+            merge: '96ab3902f95250a1c80aecec45434e04272ad548',
+            mergeTree: '8107feae6dbf6bc38b279fcab724fd42a5ad0097',
+            workflowPath: '.github/workflows/issue334-ordinary-feature-caller.yml',
+            configPath: '.codex/gatekeeper/ordinary-gemini-admission.json',
+          });
+          const api = 'https://api.github.com';
+          const sha = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
+          const digest = value => createHash('sha256').update(value, 'utf8').digest('hex');
+          const startedAt = Date.now();
+          const overallSignal = AbortSignal.timeout(45_000);
+          let calls = 0;
+          let outputWriteFailed = false;
+          const fail = () => { throw new Error('admission denied'); };
+          async function get(path) {
+            if (++calls > 12 || Date.now() - startedAt > 45_000) throw new Error('read bound exceeded');
+            const response = await fetch(`${api}${path}`, { redirect: 'error', signal: AbortSignal.any([overallSignal, AbortSignal.timeout(8_000)]), headers: {
+              accept: 'application/vnd.github+json', authorization: `Bearer ${process.env.GH_TOKEN}`,
+              'x-github-api-version': '2022-11-28',
+            } });
+            if (!response.ok) throw new Error('read failed');
+            if (!response.body?.getReader) throw new Error('response stream unavailable');
+            const reader = response.body.getReader();
+            const chunks = [];
+            let byteLength = 0;
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              byteLength += value.byteLength;
+              if (byteLength > 1_048_576) {
+                await reader.cancel();
+                throw new Error('response bound exceeded');
+              }
+              chunks.push(Buffer.from(value));
+            }
+            return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)));
+          }
+          async function regularFile(path, treeCache) {
+            const parts = path.split('/');
+            let treeSha = treeCache.root;
+            for (let i = 0; i < parts.length; i++) {
+              if (!treeCache.trees.has(treeSha)) {
+                const tree = await get(`/repos/${EXPECTED.repository}/git/trees/${treeSha}`);
+                if (!Array.isArray(tree.tree)) throw new Error('tree unavailable');
+                treeCache.trees.set(treeSha, tree.tree);
+              }
+              const entry = treeCache.trees.get(treeSha).find(item => item.path === parts[i]);
+              if (!entry) throw new Error('path absent');
+              if (i < parts.length - 1) {
+                if (entry.type !== 'tree' || entry.mode !== '040000' || !sha(entry.sha)) throw new Error('non-directory path');
+                treeSha = entry.sha;
+              } else {
+                if (entry.type !== 'blob' || entry.mode !== '100644' || !sha(entry.sha)) throw new Error('not a regular file');
+                const blob = await get(`/repos/${EXPECTED.repository}/git/blobs/${entry.sha}`);
+                if (blob.sha !== entry.sha || blob.encoding !== 'base64' || typeof blob.content !== 'string' ||
+                    !Number.isSafeInteger(blob.size) || blob.size < 0 || blob.size > 100_000) throw new Error('invalid blob');
+                const encoded = blob.content.replace(/\n/g, '');
+                if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) throw new Error('invalid blob encoding');
+                const bytes = Buffer.from(encoded, 'base64');
+                if (bytes.length !== blob.size || bytes.toString('base64') !== encoded) throw new Error('blob size mismatch');
+                return bytes;
+              }
+            }
+            throw new Error('regular file unavailable');
+          }
+          try {
+            const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+            const repoId = Number(process.env.GITHUB_REPOSITORY_ID);
+            const workflowSha = process.env.GITHUB_WORKFLOW_SHA;
+            const runId = process.env.GITHUB_RUN_ID;
+            const runNumber = Number(process.env.GITHUB_RUN_NUMBER);
+            const attempt = Number(process.env.GITHUB_RUN_ATTEMPT);
+            if (process.env.GITHUB_EVENT_NAME !== 'pull_request_target' ||
+                event.action !== 'ready_for_review' || event.pull_request?.number !== EXPECTED.pr ||
+                event.pull_request?.draft !== false || !sha(event.pull_request?.head?.sha) ||
+                event.pull_request?.base?.ref !== EXPECTED.targetBranch ||
+                !sha(event.pull_request?.base?.sha) || !sha(event.pull_request?.merge_commit_sha) || !sha(workflowSha) ||
+                !Number.isSafeInteger(repoId) || repoId < 1 || !/^[1-9][0-9]*$/.test(runId) ||
+                !Number.isSafeInteger(runNumber) || runNumber < 1 || attempt !== 1 ||
+                process.env.GITHUB_REPOSITORY !== EXPECTED.repository ||
+                process.env.GITHUB_SHA !== EXPECTED.base ||
+                event.repository?.id !== repoId || event.pull_request.base.repo?.id !== repoId ||
+                event.pull_request.head.repo?.id !== repoId ||
+                event.pull_request.head.sha !== EXPECTED.head || event.pull_request.base.sha !== EXPECTED.base ||
+                event.pull_request.merge_commit_sha !== EXPECTED.merge) fail();
+
+            const commit = await get(`/repos/${EXPECTED.repository}/git/commits/${workflowSha}`);
+            if (!sha(commit.tree?.sha)) fail();
+            const treeCache = { root: commit.tree.sha, trees: new Map() };
+            const configBytes = await regularFile(EXPECTED.configPath, treeCache);
+            const config = JSON.parse(configBytes.toString('utf8'));
+            const configKeys = ['version', 'enabled', 'workflowId', 'runNumber', 'callerSha256', 'providerSelectorSha256', 'serviceAccountSelectorSha256'];
+            if (Object.keys(config).sort().join('\n') !== configKeys.sort().join('\n') ||
+                config.version !== 1 || config.enabled !== true ||
+                !Number.isSafeInteger(config.workflowId) || config.workflowId < 1 ||
+                !Number.isSafeInteger(config.runNumber) || config.runNumber < 1 ||
+                !/^[a-f0-9]{64}$/.test(config.callerSha256 ?? '') ||
+                !/^[a-f0-9]{64}$/.test(config.providerSelectorSha256 ?? '') ||
+                !/^[a-f0-9]{64}$/.test(config.serviceAccountSelectorSha256 ?? '') ||
+                config.workflowId === null || config.runNumber === null) fail();
+
+            const [run, workflow, callerBytes, pull, mergeCommit] = await Promise.all([
+              get(`/repos/${EXPECTED.repository}/actions/runs/${runId}`),
+              get(`/repos/${EXPECTED.repository}/actions/workflows/${config.workflowId}`),
+              regularFile(EXPECTED.workflowPath, treeCache),
+              get(`/repos/${EXPECTED.repository}/pulls/${EXPECTED.pr}`),
+              get(`/repos/${EXPECTED.repository}/commits/${EXPECTED.merge}`),
+            ]);
+            if (run.id !== Number(runId) || run.repository?.id !== repoId || run.workflow_id !== config.workflowId ||
+                run.run_number !== runNumber || run.run_number !== config.runNumber ||
+                run.run_attempt !== 1 || run.event !== 'pull_request_target' || run.head_sha !== EXPECTED.head ||
+                workflow.id !== config.workflowId || workflow.path !== EXPECTED.workflowPath || digest(callerBytes) !== config.callerSha256 ||
+                pull.number !== EXPECTED.pr || pull.draft !== false ||
+                pull.base.ref !== EXPECTED.targetBranch ||
+                pull.base.sha !== EXPECTED.base || pull.head.sha !== EXPECTED.head ||
+                pull.base.repo.id !== repoId || pull.head.repo.id !== repoId ||
+                pull.merge_commit_sha !== EXPECTED.merge || mergeCommit.sha !== EXPECTED.merge ||
+                !Array.isArray(mergeCommit.parents) || mergeCommit.parents.length !== 2 ||
+                mergeCommit.parents[0]?.sha !== EXPECTED.base || mergeCommit.parents[1]?.sha !== EXPECTED.head ||
+                !sha(mergeCommit.commit?.tree?.sha) || mergeCommit.commit.tree.sha !== EXPECTED.mergeTree) fail();
+
+            const providerSelector = process.env.GCP_WIF_PROVIDER_SELECTOR;
+            const accountSelector = process.env.GCP_WIF_SERVICE_ACCOUNT_SELECTOR;
+            if (typeof providerSelector !== 'string' || providerSelector.length === 0 ||
+                typeof accountSelector !== 'string' || accountSelector.length === 0 ||
+                digest(providerSelector) !== config.providerSelectorSha256 ||
+                digest(accountSelector) !== config.serviceAccountSelectorSha256) fail();
+            appendRunnerOutput('admitted=true\n');
+          } catch {
+            if (outputWriteFailed) {
+              console.error('Unable to safely update GitHub output.');
+              process.exitCode = 1;
+            } else {
+              try { appendRunnerOutput('admitted=false\n'); }
+              catch {
+                outputWriteFailed = true;
+                console.error('Unable to safely update GitHub output.');
+                process.exitCode = 1;
+              }
+            }
+          }
+          NODE
+
+  architecture-gate:
+    name: architecture-gate
+    needs: [classify-self-repository, protected-admission]
+    # One selected workflow instance/ordinal/attempt must pass the protected admission step.
+    if: needs.classify-self-repository.outputs.classification == 'same-repository' && needs.protected-admission.outputs.admitted == 'true' && github.event_name == 'pull_request_target' && github.event.action == 'ready_for_review' && github.event.pull_request.draft == false && github.event.pull_request.number == 517 && github.event.pull_request.head.sha == 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' && github.run_attempt == 1
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+      id-token: write
+    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-providers.yml@c5686f63909af2e83b749ffa0b91d33cb9ea96ad
+    with:
+      policy-path: .codex/gatekeeper/gemini-verification-policy.json
+      prompt-path: .codex/gatekeeper/ci-prompt.md
+      schema-path: .codex/gatekeeper/ci-decision.schema.json
+      validation-path: .codex/gatekeeper/decision.validation.json
+      protected-review-instructions: true
+    secrets:
+      GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+      GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}

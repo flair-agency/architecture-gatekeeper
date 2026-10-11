@@ -1,0 +1,149 @@
+diff --git a/docs/architecture/review-execution.md b/docs/architecture/review-execution.md
+index fe384ba9c4361763e7fc3d0f3a01b293b6d60fae..1c142b2391a400ec9d319386df3ffce7610ecd60 100644
+--- a/docs/architecture/review-execution.md
++++ b/docs/architecture/review-execution.md
+@@ -385,31 +385,40 @@ consistency; determinism is not promised.
+ The owner authorizes placing the existing caller on the default development
+ branch, currently `main`, for one session on PR #517. The selected proposal
+ targets `feature/gemini-ci`, with head `c4b0057d9dd47f79df2a896143f7ac6db5da2c2e`,
+-protected base `43e9a28571ad0508a425220256a18d6b140525b2`, and reviewed merge
+-`20cc0c1a58ee8263898a56c8df34472bd14ea173`. The reusable workflow remains
+-pinned to `7dc99525b4ff1510f1de310f6f5b877ab05bbfd2`. This authorization does
+-not select Gemini for PRs targeting `main` or another branch, or import FEATURE
+-authority into the default-branch canonical Set. The caller continues to resolve
+-its protected feature policy (`.codex/gatekeeper/gemini-verification-policy.json`),
+-prompt, schema, decision-validation files and complete six-member Authority Set
+-from the consumer target. It grants no semantic or merge-acceptance authority,
+-changes no validation or acceptance requirements, and does not reclassify the
++protected base `c5686f63909af2e83b749ffa0b91d33cb9ea96ad`, and reviewed merge
++`96ab3902f95250a1c80aecec45434e04272ad548`, whose exact ordered parents are
++`[c5686f63909af2e83b749ffa0b91d33cb9ea96ad,
++c4b0057d9dd47f79df2a896143f7ac6db5da2c2e]` and whose tree is
++`8107feae6dbf6bc38b279fcab724fd42a5ad0097`. The reusable workflow is pinned
++to the reviewed runtime `c5686f63909af2e83b749ffa0b91d33cb9ea96ad`. This
++authorization does not select Gemini for PRs targeting `main` or another
++branch, or import FEATURE authority into the default-branch canonical Set. The
++caller continues to resolve its protected feature policy
++(`.codex/gatekeeper/gemini-verification-policy.json`), prompt, schema,
++decision-validation files and complete six-member Authority Set from the
++consumer target. It grants no semantic or merge-acceptance authority, changes
++no validation or acceptance requirements, and does not reclassify the
+ preserved protected `BLOCK` or activate a broader route.
+ 
+ Before requesting OIDC, a trusted read-only metadata admission step must verify
+ through point-in-time live GitHub API reads the actual immutable event and PR
+ context: repository, PR #517, target branch, head
+ `c4b0057d9dd47f79df2a896143f7ac6db5da2c2e`, protected base
+-`43e9a28571ad0508a425220256a18d6b140525b2`, and reviewed merge
+-`20cc0c1a58ee8263898a56c8df34472bd14ea173`. It must verify the merge commit's exact ordered parent list:
+-`[43e9a28571ad0508a425220256a18d6b140525b2,
++`c5686f63909af2e83b749ffa0b91d33cb9ea96ad`, and reviewed merge
++`96ab3902f95250a1c80aecec45434e04272ad548`. It must verify the merge
++commit's exact ordered parent list:
++`[c5686f63909af2e83b749ffa0b91d33cb9ea96ad,
+ c4b0057d9dd47f79df2a896143f7ac6db5da2c2e]` (protected base, reviewed head).
++The reviewed merge tree is `8107feae6dbf6bc38b279fcab724fd42a5ad0097`.
+ Manual base/merge comparison is insufficient. Admission must pin the numeric workflow instance
+ ID, exactly one `run_number`, and `attempt: 1`; a different ready run, retry,
+ recreated workflow instance, or changed tuple is denied. An unrelated event
+-burns that ordinal, and there is no automatic re-admission. The actual numeric
+-workflow instance ID and run number must be recorded in the canonical admission
+-record before deployment; their values are not established here.
++burns that ordinal, and there is no automatic re-admission. The selected
++workflow instance is `381385696`, with prospective `run_number: 1` and
++`attempt: 1`. The exact-workflow public API history readback at
++`ordinary-runs-after-pr517-refresh.json` reports `total_count: 0`; ordinal 1
++remains unused. These values select the single prospective admission and do not
++establish a workflow execution.
+ 
+ Admission must bind the exact caller content SHA-256 and permitted activation
+ delta, and the same immutable protected workflow revision/configuration. It
+@@ -419,8 +428,51 @@ owner-confirmed selectors by SHA-256 of their exact UTF-8 bytes, with no
+ appended newline. Record the selector fingerprints, caller digest and permitted
+ activation delta in the canonical admission record; the original selector
+ values need not be copied into public canonical text. These fingerprints, the
+-caller digest and permitted delta are not established here and must be recorded
+-canonically before deployment.
++caller digest and permitted delta must be recorded canonically before
++deployment. Fingerprint equality binds the queued selector bytes to the already
++owner-confirmed selection; it does not establish owner intent by itself, nor
++prove that an earlier authentication succeeded.
++
++The prospective config/admission record uses `version: 1`, `enabled: true`,
++`workflowId: 381385696`, `runNumber: 1`, and `callerSha256` equal to the final
++prospective enabled caller digest. The inactive caller artifact has SHA-256
++`9e7c45a0aea5b4d957267b4efccfbc21998184a5ecd42ef4db5d252d52c5815f`; the
++prospective enabled artifact has SHA-256
++`ee0690f61eddf48c152c41e791b76b1549b60087259718d1bbf3f493e9ff8b21`. These
++artifacts are prospective only: they are not pushed, adopted, or active. The
++permitted caller delta is only to replace the `architecture-gate` job's literal
++`if: false` and its explanatory comment with the following comment and exact
++guard; every other caller byte remains identical:
++
++```yaml
++# One selected workflow instance/ordinal/attempt must pass the protected admission step.
++if: needs.classify-self-repository.outputs.classification == 'same-repository' && needs.protected-admission.outputs.admitted == 'true' && github.event_name == 'pull_request_target' && github.event.action == 'ready_for_review' && github.event.pull_request.draft == false && github.event.pull_request.number == 517 && github.event.pull_request.head.sha == 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' && github.run_attempt == 1
++```
++
++The final configuration value must use the prospective enabled digest above;
++that value is not yet configured. The provider and service-account SHA-256
++fingerprints are still pending capture from the exact queued-run selector bytes;
++their raw values stay private. The live caller literal and config remain
++`false` and `false`/`null` until the required fields are finalized, canonically
++adopted, and verified.
++
++The selected protected-base inputs are policy
++`.codex/gatekeeper/gemini-verification-policy.json` (version 6), prompt
++`.codex/gatekeeper/ci-prompt.md`, schema
++`.codex/gatekeeper/ci-decision.schema.json`, validation
++`.codex/gatekeeper/decision.validation.json`, and the complete manifest
++`.codex/gatekeeper/authorities.json`. The operational profile is Gemini CLI
++`0.62.0`, model `gemini-3.8-flash`, `thinkingLevel: MEDIUM`, a 180-second
++session deadline, `maxOutputTokens: 16384`, and a 196608-byte encoded prompt
++limit. The workspace limit is 32 files, 131072 bytes per file and 524288 bytes
++total; stdout and stderr are each limited to 65536 bytes. Use one credential
++acquisition, a 60-second authentication timeout, a 300-second token request,
++and require observed token expiry between 240 and 360 seconds. Do not expose an
++explicit runner renewal handle. Use region `global`; derive project only from
++the same normalized, strictly parsed service-account email. The selected
++session cap is 10 upstream requests, including CLI-internal retries and
++uncertain sends, counted before dispatch. These are proposed bounded settings,
++not evidence of a hosted end-to-end execution or principal proof.
+ 
+ The owner confirms that the configured WIF provider, service account and target
+ repository binding match the intended selection. This confirmation is not
+@@ -440,15 +492,25 @@ workflow rerun, repeated-ready re-admission or provider fallback. HTTP calls and
+ internal retries within that session remain subject to existing selected caps
+ and deadlines.
+ 
+-This record is incomplete for deployment until the actual fixed workflow
+-instance ID, run number, caller digest, activation delta, and selector
+-fingerprints are recorded canonically and verified against the live admission
+-and queued-run metadata. Until then, the caller's literal remains `false` and
+-its configuration remains `false`/`null`. This does not adopt itself; canonical
+-adoption and exact target readback must follow the repository's existing
+-protected review and merge governance before deployment. No new governance
+-profile, G0 selection, acceptance rule, grant backend, tag, write capability,
+-or Gemini `main` target routing is selected.
++This proposal remains incomplete for deployment until the prospective caller
++digest and permitted delta above are bound by the canonical admission record,
++the provider/service-account selector fingerprints are captured from the exact
++queued-run selector bytes, and both are verified against live admission and
++queued-run metadata. The #546
++provider-metadata diagnostic revision `a29c9f246de231394a953e82415cb3fe6ba2accd`
++has independent/native review PASS and hosted CodeQL SUCCESS; its latest
++protected review is run `38183136194`. The metadata diagnostic has not been
++merged for deployment and its third capture has not run; workflow
++`381535290` identifies that diagnostic workflow, not a completed capture. These
++checks do not perform provider authentication or model review and do not consume
++the one approved PR #517 review session. The provider and service-account
++fingerprints therefore remain pending. Until the required deployment values
++are recorded and verified, the caller's literal remains `false` and its
++configuration remains `false`/`null`.
++This does not adopt itself; canonical adoption and exact target readback must
++follow the repository's existing protected review and merge governance before deployment.
++No new governance profile, G0 selection, acceptance rule, grant backend, tag,
++write capability, or Gemini `main` target routing is selected.
+ 
+ #### GitHub step-output sink (owner decision, 2026-10-03)
+ 

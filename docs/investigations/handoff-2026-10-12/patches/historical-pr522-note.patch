@@ -1,0 +1,224 @@
+diff --git a/docs/investigations/2026-10-12-protected-decision-handoff.md b/docs/investigations/2026-10-12-protected-decision-handoff.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..8d25c5ee03cefa885b5b0afdd38fdcf02b7fea66
+--- /dev/null
++++ b/docs/investigations/2026-10-12-protected-decision-handoff.md
+@@ -0,0 +1,218 @@
++# Historical protected decision handoff proposal
++
++**Superseded; approval request withdrawn.** The owner selected the limited,
++already-merged [PR #528](https://github.com/flair-agency/architecture-gatekeeper/pull/528)
++implementation instead of this broader proposed versioned semantic-result
++contract. Do not implement or seek approval for the historical proposal below.
++The earlier native `OWNER_DECISION` concerns that proposed contract, not an
++independent review of the final #528 implementation. No canonical amendment
++from this proposal is selected.
++
++The adopted #528 commit is `92aed162b83c2b0ae9a293ac4696204bb72937e4`,
++tree `f351af560b4ab4daa0d84ece79b671a56e06fdb2`. Independent GitHub API
++readback of [post-adoption run 38158556463, attempt 1](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38158556463)
++confirms the reusable source is that adopted commit, with actual model review
++and PASS publication (`114526569972`), report (`114526873967`) and enforced
++accept (`114526936006`) all successful for head
++`5ce08db9b29689768f6e997e74ceb619bf1f4ba9`. This is a representative real
++ordinary self/Codex PASS E2E, distinct from the synthetic masked-display
++fixture [38156807751](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38156807751).
++The newer #529 head `8a9c520d6d44ee10f34ea8a3df36399b62c4f5a4` also has
++successful new-runtime review/publication, report and actual accept in
++[run 38158998927](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38158998927).
++These observations do not establish a real credential-match collision,
++complete governance/consumer repairs, or authorization to rerun held #522.
++The detailed post-adoption log observations are recorded in the separate
++[PR #529](https://github.com/flair-agency/architecture-gatekeeper/pull/529);
++this workspace verified API metadata, source and fixture assertions, without
++independent download of those job logs. No additional model run, candidate
++edit, PR merge or secret inspection was performed for this readback.
++
++**Status: nonnormative investigation proposal.** This document records a concrete
++source-level symptom and a possible direction for owner review. It does not
++select, authorize, implement, or activate a handoff route; it does not accept
++PR #522 or establish a secret disclosure. Canonical authority remains
++unchanged.
++
++## Observed scope and limits
++
++The requested issue is the missing `final_message` handoff in PR #522 and the
++approved PR #525 merge. PR #525 merged as
++[`bb7c6078766e2d63cbcaf91e8eab72a7bd46a83f`](https://github.com/flair-agency/architecture-gatekeeper/commit/bb7c6078766e2d63cbcaf91e8eab72a7bd46a83f).
++Its selected feature caller remains unconditionally inactive on main; this
++merge is not Gemini activation. PR #522 is owned by a parallel chat. This
++investigation owns the protected MAIN handoff repair and leaves that candidate
++source unchanged.
++
++Issue #329 is the exact reported symptom. The earlier histories #319/#320
++include successful review outputs masked from job outputs and an unchanged
++rerun that passed. PR #432's safe generated dummy-marker repro ran as
++[run 37721924693](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/37721924693),
++attempt 1; it is a synthetic suppression reproduction, not a secret probe or a
++LIVE incident. PRs #438/#439 are diagnostic and test work only. Current PR
++#522 public body reports raw `PASS` with zero findings after its validators, but
++the protected acceptance handoff was unavailable. Its head
++`80bb1bf40cdaebaf196d71d7565fa3b44d13965c` ran
++[38148650463](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38148650463),
++attempts 1–3: raw review validation passed, while job output was suppressed.
++The reported raw PASS is not protected acceptance evidence; matching-secret
++and false-positive status remain unknown. Do not claim a secret leak or false
++positive, or inspect secrets.
++
++## Current consumer and evidence inventory
++
++The current reusable workflow's `review` job exposes
++`steps.codex.outputs.final-message` as `final_message` in
++[architecture-gate.yml](../../.github/workflows/architecture-gate.yml#L208).
++The consumer copy does the same in
++[architecture-gate-consumer.yml](../../.github/workflows/architecture-gate-consumer.yml#L174).
++The Action also receives the configured output schema. Current downstream
++deterministic checks are consumer rules and Authority Set checks; there is no
++separate current “consumer-schema” handoff step. A proposed self-only issuer
++would independently validate the prepared CI decision with
++`validatePreparedCiDecision` before issuing. The value is then used in these
++distinct paths:
++
++- **Main review job:** `final_message` is sent to decision-kind, configured
++  consumer-rule and complete-Authority-Set checks. The review job also records
++  reviewed SHA and authority provenance. The upstream Action uses the selected
++  output schema; a proposed issuer would independently validate the prepared
++  CI decision. Exact original bytes and canonical decision digest are distinct
++  values; neither is reusable acceptance authority by itself.
++- **BLOCK record:** the protected `block-review-record` job consumes the
++  `final_message` output and authority provenance to create the versioned
++  exact-byte ReviewRecord and its attestation. See
++  [workflow lines 503–515](../../.github/workflows/architecture-gate.yml#L503).
++- **OWNER_ADDITION:** the protected addition preparation consumes
++  `ORDINARY_DECISION` and provenance, then uses the complete decision and
++  policy inputs to produce its procedure and eligibility request. See
++  [workflow lines 632–644](../../.github/workflows/architecture-gate.yml#L632).
++- **OWNER_AMENDMENT:** the owner-decision trigger-record path consumes exact
++  decision bytes and provenance for the trigger ReviewRecord and AmendmentRecord;
++  see [workflow lines 719–730](../../.github/workflows/architecture-gate.yml#L719).
++- **Report:** the protected report job consumes the ordinary decision,
++  review result, reviewed revision and provenance to classify, render, and
++  digest the full report. Its same-run conclusion/status is consumed by accept;
++  see [report inputs](../../.github/workflows/architecture-gate.yml#L1100).
++- **Accept:** the current enforced and procedural accept commands consume
++  `needs.review.result` and the same-run `needs.report.outputs.conclusion`,
++  plus selected OWNER_ADDITION result/eligibility where applicable; see
++  [acceptance inputs](../../.github/workflows/architecture-gate.yml#L1192).
++
++The current acceptance contract describes the decision digest and reviewed SHA
++as report metadata rather than a standalone independently accepted artifact
++([architecture.md, current acceptance](../architecture.md#current-acceptance-mechanism)).
++Existing BLOCK, OWNER_ADDITION, and OWNER_AMENDMENT records have their own
++trigger-specific exact-byte and provenance rules. A proposed PASS handoff must
++not be mistaken for or silently substituted into those records.
++
++## Proposed direction for canonical owner choice
++
++A candidate design for owner consideration is a **self-repository only,
++protected, same-run semantic result** for the ordinary Codex `PASS` on
++`flair-agency/architecture-gatekeeper` MAIN. It applies only to the current
++self profile with its complete six-member protected Authority Set. Generic
++reusable consumers and their v1, v5, and governance paths retain their existing
++behavior. In this design only the protected self review job could issue a
++fixed result after deterministic checks confirm the exact protected self
++policy and selector, selected protected runtime source revision, and complete
++six-authority selection, then independently validate the prepared CI decision
++with the full schema and every consumer rule. Proposed version 1 is a fixed
++record with kind `ordinary-self-pass`, conclusion `PASS`, exact original
++decision byte SHA-256 and current canonical decision digest, protected
++policy/schema/consumer-rule digests, complete Authority Set digest,
++repository/PR/base/head/reviewed revision, caller and reusable workflow
++ref/SHA, run/attempt, protected producer job identity, verified reporter
++identity, and a fresh nonce. Fixed same-run job outputs carry the result;
++candidate content and reviewer output cannot select its version or producer.
++Serialization and runtime function names are implementation details after
++authorization. The protected prior policy selects this route explicitly; a
++missing output or service failure cannot dynamically enable it as fallback.
++This is same-run metadata, not portable evidence. The proposed PASS payload's
++raw reviewer bytes remain job-local. Existing non-PASS trigger-specific paths
++retain their original cross-job decision transport and exact-byte requirements. The
++handoff covers PASS only; it does not reinterpret
++`BLOCK`, `OWNER_DECISION`, OWNER_ADDITION, OWNER_AMENDMENT, or governance output.
++
++A protected self reporter and the self accept consumer would verify the same
++immutable workflow, run, attempt, job, revision and nonce bindings. The
++reporter retains its current isolated `pull-requests: write` responsibility;
++it may receive `actions: read` if selected and needed for verification. That
++job-token permission grants repository-wide Actions read access; the protected
++runtime must restrict its requests to this exact run, attempt and selected job.
++No additional review PR-write, OIDC,
++or secret capability is proposed. For human rendering, the reporter may parse
++the returned masked display projection, but must never treat it as semantic
++evidence or exact original bytes. The projection is the original JSON passed
++through the runner's existing masking. Workflow command processing is disabled
++while emitting it. There is no unmasked raw-artifact or encoded log channel.
++Raw private PASS bytes remain in the review job; existing exact trigger evidence
++for non-PASS decisions retains its original transport and validation.
++Missing, truncated, malformed, stale or mismatched fixed outputs or report
++inputs fail closed; no artifact retrieval is proposed for this PASS route.
++
++This choice would introduce a semantic-result issuer and consumer trust
++relationship that the selected Authority Set does not currently choose. An
++owner must first record the canonical decision and its exact scope in the
++appropriate authority member. This proposal is not that amendment and cannot
++be cited as authority.
++
++Suggested canonical owner question: **Does the owner authorize this exact
++self-only version-1 ordinary Codex PASS result and same-run fixed-output,
++protected reporter and accept trust path on MAIN, with the fields and
++permission bounds specified above; generic reusable consumers and their
++v1/v5/governance paths unchanged; original bytes kept job-local; masked log
++projection used only for rendering; and BLOCK/OWNER_DECISION/OWNER_ADDITION/
++OWNER_AMENDMENT retaining their existing exact-byte paths?** This is one
++bounded trust/scope choice; serialization and function names remain ordinary
++implementation decisions. Until it is canonically recorded, current fail-closed
++behavior stands: suppression leaves the result incomplete. This proposal
++claims only partial #329 progress and does not promote the publicly reported
++raw PASS for PR #522 to protected acceptance.
++
++At current source baseline `bb7c6078766e2d63cbcaf91e8eab72a7bd46a83f`, an
++initial native conceptual review independently returned a validated
++`OWNER_DECISION` for all six selected authorities. It is local feedback only:
++it is neither CI acceptance nor owner authorization and does not establish a
++protected implementation. That concept assumed no additional permissions;
++`actions: read` remains an explicit proposed capability for owner selection,
++not an already-reviewed implementation. No implementation or live fix exists
++in this proposal; it records no rerun of PR #522, Gemini activation, or
++acceptance waiver.
++
++## Review and rollout checks if an owner selects this direction
++
++Before implementation, obtain the canonical owner decision, then review the
++producer, reporter, report and accept trust boundaries together. The focused
++negative verification should cover:
++
++| Fixture or mutation | Required outcome |
++| --- | --- |
++| Invalid decision schema, consumer rule, authority digest, omitted/extra/duplicate authority member | No semantic result; accept fails |
++| Failed, cancelled, skipped or incomplete review | No semantic result; accept fails |
++| Safe secret-free dummy marker in a generated test response | Verify output-suppression behavior without probing secrets; no reliance on masked text |
++| Wrong run, attempt, workflow/job identity, repository, policy or reviewed SHA; replayed context | Reporter/accept reject the binding |
++| Missing, malformed, truncated, oversized or suppressed fixed output/report data | Fail closed; no alternate log parser or fallback |
++| Newline or command-like text in diagnostic material | Remains inert display data; cannot issue workflow commands |
++| Missing/suppressed result or report conclusion | Accept fails closed |
++| Non-PASS outcomes including BLOCK and OWNER_DECISION; selected governance procedure absent or failed | Preserve current governance behavior; never become ordinary PASS |
++
++Any eventual rollout is staged: after owner choice, review the implementation;
++adopt it through protected MAIN governance; then run fresh current-head CI and
++inspect exact workflow/run/attempt evidence. Do not infer or borrow the inactive
++Gemini selection or the Issue #210 self-only reporter as authorization for
++this consumer. No result here changes #525's inactive registration or
++authorizes acceptance of PR #522.
++
++## Authority and implementation references
++
++This proposal is bounded by the six members selected in
++[authorities.json](../../.codex/gatekeeper/authorities.json):
++[shared contract](../architecture.md), [Authority Set](../architecture/authority-set.md),
++[OWNER_ADDITION](../architecture/owner-addition.md),
++[OWNER_AMENDMENT](../architecture/owner-amendment.md),
++[review execution](../architecture/review-execution.md), and
++[self profile](../architecture/self-profile.md). The shared contract's
++same-run acceptance mechanism and the review-execution provider-independent
++boundary distinguish execution, semantic validation, reporting, and
++acceptance; the producer and its consumers must preserve those boundaries.

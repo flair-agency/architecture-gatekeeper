@@ -1,0 +1,801 @@
+diff --git a/.github/workflows/issue334-ordinary-feature-caller.yml b/.github/workflows/issue334-ordinary-feature-caller.yml
+index 93003e4d7170ee9e48d5eaa62ce0ae86e52f0ec8..2d16acf126ba29cb8138991c0111b4402f13da30 100644
+--- a/.github/workflows/issue334-ordinary-feature-caller.yml
++++ b/.github/workflows/issue334-ordinary-feature-caller.yml
+@@ -27,12 +27,41 @@ jobs:
+           EXPECTED_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+         run: |
+           node --input-type=module <<'NODE'
+-          import { appendFileSync, readFileSync } from 'node:fs';
++          import * as fs from 'node:fs';
++          import * as path from 'node:path';
++
++          function appendRunnerOutput(contents) {
++            let fd;
++            let primaryFailure;
++            try {
++              const target = process.env.GITHUB_OUTPUT;
++              if (typeof target !== 'string' || !target || !path.isAbsolute(target) || path.resolve(target) !== target ||
++                  !/^(?:classification=(?:same-repository|cross-repository|unknown)|admitted=(?:true|false))\n$/.test(contents) ||
++                  Buffer.byteLength(contents, 'utf8') > 64) throw new Error('runner output rejected');
++              const before = fs.lstatSync(target);
++              if (before.isSymbolicLink() || !before.isFile() || before.nlink !== 1) throw new Error('runner output rejected');
++              if (fs.realpathSync(target) !== target || typeof fs.constants.O_NOFOLLOW !== 'number') throw new Error('runner output rejected');
++              fd = fs.openSync(target, fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_NOFOLLOW);
++              const opened = fs.fstatSync(fd);
++              if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== before.dev || opened.ino !== before.ino) {
++                throw new Error('runner output rejected');
++              }
++              fs.writeFileSync(fd, contents);
++            } catch (error) {
++              primaryFailure = error;
++              throw error;
++            } finally {
++              if (fd !== undefined) {
++                try { fs.closeSync(fd); }
++                catch (error) { if (primaryFailure === undefined) throw error; }
++              }
++            }
++          }
+ 
+           const validId = value => Number.isSafeInteger(value) && value > 0;
+           let classification = 'unknown';
+           try {
+-            const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
++            const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+             const rawExpected = process.env.EXPECTED_REPOSITORY_ID;
+             const expected = /^[1-9][0-9]*$/.test(rawExpected) ? Number(rawExpected) : NaN;
+             const rawPullRequestNumber = process.env.EXPECTED_PULL_REQUEST_NUMBER;
+@@ -57,7 +86,12 @@ jobs:
+           } catch {
+             classification = 'unknown';
+           }
+-          appendFileSync(process.env.GITHUB_OUTPUT, `classification=${classification}\n`);
++          try {
++            appendRunnerOutput(`classification=${classification}\n`);
++          } catch {
++            console.error('Unable to safely update GitHub output.');
++            process.exitCode = 1;
++          }
+           NODE
+ 
+   protected-admission:
+@@ -92,14 +126,50 @@ jobs:
+         run: |
+           node --input-type=module <<'NODE'
+           import { createHash } from 'node:crypto';
+-          import { appendFileSync, readFileSync } from 'node:fs';
++          import * as fs from 'node:fs';
++          import * as path from 'node:path';
++
++          function appendRunnerOutput(contents) {
++            let fd;
++            let primaryFailure;
++            try {
++              const target = process.env.GITHUB_OUTPUT;
++              if (typeof target !== 'string' || !target || !path.isAbsolute(target) || path.resolve(target) !== target ||
++                  !/^(?:classification=(?:same-repository|cross-repository|unknown)|admitted=(?:true|false))\n$/.test(contents) ||
++                  Buffer.byteLength(contents, 'utf8') > 64) throw new Error('runner output rejected');
++              const before = fs.lstatSync(target);
++              if (before.isSymbolicLink() || !before.isFile() || before.nlink !== 1) throw new Error('runner output rejected');
++              if (fs.realpathSync(target) !== target || typeof fs.constants.O_NOFOLLOW !== 'number') throw new Error('runner output rejected');
++              fd = fs.openSync(target, fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_NOFOLLOW);
++              const opened = fs.fstatSync(fd);
++              if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== before.dev || opened.ino !== before.ino) {
++                throw new Error('runner output rejected');
++              }
++              fs.writeFileSync(fd, contents);
++            } catch (error) {
++              outputWriteFailed = true;
++              primaryFailure = error;
++              throw error;
++            } finally {
++              if (fd !== undefined) {
++                try { fs.closeSync(fd); }
++                catch (error) {
++                  if (primaryFailure === undefined) {
++                    outputWriteFailed = true;
++                    throw error;
++                  }
++                }
++              }
++            }
++          }
+ 
+           const EXPECTED = Object.freeze({
+             repository: 'flair-agency/architecture-gatekeeper', pr: 517,
+             targetBranch: 'feature/gemini-ci',
+             head: 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e',
+-            base: '43e9a28571ad0508a425220256a18d6b140525b2',
+-            merge: '20cc0c1a58ee8263898a56c8df34472bd14ea173',
++            base: 'c5686f63909af2e83b749ffa0b91d33cb9ea96ad',
++            merge: '96ab3902f95250a1c80aecec45434e04272ad548',
++            mergeTree: '8107feae6dbf6bc38b279fcab724fd42a5ad0097',
+             workflowPath: '.github/workflows/issue334-ordinary-feature-caller.yml',
+             configPath: '.codex/gatekeeper/ordinary-gemini-admission.json',
+           });
+@@ -109,7 +179,8 @@ jobs:
+           const startedAt = Date.now();
+           const overallSignal = AbortSignal.timeout(45_000);
+           let calls = 0;
+-          const fail = () => { appendFileSync(process.env.GITHUB_OUTPUT, 'admitted=false\n'); process.exit(0); };
++          let outputWriteFailed = false;
++          const fail = () => { throw new Error('admission denied'); };
+           async function get(path) {
+             if (++calls > 12 || Date.now() - startedAt > 45_000) throw new Error('read bound exceeded');
+             const response = await fetch(`${api}${path}`, { redirect: 'error', signal: AbortSignal.any([overallSignal, AbortSignal.timeout(8_000)]), headers: {
+@@ -162,7 +233,7 @@ jobs:
+             throw new Error('regular file unavailable');
+           }
+           try {
+-            const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
++            const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+             const repoId = Number(process.env.GITHUB_REPOSITORY_ID);
+             const workflowSha = process.env.GITHUB_WORKFLOW_SHA;
+             const runId = process.env.GITHUB_RUN_ID;
+@@ -176,6 +247,7 @@ jobs:
+                 !Number.isSafeInteger(repoId) || repoId < 1 || !/^[1-9][0-9]*$/.test(runId) ||
+                 !Number.isSafeInteger(runNumber) || runNumber < 1 || attempt !== 1 ||
+                 process.env.GITHUB_REPOSITORY !== EXPECTED.repository ||
++                process.env.GITHUB_SHA !== EXPECTED.base ||
+                 event.repository?.id !== repoId || event.pull_request.base.repo?.id !== repoId ||
+                 event.pull_request.head.repo?.id !== repoId ||
+                 event.pull_request.head.sha !== EXPECTED.head || event.pull_request.base.sha !== EXPECTED.base ||
+@@ -213,7 +285,8 @@ jobs:
+                 pull.base.repo.id !== repoId || pull.head.repo.id !== repoId ||
+                 pull.merge_commit_sha !== EXPECTED.merge || mergeCommit.sha !== EXPECTED.merge ||
+                 !Array.isArray(mergeCommit.parents) || mergeCommit.parents.length !== 2 ||
+-                mergeCommit.parents[0]?.sha !== EXPECTED.base || mergeCommit.parents[1]?.sha !== EXPECTED.head) fail();
++                mergeCommit.parents[0]?.sha !== EXPECTED.base || mergeCommit.parents[1]?.sha !== EXPECTED.head ||
++                !sha(mergeCommit.commit?.tree?.sha) || mergeCommit.commit.tree.sha !== EXPECTED.mergeTree) fail();
+ 
+             const providerSelector = process.env.GCP_WIF_PROVIDER_SELECTOR;
+             const accountSelector = process.env.GCP_WIF_SERVICE_ACCOUNT_SELECTOR;
+@@ -221,9 +294,19 @@ jobs:
+                 typeof accountSelector !== 'string' || accountSelector.length === 0 ||
+                 digest(providerSelector) !== config.providerSelectorSha256 ||
+                 digest(accountSelector) !== config.serviceAccountSelectorSha256) fail();
+-            appendFileSync(process.env.GITHUB_OUTPUT, 'admitted=true\n');
++            appendRunnerOutput('admitted=true\n');
+           } catch {
+-            fail();
++            if (outputWriteFailed) {
++              console.error('Unable to safely update GitHub output.');
++              process.exitCode = 1;
++            } else {
++              try { appendRunnerOutput('admitted=false\n'); }
++              catch {
++                outputWriteFailed = true;
++                console.error('Unable to safely update GitHub output.');
++                process.exitCode = 1;
++              }
++            }
+           }
+           NODE
+ 
+@@ -237,7 +320,7 @@ jobs:
+       actions: read
+       pull-requests: write
+       id-token: write
+-    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-providers.yml@7dc99525b4ff1510f1de310f6f5b877ab05bbfd2
++    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-providers.yml@c5686f63909af2e83b749ffa0b91d33cb9ea96ad
+     with:
+       policy-path: .codex/gatekeeper/gemini-verification-policy.json
+       prompt-path: .codex/gatekeeper/ci-prompt.md
+diff --git a/docs/investigations/2026-10-12-ordinary-gemini-main-activation-candidate.md b/docs/investigations/2026-10-12-ordinary-gemini-main-activation-candidate.md
+index 3dcfa5d64f597bf67db08fe0d0139f8caa0e66e9..16f3e2c2e0ee814cc5b8c0b5cd3ab9b4fafa9cf7 100644
+--- a/docs/investigations/2026-10-12-ordinary-gemini-main-activation-candidate.md
++++ b/docs/investigations/2026-10-12-ordinary-gemini-main-activation-candidate.md
+@@ -27,33 +27,37 @@ decision-validation files, and complete six-member Authority Set from the
+ consumer target.
+ 
+ Before any OIDC-capable job can run, the fixed admission record must contain the
+-actual numeric workflow ID, exactly one `run_number`, attempt 1, the exact
+-caller SHA-256, and SHA-256 fingerprints of the owner-confirmed provider and
+-service-account selectors. Those values are currently unavailable in the
+-configuration. A failed or unrelated event consumes the selected ordinal; it
+-cannot advance automatically to another run. A different ready event, retry,
+-recreated workflow instance, or changed tuple is denied. The owner-approved
+-session cannot be repeated or replaced with provider fallback.
++numeric workflow ID, exactly one `run_number`, attempt 1, the exact caller
++SHA-256, and SHA-256 fingerprints of the owner-confirmed provider and
++service-account selectors. Public workflow metadata identifies the existing
++ordinary caller as workflow ID `381385696`; its selected ordinal is 1, with no
++run yet and no automatic advance. The service-account fingerprint is known,
++but the provider fingerprint is still unknown. The checked-in configuration
++intentionally leaves all admission fields null. A failed or unrelated event
++consumes the selected ordinal; it cannot advance automatically to another run.
++A different ready event, retry, recreated workflow instance, or changed tuple
++is denied. The owner-approved session cannot be repeated or replaced with
++provider fallback.
+ 
+ The prospective activation delta, after canonical adoption and recording and
+ verification of those fixed inputs, is limited to the architecture-gate job's
+-`if` line. The expected prospective active-source SHA-256 is
+-`9c792884f07d228a42ace202f221030273d6f51e74d738d7d09d3480d7001a68`; the
+-prospective inactive-source SHA-256 is
+-`b2622fa74c9c4e071726120c6146a8e10133bd6ea4399a66cc1b8c1d0374cad3`. These
+-are source-planning references, not evidence that the current file or config
+-has been activated. No source change to that line is made here.
++`if` line. The current inactive caller source SHA-256 is
++`9c792884f07d228a42ace202f221030273d6f51e74d738d7d09d3480d7001a68`. The
++prospective enabled-source SHA-256 remains pending until the exact approved
++`if` line is fixed after canonical adoption and admission prerequisites. The
++inactive hash is a source-planning reference, not evidence that the current
++file or config has been activated. No source change to that line is made here.
+ 
+ ## Admission boundary and evidence map
+ 
+ | Risk or invariant | Current boundary and evidence | Remaining proof |
+ | --- | --- | --- |
+ | Candidate PR data must not choose trusted caller/configuration bytes. | The inline protected-admission Node script uses read-only GitHub API GETs to fetch the tree and regular-file blobs at `GITHUB_WORKFLOW_SHA`; it compares the caller's exact-byte SHA-256 with the config. It does not check out or evaluate candidate code. | Live host execution with the actual immutable source revision and fixed digest. |
+-| The event, run, and PR must identify one exact session. | The script checks the event tuple, live PR/head/base/merge, run ID, workflow ID, run number, attempt 1, and ordered parents `[base, head]`. Its current source also requires a configuration with `enabled: true` and non-null fixed IDs/digests, so the checked-in false/null config fails closed. | Actual workflow ID, selected run number, fixed fingerprints, canonical record, and point-in-time live API admission. No auto-ordinal advancement. |
++| The event, run, and PR must identify one exact session. | The script checks the event tuple, live PR/head/base/merge, run ID, workflow ID, run number, attempt 1, and ordered parents `[base, head]`. Its current source also requires a configuration with `enabled: true` and non-null fixed IDs/digests, so the checked-in false/null config fails closed. | Canonical record and point-in-time live API admission for existing workflow ID `381385696`, selected ordinal 1, attempt 1, with verified fixed digests. No auto-ordinal advancement. |
+ | OIDC and provider access must stay behind admission. | Classifier and protected-admission jobs each have `id-token: none`; the admission job has only contents/actions/pull-request read permissions. The privileged `architecture-gate` job retains literal `if: false`, even though its reusable-workflow permissions include `id-token: write`. | Canonical adoption and the authorized one-session activation after every fixed input is verified. No OIDC/provider call occurred in this preparation. |
+ | API input must be bounded and fail closed. | The inline script allows at most 12 API calls, 45 seconds overall, 8 seconds per request, and 1 MiB per response; redirects, malformed data, unavailable reads, or identity mismatches deny admission. | Live GitHub API behavior and host workflow-expression behavior. Local mocked responses do not prove either. |
+ | Protected source identity and PR candidate identity must remain distinct. | The script reads caller/config from the commit identified by `GITHUB_WORKFLOW_SHA` (the default-caller workflow source) and independently requires the live run's `head_sha` and PR head to match the proposed candidate head. The workflow pin is fixed at `7dc99525b4ff1510f1de310f6f5b877ab05bbfd2`. | Exact live source revision and run metadata. A matching caller digest or selector fingerprint proves neither Google IAM configuration nor authentication. |
+-| Provider selectors must match the owner-confirmed selection without disclosure. | The script compares SHA-256 of the exact UTF-8 selector bytes, with no appended newline, against the protected config. The original selector values are not needed in public canonical text. | Actual selector fingerprints and independent IAM/authentication evidence remain unavailable. No selector value or secret is recorded here. |
++| Provider selectors must match the owner-confirmed selection without disclosure. | The script compares SHA-256 of the exact UTF-8 selector bytes, with no appended newline, against the protected config. The service-account fingerprint is `2180acf4e4c9e0a0a7ec6f997652c2f34e302d2b285bbeb3fd3c1d09688189c4`; the provider fingerprint remains unknown. The original selector values are not needed in public canonical text. | Record and independently verify the provider fingerprint, then obtain independent IAM/authentication evidence. No selector value or secret is recorded here. |
+ 
+ The current script is inline in the protected workflow. It has no candidate
+ `eval`, shell interpolation of candidate content, or candidate-selected script
+@@ -79,17 +83,63 @@ replay. It is evidence only for that prior feature trial. It proves neither
+ this ordinary caller's admission nor authentication, cost, host protection,
+ general stability, or acceptance. No paid call is repeated here.
+ 
+-Earlier development verification recorded against the `6fe98cb8109d7b17f73bafde64df34a2c0fb0104`
+-baseline and the earlier caller source is historical, not verification of the
+-new admission script/configuration. In particular, prior CodeQL, native Skill
+-E2E, source preparation, and workflow checks do not establish current source
+-analysis or live host behavior. No new CodeQL, native E2E, or full-test success
+-is claimed here. The full `npm test` run is being handled independently.
+-
+-Separately, PR #522 at current head `e839…` passed AGK run `38163248397` with
+-an actual review report and successful CI, and both CodeQL languages passed.
+-That parallel work is owned by its separate task and does not prove or activate
+-this caller.
++The inactive #530 candidate was verified at `bf0406b82ae7700b5e9fba4995da88be285a0de8`:
++Node 22.18 `npm test` passed 1,439 tests with 0 failures and skips; independent
++code review reported no findings; local CodeQL CLI 2.27.1, JavaScript query
++pack 2.4.6, and Actions query pack 0.6.36 completed with 58 JavaScript and 0 Actions findings,
++matching the `6fe98cb8109d7b17f73bafde64df34a2c0fb0104` baseline records, with
++the selected models passing and no dismissal, suppression, or model change.
++The original native Skill result was `PASS` with `validate=0` for the combined
++inactive #530/#532 candidate; it is not future activation or protected
++acceptance evidence. Hosted CI run `38167534352` completed, including package
++smoke; hosted CodeQL run `38167531842` succeeded for both languages. Draft AGK
++run `38167532789` ended with actual review acceptance skipped. These are dated
++prior-revision results, not verification of changed investigation prose or
++future activated source.
++
++Separately, PR #522 merged as `d41837170920d49f4e88ea6124026b92f8515230`;
++ordinary Codex actual review, report, and accept run `38163248397` passed. This
++was not a Gemini review and does not prove or activate this caller.
++
++PR #534 merged as `445d3057db88b57989c316efc9289af1f244dfce` after protected
++AGK run `38170676265` passed with ordinary accept and the PR's 1,456 local tests.
++The separate selector-fingerprint diagnostic workflow is ID `381535290`, at
++`.github/workflows/issue334-wif-selector-fingerprint.yml`. Its first hosted run,
++`38171030538`, was ordinal 1, attempt 1 and failed with generic selector
++validation, producing no hashes. PR #535 merged as `d980b732`; its tree matches
++the final integrated diagnostic source at
++`c6b03d39129ea677be6c089d6791f0b55950c600`. Hosted CI run `38173939980`, hosted
++CodeQL run `38173937526`, and protected AGK run `38174176275` completed; AGK
++reported PASS and the ordinary actual review was accepted. The separate
++changed-source metadata run `38174516659` was ordinal 2, attempt 1 and failed
++with the fixed reason `selector_validation/provider_resource_shape`. It
++produced no hashes, and the service-account comparison was not reached. The
++provider validation uses the same resource-name expression as the pinned
++`7dc99525b4ff1510f1de310f6f5b877ab05bbfd2` runtime at
++`src/github-vertex-wif.mts` `validBindings`: a nonzero-leading 5–20 digit
++project number, global workload identity pool, and pool/provider IDs matching
++the bounded lowercase letters, digits, and hyphen expression, excluding the
++`gcp-` prefix. This failure does not establish that the configured Secret is
++incorrect. The owner reports that `GCP_WIF_PROVIDER` has not changed. Historical
++run `38007536879` at `b8492776e51b40251430e466ae251b7a6ea7ac9f` succeeded at the
++existing WIF exchange and bounded Gemini review using
++`google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed`.
++That action reads its provider input through `@actions/core.getInput`, whereas
++the current diagnostic validates the raw selector directly. Compatibility of
++the input handling and internal validator remains under investigation; the
++earlier assertion that an administrator must correct the setting is withdrawn.
++No setting change, raw selector, manual fingerprint, or further owner approval
++is requested by this correction.
++
++This diagnostic remains separate from the ordinary caller workflow ID
++`381385696`, which has zero runs; its prospective selected ordinal is 1 and
++does not auto-advance. The expected service-account selector hash is
++`2180acf4e4c9e0a0a7ec6f997652c2f34e302d2b285bbeb3fd3c1d09688189c4`; the
++provider selector hash remains unknown. The ordinary caller configuration
++intentionally remains `enabled: false` with null admission values. Neither
++diagnostic establishes provider selection, Google-side configuration, or
++authentication. The owner-approved session remains bounded to one run, and no
++paid caller session has occurred.
+ 
+ ## Focused verification and remaining work
+ 
+@@ -99,12 +149,15 @@ mocked GitHub API fixture and checks exact identity, ordered-parent, byte,
+ size, deadline, API-count, and fail-closed cases. It also uses a synthetic YAML
+ parser/evaluator; these checks are local diagnostics, not GitHub's expression
+ engine, live API admission, or protected acceptance. Exact current-source
+-CodeQL and native E2E verification remain pending. No `/review` attempt is
+-waived.
+-
+-The remaining activation prerequisites are the actual fixed workflow ID and
+-run number, exact caller digest, selector fingerprints, their canonical record
+-and verification, canonical adoption and exact target readback, followed by
+-read-only live admission against the immutable PR tuple. Only then may the
+-previously approved single workflow session proceed. Its HTTP calls and
+-internal retries remain under existing consumer-policy caps and deadlines.
++CodeQL and native E2E verification remain pending. `/review` was explicitly
++waived by the user because it was unavailable; this waiver does not replace
++protected review or acceptance evidence.
++
++The remaining activation prerequisites are the canonical fixed record for
++workflow ID `381385696`, selected run number 1 and attempt 1; the exact
++prospective caller digest; the still-unknown provider fingerprint; canonical
++adoption and exact target readback; and read-only live admission against the
++immutable PR tuple. The service-account fingerprint is already known. Only
++then may the previously approved single workflow session proceed. Its HTTP
++calls and internal retries remain under existing consumer-policy caps and
++deadlines.
+diff --git a/test/issue334-ordinary-feature-caller.test.mjs b/test/issue334-ordinary-feature-caller.test.mjs
+index 2158effeeb7f1e71f9cffdf0cade3323650e9115..6ef8874974e683dfe7393410b878ff177aceef5f 100644
+--- a/test/issue334-ordinary-feature-caller.test.mjs
++++ b/test/issue334-ordinary-feature-caller.test.mjs
+@@ -1,9 +1,11 @@
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
++import { link, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+ import { tmpdir } from 'node:os';
+ import { join } from 'node:path';
+ import { spawnSync } from 'node:child_process';
++import * as realFs from 'node:fs';
++import * as pathModule from 'node:path';
+ import { createHash } from 'node:crypto';
+ import { readWorkflow } from './helpers/workflow-structure.mjs';
+ 
+@@ -12,18 +14,37 @@ const source = await readFile(new URL('../.github/workflows/issue334-ordinary-fe
+ const workflow = readWorkflow(callerPath).workflow;
+ const admissionConfig = JSON.parse(await readFile(new URL('../.codex/gatekeeper/ordinary-gemini-admission.json', import.meta.url), 'utf8'));
+ const admissionJob = workflow.jobs['protected-admission'];
+-const admissionScript = (() => {
+-  const start = source.indexOf('        run: |\n', source.indexOf('Verify bounded deployment admission'));
+-  assert.ok(start >= 0);
+-  const lines = source.slice(start + '        run: |\n'.length).split('\n');
++function extractInlineScript(text, marker) {
++  const markerIndex = text.indexOf(marker);
++  const start = text.indexOf('        run: |\n', markerIndex);
++  assert.ok(markerIndex >= 0 && start > markerIndex);
++  const lines = text.slice(start + '        run: |\n'.length).split('\n');
+   const body = [];
+   for (const line of lines) {
+     if (line && !line.startsWith('          ')) break;
+     body.push(line ? line.slice(10) : '');
+   }
+   return body.join('\n').match(/^node --input-type=module <<'NODE'\n([\s\S]*?)\nNODE\s*$/)?.[1];
+-})();
++}
++const admissionScript = extractInlineScript(source, 'Verify bounded deployment admission');
++const classifierScript = extractInlineScript(source, 'Classify trusted base and head repository IDs');
+ assert.ok(admissionScript, 'actual inline admission source is present');
++assert.ok(classifierScript, 'actual inline classifier source is present');
++
++const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
++async function runInline(script, { env, fetchImpl, fsOverrides = {} }) {
++  const transformed = script
++    .replace("import * as fs from 'node:fs';", 'const fs = __fs;')
++    .replace("import * as path from 'node:path';", 'const path = __path;')
++    .replace("import { createHash } from 'node:crypto';", 'const { createHash } = __crypto;');
++  const fakeProcess = { env, exitCode: 0 };
++  const errors = [];
++  const mockFs = { ...realFs, ...fsOverrides };
++  const execute = new AsyncFunction('__fs', '__path', '__crypto', 'process', 'console', 'fetch', transformed);
++  await execute(mockFs, pathModule, { createHash }, fakeProcess,
++    { error: (...args) => errors.push(args.join(' ')) }, fetchImpl);
++  return { status: fakeProcess.exitCode, stderr: errors.length ? `${errors.join('\n')}\n` : '' };
++}
+ 
+ // This also checks the synthetic YAML parser, not GitHub's expression engine.
+ function assertCandidate(candidate) {
+@@ -41,7 +62,7 @@ function assertCandidate(candidate) {
+   assert.deepEqual(candidate.jobs['architecture-gate'].permissions,
+     { contents: 'read', actions: 'read', 'pull-requests': 'write', 'id-token': 'write' });
+   assert.equal(candidate.jobs['architecture-gate'].uses,
+-    'flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-providers.yml@7dc99525b4ff1510f1de310f6f5b877ab05bbfd2');
++    'flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-providers.yml@c5686f63909af2e83b749ffa0b91d33cb9ea96ad');
+   assert.deepEqual(candidate.jobs['architecture-gate'].with, {
+     'policy-path': '.codex/gatekeeper/gemini-verification-policy.json',
+     'prompt-path': '.codex/gatekeeper/ci-prompt.md',
+@@ -70,13 +91,15 @@ test('admission executes actual gate source against mocked GitHub API and fails
+   const directory = await mkdtemp(join(tmpdir(), 'agk334-admission-'));
+   const callerBytes = Buffer.from(source);
+   const workflowSha = 'a'.repeat(40);
+-  const eventSha = '43e9a28571ad0508a425220256a18d6b140525b2';
++  const eventSha = 'c5686f63909af2e83b749ffa0b91d33cb9ea96ad';
++  const mergeSha = '96ab3902f95250a1c80aecec45434e04272ad548';
++  const mergeTreeSha = '8107feae6dbf6bc38b279fcab724fd42a5ad0097';
+   const config = { version: 1, enabled: true, workflowId: 42, runNumber: 9,
+     callerSha256: createHash('sha256').update(callerBytes).digest('hex'),
+     providerSelectorSha256: createHash('sha256').update('projects/123456789/locations/global/workloadIdentityPools/agk/providers/github', 'utf8').digest('hex'),
+     serviceAccountSelectorSha256: createHash('sha256').update('agk-gemini@agk-gemini.iam.gserviceaccount.com', 'utf8').digest('hex') };
+   const event = { action: 'ready_for_review', repository: { id: 123 }, pull_request: {
+-    number: 517, draft: false, merge_commit_sha: '20cc0c1a58ee8263898a56c8df34472bd14ea173', base: { ref: 'feature/gemini-ci', sha: '43e9a28571ad0508a425220256a18d6b140525b2', repo: { id: 123 } },
++    number: 517, draft: false, merge_commit_sha: mergeSha, base: { ref: 'feature/gemini-ci', sha: eventSha, repo: { id: 123 } },
+     head: { sha: 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e', repo: { id: 123 } },
+   } };
+   const values = {
+@@ -93,8 +116,8 @@ test('admission executes actual gate source against mocked GitHub API and fails
+     ['/git/blobs/' + '7'.repeat(40)]: { sha: '7'.repeat(40), encoding: 'base64', size: callerBytes.length, content: callerBytes.toString('base64') },
+     '/actions/runs/99': { id: 99, repository: { id: 123 }, workflow_id: 42, run_number: 9, run_attempt: 1, event: 'pull_request_target', head_sha: 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' },
+     '/actions/workflows/42': { id: 42, path: '.github/workflows/issue334-ordinary-feature-caller.yml' },
+-    '/pulls/517': { number: 517, draft: false, base: { ref: 'feature/gemini-ci', sha: eventSha, repo: { id: 123 } }, head: { sha: 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e', repo: { id: 123 } }, merge_commit_sha: '20cc0c1a58ee8263898a56c8df34472bd14ea173' },
+-    '/commits/20cc0c1a58ee8263898a56c8df34472bd14ea173': { sha: '20cc0c1a58ee8263898a56c8df34472bd14ea173', parents: [{ sha: '43e9a28571ad0508a425220256a18d6b140525b2' }, { sha: 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' }] },
++    '/pulls/517': { number: 517, draft: false, base: { ref: 'feature/gemini-ci', sha: eventSha, repo: { id: 123 } }, head: { sha: 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e', repo: { id: 123 } }, merge_commit_sha: mergeSha },
++    [`/commits/${mergeSha}`]: { sha: mergeSha, parents: [{ sha: eventSha }, { sha: 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' }], commit: { tree: { sha: mergeTreeSha } } },
+   };
+   const replaceConfigBlob = (fixture, nextConfig) => {
+     const blob = fixture['/git/blobs/' + '5'.repeat(40)];
+@@ -104,37 +127,170 @@ test('admission executes actual gate source against mocked GitHub API and fails
+   };
+   try {
+     const eventPath = join(directory, 'event.json');
+-    const outputPath = join(directory, 'output');
+     const callPath = join(directory, 'calls');
+     const fixturePath = join(directory, 'fixture.json');
+     await writeFile(eventPath, JSON.stringify(event));
+-    const execute = async (mutate = () => {}, failure = false, mutateEvent = () => {}, providerSelector = 'provider-selector', accountSelector = 'sa-selector', expectedCalls, deadline = false) => {
++    const execute = async (mutate = () => {}, failure = false, mutateEvent = () => {}, providerSelector = 'provider-selector', accountSelector = 'sa-selector', expectedCalls, deadline = false, githubSha = eventSha, sink = {}) => {
+       const fixture = structuredClone(values);
+       mutate(fixture);
+       const eventFixture = structuredClone(event);
+       mutateEvent(eventFixture);
++      const outputPath = sink.path ?? join(directory, 'output');
+       await writeFile(eventPath, JSON.stringify(eventFixture));
+       await writeFile(fixturePath, JSON.stringify(fixture));
+-      await writeFile(outputPath, '');
++      if (sink.initialize !== false) await writeFile(outputPath, sink.contents ?? '');
+       await writeFile(callPath, '0');
+-      const prelude = `import {readFileSync as mockReadFileSync,writeFileSync as mockWriteFileSync} from 'node:fs'; let mockCount=0; process.on('exit',()=>mockWriteFileSync(process.env.CALL_PATH,String(mockCount))); const fixture=JSON.parse(mockReadFileSync(process.env.FIXTURE_PATH,'utf8')); if (${deadline ? 'true' : 'false'}) { const originalTimeout=AbortSignal.timeout; AbortSignal.timeout=()=>{const controller=new AbortController();controller.abort();return controller.signal;}; AbortSignal.any=signals=>signals[0]; } globalThis.fetch = async (url, options) => { mockCount++; const parsed = new URL(url); if (parsed.origin !== 'https://api.github.com') throw new Error('unexpected origin'); const path = parsed.pathname.replace('/repos/flair-agency/architecture-gatekeeper', '') + parsed.search; if (options.redirect !== 'error') throw new Error('redirect mode missing'); if (options.signal.aborted) throw new Error('aborted by bounded deadline'); if (${failure ? 'true' : 'false'} && path === '/pulls/517') return { ok:false }; const value = fixture[path]; if (!value) return { ok:false }; const bytes = new TextEncoder().encode(JSON.stringify(value)); let sent=false; return { ok:true, body:{getReader:()=>({read:async()=>{if(sent)return {done:true};sent=true;return {done:false,value:bytes};},cancel:async()=>{}})} }; };`;
+-      const result = spawnSync(process.execPath, ['--input-type=module', '-e', `${prelude}\n${admissionScript}`], {
+-        encoding: 'utf8', maxBuffer: 4 * 1024 * 1024, env: { ...process.env, GITHUB_OUTPUT: outputPath, GITHUB_EVENT_PATH: eventPath,
+-          GITHUB_EVENT_NAME: 'pull_request_target', GITHUB_RUN_ID: '99', GITHUB_RUN_NUMBER: '9', GITHUB_RUN_ATTEMPT: '1',
+-          GITHUB_REPOSITORY: 'flair-agency/architecture-gatekeeper', GITHUB_REPOSITORY_ID: '123',
+-          GITHUB_SHA: eventSha, GITHUB_WORKFLOW_SHA: workflowSha, GH_TOKEN: 'mock-token', CALL_PATH: callPath, FIXTURE_PATH: fixturePath,
+-          GCP_WIF_PROVIDER_SELECTOR: providerSelector === 'provider-selector' ? 'projects/123456789/locations/global/workloadIdentityPools/agk/providers/github' : providerSelector,
+-          GCP_WIF_SERVICE_ACCOUNT_SELECTOR: accountSelector === 'sa-selector' ? 'agk-gemini@agk-gemini.iam.gserviceaccount.com' : accountSelector },
+-      });
+-      assert.equal(result.status, 0, result.stderr);
+-      if (expectedCalls !== undefined) assert.equal(Number(await readFile(callPath, 'utf8')), expectedCalls);
++      let calls = 0;
++      const fetchImpl = async (url, options) => {
++        calls++;
++        const parsed = new URL(url);
++        if (parsed.origin !== 'https://api.github.com') throw new Error('unexpected origin');
++        const path = parsed.pathname.replace('/repos/flair-agency/architecture-gatekeeper', '') + parsed.search;
++        if (options.redirect !== 'error') throw new Error('redirect mode missing');
++        if (deadline || options.signal.aborted) throw new Error('aborted by bounded deadline');
++        if (failure && path === '/pulls/517') return { ok: false };
++        const value = fixture[path];
++        if (!value) return { ok: false };
++        const bytes = new TextEncoder().encode(JSON.stringify(value));
++        let sent = false;
++        return { ok: true, body: { getReader: () => ({ read: async () => {
++          if (sent) return { done: true };
++          sent = true;
++          return { done: false, value: bytes };
++        }, cancel: async () => {} }) } };
++      };
++      const fsOverrides = sink.changedIdentity ? { fstatSync: fd => {
++        const stats = realFs.fstatSync(fd);
++        return new Proxy(stats, { get(target, key, receiver) {
++          if (key === 'ino') return target.ino + 1;
++          return Reflect.get(target, key, receiver);
++        } });
++      } } : sink.closeFailure ? { closeSync: fd => {
++        realFs.closeSync(fd);
++        throw new Error('close failed');
++      } } : {};
++      const result = await runInline(admissionScript, { env: { ...process.env, GITHUB_OUTPUT: outputPath,
++        GITHUB_EVENT_PATH: eventPath, GITHUB_EVENT_NAME: 'pull_request_target', GITHUB_RUN_ID: '99',
++        GITHUB_RUN_NUMBER: '9', GITHUB_RUN_ATTEMPT: '1', GITHUB_REPOSITORY: 'flair-agency/architecture-gatekeeper',
++        GITHUB_REPOSITORY_ID: '123', GITHUB_SHA: githubSha, GITHUB_WORKFLOW_SHA: workflowSha,
++        GH_TOKEN: 'mock-token', GCP_WIF_PROVIDER_SELECTOR: providerSelector === 'provider-selector'
++          ? 'projects/123456789/locations/global/workloadIdentityPools/agk/providers/github' : providerSelector,
++        GCP_WIF_SERVICE_ACCOUNT_SELECTOR: accountSelector === 'sa-selector'
++          ? 'agk-gemini@agk-gemini.iam.gserviceaccount.com' : accountSelector }, fetchImpl, fsOverrides });
++      const expectedStatus = sink.expectedStatus ?? 0;
++      assert.equal(result.status, expectedStatus, result.stderr);
++      if (expectedCalls !== undefined) assert.equal(calls, expectedCalls);
++      if (sink.returnDetails) {
++        const output = await readFile(outputPath, 'utf8').catch(error => error.code === 'ENOENT' ? null : Promise.reject(error));
++        return { status: result.status, stdout: '', stderr: result.stderr, output };
++      }
+       return (await readFile(outputPath, 'utf8')).trim();
+     };
+     assert.equal(await execute(() => {}, false, () => {}, 'provider-selector', 'sa-selector', 12), 'admitted=true');
++    const sentinel = 'prior=runner-data\n';
++    const normalOutput = join(directory, 'normal-admission-output');
++    const admitted = await execute(() => {}, false, () => {}, 'provider-selector', 'sa-selector', 12, false, eventSha,
++      { path: normalOutput, contents: sentinel, returnDetails: true });
++    assert.deepEqual(admitted, { status: 0, stdout: '', stderr: '', output: `${sentinel}admitted=true\n` });
++
++    // Exercise the extracted production script through a real Node child process
++    // as well as the in-process injected-filesystem cases below.
++    const runAdmissionChild = async (fixture, outputPath) => {
++      await writeFile(fixturePath, JSON.stringify(fixture));
++      await writeFile(eventPath, JSON.stringify(event));
++      const prelude = `import {readFileSync as mockReadFileSync} from 'node:fs';
++        const fixture=JSON.parse(mockReadFileSync(process.env.FIXTURE_PATH,'utf8'));
++        globalThis.fetch=async(url,options)=>{const parsed=new URL(url);const path=parsed.pathname.replace('/repos/flair-agency/architecture-gatekeeper','')+parsed.search;if(parsed.origin!=='https://api.github.com'||options.redirect!=='error'||options.signal.aborted)throw new Error('unexpected request');const value=fixture[path];if(!value)return{ok:false};const bytes=new TextEncoder().encode(JSON.stringify(value));let sent=false;return{ok:true,body:{getReader:()=>({read:async()=>{if(sent)return{done:true};sent=true;return{done:false,value:bytes};},cancel:async()=>{}})}};};`;
++      const result = spawnSync(process.execPath, ['--input-type=module', '-e', `${prelude}\n${admissionScript}`], {
++        encoding: 'utf8', maxBuffer: 4 * 1024 * 1024, env: { ...process.env, GITHUB_OUTPUT: outputPath,
++          GITHUB_EVENT_PATH: eventPath, GITHUB_EVENT_NAME: 'pull_request_target', GITHUB_RUN_ID: '99',
++          GITHUB_RUN_NUMBER: '9', GITHUB_RUN_ATTEMPT: '1', GITHUB_REPOSITORY: 'flair-agency/architecture-gatekeeper',
++          GITHUB_REPOSITORY_ID: '123', GITHUB_SHA: eventSha, GITHUB_WORKFLOW_SHA: workflowSha,
++          GH_TOKEN: 'mock-token', FIXTURE_PATH: fixturePath,
++          GCP_WIF_PROVIDER_SELECTOR: 'projects/123456789/locations/global/workloadIdentityPools/agk/providers/github',
++          GCP_WIF_SERVICE_ACCOUNT_SELECTOR: 'agk-gemini@agk-gemini.iam.gserviceaccount.com' },
++      });
++      return { status: result.status, stderr: result.stderr, error: result.error?.message };
++    };
++    const childOutput = join(directory, 'child-admission-output');
++    await writeFile(childOutput, sentinel);
++    const childHappy = await runAdmissionChild(structuredClone(values), childOutput);
++    assert.deepEqual(childHappy, { status: 0, stderr: '', error: undefined }, JSON.stringify(childHappy));
++    assert.equal(await readFile(childOutput, 'utf8'), `${sentinel}admitted=true\n`);
++    for (const mutate of [
++      fixture => { fixture['/pulls/517'].base.sha = 'b'.repeat(40); },
++      fixture => { fixture['/pulls/517'].head.sha = 'd'.repeat(40); },
++    ]) {
++      const changedFixture = structuredClone(values);
++      mutate(changedFixture);
++      const output = join(directory, `child-denied-${Math.random()}`);
++      await writeFile(output, sentinel);
++      const childDenied = await runAdmissionChild(changedFixture, output);
++      assert.deepEqual(childDenied, { status: 0, stderr: '', error: undefined }, JSON.stringify(childDenied));
++      assert.equal(await readFile(output, 'utf8'), `${sentinel}admitted=false\n`);
++    }
++    const unsafeChild = await runAdmissionChild(structuredClone(values), join(directory, 'child-missing-output'));
++    assert.equal(unsafeChild.status, 1, JSON.stringify(unsafeChild));
++    assert.equal(unsafeChild.stderr, 'Unable to safely update GitHub output.\n');
++
++    const deniedOutput = join(directory, 'denied-admission-output');
++    const denied = await execute(() => {}, true, () => {}, 'provider-selector', 'sa-selector', undefined, false, eventSha,
++      { path: deniedOutput, contents: sentinel, returnDetails: true });
++    assert.equal(denied.status, 0);
++    assert.equal(denied.output, `${sentinel}admitted=false\n`);
++
++    const rejectSink = async (sinkPath, extra = {}) => {
++      const result = await execute(() => {}, false, () => {}, 'provider-selector', 'sa-selector', 12, false, eventSha,
++        { path: sinkPath, initialize: false, expectedStatus: 1, returnDetails: true, ...extra });
++      assert.equal(result.status, 1);
++      assert.equal(result.stdout, '');
++      assert.equal(result.stderr, 'Unable to safely update GitHub output.\n', JSON.stringify(result));
++      return result.output;
++    };
++    assert.equal(await rejectSink(join(directory, 'missing-admission-output')), null);
++
++    const noncanonicalTarget = join(directory, 'noncanonical-admission-output');
++    await mkdir(join(directory, 'unused'));
++    await writeFile(noncanonicalTarget, sentinel);
++    assert.equal(await rejectSink(`${directory}/unused/../noncanonical-admission-output`), sentinel);
++
++    const symlinkTarget = join(directory, 'admission-symlink-target');
++    const symlinkPath = join(directory, 'admission-output-symlink');
++    await writeFile(symlinkTarget, sentinel);
++    await symlink(symlinkTarget, symlinkPath);
++    assert.equal(await rejectSink(symlinkPath), sentinel);
++    assert.equal(await readFile(symlinkTarget, 'utf8'), sentinel);
++
++    const hardlinkTarget = join(directory, 'admission-hardlink-target');
++    const hardlinkPath = join(directory, 'admission-output-hardlink');
++    await writeFile(hardlinkTarget, sentinel);
++    await link(hardlinkTarget, hardlinkPath);
++    assert.equal(await rejectSink(hardlinkPath), sentinel);
++    assert.equal(await readFile(hardlinkTarget, 'utf8'), sentinel);
++
++    const parent = join(directory, 'admission-real-parent');
++    const linkedParent = join(directory, 'admission-linked-parent');
++    await mkdir(parent);
++    const parentOutput = join(parent, 'output');
++    await writeFile(parentOutput, sentinel);
++    await symlink(parent, linkedParent, 'dir');
++    assert.equal(await rejectSink(join(linkedParent, 'output')), sentinel);
++    assert.equal(await readFile(parentOutput, 'utf8'), sentinel);
++
++    const changedPath = join(directory, 'changed-admission-output');
++    await writeFile(changedPath, sentinel);
++    assert.equal(await rejectSink(changedPath, { changedIdentity: true }), sentinel);
++
++    const closeFailurePath = join(directory, 'close-failure-admission-output');
++    const closeFailure = await execute(() => {}, false, () => {}, 'provider-selector', 'sa-selector', 12, false, eventSha,
++      { path: closeFailurePath, contents: sentinel, closeFailure: true, expectedStatus: 1, returnDetails: true });
++    assert.equal(closeFailure.stderr, 'Unable to safely update GitHub output.\n');
++    assert.equal(closeFailure.output, `${sentinel}admitted=true\n`);
++
+     const mutations = [
+       c => { c['/pulls/517'].head.sha = 'd'.repeat(40); },
+       c => { c['/pulls/517'].base.sha = 'b'.repeat(40); },
+-      c => { c['/commits/20cc0c1a58ee8263898a56c8df34472bd14ea173'].parents.reverse(); },
++      c => { c[`/commits/${mergeSha}`].parents.reverse(); },
+       c => { c['/actions/runs/99'].workflow_id++; },
+       c => { c['/actions/runs/99'].run_number++; },
+       c => { c['/actions/runs/99'].run_attempt = 2; },
+@@ -150,12 +306,14 @@ test('admission executes actual gate source against mocked GitHub API and fails
+     assert.equal(await execute(c => replaceConfigBlob(c, admissionConfig), false, () => {}, 'provider-selector', 'sa-selector', 5), 'admitted=false');
+     assert.equal(await execute(() => {}, true), 'admitted=false');
+     assert.equal(await execute(c => { c['/pulls/517'].merge_commit_sha = 'e'.repeat(40); }), 'admitted=false');
+-    assert.equal(await execute(c => { c['/commits/20cc0c1a58ee8263898a56c8df34472bd14ea173'].parents[0].sha = 'e'.repeat(40); }), 'admitted=false');
++    assert.equal(await execute(c => { c[`/commits/${mergeSha}`].parents[0].sha = 'e'.repeat(40); }), 'admitted=false');
++    assert.equal(await execute(c => { c[`/commits/${mergeSha}`].commit.tree.sha = 'e'.repeat(40); }), 'admitted=false');
+     assert.equal(await execute(() => {}, false, e => { e.action = 'synchronize'; }, 'provider-selector', 'sa-selector', 0), 'admitted=false');
+     assert.equal(await execute(() => {}, false, e => { delete e.pull_request.merge_commit_sha; }, 'provider-selector', 'sa-selector', 0), 'admitted=false');
+     assert.equal(await execute(() => {}, false, e => { e.pull_request.head.repo.id = 456; }, 'provider-selector', 'sa-selector', 0), 'admitted=false');
+     assert.equal(await execute(() => {}, false, () => {}, 'wrong-provider-selector'), 'admitted=false');
+     assert.equal(await execute(() => {}, false, () => {}, 'provider-selector', ''), 'admitted=false');
++    assert.equal(await execute(() => {}, false, () => {}, 'provider-selector', 'sa-selector', 0, false, 'b'.repeat(40)), 'admitted=false');
+     assert.equal(await execute(() => {}, false, () => {}, 'provider-selector', 'sa-selector', 1, true), 'admitted=false');
+     assert.equal(await execute(c => { c['/pulls/517'].body = 'x'.repeat(1_050_000); }), 'admitted=false');
+   } finally {
+@@ -165,13 +323,15 @@ test('admission executes actual gate source against mocked GitHub API and fails
+ 
+ test('caller retains the existing strict self classifier verbatim', async () => {
+   const self = await readFile(new URL('../.github/workflows/self-architecture-gate.yml', import.meta.url), 'utf8');
+-  const classifier = text => {
+-    const begin = text.indexOf('      - name: Classify trusted base and head repository IDs');
+-    const end = text.indexOf('\n\n  ', begin);
+-    assert.ok(begin >= 0 && end > begin);
+-    return text.slice(begin, end);
++  const classifierCore = script => {
++    const start = script.indexOf('const validId');
++    const end = script.indexOf('try {\n', start);
++    assert.ok(start >= 0 && end > start);
++    return script.slice(start, end).trim();
+   };
+-  assert.equal(classifier(source), classifier(self));
++  const selfScript = extractInlineScript(self, 'Classify trusted base and head repository IDs');
++  assert.ok(selfScript);
++  assert.equal(classifierCore(classifierScript), classifierCore(selfScript));
+ });
+ 
+ test('mutated caller fixtures that widen activation, selectors, credentials, or triggers fail the synthetic invariant', () => {
+@@ -194,33 +354,35 @@ test('mutated caller fixtures that widen activation, selectors, credentials, or
+ 
+ 
+ test('copied classifier executes same-repository, fork, and malformed metadata cases', async () => {
+-  const stepStart = source.indexOf('- name: Classify trusted base and head repository IDs');
+-  const runStart = source.indexOf('        run: |\n', stepStart);
+-  assert.ok(stepStart >= 0 && runStart > stepStart);
+-  const lines = source.slice(runStart + '        run: |\n'.length).split('\n');
+-  const body = [];
+-  for (const line of lines) {
+-    if (line && !line.startsWith('          ')) break;
+-    body.push(line ? line.slice(10) : '');
+-  }
+-  const wrapped = body.join('\n');
+-  const script = wrapped.match(/^node --input-type=module <<'NODE'\n([\s\S]*?)\nNODE\s*$/)?.[1];
+-  assert.ok(script);
+   const directory = await mkdtemp(join(tmpdir(), 'agk334-caller-classifier-'));
++  const sentinel = 'prior=runner-data\n';
++  let runNumber = 0;
+   try {
+-    const classify = async fixture => {
++    const classify = async (fixture, sink = {}) => {
+       const eventPath = join(directory, 'event.json');
+-      const outputPath = join(directory, 'output');
++      const outputPath = sink.path ?? join(directory, `output-${++runNumber}`);
+       await writeFile(eventPath, JSON.stringify(fixture));
+-      await writeFile(outputPath, '');
+-      const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+-        encoding: 'utf8',
+-        env: { ...process.env, GITHUB_EVENT_PATH: eventPath, GITHUB_OUTPUT: outputPath,
+-          GITHUB_EVENT_NAME: 'pull_request_target', EXPECTED_REPOSITORY_ID: '123',
+-          EXPECTED_PULL_REQUEST_NUMBER: '45' },
+-      });
+-      assert.equal(result.status, 0, result.stderr);
+-      return (await readFile(outputPath, 'utf8')).trim();
++      if (sink.initialize !== false) await writeFile(outputPath, sink.contents ?? sentinel);
++      const fsOverrides = {
++        readFileSync: (file, encoding) => file === eventPath ? JSON.stringify(fixture) : realFs.readFileSync(file, encoding),
++        ...(sink.changedIdentity ? { fstatSync: fd => {
++          const stats = realFs.fstatSync(fd);
++          return new Proxy(stats, { get(target, key, receiver) {
++            if (key === 'ino') return target.ino + 1;
++            return Reflect.get(target, key, receiver);
++          } });
++        } } : sink.closeFailure ? { closeSync: fd => {
++          realFs.closeSync(fd);
++          throw new Error('close failed');
++        } } : {}),
++      };
++      const result = await runInline(classifierScript, { env: { ...process.env, GITHUB_EVENT_PATH: eventPath,
++        GITHUB_OUTPUT: outputPath, GITHUB_EVENT_NAME: 'pull_request_target', EXPECTED_REPOSITORY_ID: '123',
++        EXPECTED_PULL_REQUEST_NUMBER: '45' }, fetchImpl: globalThis.fetch, fsOverrides });
++      assert.equal(result.status, sink.expectedStatus ?? 0, result.stderr);
++      const output = await readFile(outputPath, 'utf8').catch(error => error.code === 'ENOENT' ? null : Promise.reject(error));
++      if (sink.returnDetails) return { status: result.status, stdout: '', stderr: result.stderr, output };
++      return output?.slice(sentinel.length).trim();
+     };
+     const fixture = { repository: { id: 123 }, pull_request: { number: 45,
+       base: { sha: 'a'.repeat(40), repo: { id: 123 } },
+@@ -230,6 +392,78 @@ test('copied classifier executes same-repository, fork, and malformed metadata c
+       head: { ...fixture.pull_request.head, repo: { id: 456 } } } }), 'classification=cross-repository');
+     assert.equal(await classify({ ...fixture, pull_request: { ...fixture.pull_request, number: 46 } }), 'classification=unknown');
+     assert.equal(await classify({ ...fixture, repository: { id: '123' } }), 'classification=unknown');
++
++    const safePath = join(directory, 'normal-output');
++    const appended = await classify(fixture, { path: safePath, contents: sentinel, returnDetails: true });
++    assert.deepEqual(appended, { status: 0, stdout: '', stderr: '', output: `${sentinel}classification=same-repository\n` });
++
++    const childEventPath = join(directory, 'child-event.json');
++    const childOutputPath = join(directory, 'child-classifier-output');
++    await writeFile(childEventPath, JSON.stringify(fixture));
++    await writeFile(childOutputPath, sentinel);
++    const childRun = outputPath => spawnSync(process.execPath, ['--input-type=module', '-e', classifierScript], {
++      encoding: 'utf8', env: { ...process.env, GITHUB_EVENT_PATH: childEventPath,
++        GITHUB_OUTPUT: outputPath, GITHUB_EVENT_NAME: 'pull_request_target', EXPECTED_REPOSITORY_ID: '123',
++        EXPECTED_PULL_REQUEST_NUMBER: '45' },
++    });
++    const childClassified = childRun(childOutputPath);
++    assert.equal(childClassified.status, 0, childClassified.error?.message ?? childClassified.stderr);
++    assert.equal(await readFile(childOutputPath, 'utf8'), `${sentinel}classification=same-repository\n`);
++    const childUnsafe = childRun(join(directory, 'child-missing-output'));
++    assert.equal(childUnsafe.error, undefined, childUnsafe.error?.message);
++    assert.equal(childUnsafe.status, 1, childUnsafe.error?.message ?? childUnsafe.stderr);
++    assert.equal(childUnsafe.stderr, 'Unable to safely update GitHub output.\n');
++
++    const missing = await classify(fixture, { path: join(directory, 'missing-output'), initialize: false, returnDetails: true, expectedStatus: 1 });
++    assert.deepEqual(missing, { status: 1, stdout: '', stderr: 'Unable to safely update GitHub output.\n', output: null });
++
++    const noncanonicalTarget = join(directory, 'noncanonical-output');
++    await mkdir(join(directory, 'unused'));
++    await writeFile(noncanonicalTarget, sentinel);
++    const noncanonical = await classify(fixture, { path: `${directory}/unused/../noncanonical-output`, initialize: false, returnDetails: true, expectedStatus: 1 });
++    assert.equal(noncanonical.status, 1);
++    assert.equal(noncanonical.output, sentinel);
++
++    const symlinkTarget = join(directory, 'symlink-target');
++    const symlinkPath = join(directory, 'output-symlink');
++    await writeFile(symlinkTarget, sentinel);
++    await symlink(symlinkTarget, symlinkPath);
++    const symbolic = await classify(fixture, { path: symlinkPath, initialize: false, returnDetails: true, expectedStatus: 1 });
++    assert.equal(symbolic.status, 1);
++    assert.equal(symbolic.output, sentinel);
++    assert.equal(await readFile(symlinkTarget, 'utf8'), sentinel);
++
++    const hardlinkTarget = join(directory, 'hardlink-target');
++    const hardlinkPath = join(directory, 'output-hardlink');
++    await writeFile(hardlinkTarget, sentinel);
++    await link(hardlinkTarget, hardlinkPath);
++    const hardlinked = await classify(fixture, { path: hardlinkPath, initialize: false, returnDetails: true, expectedStatus: 1 });
++    assert.equal(hardlinked.status, 1);
++    assert.equal(hardlinked.output, sentinel);
++    assert.equal(await readFile(hardlinkTarget, 'utf8'), sentinel);
++
++    const parent = join(directory, 'real-parent');
++    const linkedParent = join(directory, 'linked-parent');
++    await mkdir(parent);
++    const parentTarget = join(parent, 'output');
++    await writeFile(parentTarget, sentinel);
++    await symlink(parent, linkedParent, 'dir');
++    const linked = await classify(fixture, { path: join(linkedParent, 'output'), initialize: false, returnDetails: true, expectedStatus: 1 });
++    assert.equal(linked.status, 1);
++    assert.equal(linked.output, sentinel);
++    assert.equal(await readFile(parentTarget, 'utf8'), sentinel);
++
++    const changedPath = join(directory, 'changed-open-output');
++    await writeFile(changedPath, sentinel);
++    const changed = await classify(fixture, { path: changedPath, initialize: false, changedIdentity: true, returnDetails: true, expectedStatus: 1 });
++    assert.deepEqual(changed, { status: 1, stdout: '', stderr: 'Unable to safely update GitHub output.\n', output: sentinel });
++
++    const closeFailurePath = join(directory, 'close-failure-output');
++    await writeFile(closeFailurePath, sentinel);
++    const closeFailure = await classify(fixture, { path: closeFailurePath, closeFailure: true,
++      returnDetails: true, expectedStatus: 1 });
++    assert.deepEqual(closeFailure, { status: 1, stdout: '',
++      stderr: 'Unable to safely update GitHub output.\n', output: `${sentinel}classification=same-repository\n` });
+   } finally {
+     await rm(directory, { recursive: true, force: true });
+   }

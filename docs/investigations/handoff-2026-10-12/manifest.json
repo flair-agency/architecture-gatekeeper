@@ -1,0 +1,96 @@
+{
+  "format": "agk-development-handoff-v1",
+  "createdAtJst": "2026-10-12",
+  "status": "Paused; snapshots only, no activation",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "remoteDirectory": "docs/investigations/handoff-2026-10-12",
+  "snapshots": [
+    {
+      "id": "pr530",
+      "worktree": "/workspace/scratch/agk334-main-activation-candidate",
+      "base": "bf0406b82ae7700b5e9fba4995da88be285a0de8",
+      "paths": [
+        ".github/workflows/issue334-ordinary-feature-caller.yml",
+        "test/issue334-ordinary-feature-caller.test.mjs",
+        "docs/investigations/2026-10-12-ordinary-gemini-main-activation-candidate.md"
+      ],
+      "kind": "tracked",
+      "patch": "patches/pr530.patch",
+      "patchSha256": "80f9a747cc59238c6ec6b9474ab31713e9c48d801a6f20c1f814dba2e346b72a",
+      "files": [
+        {
+          "path": ".github/workflows/issue334-ordinary-feature-caller.yml",
+          "sha256": "9e7c45a0aea5b4d957267b4efccfbc21998184a5ecd42ef4db5d252d52c5815f",
+          "bytes": 18259
+        },
+        {
+          "path": "test/issue334-ordinary-feature-caller.test.mjs",
+          "sha256": "3fbb40780544122bdbc0ceac693a8ec8508793b3497f7544916c4be45966047f",
+          "bytes": 30703
+        },
+        {
+          "path": "docs/investigations/2026-10-12-ordinary-gemini-main-activation-candidate.md",
+          "sha256": "06e7701930c733d7da64ce29e0bc9119e3237f77c5627c59da5a2741d9781ce1",
+          "bytes": 12745
+        }
+      ]
+    },
+    {
+      "id": "pr532",
+      "worktree": "/workspace/scratch/agk334-default-caller-authority",
+      "base": "06bee7fdcb6d48f80173b3c7360bcf1d008511e2",
+      "paths": [
+        "docs/architecture/review-execution.md"
+      ],
+      "kind": "tracked",
+      "patch": "patches/pr532.patch",
+      "patchSha256": "973eb2e617f7f16e97685641832c9f0bc60bc764cf9038d23c9b31b6c23621fa",
+      "files": [
+        {
+          "path": "docs/architecture/review-execution.md",
+          "sha256": "5c4666b2e427bc61eebec5e886f515f79bea5adfe918939357ba74a876da694f",
+          "bytes": 39682
+        }
+      ]
+    },
+    {
+      "id": "historical-pr522-note",
+      "worktree": "/workspace/scratch/agk329-protected-handoff",
+      "base": "92aed162b83c2b0ae9a293ac4696204bb72937e4",
+      "paths": [
+        "docs/investigations/2026-10-12-protected-decision-handoff.md"
+      ],
+      "kind": "untracked-superseded",
+      "patch": "patches/historical-pr522-note.patch",
+      "patchSha256": "cab1701eee619237deade0243d61f5c0ed41459b1e670c518cefc3d508334287",
+      "files": [
+        {
+          "path": "docs/investigations/2026-10-12-protected-decision-handoff.md",
+          "sha256": "bf3b3b9821527f590542b515aa6f436eb06af5e853ff94a9b860e970bbbf49ff",
+          "bytes": 14381
+        }
+      ]
+    }
+  ],
+  "restorationVerification": [
+    {
+      "id": "pr530",
+      "base": "bf0406b82ae7700b5e9fba4995da88be285a0de8",
+      "patchApplyCheck": "PASS",
+      "restoredBytes": "MATCH"
+    },
+    {
+      "id": "pr532",
+      "base": "06bee7fdcb6d48f80173b3c7360bcf1d008511e2",
+      "patchApplyCheck": "PASS",
+      "restoredBytes": "MATCH"
+    },
+    {
+      "id": "historical-pr522-note",
+      "base": "92aed162b83c2b0ae9a293ac4696204bb72937e4",
+      "patchApplyCheck": "PASS",
+      "restoredBytes": "MATCH"
+    }
+  ],
+  "privateEvidenceAvailability": "Local archive only; use public hosted logs or rerun appropriately scoped verification if changing environments."
+}

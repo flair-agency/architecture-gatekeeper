@@ -1,0 +1,20 @@
+[
+  {
+    "id": "pr530",
+    "base": "bf0406b82ae7700b5e9fba4995da88be285a0de8",
+    "patchApplyCheck": "PASS",
+    "restoredBytes": "MATCH"
+  },
+  {
+    "id": "pr532",
+    "base": "06bee7fdcb6d48f80173b3c7360bcf1d008511e2",
+    "patchApplyCheck": "PASS",
+    "restoredBytes": "MATCH"
+  },
+  {
+    "id": "historical-pr522-note",
+    "base": "92aed162b83c2b0ae9a293ac4696204bb72937e4",
+    "patchApplyCheck": "PASS",
+    "restoredBytes": "MATCH"
+  }
+]
