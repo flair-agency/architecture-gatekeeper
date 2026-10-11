@@ -26,6 +26,7 @@ type TagView = ValueView & { changes: readonly unknown[] };
 type ChangeView = { path?: unknown; beforeSha256?: unknown; afterSha256?: unknown };
 type ReceiptView = ValueView & { authorityIds?: unknown; changes?: unknown; tag?: unknown; producer?: unknown; gatekeeper?: unknown };
 type RuntimeView = { repository?: unknown; revision?: unknown };
+type AcceptanceRuntime = { repository: unknown; revision: unknown };
 type ReceiptValidationOperationView = (input: Readonly<{ receiptBytes: unknown; expected: unknown }>) => Readonly<{ status: unknown; eligibility: unknown }>;
 type SelectionView = ValueView & { bPullRequestCreatedAtMs: number; queueEnteredAtMs: number };
 const exact = (value: unknown, keys: readonly string[], label: string): void => {
@@ -226,7 +227,7 @@ export type OwnerAmendmentMergeGroupAcceptanceAdapters = Readonly<{
   verifyTag: (input: VerifyTagCall) => Awaitable<unknown>;
   resolveEligibilityReviewInputs: (input: ResolveEligibilityReviewInputsCall) => Awaitable<unknown>;
   verifyEligibility: (input: VerifyEligibilityCall) => Awaitable<unknown>;
-  runtime: unknown;
+  runtime: AcceptanceRuntime;
   [key: string]: unknown;
 }>;
 type VerifiedAcceptanceResult = Readonly<{

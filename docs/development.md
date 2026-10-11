@@ -193,6 +193,9 @@ public signatures while original runtime defaults retain their error behavior.
 The frozen producer methods are readonly. The same required-input correction
 covers ordinary-decision, tag-readback, tag-attempt, semantic-tag and BLOCK
 semantic-record entry points found by the contract audit.
+Verifier runtime identity requires repository and revision fields. Successful
+producer collaborators require the complete existing binding fields, including
+nested protected selections; external observed field values remain unknown.
 
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.

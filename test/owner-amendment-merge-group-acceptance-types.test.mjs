@@ -39,7 +39,7 @@ test('acceptance verifier requires every constructor dependency and runtime iden
 test('acceptance result distinguishes the verifier state, unknown external observations, and incomplete values', () => {
   const diagnostics = diagnosticsFor('negative.mts');
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [
-    [2322, 10], [2322, 13], [2322, 14], [2540, 15], [2322, 18], [2322, 19],
+    [2322, 10], [2322, 13], [2322, 14], [2540, 15], [2322, 20], [2322, 21],
   ]);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[1].messageText, '\n'), /unknown.*string|not assignable/i);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[2].messageText, '\n'), /unknown.*array|not assignable/i);

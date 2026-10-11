@@ -48,13 +48,44 @@ export interface VerifiedOwnerAmendmentSemanticEligibilityReceipt {
   readonly eligibility: OwnerAmendmentSemanticEligibility;
 }
 type UnknownRecord = Record<string, unknown>;
-interface ProtectedInputResult { baseBranch: string; policyBytes: Buffer; manifestBytes: Buffer; authoritySet: unknown; changes: unknown; diffBytes: Buffer }
+interface ProtectedAuthorityMemberResult extends UnknownRecord {
+  id: unknown; repository: unknown; resolvedCommit: unknown; path: unknown;
+  byteLength: unknown; sha256: unknown; bytes: unknown;
+}
+interface ProtectedAuthoritySetResult extends UnknownRecord {
+  digest: unknown; members: readonly ProtectedAuthorityMemberResult[];
+}
+interface ProtectedChangeResult extends UnknownRecord { path: unknown; beforeBytes: unknown; afterBytes: unknown }
+interface ProtectedInputResult {
+  baseBranch: string; policyBytes: Buffer; manifestBytes: Buffer; authoritySet: ProtectedAuthoritySetResult;
+  changes: readonly ProtectedChangeResult[]; diffBytes: Buffer;
+}
 interface ExactDiffResult { diffBytes: Buffer }
 interface ExactBFilesResult { files: ReadonlyArray<{ path: string; bytes: Buffer }> }
-interface ProtectedSelectionResult { selectedProducer: OwnerAmendmentSemanticProducerIdentity; selectedGatekeeper: UnknownRecord }
-interface TriggerProvenanceResult extends UnknownRecord { status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER' }
-interface AmendmentRecordResult extends UnknownRecord { status: 'VERIFIED_OWNER_AMENDMENT_RECORD'; purpose: unknown; changes: unknown }
-interface TagValidationResult extends UnknownRecord { status: 'VERIFIED_OWNER_AMENDMENT_TAG' }
+interface SelectedGatekeeperPackageResult extends UnknownRecord { name: unknown; version: unknown; integrity: unknown }
+interface SelectedGatekeeperResult extends UnknownRecord {
+  repository: unknown; revision: unknown; package: SelectedGatekeeperPackageResult | null;
+}
+interface ProtectedSelectionResult { selectedProducer: OwnerAmendmentSemanticProducerIdentity; selectedGatekeeper: SelectedGatekeeperResult }
+interface TriggerProvenanceResult extends UnknownRecord {
+  status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER'; repository: unknown; baseSha: unknown;
+  triggerProfile: unknown; triggerReviewRecordSha256: unknown; workflowPath: unknown;
+  workflowSha: unknown; workflowRef: unknown; runId: unknown; runAttempt: unknown;
+}
+interface AmendmentRecordResultBase extends UnknownRecord {
+  status: 'VERIFIED_OWNER_AMENDMENT_RECORD'; repository: unknown; baseSha: unknown; bSha: unknown;
+  policyRevision: unknown; triggerReviewRecordSha256: unknown; priorAuthoritySetDigest: unknown;
+  resultingAuthoritySetDigest: unknown; changes: unknown; targetValidated: unknown; purpose: unknown;
+}
+type AmendmentRecordResult = AmendmentRecordResultBase & (
+  { triggerProfile: 'completed-block-v1'; authorityId?: never; authorityPath?: never } |
+  { triggerProfile: 'completed-owner-decision-self-v1'; authorityId: unknown; authorityPath: unknown }
+);
+interface TagValidationResult extends UnknownRecord {
+  status: 'VERIFIED_OWNER_AMENDMENT_TAG'; repository: unknown; baseSha: unknown; bSha: unknown;
+  triggerProfile: unknown; triggerReviewRecordSha256: unknown; amendmentRecordSha256: unknown;
+  tagRef: unknown; tagObjectOid: unknown; observedTagRefOid: unknown;
+}
 interface TagIdentityView extends UnknownRecord { tagRef?: unknown; tagObjectOid?: unknown; observedTagRefOid?: unknown }
 export interface OwnerAmendmentSemanticTagInput { readonly tagRef: unknown; readonly tagObjectOid: unknown; readonly observedTagRefOid: unknown }
 interface ValidatedPolicy {

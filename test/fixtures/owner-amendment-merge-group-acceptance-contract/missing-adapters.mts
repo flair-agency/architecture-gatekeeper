@@ -3,6 +3,7 @@ import {
   type OwnerAmendmentMergeGroupAcceptanceAdapters,
 } from '../../../src/owner-amendment/owner-amendment-merge-group-acceptance.mts';
 
+declare const external: unknown;
 const complete: OwnerAmendmentMergeGroupAcceptanceAdapters = {
   selectBContext: () => ({}),
   resolveProtectedPolicy: () => ({}),
@@ -10,7 +11,7 @@ const complete: OwnerAmendmentMergeGroupAcceptanceAdapters = {
   verifyTag: () => ({}),
   resolveEligibilityReviewInputs: () => ({}),
   verifyEligibility: () => ({}),
-  runtime: {},
+  runtime: { repository: external, revision: external },
 };
 
 const { selectBContext: _selectBContext, ...withoutSelectBContext } = complete;
@@ -40,3 +41,12 @@ createOwnerAmendmentMergeGroupAcceptanceVerifier(withoutRuntime);
 createOwnerAmendmentMergeGroupAcceptanceVerifier();
 // @ts-expect-error an empty object omits every required collaborator and runtime.
 createOwnerAmendmentMergeGroupAcceptanceVerifier({});
+
+// @ts-expect-error runtime identity requires repository and revision.
+createOwnerAmendmentMergeGroupAcceptanceVerifier({ ...complete, runtime: {} });
+// @ts-expect-error runtime identity rejects null.
+createOwnerAmendmentMergeGroupAcceptanceVerifier({ ...complete, runtime: null });
+// @ts-expect-error runtime repository is required.
+createOwnerAmendmentMergeGroupAcceptanceVerifier({ ...complete, runtime: { revision: external } });
+// @ts-expect-error runtime revision is required.
+createOwnerAmendmentMergeGroupAcceptanceVerifier({ ...complete, runtime: { repository: external } });
