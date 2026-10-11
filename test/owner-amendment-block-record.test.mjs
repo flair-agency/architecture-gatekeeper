@@ -62,6 +62,33 @@ test('preserves the context getter mutation before the original spread overwrite
   assert.equal(Object.hasOwn(record, 'mergeSha'), false);
 });
 
+test('preserves the enumerable toJSON mutation and its record receiver during JSON sizing', () => {
+  const changedContext = { ...context };
+  let observedThis;
+  Object.defineProperty(changedContext, 'runAttempt', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      Object.defineProperty(changedContext, 'toJSON', {
+        enumerable: true,
+        configurable: true,
+        value() {
+          observedThis = this;
+          delete this.decisionSha256;
+          delete this.authority;
+          delete this.version;
+          delete this.kind;
+          return this;
+        },
+      });
+      return '2';
+    },
+  });
+  const record = buildOwnerAmendmentBlockRecord({ ...args(), context: changedContext });
+  assert.equal(observedThis, record);
+  for (const key of ['decisionSha256', 'authority', 'version', 'kind']) assert.equal(Object.hasOwn(record, key), false);
+});
+
 test('validator rejects altered bytes, decision type, authority and context', () => {
   const record = buildOwnerAmendmentBlockRecord({ decisionBytes, schema, validation, context: { ...context }, authority: structuredClone(authority), inputDigests: { ...inputDigests } });
   assert.throws(() => validateOwnerAmendmentBlockRecord({ ...args(), record, decisionBytes: Buffer.from('{}') }));

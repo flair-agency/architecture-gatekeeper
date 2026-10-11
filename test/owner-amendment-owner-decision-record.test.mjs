@@ -68,6 +68,33 @@ test('retains context getter mutations made during validation before the context
   assert.equal(Object.hasOwn(record, 'mergeSha'), false);
 });
 
+test('preserves the enumerable toJSON mutation and its record receiver during JSON sizing', () => {
+  const x = args();
+  let observedThis;
+  Object.defineProperty(x.context, 'runAttempt', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      Object.defineProperty(x.context, 'toJSON', {
+        enumerable: true,
+        configurable: true,
+        value() {
+          observedThis = this;
+          delete this.decisionSha256;
+          delete this.authority;
+          delete this.version;
+          delete this.kind;
+          return this;
+        },
+      });
+      return '1';
+    },
+  });
+  const record = buildOwnerAmendmentOwnerDecisionRecord(x);
+  assert.equal(observedThis, record);
+  for (const key of ['decisionSha256', 'authority', 'version', 'kind']) assert.equal(Object.hasOwn(record, key), false);
+});
+
 test('rejects BLOCK, PASS, and missing-decision confusion or incomplete Authority Set results', () => {
   for (const wrongDecision of ['BLOCK', 'PASS']) {
     const x = args();

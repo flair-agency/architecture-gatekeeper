@@ -14,8 +14,8 @@ const DECODER = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const INPUT_KEYS = Object.freeze(['manifest', 'policy', 'prompt', 'schema', 'validation']);
 
 export type OwnerAmendmentBlockProducerContext = Readonly<{
-  repository?: unknown; prNumber?: unknown; baseSha?: unknown; headSha?: unknown; mergeSha?: unknown;
-  workflowSha?: unknown; workflowPath?: unknown; runId?: unknown; runAttempt?: unknown;
+  repository: unknown; prNumber: unknown; baseSha: unknown; headSha: unknown; mergeSha: unknown;
+  workflowSha: unknown; workflowPath: unknown; runId: unknown; runAttempt: unknown;
 }>;
 export type OwnerAmendmentBlockInputDigests = Readonly<{
   manifest: unknown; policy: unknown; prompt: unknown; schema: unknown; validation: unknown;
@@ -29,8 +29,8 @@ export type BuildOwnerAmendmentBlockRecordInput = Readonly<{
   inputDigests: OwnerAmendmentBlockInputDigests;
 }>;
 export type OwnerAmendmentBlockRecord = {
-  version: unknown;
-  kind: unknown;
+  version?: unknown;
+  kind?: unknown;
   repository?: unknown;
   prNumber?: unknown;
   baseSha?: unknown;
@@ -40,11 +40,11 @@ export type OwnerAmendmentBlockRecord = {
   workflowPath?: unknown;
   runId?: unknown;
   runAttempt?: unknown;
-  authority: unknown;
-  inputDigests: unknown;
-  decisionSha256: string;
-  decisionBytesBase64: unknown;
-  decision: unknown;
+  authority?: unknown;
+  inputDigests?: unknown;
+  decisionSha256?: unknown;
+  decisionBytesBase64?: unknown;
+  decision?: unknown;
 };
 export type ValidateOwnerAmendmentBlockRecordInput = Readonly<{
   record: unknown;

@@ -29,8 +29,8 @@ export type BuildOwnerAmendmentOwnerDecisionRecordInput = Readonly<{
   inputDigests: OwnerAmendmentOwnerDecisionInputDigests;
 }>;
 export type OwnerAmendmentOwnerDecisionRecord = {
-  version: unknown;
-  kind: unknown;
+  version?: unknown;
+  kind?: unknown;
   repository?: unknown;
   prNumber?: unknown;
   baseSha?: unknown;
@@ -40,11 +40,11 @@ export type OwnerAmendmentOwnerDecisionRecord = {
   workflowPath?: unknown;
   runId?: unknown;
   runAttempt?: unknown;
-  authority: unknown;
-  inputDigests: unknown;
-  decisionSha256: string;
-  decisionBytesBase64: unknown;
-  decision: unknown;
+  authority?: unknown;
+  inputDigests?: unknown;
+  decisionSha256?: unknown;
+  decisionBytesBase64?: unknown;
+  decision?: unknown;
 };
 export type ValidateOwnerAmendmentOwnerDecisionRecordInput = Readonly<{
   record: unknown;
@@ -171,8 +171,8 @@ export function buildOwnerAmendmentOwnerDecisionRecord({ decisionBytes, schema, 
   validateDecisionRules(decision, validation);
   if ((decision as DecisionView).decision !== 'OWNER_DECISION') fail('only a completed OWNER_DECISION can produce this record.');
   validateAuthoritySetDecision(decision, authority);
-  // validateContext established the producer-context keys before this same
-  // spread; the erased output view keeps their externally supplied values unknown.
+  // Caller-owned context can add toJSON before this original spread. The
+  // existing serialization can mutate the record; output observations stay unknown.
   const record = {
     version: 1,
     kind: 'owner-amendment-owner-decision-review-record',
