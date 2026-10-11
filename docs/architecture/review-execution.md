@@ -387,39 +387,68 @@ branch, currently `main`, for one session on PR #517. The selected proposal
 targets `feature/gemini-ci`, with head `c4b0057d9dd47f79df2a896143f7ac6db5da2c2e`,
 protected base `43e9a28571ad0508a425220256a18d6b140525b2`, and reviewed merge
 `20cc0c1a58ee8263898a56c8df34472bd14ea173`. The reusable workflow remains
-pinned to `7dc99525b4ff1510f1de310f6f5b877ab05bbfd2`. Existing event, classifier,
-PR/head and attempt selectors do not bind the base or merge; the coordinator
-must read back that exact context before the authorized session.
+pinned to `7dc99525b4ff1510f1de310f6f5b877ab05bbfd2`. This authorization does
+not select Gemini for PRs targeting `main` or another branch, or import FEATURE
+authority into the default-branch canonical Set. The caller continues to resolve
+its protected feature policy (`.codex/gatekeeper/gemini-verification-policy.json`),
+prompt, schema, decision-validation files and complete six-member Authority Set
+from the consumer target. It grants no semantic or merge-acceptance authority,
+changes no validation or acceptance requirements, and does not reclassify the
+preserved protected `BLOCK` or activate a broader route.
 
-This does not select Gemini for PRs targeting `main` or another branch, or
-import FEATURE authority into the default-branch canonical Set. The caller
-continues to resolve its protected feature policy
-(`.codex/gatekeeper/gemini-verification-policy.json`), prompt, schema,
-decision-validation files and complete six-member Authority Set from the
-consumer target. This deployment makes the existing reusable credentialed job
-reachable for that selection under its existing execution boundary.
+Before requesting OIDC, a trusted read-only metadata admission step must verify
+through point-in-time live GitHub API reads the actual immutable event and PR
+context: repository, PR #517, target branch, head
+`c4b0057d9dd47f79df2a896143f7ac6db5da2c2e`, protected base
+`43e9a28571ad0508a425220256a18d6b140525b2`, and reviewed merge
+`20cc0c1a58ee8263898a56c8df34472bd14ea173`. It must verify the merge commit's exact ordered parent list:
+`[43e9a28571ad0508a425220256a18d6b140525b2,
+c4b0057d9dd47f79df2a896143f7ac6db5da2c2e]` (protected base, reviewed head).
+Manual base/merge comparison is insufficient. Admission must pin the numeric workflow instance
+ID, exactly one `run_number`, and `attempt: 1`; a different ready run, retry,
+recreated workflow instance, or changed tuple is denied. An unrelated event
+burns that ordinal, and there is no automatic re-admission. The actual numeric
+workflow instance ID and run number must be recorded in the canonical admission
+record before deployment; their values are not established here.
 
-The owner confirms the configured WIF provider, service account and target
-repository binding match the intended selection. This is not independent
-Google Cloud readback, proof of authentication for the new session, or
-host-protection evidence. Existing [Gemini WIF authentication](#target-gemini-ci-authentication-selection-issue-252-owner-decision-2026-10-04)
+Admission must bind the exact caller content SHA-256 and permitted activation
+delta, and the same immutable protected workflow revision/configuration. It
+must not accept a self-selected candidate caller or revision. The queued run's
+actual same-run repository resource selectors must be compared with the
+owner-confirmed selectors by SHA-256 of their exact UTF-8 bytes, with no
+appended newline. Record the selector fingerprints, caller digest and permitted
+activation delta in the canonical admission record; the original selector
+values need not be copied into public canonical text. These fingerprints, the
+caller digest and permitted delta are not established here and must be recorded
+canonically before deployment.
+
+The owner confirms that the configured WIF provider, service account and target
+repository binding match the intended selection. This confirmation is not
+independent Google Cloud readback, proof of authentication for the new session,
+or host-protection evidence. The trusted launcher must derive the Google
+project only from a strictly parsed exact service-account email; use region
+`global` and request a 300-second token. The observed token expiry must be
+between 240 and 360 seconds. Use the pinned reusable workflow above and its
+single credential-isolated launcher credential, with no explicit runner
+renewal handle. These constraints do not establish host isolation or Google
+IAM configuration/proof. Existing [Gemini WIF authentication](#target-gemini-ci-authentication-selection-issue-252-owner-decision-2026-10-04)
 and [credential-isolated proxy](#target-multi-provider-credential-isolated-review-proxy-boundary-issue-252-owner-decision-2026-10-02)
-clauses govern the trusted CI OIDC exchange; the credential-isolated
-launcher/proxy uses the resulting provider credential.
+clauses continue to govern the trusted CI OIDC exchange and credential use.
 
-Approval covers one operator-admitted workflow session, not a second session,
-workflow rerun, repeated-ready re-admission or provider fallback. Calls and
-internal retries within that session remain subject to existing caps and
-deadlines. The guard is not durable one-use control: another ready event can
-create an attempt-1 run at this head. The coordinator must admit the exact
-PR, target branch, head, protected base and reviewed merge tuple once, then
-stop after the approved session.
+Approval covers one operator-admitted workflow session only: no second session,
+workflow rerun, repeated-ready re-admission or provider fallback. HTTP calls and
+internal retries within that session remain subject to existing selected caps
+and deadlines.
 
-This record does not adopt itself. Canonical adoption and protected
-transition/readback must follow previously selected owner-amendment governance
-before deployment. It grants no semantic or merge-acceptance authority, changes
-no validation or acceptance requirements, and does not reclassify the preserved
-protected `BLOCK` or activate a broader route.
+This record is incomplete for deployment until the actual fixed workflow
+instance ID, run number, caller digest, activation delta, and selector
+fingerprints are recorded canonically and verified against the live admission
+and queued-run metadata. Until then, the caller's literal remains `false` and
+its configuration remains `false`/`null`. This does not adopt itself; canonical
+adoption and exact target readback must follow the repository's existing
+protected review and merge governance before deployment. No new governance
+profile, G0 selection, acceptance rule, grant backend, tag, write capability,
+or Gemini `main` target routing is selected.
 
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
