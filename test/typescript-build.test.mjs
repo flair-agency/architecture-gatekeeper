@@ -69,6 +69,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
   }
   mkdirSync(join(fixtureRoot, 'src/authority-validation'), { recursive: true });
+  cpSync(join(root, 'src/authority-validation/authority-set.mts'), join(fixtureRoot, 'src/authority-validation/authority-set.mts'));
   cpSync(join(root, 'src/authority-validation/resolve-ci-policy.mts'), join(fixtureRoot, 'src/authority-validation/resolve-ci-policy.mts'));
   writeFileSync(join(fixtureRoot, 'src/legacy.mjs'), 'export const legacyValue = 7;\n');
   writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), "import { legacyValue } from '../legacy.mjs';\nexport const answer: number = legacyValue + 35;\n");
@@ -81,6 +82,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   assert.equal(initialBuild.status, 0, initialBuild.stderr);
   assert.deepEqual(emittedFiles(dist), [
     'authority-set.mjs',
+    'authority-validation/authority-set.mjs',
     'authority-validation/resolve-ci-policy.mjs',
     'ci-execution-result.mjs',
     'ci-execution/ci-execution-result.mjs',
