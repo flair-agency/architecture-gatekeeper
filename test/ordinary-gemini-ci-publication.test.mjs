@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, linkSync, mkdirSync, mkdtempSync, promises as fsPromises, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { syncBuiltinESMExports } from 'node:module';
+import { basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -24,6 +27,23 @@ async function withProcessEnv(values, action) {
       else process.env[key] = value;
     }
   }
+}
+
+function runnerCommandFiles(temp) {
+  const directory = join(temp, '_runner_file_commands');
+  mkdirSync(directory, { recursive: true });
+  const suffix = randomUUID();
+  const output = join(directory, `set_output_${suffix}`);
+  const summary = join(directory, `step_summary_${suffix}`);
+  writeFileSync(output, '');
+  writeFileSync(summary, '');
+  return { output, summary };
+}
+
+async function withProcessCwd(root, action) {
+  const previous = process.cwd();
+  process.chdir(root);
+  try { return await action(); } finally { process.chdir(previous); }
 }
 
 function setRunnerTemp(t, value) {
@@ -178,6 +198,13 @@ test('fetch selects one completed attributed job, verifies the protected tuple, 
     status: 'completed', conclusion: 'success', steps: [{ name: ORDINARY_GEMINI_PUBLICATION_STEP, status: 'completed', conclusion: 'success' }] };
   const requests = [];
   const fakeFetch = async (url, options) => {
+    assert.ok(url instanceof URL, 'requests are passed as URL objects');
+    if (options.headers.authorization) {
+      assert.equal(url.origin, 'https://api.github.com');
+      assert.equal(url.username, '');
+      assert.equal(url.password, '');
+      assert.equal(url.hash, '');
+    } else assert.equal(url.origin, 'https://signed.blob.core.windows.net');
     const value = String(url);
     requests.push({ url: value, options });
     if (value.endsWith(`/attempts/${tuple.runAttempt}`)) return Response.json(run);
@@ -192,6 +219,12 @@ test('fetch selects one completed attributed job, verifies the protected tuple, 
   assert.match(readFileSync(outputPath, 'utf8'), /candidate includes \*\*\*/);
   assert.equal(statSync(outputPath).mode & 0o777, 0o600);
   assert.equal(requests.length, 4);
+  assert.deepEqual(requests.slice(0, 3).map(request => new URL(request.url).pathname), [
+    `/repos/${tuple.repository}/actions/runs/${tuple.runId}/attempts/${tuple.runAttempt}`,
+    `/repos/${tuple.repository}/actions/runs/${tuple.runId}/attempts/${tuple.runAttempt}/jobs`,
+    `/repos/${tuple.repository}/actions/jobs/${job.id}/logs`,
+  ]);
+  assert.equal(new URL(requests[1].url).search, '?per_page=100');
   assert.equal(requests[0].options.headers.authorization, 'Bearer fixture-github-token');
   assert.equal(requests[3].options.headers.authorization, undefined, 'signed log host receives no GitHub credential');
 });
@@ -383,6 +416,40 @@ test('fetch rejects non-GitHub redirect hosts and a stalled API call before an u
   assert.ok(Date.now() - started < 1_000, 'hung fetch is bounded by the request deadline');
 });
 
+test('retrieval rejects malformed route identifiers before fetching and keeps API redirects manual', async t => {
+  const projection = makeProjection();
+  const tuple = expected(projection);
+  const parent = mkdtempSync(join(tmpdir(), 'ordinary-gemini-api-route-'));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  const temp = join(parent, 'runner-temp');
+  const { mkdirSync } = await import('node:fs'); mkdirSync(temp);
+  setRunnerTemp(t, temp);
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(null, { status: 302, headers: { location: 'https://attacker.invalid/collect' } });
+  };
+  for (const changed of [
+    { repository: 'attacker.invalid@api.github.com/owner/repo' },
+    { repository: 'owner/repo?query=1' },
+    { runId: '1/../../attacker' },
+    { runAttempt: '1?redirect=1' },
+  ]) {
+    calls.length = 0;
+    const malformed = { ...tuple, ...changed };
+    const outputPath = join(temp, `agk-ordinary-gemini-report-${malformed.runId}-${malformed.runAttempt}.json`);
+    await assert.rejects(retrieveOrdinaryGeminiPublication({ apiToken: 'fixture', expected: malformed, outputPath, fetchImpl }));
+    assert.equal(calls.length, 0, 'malformed repository and numeric route components fail before fetch');
+  }
+  const outputPath = join(temp, `agk-ordinary-gemini-report-${tuple.runId}-${tuple.runAttempt}.json`);
+  await assert.rejects(retrieveOrdinaryGeminiPublication({ apiToken: 'fixture', expected: tuple, outputPath, fetchImpl }));
+  assert.equal(calls.length, 1, 'manual API redirect response is rejected without following its Location');
+  assert.ok(calls[0].url instanceof URL);
+  assert.equal(calls[0].url.origin, 'https://api.github.com');
+  assert.equal(calls[0].options.redirect, 'manual');
+  assert.equal(calls[0].options.headers.authorization, 'Bearer fixture');
+});
+
 test('selected Gemini report fails closed on missing or altered projection and never uses raw DECISION fallback', async t => {
   const projection = makeProjection('BLOCK');
   const tuple = expected(projection);
@@ -390,6 +457,7 @@ test('selected Gemini report fails closed on missing or altered projection and n
   t.after(() => rmSync(parent, { recursive: true, force: true }));
   const temp = join(parent, 'runner-temp');
   const { mkdirSync, writeFileSync, chmodSync } = await import('node:fs'); mkdirSync(temp);
+  const commands = runnerCommandFiles(temp);
   const path = join(temp, `agk-ordinary-gemini-report-${tuple.runId}-${tuple.runAttempt}.json`);
   const env = { REPORT_PROJECTION_PATH: path, REPORT_EXPECTED_PROVIDER: 'gemini', REPORT_EXPECTED_NONCE: tuple.nonce,
     REPORT_EXPECTED_CONCLUSION: tuple.conclusion, REPORT_EXPECTED_DECISION_DIGEST: tuple.decisionDigest,
@@ -398,10 +466,10 @@ test('selected Gemini report fails closed on missing or altered projection and n
     GATEKEEPER_WORKFLOW_REPOSITORY: tuple.workflowRepository, GATEKEEPER_WORKFLOW_SHA: tuple.workflowSha,
     GATEKEEPER_WORKFLOW_REF: tuple.workflowRef, BASE_SHA: tuple.baseSha, HEAD_SHA: tuple.headSha,
     REVIEWED_SHA: tuple.reviewedSha, RUNNER_TEMP: temp, POLICY_VERSION: '6', MODE: 'enforced',
-    POLICY_RESULT: 'success', REVIEW_RESULT: 'success' };
+    POLICY_RESULT: 'success', REVIEW_RESULT: 'success', GITHUB_OUTPUT: commands.output };
   await withProcessEnv(env, async () => assert.rejects(runCiReport(), /ENOENT/));
   writeFileSync(path, ' '.repeat(MAX_ORDINARY_GEMINI_PROJECTION_BYTES + 2), { mode: 0o600 }); chmodSync(path, 0o600);
-  await withProcessEnv(env, async () => assert.rejects(runCiReport(), /protected binding checks/));
+  await withProcessEnv(env, async () => assert.rejects(runCiReport(), /filesystem boundary/));
   writeFileSync(path, `${JSON.stringify(projection)}\n`, { mode: 0o600 }); chmodSync(path, 0o600);
   const altered = { ...env, REPORT_EXPECTED_CONCLUSION: 'PASS' };
   await withProcessEnv(altered, async () => assert.rejects(runCiReport(), /protected binding checks/));
@@ -445,19 +513,19 @@ test('full projected findings publish only against the current protected PR head
 test('ci-report publishes full projected PASS/BLOCK bodies and emits outputs only after successful publication', async t => {
   const parent = realpathSync(mkdtempSync(join(tmpdir(), 'ordinary-gemini-ci-report-main-')));
   t.after(() => rmSync(parent, { recursive: true, force: true }));
-  const temp = join(parent, 'runner-temp');
-  const { mkdirSync } = await import('node:fs'); mkdirSync(temp, { mode: 0o700 });
-
-  for (const outcome of ['PASS', 'BLOCK', 'large-projection', 'host-sink-binding', 'publish-failure']) {
-    const protectedOutcome = outcome === 'publish-failure' ? 'BLOCK' : outcome === 'large-projection' || outcome === 'host-sink-binding' ? 'PASS' : outcome;
+  for (const outcome of ['PASS', 'BLOCK', 'large-projection', 'host-sink-binding', 'publish-failure', 'parent-substitution']) {
+    const temp = join(parent, outcome);
+    mkdirSync(temp, { mode: 0o700 });
+    const commands = runnerCommandFiles(temp);
+    const protectedOutcome = outcome === 'publish-failure' ? 'BLOCK' : ['large-projection', 'host-sink-binding', 'parent-substitution'].includes(outcome) ? 'PASS' : outcome;
     const projection = outcome === 'large-projection' ? makeNearDecisionLimitProjection('PASS') : makeProjection(protectedOutcome);
     if (outcome !== 'large-projection') projection.report.decision.summary = 'candidate includes ***';
     projection.report.decision.findings[0].body = 'candidate includes ***';
     const tuple = expected(projection);
     const projectionPath = join(temp, `agk-ordinary-gemini-report-${tuple.runId}-${tuple.runAttempt}.json`);
-    const summaryPath = join(temp, `${outcome}-summary.md`);
-    const hostReportPath = join(temp, `${outcome}-host-report.md`);
-    const outputPath = join(temp, `${outcome}-output.txt`);
+    const summaryPath = commands.summary;
+    const hostReportPath = join(temp, 'architecture-gate-report.md');
+    const outputPath = commands.output;
     const candidateReportPath = join(parent, `${outcome}-candidate-report.md`);
     const candidateSummaryPath = join(parent, `${outcome}-candidate-summary.md`);
     const candidateProjectionPath = join(parent, `${outcome}-candidate-projection.json`);
@@ -491,6 +559,15 @@ test('ci-report publishes full projected PASS/BLOCK bodies and emits outputs onl
     const apiCalls = [];
     const fetchImpl = async (url, options = {}) => {
       const value = String(url); apiCalls.push({ url: value, options });
+      if (outcome === 'parent-substitution' && apiCalls.length === 1) {
+        const directory = join(temp, '_runner_file_commands');
+        renameSync(directory, `${directory}-original`);
+        const replacement = join(temp, 'unrelated-command-files');
+        mkdirSync(replacement);
+        writeFileSync(join(replacement, basename(summaryPath)), 'unrelated summary must not be written');
+        writeFileSync(join(replacement, basename(outputPath)), 'unrelated output must not be written');
+        symlinkSync(replacement, directory, 'dir');
+      }
       if (value.endsWith('/pulls/77') && options.method !== 'POST') return Response.json({ head: { sha: tuple.headSha } });
       if (value.endsWith('/pulls/77/files?per_page=100&page=1')) return Response.json([
         { filename: 'src/example.mjs', status: 'added', additions: 1, deletions: 0, patch: '@@ -0,0 +8 @@\n+new line' },
@@ -504,13 +581,23 @@ test('ci-report publishes full projected PASS/BLOCK bodies and emits outputs onl
       }
       throw new Error(`unexpected report API request ${value}`);
     };
+    if (outcome === 'parent-substitution') {
+      await withProcessCwd(temp, () => withProcessEnv(env, async () => assert.rejects(runCiReport(fetchImpl), /runner-created output/)));
+      assert.equal(readFileSync(summaryPath, 'utf8'), 'unrelated summary must not be written');
+      assert.equal(readFileSync(outputPath, 'utf8'), 'unrelated output must not be written');
+      assert.match(readFileSync(join(temp, '_runner_file_commands-original', basename(summaryPath)), 'utf8'), /Architecture Gate — PASS/,
+        'append uses the original held descriptor rather than a newly redirected path');
+      assert.equal(readFileSync(join(temp, '_runner_file_commands-original', basename(outputPath)), 'utf8'), '',
+        'changed output path prevents successful workflow output');
+      continue;
+    }
     if (outcome === 'publish-failure') {
-      await withProcessEnv(env, async () => assert.rejects(runCiReport(fetchImpl), /Required Architecture Gate report publication failed/));
+      await withProcessCwd(temp, () => withProcessEnv(env, async () => assert.rejects(runCiReport(fetchImpl), /Required Architecture Gate report publication failed/)));
       assert.equal(readFileSync(outputPath, 'utf8'), '', 'failed PR publication emits no successful report outputs');
       assert.match(readFileSync(summaryPath, 'utf8'), /Architecture Gate — BLOCK/);
       continue;
     }
-    await withProcessEnv(env, () => runCiReport(fetchImpl));
+    await withProcessCwd(temp, () => withProcessEnv(env, () => runCiReport(fetchImpl)));
     const body = readFileSync(summaryPath, 'utf8');
     const output = readFileSync(outputPath, 'utf8');
     assert.match(readFileSync(hostReportPath, 'utf8'), new RegExp(`Architecture Gate — ${protectedOutcome}`));
@@ -534,5 +621,67 @@ test('ci-report publishes full projected PASS/BLOCK bodies and emits outputs onl
     assert.match(JSON.parse(published.options.body).body, /Per-gate evaluation details/);
     const inline = apiCalls.find(call => call.url.endsWith('/pulls/77/reviews'));
     assert.equal(JSON.parse(inline.options.body).commit_id, tuple.headSha);
+  }
+});
+
+test('projection reader rejects escaping roots, links and substituted descriptors before network or response reads', async t => {
+  const parent = realpathSync(mkdtempSync(join(tmpdir(), 'ordinary-gemini-report-filesystem-')));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  for (const scenario of ['symlink', 'hardlink', 'aliased-root', 'noncanonical-path', 'invalid-run', 'descriptor-substitution']) {
+    const temp = join(parent, scenario);
+    mkdirSync(temp);
+    const commands = runnerCommandFiles(temp);
+    const projection = makeProjection();
+    const tuple = expected(projection);
+    const path = join(temp, `agk-ordinary-gemini-report-${tuple.runId}-${tuple.runAttempt}.json`);
+    const alternate = join(temp, 'unrelated-private-file');
+    const bytes = `${JSON.stringify(projection)}\n`;
+    for (const selected of [path, alternate]) { writeFileSync(selected, bytes, { mode: 0o600 }); chmodSync(selected, 0o600); }
+    const env = { REPORT_PROJECTION_PATH: path, REPORT_EXPECTED_PROVIDER: 'gemini', REPORT_EXPECTED_NONCE: tuple.nonce,
+      REPORT_EXPECTED_CONCLUSION: tuple.conclusion, REPORT_EXPECTED_DECISION_DIGEST: tuple.decisionDigest,
+      GITHUB_REPOSITORY: tuple.repository, GITHUB_RUN_ID: tuple.runId, GITHUB_RUN_ATTEMPT: tuple.runAttempt,
+      GITHUB_SHA: tuple.eventSha, GITHUB_WORKFLOW_SHA: tuple.callerWorkflowSha, GITHUB_WORKFLOW_REF: tuple.callerWorkflowRef,
+      GATEKEEPER_WORKFLOW_REPOSITORY: tuple.workflowRepository, GATEKEEPER_WORKFLOW_SHA: tuple.workflowSha,
+      GATEKEEPER_WORKFLOW_REF: tuple.workflowRef, BASE_SHA: tuple.baseSha, HEAD_SHA: tuple.headSha,
+      REVIEWED_SHA: tuple.reviewedSha, RUNNER_TEMP: temp, POLICY_VERSION: '6', MODE: 'enforced',
+      POLICY_RESULT: 'success', REVIEW_RESULT: 'success', GITHUB_OUTPUT: commands.output,
+      GITHUB_STEP_SUMMARY: '', REPORT_PATH: '', GITHUB_TOKEN: 'fixture-token', PR_NUMBER: '77' };
+    if (scenario === 'symlink' || scenario === 'hardlink') {
+      rmSync(path);
+      if (scenario === 'symlink') symlinkSync(alternate, path);
+      else linkSync(alternate, path);
+    } else if (scenario === 'aliased-root') {
+      const alias = join(parent, 'runner-temp-alias');
+      symlinkSync(temp, alias, 'dir');
+      env.RUNNER_TEMP = alias;
+      env.REPORT_PROJECTION_PATH = join(alias, basename(path));
+    } else if (scenario === 'noncanonical-path') env.REPORT_PROJECTION_PATH = `${temp}/./${basename(path)}`;
+    else if (scenario === 'invalid-run') env.GITHUB_RUN_ID = '1/../../unrelated';
+    let requests = 0;
+    let reads = 0;
+    let closes = 0;
+    const originalOpen = fsPromises.open;
+    if (scenario === 'descriptor-substitution') {
+      fsPromises.open = async (selected, ...options) => {
+        if (selected !== path) return originalOpen(selected, ...options);
+        const handle = await originalOpen(alternate, ...options);
+        const originalRead = handle.read.bind(handle);
+        const originalClose = handle.close.bind(handle);
+        handle.read = async (...args) => { reads += 1; return originalRead(...args); };
+        handle.close = async (...args) => { closes += 1; return originalClose(...args); };
+        return handle;
+      };
+      syncBuiltinESMExports();
+    }
+    try {
+      await withProcessEnv(env, async () => assert.rejects(runCiReport(async () => {
+        requests += 1; throw new Error('network must not be reached after invalid projection path');
+      }), /filesystem boundary|protected binding checks/));
+    } finally { fsPromises.open = originalOpen; syncBuiltinESMExports(); }
+    assert.equal(requests, 0, scenario);
+    assert.equal(reads, 0, 'descriptor substitution is rejected before unrelated response bytes are read');
+    if (scenario === 'descriptor-substitution') assert.equal(closes, 1, 'rejected descriptor is closed');
+    assert.equal(readFileSync(alternate, 'utf8'), bytes);
+    assert.equal(readFileSync(commands.output, 'utf8'), '');
   }
 });

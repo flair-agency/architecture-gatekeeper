@@ -106,6 +106,13 @@ Codex-only consumer workflow and this repository's self policy remain unchanged.
 This implementation does not establish consumer support or acceptance. See the
 [caller authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
 
+The CI reporter confines its projection and summary files to the invoking
+GitHub runner's per-step file-command layout and rejects linked or substituted
+files. Its optional local `REPORT_PATH` must name
+`architecture-gate-report.md` in the current directory; it creates that file
+exclusively and never overwrites an existing destination. See the
+[report filesystem boundary](docs/integration-reference.md#report-filesystem-boundary).
+
 #### Self-repository Fork contributions
 
 This repository's self-review policy does not run privileged or paid review for

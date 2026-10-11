@@ -145,7 +145,14 @@ export async function retrieveOrdinaryGeminiPublication(input: {
   const tuple = expectedTuple(input.expected);
   if (typeof input.apiToken !== 'string' || input.apiToken.length < 1 || typeof input.outputPath !== 'string' || !resolve(input.outputPath).startsWith('/')) fail();
   const fetchImpl = input.fetchImpl ?? fetch;
-  const runPath = `/repos/${tuple.repository}/actions/runs/${tuple.runId}/attempts/${tuple.runAttempt}`;
+  // API request destinations are assembled from the fixed GitHub origin and
+  // this closed route set. Repository components and numeric path components
+  // are encoded independently so none can contribute URL syntax.
+  const repositoryParts = tuple.repository.split('/');
+  if (repositoryParts.length !== 2 || repositoryParts.some(part => !part)) fail();
+  const apiBase = new URL('https://api.github.com/');
+  const runPath = ['repos', ...repositoryParts, 'actions', 'runs', tuple.runId, 'attempts', tuple.runAttempt]
+    .map(segment => encodeURIComponent(segment)).join('/');
   const controller = new AbortController();
   let rejectDeadline!: (reason: Error) => void;
   const deadline = new Promise<never>((_, reject) => { rejectDeadline = reject; });
@@ -158,10 +165,19 @@ export async function retrieveOrdinaryGeminiPublication(input: {
     if (response.status !== 200 || !response.body) return { response, bytes: Buffer.alloc(0) };
     return { response, bytes: await boundedBody(response, limit, wait) };
   }
-  async function getApi(path: string, limit: number): Promise<{ response: Response; bytes: Buffer }> {
+  async function getApi(route: 'run' | 'jobs' | 'job-log', jobId: number | undefined,
+    limit: number): Promise<{ response: Response; bytes: Buffer }> {
     if (++requests > 5) fail();
-    if (!path.startsWith(`/repos/${tuple.repository}/`) || path.includes('\\') || path.includes('#') || path.startsWith('//')) fail();
-    const response = await wait(fetchImpl(`https://api.github.com${path}`, { redirect: 'manual', signal: controller.signal,
+    const path = route === 'run' ? runPath
+      : route === 'jobs' ? `${runPath}/jobs`
+        : route === 'job-log' && Number.isSafeInteger(jobId) && Number(jobId) > 0
+          ? ['repos', ...repositoryParts, 'actions', 'jobs', String(jobId), 'logs'].map(segment => encodeURIComponent(segment)).join('/')
+          : null;
+    if (path === null || !['run', 'jobs', 'job-log'].includes(route)) fail();
+    const url = new URL(path, apiBase);
+    if (url.origin !== 'https://api.github.com' || url.username || url.password || url.hash) fail();
+    if (route === 'jobs') url.searchParams.set('per_page', '100');
+    const response = await wait(fetchImpl(url, { redirect: 'manual', signal: controller.signal,
       headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${input.apiToken}`, 'x-github-api-version': '2022-11-28' } }));
     return readResponse(response, limit);
   }
@@ -175,7 +191,7 @@ export async function retrieveOrdinaryGeminiPublication(input: {
     return readResponse(response, limit);
   }
   try {
-    const runResult = await getApi(runPath, 131_072);
+    const runResult = await getApi('run', undefined, 131_072);
     if (runResult.response.status !== 200) fail();
     const run = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(runResult.bytes)) as JsonRecord;
     const runRepository = run.repository;
@@ -225,7 +241,7 @@ export async function retrieveOrdinaryGeminiPublication(input: {
       return own(item.repository) && item.repository.full_name === tuple.workflowRepository;
     });
     if (reusable.length !== 1) fail();
-    const jobsResult = await getApi(`${runPath}/jobs?per_page=100`, 131_072);
+    const jobsResult = await getApi('jobs', undefined, 131_072);
     if (jobsResult.response.status !== 200) fail();
     const jobs = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(jobsResult.bytes)) as JsonRecord;
     if (!Array.isArray(jobs.jobs) || jobs.jobs.length > 100 || jobs.total_count !== jobs.jobs.length) fail();
@@ -237,7 +253,7 @@ export async function retrieveOrdinaryGeminiPublication(input: {
         job.head_sha !== tuple.headSha || job.status !== 'completed' || job.conclusion !== 'success') fail();
     const emissionSteps = (job.steps as JsonRecord[]).filter(step => step.name === ORDINARY_GEMINI_PUBLICATION_STEP);
     if (emissionSteps.length !== 1 || emissionSteps[0].status !== 'completed' || emissionSteps[0].conclusion !== 'success') fail();
-    let logResult = await getApi(`/repos/${tuple.repository}/actions/jobs/${job.id}/logs`, MAX_ORDINARY_GEMINI_JOB_LOG_BYTES);
+    let logResult = await getApi('job-log', Number(job.id), MAX_ORDINARY_GEMINI_JOB_LOG_BYTES);
     if (logResult.response.status === 302) {
       const location = logResult.response.headers.get('location');
       if (!location) fail();

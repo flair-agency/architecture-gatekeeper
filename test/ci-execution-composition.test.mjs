@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import { resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 import { parseWorkflow } from './helpers/workflow-structure.mjs';
 
@@ -152,10 +153,17 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
   };
   const invokeReport = (label, { reviewResult, decision }) => {
     const files = nextFiles(`report-${label}`);
+    const commands = join(files.dir, '_runner_file_commands');
+    mkdirSync(commands);
+    const commandId = randomUUID();
+    const output = join(commands, `set_output_${commandId}`);
+    const summary = join(commands, `step_summary_${commandId}`);
+    writeFileSync(output, '');
+    writeFileSync(summary, '');
     const result = spawnSync(process.execPath, [reporter], {
-      cwd: root,
-      env: { ...baseEnv, GITHUB_OUTPUT: realpathSync(files.output),
-        REPORT_PATH: join(files.dir, 'report.md'), GITHUB_STEP_SUMMARY: join(files.dir, 'summary.md'),
+      cwd: files.dir,
+      env: { ...baseEnv, GITHUB_OUTPUT: realpathSync(output),
+        REPORT_PATH: join(files.dir, 'architecture-gate-report.md'), GITHUB_STEP_SUMMARY: summary,
         GITHUB_API_URL: 'https://example.invalid',
         MODE: 'enforced', POLICY_RESULT: 'success', REVIEW_RESULT: reviewResult,
         DECISION: decision, OWNER_ADDITION_SELECTED: 'true', OWNER_ADDITION_RESULT: 'success',
@@ -165,8 +173,8 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
     });
     assert.equal(result.error, undefined);
     assert.equal(result.status, 0, result.stderr);
-    const report = readFileSync(join(files.dir, 'report.md'), 'utf8');
-    const reportOutputs = readFileSync(files.output, 'utf8');
+    const report = readFileSync(join(files.dir, 'architecture-gate-report.md'), 'utf8');
+    const reportOutputs = readFileSync(output, 'utf8');
     assert.match(reportOutputs, /^conclusion=ERROR$/m);
     const conclusion = reportOutputs.match(/^conclusion=(.+)$/m)?.[1];
     assert.equal(conclusion, 'ERROR');

@@ -491,6 +491,30 @@ Codex-only consumer workflow and this repository's protected self policy remain
 unchanged; consumer adoption remains inactive pending workflow adoption and
 representative hosted verification.
 
+#### Report filesystem boundary
+
+The internal CI reporter requires the invoking GitHub runner's preserved
+`GITHUB_OUTPUT` when reading a Gemini projection or appending a step summary.
+It validates the standard `_runner_file_commands/set_output_<GUID>` layout,
+derives the paired `step_summary_<GUID>` destination, and compares the supplied
+summary path with that exact destination. It holds the checked, no-follow
+summary descriptor across awaited reporting work. The projection destination
+is derived from the same runner temporary root and validated numeric run and
+attempt; the supplied path and `RUNNER_TEMP` must match. Projection reads are
+bounded and check regular-file, link, mode, size and opened-file identity.
+Unsupported layouts and mismatched or linked destinations fail closed.
+
+An optional `REPORT_PATH` local copy must equal the canonical absolute path
+`<current-working-directory>/architecture-gate-report.md`. The reporter creates
+it exclusively with mode `0600`; existing files, symbolic links and hardlinks
+are retained and cause failure. Callers that previously selected arbitrary
+report paths must use this fixed destination and move a completed local copy
+themselves if needed. Production reusable report jobs do not set this option.
+
+These checks constrain destinations; they do not authenticate forged process
+environments or establish same-user host isolation. They add no trust model for
+`GITHUB_STEP_SUMMARY` and do not change semantic decision or acceptance policy.
+
 Opted-in staged ordinary reviews pass the exact Action final-message source
 through shared execution normalization before existing semantic validators.
 Only a fixed execution status is appended through the validated runner-provided
