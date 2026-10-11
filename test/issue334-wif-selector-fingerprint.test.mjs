@@ -14,10 +14,12 @@ const job = workflow.jobs.fingerprint;
 const step = job.steps[0];
 const inlineScript = step.run.replace(/^node <<'NODE'\n/, '').replace(/\nNODE\n?$/, '');
 const outputStep = job.steps[1];
-const expectedServiceAccountSha256 = '2180acf4e4c9e0a0a7ec6f997652c2f34e302d2b285bbeb3fd3c1d09688189c4';
-const syntheticServiceAccount = 'synthetic-selector-123@example-project.iam.gserviceaccount.com';
-const syntheticProvider = 'projects/123456789012/locations/global/workloadIdentityPools/synthetic-pool/providers/synthetic-provider';
-const syntheticExpectedHash = createHash(syntheticServiceAccount);
+const expectedEffectiveServiceAccountSha256 = '2180acf4e4c9e0a0a7ec6f997652c2f34e302d2b285bbeb3fd3c1d09688189c4';
+const syntheticServiceAccount = '  opaque service-account selector\nwith whitespace é  ';
+const syntheticProvider = '  opaque provider selector\nwithout Google resource shape é  ';
+const syntheticEffectiveServiceAccount = syntheticServiceAccount.trim();
+const syntheticExpectedHash = createHash(syntheticEffectiveServiceAccount);
+const syntheticRawServiceAccountHash = createHash(syntheticServiceAccount);
 const sentinel = 'prior=runner-data\n';
 
 function createHash(value) {
@@ -47,12 +49,12 @@ function invoke({
   const env = {
     GCP_WIF_PROVIDER: provider,
     GCP_WIF_SERVICE_ACCOUNT: serviceAccount,
-    EXPECTED_SERVICE_ACCOUNT_SHA256: expectedHash,
+    EXPECTED_EFFECTIVE_SERVICE_ACCOUNT_SHA256: expectedHash,
     GITHUB_OUTPUT: outputPath,
     GITHUB_REPOSITORY: 'example/repository',
     GITHUB_WORKFLOW: 'Issue 334 WIF selector fingerprint diagnostic',
     GITHUB_RUN_ID: '1234567890',
-    GITHUB_RUN_NUMBER: '2',
+    GITHUB_RUN_NUMBER: '3',
     GITHUB_RUN_ATTEMPT: '1',
     GITHUB_EVENT_NAME: 'push',
     GITHUB_REF: 'refs/heads/main',
@@ -105,23 +107,31 @@ function assertDiagnosticFailure(result, phase, reason, disclosures = []) {
     phase,
     reason
   });
-  for (const value of [
+  const valuesToSuppress = [
     syntheticProvider,
     syntheticServiceAccount,
     syntheticExpectedHash,
     createHash(syntheticProvider),
-    expectedServiceAccountSha256,
+    syntheticRawServiceAccountHash,
+    expectedEffectiveServiceAccountSha256,
     ...disclosures
-  ]) {
+  ];
+  for (const value of valuesToSuppress) {
     if (typeof value === 'string' && value.length > 0) {
       assert.equal(result.stdout.includes(value), false);
       assert.equal(result.stderr.includes(value), false);
+      if (disclosures.includes(value)) {
+        for (const digest of [createHash(value), createHash(value.trim())]) {
+          assert.equal(result.stdout.includes(digest), false);
+          assert.equal(result.stderr.includes(digest), false);
+        }
+      }
     }
   }
 }
 
-test('workflow is first-run guarded, permissionless, source-bound and has no external actions', () => {
-  assert.equal(job.if, "github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_number == 2 && github.run_attempt == 1");
+test('workflow is third-run guarded, permissionless, source-bound and has no external actions', () => {
+  assert.equal(job.if, "github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_number == 3 && github.run_attempt == 1");
   assert.deepEqual(workflow.permissions, {});
   assert.deepEqual(job.permissions, {});
   assert.equal(job.steps.length, 2);
@@ -129,16 +139,18 @@ test('workflow is first-run guarded, permissionless, source-bound and has no ext
   assert.deepEqual(step.env, {
     GCP_WIF_PROVIDER: '${{ secrets.GCP_WIF_PROVIDER }}',
     GCP_WIF_SERVICE_ACCOUNT: '${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}',
-    EXPECTED_SERVICE_ACCOUNT_SHA256: expectedServiceAccountSha256
+    EXPECTED_EFFECTIVE_SERVICE_ACCOUNT_SHA256: expectedEffectiveServiceAccountSha256
   });
-  assert.match(workflowText, /does not prove this is the only changed path[\s\S]*run 2 \(attempt 1\)[\s\S]*same workflow/);
+  assert.match(workflowText, /does not prove this is the only changed path[\s\S]*run 3 \(attempt 1\)[\s\S]*same workflow/);
   assert.equal(workflow.on.push.branches[0], 'main');
   assert.deepEqual(workflow.on.push.paths, ['.github/workflows/issue334-wif-selector-fingerprint.yml']);
-  assert.match(workflowText, new RegExp(expectedServiceAccountSha256));
-  assert.match(step.run, /EXPECTED_SERVICE_ACCOUNT_SHA256/);
+  assert.match(workflowText, new RegExp(expectedEffectiveServiceAccountSha256));
+  assert.match(step.run, /EXPECTED_EFFECTIVE_SERVICE_ACCOUNT_SHA256/);
+  assert.match(step.run, /serviceAccount\.trim\(\)/);
   assert.match(step.run, /GITHUB_WORKFLOW_SHA/);
   assert.match(step.run, /GITHUB_RUN_NUMBER/);
   assert.match(step.run, /O_NOFOLLOW/);
+  assert.doesNotMatch(step.run, /provider_resource_shape|service_account_email_shape/);
   assert.match(step.run, /lstatSync[\s\S]*realpathSync[\s\S]*fstatSync[\s\S]*writeFileSync/);
   assert.match(step.run, /byteLength\(outputContents[\s\S]*16_384/);
   assert.doesNotMatch(step.run, /GITHUB_TOKEN|id-token|checkout|google-github-actions|::set-output|fetch\s*\(|https?:\/\//);
@@ -159,7 +171,7 @@ test('workflow is first-run guarded, permissionless, source-bound and has no ext
   });
 });
 
-test('actual inline script appends only hashes to the existing runner file', () => withOutputFile((root, outputPath) => {
+test('actual inline script accepts opaque selectors and hashes their exact UTF-8 bytes', () => withOutputFile((root, outputPath) => {
   const result = invoke({ outputPath });
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
@@ -169,7 +181,7 @@ test('actual inline script appends only hashes to the existing runner file', () 
       repository: 'example/repository',
       workflow: 'Issue 334 WIF selector fingerprint diagnostic',
       run_id: '1234567890',
-      run_number: '2',
+      run_number: '3',
       run_attempt: '1',
       event_name: 'push',
       ref: 'refs/heads/main',
@@ -177,21 +189,16 @@ test('actual inline script appends only hashes to the existing runner file', () 
       workflow_sha: 'b'.repeat(40)
     },
     provider_sha256: createHash(syntheticProvider),
-    service_account_sha256: syntheticExpectedHash
+    service_account_sha256: syntheticRawServiceAccountHash
   });
   for (const secret of [syntheticProvider, syntheticServiceAccount]) {
     assert.equal(result.stdout.includes(secret), false);
     assert.equal(result.stderr.includes(secret), false);
   }
-  assert.equal(fs.readFileSync(outputPath, 'utf8'), `${sentinel}provider_sha256=${createHash(syntheticProvider)}\nservice_account_sha256=${syntheticExpectedHash}\n`);
+  assert.notEqual(createHash(syntheticProvider), createHash(syntheticProvider.trim()));
+  assert.notEqual(syntheticRawServiceAccountHash, syntheticExpectedHash);
+  assert.equal(fs.readFileSync(outputPath, 'utf8'), `${sentinel}provider_sha256=${createHash(syntheticProvider)}\nservice_account_sha256=${syntheticRawServiceAccountHash}\n`);
   assert.equal(fs.existsSync(root), true);
-}));
-
-test('actual inline script accepts provider resource shapes selected by the pinned runtime', () => withOutputFile((root, outputPath) => {
-  const provider = 'projects/12345/locations/global/workloadIdentityPools/1234/providers/pool-id';
-  const result = invoke({ provider, outputPath });
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal(fs.readFileSync(outputPath, 'utf8'), `${sentinel}provider_sha256=${createHash(provider)}\nservice_account_sha256=${syntheticExpectedHash}\n`);
 }));
 
 test('actual inline script fails closed without disclosure or runner-output writes', () => {
@@ -201,20 +208,15 @@ test('actual inline script fails closed without disclosure or runner-output writ
     { values: { missing: ['GCP_WIF_SERVICE_ACCOUNT'] }, phase: 'selector_input', reason: 'service_account_missing' },
     { values: { serviceAccount: '' }, phase: 'selector_input', reason: 'service_account_missing' },
     { values: { provider: 'x'.repeat(257) }, phase: 'selector_validation', reason: 'provider_byte_length' },
-    { values: { provider: ` ${syntheticProvider}` }, phase: 'selector_validation', reason: 'provider_resource_shape' },
-    { values: { provider: `${syntheticProvider}\n` }, phase: 'selector_validation', reason: 'provider_resource_shape' },
-    { values: { provider: `projects/123/locations/global/workloadIdentityPools/pool/providers/provider?x=${syntheticServiceAccount}` }, phase: 'selector_validation', reason: 'provider_resource_shape' },
-    { values: { provider: `${syntheticProvider}-é` }, phase: 'selector_validation', reason: 'provider_resource_shape' },
-    { values: { provider: 'projects/12345/locations/global/workloadIdentityPools/gcp-pool/providers/provider' }, phase: 'selector_validation', reason: 'provider_resource_shape' },
+    { values: { provider: 'é'.repeat(129) }, phase: 'selector_validation', reason: 'provider_byte_length' },
     { values: { serviceAccount: 'x'.repeat(321) }, phase: 'selector_validation', reason: 'service_account_byte_length' },
-    { values: { serviceAccount: `${syntheticServiceAccount}\n` }, phase: 'selector_validation', reason: 'service_account_email_shape' },
-    { values: { serviceAccount: ` ${syntheticServiceAccount}` }, phase: 'selector_validation', reason: 'service_account_email_shape' },
-    { values: { serviceAccount: `é${syntheticServiceAccount}` }, phase: 'selector_validation', reason: 'service_account_email_shape' },
-    { values: { missing: ['EXPECTED_SERVICE_ACCOUNT_SHA256'] }, phase: 'expected_hash', reason: 'expected_hash_missing' },
+    { values: { serviceAccount: 'é'.repeat(161) }, phase: 'selector_validation', reason: 'service_account_byte_length' },
+    { values: { missing: ['EXPECTED_EFFECTIVE_SERVICE_ACCOUNT_SHA256'] }, phase: 'expected_hash', reason: 'expected_hash_missing' },
     { values: { expectedHash: '' }, phase: 'expected_hash', reason: 'expected_hash_missing' },
     { values: { expectedHash: 'not-a-hash' }, phase: 'expected_hash', reason: 'expected_hash_shape' },
-    { values: { expectedHash: 'f'.repeat(64) }, phase: 'expected_hash', reason: 'service_account_hash_mismatch' },
-    { values: { serviceAccount: 'other-selector@example-project.iam.gserviceaccount.com' }, phase: 'expected_hash', reason: 'service_account_hash_mismatch' }
+    { values: { expectedHash: 'f'.repeat(64) }, phase: 'expected_hash', reason: 'effective_service_account_hash_mismatch' },
+    { values: { serviceAccount: 'other opaque account' }, phase: 'expected_hash', reason: 'effective_service_account_hash_mismatch' },
+    { values: { serviceAccount: '  \n\t  ' }, phase: 'expected_hash', reason: 'effective_service_account_hash_mismatch' }
   ];
   for (const { values, phase, reason } of invalidCases) {
     withOutputFile((root, outputPath) => {
@@ -304,7 +306,7 @@ test('linked-directory rejection depends on realpath after other sink checks pas
   assert.notEqual(mutatedScript, inlineScript, 'mutation must remove only the realpath guard');
   const withoutRealpathGuard = invoke({ outputPath: linkedOutputPath, script: mutatedScript });
   assert.equal(withoutRealpathGuard.status, 0, withoutRealpathGuard.stderr);
-  assert.equal(fs.readFileSync(canonicalOutputPath, 'utf8'), `${sentinel}provider_sha256=${createHash(syntheticProvider)}\nservice_account_sha256=${syntheticExpectedHash}\n`);
+  assert.equal(fs.readFileSync(canonicalOutputPath, 'utf8'), `${sentinel}provider_sha256=${createHash(syntheticProvider)}\nservice_account_sha256=${syntheticRawServiceAccountHash}\n`);
 }));
 
 test('actual inline script rejects changed opened-file identity and sink errors before logging', () => withOutputFile((root, outputPath) => {
@@ -382,7 +384,7 @@ test('actual inline script preserves primary diagnostics when closing also fails
   const closeOnly = invoke({ outputPath, fsOverride: closeOnlyFs });
   assertDiagnosticFailure(closeOnly, 'output_sink', 'close');
   assert.equal(closed.length, 1, 'descriptor closure must be attempted after successful write');
-  assert.equal(fs.readFileSync(outputPath, 'utf8'), `${sentinel}provider_sha256=${createHash(syntheticProvider)}\nservice_account_sha256=${syntheticExpectedHash}\n`);
+  assert.equal(fs.readFileSync(outputPath, 'utf8'), `${sentinel}provider_sha256=${createHash(syntheticProvider)}\nservice_account_sha256=${syntheticRawServiceAccountHash}\n`);
   assert.equal(fs.existsSync(root), true);
 }));
 
