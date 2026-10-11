@@ -207,10 +207,19 @@ their original operations. External observations, including a content getter's
 later length and procedural Git arguments, remain unknown. These types add no
 accepting amendment route or authority rule.
 
+The amendment-core slice types canonical procedure parsing, digest calculation,
+G0 procedure validation and tag-envelope checks. Flat exports and original
+runtime operations remain unchanged. External readbacks stay unknown; owned
+parsed records and computed digests have explicit contracts. Types confer no
+owner authorization or new accepting route. The owner-addition CI and GitHub
+owner-addition provenance relocations remain deferred in Draft #520 after
+hosted CodeQL registered alerts #224–#234. No model expansion or dismissal is
+made; local runtime equivalence does not override a failing hosted check.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-The semantic producer tree has 65 of the original 96 modules typed and
-31 remaining. This CI predicate/Authority Set candidate has 68 typed and 28 remaining.
+Merged #518 has 68 of the original 96 modules typed and 28 remaining.
+This amendment-core candidate has 69 typed and 27 remaining.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
