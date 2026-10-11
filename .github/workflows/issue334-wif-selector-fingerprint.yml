@@ -1,0 +1,112 @@
+name: Issue 334 WIF selector fingerprint diagnostic
+
+# The path filter requires this workflow file among the push's changed paths;
+# it does not prove this is the only changed path. The job is limited to the
+# first run (attempt 1) for the fixed repository's push to its current `main`.
+# This bounded metadata diagnostic does not authenticate or validate a Google
+# provider configuration; independent Google-side evidence remains necessary.
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/issue334-wif-selector-fingerprint.yml
+
+permissions: {}
+
+jobs:
+  fingerprint:
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_number == 1 && github.run_attempt == 1
+    permissions: {}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate selector shape and report fingerprints
+        id: fingerprint
+        env:
+          GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+          GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          EXPECTED_SERVICE_ACCOUNT_SHA256: 2180acf4e4c9e0a0a7ec6f997652c2f34e302d2b285bbeb3fd3c1d09688189c4
+        run: |
+          node <<'NODE'
+          const crypto = require('node:crypto');
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          function fail() {
+            console.error('WIF selector fingerprint validation failed');
+            process.exitCode = 1;
+          }
+
+          try {
+            const provider = process.env.GCP_WIF_PROVIDER;
+            const serviceAccount = process.env.GCP_WIF_SERVICE_ACCOUNT;
+            if (typeof provider !== 'string' || typeof serviceAccount !== 'string') throw new Error();
+
+            const providerBytes = Buffer.byteLength(provider, 'utf8');
+            const serviceAccountBytes = Buffer.byteLength(serviceAccount, 'utf8');
+            if (providerBytes < 1 || providerBytes > 256 || serviceAccountBytes < 1 || serviceAccountBytes > 320) throw new Error();
+            if (!/^projects\/[1-9][0-9]{4,19}\/locations\/global\/workloadIdentityPools\/(?!gcp-)[a-z0-9-]{4,32}\/providers\/(?!gcp-)[a-z0-9-]{4,32}$/.test(provider)) throw new Error();
+            if (!/^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$/.test(serviceAccount)) throw new Error();
+
+            const expectedServiceAccountSha256 = process.env.EXPECTED_SERVICE_ACCOUNT_SHA256;
+            if (!/^[a-f0-9]{64}$/.test(expectedServiceAccountSha256 || '')) throw new Error();
+            const serviceAccountSha256 = crypto.createHash('sha256').update(Buffer.from(serviceAccount, 'utf8')).digest('hex');
+            if (serviceAccountSha256 !== expectedServiceAccountSha256) throw new Error();
+
+            const source = {
+              repository: process.env.GITHUB_REPOSITORY,
+              workflow: process.env.GITHUB_WORKFLOW,
+              run_id: process.env.GITHUB_RUN_ID,
+              run_number: process.env.GITHUB_RUN_NUMBER,
+              run_attempt: process.env.GITHUB_RUN_ATTEMPT,
+              event_name: process.env.GITHUB_EVENT_NAME,
+              ref: process.env.GITHUB_REF,
+              sha: process.env.GITHUB_SHA,
+              workflow_sha: process.env.GITHUB_WORKFLOW_SHA
+            };
+            if (!/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(source.repository || '')) throw new Error();
+            if (!/^[A-Za-z0-9_. -]{1,200}$/.test(source.workflow || '')) throw new Error();
+            if (!/^[0-9]{1,20}$/.test(source.run_id || '') || !/^[1-9][0-9]{0,5}$/.test(source.run_attempt || '')) throw new Error();
+            if (!/^[1-9][0-9]{0,19}$/.test(source.run_number || '')) throw new Error();
+            if (!/^[a-z_]{1,40}$/.test(source.event_name || '') || !/^refs\/[A-Za-z0-9_./-]{1,200}$/.test(source.ref || '')) throw new Error();
+            if (!/^[a-f0-9]{40,64}$/.test(source.sha || '')) throw new Error();
+            if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(source.workflow_sha || '')) throw new Error();
+
+            const providerSha256 = crypto.createHash('sha256').update(Buffer.from(provider, 'utf8')).digest('hex');
+            if (!/^[a-f0-9]{64}$/.test(providerSha256) || !/^[a-f0-9]{64}$/.test(serviceAccountSha256)) throw new Error();
+            const outputContents = `provider_sha256=${providerSha256}\nservice_account_sha256=${serviceAccountSha256}\n`;
+            if (outputContents.length === 0 || Buffer.byteLength(outputContents, 'utf8') > 16_384 || outputContents.includes('\0')) throw new Error();
+
+            const outputPath = process.env.GITHUB_OUTPUT;
+            if (typeof outputPath !== 'string' || outputPath.length === 0 || !path.isAbsolute(outputPath) || path.resolve(outputPath) !== outputPath) throw new Error();
+            const before = fs.lstatSync(outputPath);
+            if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || fs.realpathSync(outputPath) !== outputPath) throw new Error();
+            if (typeof fs.constants.O_NOFOLLOW !== 'number') throw new Error();
+
+            let fd;
+            try {
+              fd = fs.openSync(outputPath, fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_NOFOLLOW);
+              const opened = fs.fstatSync(fd);
+              if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== before.dev || opened.ino !== before.ino) throw new Error();
+              fs.writeFileSync(fd, outputContents);
+            } finally {
+              if (fd !== undefined) fs.closeSync(fd);
+            }
+            console.log(JSON.stringify({ kind: 'wif-selector-fingerprint', source, provider_sha256: providerSha256, service_account_sha256: serviceAccountSha256 }));
+          } catch {
+            fail();
+          }
+          NODE
+      - name: Confirm recorded selector fingerprints provider=${{ steps.fingerprint.outputs.provider_sha256 }} service-account=${{ steps.fingerprint.outputs.service_account_sha256 }}
+        env:
+          PROVIDER_SHA256: ${{ steps.fingerprint.outputs.provider_sha256 }}
+          SERVICE_ACCOUNT_SHA256: ${{ steps.fingerprint.outputs.service_account_sha256 }}
+        run: |
+          node <<'NODE'
+          const valid = value => /^[a-f0-9]{64}$/.test(value || '');
+          if (!valid(process.env.PROVIDER_SHA256) || !valid(process.env.SERVICE_ACCOUNT_SHA256)) {
+            console.error('WIF selector fingerprints unavailable');
+            process.exitCode = 1;
+          } else {
+            console.log('WIF selector fingerprints validated');
+          }
+          NODE
