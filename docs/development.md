@@ -207,10 +207,19 @@ their original operations. External observations, including a content getter's
 later length and procedural Git arguments, remain unknown. These types add no
 accepting amendment route or authority rule.
 
+The owner-procedure slice types the existing amendment procedure core,
+owner-addition CI preparation and GitHub owner-addition evidence provenance.
+Flat exports and direct-run environment/output operations retain their original
+paths. Canonical parsing, selected-route checks, exact GitHub request confinement,
+bounded artifacts and provenance validation retain their original operations.
+Unchecked external readbacks stay unknown; computed digests and parsed owned
+records have explicit contracts. Types confer no owner authorization or new
+acceptance route.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-The semantic producer tree has 65 of the original 96 modules typed and
-31 remaining. This CI predicate/Authority Set candidate has 68 typed and 28 remaining.
+The CI predicate/Authority Set tree has 68 of the original 96 modules typed and
+28 remaining. This owner-procedure candidate has 71 typed and 25 remaining.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
