@@ -51,7 +51,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'owner-amendment/owner-amendment-semantic-producer-attempts.mjs',
     'authority-validation/authority-set.mjs',
     'ci-review/ci-enforced-acceptance.mjs',
-    'ci-review/ci-procedural-authority-change.mjs');
+    'ci-review/ci-procedural-authority-change.mjs',
+    'owner-amendment/owner-amendment.mjs');
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -180,7 +181,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'owner-amendment-record-builder.mjs', 'owner-amendment-merge-group-block-bridge.mjs',
     'owner-amendment-merge-group-b-context.mjs', 'owner-amendment-merge-group-evidence.mjs',
     'owner-amendment-merge-group-ordinary-review.mjs', 'owner-amendment-merge-group-acceptance.mjs',
-    'owner-amendment-semantic-eligibility.mjs', 'owner-amendment-semantic-producer-attempts.mjs']) {
+    'owner-amendment-semantic-eligibility.mjs', 'owner-amendment-semantic-producer-attempts.mjs',
+    'owner-amendment.mjs']) {
     writeFileSync(join(flatRoot, 'dist', file),
       readFileSync(join(flatRoot, 'dist/owner-amendment', file), 'utf8').replace(/from '\.\.\//g, "from './"));
   }
