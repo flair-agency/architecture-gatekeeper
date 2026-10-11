@@ -87,6 +87,9 @@ export function assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(attempts: un
  * classification and eligibility artifact selection. Successful signers with
  * unavailable PR association are tracked separately and never select evidence.
  */
+export function inspectOwnerAmendmentSemanticProducerAttempts(
+  input: OwnerAmendmentSemanticProducerAttemptsInput,
+): Promise<OwnerAmendmentSemanticProducerAttemptsResult>;
 export async function inspectOwnerAmendmentSemanticProducerAttempts({ repository, bBaseSha, bHeadSha,
   bPullRequestCreatedAt, queueEnteredAt, listRuns, listJobs }: OwnerAmendmentSemanticProducerAttemptsInput = {} as OwnerAmendmentSemanticProducerAttemptsInput): Promise<OwnerAmendmentSemanticProducerAttemptsResult> {
   if (repository !== SELF_REPOSITORY || !SHA1.test((bBaseSha ?? '') as string) || !SHA1.test((bHeadSha ?? '') as string) || bBaseSha === bHeadSha ||

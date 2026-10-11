@@ -34,13 +34,15 @@ test('semantic producer attempts compose flat and physical exports with async ca
 test('semantic producer attempts require operation inputs and preserve readonly, unknown observations', () => {
   const diagnostics = diagnosticsFor('negative.mts');
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [
-    [2345, 10], [2540, 12], [2540, 13], [2322, 14], [2322, 15], [2322, 16],
+    [2345, 11], [2554, 12], [2554, 13], [2540, 15], [2540, 16], [2322, 17], [2322, 18], [2322, 19],
   ]);
   const messages = diagnostics.map(item => ts.flattenDiagnosticMessageText(item.messageText, '\n'));
   assert.match(messages[0], /repository|bBaseSha|listRuns|listJobs/);
-  assert.match(messages[1], /read-only/i);
-  assert.match(messages[2], /read-only/i);
-  assert.match(messages[3], /unknown.*string|not assignable/i);
-  assert.match(messages[4], /unknown.*boolean|not assignable/i);
-  assert.match(messages[5], /page|not assignable|unknown/i);
+  assert.match(messages[1], /Expected 1 arguments/i);
+  assert.match(messages[2], /Expected 1 arguments/i);
+  assert.match(messages[3], /read-only/i);
+  assert.match(messages[4], /read-only/i);
+  assert.match(messages[5], /unknown.*string|not assignable/i);
+  assert.match(messages[6], /unknown.*boolean|not assignable/i);
+  assert.match(messages[7], /page|not assignable|unknown/i);
 });

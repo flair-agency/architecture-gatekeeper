@@ -188,6 +188,11 @@ distinguish synchronous semantic preparation from awaited run/job observations.
 The existing defaults, property rereads, canonical receipt construction and
 pre-transition verification remain unchanged. External array method results
 remain unknown; these types confer no owner authorization or adoption authority.
+Constructor collaborators and required operation inputs are enforced through
+public signatures while original runtime defaults retain their error behavior.
+The frozen producer methods are readonly. The same required-input correction
+covers ordinary-decision, tag-readback, tag-attempt, semantic-tag and BLOCK
+semantic-record entry points found by the contract audit.
 
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.

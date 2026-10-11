@@ -25,7 +25,7 @@ test('semantic eligibility producer accepts the explicit sync callback contract'
 
 test('semantic eligibility producer rejects async callbacks for synchronous collaborator operations', () => {
   const negative = relevant.filter(item => item.file === files[1]);
-  assert.deepEqual(summary(negative), [[files[1].slice(root.length + 1), 4, 2740]]);
+  assert.deepEqual(summary(negative), [[files[1].slice(root.length + 1), 8, 2740]]);
   assert.match(negative[0].message, /Promise/);
   assert.deepEqual(summary(relevant.filter(item => !files.includes(item.file))), [], 'implementation dependencies must remain error-free');
 });

@@ -107,9 +107,9 @@ export interface PrepareOwnerAmendmentSemanticEligibilityInput {
   reviewModel: unknown; reviewReasoningEffort: unknown;
 }
 export interface OwnerAmendmentSemanticEligibilityProducer {
-  prepare(input: PrepareOwnerAmendmentSemanticEligibilityInput): PreparedOwnerAmendmentSemanticEligibility;
-  complete: typeof completeOwnerAmendmentSemanticEligibility;
-  validateReceipt: typeof validateOwnerAmendmentSemanticEligibilityReceipt;
+  readonly prepare: (input: PrepareOwnerAmendmentSemanticEligibilityInput) => PreparedOwnerAmendmentSemanticEligibility;
+  readonly complete: (input: CompleteOwnerAmendmentSemanticEligibilityInput) => CompletedOwnerAmendmentSemanticEligibility;
+  readonly validateReceipt: (input: ValidateOwnerAmendmentSemanticEligibilityReceiptInput) => VerifiedOwnerAmendmentSemanticEligibilityReceipt;
 }
 export interface SemanticEligibilityPreparedInput {
   readonly status: 'PREPARED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY'; readonly repository: string;
@@ -770,6 +770,7 @@ function parseEligibilityDecision(decisionBytes: Buffer, prepared: PreparedOwner
 }
 
 /** Validate the closed reviewer decision and emit the exact canonical receipt. */
+export function completeOwnerAmendmentSemanticEligibility(input: CompleteOwnerAmendmentSemanticEligibilityInput): CompletedOwnerAmendmentSemanticEligibility;
 export function completeOwnerAmendmentSemanticEligibility({ prepared, decisionBytes, producer, gatekeeper,
   reviewModel, reviewReasoningEffort }: CompleteOwnerAmendmentSemanticEligibilityInput = {} as CompleteOwnerAmendmentSemanticEligibilityInput): CompletedOwnerAmendmentSemanticEligibility {
   exact(prepared, ['status', 'repository', 'baseSha', 'bSha', 'triggerProfile', 'triggerReviewRecordSha256',
@@ -840,6 +841,7 @@ export function completeOwnerAmendmentSemanticEligibility({ prepared, decisionBy
  * validates identity and bytes; the caller still authenticates the producer
  * provenance separately before using ELIGIBLE in acceptance.
  */
+export function validateOwnerAmendmentSemanticEligibilityReceipt(input: ValidateOwnerAmendmentSemanticEligibilityReceiptInput): VerifiedOwnerAmendmentSemanticEligibilityReceipt;
 export function validateOwnerAmendmentSemanticEligibilityReceipt({ receiptBytes, expected }: ValidateOwnerAmendmentSemanticEligibilityReceiptInput = {} as ValidateOwnerAmendmentSemanticEligibilityReceiptInput): VerifiedOwnerAmendmentSemanticEligibilityReceipt {
   const { value: receipt } = parseJson(receiptBytes, 'semantic eligibility receipt', 131_072);
   exact(receipt, RECEIPT_KEYS, 'semantic eligibility receipt');

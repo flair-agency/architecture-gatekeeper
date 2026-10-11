@@ -32,6 +32,10 @@ test('acceptance verifier exposes typed async verification and readonly sync/the
   assert.deepEqual(diagnosticsFor('positive.mts').map(formatDiagnostic), []);
 });
 
+test('acceptance verifier requires every constructor dependency and runtime identity', () => {
+  assert.deepEqual(diagnosticsFor('missing-adapters.mts').map(formatDiagnostic), []);
+});
+
 test('acceptance result distinguishes the verifier state, unknown external observations, and incomplete values', () => {
   const diagnostics = diagnosticsFor('negative.mts');
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [

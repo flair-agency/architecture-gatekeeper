@@ -220,13 +220,13 @@ type VerifyTagCall = Readonly<{ selection: SelectionView; policy: PolicyView; tr
 type ResolveEligibilityReviewInputsCall = Readonly<{ selection: SelectionView; policy: PolicyView; trigger: ValueView; tag: TagView }>;
 type VerifyEligibilityCall = ResolveEligibilityReviewInputsCall;
 export type OwnerAmendmentMergeGroupAcceptanceAdapters = Readonly<{
-  selectBContext?: (input: SelectBContextCall) => Awaitable<unknown>;
-  resolveProtectedPolicy?: (input: ResolveProtectedPolicyCall) => Awaitable<unknown>;
-  verifyTrigger?: (input: VerifyTriggerCall) => Awaitable<unknown>;
-  verifyTag?: (input: VerifyTagCall) => Awaitable<unknown>;
-  resolveEligibilityReviewInputs?: (input: ResolveEligibilityReviewInputsCall) => Awaitable<unknown>;
-  verifyEligibility?: (input: VerifyEligibilityCall) => Awaitable<unknown>;
-  runtime?: unknown;
+  selectBContext: (input: SelectBContextCall) => Awaitable<unknown>;
+  resolveProtectedPolicy: (input: ResolveProtectedPolicyCall) => Awaitable<unknown>;
+  verifyTrigger: (input: VerifyTriggerCall) => Awaitable<unknown>;
+  verifyTag: (input: VerifyTagCall) => Awaitable<unknown>;
+  resolveEligibilityReviewInputs: (input: ResolveEligibilityReviewInputsCall) => Awaitable<unknown>;
+  verifyEligibility: (input: VerifyEligibilityCall) => Awaitable<unknown>;
+  runtime: unknown;
   [key: string]: unknown;
 }>;
 type VerifiedAcceptanceResult = Readonly<{
@@ -259,9 +259,10 @@ export type OwnerAmendmentMergeGroupAcceptanceVerifier = Readonly<{
  * indicated GitHub/Git evidence; caller-provided event and returned objects
  * are untrusted until those adapters return their closed verified result.
  */
+export function createOwnerAmendmentMergeGroupAcceptanceVerifier(input: OwnerAmendmentMergeGroupAcceptanceAdapters): OwnerAmendmentMergeGroupAcceptanceVerifier;
 export function createOwnerAmendmentMergeGroupAcceptanceVerifier({ selectBContext, resolveProtectedPolicy,
   verifyTrigger, verifyTag, resolveEligibilityReviewInputs, verifyEligibility, runtime }:
-  OwnerAmendmentMergeGroupAcceptanceAdapters = {}) : OwnerAmendmentMergeGroupAcceptanceVerifier {
+  OwnerAmendmentMergeGroupAcceptanceAdapters = {} as OwnerAmendmentMergeGroupAcceptanceAdapters) : OwnerAmendmentMergeGroupAcceptanceVerifier {
   for (const [name, fn] of Object.entries({ selectBContext, resolveProtectedPolicy, verifyTrigger, verifyTag,
     resolveEligibilityReviewInputs, verifyEligibility })) {
     if (typeof fn !== 'function') fail(`trusted ${name} adapter is required.`);

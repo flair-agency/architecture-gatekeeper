@@ -27,5 +27,5 @@ test('BLOCK semantic contract resolves both the flat facade and physical .mts im
 test('BLOCK semantic results do not assert authentication or validated external binding values', () => {
   const diagnostics = fixtureDiagnostics('negative.mts');
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]),
-    [[2741, 4], [2322, 5], [2322, 6]]);
+    [[2741, 5], [2322, 6], [2322, 7]]);
 });

@@ -122,6 +122,7 @@ function validateRawObject(bytes: Buffer, { bSha, tagName, objectOid }: { bSha: 
 
 /** Read the exact protected annotated tag for merge-group validation. GitHub REST supplies the live ref and ruleset; a temporary bare repository fetches the ref and `cat-file` supplies its original object bytes. This is a readback only: it creates no remote refs and makes no acceptance claim. */
 // The default cast preserves the original no-argument runtime validation error; it does not supply valid input or bypass validation.
+export function readOwnerAmendmentTagForMergeGroup(input: OwnerAmendmentTagReadbackInput): Promise<ReadbackResult>;
 export async function readOwnerAmendmentTagForMergeGroup({ repository, bSha, tagNamespace, tagRef, rulesetId, token, fetchImpl = fetch, readTagObject = readRawTagObject }: OwnerAmendmentTagReadbackInput = {} as OwnerAmendmentTagReadbackInput): Promise<ReadbackResult> {
   if (typeof fetchImpl !== 'function' || typeof readTagObject !== 'function') fail('read dependencies are invalid.');
   const { owner, repo, tagName } = validateInput({ repository, bSha, tagNamespace, tagRef, rulesetId, token });

@@ -1,5 +1,6 @@
 import { assertMissingOwnerAmendmentTagHasNoSuccessfulSigner,
   inspectOwnerAmendmentSemanticProducerAttempts } from '../../../src/owner-amendment-semantic-producer-attempts.mjs';
+import { inspectOwnerAmendmentSemanticProducerAttempts as inspectDirect } from '../../../src/owner-amendment/owner-amendment-semantic-producer-attempts.mts';
 import type {
   OwnerAmendmentSemanticProducerAttemptsInput,
   OwnerAmendmentSemanticProducerAttemptsResult,
@@ -8,6 +9,8 @@ import type {
 declare const external: unknown;
 declare const result: OwnerAmendmentSemanticProducerAttemptsResult;
 inspectOwnerAmendmentSemanticProducerAttempts({});
+inspectOwnerAmendmentSemanticProducerAttempts();
+inspectDirect();
 const mutableAttempts: OwnerAmendmentSemanticProducerAttemptsResult['attempts'] = [];
 result.attempts = mutableAttempts;
 result.latestSignerAttempt!.startedAtMs = 0;
