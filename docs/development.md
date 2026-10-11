@@ -181,10 +181,18 @@ existing stages keep distinct results; typing adds no acceptance route. External
 API results, parsed JSON and changing accessor observations remain unknown;
 callback contracts retain the original synchronous and asynchronous behavior.
 
+The semantic producer slice types `owner-amendment-semantic-eligibility`,
+`owner-amendment-merge-group-acceptance`, and
+`owner-amendment-semantic-producer-attempts`. Public collaborator contracts
+distinguish synchronous semantic preparation from awaited run/job observations.
+The existing defaults, property rereads, canonical receipt construction and
+pre-transition verification remain unchanged. External array method results
+remain unknown; these types confer no owner authorization or adoption authority.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-The #511 BLOCK record/bridge tree has 59 of the original 96 modules typed and
-37 remaining. This merge-group evidence candidate has 62 typed and 34 remaining.
+The merge-group evidence tree has 62 of the original 96 modules typed and
+34 remaining. This semantic producer candidate has 65 typed and 31 remaining.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
