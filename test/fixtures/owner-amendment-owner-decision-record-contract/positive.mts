@@ -31,8 +31,8 @@ const validationInput: ValidateOwnerAmendmentOwnerDecisionRecordInput = {
 };
 const rebuilt: OwnerAmendmentOwnerDecisionRecord = validateOwnerAmendmentOwnerDecisionRecord(validationInput);
 const rebuiltPhysical = validatePhysical({ ...validationInput, record: physicalRecord });
-const kind: 'owner-amendment-owner-decision-review-record' = rebuilt.kind;
-const version: 1 = rebuilt.version;
+const kind: unknown = rebuilt.kind;
+const version: unknown = rebuilt.version;
 const rawContextValue: unknown = rebuilt.repository;
 const rawDecisionValue: unknown = rebuilt.decision;
 const rawBase64Value: unknown = rebuilt.decisionBytesBase64;

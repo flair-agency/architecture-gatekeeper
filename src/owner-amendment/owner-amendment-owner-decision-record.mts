@@ -29,17 +29,17 @@ export type BuildOwnerAmendmentOwnerDecisionRecordInput = Readonly<{
   inputDigests: OwnerAmendmentOwnerDecisionInputDigests;
 }>;
 export type OwnerAmendmentOwnerDecisionRecord = {
-  version: 1;
-  kind: 'owner-amendment-owner-decision-review-record';
-  repository: unknown;
-  prNumber: unknown;
-  baseSha: unknown;
-  headSha: unknown;
-  mergeSha: unknown;
-  workflowSha: unknown;
-  workflowPath: unknown;
-  runId: unknown;
-  runAttempt: unknown;
+  version: unknown;
+  kind: unknown;
+  repository?: unknown;
+  prNumber?: unknown;
+  baseSha?: unknown;
+  headSha?: unknown;
+  mergeSha?: unknown;
+  workflowSha?: unknown;
+  workflowPath?: unknown;
+  runId?: unknown;
+  runAttempt?: unknown;
   authority: unknown;
   inputDigests: unknown;
   decisionSha256: string;

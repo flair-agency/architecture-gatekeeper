@@ -17,4 +17,6 @@ input.context.repository = 'example/repository';
 const decisionString: string = record.decision;
 const validatedRepository: string = validateOwnerAmendmentOwnerDecisionRecord(validationInput).repository;
 const base64String: string = record.decisionBytesBase64;
-void [decisionString, validatedRepository, base64String];
+const kindLiteral: 'owner-amendment-owner-decision-review-record' = record.kind;
+const versionLiteral: 1 = record.version;
+void [decisionString, validatedRepository, base64String, kindLiteral, versionLiteral];
