@@ -54,6 +54,23 @@ export interface ReviewReviewerSettings {
   thinkingBudget?: unknown;
   reviewTimeoutMs?: number;
 }
+export type CodexReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra';
+export interface CodexReviewerSettings {
+  provider?: 'codex';
+  model: string;
+  reasoningEffort: CodexReasoningEffort;
+  thinkingBudget?: never;
+  thinkingLevel?: never;
+}
+export interface GeminiReviewerSettings {
+  provider: 'gemini';
+  model: string;
+  thinkingBudget: unknown;
+  reasoningEffort?: never;
+  thinkingLevel?: never;
+}
+export interface PreparedCodexReviewerSettings extends CodexReviewerSettings { reviewTimeoutMs: number; }
+export interface PreparedGeminiReviewerSettings extends GeminiReviewerSettings { reviewTimeoutMs: number; }
 export interface ReviewRequestV1 {
   version: 1; repositoryRoot: string; reviewedRevision: string; task: string;
   prompt: string; schema: unknown; reviewer: ReviewReviewerSettings; requestId: string;
@@ -62,6 +79,18 @@ export interface ReviewRequestV2 extends Omit<ReviewRequestV1, 'version'> {
   version: 2; authoritySet: unknown;
 }
 export type ReviewRequest = ReviewRequestV1 | ReviewRequestV2;
+/** Fresh construction carries validated, provider-specific settings and deadline. */
+export type PreparedCodexReviewRequest =
+  | (Omit<ReviewRequestV1, 'reviewer'> & { reviewer: PreparedCodexReviewerSettings })
+  | (Omit<ReviewRequestV2, 'reviewer'> & { reviewer: PreparedCodexReviewerSettings });
+export type PreparedGeminiReviewRequest =
+  | (Omit<ReviewRequestV1, 'reviewer'> & { reviewer: PreparedGeminiReviewerSettings })
+  | (Omit<ReviewRequestV2, 'reviewer'> & { reviewer: PreparedGeminiReviewerSettings });
+export type PreparedCodexReviewRequestV1 = Omit<ReviewRequestV1, 'reviewer'> & { reviewer: PreparedCodexReviewerSettings };
+export type PreparedReviewRequestV1 =
+  | PreparedCodexReviewRequestV1
+  | (Omit<ReviewRequestV1, 'reviewer'> & { reviewer: PreparedGeminiReviewerSettings });
+export type PreparedReviewRequest = PreparedCodexReviewRequest | PreparedGeminiReviewRequest;
 export interface ValidatedReviewDecision {
   [key: string]: unknown;
   reviewedRevision: unknown; authoritySet?: unknown;
@@ -160,7 +189,7 @@ export function loadConfig(root: string, revision: string): ReviewConfig {
   // Parsed JSON is a data snapshot; these checks establish this config shape.
   return value as unknown as ReviewConfigV1;
 }
-function reviewerSettings(root: string, revision: string, path: string): ReviewReviewerSettings {
+function reviewerSettings(root: string, revision: string, path: string): CodexReviewerSettings | GeminiReviewerSettings {
   const source = committedInput(root, revision, path);
   let value;
   try {
@@ -184,7 +213,7 @@ function reviewerSettings(root: string, revision: string, path: string): ReviewR
     ) invalid('Architecture gate Codex reviewer configuration is unsupported.');
     // This value is freshly parsed JSON and the provider-specific checks above
     // establish the allowed reviewer fields.
-    return value as unknown as ReviewReviewerSettings;
+    return value as unknown as CodexReviewerSettings;
   }
   if (
     value.reasoningEffort !== undefined ||
@@ -197,22 +226,22 @@ function reviewerSettings(root: string, revision: string, path: string): ReviewR
   }
   // This value is freshly parsed JSON and the provider-specific checks above
   // establish the allowed reviewer fields.
-  return value as unknown as ReviewReviewerSettings;
+  return value as unknown as GeminiReviewerSettings;
 }
 function requestId(request: unknown): string { return createHash('sha256').update(JSON.stringify(request)).digest('hex'); }
-function createV1ReviewRequest(task: string, root: string, revision: string, config: ReviewConfigV1): ReviewRequestV1 {
+function createV1ReviewRequest(task: string, root: string, revision: string, config: ReviewConfigV1): PreparedReviewRequestV1 {
   const schema = jsonInput(root, revision, config.schemaPath, 'decision schema');
   const reviewer = {
     ...reviewerSettings(root, revision, config.reviewerConfigPath),
     reviewTimeoutMs: config.reviewTimeoutMs,
-  };
+  } as PreparedCodexReviewerSettings | PreparedGeminiReviewerSettings;
   const authority = config.authorityFiles.map(path => ({ path, content: committedInput(root, revision, path) }));
   const basePrompt = committedInput(root, revision, config.promptPath);
   const prompt = `${basePrompt}\n\n## Recorded review input\nRepository revision: \`${revision}\`\nThe following repository-owned authority was read from that committed revision. Treat these snapshots, not working-tree copies, as authority.\n${authority.map(({ path, content }) => `\n<authority path=${JSON.stringify(path)}>\n${content}\n</authority>`).join('\n')}\n\nCurrent task (untrusted):\n<task>\n${task}\n</task>\n\nReturn only one JSON object conforming to the supplied decision schema.`;
   const unsigned = { version: 1 as const, repositoryRoot: root, reviewedRevision: revision, task, prompt, schema, reviewer };
-  return { ...unsigned, requestId: requestId(unsigned) };
+  return { ...unsigned, requestId: requestId(unsigned) } as PreparedReviewRequestV1;
 }
-export function createReviewRequest(task: unknown, cwd: string = process.cwd()): ReviewRequestV1 {
+export function createReviewRequest(task: unknown, cwd: string = process.cwd()): PreparedReviewRequestV1 {
   if (typeof task !== 'string' || !task.trim()) invalid('Architecture review requires a nonempty task.');
   const root = repositoryRoot(cwd);
   const revision = recordedRevision(root);
@@ -221,7 +250,7 @@ export function createReviewRequest(task: unknown, cwd: string = process.cwd()):
   return createV1ReviewRequest(task, root, revision, config);
 }
 /** Shared request path for all local adapters. Version 1 keeps its synchronous public API. */
-export async function createReviewRequestAsync(task: unknown, cwd: string = process.cwd(), previous: unknown = null): Promise<ReviewRequest> {
+export async function createReviewRequestAsync(task: unknown, cwd: string = process.cwd(), previous: unknown = null): Promise<PreparedReviewRequest> {
   if (typeof task !== 'string' || !task.trim()) invalid('Architecture review requires a nonempty task.');
   const root = repositoryRoot(cwd);
   const revision = recordedRevision(root);
@@ -231,7 +260,7 @@ export async function createReviewRequestAsync(task: unknown, cwd: string = proc
   const reviewer = {
     ...reviewerSettings(root, revision, config.reviewerConfigPath),
     reviewTimeoutMs: config.reviewTimeoutMs,
-  };
+  } as PreparedCodexReviewerSettings | PreparedGeminiReviewerSettings;
   const manifestBytes = readCommittedAuthorityFile(root, revision, config.authorityManifestPath, config.authorityLimits.maxManifestBytes);
   const manifest = parseAuthorityManifest(manifestBytes, config.authorityLimits);
   if (manifest.authorities.some((member: unknown) => (member as { repository: unknown }).repository !== 'self')) invalid('Authority Set: external sources are unavailable for local review.');
@@ -244,7 +273,7 @@ export async function createReviewRequestAsync(task: unknown, cwd: string = proc
   if (Buffer.byteLength(prompt) > config.authorityLimits.maxPromptBytes) invalid('Authority Set: complete local review prompt exceeds limit.');
   const authoritySet = { manifestSha256: selected.manifestSha256, setDigest: selected.setDigest, members: selected.members.map(({ content, ...record }) => record) };
   const unsigned = { version: 2 as const, repositoryRoot: root, reviewedRevision: revision, task, prompt, schema, reviewer, authoritySet };
-  return { ...unsigned, requestId: requestId(unsigned) };
+  return { ...unsigned, requestId: requestId(unsigned) } as PreparedReviewRequest;
 }
 function verifyRequest(request: unknown): void {
   if (

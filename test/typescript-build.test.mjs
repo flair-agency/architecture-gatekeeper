@@ -68,6 +68,8 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   for (const module of ['runner-temp-path', 'github-runner-env', 'resolve-ci-policy', 'authority-set']) {
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
   }
+  mkdirSync(join(fixtureRoot, 'src/runner-paths'), { recursive: true });
+  cpSync(join(root, 'src/runner-paths/runner-temp-path.mts'), join(fixtureRoot, 'src/runner-paths/runner-temp-path.mts'));
   mkdirSync(join(fixtureRoot, 'src/authority-validation'), { recursive: true });
   cpSync(join(root, 'src/authority-validation/authority-set.mts'), join(fixtureRoot, 'src/authority-validation/authority-set.mts'));
   cpSync(join(root, 'src/authority-validation/resolve-ci-policy.mts'), join(fixtureRoot, 'src/authority-validation/resolve-ci-policy.mts'));
@@ -130,6 +132,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'owner-amendment/owner-amendment-tag-readback.mjs',
     'owner-amendment/owner-amendment-workflow-run-merge-group-context.mjs',
     'resolve-ci-policy.mjs',
+    'runner-paths/runner-temp-path.mjs',
     'runner-temp-path.mjs',
   ]);
   assert.equal(readFileSync(join(dist, 'legacy.mjs'), 'utf8'), 'export const legacyValue = 7;\n');
