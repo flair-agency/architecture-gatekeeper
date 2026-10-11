@@ -13,6 +13,9 @@ const JWT_TYPE = 'urn:ietf:params:oauth:token-type:jwt';
 const MAX_RESPONSE_BYTES = 65_536;
 const TOTAL_TIMEOUT_MS = 60_000;
 
+/** Trusted parent hook; must return undefined synchronously before credential use. */
+export type WifSecretRegistrar = (secret: string) => void;
+
 export type WifFetch = (input: string | URL, init: RequestInit) => Response | Promise<Response>;
 
 interface ValidatedBindings {
@@ -101,9 +104,20 @@ async function readBoundedJson(response: Response | null | undefined, controller
 function bearer(value: string): string { return `Bearer ${value}`; }
 
 /** Exchange GitHub Actions OIDC for a short-lived cloud-platform SA token. */
-export async function acquireGitHubVertexWifCredential(input: unknown, fetchImpl: WifFetch = globalThis.fetch): Promise<Readonly<{ token: string; project: string; region: string }>> {
+export async function acquireGitHubVertexWifCredential(input: unknown, fetchImpl: WifFetch = globalThis.fetch, registerSecret?: WifSecretRegistrar): Promise<Readonly<{ token: string; project: string; region: string }>> {
   const { provider, account, project, region, requestUrl, requestToken } = validBindings(input);
-  if (typeof fetchImpl !== 'function') fail('input');
+  if (typeof fetchImpl !== 'function' || (registerSecret !== undefined && typeof registerSecret !== 'function')) fail('input');
+  const register = (secret: string): void => {
+    try {
+      const completion: unknown = registerSecret?.(secret);
+      // A host registrar must complete synchronously; never proceed on a pending Promise.
+      if (completion !== undefined) {
+        if (completion instanceof Promise) void completion.catch(() => {});
+        fail('secret_registration');
+      }
+    } catch { fail('secret_registration'); }
+  };
+  register(requestToken);
   const controller = new AbortController();
   let timedOut = false;
   let rejectTimeout!: (reason: Error) => void;
@@ -132,6 +146,7 @@ export async function acquireGitHubVertexWifCredential(input: unknown, fetchImpl
         ((assertionResponse as Record<string, unknown>).value as string).length > 16_384 ||
         /[\u0000-\u0020\u007f]/.test((assertionResponse as Record<string, unknown>).value as string)) fail('oidc_response');
     const assertion = (assertionResponse as { value: string }).value;
+    register(assertion);
 
     const sts = await request('sts_exchange', STS_URL, {
       method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' },
@@ -146,6 +161,7 @@ export async function acquireGitHubVertexWifCredential(input: unknown, fetchImpl
         stsRecord.issued_token_type !== ACCESS_TOKEN_TYPE || stsRecord.token_type !== 'Bearer' ||
         !Number.isSafeInteger(stsRecord.expires_in) || (stsRecord.expires_in as number) < 120 || (stsRecord.expires_in as number) > 3600) fail('sts_response');
     const stsAccessToken = stsRecord.access_token as string;
+    register(stsAccessToken);
 
     const iam = await request('service_account_token', `${IAM_BASE}${encodeURIComponent(account)}:generateAccessToken`, {
       method: 'POST', headers: { authorization: bearer(stsAccessToken), 'content-type': 'application/json', accept: 'application/json' },
@@ -158,6 +174,7 @@ export async function acquireGitHubVertexWifCredential(input: unknown, fetchImpl
     const tokenExpiry = Date.parse(iamRecord.expireTime as string);
     const now = Date.now();
     if (tokenExpiry < now + 240_000 || tokenExpiry > now + 360_000) fail('service_account_response');
+    register(iamRecord.accessToken);
     return Object.freeze({ token: iamRecord.accessToken, project, region });
   } finally {
     clearTimeout(timer);

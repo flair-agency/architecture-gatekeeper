@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import { resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 import { parseWorkflow } from './helpers/workflow-structure.mjs';
 
@@ -97,6 +98,7 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
   const workflowMappings = [
     '.github/workflows/architecture-gate.yml',
     '.github/workflows/architecture-gate-consumer.yml',
+    '.github/workflows/architecture-gate-providers.yml',
   ];
   for (const file of workflowMappings) {
     const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
@@ -112,9 +114,12 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
     const acceptJob = text.match(/  accept:\n([\s\S]*)$/)?.[1];
     assert.ok(reportJob, file);
     assert.ok(acceptJob, file);
-    assert.match(reportJob, /REVIEW_RESULT: \$\{\{ needs\.review\.result \}\}/);
+    const selectedResult = parsed.jobs['gemini-review']
+      ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}"
+      : '${{ needs.review.result }}';
+    assert.equal(parsed.jobs.report.steps.find(step => step.env?.REVIEW_RESULT)?.env.REVIEW_RESULT, selectedResult);
     assert.match(reportJob, /DECISION: \$\{\{ needs\.review\.outputs\.final_message \}\}/);
-    assert.match(acceptJob, /REVIEW_RESULT: \$\{\{ needs\.review\.result \}\}/);
+    assert.equal(parsed.jobs.accept.steps.find(step => step.env?.REVIEW_RESULT)?.env.REVIEW_RESULT, selectedResult);
     assert.match(acceptJob, /CONCLUSION: \$\{\{ needs\.report\.outputs\.conclusion \}\}/);
   }
 
@@ -148,10 +153,17 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
   };
   const invokeReport = (label, { reviewResult, decision }) => {
     const files = nextFiles(`report-${label}`);
+    const commands = join(files.dir, '_runner_file_commands');
+    mkdirSync(commands);
+    const commandId = randomUUID();
+    const output = join(commands, `set_output_${commandId}`);
+    const summary = join(commands, `step_summary_${commandId}`);
+    writeFileSync(output, '');
+    writeFileSync(summary, '');
     const result = spawnSync(process.execPath, [reporter], {
-      cwd: root,
-      env: { ...baseEnv, GITHUB_OUTPUT: files.output,
-        REPORT_PATH: join(files.dir, 'report.md'), GITHUB_STEP_SUMMARY: join(files.dir, 'summary.md'),
+      cwd: files.dir,
+      env: { ...baseEnv, GITHUB_OUTPUT: realpathSync(output),
+        REPORT_PATH: join(files.dir, 'architecture-gate-report.md'), GITHUB_STEP_SUMMARY: summary,
         GITHUB_API_URL: 'https://example.invalid',
         MODE: 'enforced', POLICY_RESULT: 'success', REVIEW_RESULT: reviewResult,
         DECISION: decision, OWNER_ADDITION_SELECTED: 'true', OWNER_ADDITION_RESULT: 'success',
@@ -161,8 +173,8 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
     });
     assert.equal(result.error, undefined);
     assert.equal(result.status, 0, result.stderr);
-    const report = readFileSync(join(files.dir, 'report.md'), 'utf8');
-    const reportOutputs = readFileSync(files.output, 'utf8');
+    const report = readFileSync(join(files.dir, 'architecture-gate-report.md'), 'utf8');
+    const reportOutputs = readFileSync(output, 'utf8');
     assert.match(reportOutputs, /^conclusion=ERROR$/m);
     const conclusion = reportOutputs.match(/^conclusion=(.+)$/m)?.[1];
     assert.equal(conclusion, 'ERROR');

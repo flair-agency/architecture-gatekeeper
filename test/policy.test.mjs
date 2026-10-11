@@ -440,7 +440,7 @@ test('produces exact OWNER_DECISION trigger evidence only for the prior-policy-s
   assert.doesNotMatch(recordJob, /job\.workflow_repository|job\.workflow_sha|\.architecture-gatekeeper-runtime/);
   assert.match(recordJob, /name: owner-amendment-owner-decision-\$\{\{ github\.event\.pull_request\.base\.sha \}\}-\$\{\{ github\.event\.pull_request\.head\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.match(workflow, /Require completed OWNER_DECISION evidence production when selected/);
-  assert.match(workflow, /needs: \[policy, review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-attempt-classifier, owner-amendment-semantic-eligibility, owner-amendment-semantic-eligibility-signer, report\]/);
+  assert.match(workflow, /needs: \[policy, review, gemini-review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-attempt-classifier, owner-amendment-semantic-eligibility, owner-amendment-semantic-eligibility-signer, report\]/);
   assert.match(workflow, /ownerAmendmentTriggerProfile/);
 });
 

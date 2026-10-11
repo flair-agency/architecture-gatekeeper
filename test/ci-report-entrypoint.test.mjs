@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, linkSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -17,14 +17,20 @@ const head = 'b'.repeat(40);
 const reviewed = 'c'.repeat(40);
 
 function fixtureRoot(t) {
-  const root = mkdtempSync(join(tmpdir(), 'ci-report-entrypoint-'));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'ci-report-entrypoint-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   return root;
 }
 
-function runCli(root, overrides = {}, responseOverrides = {}) {
+function runCli(root, overrides = {}, responseOverrides = {}, arrange = () => {}) {
   const paths = Object.fromEntries(['summary', 'report', 'output', 'fixture', 'requests'].map(name => [name, join(root, name)]));
-  for (const name of ['summary', 'report', 'output']) writeFileSync(paths[name], '');
+  const commands = join(root, '_runner_file_commands');
+  mkdirSync(commands, { recursive: true });
+  const suffix = '12345678-1234-1234-1234-123456789abc';
+  paths.summary = join(commands, `step_summary_${suffix}`);
+  paths.output = join(commands, `set_output_${suffix}`);
+  paths.report = join(root, 'architecture-gate-report.md');
+  for (const name of ['summary', 'output']) writeFileSync(paths[name], '');
   writeFileSync(paths.fixture, JSON.stringify({ responses: {
     [`GET /repos/${repo}/pulls/17`]: { json: { head: { sha: head } } },
     [`GET /repos/${repo}/pulls/17/files`]: { json: [{ filename: 'src/change.mjs', additions: 1, deletions: 0,
@@ -54,6 +60,7 @@ function runCli(root, overrides = {}, responseOverrides = {}) {
     ...overrides,
     NODE_OPTIONS: `--import=${pathToFileURL(hook).href}`,
   });
+  arrange(paths);
   let child;
   const fixtureFd = openSync(paths.fixture, 'r');
   try {
@@ -276,6 +283,43 @@ test('real ci-report CLI fails closed when the selected output sink cannot be wr
   mkdirSync(outputDirectory);
   const result = runCli(root, { GITHUB_OUTPUT: outputDirectory });
   assert.notEqual(result.status, 0, result.stdout);
-  assert.match(result.stderr, /EISDIR|illegal operation on a directory/);
-  assert.equal(result.requests.some(request => request.method === 'POST' && request.url.endsWith('/issues/17/comments')), true);
+  assert.match(result.stderr, /report filesystem boundary/);
+  assert.equal(result.requests.length, 0, 'invalid runner file-command anchor fails before publication');
+});
+
+test('real ci-report CLI rejects caller-selected report and summary destinations before publication', t => {
+  for (const target of ['report', 'summary', 'noncanonical-report', 'unpaired-summary']) {
+    const root = fixtureRoot(t);
+    const victim = join(root, 'unrelated-private-file');
+    writeFileSync(victim, 'must not be read or overwritten');
+    const overrides = target === 'report' ? { REPORT_PATH: victim }
+      : target === 'summary' ? { GITHUB_STEP_SUMMARY: victim }
+        : target === 'noncanonical-report' ? { REPORT_PATH: `${root}/./architecture-gate-report.md` }
+          : { GITHUB_STEP_SUMMARY: join(root, '_runner_file_commands', 'step_summary_99999999-1234-1234-1234-123456789abc') };
+    const result = runCli(root, overrides);
+    assert.notEqual(result.status, 0, target);
+    assert.equal(result.requests.length, 0, `${target} stops before GitHub reporting`);
+    assert.equal(result.output, '');
+    assert.equal(readFileSync(victim, 'utf8'), 'must not be read or overwritten');
+  }
+});
+
+test('real ci-report CLI refuses linked summary files and any existing fixed local report', t => {
+  for (const target of ['symlink-summary', 'hardlink-summary', 'symlink-report', 'hardlink-report', 'existing-report']) {
+    const root = fixtureRoot(t);
+    const victim = join(root, 'unrelated-private-file');
+    writeFileSync(victim, 'must not be overwritten');
+    const result = runCli(root, {}, {}, paths => {
+      const selected = target.endsWith('summary') ? paths.summary : paths.report;
+      rmSync(selected, { force: true });
+      if (target.startsWith('symlink')) symlinkSync(victim, selected);
+      else if (target.startsWith('hardlink')) linkSync(victim, selected);
+      else writeFileSync(selected, 'prior report must be retained');
+    });
+    assert.notEqual(result.status, 0, target);
+    assert.equal(result.requests.length, 0, `${target} stops before GitHub reporting`);
+    assert.equal(result.output, '');
+    assert.equal(readFileSync(victim, 'utf8'), 'must not be overwritten');
+    if (target === 'existing-report') assert.equal(result.report, 'prior report must be retained');
+  }
 });

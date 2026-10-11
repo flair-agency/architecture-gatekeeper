@@ -1,7 +1,7 @@
 /** Inactive parent-process composition; the invoking host still owns admission. */
 import { types } from 'node:util';
 import { prepareOrdinaryGeminiCiAdapter, executeOrdinaryGeminiCiAdapter } from './ordinary-gemini-ci-adapter.mjs';
-import { acquireGitHubVertexWifCredential, type WifFetch } from './github-vertex-wif.mts';
+import { acquireGitHubVertexWifCredential, type WifFetch, type WifSecretRegistrar } from './github-vertex-wif.mts';
 import { readCommittedAuthorityFile } from './authority-set.mjs';
 import { installPinnedGeminiCiRuntime } from './gemini-ci-runtime.mjs';
 
@@ -44,8 +44,9 @@ export function prepareOrdinaryGeminiCiRuntime(supplied: unknown): ReturnType<ty
  * This internal composition authenticates neither its caller nor a producer;
  * it publishes no output and activates no workflow or acceptance route.
  * fetchImpl is the parent-only HTTP implementation, including offline fixtures.
+ * registerSecret is a synchronous trusted-host registrar, never candidate data.
  */
-export async function runOrdinaryGeminiCiLauncher(supplied: unknown, fetchImpl: WifFetch = globalThis.fetch): Promise<unknown> {
+export async function runOrdinaryGeminiCiLauncher(supplied: unknown, fetchImpl: WifFetch = globalThis.fetch, registerSecret?: WifSecretRegistrar): Promise<unknown> {
   const keys = ['host', 'runtime', 'sourceToken', 'wif'];
   if (!supplied || typeof supplied !== 'object' || Array.isArray(supplied) || types.isProxy(supplied) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(supplied))) {
@@ -59,6 +60,6 @@ export async function runOrdinaryGeminiCiLauncher(supplied: unknown, fetchImpl: 
   const input = Object.fromEntries(keys.map(key => [key, descriptors[key].value])) as Record<string, unknown>;
   const preparation = await prepareOrdinaryGeminiCiAdapter({ host: input.host,
     runtime: input.runtime, sourceToken: input.sourceToken });
-  const credential = await acquireGitHubVertexWifCredential(input.wif, fetchImpl);
+  const credential = await acquireGitHubVertexWifCredential(input.wif, fetchImpl, registerSecret);
   return executeOrdinaryGeminiCiAdapter({ preparation, credential });
 }
