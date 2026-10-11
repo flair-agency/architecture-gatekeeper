@@ -242,11 +242,22 @@ deadline/cancellation, closed path tables and GitHub output checks retain their
 original operations.
 The approved runner environment accessor remains at its original model path.
 
+The local entrypoint slice types the Hook and manual-review adapters and the
+PostToolUse screening path. Sync reviewer callbacks reject known Promise and
+thenable results; async callbacks retain their awaited result and complete
+envelope contracts. External Hook JSON, context readbacks and decisions remain
+unknown until the existing runtime checks. The Hook direct-run guard stays in
+the flat executable facade. Manual review keeps its unconditional module-load
+dispatch through a side-effect facade; importing that command still executes it.
+Debounce, stored context, refusal, deadlines and cancellation keep their original
+operations. Typed options do not validate external decisions or authorize PASS.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
 The internal-adapter candidate has 75 of the original 96 modules typed and
-21 remaining. This local-review/runner-path candidate has 77 `.mts` modules;
-19 original modules remain outside the typed migration.
+21 remaining. The local-review/runner-path slice has 77 original modules in
+`.mts` and 19 original modules outside the typed migration. This local
+entrypoint candidate has 80 `.mts` modules and 16 original modules remaining.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation

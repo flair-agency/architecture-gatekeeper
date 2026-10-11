@@ -51,6 +51,24 @@ function runFixtureHook(input, options = {}) {
 
 const pass = request => ({ decision: 'PASS', summary: 'bounded finding', authorityFiles: ['AGENTS.md'], reviewedScope: [request.task.slice(0, 30)] });
 
+test('screening metadata preserves changing getter observations', async () => {
+  const input = { hook_event_name: 'unsupported', session_id: 'session-a' };
+  const reads = {};
+  for (const field of ['turn_id', 'tool_name', 'tool_use_id']) {
+    reads[field] = 0;
+    Object.defineProperty(input, field, { get() {
+      return ++reads[field] === 1 ? 'initial string' : { slice: () => 123 };
+    } });
+  }
+  const { result, output } = await runPostToolScreenHook(input);
+  assert.equal(result.status, 'incomplete');
+  const context = JSON.parse(output).hookSpecificOutput.additionalContext;
+  for (const field of ['turnId', 'toolName', 'toolUseId']) {
+    assert.match(context, new RegExp(`"${field}":123`));
+  }
+  assert.deepEqual(reads, { turn_id: 2, tool_name: 2, tool_use_id: 2 });
+});
+
 test('screens tracked candidate bytes and deduplicates regardless of event-specific metadata', async t => {
   const root = fixture(t);
   writeFileSync(join(root, 'staged.md'), 'staged tracked content\n');

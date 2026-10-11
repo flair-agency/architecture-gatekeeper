@@ -60,7 +60,10 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'gemini-cli/prepared-gemini-ci-review.mjs',
     'reviewer-transports/codex-transport.mjs',
     'reviewer-transports/local-reviewer-execution.mjs',
-    'runner-paths/runner-temp-path.mjs');
+    'runner-paths/runner-temp-path.mjs',
+    'local-review/local-gate.mjs',
+    'local-review/local-post-tool-screen.mjs',
+    'local-review/manual-review.mjs');
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -211,6 +214,14 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   writeFileSync(join(flatRoot, 'dist/runner-temp-path.mjs'),
     readFileSync(join(flatRoot, 'dist/runner-paths/runner-temp-path.mjs'), 'utf8')
       .replace(/from '\.\.\//g, "from './"));
+  for (const file of ['local-gate.mjs', 'local-post-tool-screen.mjs', 'manual-review.mjs']) {
+    writeFileSync(join(flatRoot, 'dist', file),
+      readFileSync(join(flatRoot, 'dist/local-review', file), 'utf8')
+        .replace(/from '\.\.\/review-contract\//g, "from './")
+        .replace(/from '\.\.\/reviewer-transports\//g, "from './")
+        .replace(/from '\.\.\//g, "from './"));
+  }
+  rmSync(join(flatRoot, 'dist/local-review'), { recursive: true });
   rmSync(join(flatRoot, 'dist/runner-paths'), { recursive: true });
   rmSync(join(flatRoot, 'dist/reviewer-transports'), { recursive: true });
   rmSync(join(flatRoot, 'dist/gemini-cli'), { recursive: true });
