@@ -269,8 +269,11 @@ before storage, bounded readbacks and the original private file modes. The
 runner accessor stays at its approved model path and returns only the string
 established by its existing runtime check; this does not authenticate provenance.
 
-Two checked JavaScript bridges remain at their existing source paths: the
-runner-environment accessor and snapshot materializer. The materializer retains
+Three checked JavaScript bridges remain at their existing source paths: the
+runner-environment accessor, snapshot materializer and native CLI. The native CLI
+checks its existing optional string-array arguments, working directory and async
+completion contract; its entire runtime body and direct-execution guard remain
+unchanged. The materializer retains
 two narrow `@ts-expect-error` boundaries where it composes the existing Git
 reader and filesystem writer. They preserve those operations without claiming
 that `outputPath` is a string: the original truthy guard permits native path-like
@@ -292,10 +295,10 @@ entrypoint foundation has 80 `.mts` modules and 16 original modules remaining.
 This CI composition candidate brings the count to 81 `.mts` modules and
 15 originals remaining; the partially typed report is included in the latter.
 The GitHub command candidate reaches 82 original modules in `.mts` and
-14 originals remaining. Of those 14, two have checked JavaScript contracts
-(the runner-environment accessor and snapshot materializer), and three are
+14 originals remaining. Of those 14, three have checked JavaScript contracts
+(the runner-environment accessor, snapshot materializer and native CLI), and three are
 partial helper migrations (CI report, owner-addition finalizer and
-multi-authority orchestration). The other nine remain JavaScript modules
+multi-authority orchestration). The other eight remain JavaScript modules
 outside these migrations. These source-layout counts do not change the selected
 CodeQL model or establish acceptance evidence.
 Migration is partial and does not change consumer architecture or assurance policy.
