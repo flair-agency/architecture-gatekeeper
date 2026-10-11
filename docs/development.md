@@ -197,10 +197,20 @@ Verifier runtime identity requires repository and revision fields. Successful
 producer collaborators require the complete existing binding fields, including
 nested protected selections; external observed field values remain unknown.
 
+The CI predicate/Authority Set slice types `ci-enforced-acceptance`,
+`ci-procedural-authority-change`, and `authority-set`. Flat command guards and
+environment/output operations remain at their original paths. Protected review
+status and conclusion are required public inputs; the original runtime default
+and conditional observations remain unchanged. Existing routes,
+selected-authority comparison, manifest parsing and member materialization keep
+their original operations. External observations, including a content getter's
+later length and procedural Git arguments, remain unknown. These types add no
+accepting amendment route or authority rule.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-The merge-group evidence tree has 62 of the original 96 modules typed and
-34 remaining. This semantic producer candidate has 65 typed and 31 remaining.
+The semantic producer tree has 65 of the original 96 modules typed and
+31 remaining. This CI predicate/Authority Set candidate has 68 typed and 28 remaining.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation

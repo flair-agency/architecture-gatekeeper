@@ -1,26 +1,8 @@
 #!/usr/bin/env node
 import { appendFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { validateMultiAuthorityProvenance } from './multi-authority-provenance.mjs';
-
-const SHA = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
-
-/** Return selected same-repository Authority Set members changed by this candidate. */
-export function changedSelectedAuthorityPaths({ provenance, repository, baseSha, headSha, cwd = process.cwd(),
-  execFile = execFileSync }) {
-  validateMultiAuthorityProvenance(provenance);
-  if (provenance.selfRepository !== repository || provenance.authorityRevision !== baseSha ||
-      !SHA.test(baseSha) || !SHA.test(headSha) || baseSha.length !== headSha.length) {
-    throw new Error('Procedural authority-change comparison does not match the recorded base and repository.');
-  }
-  const selectedPaths = provenance.members.filter(member => member.repository === repository).map(member => member.path);
-  if (!selectedPaths.length) throw new Error('Selected Authority Set has no same-repository authority to compare.');
-  const changed = execFile('git', ['diff', '--name-only', '-z', '--no-renames', baseSha, headSha, '--', ...selectedPaths],
-    { cwd, encoding: 'buffer', maxBuffer: 1_000_000 }).toString('utf8').split('\0').filter(Boolean);
-  if (changed.some(path => !selectedPaths.includes(path))) throw new Error('Git returned a path outside the selected Authority Set.');
-  return changed;
-}
+import { changedSelectedAuthorityPaths } from './ci-review/ci-procedural-authority-change.mts';
+export { changedSelectedAuthorityPaths };
 
 function parseProvenance(encoded) {
   if (typeof encoded !== 'string' || !encoded || encoded.length > 65_536 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {

@@ -107,6 +107,28 @@ test('external identity, type, access and content failures close the full set', 
   await assert.rejects(materializeAuthoritySet({ ...base, fetchExternal: undefined }), /adapter is required/);
 });
 
+test('materialized byteLength preserves a mutable external content length reread', async t => {
+  const state = fixture(t);
+  let contentReads = 0;
+  const rereadContent = new Uint8Array(Buffer.from('abc'));
+  Object.defineProperty(rereadContent, 'length', { configurable: true, get: () => '17' });
+  const result = await materializeAuthoritySet(args(state, [external], {
+    fetchExternal: async input => ({
+      repository: input.repository,
+      resolvedCommit: input.revision,
+      path: input.path,
+      type: 'file',
+      get content() {
+        contentReads++;
+        return contentReads === 1 ? Buffer.from('abc') : rereadContent;
+      },
+    }),
+  }));
+  assert.equal(contentReads, 2);
+  assert.equal(result.members[0].byteLength, '17');
+  assert.equal(result.members[0].content, 'abc');
+});
+
 test('explicit self repository identity cannot bypass the recorded authority revision', async t => {
   const state = fixture(t);
   let fetched = false;
