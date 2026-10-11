@@ -1,6 +1,6 @@
 # Ordinary Gemini bounded enablement source proposal
 
-This is a source proposal for a draft stacked change targeting the inactive staging branch `codex/ordinary-gemini-feature-caller-stage`. The current draft is unadopted preparation only; it grants no activation or paid-execution authorization. If deployed, its narrowly conditioned caller can issue WIF credentials and run the selected review for the exact matching context. The selected deployment must be privately verified before any separate execution authorization.
+This is a source proposal currently held as draft PR 519 targeting `feature/gemini-ci`. It depends on inactive stage PR 516, which was adopted into `feature/gemini-ci` at `ab6ff24b9362a6a0272b2698395c977e35dfed5e`; that merge left the caller disabled with `if: false`. PR 519 remains unmerged and unactivated. Merging this proposal into `feature/gemini-ci` activates the narrowly conditioned credential-capable job and requires the existing separate authorization. If deployed, the caller can issue WIF credentials and run the selected review for the exact matching context. The selected deployment must be privately verified before any separate execution authorization.
 
 The caller trigger is limited to `pull_request_target` on `feature/gemini-ci` with only `ready_for_review`. The reusable job condition requires the trusted classifier output `same-repository`, event name `pull_request_target`, action `ready_for_review`, a non-draft PR, PR number 517, head SHA `c4b0057d9dd47f79df2a896143f7ac6db5da2c2e`, and run attempt 1. The classifier body remains verbatim. The reusable workflow remains pinned to `7dc99525b4ff1510f1de310f6f5b877ab05bbfd2`; its protected Gemini selectors, declared permissions and two existing GCP WIF secrets remain unchanged.
 
@@ -8,8 +8,8 @@ This source condition is a consistency guard only. It is not execution admission
 
 ## Dependencies before any execution
 
-1. Adopt stage PR 516 into `feature/gemini-ci` only through its own normal review and merge authorization. The stacked enablement proposal targets `codex/ordinary-gemini-feature-caller-stage` for draft review isolation and must never be merged into that staging branch, because doing so would alter PR 516.
-2. After stage adoption, retarget the bounded enablement proposal to `feature/gemini-ci` and freshly review its source and base. The enablement proposal's eventual merge into `feature/gemini-ci` activates the narrow caller and therefore requires the existing separate authorization; this draft preparation provides none.
+1. Stage adoption is complete: stage PR 516 was merged into `feature/gemini-ci` at `ab6ff24b9362a6a0272b2698395c977e35dfed5e`, with the caller still disabled. The stacked enablement proposal must not be merged into the staging branch.
+2. PR 519 currently targets `feature/gemini-ci`. Review its source against the current feature base and obtain the existing separate activation authorization before merging; merge activates the narrow caller. This draft status itself grants no activation or paid-execution authorization.
 3. Privately read back the selected WIF provider and service-account binding and verify them against the intended workload identity. Do not place private binding values in this document or public logs.
 4. After enablement source changes alter the base, prepare a fresh actual base/head/merge context. Confirm the selected policy and complete Authority Set from the intended protected base.
 5. Separately admit one ready-for-review transition and retain the first actual run identity. Do not authorize automatic reruns, retries or fallback. Treat an uncertain outcome as uncertain; any later possible execution requires its own exact-context coordinator admission.
