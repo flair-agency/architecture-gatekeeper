@@ -158,15 +158,22 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     '  const result = await produceRulesetReadback({ env: process.env });',
     '  mkdirSync(directory, { mode: 0o700 });',
     "  if (Buffer.byteLength(JSON.stringify(result)) > 65_536) throw new Error('Local readback exceeds bounds.');",
-    "  writeFileSync(join(directory, 'snapshot.json'), `${JSON.stringify(result)}\n`, { mode: 0o600, flag: 'wx' });",
-    "  process.stdout.write('Complete local ruleset readback stored after installation-token revocation.\n');",
+    "  writeFileSync(join(directory, 'snapshot.json'), `${JSON.stringify(result)}\\n`, { mode: 0o600, flag: 'wx' });",
+    "  process.stdout.write('Complete local ruleset readback stored after installation-token revocation.\\n');",
     '} catch {',
-    "  process.stderr.write('Isolated ruleset readback incomplete; no handoff authorization or credential output.\n');",
+    "  process.stderr.write('Isolated ruleset readback incomplete; no handoff authorization or credential output.\\n');",
     '  process.exitCode = 1;',
     '}',
     '',
   ].join('\n');
   writeFileSync(join(flatRoot, 'dist/github-ruleset-readback-cli.mjs'), legacyRulesetCli);
+  const flatRulesetResult = spawnSync(process.execPath, [join(flatRoot, 'dist/github-ruleset-readback-cli.mjs')], {
+    cwd: flatRoot, env: { PATH: process.env.PATH ?? '' }, encoding: 'utf8', timeout: 10_000,
+  });
+  assert.equal(flatRulesetResult.error, undefined);
+  assert.equal(flatRulesetResult.status, 1);
+  assert.equal(flatRulesetResult.stdout, '');
+  assert.equal(flatRulesetResult.stderr, 'Isolated ruleset readback incomplete; no handoff authorization or credential output.\n');
   writeFileSync(join(flatRoot, 'dist/review-input-path.mjs'),
     readFileSync(join(flatRoot, 'dist/review-inputs/review-input-path.mjs')));
   writeFileSync(join(flatRoot, 'dist/legacy-git-snapshot.mjs'),
