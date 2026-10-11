@@ -39,6 +39,14 @@ test('builds a versioned OWNER_DECISION record from exact protected inputs and t
     recordBytes: Buffer.from(`${JSON.stringify(record)}\n`) }), record);
 });
 
+test('retains the caller-owned Buffer toString result in the base64 observation', () => {
+  const x = args();
+  x.decisionBytes = Buffer.from(x.decisionBytes);
+  x.decisionBytes.toString = () => 17;
+  const record = buildOwnerAmendmentOwnerDecisionRecord(x);
+  assert.equal(record.decisionBytesBase64, 17);
+});
+
 test('rejects BLOCK, PASS, and missing-decision confusion or incomplete Authority Set results', () => {
   for (const wrongDecision of ['BLOCK', 'PASS']) {
     const x = args();
