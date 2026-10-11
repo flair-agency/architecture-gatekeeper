@@ -43,3 +43,7 @@ test('ordinary review contracts reject mutation and unknown-value narrowing', ()
   assert.match(diagnostics[3].message, /unknown.*string|not assignable/i);
   assert.match(diagnostics[4].message, /Promise.*Buffer|not assignable/i);
 });
+
+test('ordinary decision validation requires all three inputs through grouped and flat exports', () => {
+  assert.deepEqual(compile('missing-validation-inputs.mts'), []);
+});

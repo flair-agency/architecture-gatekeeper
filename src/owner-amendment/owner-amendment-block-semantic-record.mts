@@ -1,27 +1,27 @@
 import { parseOwnerAmendmentBlockRecord } from '../owner-amendment.mjs';
 
 export interface OwnerAmendmentBlockSemanticExpected {
-  changes?: unknown;
-  triggerReviewRecordSha256?: unknown;
-  authoritySetDigest?: unknown;
+  changes: unknown;
+  triggerReviewRecordSha256: unknown;
+  authoritySetDigest: unknown;
 }
 
 export interface OwnerAmendmentBlockSemanticAuthority {
-  authorityId?: unknown;
-  authorityPath?: unknown;
-  previousSha256?: unknown;
-  newSha256?: unknown;
+  authorityId: unknown;
+  authorityPath: unknown;
+  previousSha256: unknown;
+  newSha256: unknown;
 }
 
 export interface OwnerAmendmentBlockSemanticRecordInput {
-  bytes?: unknown;
-  expected?: OwnerAmendmentBlockSemanticExpected;
-  repository?: unknown;
-  baseSha?: unknown;
-  bSha?: unknown;
-  triggerProfile?: unknown;
-  authority?: OwnerAmendmentBlockSemanticAuthority;
-  attestationBundleSha256?: unknown;
+  bytes: unknown;
+  expected: OwnerAmendmentBlockSemanticExpected;
+  repository: unknown;
+  baseSha: unknown;
+  bSha: unknown;
+  triggerProfile: unknown;
+  authority: OwnerAmendmentBlockSemanticAuthority;
+  attestationBundleSha256: unknown;
   resultingAuthoritySetDigest?: unknown;
 }
 
@@ -66,8 +66,9 @@ function fail(message: string): never { throw new Error(message); }
 // Normalize the legacy one-target BLOCK record into the trusted semantic
 // validator result shape. The record format remains unchanged; `expected`
 // contains the target tuple independently derived from protected Git inputs.
+export function validateOwnerAmendmentBlockSemanticRecord(input: OwnerAmendmentBlockSemanticRecordInput): ValidatedOwnerAmendmentBlockSemanticRecord;
 export function validateOwnerAmendmentBlockSemanticRecord({ bytes, expected, repository, baseSha, bSha,
-  triggerProfile, authority, attestationBundleSha256, resultingAuthoritySetDigest }: OwnerAmendmentBlockSemanticRecordInput = {}): ValidatedOwnerAmendmentBlockSemanticRecord {
+  triggerProfile, authority, attestationBundleSha256, resultingAuthoritySetDigest }: OwnerAmendmentBlockSemanticRecordInput = {} as OwnerAmendmentBlockSemanticRecordInput): ValidatedOwnerAmendmentBlockSemanticRecord {
   if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length > 8_192) fail('BLOCK AmendmentRecord bytes are missing or oversized.');
   // The parser has completed its canonical record checks before these fields are read.
   const amendment = parseOwnerAmendmentBlockRecord(bytes) as ParsedBlockAmendmentView;

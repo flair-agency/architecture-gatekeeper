@@ -30,7 +30,7 @@ export type PreparedMergeGroupOrdinaryReview = Readonly<{
   inputDigests: Readonly<{ policy: string; prompt: string; schema: string; validation: string; manifest: string }>;
 }>;
 export type ValidateMergeGroupOrdinaryDecisionInput = Readonly<{
-  decisionBytes?: unknown; expected?: unknown; prepared?: unknown;
+  decisionBytes: unknown; expected: unknown; prepared: unknown;
 }>;
 export type VerifiedMergeGroupOrdinaryPass = Readonly<{
   status: 'VERIFIED_FRESH_MERGE_GROUP_ORDINARY_PASS';
@@ -182,7 +182,10 @@ export async function prepareOwnerAmendmentMergeGroupOrdinaryReview(
 
 /** Validate the fresh model result with only protected-base schema/rules and require exact PASS. */
 export function validateOwnerAmendmentMergeGroupOrdinaryDecision(
-  { decisionBytes, expected, prepared }: ValidateMergeGroupOrdinaryDecisionInput = {},
+  input: ValidateMergeGroupOrdinaryDecisionInput,
+): VerifiedMergeGroupOrdinaryPass;
+export function validateOwnerAmendmentMergeGroupOrdinaryDecision(
+  { decisionBytes, expected, prepared }: ValidateMergeGroupOrdinaryDecisionInput = {} as ValidateMergeGroupOrdinaryDecisionInput,
 ): VerifiedMergeGroupOrdinaryPass {
   if (!Buffer.isBuffer(decisionBytes) || decisionBytes.length < 1 || decisionBytes.length > MAX_DECISION_BYTES ||
       !expected || !prepared || (expected as ExpectedView).repository !== (prepared as PreparedView).repository ||

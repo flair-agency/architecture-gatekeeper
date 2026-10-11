@@ -10,6 +10,9 @@ const unrefined = await classifyOwnerAmendmentTagAttempt(input);
 const nonNullableTagRef: string = unrefined.tagRef;
 const parsed = parseOwnerAmendmentSemanticTagObject;
 declare const tagBytes: unknown;
+// @ts-expect-error A protected tag binding is required by the public parser overload.
+parsed(tagBytes);
+// @ts-expect-error All independently supplied binding observations are required, though still unknown.
 const unchecked = parsed(tagBytes, {});
 const trustedEnvelopeField: string = unchecked.envelope.reviewRecordBase64;
 const inconsistent = { status: 'OWNER_AMENDMENT_NOT_APPLICABLE' as const, attempted: false as const, tagRef: 'present' };

@@ -28,16 +28,18 @@ test('tag readback callbacks accept sync, async, thenable, and unknown JSON resu
 test('tag readback rejects malformed callback contracts and widened observation fields', () => {
   const diagnostics = diagnosticsFor('negative.mts');
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [
-    [2322, 3], [2322, 4], [2322, 5], [2322, 6], [2322, 7], [2740, 8], [2322, 11], [2322, 12], [2322, 13], [2540, 14],
+    [2322, 5], [2322, 6], [2322, 7], [2322, 8], [2322, 9], [2740, 10],
+    [2554, 11], [2554, 12], [2345, 13], [2345, 14],
+    [2322, 17], [2322, 18], [2322, 19], [2540, 20],
   ]);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /json/);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[1].messageText, '\n'), /json/);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[2].messageText, '\n'), /json/);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[3].messageText, '\n'), /Buffer/);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[4].messageText, '\n'), /Buffer/);
+  for (const diagnostic of diagnostics.slice(0, 5)) assert.match(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'), /json|Buffer/);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[5].messageText, '\n'), /OwnerAmendmentTagReadbackInput/);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[6].messageText, '\n'), /unknown.*string|not assignable/i);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[7].messageText, '\n'), /unknown.*string|not assignable/i);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[8].messageText, '\n'), /unknown.*string|not assignable/i);
-  assert.match(ts.flattenDiagnosticMessageText(diagnostics[9].messageText, '\n'), /read-only/);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[6].messageText, '\n'), /Expected 1 arguments/i);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[7].messageText, '\n'), /Expected 1 arguments/i);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[8].messageText, '\n'), /repository|OwnerAmendmentTagReadbackInput/i);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[9].messageText, '\n'), /repository|OwnerAmendmentTagReadbackInput/i);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[10].messageText, '\n'), /unknown.*string|not assignable/i);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[11].messageText, '\n'), /unknown.*string|not assignable/i);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[12].messageText, '\n'), /unknown.*string|not assignable/i);
+  assert.match(ts.flattenDiagnosticMessageText(diagnostics[13].messageText, '\n'), /read-only/);
 });

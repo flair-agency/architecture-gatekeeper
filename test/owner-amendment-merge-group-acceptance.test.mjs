@@ -104,6 +104,17 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
   });
 }
 
+test('does not promise frozen change records when caller changes overrides its map method', async () => {
+  const f = fixture();
+  const mappedEntries = f.values.reviewInputs.changes.map(change => ({ ...change }));
+  f.values.reviewInputs.changes.map = () => mappedEntries;
+  const result = await f.verifier.verify(event);
+  assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION', result.reason);
+  assert.deepEqual(result.changes, mappedEntries);
+  assert.equal(Object.isFrozen(result.changes), true);
+  assert.equal(Object.isFrozen(result.changes[0]), false);
+});
+
 test('composes the authenticated merge-group selector result through queue-context validation', async () => {
   const repoId = 1379218762, graphRepoId = 'R_kgDOChD4VA', treeSha = 'f'.repeat(40);
   const repo = { id: repoId, full_name: repository };
