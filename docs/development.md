@@ -140,10 +140,19 @@ tag-message bytes are typed; coercible SHA inputs and external property rereads
 retain their existing runtime meaning. Preparing or transporting a tag does not
 establish semantic eligibility, owner authorization or acceptance.
 
+The next handoff slice types `owner-amendment-owner-decision-handoff`,
+`owner-amendment-owner-decision-handoff-cli`, and `owner-amendment-handoff-cli`.
+The two flat CLI facades retain their original direct-execution guards and
+dispatch; grouped implementations preserve artifact/provenance verification,
+exact B checks before tag mutations and after BLOCK tag readback, and Git
+subprocess options. External JSON and reread environment fields remain unknown.
+Transport results describe existing states; they do not authenticate a principal
+or authorize an exact claim.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `ed4aba2` has 47 of the original 96 modules typed and 49 remaining; this
-candidate has 50 typed and 46 remaining. Migration is partial and does
+Main `5031c91` has 50 of the original 96 modules typed and 46 remaining; this
+candidate has 53 typed and 43 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
