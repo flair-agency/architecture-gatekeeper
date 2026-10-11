@@ -1,0 +1,78 @@
+# Bounded source proposal only. The condition is a consistency guard, not execution admission or replay authorization.
+# This caller does not change main policy, main routing, or the protected source pin.
+name: Issue334 Ordinary Gemini Feature Caller
+
+on:
+  pull_request_target:
+    branches: [feature/gemini-ci]
+    types: [ready_for_review]
+
+jobs:
+  classify-self-repository:
+    name: classify-self-repository
+    permissions:
+      contents: none
+      id-token: none
+    outputs:
+      classification: ${{ steps.classify.outputs.classification }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Classify trusted base and head repository IDs
+        id: classify
+        env:
+          EXPECTED_REPOSITORY_ID: ${{ github.repository_id }}
+          EXPECTED_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+
+          const validId = value => Number.isSafeInteger(value) && value > 0;
+          let classification = 'unknown';
+          try {
+            const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+            const rawExpected = process.env.EXPECTED_REPOSITORY_ID;
+            const expected = /^[1-9][0-9]*$/.test(rawExpected) ? Number(rawExpected) : NaN;
+            const rawPullRequestNumber = process.env.EXPECTED_PULL_REQUEST_NUMBER;
+            const expectedPullRequestNumber = /^[1-9][0-9]*$/.test(rawPullRequestNumber)
+              ? Number(rawPullRequestNumber) : NaN;
+            const pullRequest = event.pull_request;
+            const eventRepositoryId = event.repository?.id;
+            const baseRepositoryId = pullRequest?.base?.repo?.id;
+            const headRepositoryId = pullRequest?.head?.repo?.id;
+            const validCommit = value => typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
+            if (process.env.GITHUB_EVENT_NAME === 'pull_request_target' &&
+                validId(expected) && validId(expectedPullRequestNumber) &&
+                validId(eventRepositoryId) &&
+                validId(baseRepositoryId) && validId(headRepositoryId) &&
+                validId(pullRequest?.number) && pullRequest.number === expectedPullRequestNumber &&
+                validCommit(pullRequest?.base?.sha) &&
+                validCommit(pullRequest?.head?.sha) && expected === eventRepositoryId &&
+                expected === baseRepositoryId) {
+              classification = headRepositoryId === baseRepositoryId
+                ? 'same-repository' : 'cross-repository';
+            }
+          } catch {
+            classification = 'unknown';
+          }
+          appendFileSync(process.env.GITHUB_OUTPUT, `classification=${classification}\n`);
+          NODE
+
+  architecture-gate:
+    name: architecture-gate
+    needs: classify-self-repository
+    if: ${{ needs.classify-self-repository.outputs.classification == 'same-repository' && github.event_name == 'pull_request_target' && github.event.action == 'ready_for_review' && github.event.pull_request.draft == false && github.event.pull_request.number == 517 && github.event.pull_request.head.sha == 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' && github.run_attempt == 1 }}
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+      id-token: write
+    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-providers.yml@7dc99525b4ff1510f1de310f6f5b877ab05bbfd2
+    with:
+      policy-path: .codex/gatekeeper/gemini-verification-policy.json
+      prompt-path: .codex/gatekeeper/ci-prompt.md
+      schema-path: .codex/gatekeeper/ci-decision.schema.json
+      validation-path: .codex/gatekeeper/decision.validation.json
+      protected-review-instructions: true
+    secrets:
+      GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+      GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
