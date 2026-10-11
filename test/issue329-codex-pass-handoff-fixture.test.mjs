@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { readWorkflow, namedStep, hasNeeds } from './helpers/workflow-structure.mjs';
 
 const { source, workflow } = readWorkflow('../../.github/workflows/issue329-codex-pass-handoff-fixture.yml');
@@ -55,35 +59,67 @@ test('both hosted trigger guards accept the exact synthetic push and reject miss
   const workflowPath = '.github/workflows/issue329-codex-pass-handoff-fixture.yml';
   const repository = 'flair-agency/architecture-gatekeeper';
   const branch = 'refs/heads/codex/issue329-codex-pass-handoff-fixture';
-  const validEvent = { head_commit: { added: [workflowPath], modified: [], removed: [] } };
+  const root = mkdtempSync(join(tmpdir(), 'issue329-fixture-guard-'));
+  const git = (cwd, args) => execFileSync('git', args, { cwd, encoding: 'utf8', timeout: 10_000 }).trim();
+  const makeRepo = (directory, changedPath) => {
+    mkdirSync(directory, { recursive: true });
+    git(directory, ['init', '--quiet', '--initial-branch=main']);
+    git(directory, ['config', 'user.name', 'Synthetic fixture']);
+    git(directory, ['config', 'user.email', 'fixture@example.invalid']);
+    writeFileSync(join(directory, 'README.md'), 'base\n');
+    git(directory, ['add', 'README.md']);
+    git(directory, ['commit', '--quiet', '-m', 'base']);
+    const before = git(directory, ['rev-parse', 'HEAD']);
+    if (changedPath === workflowPath) {
+      const file = join(directory, workflowPath);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, 'name: synthetic fixture\n');
+    } else writeFileSync(join(directory, 'README.md'), 'base\nunrelated change\n');
+    git(directory, ['add', '--all']);
+    git(directory, ['commit', '--quiet', '-m', 'fixture change']);
+    return { before, after: git(directory, ['rev-parse', 'HEAD']), eventPath: join(directory, 'event.json') };
+  };
+  const exactRepo = join(root, 'exact');
+  const exact = makeRepo(exactRepo, workflowPath);
+  const unrelated = makeRepo(join(root, 'unrelated'), 'README.md');
   const getScript = jobName => {
-    const run = namedStep(workflow.jobs[jobName], 'Enforce exact synthetic fixture trigger').run;
+    const item = workflow.jobs[jobName];
+    assert.equal(item.steps[0].uses, 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd');
+    assert.equal(item.steps[0].with['fetch-depth'], 2);
+    assert.equal(item.steps[0].with['persist-credentials'], false);
+    const run = namedStep(item, 'Enforce exact synthetic fixture trigger').run;
+    assert.equal(item.steps.indexOf(namedStep(item, 'Enforce exact synthetic fixture trigger')), 1);
     const match = run.match(/node --input-type=module <<'NODE'\n([\s\S]*?)\nNODE/);
     assert.ok(match, `${jobName} trigger guard must run its Node check`);
     return match[1];
   };
-  const execute = (script, { event = validEvent, eventPathValue = '/runner/event.json', ...identity } = {}) => {
-    const env = { GITHUB_EVENT_PATH: eventPathValue, REPOSITORY: repository, REF: branch, EVENT_NAME: 'push', ...identity };
-    const body = script.replace(/^import \{ readFileSync \} from 'node:fs';\n/, '');
+  const execute = (script, repo, fixture, overrides = {}) => {
+    const eventPath = fixture.eventPath;
+    if (eventPath && overrides.event !== undefined) writeFileSync(eventPath, JSON.stringify(overrides.event));
+    else if (eventPath) writeFileSync(eventPath, JSON.stringify({ before: fixture.before, after: fixture.after }));
+    const env = { GITHUB_EVENT_PATH: eventPath, GITHUB_SHA: fixture.after, REPOSITORY: repository,
+      REF: branch, EVENT_NAME: 'push', ...overrides.env };
+    const body = script.replace(/^import \{ readFileSync \} from 'node:fs';\nimport \{ execFileSync \} from 'node:child_process';\n/, '');
     const exit = { code: 0 };
     const processStub = { env, exit: code => { exit.code = code; throw exit; } };
-    const readFile = path => {
-      if (!eventPathValue || path !== eventPathValue || event === undefined) throw new Error('missing synthetic event');
-      return JSON.stringify(event);
-    };
-    try { new Function('process', 'readFileSync', 'console', body)(processStub, readFile, { error() {} }); return 0; }
+    const runGit = (command, args, options) => execFileSync(command, args, { ...options, cwd: repo });
+    try { new Function('process', 'readFileSync', 'execFileSync', 'console', body)(processStub, readFileSync, runGit, { error() {} }); return 0; }
     catch (error) { return error === exit ? exit.code : 1; }
   };
-  for (const jobName of ['producer', 'reporter']) {
-    const script = getScript(jobName);
-    assert.equal(execute(script), 0, `${jobName} should accept the exact changed workflow path`);
-    assert.notEqual(execute(script, { event: { head_commit: { added: [], modified: [], removed: [] } } }), 0,
-      `${jobName} should reject a push that omits the fixture workflow`);
-    assert.notEqual(execute(script, { event: { head_commit: { added: ['.github/workflows/other.yml'], modified: [], removed: [] } } }), 0,
-      `${jobName} should reject a different workflow path`);
-    assert.notEqual(execute(script, { REF: 'refs/heads/other-branch' }), 0,
-      `${jobName} should reject a different branch`);
-    assert.notEqual(execute(script, { eventPathValue: null }), 0,
-      `${jobName} should reject a missing event path`);
+  try {
+    for (const jobName of ['producer', 'reporter']) {
+      const script = getScript(jobName);
+      assert.equal(execute(script, exactRepo, exact), 0, `${jobName} should accept the exact workflow-only commit`);
+      assert.notEqual(execute(script, join(root, 'unrelated'), unrelated), 0,
+        `${jobName} should reject a commit that changes only an unrelated file`);
+      assert.notEqual(execute(script, exactRepo, exact, { env: { GITHUB_SHA: exact.before } }), 0,
+        `${jobName} should reject a head mismatch`);
+      assert.notEqual(execute(script, exactRepo, exact, { env: { REF: 'refs/heads/other-branch' } }), 0,
+        `${jobName} should reject a different branch`);
+      assert.notEqual(execute(script, exactRepo, exact, { env: { GITHUB_EVENT_PATH: undefined } }), 0,
+        `${jobName} should reject a missing event path`);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });

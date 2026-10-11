@@ -23,26 +23,37 @@ jobs:
     outputs:
       expected: ${{ steps.validate.outputs.expected }}
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 2
+          persist-credentials: false
       - name: Enforce exact synthetic fixture trigger
         env:
           REPOSITORY: ${{ github.repository }}
           REF: ${{ github.ref }}
           EVENT_NAME: ${{ github.event_name }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          const workflowPath = '.github/workflows/issue329-codex-pass-handoff-fixture.yml';
           const fail = () => { console.error('Fixture trigger guard failed.'); process.exit(1); };
           if (process.env.REPOSITORY !== 'flair-agency/architecture-gatekeeper' ||
               process.env.REF !== 'refs/heads/codex/issue329-codex-pass-handoff-fixture' ||
               process.env.EVENT_NAME !== 'push') fail();
           const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
-          const changed = [...(event.head_commit?.added ?? []), ...(event.head_commit?.modified ?? []),
-            ...(event.head_commit?.removed ?? [])];
-          if (!changed.includes('.github/workflows/issue329-codex-pass-handoff-fixture.yml')) fail();
+          const sha = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
+          if (!sha(event.before) || event.before === '0'.repeat(40) || !sha(event.after) ||
+              event.after !== process.env.GITHUB_SHA) fail();
+          const git = args => execFileSync('git', args, { encoding: 'utf8', timeout: 5_000, maxBuffer: 65_536 }).trim();
+          if (git(['rev-parse', 'HEAD']) !== event.after) fail();
+          const commit = git(['rev-list', '--parents', '-n', '1', event.after]).split(/\s+/);
+          if (commit.length !== 2 || commit[0] !== event.after || commit[1] !== event.before) fail();
+          const changed = git(['diff', '--name-only', '--no-renames', event.before, event.after, '--', workflowPath])
+            .split(/\r?\n/).filter(Boolean);
+          if (changed.length !== 1 || changed[0] !== workflowPath) fail();
           NODE
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: 22
@@ -160,27 +171,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 2
+          persist-credentials: false
       - name: Enforce exact synthetic fixture trigger
         env:
           REPOSITORY: ${{ github.repository }}
           REF: ${{ github.ref }}
           EVENT_NAME: ${{ github.event_name }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs';
-          const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
-          const changed = [...(event.head_commit?.added ?? []), ...(event.head_commit?.modified ?? []),
-            ...(event.head_commit?.removed ?? [])];
+          import { execFileSync } from 'node:child_process';
+          const workflowPath = '.github/workflows/issue329-codex-pass-handoff-fixture.yml';
+          const fail = () => { console.error('Fixture trigger guard failed.'); process.exit(1); };
           if (process.env.REPOSITORY !== 'flair-agency/architecture-gatekeeper' ||
               process.env.REF !== 'refs/heads/codex/issue329-codex-pass-handoff-fixture' ||
-              process.env.EVENT_NAME !== 'push' ||
-              !changed.includes('.github/workflows/issue329-codex-pass-handoff-fixture.yml')) {
-            console.error('Fixture trigger guard failed.'); process.exit(1);
-          }
+              process.env.EVENT_NAME !== 'push') fail();
+          const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          const sha = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
+          if (!sha(event.before) || event.before === '0'.repeat(40) || !sha(event.after) ||
+              event.after !== process.env.GITHUB_SHA) fail();
+          const git = args => execFileSync('git', args, { encoding: 'utf8', timeout: 5_000, maxBuffer: 65_536 }).trim();
+          if (git(['rev-parse', 'HEAD']) !== event.after) fail();
+          const commit = git(['rev-list', '--parents', '-n', '1', event.after]).split(/\s+/);
+          if (commit.length !== 2 || commit[0] !== event.after || commit[1] !== event.before) fail();
+          const changed = git(['diff', '--name-only', '--no-renames', event.before, event.after, '--', workflowPath])
+            .split(/\r?\n/).filter(Boolean);
+          if (changed.length !== 1 || changed[0] !== workflowPath) fail();
           NODE
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: 22
