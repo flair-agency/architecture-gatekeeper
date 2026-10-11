@@ -36,6 +36,32 @@ test('builds deterministic bounded record with raw decision bytes and complete a
   assert.deepEqual(validateOwnerAmendmentBlockRecord({ ...args(), record, recordBytes: Buffer.from(`${JSON.stringify(record)}\n`) }), record);
 });
 
+test('retains the caller-owned Buffer toString result in the base64 observation', () => {
+  const x = args();
+  x.decisionBytes = Buffer.from(x.decisionBytes);
+  x.decisionBytes.toString = () => 17;
+  const record = buildOwnerAmendmentBlockRecord(x);
+  assert.equal(record.decisionBytesBase64, 17);
+});
+
+test('preserves the context getter mutation before the original spread overwrites record fields', () => {
+  const changedContext = { ...context };
+  Object.defineProperty(changedContext, 'runAttempt', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      delete changedContext.mergeSha;
+      changedContext.version = 99;
+      changedContext.kind = 'caller-spread-kind';
+      return '2';
+    },
+  });
+  const record = buildOwnerAmendmentBlockRecord({ ...args(), context: changedContext });
+  assert.equal(record.version, 99);
+  assert.equal(record.kind, 'caller-spread-kind');
+  assert.equal(Object.hasOwn(record, 'mergeSha'), false);
+});
+
 test('validator rejects altered bytes, decision type, authority and context', () => {
   const record = buildOwnerAmendmentBlockRecord({ decisionBytes, schema, validation, context: { ...context }, authority: structuredClone(authority), inputDigests: { ...inputDigests } });
   assert.throws(() => validateOwnerAmendmentBlockRecord({ ...args(), record, decisionBytes: Buffer.from('{}') }));

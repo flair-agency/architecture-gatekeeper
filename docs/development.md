@@ -162,10 +162,20 @@ unknown rather than promised literals. No snapshot or new runtime guard is added
 record construction nor context verification authenticates the owner's identity,
 authorizes the owner's choice or establishes semantic eligibility or acceptance.
 
+The next BLOCK record/bridge slice types `owner-amendment-block-record`,
+`owner-amendment-record-builder`, and `owner-amendment-merge-group-block-bridge`.
+Flat exports retain their callers. Grouped implementations preserve exact BLOCK
+decision and evidence bindings, byte limits, canonical serialization, property
+rereads and merge-group B selection. Callback contracts preserve synchronous,
+Promise and thenable composition. External observations and unchecked Buffer
+method results remain unknown. Constructing records or selecting evidence does
+not authenticate owner authorization or establish protected acceptance.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Main `4ddf39e` has 53 of the original 96 modules typed and 43 remaining; this
-record/context candidate has 56 typed and 40 remaining. Migration is partial and does
+The #508 foundation (`4ddf39e`) has 53 of the original 96 modules typed. The
+#509 record/context tree has 56 typed and 40 remaining; this BLOCK record/bridge
+candidate has 59 typed and 37 remaining. Migration is partial and does
 not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
