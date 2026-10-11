@@ -417,6 +417,9 @@ export function classifyReview({ mode, policyResult, reviewResult, rawDecision,
   if (reviewResult !== 'success') {
     return { conclusion: 'ERROR', summary: 'The model-backed architecture review did not complete successfully.', decision: null };
   }
+  if (rawDecision === '') {
+    return { conclusion: 'ERROR', summary: 'The reporting input was absent after the review job succeeded. Check the workflow output handoff and any runner suppression warnings; this report does not establish why the input is absent.', decision: null };
+  }
   try {
     const decision = JSON.parse(rawDecision);
     if (!decision || !DECISIONS.has(decision.decision)) {
