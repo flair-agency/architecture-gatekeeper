@@ -50,6 +50,7 @@
     "check:typescript": "tsc --noEmit --project tsconfig.json",
     "codeql": "node scripts/codeql-local.mjs",
     "codeql:model": "node scripts/codeql-local.mjs --model-only",
+    "prepare": "npm run build",
     "build": "node scripts/clean-dist.mjs && tsc --project tsconfig.json"
   },
   "engines": {
