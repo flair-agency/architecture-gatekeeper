@@ -1,6 +1,6 @@
 /** Parent-owned composition of the internal Vertex proxy and Gemini CLI session. */
 import { remainingDeadlineMs, startGeminiSecurityProxy } from '../gemini-security-proxy.mjs';
-import { runGeminiCliSession } from '../gemini-cli-session.mjs';
+import { runGeminiCliSession, type GeminiCliSessionProcessOptions } from './gemini-cli-session.mts';
 import type { ReviewFileContextLimits, ReviewFileContextPacket } from '../review-inputs/prepare-review-file-context.mts';
 import type { GeminiCliThinkingOptions } from './gemini-cli-process.mts';
 
@@ -122,7 +122,7 @@ export async function runGeminiCliProxySession<const Model extends string = stri
       throw new Error('Gemini CLI proxy session deadline expired during proxy startup.');
     }
     if (processOptions.signal?.aborted) throw new Error('Gemini CLI proxy session cancelled during proxy startup.');
-    const responseText: string = await runGeminiCliSession({
+    const responseText: string = await runGeminiCliSession<Model>({
       packet: input.packet,
       workspaceLimits: input.workspaceLimits,
       workspaceParentDirectory: input.workspaceParentDirectory,
@@ -131,7 +131,7 @@ export async function runGeminiCliProxySession<const Model extends string = stri
         timeoutMs: remaining,
         proxyUrl: proxy.endpointUrl,
         signal,
-      },
+      } as GeminiCliSessionProcessOptions<Model>,
     });
     if (deadlineController.signal.aborted || remainingDeadlineMs(deadlineAt) === 0) {
       throw new Error('Gemini CLI proxy session deadline expired before response return.');

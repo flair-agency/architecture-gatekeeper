@@ -224,10 +224,17 @@ Unknown process observations, nullable child outcomes and mutable returned
 results retain their actual boundaries. Deadline, cancellation, workspace-control
 and credential-confinement checks retain their original operations.
 
+The internal-adapter slice types the Codex transport, materialized Gemini CLI
+session and protected prepared-review adapter. Required request, workspace,
+protected prompt/schema and credential inputs have explicit contracts, with
+mandatory model-specific thinking controls. Parsed Codex output remains unknown.
+Flat exports, read-only invocation, validation, proxy scope and cleanup preserve
+their original operations. The parent proxy composes the typed session directly.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-The amendment-core candidate has 69 of the original 96 modules typed and
-27 remaining. This Gemini CLI candidate has 72 typed and 24 remaining.
+The Gemini CLI candidate has 72 of the original 96 modules typed and
+24 remaining. This internal-adapter candidate has 75 typed and 21 remaining.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
@@ -267,13 +274,20 @@ node scripts/check-source-cycles.mjs
 npm test
 ```
 
+Installing this repository from an exact Git commit runs its `prepare` script
+and builds `dist/`, so the installed package's public commands and exports are
+present. CI and release workflows continue to install with lifecycle scripts
+disabled and invoke the build explicitly before packing. Registry archives
+include the already-built `dist/` files and do not need an install-time build.
+
 The committed tsconfig uses strict checking, `noImplicitAny`,
 `noEmitOnError`, and NodeNext ESM resolution. TypeScript 6.0.3 and Node 22 types
 pinned at 22.20.5 are development-only. CI and release jobs use Node 22, install
 the lockfile with lifecycle scripts disabled, and build before runtime tests
-and package creation. There are no checked-in generated runtime files and no
-install or publish lifecycle compilation. Registry credentials remain in
-their existing later steps.
+and package creation. Registry packages contain the emitted runtime and need
+no install-time or publish-time compilation; exact Git dependency installs
+run `prepare` to build it. There are no checked-in generated runtime files.
+Registry credentials remain in their existing later steps.
 
 External JSON, environment, API and evidence values remain `unknown` until
 existing runtime checks establish their usable shape. Preserve check order,
@@ -374,7 +388,8 @@ for local/manual, packaged and CI paths as applicable before broader rollout.
 
 ## Local CodeQL
 
-Run these commands from a source checkout (Node.js 22 or newer):
+Run these commands from a source checkout (Node.js 22.18 or newer on the Node
+22 line):
 
 ```bash
 npm run codeql
