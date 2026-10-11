@@ -48,7 +48,10 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'owner-amendment/owner-amendment-merge-group-ordinary-review.mjs',
     'owner-amendment/owner-amendment-merge-group-acceptance.mjs',
     'owner-amendment/owner-amendment-semantic-eligibility.mjs',
-    'owner-amendment/owner-amendment-semantic-producer-attempts.mjs');
+    'owner-amendment/owner-amendment-semantic-producer-attempts.mjs',
+    'authority-validation/authority-set.mjs',
+    'ci-review/ci-enforced-acceptance.mjs',
+    'ci-review/ci-procedural-authority-change.mjs');
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -182,6 +185,13 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
       readFileSync(join(flatRoot, 'dist/owner-amendment', file), 'utf8').replace(/from '\.\.\//g, "from './"));
   }
   rmSync(join(flatRoot, 'dist/review-contract'), { recursive: true });
+  writeFileSync(join(flatRoot, 'dist/authority-set.mjs'),
+    readFileSync(join(flatRoot, 'dist/authority-validation/authority-set.mjs'), 'utf8'));
+  for (const file of ['ci-enforced-acceptance.mjs', 'ci-procedural-authority-change.mjs']) {
+    writeFileSync(join(flatRoot, 'dist', file),
+      readFileSync(join(flatRoot, 'dist/ci-review', file), 'utf8')
+        .replace(/from '\.\.\/authority-validation\//g, "from './"));
+  }
   rmSync(join(flatRoot, 'dist/ci-review'), { recursive: true });
   rmSync(join(flatRoot, 'dist/authority-validation'), { recursive: true });
   rmSync(join(flatRoot, 'dist/review-inputs'), { recursive: true });
