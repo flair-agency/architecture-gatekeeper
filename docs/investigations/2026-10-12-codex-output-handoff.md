@@ -76,8 +76,8 @@ Pure APIs permit exact explicit fixture context for isolated host verification;
 production CLI and reporter separately require the fixed main self caller and
 selected architecture-gate producer. A fixture result is not model review or
 Architecture Gate acceptance. The completed hosted synthetic observation and
-protected-source adoption are recorded below. A fresh model-backed observation
-using the adopted protected source remains pending.
+protected-source adoption are recorded below. The completed model-backed observation
+using the adopted protected source is recorded below.
 
 ## Execution SHA versus REST PR association SHA
 
@@ -142,23 +142,39 @@ completed review job `114524597200`, report job `114525052218` and accept job
 That adoption review executed the **old protected e22d producer**. It approved
 the candidate but cannot prove the newly merged handoff runtime.
 
-## Post-adoption production observation: pending
+## Completed post-adoption production observation
 
-This documentation-only follow-up starts from that actual merged main source
-and supplies an ordinary representative candidate for the normal protected
-workflow. It does not predict the model decision or assert a future PASS.
-The remaining observation must bind the actual main self caller and resolved
-architecture-gate producer, repository, run/attempt, execution base, PR head
-and reviewed merge. On an actual ordinary PASS, verify the validated producer
-frame and narrow outputs, exact same-job retrieval, structured report carrying
-the original canonical digest, and successful final acceptance after the
-unchanged selected G0 guards. A synthetic result or digest alone is insufficient.
-If the decision is BLOCK/OWNER_DECISION or any boundary fails, retain that
-outcome without a projection substitute or bypass.
+[PR #529](https://github.com/flair-agency/architecture-gatekeeper/pull/529)
+head `5ce08db9b29689768f6e997e74ceb619bf1f4ba9` was reviewed at merge
+`0f02f0017fbbf855b62ea4d5776d873b4c642286` in
+[run 38158556463](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38158556463),
+attempt 1. The actual main self caller and reusable architecture-gate source
+both resolved to adopted commit `92aed162b83c2b0ae9a293ac4696204bb72937e4`
+with selected ref `refs/heads/main`. Unlike #528's adoption review, this run
+executed the new protected handoff runtime.
 
-One successful production observation would establish one representative
-model-backed same-run handoff. It would not prove a real model-output secret
-collision, every governance path, portable evidence, host isolation or broader
-rollout. PR #522 remains on hold; no evidence here authorizes its rerun or merge.
-No authority, acceptance route, consumer, provider or production change is
-introduced by this evidence follow-up.
+Review job `114526569972` and its publication step succeeded. Independent log
+inspection found exactly one display-only frame, 4,206 bytes, in a 645,275-byte
+UTF-8 review log. Its run, base, head, reviewed merge, caller and reusable
+workflow bindings matched the expected production context. Its nonce was
+`4e7d0aab8e55d6a88a6bae3a56890642c7c6ce2b8ec98088`, and original canonical
+decision digest was
+`26c6bd8c4435a182caa3c167c701964466eb59bc65bdf77c4247a99287075550`.
+
+Report job `114526873967` succeeded with actual `DECISION` empty,
+`CODEX_PASS_ELIGIBLE=true`, `CODEX_PASS_SELECTED=true` and
+`CODEX_PASS_CONCLUSION=PASS`. Its digest and nonce exactly matched the producer
+frame; the published bot report carried the same PR head, reviewed merge and
+digest. Accept job `114526936006` succeeded and logged
+`Enforced CI acceptance route: ordinary-pass`. The exact-B classifier succeeded,
+the signer was skipped, and the final tag recheck succeeded. These are observed
+same-run producer→structured report→accept results, not acceptance on digest alone.
+
+This establishes one representative ordinary model-backed same-run handoff
+under the adopted protected source. It does not prove a real model-output
+secret collision, every governance path, portable evidence, host isolation or
+broader rollout. Synthetic masking remains a separate observation above.
+PR #522 remains on hold; no evidence here authorizes its rerun or merge.
+This final documentation update still requires its own fresh normal reviews
+and CI before merge; no future check result is claimed. No authority, acceptance
+route, consumer, provider or production change is introduced by this follow-up.
