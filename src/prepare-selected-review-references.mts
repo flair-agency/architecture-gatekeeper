@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { lstatSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { TextDecoder } from 'node:util';
 import { createGitHubPublicAuthoritySource } from './github-authority-source.mjs';
@@ -227,16 +226,12 @@ export async function runPrepareSelectedReviewReferencesCli(): Promise<void> {
     const baseSha = process.env.BASE_SHA;
     const manifestPath = process.env.REVIEW_REFERENCE_MANIFEST_PATH;
     const limitsBase64 = process.env.AUTHORITY_LIMITS_BASE64;
-    const runnerTemp = process.env.RUNNER_TEMP;
-    if (!root || !SHA40.test(baseSha || '') || !manifestPath || !runnerTemp || !limitsBase64) fail('required protected inputs are missing.');
+    if (!root || !SHA40.test(baseSha || '') || !manifestPath || !limitsBase64) fail('required protected inputs are missing.');
     const checkedBaseSha = baseSha as string;
     const source = createGitHubPublicAuthoritySource();
     const prepared = await prepareSelectedReviewReferencesFromBase({ root, baseSha: checkedBaseSha,
       manifestPath, authorityLimitsBase64: limitsBase64, readSnapshot: source });
-    const outputPath = join(resolve(runnerTemp), 'architecture-gate-selected-references.md');
-    writeFileSync(outputPath, `${prepared.promptContext}\n`, { flag: 'wx', mode: 0o600 });
-    if ((lstatSync(outputPath).mode & 0o777) !== 0o600) fail('reference context output permissions are not private.');
-    process.stdout.write(`${JSON.stringify({ count: prepared.references.length, bytes: Buffer.byteLength(prepared.promptContext), references: prepared.references })}\n`);
+    process.stdout.write(`${prepared.promptContext}\n`);
   } catch {
     process.stderr.write('Selected supplemental review references could not be verified.\n');
     process.exitCode = 1;

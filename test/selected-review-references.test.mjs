@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -136,8 +136,6 @@ test('base adapter rejects a symlinked policy manifest blob', async t => {
 
 test('production CLI emits bounded snapshots from base Gitlinks with anonymous public API reads', async t => {
   const { root, baseSha, alphaBase, betaBase } = makeBaseHeadGitlinkFixture(t);
-  const runnerTemp = mkdtempSync(join(tmpdir(), 'selected-reference-cli-output-'));
-  t.after(() => rmSync(runnerTemp, { recursive: true, force: true }));
   const alphaTree = '1'.repeat(40), betaTree = '2'.repeat(40);
   const alphaBody = Buffer.from('CLI alpha base Skill\n'), betaBody = Buffer.from('CLI beta base Skill\n');
   const blobHash = bytes => createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
@@ -156,11 +154,13 @@ test('production CLI emits bounded snapshots from base Gitlinks with anonymous p
   }
   const previousFetch = globalThis.fetch;
   const previousExitCode = process.exitCode;
-  const envNames = ['GITHUB_WORKSPACE', 'BASE_SHA', 'REVIEW_REFERENCE_MANIFEST_PATH', 'AUTHORITY_LIMITS_BASE64', 'RUNNER_TEMP'];
+  const previousWrite = process.stdout.write;
+  let stdout = '';
+  process.stdout.write = (chunk, ..._args) => { stdout += chunk.toString(); return true; };
+  const envNames = ['GITHUB_WORKSPACE', 'BASE_SHA', 'REVIEW_REFERENCE_MANIFEST_PATH', 'AUTHORITY_LIMITS_BASE64'];
   const previousEnv = new Map(envNames.map(name => [name, process.env[name]]));
   Object.assign(process.env, { GITHUB_WORKSPACE: root, BASE_SHA: baseSha,
-    REVIEW_REFERENCE_MANIFEST_PATH: '.codex/gatekeeper/references.json', AUTHORITY_LIMITS_BASE64: limitsBase64,
-    RUNNER_TEMP: runnerTemp });
+    REVIEW_REFERENCE_MANIFEST_PATH: '.codex/gatekeeper/references.json', AUTHORITY_LIMITS_BASE64: limitsBase64 });
   globalThis.fetch = async (url, options) => {
     assert.equal(Object.hasOwn(options.headers, 'Authorization'), false);
     const value = responseData.get(String(url));
@@ -169,15 +169,13 @@ test('production CLI emits bounded snapshots from base Gitlinks with anonymous p
   try { await runPrepareSelectedReviewReferencesCli(); }
   finally {
     globalThis.fetch = previousFetch;
+    process.stdout.write = previousWrite;
     process.exitCode = previousExitCode;
     for (const [name, value] of previousEnv) value === undefined ? delete process.env[name] : process.env[name] = value;
   }
-  const outputPath = join(runnerTemp, 'architecture-gate-selected-references.md');
-  const promptContext = readFileSync(outputPath, 'utf8');
-  assert.match(promptContext, /CLI alpha base Skill/);
-  assert.match(promptContext, /CLI beta base Skill/);
-  assert.match(promptContext, new RegExp(`parent base ${baseSha}`));
-  assert.equal(statSync(outputPath).mode & 0o777, 0o600);
+  assert.match(stdout, /CLI alpha base Skill/);
+  assert.match(stdout, /CLI beta base Skill/);
+  assert.match(stdout, new RegExp(`parent base ${baseSha}`));
 });
 
 test('fails closed for malformed selection, identity mismatch, binary source, and aggregate overflow', async () => {
@@ -209,7 +207,9 @@ test('ordinary workflow hands the selected-reference packet to its existing prom
     assert.equal(result.status, expected);
   }
   const authority = namedStep(workflow.jobs.review, 'Materialize protected Authority Set before review');
-  assert.match(authority.run, /architecture-gate-selected-references\.md/);
+  assert.match(authority.run, /node "\$GATEKEEPER_RUNTIME_ROOT\/dist\/prepare-selected-review-references\.mjs"/);
+  assert.match(authority.run, /\} > "\$RUNNER_TEMP\/architecture-gate-complete-prompt\.md"/);
+  assert.doesNotMatch(authority.run, /architecture-gate-selected-references\.md/);
   assert.match(authority.run, /architecture-gate-complete-prompt\.md/);
   const context = namedStep(workflow.jobs.review, 'Attach exact pull request task context to protected review');
   assert.match(context.env.AUTHORITY_ROUTE_SELECTED, /authority_manifest_path/);
