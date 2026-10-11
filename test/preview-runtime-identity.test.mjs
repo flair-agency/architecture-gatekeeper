@@ -55,7 +55,10 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'owner-amendment/owner-amendment.mjs',
     'gemini-cli/gemini-cli-response.mjs',
     'gemini-cli/gemini-cli-process.mjs',
-    'gemini-cli/gemini-cli-proxy-session.mjs');
+    'gemini-cli/gemini-cli-proxy-session.mjs',
+    'gemini-cli/gemini-cli-session.mjs',
+    'gemini-cli/prepared-gemini-ci-review.mjs',
+    'reviewer-transports/codex-transport.mjs');
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -189,12 +192,18 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     writeFileSync(join(flatRoot, 'dist', file),
       readFileSync(join(flatRoot, 'dist/owner-amendment', file), 'utf8').replace(/from '\.\.\//g, "from './"));
   }
-  for (const file of ['gemini-cli-response.mjs', 'gemini-cli-process.mjs', 'gemini-cli-proxy-session.mjs']) {
+  for (const file of ['gemini-cli-response.mjs', 'gemini-cli-process.mjs', 'gemini-cli-proxy-session.mjs',
+    'gemini-cli-session.mjs', 'prepared-gemini-ci-review.mjs']) {
     writeFileSync(join(flatRoot, 'dist', file),
       readFileSync(join(flatRoot, 'dist/gemini-cli', file), 'utf8')
         .replace(/from '\.\.\/review-contract\//g, "from './")
+        .replace(/from '\.\.\/review-inputs\//g, "from './")
+        .replace(/from '\.\.\/authority-validation\//g, "from './")
         .replace(/from '\.\.\//g, "from './"));
   }
+  writeFileSync(join(flatRoot, 'dist/codex-transport.mjs'),
+    readFileSync(join(flatRoot, 'dist/reviewer-transports/codex-transport.mjs'), 'utf8'));
+  rmSync(join(flatRoot, 'dist/reviewer-transports'), { recursive: true });
   rmSync(join(flatRoot, 'dist/gemini-cli'), { recursive: true });
   rmSync(join(flatRoot, 'dist/review-contract'), { recursive: true });
   writeFileSync(join(flatRoot, 'dist/authority-set.mjs'),

@@ -224,10 +224,17 @@ Unknown process observations, nullable child outcomes and mutable returned
 results retain their actual boundaries. Deadline, cancellation, workspace-control
 and credential-confinement checks retain their original operations.
 
+The internal-adapter slice types the Codex transport, materialized Gemini CLI
+session and protected prepared-review adapter. Required request, workspace,
+protected prompt/schema and credential inputs have explicit contracts, with
+mandatory model-specific thinking controls. Parsed Codex output remains unknown.
+Flat exports, read-only invocation, validation, proxy scope and cleanup preserve
+their original operations. The parent proxy composes the typed session directly.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-The amendment-core candidate has 69 of the original 96 modules typed and
-27 remaining. This Gemini CLI candidate has 72 typed and 24 remaining.
+The Gemini CLI candidate has 72 of the original 96 modules typed and
+24 remaining. This internal-adapter candidate has 75 typed and 21 remaining.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
