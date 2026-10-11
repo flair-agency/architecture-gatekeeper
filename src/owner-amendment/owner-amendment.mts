@@ -4,7 +4,7 @@ import { TextDecoder } from 'node:util';
 type UnknownRecord = Record<string, unknown>;
 
 export interface OwnerAmendmentParsedAuthority extends UnknownRecord {
-  id: string; path: string; sha256?: string; previousSha256?: string; newSha256?: string;
+  id: string; path: string; previousSha256: string; newSha256: string;
 }
 export interface OwnerAmendmentBlockRecord {
   version: 2; repository: string; baseSha: string; headSha: string; policyRevision: string;
@@ -16,7 +16,7 @@ export interface ValidateOwnerAmendmentG0TagEnvelopeInput {
 }
 export interface OwnerAmendmentG0TagEnvelopeResult {
   readonly profile: 'self-g0'; readonly headSha: unknown; readonly tagObjectOid: unknown;
-  readonly reviewRecordSha256: unknown; readonly amendmentRecordSha256: unknown; readonly attestationBundleSha256: unknown;
+  readonly reviewRecordSha256: string; readonly amendmentRecordSha256: string; readonly attestationBundleSha256: string;
 }
 export interface ValidateOwnerAmendmentG0ProcedureInput {
   policy: unknown; current: unknown; reviewRecord: unknown; amendmentRecord: unknown; tag: unknown;
@@ -272,7 +272,7 @@ function validateRawTagEnvelope(envelope: UnknownRecord, { headSha, tag, tagRef,
     fail('self BLOCK AmendmentRecord v2 does not bind exact B and evidence bytes.');
   }
   return Object.freeze({ profile: 'self-g0', headSha, tagObjectOid: (tag as UnknownRecord).objectOid,
-    reviewRecordSha256: envelope.reviewRecordSha256, amendmentRecordSha256: envelope.amendmentRecordSha256,
+    reviewRecordSha256: envelope.reviewRecordSha256, amendmentRecordSha256: envelope.amendmentRecordSha256 as string,
     attestationBundleSha256: envelope.attestationBundleSha256 });
 }
 
