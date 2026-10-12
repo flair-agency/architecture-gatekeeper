@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { runManualReview, runManualReviewAsync, runHookAsync, runPostToolScreenHook } from '../../dist/local-gate.mjs';
-const [root, route] = process.argv.slice(2);
+import { createMeasurementAdapterFixture } from './measurement-adapter-fixture.mjs';
+const [route] = process.argv.slice(2);
+const { root, cleanup } = createMeasurementAdapterFixture();
+try {
 const options = { reviewer: () => ({ decision: 'PASS', authorityFiles: ['AGENTS.md'], reviewedScope: ['fixture'], findings: [] }) };
 Object.defineProperty(options, 'measurement', { get() { throw new Error('diagnostic selector unavailable'); } });
 // Keep Git's required descriptors intact; simulate an unavailable host warning sink.
@@ -20,3 +23,5 @@ if (route === 'PostToolUse') {
   options.cwd = root; options.batchDelayMs = 0;
   assert.equal((await runPostToolScreenHook(input,options)).result.status,'PASS');
 }
+
+} finally { cleanup(); }

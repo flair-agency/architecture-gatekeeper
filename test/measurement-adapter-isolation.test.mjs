@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { createMeasurementAdapterFixture } from './helpers/measurement-adapter-fixture.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -7,27 +8,7 @@ import { join } from 'node:path';
 import { runHookAsync, runManualReview, runManualReviewAsync, runPostToolScreenHook } from '../dist/local-gate.mjs';
 import { loadMeasurementDirectory, measurementDigest } from '../dist/measurement.mjs';
 
-function fixture(t) {
-  const parent = mkdtempSync(join(realpathSync(tmpdir()), 'agk-measurement-adapter-'));
-  t.after(() => rmSync(parent, { recursive: true, force: true }));
-  const root = join(parent, 'repo');
-  const records = join(parent, 'records');
-  mkdirSync(join(root, '.codex/gatekeeper'), { recursive: true });
-  mkdirSync(records, { mode: 0o700 });
-  writeFileSync(join(root, 'AGENTS.md'), '# Test authority\n');
-  writeFileSync(join(root, 'candidate.md'), 'initial\n');
-  writeFileSync(join(root, '.codex/gatekeeper/prompt.md'), 'review\n');
-  writeFileSync(join(root, '.codex/gatekeeper/schema.json'), '{"type":"object"}');
-  writeFileSync(join(root, '.codex/gatekeeper/reviewer.json'), '{"model":"fixture","reasoningEffort":"low"}');
-  writeFileSync(join(root, '.codex/gatekeeper/config.json'), JSON.stringify({ version: 1,
-    authorityFiles: ['AGENTS.md'], requiredReportedAuthorityFiles: ['AGENTS.md'], requiredPassArrays: ['reviewedScope'],
-    promptPath: '.codex/gatekeeper/prompt.md', schemaPath: '.codex/gatekeeper/schema.json',
-    reviewerConfigPath: '.codex/gatekeeper/reviewer.json', reviewTimeoutMs: 5000 }));
-  for (const args of [['init'], ['config', 'user.name', 'Test'], ['config', 'user.email', 'test@example.invalid'], ['add', '.'], ['commit', '-m', 'fixture']]) {
-    execFileSync('git', args, { cwd: root, stdio: 'ignore' });
-  }
-  return { root, records };
-}
+function fixture(t) { const value = createMeasurementAdapterFixture(); t.after(value.cleanup); return value; }
 
 const decision = value => ({ decision: value, authorityFiles: ['AGENTS.md'], reviewedScope: ['fixture'], findings: [] });
 function badMeasurement() { return Object.defineProperty({}, 'directory', { get() { throw new Error('diagnostic setting unavailable'); } }); }
@@ -179,8 +160,7 @@ for (const verdict of ['PASS', 'BLOCK']) test(`manual options proxy retains lazy
 });
 
 for (const route of ['manual-sync', 'manual-async', 'hook', 'PostToolUse']) test(`unavailable warning sink cannot change required adapter result: ${route}`, t => {
-  const { root } = fixture(t);
   const child = new URL('./helpers/measurement-adapter-fault-child.mjs', import.meta.url).pathname;
-  const result = spawnSync(process.execPath, [child, root, route], { encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [child, route], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
 });

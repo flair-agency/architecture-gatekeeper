@@ -41,3 +41,9 @@ Offline export and dataset analysis are supplied by the next dependent slice.
 Warnings are best-effort even when stderr is unavailable. Reviewer options retain
 lazy property reads and the original getter receiver; diagnostic filtering does
 not eagerly enumerate an otherwise-valid Proxy.
+
+Native prepare records known preparation errors before request construction.
+A failed request-file read creates a separate error observation with unknown
+request identity; it cannot safely resume the earlier request's preparation.
+Decision-file reads resume the known preparation first. Stage-specific failures
+retain their required errors, and later retries do not rewrite terminal history.

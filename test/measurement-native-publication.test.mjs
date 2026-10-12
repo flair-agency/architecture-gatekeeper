@@ -20,15 +20,15 @@ for (const verdict of ['PASS','BLOCK']) test(`native stdout failure preserves va
  const terminal=loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal');assert.equal(terminal.state,'error');assert.equal(terminal.decision.decision,verdict);assert.equal(terminal.feedback.publication,'unknown');assert.equal(terminal.observation.failureStage,'publication');
 });
 
-function preparedFixture(t) {
+function preparedFixture(t, prepare = true) {
  const parent=mkdtempSync(join(realpathSync(tmpdir()),'agk-native-publication-'));t.after(()=>rmSync(parent,{recursive:true,force:true}));
  const root=join(parent,'repo'),directory=join(parent,'records');mkdirSync(join(root,'.codex/gatekeeper'),{recursive:true});mkdirSync(directory,{mode:0o700});
  const files={'AGENTS.md':'# Fixture authority','candidate.md':'fixture','.codex/gatekeeper/prompt.md':'review','.codex/gatekeeper/schema.json':'{"type":"object"}', '.codex/gatekeeper/reviewer.json':'{"model":"fixture","reasoningEffort":"low"}', '.codex/gatekeeper/config.json':JSON.stringify({version:1,authorityFiles:['AGENTS.md'],requiredReportedAuthorityFiles:['AGENTS.md'],requiredPassArrays:['reviewedScope'],promptPath:'.codex/gatekeeper/prompt.md',schemaPath:'.codex/gatekeeper/schema.json',reviewerConfigPath:'.codex/gatekeeper/reviewer.json',reviewTimeoutMs:5000})};
  for(const [path,value]of Object.entries(files))writeFileSync(join(root,path),value);
  for(const args of [['init'],['config','user.name','Fixture'],['config','user.email','fixture@example.invalid'],['config','commit.gpgSign','false'],['add','.'],['commit','-m','fixture']])execFileSync('git',args,{cwd:root,stdio:'ignore'});
  const cli=new URL('../dist/native-review.mjs',import.meta.url).pathname,request=join(parent,'request.json'),decision=join(parent,'decision.json'),env={...process.env,AGK_MEASUREMENT_DIR:directory};
- const prepared=spawnSync(process.execPath,[cli,'prepare',request,'fixture'],{cwd:root,env,encoding:'utf8'});assert.equal(prepared.status,0,prepared.stderr);
- return {root,directory,cli,request,decision,env,bytes:readFileSync(request)};
+ if (prepare) { const prepared=spawnSync(process.execPath,[cli,'prepare',request,'fixture'],{cwd:root,env,encoding:'utf8'});assert.equal(prepared.status,0,prepared.stderr); }
+ return {root,directory,cli,request,decision,env,bytes:prepare ? readFileSync(request) : null};
 }
 
 for (const fault of ['missing', 'malformed', 'nonfile']) test(`native decision read failure remains observable after retry: ${fault}`, t => {
@@ -38,9 +38,36 @@ for (const fault of ['missing', 'malformed', 'nonfile']) test(`native decision r
  const failed = spawnSync(process.execPath,[cli,'validate',request,decision],{cwd:root,env,encoding:'utf8'});
  assert.equal(failed.status,2,failed.stderr);assert.equal(failed.stdout,'');assert.deepEqual(readFileSync(request),bytes);
  const observed = loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal');
- assert.ok(observed);assert.equal(observed.state,'error');assert.equal(observed.decision,null);assert.equal(observed.feedback.publication,'unknown');assert.equal(observed.observation.failureStage,'validation-or-preparation');
+ assert.ok(observed);assert.equal(observed.state,'error');assert.equal(observed.decision,null);assert.equal(observed.feedback.publication,'unknown');assert.equal(observed.observation.failureStage,'decision-read');
  rmSync(decision,{recursive:true,force:true});writeFileSync(decision,JSON.stringify({decision:'PASS',authorityFiles:['AGENTS.md'],reviewedScope:['fixture'],findings:[]}));
  const retry = spawnSync(process.execPath,[cli,'validate',request,decision],{cwd:root,env,encoding:'utf8'});
  assert.equal(retry.status,0,retry.stderr);assert.equal(JSON.parse(retry.stdout).decision,'PASS');
  assert.deepEqual(loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal'),observed);
+});
+
+for (const fault of ['missing-config','malformed-config','missing-authority','unresolved-repository']) test(`native preparation failure preserves required error and error observation: ${fault}`, t => {
+ const {root,directory,cli,request,env} = preparedFixture(t,false);
+ let cwd = root;
+ if (fault === 'unresolved-repository') { cwd = join(root,'..','not-a-repository');mkdirSync(cwd); }
+ else {
+  if(fault==='missing-config')rmSync(join(root,'.codex/gatekeeper/config.json'));
+  if(fault==='malformed-config')writeFileSync(join(root,'.codex/gatekeeper/config.json'),'{bad');
+  if(fault==='missing-authority')rmSync(join(root,'AGENTS.md'));
+  execFileSync('git',['add','-A'],{cwd:root,stdio:'ignore'});execFileSync('git',['commit','-m','failed preparation fixture'],{cwd:root,stdio:'ignore'});
+ }
+ const invoke = dir => spawnSync(process.execPath,[cli,'prepare',request,'fixture'],{cwd,env:{...env,AGK_MEASUREMENT_DIR:dir},encoding:'utf8'});
+ const original=invoke(''), observed=invoke(directory);
+ assert.equal(observed.status,2,observed.stderr);assert.equal(observed.status,original.status);assert.equal(observed.stdout,original.stdout);assert.equal(observed.stderr,original.stderr);
+ const records=loadMeasurementDirectory(directory).records;assert.deepEqual(records.map(r=>r.phase).sort(),['start','terminal']);
+ const terminal=records.find(r=>r.phase==='terminal');assert.equal(terminal.state,'error');assert.equal(terminal.request,null);assert.equal(terminal.decision,null);assert.equal(terminal.feedback.publication,'unknown');assert.equal(terminal.observation.failureStage,'preparation');
+});
+for (const fault of ['missing','malformed','nonfile']) test(`native request read failure remains an independent observation after retry: ${fault}`, t => {
+ const {root,directory,cli,request,decision,env,bytes}=preparedFixture(t);
+ rmSync(request);if(fault==='malformed')writeFileSync(request,'{broken');if(fault==='nonfile')mkdirSync(request);
+ const invoke=dir=>spawnSync(process.execPath,[cli,'validate',request,decision],{cwd:root,env:{...env,AGK_MEASUREMENT_DIR:dir},encoding:'utf8'});
+ const original=invoke(''), observed=invoke(directory);assert.equal(observed.status,2,observed.stderr);assert.equal(observed.stderr,original.stderr);assert.equal(observed.stdout,original.stdout);
+ const failure=loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal');assert.ok(failure);assert.equal(failure.state,'error');assert.equal(failure.request,null);assert.equal(failure.observation.failureStage,'request-read');
+ rmSync(request,{recursive:true,force:true});writeFileSync(request,bytes);writeFileSync(decision,JSON.stringify({decision:'PASS',authorityFiles:['AGENTS.md'],reviewedScope:['fixture'],findings:[]}));
+ const retry=invoke(directory);assert.equal(retry.status,0,retry.stderr);assert.equal(JSON.parse(retry.stdout).decision,'PASS');
+ const terminals=loadMeasurementDirectory(directory).records.filter(r=>r.phase==='terminal');assert.equal(terminals.length,2);assert.deepEqual(terminals.find(r=>r.attemptId===failure.attemptId),failure);assert.equal(terminals.find(r=>r.attemptId!==failure.attemptId).decision.decision,'PASS');
 });
