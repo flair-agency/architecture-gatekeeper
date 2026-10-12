@@ -243,9 +243,14 @@ export function resumeNativeMeasurement(requestPath: string, request: Measuremen
     const dir = directory(selected, request.repositoryRoot);
     const correlation = measurementDigest(resolve(requestPath));
     const records = loadMeasurementDirectory(dir).records as RecordView[];
-    const completed = new Set(records.filter(r => r.phase === 'terminal').map(r => r.attemptId));
+    // A torn/oversized terminal is still an exclusive terminal file. Do not
+    // select that attempt merely because parsing omitted it from the loader.
+    const unfinished = (id: string) => {
+      try { readDiagnosticText(join(dir, `${id}.terminal.json`), MAX_BYTES); return false; }
+      catch (error) { return (error as NodeJS.ErrnoException).code === 'ENOENT'; }
+    };
     const collectorSha256 = runtime().collectorSha256;
-    const starts = records.filter(r => (r.runtime as { collectorSha256?: unknown } | null)?.collectorSha256 === collectorSha256 && r.phase === 'prepared' && r.route === 'native' && r.request?.requestId === request.requestId && r.correlation === correlation && !completed.has(r.attemptId));
+    const starts = records.filter(r => (r.runtime as { collectorSha256?: unknown } | null)?.collectorSha256 === collectorSha256 && r.phase === 'prepared' && r.route === 'native' && r.request?.requestId === request.requestId && r.correlation === correlation && unfinished(r.attemptId));
     starts.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
     const start = starts[0];
     if (!start) throw new Error('Native preparation observation missing or already completed.');

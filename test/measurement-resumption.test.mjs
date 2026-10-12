@@ -115,3 +115,16 @@ test('native selection skips a newer unfinished observation from another collect
   resumed.finish({ state: 'completed' });
   assert.equal(loadMeasurementDirectory(f.directory).records.find(r => r.phase === 'terminal').attemptId, f.attempt.id);
 });
+
+
+for (const payload of ['{torn', 'x'.repeat(256 * 1024 + 1)]) test(`native selection excludes an existing unreadable terminal (${payload.length} bytes)`, t => {
+  const f = fixture(t, 'native'); const newer = beginMeasurement({ route: 'native', cwd: f.root, directory: f.directory, correlation: measurementDigest(f.requestPath) }); newer.request(f.request);
+  const originalStart = loadMeasurementDirectory(f.directory).records.find(r => r.attemptId === f.attempt.id).startedAt;
+  for (const phase of ['start', 'prepared']) {
+    const path = join(f.directory, `${newer.id}.${phase}.json`); const value = JSON.parse(readFileSync(path)); value.startedAt = new Date(Date.parse(originalStart) + 1000).toISOString(); writeFileSync(path, JSON.stringify(value));
+  }
+  const terminalPath = join(f.directory, `${newer.id}.terminal.json`); writeFileSync(terminalPath, payload);
+  const resumed = resumeNativeMeasurement(f.requestPath, f.request, f.directory); assert.equal(resumed.id, f.attempt.id); resumed.finish({ state: 'completed' });
+  assert.equal(readFileSync(terminalPath, 'utf8'), payload); assert.equal(loadMeasurementDirectory(f.directory).gaps, 1);
+  assert.equal(resumeNativeMeasurement(f.requestPath, f.request, f.directory).id, null);
+});

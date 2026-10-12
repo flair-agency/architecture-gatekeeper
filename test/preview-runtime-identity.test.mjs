@@ -84,7 +84,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
   await runtime.validatePreviewReceipt(receipt, f.root);
 
-  const unchangedPaths = [...new Set([...nestedPaths.map(path => path.split('/').at(-1)),
+  nestedPaths.push('measurement.mjs', 'measurement-consistency.mjs', 'diagnostic-path.mjs');
+  const unchangedPaths = [...new Set([...nestedPaths.filter(path => path.includes('/')).map(path => path.split('/').at(-1)),
     'preview-lifecycle.mjs', 'owner-addition-ci.mjs', 'github-owner-addition-provenance.mjs']
     .filter(file => existsSync(join(runtimeRoot, 'dist', file))))];
   unchangedPaths.push('../package.json');

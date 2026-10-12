@@ -33,3 +33,10 @@ Risk → boundary → retained tests:
 Tests in this slice invoke actual record/phase validators directly. The original
 full ledger-validation and CLI assertions from #541 are retained for the analysis
 slice; they are not simulated by a fixture validator here.
+
+Independent general review of the initial slice found that native selection could
+ignore a torn/oversized terminal omitted by the parser. Selection now checks
+terminal-file presence through the existing bounded direct-file reader before
+choosing a candidate. Fault regressions retain the older unfinished attempt and
+never rewrite the unreadable terminal. Preview runtime identity also exercises
+all three new emitted core modules, invalidating old requests and receipts.
