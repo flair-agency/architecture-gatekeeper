@@ -91,3 +91,19 @@ test('numeric date coercion cannot change timestamps between private records and
     assert.throws(() => redactMeasurement({ ...base, [field]: 0 }), /Invalid diagnostic record/);
   }
 });
+
+for(const phase of ['start','prepared','terminal'])test(`core phase consistency refuses conflicting duplicate ${phase} in either order`,t=>{
+ const original=records(t);const selected=original.find(r=>r.phase===phase);const changed=structuredClone(selected);
+ if(phase==='prepared')changed.request.requestId='c'.repeat(64);
+ else if(phase==='terminal')changed.decision={decision:'BLOCK',findings:[]};
+ else changed.extraObservation='different';
+ for(const pair of [[changed,selected],[selected,changed]]){
+  const values=original.filter(r=>r.phase!==phase).concat(pair);
+  assert.throws(()=>validateMeasurementPhases(values),/conflicting duplicate phase observations/);
+ }
+});
+test('core phase consistency accepts identical duplicated observations with reordered keys',t=>{
+ const original=records(t);
+ const copies=original.map(record=>Object.fromEntries(Object.entries(structuredClone(record)).reverse()));
+ assert.doesNotThrow(()=>validateMeasurementPhases([...original,...copies]));
+});

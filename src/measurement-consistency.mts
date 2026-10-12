@@ -34,7 +34,9 @@ export function validateMeasurementPhases(records: readonly PhaseRecord[]): void
   const phasesByAttempt = new Map<string, Map<string, PhaseRecord>>();
   for (const record of records) {
     const phases = phasesByAttempt.get(record.attemptId) || new Map<string, PhaseRecord>();
-    phases.set(record.phase, record);
+    const duplicate = phases.get(record.phase);
+    if (duplicate && !sameEnvelopeValue(duplicate, record)) reject('conflicting duplicate phase observations');
+    if (!duplicate) phases.set(record.phase, record);
     phasesByAttempt.set(record.attemptId, phases);
     const envelope = record as unknown as Record<string, unknown>;
     const prior = envelopes.get(record.attemptId);
