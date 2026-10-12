@@ -150,7 +150,14 @@ measurement is enabled.
 
 ## Case ledger, blind audit and aggregation
 
-Create a bounded version-1 dataset JSON (up to 256 KiB):
+Create a bounded version-1 dataset JSON (up to 256 KiB and depth 32).
+The parsed-object API applies the same whole-dataset limits and snapshots plain
+JSON data before validation; accessors, custom prototypes and serialization
+hooks are rejected. Optional undefined object properties are omitted.
+Every case and audit evidence entry must satisfy the same bounded, nonblank
+primitive reference rules as initial/final/authority references.
+
+Example:
 
 ```json
 {

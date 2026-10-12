@@ -25,6 +25,8 @@ test('real aggregate and sample CLIs reject inconsistent ledgers without emittin
     [d => { d.records[0].route = 'ci-outcome'; }, /finding reference/],
     [d => { d.population[0].initialRef = { decision: 'BLOCK' }; }, /population reference/],
     [d => { d.population[0].finalRef = ['BLOCK']; }, /population reference/],
+    [d => { d.cases[0].evidence = ['valid', null]; }, /case evidence/],
+    [d => { d.audits[0].evidence = ['valid', {}]; }, /audit evidence/],
   ];
   for (const command of [['aggregate'], ['sample', 'seed', '1']]) {
     writeFileSync(path, JSON.stringify(dataset()));

@@ -128,15 +128,17 @@ test('packet references reject structured, blank, oversized and control-bearing 
   }
 });
 
-test('blind packet retains only opaque primitive references and stable copied identities', () => {
-  const data = baseDataset(); const row = data.population[0]; const reads = {};
-  row.decision = 'BLOCK'; row.findings = [{ details: 'private outcome' }];
-  for (const [field, value] of [['changeId', 'natural-self'], ['initialRef', 'opaque-initial'], ['finalRef', null]]) {
-    reads[field] = 0; Object.defineProperty(row, field, { get() { return ++reads[field] <= 2 ? value : { decision: 'BLOCK' }; } });
+test('object APIs reject changing accessor references without invoking them', () => {
+  for (const run of [validateMeasurementDataset, aggregateMeasurement, d => sampleMeasurementPopulation(d, { seed: 'fixed', count: 1 })]) {
+    const data = baseDataset(); let reads = 0;
+    Object.defineProperty(data.population[0], 'initialRef', { enumerable: true, get() { reads++; return { decision: 'BLOCK' }; } });
+    assert.throws(() => run(data), /JSON shape/); assert.equal(reads, 0);
   }
-  const packet = sampleMeasurementPopulation(data, { seed: 'fixed', count: 1 });
-  assert.deepEqual(packet.sample, [{ changeId: 'natural-self', initialRef: 'opaque-initial', finalRef: null }]);
-  assert.deepEqual(reads, { changeId: 2, initialRef: 2, finalRef: 2 }); assert.ok(!JSON.stringify(packet).includes('BLOCK'));
-  const changing = baseDataset(); let n = 0; Object.defineProperty(changing.population[0], 'initialRef', { get() { return ++n === 1 ? 'opaque-initial' : { decision: 'BLOCK' }; } });
-  assert.throws(() => sampleMeasurementPopulation(changing, { seed: 'fixed', count: 1 }), /population reference/);
+});
+
+test('every case and audit evidence entry must be a bounded nonblank primitive reference', () => {
+  for (const section of ['cases', 'audits']) for (const invalid of [null, {}, ['ref'], true, 42, '', ' ', 'x'.repeat(201), 'a\nb', '\0ref']) {
+    const data = baseDataset(); data[section][0].evidence = ['valid reference', invalid];
+    for (const run of [validateMeasurementDataset, aggregateMeasurement, d => sampleMeasurementPopulation(d, { seed: 'fixed', count: 1 })]) assert.throws(() => run(data), /evidence/);
+  }
 });

@@ -63,13 +63,13 @@ test('compares nested envelope objects independent of key order and fails closed
   let nested = 1;
   for (let i = 0; i < 34; i++) nested = { child: nested };
   const deep = original.map(record => ({ ...record, context: JSON.parse(JSON.stringify(nested)) }));
-  assert.throws(() => validateMeasurementDataset(dataset(deep)), /comparison depth/);
-  const wide = Object.fromEntries(Array.from({ length: 12001 }, (_, i) => [`key-${i}`, i]));
+  assert.throws(() => validateMeasurementDataset(dataset(deep)), /JSON depth limit/);
+  const wide = Object.fromEntries(Array.from({ length: 5000 }, (_, i) => [`key-${i}`, i]));
   const acceptedWide = original.map(record => ({ ...record, context: JSON.parse(JSON.stringify(wide)) }));
   assert.doesNotThrow(() => validateMeasurementDataset(dataset(acceptedWide)));
   const tooWide = Object.fromEntries(Array.from({ length: 270000 }, (_, i) => [`key-${i}`, i]));
   const oversized = original.map(record => ({ ...record, context: JSON.parse(JSON.stringify(tooWide)) }));
-  assert.throws(() => validateMeasurementDataset(dataset(oversized)), /comparison budget/);
+  assert.throws(() => validateMeasurementDataset(dataset(oversized)), /JSON limit/);
 });
 
 test('terminal-only records remain valid and retain terminalWithoutStart diagnostics', () => {

@@ -2,7 +2,7 @@ import test from 'node:test';
 
 import assert from 'node:assert/strict';
 
-import { aggregateMeasurement, sampleMeasurementPopulation } from '../dist/measurement-analysis.mjs';
+import { aggregateMeasurement, sampleMeasurementPopulation, validateMeasurementDataset } from '../dist/measurement-analysis.mjs';
 
 const pass = { decision: 'PASS', summary: 'private summary', authorityFiles: ['AGENTS.md'], reviewedScope: ['private scope'], findings: [] };
 
@@ -43,4 +43,21 @@ test('PASS transitions do not resolve cases, and known dispositions need evidenc
   assert.equal(aggregateMeasurement(data).counts.unresolvedCases, 1);
   data.cases[0].disposition = 'corrected'; data.cases[0].evidence = [];
   assert.throws(() => aggregateMeasurement(data), /evidence/);
+});
+
+
+test('all object entrypoints enforce whole-dataset JSON size, depth and shape', () => {
+  for (const run of [validateMeasurementDataset, aggregateMeasurement, d => sampleMeasurementPopulation(d, { seed: 'fixed', count: 1 })]) {
+    for (const mutate of [
+      d => { d.plan = { notes: 'x'.repeat(1024 * 1024) }; },
+      d => { d.plan = {}; d.plan.self = d.plan; },
+      d => { let deep = {}; for (let i = 0; i < 34; i++) deep = { nested: deep }; d.plan = deep; },
+      d => { d.plan = new Date(); },
+      d => { d.plan = new Array(1024 * 1024); },
+      d => { d.plan = { toJSON() { throw new Error('must not call'); } }; },
+    ]) { const data = dataset(); mutate(data); assert.throws(() => run(data), /JSON (limit|depth|shape)/); }
+    const valid = dataset(); const normalized = validateMeasurementDataset(valid);
+    valid.plan.window = 'changed after validation'; assert.equal(normalized.plan.window, 'fixed fixture window');
+    assert.doesNotThrow(() => JSON.stringify(run(normalized)));
+  }
 });

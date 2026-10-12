@@ -1,5 +1,5 @@
 import { sameEnvelopeValue, validateMeasurementPhases } from './measurement-consistency.mts';
-import { measurementDigest, validateMeasurementRecord } from './measurement.mts';
+import { measurementDigest, parseMeasurementJson, validateMeasurementRecord } from './measurement.mts';
 import type { MeasurementRecord } from './measurement.mts';
 
 // Validated classification values remain separate from unauthenticated evidence.
@@ -52,8 +52,39 @@ function populationChanges(population: MeasurementChange[]) {
   }
   return changes;
 }
+// The object API has the same whole-dataset JSON boundary as the CLI. Inspect
+// descriptors before serialization so accessors/toJSON cannot replace checked
+// values. Optional undefined object fields use JSON's ordinary omission rule.
+function datasetSnapshot(value: unknown): MeasurementDataset {
+  let budget = 256 * 1024;
+  const visit = (item: unknown, depth: number): unknown => {
+    if (--budget < 0) reject('JSON limit');
+    if (depth > 32) reject('JSON depth limit');
+    if (item === null || typeof item === 'boolean' || item === undefined) return item;
+    if (typeof item === 'string') { budget -= Buffer.byteLength(item); if (budget < 0) reject('JSON limit'); return item; }
+    if (typeof item === 'number' && Number.isFinite(item)) return item;
+    if (typeof item !== 'object') reject('JSON shape');
+    const prototype = Object.getPrototypeOf(item);
+    const array = Array.isArray(item);
+    if (array ? prototype !== Array.prototype : prototype !== Object.prototype && prototype !== null) reject('JSON shape');
+    const copy = (array ? [] : Object.create(null)) as Record<string, unknown>;
+    if (array && (item as unknown[]).length > budget) reject('JSON limit');
+    const keys = Reflect.ownKeys(item as object);
+    if (keys.length > budget) reject('JSON limit');
+    for (const key of keys) {
+      const property = Object.getOwnPropertyDescriptor(item, key)!;
+      if (!Object.hasOwn(property, 'value')) reject('JSON shape: accessors');
+      if (!property.enumerable) continue;
+      if (typeof key !== 'string') return reject('JSON shape: symbol');
+      if (!array) budget -= Buffer.byteLength(key); if (budget < 0) reject('JSON limit');
+      copy[key] = visit(property.value, depth + 1);
+    }
+    return copy;
+  };
+  return parseMeasurementJson(JSON.stringify(visit(value, 0))) as MeasurementDataset;
+}
 export function validateMeasurementDataset(value: unknown): MeasurementDataset {
-  const data = value as MeasurementDataset;
+  const data = datasetSnapshot(value);
   if (data?.version !== 1 || !['records', 'population', 'cases', 'audits'].every(key => list(data[key as keyof MeasurementDataset]))) reject('version/collections');
   const observations = new Map<string, MeasurementRecord>();
   const normalizedRecords: MeasurementRecord[] = [];
@@ -80,6 +111,7 @@ export function validateMeasurementDataset(value: unknown): MeasurementDataset {
         !enumValue(item.disposition, ['corrected', 'withdrawn', 'integrated-violation', 'authorized-evolution', 'rejected-proposal', 'unresolved']) ||
         !list(item.findingRefs) || !list(item.evidence)) reject('case identity/classification');
     if (![item.initialRef, item.finalRef, item.authorityRef].every(optionalReference)) reject('case reference');
+    if (!item.evidence.every(reference)) reject('case evidence reference');
     if (item.adjudication !== 'unresolved' && (!identity(item.adjudicator) || !item.evidence.length)) reject('adjudication needs explicit assessor/evidence');
     if (item.disposition !== 'unresolved' && (!reference(item.initialRef) || !reference(item.finalRef) || !reference(item.authorityRef) || !item.evidence.length)) reject('known disposition needs initial/final/authority references and evidence');
     for (const ref of item.findingRefs) {
@@ -99,7 +131,7 @@ export function validateMeasurementDataset(value: unknown): MeasurementDataset {
   const audited = new Set();
   for (const audit of data.audits) {
     if (!changes.has(audit.changeId) || audited.has(audit.changeId) || typeof audit.blinded !== 'boolean' || !identity(audit.auditor) ||
-        !reference(audit.initialRef) || !reference(audit.finalRef) || !reference(audit.authorityRef) || !list(audit.evidence) || !audit.evidence.length ||
+        !reference(audit.initialRef) || !reference(audit.finalRef) || !reference(audit.authorityRef) || !list(audit.evidence) || !audit.evidence.length || !audit.evidence.every(reference) ||
         !list(audit.initialViolationCaseIds) || !list(audit.finalViolationCaseIds)) reject('audit evidence/identity');
     audited.add(audit.changeId);
     for (const id of [...audit.initialViolationCaseIds, ...audit.finalViolationCaseIds]) {

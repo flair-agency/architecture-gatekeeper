@@ -43,7 +43,7 @@ test('identical duplicate observations across all phases normalize before aggreg
   assert.equal(normalized.records.length, 3);
   assert.equal(input.records.length, 6, 'validation leaves the caller export unchanged');
   assert.notEqual(normalized, input);
-  assert.equal(validateMeasurementDataset(control), control, 'datasets without duplicates retain identity');
+  assert.deepEqual(validateMeasurementDataset(control), control, 'datasets without duplicates retain values');
   assert.deepEqual(aggregateMeasurement(input), aggregateMeasurement(control));
   assert.deepEqual(sampleMeasurementPopulation(input, { seed: 'frozen-seed', count: 1 }),
     sampleMeasurementPopulation(control, { seed: 'frozen-seed', count: 1 }));
