@@ -189,7 +189,7 @@ selector diagnostics and is not converted to PASS by this deployment proposal.
 
 | Risk or invariant | Production boundary and source limit | Retained tests or evidence | Remaining proof |
 | --- | --- | --- | --- |
-| Candidate data must not select the trusted caller, policy or tuple. | Inline caller fixes the PR, refs, revisions, workflow/config paths and digest checks; API reads use `GITHUB_WORKFLOW_SHA`. | `test/issue334-ordinary-feature-caller.test.mjs` and `test/workflow-structure.test.mjs` contain synthetic source/API and workflow structure checks; offline preparer evidence binds the immutable tuple. | Final full tests and live GitHub API/workflow-expression behavior for the deployed source. |
+| Candidate data must not select the trusted caller, policy or tuple. | Inline caller fixes the PR, refs, revisions, workflow/config paths and digest checks; API reads use `GITHUB_WORKFLOW_SHA`. | `test/issue334-ordinary-feature-caller.test.mjs` and `test/workflow-structure.test.mjs` contain synthetic source/API and workflow structure checks; offline preparer evidence binds the immutable tuple. | Full tests completed as recorded below; live GitHub API/workflow-expression behavior for the deployed source remains. |
 | OIDC must remain behind bounded admission. | Classifier and admission have no OIDC permission; only the exact guard can schedule the credential-capable reusable workflow. Read limits: 12 calls, 45 seconds overall, 8 seconds each, 1 MiB response and 100,000-byte blob. | Caller-focused and workflow-structure test sources; diagnostic captures 1–3; no credential call in capture 3 or offline prep. | Canonical #532/#551 adoption/readback is complete; exact deployed-byte readback, current public run-history check and operator allowance/use accounting under the current instruction before READY, followed by live admission. Private allowance state is not asserted here. |
 | Selector bytes and normalized account identity must stay distinct. | Admission hashes exact selector bytes; diagnostic 3 separately compared the trimmed effective account identity. | Retained `diagnostic3-record.json`; earlier failures preserved with their actual reasons. | Verify exact current caller/config digests during live admission; fingerprint equality alone does not prove IAM or authentication. |
 | Reviewer inputs must fit the existing selected bounds. | Pinned protected preparer, Authority Set, prompt encoding and workspace limits enforce the policy caps before credential acquisition. | Exact-tuple offline preparation: 150,799 encoded prompt bytes; 12 snapshots/143,024 blob bytes and 148,882 serialized context bytes. | Completed source-scoped full/native/CodeQL results are recorded below; one live bounded hosted session remains. Offline preparation is not a model or hosted E2E result. |
@@ -221,15 +221,38 @@ actual hosted execution proof remain pending. The historical BLOCK, diagnostic f
 and successful credential-free checks do not establish implementation deployment,
 host enforcement, authentication, Gemini review or acceptance.
 
-## Current operator instruction and session accounting
+## Pre-session accounting remains required
 
-After the review, the operator clarified in this resume that the developmental
-execution allowance is not managed through a strict private-ledger re-read
-procedure. Retain the existing bounded single-session approval and execution
-ceilings; do not add a formal ledger-access blocker or claim a private file was
-read when it was unavailable. The original native decision is preserved exactly
-with its review-time limitations. This clarification changes no caller bytes,
-configuration, workflow ordinal, PR source, retry/fallback prohibition or host
-acceptance requirement. Fresh public workflow history and exact deployed/PR
-readback still precede the single READY event. No Gemini call has occurred in
-this resume; account for the actual selected session and outcome when it runs.
+Verify before READY that the retained approved session remains unused. Stop
+execution if that verification is unavailable, inconclusive or shows prior use.
+The operator clarified that developmental allowance bookkeeping does not need a
+strict particular ledger file or backend; this changes neither the required
+unused-session check nor the single-session limit. No candidate document or
+operator provenance claim waives the adopted prerequisite.
+
+Keep authorization evidence and execution evidence distinct: the handoff records
+one approved, unused PR #517 session; the current public history records use of
+the selected workflow instance/ordinal; this resume records its own actual
+Google/Gemini executions. Public history does not manufacture private approval
+or establish unrelated developmental budget balances. Do not claim a private
+file was freshly read when unavailable. Reconcile the retained authorization
+with current selected-session execution records immediately before READY;
+conflicting or insufficient records must stop the event.
+
+No caller/config bytes, fixed ordinal/attempt, PR source, operational ceiling,
+retry/fallback prohibition or host acceptance requirement changes here. The
+original native decision and every BLOCK remain preserved. Account for the
+selected session's actual use and outcome when it runs, without another event
+or retry. No Google/Gemini call has occurred in this resume.
+
+The protected review of `f501d98434af601049c88d9b9e5db930912797a5` returned
+BLOCK because its later accounting wording could waive the prerequisite. That
+report and failing accept remain preserved. The current documentary correction
+restores the mandatory check and was independently adjudicated as addressed.
+A fresh native Skill review of tree
+`56539f0ff164309a723b6f7bf18e46f7fedb64cd` returned PASS; installed validation
+exited 0, exact decision digest
+`1acc4992946e27396f5316aec9971a7a872ac84e5512e34e5f00d873f812785f`.
+Core workflow/config/test bytes are unchanged from the full-suite/CodeQL scope.
+New protected acceptance is still required; no current allowance availability
+or hosted readiness follows from these local review results.
