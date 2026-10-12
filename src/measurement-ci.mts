@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, realpathSync } from 'node:fs';
 import { appendGitHubOutput } from './runner-temp-path.mjs';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute, relative, sep } from 'node:path';
-import { beginMeasurement, measurementDigest, parseMeasurementJson, readMeasurementJson, resumeMeasurement } from './measurement.mts';
+import { beginMeasurement, measurementDigest, warnMeasurementGap, parseMeasurementJson, readMeasurementJson, resumeMeasurement } from './measurement.mts';
 import { readDiagnosticText, resolveDiagnosticPath } from './diagnostic-path.mts';
 
 export function runCiMeasurement(command: string | undefined, env: NodeJS.ProcessEnv = process.env) {
@@ -70,5 +70,5 @@ export function runCiMeasurement(command: string | undefined, env: NodeJS.Proces
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   // Optional observation cannot fail required review/acceptance checks.
   try { runCiMeasurement(process.argv[2]); }
-  catch { process.stderr.write('AGK measurement gap: CI diagnostic recording unavailable.\n'); }
+  catch { warnMeasurementGap('AGK measurement gap: CI diagnostic recording unavailable.\n'); }
 }
