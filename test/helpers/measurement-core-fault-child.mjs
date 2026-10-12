@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { closeSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, renameSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { beginMeasurement, measurementDigest, resumeMeasurement, resumeNativeMeasurement } from '../../dist/measurement.mjs';
 const [scenario] = process.argv.slice(2);
@@ -10,7 +11,26 @@ mkdirSync(root); mkdirSync(directory, { mode: 0o700 });
 const originalCwd = process.cwd();
 try {
   process.chdir(root);
-  if (scenario.startsWith('cwd-')) {
+  if (scenario === 'subdirectory-root') {
+    execFileSync('git', ['init', '--quiet'], { cwd: root });
+    const subdir = join(root, 'src'); mkdirSync(subdir);
+    const inside = join(root, 'private-records'); mkdirSync(inside, { mode: 0o700 });
+    const fromRoot = beginMeasurement({ route: 'native', directory, correlation: measurementDigest(join(parent, 'request.json')) });
+    const request = { requestId: 'a'.repeat(64), prompt: 'fixture', schema: {} }; fromRoot.request(request);
+    process.chdir(subdir);
+    for (const cwd of [undefined, subdir]) {
+      assert.equal(beginMeasurement({ route: 'manual', directory: inside, cwd }).id, null);
+      assert.equal(resumeMeasurement(fromRoot.id, inside, cwd).id, null);
+      assert.equal(resumeNativeMeasurement(join(parent, 'request.json'), { ...request, repositoryRoot: cwd }, inside).id, null);
+    }
+    assert.deepEqual(readdirSync(inside), []);
+    const fromSubdir = beginMeasurement({ route: 'manual', directory }); assert.ok(fromSubdir.id); fromSubdir.finish();
+    const { loadMeasurementDirectory } = await import('../../dist/measurement.mjs');
+    const records = loadMeasurementDirectory(directory).records;
+    assert.equal(records.find(r => r.attemptId === fromRoot.id).repositoryId, records.find(r => r.attemptId === fromSubdir.id).repositoryId);
+    assert.equal(resumeMeasurement(fromRoot.id, directory).id, fromRoot.id);
+    assert.equal(resumeNativeMeasurement(join(parent, 'request.json'), request, directory).id, fromRoot.id);
+  } else if (scenario.startsWith('cwd-')) {
     const inside = join(root, 'private-records'); mkdirSync(inside, { mode: 0o700 });
     process.env.AGK_MEASUREMENT_DIR = inside;
     const options = scenario === 'cwd-option' ? { directory: inside } : scenario === 'cwd-environment' ? {} :

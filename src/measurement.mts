@@ -1,9 +1,10 @@
 import { MEASUREMENT_ENVELOPE_FIELDS, validateMeasurementPhases } from './measurement-consistency.mts';
 import { rejectDuplicateJsonKeys } from './authority-set.mjs';
 import { readRegularGitSnapshot } from './legacy-git-snapshot.mjs';
+import { repositoryRoot } from './review-contract.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { closeSync, constants, fstatSync, lstatSync, openSync, opendirSync, readFileSync, readSync, realpathSync, writeFileSync, writeSync } from 'node:fs';
-import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { readDiagnosticText, resolveDiagnosticPath } from './diagnostic-path.mts';
 
 export type MeasurementFields = Record<string, unknown>;
@@ -74,9 +75,17 @@ function* measurementDirectoryEntries(path: string, maximumEntries: number) {
     }
   } finally { handle.closeSync(); }
 }
-function reviewedRoot(value: unknown = process.cwd()): string {
+export function resolveMeasurementWorkingRoot(value: unknown = process.cwd()): string {
   if (typeof value !== 'string' || !value) throw new Error('Invalid diagnostic working root.');
-  return value;
+  const canonical = realpathSync(value);
+  // Resolve an actual Git worktree before checking containment or hashing its
+  // identity. Non-Git working roots remain supported; an unresolved Git marker
+  // is a gap, never permission to fall back to a narrower subdirectory.
+  for (let ancestor = canonical; ; ancestor = dirname(ancestor)) {
+    try { lstatSync(join(ancestor, '.git')); return repositoryRoot(canonical); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+    if (dirname(ancestor) === ancestor) return canonical;
+  }
 }
 function directory(path: string | undefined, root?: string, remainingWrites = 1) {
   // POSIX mode bits cannot establish directory privacy on Windows. Until a
@@ -163,9 +172,10 @@ export function beginMeasurement(options: MeasurementOptions = {}): MeasurementA
     if (!selected) return noop;
     if (!route || !ROUTES.has(route)) throw new Error('Unknown measurement route.');
     if (changeId && (typeof changeId !== 'string' || changeId.length > 200)) throw new Error('Invalid change identity.');
-    const dir = directory(selected, reviewedRoot(cwd), 3);
+    const root = resolveMeasurementWorkingRoot(cwd);
+    const dir = directory(selected, root, 3);
     const start = { version: 1, kind: 'agk-diagnostic', attemptId: randomUUID(), phase: 'start', route, startedAt: new Date().toISOString(), runtime: runtime(),
-      repositoryId: cwd ? measurementDigest(realpathSync(cwd)) : null, changeId: changeId || null,
+      repositoryId: measurementDigest(root), changeId: changeId || null,
       sessionId: sessionId ? measurementDigest(sessionId) : null, correlation: correlation || null, context };
     const snapshot = snapshotJson(start);
     put(dir, snapshot);
@@ -248,7 +258,7 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
 export function resumeNativeMeasurement(requestPath: string, request: MeasurementRequest, selected = process.env.AGK_MEASUREMENT_DIR): MeasurementAttempt {
   if (!selected) return noop;
   try {
-    const dir = directory(selected, reviewedRoot(request.repositoryRoot));
+    const dir = directory(selected, resolveMeasurementWorkingRoot(request.repositoryRoot));
     const correlation = measurementDigest(resolve(requestPath));
     const records = loadMeasurementDirectory(dir).records as RecordView[];
     // A torn/oversized terminal is still an exclusive terminal file. Do not
@@ -259,10 +269,12 @@ export function resumeNativeMeasurement(requestPath: string, request: Measuremen
     };
     const collectorSha256 = runtime().collectorSha256;
     const starts = records.filter(r => (r.runtime as { collectorSha256?: unknown } | null)?.collectorSha256 === collectorSha256 && r.phase === 'prepared' && r.route === 'native' && r.request?.requestId === request.requestId && r.correlation === correlation && unfinished(r.attemptId));
-    starts.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
-    const start = starts[0];
+    starts.sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
+    const start = starts.find(candidate => {
+      try { validateMeasurementPhases(records.filter(r => r.attemptId === candidate.attemptId)); return true; }
+      catch { return false; /* a corrupt candidate must not shadow a valid older one */ }
+    });
     if (!start) throw new Error('Native preparation observation missing or already completed.');
-    validateMeasurementPhases(records.filter(r => r.attemptId === start.attemptId));
     const result = recorder(dir, start);
     return result;
   } catch { warnMeasurementGap(); return noop; }
@@ -317,7 +329,7 @@ export function redactMeasurement(value: MeasurementRecord) {
 
 export function resumeMeasurement(attemptId: string, selected: string | undefined, cwd: unknown = process.cwd()): MeasurementAttempt {
   try {
-    const dir = directory(selected, reviewedRoot(cwd));
+    const dir = directory(selected, resolveMeasurementWorkingRoot(cwd));
     if (!/^[a-f0-9-]{36}$/.test(attemptId)) throw new Error('Invalid attempt identity.');
     try { readDiagnosticText(join(dir, `${attemptId}.terminal.json`), MAX_BYTES); throw new Error('Attempt already completed.'); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }

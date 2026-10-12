@@ -140,3 +140,22 @@ test('explicit resumption workspace retains containment without requiring the ru
   assert.equal(resumed.id, f.attempt.id); resumed.finish({ state: 'completed' });
   assert.equal(loadMeasurementDirectory(f.directory).records.find(r => r.phase === 'terminal').state, 'completed');
 });
+
+
+test('native selection skips newer unfinished candidates with conflicting phase metadata', t => {
+  const f = fixture(t, 'native');
+  for (const field of ['changeId', 'runtime', 'context']) {
+    const newer = beginMeasurement({ route: 'native', cwd: f.root, directory: f.directory, correlation: measurementDigest(f.requestPath) });
+    newer.request(f.request);
+    for (const phase of ['start', 'prepared']) {
+      const path = join(f.directory, `${newer.id}.${phase}.json`); const record = JSON.parse(readFileSync(path));
+      record.startedAt = '2099-01-01T00:00:00.000Z';
+      if (phase === 'start') record[field] = field === 'runtime' ? { collectorSha256: 'f'.repeat(64) } : field === 'context' ? { conflict: true } : 'conflict';
+      writeFileSync(path, JSON.stringify(record));
+    }
+  }
+  const resumed = resumeNativeMeasurement(f.requestPath, f.request, f.directory);
+  assert.equal(resumed.id, f.attempt.id); resumed.finish({ state: 'completed' });
+  assert.deepEqual(loadMeasurementDirectory(f.directory).records.filter(r => r.phase === 'terminal').map(r => r.attemptId), [f.attempt.id]);
+  assert.equal(resumeNativeMeasurement(f.requestPath, f.request, f.directory).id, null, 'all remaining candidates are corrupt');
+});
