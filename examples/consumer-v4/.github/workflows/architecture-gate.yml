@@ -9,14 +9,57 @@ permissions:
   pull-requests: write
 
 jobs:
+  same-repository-admission:
+    permissions: {}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      admitted: ${{ steps.classify.outputs.admitted }}
+    steps:
+      - name: Validate pull request repository identity
+        id: classify
+        env:
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          EXPECTED_REPOSITORY_ID: ${{ github.repository_id }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+
+          function fail(message) {
+            console.error(`Repository admission failed: ${message}`);
+            process.exit(1);
+          }
+
+          function positiveId(value) {
+            if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) return String(value);
+            if (typeof value === 'string' && /^[1-9][0-9]*$/.test(value)) return value;
+            return null;
+          }
+
+          if (process.env.GITHUB_EVENT_NAME !== 'pull_request_target') fail('unexpected event type');
+          const expectedName = process.env.EXPECTED_REPOSITORY;
+          const expectedId = positiveId(process.env.EXPECTED_REPOSITORY_ID);
+          if (!expectedName || !expectedId) fail('missing expected repository identity');
+
+          let event;
+          try {
+            event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          } catch {
+            fail('missing or malformed event payload');
+          }
+          const repositories = [event?.repository, event?.pull_request?.base?.repo, event?.pull_request?.head?.repo];
+          for (const repository of repositories) {
+            if (!repository || positiveId(repository.id) !== expectedId || repository.full_name !== expectedName) {
+              fail('event repository identities do not all match the current repository');
+            }
+          }
+          if (!process.env.GITHUB_OUTPUT) fail('missing runner output path');
+          appendFileSync(process.env.GITHUB_OUTPUT, 'admitted=true\n');
+          NODE
+
   architecture-gate:
-    # This job forwards OPENAI_API_KEY to a reusable workflow. Only invoke it
-    # for pull requests whose head and base are this repository itself.
-    if: >-
-      github.event.pull_request.head.repo.id == github.repository_id &&
-      github.event.pull_request.base.repo.id == github.repository_id &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.base.repo.full_name == github.repository
+    needs: same-repository-admission
+    if: needs.same-repository-admission.result == 'success' && needs.same-repository-admission.outputs.admitted == 'true'
     uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-consumer.yml@2ea9ebe12be9d233c41a2dbc61e7a84caf3abbfb
     with:
       policy-path: .codex/gatekeeper/ci-policy.json

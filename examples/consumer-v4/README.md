@@ -20,13 +20,22 @@ verifying the route for the consumer repository.
 GitHub loads a `pull_request_target` workflow definition from the base
 repository's default branch; `branches: [main]` limits this caller to pull
 requests targeting `main`. Keep the default branch protected and make the
-reviewed caller available there. Its job-level condition requires both head
-and base repository IDs and names to match the current repository before the
-secret-bearing reusable workflow can be called; cross-repository pull requests
-are skipped. The caller itself has no checkout or run steps. Do not add
-untrusted pull request code execution to this privileged path. Consumers must
-decide whether their host policy permits this event and separately configure
-and verify branch protection and required checks; this example does not prove
+reviewed caller available there. An always-run, unprivileged
+`same-repository-admission` job fails on missing or mismatched event repository
+IDs or names and emits `admitted=true` only when the payload repository, PR
+base, and PR head all match the current repository. The secret-bearing
+`architecture-gate` reusable workflow depends on that output, so forks cannot
+make its skipped status a successful admission check. The admission step only
+parses event JSON, has no token permissions, and receives no secrets. The
+pinned reusable workflow consumes pull request content for review; do not add
+candidate build, test, or script execution to this privileged path.
+
+Consumers must require `same-repository-admission` and the pinned reusable
+workflow's nested `architecture-gate / accept` check as separate
+branch-protection checks; do not treat the caller wrapper job `architecture-gate`
+as the acceptance check. Consumers must decide
+whether their host policy permits this event and separately configure and
+verify branch protection and required checks. This example does not prove
 those host settings.
 
 Before enabling the caller, add an `OPENAI_API_KEY` Actions secret in the
