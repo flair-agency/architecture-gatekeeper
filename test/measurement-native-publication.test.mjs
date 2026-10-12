@@ -42,7 +42,9 @@ for (const fault of ['missing', 'malformed', 'nonfile']) test(`native decision r
  rmSync(decision,{recursive:true,force:true});writeFileSync(decision,JSON.stringify({decision:'PASS',authorityFiles:['AGENTS.md'],reviewedScope:['fixture'],findings:[]}));
  const retry = spawnSync(process.execPath,[cli,'validate',request,decision],{cwd:root,env,encoding:'utf8'});
  assert.equal(retry.status,0,retry.stderr);assert.equal(JSON.parse(retry.stdout).decision,'PASS');
- assert.deepEqual(loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal'),observed);
+ const terminals=loadMeasurementDirectory(directory).records.filter(r=>r.phase==='terminal');
+ assert.equal(terminals.length,2);assert.deepEqual(terminals.find(r=>r.attemptId===observed.attemptId),observed);
+ assert.equal(terminals.find(r=>r.attemptId!==observed.attemptId).decision.decision,'PASS');
 });
 
 for (const fault of ['missing-config','malformed-config','missing-authority','unresolved-repository']) test(`native preparation failure preserves required error and error observation: ${fault}`, t => {
@@ -88,5 +90,7 @@ test('native semantic validation failure remains visible after valid retry',t=>{
  const original=invoke(''),observed=invoke(directory);assert.equal(observed.status,2,observed.stderr);assert.equal(observed.stderr,original.stderr);assert.equal(observed.stdout,'');
  const failure=loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal');assert.equal(failure.state,'error');assert.equal(failure.decision,null);assert.equal(failure.observation.failureStage,'validation');
  writeFileSync(decision,JSON.stringify({decision:'PASS',authorityFiles:['AGENTS.md'],reviewedScope:['fixture'],findings:[]}));const retry=invoke(directory);assert.equal(retry.status,0,retry.stderr);assert.equal(JSON.parse(retry.stdout).decision,'PASS');
- assert.deepEqual(loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal'),failure);
+ const terminals=loadMeasurementDirectory(directory).records.filter(r=>r.phase==='terminal');
+ assert.equal(terminals.length,2);assert.deepEqual(terminals.find(r=>r.attemptId===failure.attemptId),failure);
+ const success=terminals.find(r=>r.attemptId!==failure.attemptId);assert.equal(success.state,'completed');assert.equal(success.decision.decision,'PASS');
 });

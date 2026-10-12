@@ -8,7 +8,6 @@ import { executeLocalReviewer, executeLocalReviewerSync, type LocalReviewerAsync
   type LocalReviewerSyncOptions, type LocalReviewerResult } from '../reviewer-transports/local-reviewer-execution.mts';
 
 type MeasurementSelection = { measurement?: { directory?: string; changeId?: string } };
-type MeasurementContext = { measurementRoute?: 'manual' | 'UserPromptSubmit'; measurementSession?: unknown };
 export type ManualReviewOutcome = ValidatedReviewDecision | { decision: ValidatedReviewDecision; execution: unknown };
 export type ManualReviewSyncOptions<Result = unknown> = LocalReviewerSyncOptions<Result, PreparedCodexReviewRequest> & MeasurementSelection & { executionReport?: boolean };
 export type ManualReviewAsyncOptions = LocalReviewerAsyncOptions<PreparedReviewRequest> & MeasurementSelection & { executionReport?: boolean };
@@ -50,14 +49,14 @@ function withoutDiagnosticOptions<T extends object>(options: T): T {
 // that branch before invoking Codex; this erased view retains that error path
 // without claiming the complete canonical request is already Codex-only.
 type CanonicalSyncOperation = (request: PreparedReviewRequest, options: ManualReviewSyncOptions) => LocalReviewerResult;
-function measurementFor(cwd: string, options: MeasurementSelection & MeasurementContext, route?: 'manual' | 'UserPromptSubmit', session?: unknown) {
+function measurementFor(cwd: string, options: MeasurementSelection, route?: 'manual' | 'UserPromptSubmit', session?: unknown) {
   try {
     const measurement = options.measurement;
     const selected = measurement?.directory ?? process.env.AGK_MEASUREMENT_DIR;
     let root = cwd;
     if (selected) { try { root = repositoryRoot(cwd); } catch { /* preparation failure is still an attempt */ } }
-    const selectedRoute = route || options.measurementRoute || 'manual';
-    const selectedSession = route ? session : options.measurementSession;
+    const selectedRoute = route || 'manual';
+    const selectedSession = route ? session : undefined;
     return beginMeasurement({ ...measurement, directory: selected, route: selectedRoute, cwd: root, sessionId: typeof selectedSession === 'string' ? selectedSession : undefined });
   } catch { warnMeasurementGap(); return { id: null, request() {}, finish() {} }; }
 }
@@ -71,7 +70,7 @@ function deferredMeasurement(measurement: MeasurementAttempt) {
       observation: { ...completion.observation, failureStage: completion.state === 'error' ? completion.observation?.failureStage : stage } }); }
   };
 }
-function review(task: unknown, cwd: string, previous: unknown = null, options: ManualReviewSyncOptions & MeasurementContext = {}, capturedMeasurement = measurementFor(cwd, options)): ManualReviewOutcome {
+function review(task: unknown, cwd: string, previous: unknown = null, options: ManualReviewSyncOptions = {}, capturedMeasurement = measurementFor(cwd, options)): ManualReviewOutcome {
   const measurement = capturedMeasurement;
   let stage = 'preparation';
   try {
@@ -87,7 +86,7 @@ function review(task: unknown, cwd: string, previous: unknown = null, options: M
     return outcome;
   } catch (error) { measurement.finish({ state: 'error', observation: { failureStage: stage } }); throw error; }
 }
-async function reviewAsync(task: unknown, cwd: string, previous: unknown = null, options: ManualReviewAsyncOptions & MeasurementContext = {}, capturedMeasurement = measurementFor(cwd, options)): Promise<ManualReviewOutcome> {
+async function reviewAsync(task: unknown, cwd: string, previous: unknown = null, options: ManualReviewAsyncOptions = {}, capturedMeasurement = measurementFor(cwd, options)): Promise<ManualReviewOutcome> {
   const measurement = capturedMeasurement;
   let stage = 'preparation';
   try {
@@ -112,7 +111,7 @@ export function runManualReviewCli(argv: readonly string[] = process.argv.slice(
   const task = taskArgs.join(' ').trim(); if (task) { void report(task); return; }
   let input = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', chunk => { input += chunk; }); process.stdin.on('end', () => { void report(input); });
 }
-function hookInput(input: string, cwd: string, options: MeasurementSelection & MeasurementContext): { event: HookEventView; root: string } {
+function hookInput(input: string, cwd: string, options: MeasurementSelection): { event: HookEventView; root: string } {
   try {
     let event: unknown;
     try { event = JSON.parse(input); } catch { throw new Error('Architecture gate received invalid hook JSON.'); }

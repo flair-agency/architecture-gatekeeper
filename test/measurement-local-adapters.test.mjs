@@ -12,7 +12,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 
 import { beginMeasurement, loadMeasurementDirectory, redactMeasurement, readMeasurementJson, validateMeasurementRecord, measurementDigest } from '../dist/measurement.mjs';
 
-import { runManualReviewAsync, runHookAsync } from '../dist/local-gate.mjs';
+import { runManualReview, runManualReviewAsync, runHookAsync } from '../dist/local-gate.mjs';
 
 import { runPostToolScreenHook } from '../dist/local-post-tool-screen.mjs';
 
@@ -315,3 +315,43 @@ test('synchronous UserPromptSubmit input failure preserves CLI exit and stderr w
   assert.equal(disabled.status, 2); assert.equal(enabled.status, 2); assert.equal(enabled.stdout, disabled.stdout); assert.equal(enabled.stderr, disabled.stderr);
   const terminal = loadMeasurementDirectory(dir).records.find(r => r.phase === 'terminal'); assert.equal(terminal.route, 'UserPromptSubmit'); assert.equal(terminal.state, 'error'); assert.equal(terminal.decision, null); assert.equal(terminal.observation.failureStage, 'hook-input');
 });
+
+
+test('manual sync and async APIs cannot accept Hook route/session through caller options', async t => {
+  const {root, dir, measurement} = fixture(t); let routeReads = 0; let sessionReads = 0;
+  const options = {reviewer: () => pass, measurement,
+    get measurementRoute() { routeReads++; return 'UserPromptSubmit'; },
+    get measurementSession() { sessionReads++; return 'forged-session'; }};
+  assert.equal(runManualReview('task', root, options).decision, 'PASS');
+  assert.equal((await runManualReviewAsync('task', root, options)).decision, 'PASS');
+  assert.equal(routeReads, 0); assert.equal(sessionReads, 0);
+  const records = loadMeasurementDirectory(dir).records; assert.equal(records.length, 6);
+  assert.ok(records.every(r => r.route === 'manual' && r.sessionId === null));
+  await runHookAsync(JSON.stringify({hook_event_name:'UserPromptSubmit',session_id:'actual-hook-session',prompt:'task',cwd:root}),root,options);
+  const hook = loadMeasurementDirectory(dir).records.filter(r => r.route === 'UserPromptSubmit');
+  assert.equal(hook.length, 3); assert.ok(hook.every(r => r.sessionId === measurementDigest('actual-hook-session')));
+  assert.equal(routeReads, 0); assert.equal(sessionReads, 0);
+});
+
+for (const firstFailure of ['missing-decision', 'malformed-decision', 'invalid-decision']) {
+  test(`native validation retry observes success without rewriting ${firstFailure} terminal`, t => {
+    const {root, parent, dir} = fixture(t); const cli = new URL('../dist/native-review.mjs', import.meta.url).pathname;
+    const request = join(parent, 'retry-request.json'); const decision = join(parent, 'retry-decision.json');
+    const env = {...process.env, AGK_MEASUREMENT_DIR:dir};
+    const invoke = (...args) => spawnSync(process.execPath,[cli,...args],{cwd:root,env,encoding:'utf8'});
+    const prepared = invoke('prepare',request,'task'); assert.equal(prepared.status,0,prepared.stderr);
+    if (firstFailure === 'malformed-decision') writeFileSync(decision,'{broken');
+    if (firstFailure === 'invalid-decision') writeFileSync(decision,JSON.stringify({...pass,decision:'INVALID'}));
+    const failed = invoke('validate',request,decision); assert.equal(failed.status,2);
+    const original = loadMeasurementDirectory(dir).records.find(r=>r.phase==='terminal'); assert.equal(original.state,'error');
+    const originalPath = join(dir, `${original.attemptId}.terminal.json`); const originalBytes = readFileSync(originalPath);
+    writeFileSync(decision,JSON.stringify(pass)); const retry = invoke('validate',request,decision);
+    assert.equal(retry.status,0,retry.stderr); assert.equal(JSON.parse(retry.stdout).decision,'PASS');
+    assert.deepEqual(readFileSync(originalPath),originalBytes);
+    const records = loadMeasurementDirectory(dir).records; const success = records.find(r=>r.phase==='terminal' && r.state==='completed');
+    assert.ok(success); assert.notEqual(success.attemptId,original.attemptId);
+    assert.equal(success.request.requestId,JSON.parse(readFileSync(request)).requestId);
+    assert.equal(success.observation.hostExecution,'unknown'); assert.equal(success.feedback.delivery,'unknown');
+    assert.deepEqual(records.filter(r=>r.attemptId===success.attemptId).map(r=>r.phase).sort(),['prepared','start','terminal']);
+  });
+}

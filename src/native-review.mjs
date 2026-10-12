@@ -58,6 +58,14 @@ export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = pro
     try { request = JSON.parse(readFileSync(requestPath, 'utf8')); }
     catch (error) { measurement = startObservation(cwd); throw error; }
     measurement = resumeNativeMeasurement(requestPath, /** @type {import('./measurement.mts').MeasurementRequest} */ (request));
+    // A terminal belongs to one validation attempt. Observe a retry separately
+    // instead of rewriting a previous failed or completed observation.
+    if (!measurement.id) {
+      measurement = startObservation(typeof request?.repositoryRoot === 'string' ? request.repositoryRoot : cwd);
+      if (typeof request?.task === 'string' && typeof request?.requestId === 'string') {
+        measurement.request(request, { kind: 'proposed-task', taskSha256: measurementDigest(request.task) });
+      }
+    }
     stage = 'decision-read';
     const decision = JSON.parse(readFileSync(rest[0], 'utf8'));
     stage = 'validation';
