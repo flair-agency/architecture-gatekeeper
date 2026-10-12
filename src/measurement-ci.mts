@@ -38,7 +38,7 @@ export function runCiMeasurement(command: string | undefined, env: NodeJS.Proces
     return;
   }
   if (command === 'finish') {
-    const capture = resumeMeasurement(env.MEASUREMENT_ATTEMPT_ID as string, dir);
+    const capture = resumeMeasurement(env.MEASUREMENT_ATTEMPT_ID as string, dir, workingRoot);
     const executed = env.REVIEW_OUTCOME === 'success';
     // A step may be skipped only when the protected workflow says it was unselected.
     const selectedStepSucceeded = (selection: string | undefined, outcome: string | undefined) =>

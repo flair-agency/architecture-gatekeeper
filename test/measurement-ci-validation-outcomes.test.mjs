@@ -26,7 +26,7 @@ function fixture(t) {
     LEGACY_VALIDATION_SELECTED: 'false', LEGACY_VALIDATION: 'skipped',
     AUTHORITY_VALIDATION_SELECTED: 'false', AUTHORITY_VALIDATION: 'skipped',
     REVIEW_OUTPUT_FILE: decisionPath, REVIEW_RESPONSE: JSON.stringify(validDecision) };
-  return { directory, output, decisionPath, env };
+  return { parent, directory, output, decisionPath, env };
 }
 
 function finishAttempt(f) {
@@ -52,7 +52,7 @@ test('CI collector requires successful selected steps and skipped unselected ste
   const oversized = { ...validDecision, summary: 'x'.repeat(65_537) };
   const serialized = JSON.stringify(oversized);
   assert.ok(Buffer.byteLength(serialized) > 65_536 && Buffer.byteLength(serialized) < 256 * 1024);
-  const decisionKind = spawnSync(process.execPath, [new URL('../dist/ci-decision-kind.mjs', import.meta.url).pathname], {
+  const decisionKind = spawnSync(process.execPath, [realpathSync(new URL('../dist/ci-decision-kind.mjs', import.meta.url))], {
     env: { ...process.env, DECISION: serialized, GITHUB_OUTPUT: f.output }, encoding: 'utf8' });
   assert.notEqual(decisionKind.status, 0);
   assert.match(decisionKind.stderr, /oversized/);
@@ -190,5 +190,25 @@ test('CI diagnostic bootstrap refuses in-worktree directories before creating th
     assert.equal(existsSync(target), false);
     assert.throws(() => runCiMeasurement(command, { ...f.env, GITHUB_WORKSPACE: workspace, AGK_MEASUREMENT_DIR: target }), /outside the reviewed worktree/);
     assert.equal(existsSync(target), false);
+  }
+});
+
+
+test('real CI CLI resumes from runner temp against the reviewed workspace', t => {
+  const f = fixture(t);
+  const workspace = join(f.parent, 'workspace'); mkdirSync(workspace);
+  writeFileSync(f.decisionPath, JSON.stringify(validDecision));
+  const cli = realpathSync(new URL('../dist/measurement-ci.mjs', import.meta.url));
+  for (const [outcome, state] of [['success', 'completed'], ['failure', 'incomplete'], ['cancelled', 'cancelled']]) {
+    writeFileSync(f.output, '');
+    const env = { ...process.env, ...f.env, GITHUB_WORKSPACE: workspace, REVIEW_OUTCOME: outcome };
+    let run = spawnSync(process.execPath, [cli, 'start'], { cwd: f.parent, env, encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr);
+    const attemptId = readFileSync(f.output, 'utf8').trim().split('=')[1]; assert.ok(attemptId);
+    run = spawnSync(process.execPath, [cli, 'finish'], { cwd: f.parent, env: { ...env, MEASUREMENT_ATTEMPT_ID: attemptId }, encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr); assert.equal(run.stderr, '');
+    const terminal = loadMeasurementDirectory(f.directory).records.find(r => r.attemptId === attemptId && r.phase === 'terminal');
+    assert.ok(terminal, 'finish writes a terminal under runner temp'); assert.equal(terminal.state, state);
+    assert.equal(terminal.decision?.decision ?? null, state === 'completed' ? 'PASS' : null);
   }
 });
