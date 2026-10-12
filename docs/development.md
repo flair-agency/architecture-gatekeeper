@@ -132,7 +132,7 @@ only its existing exact `authorityFiles` decision check is extracted to
 `src/ci-review/legacy-authority-decision.mts`. Parsed decisions and provenance
 observations remain unknown, and the helper returns an unknown observation. A
 local source-only CodeQL comparison reports 57 of 58 prior fingerprints and all
-58 flows; hosted verification remains pending. This partial extraction does not
+58 flows; hosted CodeQL analysis and model regression passed in #548. This partial extraction does not
 claim fingerprint equivalence, risk removal, authentication, owner authorization,
 immutable evidence or protected acceptance. The multi-authority addition
 migration also remains partial; no model expansion or alert dismissal is made.
@@ -283,16 +283,23 @@ unchanged. The materializer retains
 two narrow `@ts-expect-error` boundaries where it composes the existing Git
 reader and filesystem writer. They preserve those operations without claiming
 that `outputPath` is a string: the original truthy guard permits native path-like
-and file-descriptor inputs. The finalizer and multi-authority orchestration
-files also remain partial migrations; their selected typed helpers do not move
-the rest of either adapter. The legacy CI preparer remains another partial
-migration: only its decision check is extracted, with Git, filesystem and CLI
-operations at the original path.
+and file-descriptor inputs. Six originals have partial helper migrations.
+The CI report keeps its flat CLI and filesystem sinks; the owner-addition
+finalizer keeps its finalizer and CLI operations; and multi-authority
+orchestration keeps its adapter while delegating selected eligibility helpers.
+Owner-addition CI delegates only the post-parse single-member selection while
+retaining its Git reads, file writes and command dispatch. GitHub OWNER_ADDITION
+provenance delegates the bounded single-entry ZIP parser while retaining fetch,
+token, artifact selection, digest binding and attestation validation at the
+flat path. These types describe existing parsed bytes and selected-member
+results; they do not authenticate provenance or establish acceptance. The legacy CI
+preparer is also partial: its decision check is extracted, while Git, filesystem
+and CLI operations remain at the original path.
 
 The 57-of-58-fingerprint local CodeQL comparison above concerns that legacy
 decision helper, not a move of the snapshot materializer sink. All 58 flows
-remain present; hosted verification is pending and the selected model is
-unchanged. The materializer remains a checked JavaScript bridge at its original
+remain present; hosted CodeQL analysis and model regression passed in #548
+with the selected model unchanged. The materializer remains a checked JavaScript bridge at its original
 path with its original path-like output behavior.
 
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
@@ -303,14 +310,14 @@ The internal-adapter candidate has 75 of the original 96 modules typed and
 entrypoint foundation has 80 `.mts` modules and 16 original modules remaining.
 This CI composition candidate brings the count to 81 `.mts` modules and
 15 originals remaining; the partially typed report is included in the latter.
-The GitHub command candidate reaches 82 original modules in `.mts` and
-14 originals remaining. Of those 14, three have checked JavaScript contracts
-(the runner-environment accessor, snapshot materializer and native CLI), and four are
-partial helper migrations (CI report, owner-addition finalizer, multi-authority
-orchestration and the legacy authority decision check). The legacy CI
-preparation and CLI body remain at their original flat path. The other seven
-remain JavaScript modules outside these migrations. These source-layout counts
-do not change the selected CodeQL model or establish acceptance evidence.
+The GitHub command candidate has 82 original modules fully migrated to `.mts`
+and 14 originals not fully migrated. Of those 14, three have checked
+JavaScript contracts (the runner-environment accessor, snapshot materializer
+and native CLI), and six have partial helper migrations (CI report,
+owner-addition finalizer, multi-authority orchestration, owner-addition CI and
+GitHub OWNER_ADDITION provenance and the legacy authority decision check). The other five remain JavaScript modules
+outside these migrations. These source-layout counts do not change the
+selected CodeQL model or establish acceptance evidence.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation

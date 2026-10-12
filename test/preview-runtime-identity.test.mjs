@@ -70,7 +70,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'local-review/local-post-tool-screen.mjs',
     'local-review/manual-review.mjs',
     'owner-addition/owner-addition-finalize.mjs',
-    'owner-addition/multi-authority-eligibility.mjs');
+    'owner-addition/multi-authority-eligibility.mjs',
+    'owner-addition/single-authority-member.mjs',
+    'github/owner-addition-evidence-zip.mjs');
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -82,7 +84,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   await runtime.validatePreviewReceipt(receipt, f.root);
 
   const unchangedPaths = [...new Set([...nestedPaths.map(path => path.split('/').at(-1)),
-    'preview-lifecycle.mjs']
+    'preview-lifecycle.mjs', 'owner-addition-ci.mjs', 'github-owner-addition-provenance.mjs']
     .filter(file => existsSync(join(runtimeRoot, 'dist', file))))];
   unchangedPaths.push('../package.json');
   const unchangedDigests = unchangedPaths.map(file => {
@@ -241,6 +243,20 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const multiAuthorityCliPath = join(flatRoot, 'dist/owner-addition-multiauthority.mjs');
   writeFileSync(multiAuthorityCliPath, readFileSync(multiAuthorityCliPath, 'utf8')
     .replace(/from (["'])\.\/owner-addition\/multi-authority-eligibility\.mjs\1/, "from './multi-authority-eligibility-helper.mjs'"));
+  writeFileSync(join(flatRoot, 'dist/single-authority-member-helper.mjs'),
+    readFileSync(join(flatRoot, 'dist/owner-addition/single-authority-member.mjs')));
+  const ownerAdditionCiPath = join(flatRoot, 'dist/owner-addition-ci.mjs');
+  const ownerAdditionCiSource = readFileSync(ownerAdditionCiPath, 'utf8');
+  assert.match(ownerAdditionCiSource, /from (["'])\.\/owner-addition\/single-authority-member\.mjs\1/);
+  writeFileSync(ownerAdditionCiPath, ownerAdditionCiSource
+    .replace(/from (["'])\.\/owner-addition\/single-authority-member\.mjs\1/, "from './single-authority-member-helper.mjs'"));
+  writeFileSync(join(flatRoot, 'dist/owner-addition-evidence-zip-helper.mjs'),
+    readFileSync(join(flatRoot, 'dist/github/owner-addition-evidence-zip.mjs')));
+  const githubOwnerAdditionProvenancePath = join(flatRoot, 'dist/github-owner-addition-provenance.mjs');
+  const githubOwnerAdditionProvenanceSource = readFileSync(githubOwnerAdditionProvenancePath, 'utf8');
+  assert.match(githubOwnerAdditionProvenanceSource, /from (["'])\.\/github\/owner-addition-evidence-zip\.mjs\1/);
+  writeFileSync(githubOwnerAdditionProvenancePath, githubOwnerAdditionProvenanceSource
+    .replace(/from (["'])\.\/github\/owner-addition-evidence-zip\.mjs\1/, "from './owner-addition-evidence-zip-helper.mjs'"));
   for (const file of ['owner-amendment-block-handoff.mjs',
     'owner-amendment-block-handoff-compose.mjs', 'owner-amendment-block-handoff-orchestrator.mjs',
     'owner-amendment-owner-decision-handoff.mjs', 'owner-amendment-owner-decision-handoff-cli.mjs',
@@ -328,6 +344,11 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const flatMultiAuthority = await import(pathToFileURL(multiAuthorityCliPath).href);
   assert.equal(typeof flatMultiAuthority.validateMultiAuthorityEligibility, 'function');
   assert.equal(typeof flatMultiAuthority.validateMultiAuthorityEligibilitySchema, 'function');
+  const flatOwnerAdditionCi = await import(pathToFileURL(ownerAdditionCiPath).href);
+  assert.equal(typeof flatOwnerAdditionCi.resolveSingleOwnerAdditionAuthorityId, 'function');
+  const flatGithubOwnerAdditionProvenance = await import(pathToFileURL(githubOwnerAdditionProvenancePath).href);
+  assert.equal(typeof flatGithubOwnerAdditionProvenance.verifyOwnerAdditionEligibilityProvenance, 'function');
+  await assert.rejects(flatGithubOwnerAdditionProvenance.verifyOwnerAdditionEligibilityProvenance({}), /repository identity is invalid/);
   const flatProceduralAcceptance = await import(pathToFileURL(proceduralAcceptanceCliPath).href);
   assert.deepEqual(Object.keys(flatProceduralAcceptance), ['assertProceduralV5Acceptance']);
   assert.deepEqual(flatProceduralAcceptance.assertProceduralV5Acceptance({ policyVersion: '5', evidenceProducer: 'github-actions',
@@ -354,6 +375,19 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     .update(readFileSync(join(flatRoot, 'dist/legacy-authority-decision-helpers.mjs'))).digest('hex'));
   const flatReceipt = await flatRuntime.completePreviewLifecycle(flatRequest, ordinary(decision()), f.root);
   await flatRuntime.validatePreviewReceipt(flatReceipt, f.root);
+  const authorityPath = 'docs/authority.md';
+  const authorityManifestPath = '.codex/gatekeeper/authorities.json';
+  const member = { id: 'contract', repository: 'self', revision: 'authority-revision', path: authorityPath };
+  const authorityCommit = commitOn(f, 'runtime-identity-flat-owner-addition', {
+    [authorityManifestPath]: { version: 1, authorities: [member] },
+  });
+  const selected = { authorityManifestPath, authorityLimitsBase64: Buffer.from(JSON.stringify({
+    maxManifestBytes: 16_384, maxMembers: 16, maxFileBytes: 65_536,
+    maxTotalBytes: 262_144, maxPromptBytes: 524_288,
+  })).toString('base64') };
+  assert.equal(flatOwnerAdditionCi.resolveSingleOwnerAdditionAuthorityId(f.root, authorityCommit, selected, authorityPath), member.id);
+  assert.throws(() => flatOwnerAdditionCi.resolveSingleOwnerAdditionAuthorityId(f.root, authorityCommit, selected, 'docs/other.md'),
+    /only its affected self member/);
 });
 
 
