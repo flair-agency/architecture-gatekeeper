@@ -280,11 +280,20 @@ export function resumeNativeMeasurement(requestPath: string, request: Measuremen
     return result;
   } catch { warnMeasurementGap(); return noop; }
 }
+// Accept UTC ISO timestamps at millisecond or exact-second precision only.
+// Compare their calendar round trip; Date.parse alone normalizes impossible dates.
+function canonicalTimestamp(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return false;
+  const canonical = new Date(parsed).toISOString();
+  return value === canonical || value === canonical.replace('.000Z', 'Z');
+}
 export function validateMeasurementRecord(value: unknown): MeasurementRecord {
   const record = value as RecordView;
   if (!record || record.version !== 1 || record.kind !== 'agk-diagnostic' || typeof record.attemptId !== 'string' || !/^[0-9a-f-]{36}$/.test(record.attemptId) ||
-      !ROUTES.has(record.route) || !['start', 'prepared', 'terminal'].includes(record.phase) || typeof record.startedAt !== 'string' || !Number.isFinite(Date.parse(record.startedAt)) ||
-      (record.phase === 'terminal' && (!STATES.has(record.state as string) || typeof record.completedAt !== 'string' || !Number.isFinite(Date.parse(record.completedAt))))) throw new Error('Invalid diagnostic record.');
+      !ROUTES.has(record.route) || !['start', 'prepared', 'terminal'].includes(record.phase) || !canonicalTimestamp(record.startedAt) ||
+      (record.phase === 'terminal' && (!STATES.has(record.state as string) || !canonicalTimestamp(record.completedAt)))) throw new Error('Invalid diagnostic record.');
   return record;
 }
 export function loadMeasurementDirectory(dir: string) {
@@ -322,7 +331,7 @@ export function redactMeasurement(value: MeasurementRecord) {
     pr: numeric(ci.pr), runId: numeric(ci.runId), runAttempt: numeric(ci.runAttempt), workflowSha: hex(ci.workflowSha),
     baseSha: hex(ci.baseSha), headSha: hex(ci.headSha), reviewedSha: hex(ci.reviewedSha), job: ['review', 'measurement'].includes(ci.job as string) ? ci.job : null } : null;
   return { version: 1, kind: 'agk-diagnostic', attemptId: record.attemptId, phase: record.phase, route: record.route, runtime: runtimeIdentity,
-    startedAt: new Date(record.startedAt).toISOString(), ...(record.phase === 'terminal' ? { completedAt: new Date(record.completedAt as string).toISOString(), state: record.state } : {}),
+    startedAt: record.startedAt, ...(record.phase === 'terminal' ? { completedAt: record.completedAt, state: record.state } : {}),
     changeId: record.changeId ? measurementDigest(record.changeId) : null, repositoryId: hex(record.repositoryId),
     requestId: hex(record.request?.requestId), promptSha256: hex(record.request?.promptSha256), schemaSha256: hex(record.request?.schemaSha256), authorityProvenanceSha256: hex(record.request?.scope?.authorityProvenanceSha256), policySha256: hex(record.request?.scope?.policySha256), reviewedRevision: hex(record.request?.reviewedRevision), snapshotSha256: hex(record.request?.scope?.snapshotSha256), scopeKind: ['proposed-task', 'tracked-working-tree', 'ci-merge-revision'].includes(record.request?.scope?.kind as string) ? record.request!.scope.kind : null,
     decision, findingCount: count, ci: ciContext, observation, feedback: { publication: record.feedback?.publication === 'returned-to-caller' ? 'returned-to-caller' : 'unknown', delivery: 'unknown', response: 'unknown' } };

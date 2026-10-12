@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, realpathSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, realpathSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beginMeasurement, loadMeasurementDirectory, redactMeasurement, validateMeasurementRecord } from '../dist/measurement.mjs';
@@ -106,4 +106,23 @@ test('core phase consistency accepts identical duplicated observations with reor
  const original=records(t);
  const copies=original.map(record=>Object.fromEntries(Object.entries(structuredClone(record)).reverse()));
  assert.doesNotThrow(()=>validateMeasurementPhases([...original,...copies]));
+});
+
+
+test('calendar-invalid and non-ISO timestamps are rejected and exported only as collection gaps', t => {
+  const parent=mkdtempSync(join(realpathSync(tmpdir()),'agk-invalid-time-'));t.after(()=>rmSync(parent,{recursive:true,force:true}));
+  const directory=join(parent,'records');mkdirSync(directory,{mode:0o700});
+  const record={version:1,kind:'agk-diagnostic',attemptId:'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',phase:'terminal',route:'manual',state:'completed',startedAt:'2026-10-01T00:00:00Z',completedAt:'2026-10-01T00:00:01Z'};
+  const path=join(directory,`${record.attemptId}.terminal.json`);
+  for (const field of ['startedAt','completedAt']) {
+    for (const value of ['0','2026-02-30T00:00:00Z','2026-10-01T24:00:00Z','2026-10-01','2026-10-01T00:00:00+00:00','2026-10-01T00:00:00.0Z','2026-10-01T00:00:00.0000Z']) {
+      const changed={...record,[field]:value};assert.throws(()=>validateMeasurementRecord(changed),/Invalid diagnostic record/);
+      assert.throws(()=>redactMeasurement(changed),/Invalid diagnostic record/);writeFileSync(path,JSON.stringify(changed));
+      const loaded=loadMeasurementDirectory(directory);assert.equal(loaded.gaps,1);assert.deepEqual(loaded.records,[]);
+    }
+    for (const value of ['2026-10-01T00:00:00Z','2026-10-01T00:00:00.000Z','2024-02-29T00:00:00.123Z','+275760-09-13T00:00:00.000Z']) {
+      const changed={...record,[field]:value};assert.doesNotThrow(()=>validateMeasurementRecord(changed));
+      assert.equal(redactMeasurement(changed)[field],value,'valid timestamp text is preserved exactly');
+    }
+  }
 });
