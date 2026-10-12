@@ -1,6 +1,6 @@
 import { MEASUREMENT_ENVELOPE_FIELDS, validateMeasurementPhases } from './measurement-consistency.mts';
-import { rejectDuplicateJsonKeys } from './authority-set.mjs';
-import { readRegularGitSnapshot } from './legacy-git-snapshot.mjs';
+import { rejectDuplicateJsonKeys, readCommittedAuthorityFile } from './authority-set.mjs';
+import { isCanonicalRepositoryPath } from './legacy-git-snapshot.mjs';
 import { repositoryRoot } from './review-contract.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { closeSync, constants, fstatSync, lstatSync, openSync, opendirSync, readFileSync, readSync, realpathSync, writeFileSync, writeSync } from 'node:fs';
@@ -49,6 +49,15 @@ export interface MeasurementOptions {
   sessionId?: unknown; correlation?: string; context?: MeasurementFields;
 }
 type DecisionView = { decision?: unknown; findings?: unknown };
+// Reuse the existing bounded committed-file reader for diagnostic metadata only.
+// Required snapshot callers retain their original implementation and behavior.
+function measurementGitSnapshot(root: string, commit: unknown, path: unknown) {
+  if (typeof commit !== 'string' || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(commit) || !isCanonicalRepositoryPath(path)) {
+    throw new Error('Invalid diagnostic committed input selection.');
+  }
+  const bytes = readCommittedAuthorityFile(root, commit, path as string, 65_536);
+  return { bytes, sha256: createHash('sha256').update(bytes).digest('hex') };
+}
 const MAX_BYTES = 256 * 1024;
 // Leave space for a bounded terminal without dropping immutable phase metadata.
 const TERMINAL_RESERVE_BYTES = 1024;
@@ -215,11 +224,11 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
           authoritySet: value.authoritySet || null, requestedReviewer: value.reviewer, scope };
         if (value.repositoryRoot) {
           try {
-            const config = readRegularGitSnapshot({ root: value.repositoryRoot, commit: value.reviewedRevision as string, path: '.codex/gatekeeper/config.json' });
+            const config = measurementGitSnapshot(value.repositoryRoot, value.reviewedRevision, '.codex/gatekeeper/config.json');
             const selected = JSON.parse(config.bytes.toString('utf8')) as Record<string, string>;
             candidate.selectedInputDigests = { configSha256: config.sha256 };
             for (const key of ['validationPath', 'reviewerConfigPath']) {
-              if (selected[key]) candidate.selectedInputDigests![key] = readRegularGitSnapshot({ root: value.repositoryRoot, commit: value.reviewedRevision as string, path: selected[key] }).sha256;
+              if (selected[key]) candidate.selectedInputDigests![key] = measurementGitSnapshot(value.repositoryRoot, value.reviewedRevision, selected[key]).sha256;
             }
           } catch { candidate.selectedInputDigests = { gap: 'unavailable' }; }
         }
@@ -339,7 +348,7 @@ export function redactMeasurement(value: MeasurementRecord) {
     decision, findingCount: count, ci: ciContext, observation, feedback: { publication: record.feedback?.publication === 'returned-to-caller' ? 'returned-to-caller' : 'unknown', delivery: 'unknown', response: 'unknown' } };
 }
 
-export function resumeMeasurement(attemptId: string, selected: string | undefined, cwd: unknown = process.cwd()): MeasurementAttempt {
+export function resumeMeasurement(attemptId: string, selected: string | undefined, cwd?: unknown): MeasurementAttempt {
   try {
     const root = resolveMeasurementWorkingRoot(cwd);
     const dir = directory(selected, root);

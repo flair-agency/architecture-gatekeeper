@@ -47,6 +47,7 @@ try {
       correlation: native ? measurementDigest(requestPath) : undefined });
     assert.ok(attempt.id); attempt.request(request);
     const invalidRoot = scenario.endsWith('-null') ? null : scenario.endsWith('-empty') ? '' : scenario.endsWith('-number') ? 42 : undefined;
+    if (scenario === 'resume-cwd-unavailable') { process.chdir(root); rmSync(root, {recursive:true}); assert.throws(() => process.cwd(), /ENOENT/); }
     let selected = directory;
     if (scenario.endsWith('-worktree')) { selected = join(root, 'private-records'); renameSync(directory, selected); }
     const before = readdirSync(selected).sort();
