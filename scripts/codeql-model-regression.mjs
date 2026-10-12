@@ -24,7 +24,9 @@ export function verifyGithubOutputModel({ run, source, scan }) {
   const probe = `import { writeFileSync, lstatSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { trustedGitHubOutputPath, otherOutputPath } from './src/github-runner-env.mjs';
+import { trustedGitHubOutputPath as implementationOutputPath } from './src/github/github-runner-env.mts';
 writeFileSync(trustedGitHubOutputPath(), 'trusted'); // trusted-output
+writeFileSync(implementationOutputPath(), 'unmodeled implementation'); // implementation-output
 writeFileSync(process.env.OTHER_OUTPUT, 'env'); // env-output
 writeFileSync(process.argv[2], 'cli'); // cli-output
 writeFileSync(otherOutputPath(), 'other accessor'); // other-output
@@ -93,7 +95,7 @@ prepareLegacyAuthority({ root: process.argv[2], baseSha: 'a'.repeat(40), headSha
       threadHas(threadFlow, file, line))));
     assert.equal(matching, expected, `${tag} flow ${expected ? 'was not detected' : 'was unexpectedly modeled'}`);
   };
-  const outputLines = ['trusted-output', 'env-output', 'cli-output', 'other-output', 'direct-output', 'checked-output'];
+  const outputLines = ['trusted-output', 'implementation-output', 'env-output', 'cli-output', 'other-output', 'direct-output', 'checked-output'];
   for (const tag of outputLines) {
     assertProbeFlow(results.false, 'output-probe.mjs', findLine(probe, tag), true, tag);
     assertProbeFlow(results.true, 'output-probe.mjs', findLine(probe, tag), tag !== 'trusted-output', tag);

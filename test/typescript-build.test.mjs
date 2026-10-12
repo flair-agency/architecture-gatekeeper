@@ -61,11 +61,11 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   mkdirSync(join(fixtureRoot, 'src/github'), { recursive: true });
   for (const module of ['github-associated-repository', 'github-cli-runner',
     'github-authority-source', 'github-merge-group-event', 'github-owner-amendment-readback',
-    'github-owner-addition-readback', 'github-app-check-reporter', 'github-ruleset-readback']) {
+    'github-owner-addition-readback', 'github-app-check-reporter', 'github-ruleset-readback', 'github-runner-env']) {
     cpSync(join(root, `src/github/${module}.mts`), join(fixtureRoot, `src/github/${module}.mts`));
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
   }
-  for (const module of ['runner-temp-path', 'github-runner-env', 'resolve-ci-policy', 'authority-set']) {
+  for (const module of ['runner-temp-path', 'resolve-ci-policy', 'authority-set']) {
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
   }
   mkdirSync(join(fixtureRoot, 'src/runner-paths'), { recursive: true });
@@ -105,6 +105,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'github/github-owner-addition-readback.mjs',
     'github/github-owner-amendment-readback.mjs',
     'github/github-ruleset-readback.mjs',
+    'github/github-runner-env.mjs',
     'legacy.mjs',
     'owner-addition-validation.mjs',
     'owner-addition/owner-addition-validation.mjs',
