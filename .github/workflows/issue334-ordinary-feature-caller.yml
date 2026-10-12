@@ -170,6 +170,8 @@ jobs:
             base: 'c5686f63909af2e83b749ffa0b91d33cb9ea96ad',
             merge: '96ab3902f95250a1c80aecec45434e04272ad548',
             mergeTree: '8107feae6dbf6bc38b279fcab724fd42a5ad0097',
+            workflowId: 381385696,
+            runNumber: 1,
             workflowPath: '.github/workflows/issue334-ordinary-feature-caller.yml',
             configPath: '.codex/gatekeeper/ordinary-gemini-admission.json',
           });
@@ -261,6 +263,7 @@ jobs:
             const configKeys = ['version', 'enabled', 'workflowId', 'runNumber', 'callerSha256', 'providerSelectorSha256', 'serviceAccountSelectorSha256'];
             if (Object.keys(config).sort().join('\n') !== configKeys.sort().join('\n') ||
                 config.version !== 1 || config.enabled !== true ||
+                config.workflowId !== EXPECTED.workflowId || config.runNumber !== EXPECTED.runNumber ||
                 !Number.isSafeInteger(config.workflowId) || config.workflowId < 1 ||
                 !Number.isSafeInteger(config.runNumber) || config.runNumber < 1 ||
                 !/^[a-f0-9]{64}$/.test(config.callerSha256 ?? '') ||

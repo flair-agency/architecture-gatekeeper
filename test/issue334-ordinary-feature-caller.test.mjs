@@ -91,7 +91,7 @@ test('prospective ordinary Gemini caller has the exact bounded enabled job guard
     enabled: true,
     workflowId: 381385696,
     runNumber: 1,
-    callerSha256: '4cf30713b143df2ea08927648d5ff4911ee378990203a16c56ffdf7fbba7c81c',
+    callerSha256: 'cff2bc8294a760366d7876dd85120bd4bf2b54ec0eb863fef6eab0cbadbb5c84',
     providerSelectorSha256: 'e3e7a8a5c8f61c6b3fc7e0eed879e662be902299304d2501843cc06821fb5b9c',
     serviceAccountSelectorSha256: 'af5c0a83eb95b8969994e2b9667a0f2964bce2cb43e390441e40e280e1992e92',
   });
@@ -202,7 +202,8 @@ test('admission executes actual gate source against mocked GitHub API and fails 
         GH_TOKEN: 'mock-token', GCP_WIF_PROVIDER_SELECTOR: providerSelector === 'provider-selector'
           ? 'projects/123456789/locations/global/workloadIdentityPools/agk/providers/github' : providerSelector,
         GCP_WIF_SERVICE_ACCOUNT_SELECTOR: accountSelector === 'sa-selector'
-          ? 'agk-gemini@agk-gemini.iam.gserviceaccount.com' : accountSelector };
+          ? 'agk-gemini@agk-gemini.iam.gserviceaccount.com' : accountSelector,
+        ...sink.envOverrides };
       if (sink.omitGithubSha) delete executionEnv.GITHUB_SHA;
       const result = await runInline(admissionScript, { env: executionEnv, fetchImpl, fsOverrides,
         abortImpl: sink.abortImpl ?? AbortSignal, nowImpl: sink.nowImpl ?? Date.now });
@@ -224,12 +225,13 @@ test('admission executes actual gate source against mocked GitHub API and fails 
 
     // Exercise the extracted production script through a real Node child process
     // as well as the in-process injected-filesystem cases below.
-    const runAdmissionChild = async (fixture, outputPath) => {
+    const runAdmissionChild = async (fixture, outputPath, envOverrides = {}) => {
       await writeFile(fixturePath, JSON.stringify(fixture));
       await writeFile(eventPath, JSON.stringify(event));
-      const prelude = `import {readFileSync as mockReadFileSync} from 'node:fs';
+      const prelude = `import {readFileSync as mockReadFileSync,writeFileSync as mockWriteFileSync} from 'node:fs';
+        let mockCallCount=0;process.on('exit',()=>mockWriteFileSync(process.env.CALL_PATH,String(mockCallCount)));
         const fixture=JSON.parse(mockReadFileSync(process.env.FIXTURE_PATH,'utf8'));
-        globalThis.fetch=async(url,options)=>{const parsed=new URL(url);const path=parsed.pathname.replace('/repos/flair-agency/architecture-gatekeeper','')+parsed.search;if(parsed.origin!=='https://api.github.com'||options.redirect!=='error'||options.signal.aborted)throw new Error('unexpected request');const value=fixture[path];if(!value)return{ok:false};const bytes=new TextEncoder().encode(JSON.stringify(value));let sent=false;return{ok:true,body:{getReader:()=>({read:async()=>{if(sent)return{done:true};sent=true;return{done:false,value:bytes};},cancel:async()=>{}})}};};`;
+        globalThis.fetch=async(url,options)=>{mockCallCount++;const parsed=new URL(url);const path=parsed.pathname.replace('/repos/flair-agency/architecture-gatekeeper','')+parsed.search;if(parsed.origin!=='https://api.github.com'||options.redirect!=='error'||options.signal.aborted)throw new Error('unexpected request');const value=fixture[path];if(!value)return{ok:false};const bytes=new TextEncoder().encode(JSON.stringify(value));let sent=false;return{ok:true,body:{getReader:()=>({read:async()=>{if(sent)return{done:true};sent=true;return{done:false,value:bytes};},cancel:async()=>{}})}};};`;
       const result = spawnSync(process.execPath, ['--input-type=module', '-e', `${prelude}\n${admissionScript}`], {
         encoding: 'utf8', maxBuffer: 4 * 1024 * 1024, env: { ...process.env, GITHUB_OUTPUT: outputPath,
           GITHUB_EVENT_PATH: eventPath, GITHUB_EVENT_NAME: 'pull_request_target', GITHUB_RUN_ID: '99',
@@ -237,7 +239,8 @@ test('admission executes actual gate source against mocked GitHub API and fails 
           GITHUB_REPOSITORY_ID: '123', GITHUB_SHA: workflowSha, GITHUB_WORKFLOW_SHA: workflowSha,
           GH_TOKEN: 'mock-token', FIXTURE_PATH: fixturePath,
           GCP_WIF_PROVIDER_SELECTOR: 'projects/123456789/locations/global/workloadIdentityPools/agk/providers/github',
-          GCP_WIF_SERVICE_ACCOUNT_SELECTOR: 'agk-gemini@agk-gemini.iam.gserviceaccount.com' },
+          GCP_WIF_SERVICE_ACCOUNT_SELECTOR: 'agk-gemini@agk-gemini.iam.gserviceaccount.com', CALL_PATH: callPath,
+          ...envOverrides },
       });
       return { status: result.status, stderr: result.stderr, error: result.error?.message };
     };
@@ -246,6 +249,41 @@ test('admission executes actual gate source against mocked GitHub API and fails 
     const childHappy = await runAdmissionChild(structuredClone(values), childOutput);
     assert.deepEqual(childHappy, { status: 0, stderr: '', error: undefined }, JSON.stringify(childHappy));
     assert.equal(await readFile(childOutput, 'utf8'), `${sentinel}admitted=true\n`);
+    assert.equal(Number(await readFile(callPath, 'utf8')), 12);
+
+    const recreateWorkflowId = 381385697;
+    const coordinatedAdmissionMutations = [
+      {
+        name: 'run number 2',
+        envOverrides: { GITHUB_RUN_NUMBER: '2' },
+        mutate(fixture) {
+          replaceConfigBlob(fixture, { ...config, runNumber: 2 });
+          fixture['/actions/runs/99'].run_number = 2;
+        },
+      },
+      {
+        name: 'recreated workflow ID',
+        envOverrides: {},
+        mutate(fixture) {
+          replaceConfigBlob(fixture, { ...config, workflowId: recreateWorkflowId });
+          fixture['/actions/runs/99'].workflow_id = recreateWorkflowId;
+          fixture[`/actions/workflows/${recreateWorkflowId}`] = {
+            id: recreateWorkflowId, path: '.github/workflows/issue334-ordinary-feature-caller.yml',
+          };
+        },
+      },
+    ];
+    for (const mutation of coordinatedAdmissionMutations) {
+      const changedFixture = structuredClone(values);
+      mutation.mutate(changedFixture);
+      const output = join(directory, `child-denied-${mutation.name.replaceAll(' ', '-')}`);
+      await writeFile(output, sentinel);
+      const childDenied = await runAdmissionChild(changedFixture, output, mutation.envOverrides);
+      assert.deepEqual(childDenied, { status: 0, stderr: '', error: undefined }, JSON.stringify(childDenied));
+      assert.equal(await readFile(output, 'utf8'), `${sentinel}admitted=false\n`);
+      assert.equal(Number(await readFile(callPath, 'utf8')), 5, `${mutation.name} must be pinned before subsequent API reads`);
+    }
+
     for (const mutate of [
       fixture => { fixture['/pulls/517'].base.sha = 'b'.repeat(40); },
       fixture => { fixture['/pulls/517'].head.sha = 'd'.repeat(40); },
@@ -332,6 +370,10 @@ test('admission executes actual gate source against mocked GitHub API and fails 
       c => { c['/git/blobs/' + '5'.repeat(40)].content = 'not-base64-json'; },
     ];
     for (const mutate of mutations) assert.equal(await execute(mutate), 'admitted=false');
+    for (const mutation of coordinatedAdmissionMutations) {
+      assert.equal(await execute(mutation.mutate, false, () => {}, 'provider-selector', 'sa-selector', 5,
+        workflowSha, { envOverrides: mutation.envOverrides }), 'admitted=false', mutation.name);
+    }
     assert.equal(await execute(c => replaceConfigBlob(c, admissionConfig), false, () => {}, 'provider-selector', 'sa-selector', 12), 'admitted=false');
     const configBytes = Buffer.from(JSON.stringify(config));
     assert.equal(await execute(c => replaceConfigBlobBytes(c,

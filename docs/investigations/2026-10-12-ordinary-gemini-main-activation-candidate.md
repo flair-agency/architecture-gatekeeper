@@ -2,10 +2,12 @@
 
 **Status: local enabled deployment candidate; not deployed.** The workflow
 source in this checkout is the enabled caller, SHA-256
-`4cf30713b143df2ea08927648d5ff4911ee378990203a16c56ffdf7fbba7c81c`.
+`cff2bc8294a760366d7876dd85120bd4bf2b54ec0eb863fef6eab0cbadbb5c84`.
 Its seven-key admission configuration is enabled with the exact fixed values
 recorded below. The corrected inert caller artifact hashes to
-`f2d45ee526ae4133d9f34e5fdd7637500e5ef4848d34fa40c0408d7eea88331a`.
+`4e2fe8b901a24eb08d16259c1a036299f4e01975e7670714f93069a576cbf25d`.
+The current ordinal-pinned source pair is detailed below; preceding #551 source
+narratives and verification remain scoped to that previous candidate.
 
 The bounded selection was adopted through [PR #532](https://github.com/flair-agency/architecture-gatekeeper/pull/532)
 at `b340f5efce301479d391affe2663d0f703812389`, tree
@@ -279,3 +281,41 @@ to `docs/architecture.md`; it was integrated by normal merge. Executable
 workflow/config/test bytes are unchanged. That updated complete Set requires
 fresh native feedback and protected acceptance before deployment. All earlier
 results retain their original source scope.
+
+## Literal workflow and ordinal correction before deployment
+
+After protected review PASS and CI/CodeQL success for `ca9893b`, independent
+code review identified P1 comment 4244237796: a coherent later protected config
+change could select another workflow ID or run ordinal while retaining caller
+bytes. Normal merge stopped on that unresolved thread. The source was never
+deployed and no PR #517 READY or Google/Gemini execution occurred. Preserve the
+original finding and all prior accepted results in their source scope.
+
+The current correction adds only `workflowId: 381385696` and `runNumber: 1`
+to the inline admission's fixed `EXPECTED` selection, plus exact configuration
+agreement before subsequent API reads. All existing source, PR, selector, API
+and environment checks remain. Coordinated configuration/API/environment run-2
+and recreated-workflow-ID negatives deny after five reads, in both actual Node
+children and injected execution; positive child admission still uses twelve.
+All five focused tests passed. Independent code review found no remaining
+actionable finding.
+
+Enabled caller SHA-256 is
+`cff2bc8294a760366d7876dd85120bd4bf2b54ec0eb863fef6eab0cbadbb5c84`;
+inert counterpart is
+`4e2fe8b901a24eb08d16259c1a036299f4e01975e7670714f93069a576cbf25d`.
+The exact seven-key configuration digest is
+`de9b3fa8f6e502849c23caee28f6ff889947f2368739c6da7ba0e96cd3769eba`.
+The guard/comment-only activation delta remains unchanged. Corrected canonical
+source adoption/readback must precede this implementation's publication, with
+fresh full tests, applicable CodeQL and native review. The existing one-session
+approval and every mandatory pre-READY prerequisite remain unchanged.
+
+The ordinal-corrected executable scope passed all 1,507 full tests with zero
+failures, skips or cancellations under the same read-only/network-disabled
+Node 22.18 Docker controls. Build and source cycles passed. Fresh CodeQL
+candidate scan retained 58 JavaScript and 0 Actions findings; complete raw
+result objects matched the separately scanned current executable baseline.
+No value normalization, suppression or SARIF rewriting occurred. Comparison is
+retained in `/workspace/agk-resume-evidence/pr530-ordinal-codeql-comparison.json`.
+These results followed sequentially without full-test/CodeQL CPU overlap.
