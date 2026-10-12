@@ -30,16 +30,13 @@ export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = pro
   };
   /** @type {typeof validateResponse} */
   const validateReviewResponse = (request, decision) => {
-    // Diagnostic reads are best-effort unchecked observations; validateResponse
-    // still owns the required request and decision checks.
-    measurement = resumeNativeMeasurement(requestPath, /** @type {import('./measurement.mts').MeasurementRequest} */ (request));
     const result = validateResponse(request, decision);
     validatedDecision = result;
     return result;
   };
   try {
   if (command === 'prepare' && requestPath && rest.length) { const request = await createReviewRequestAsync(rest.join(' '), cwd); if (Object.hasOwn(request.reviewer, 'provider') ? request.reviewer.provider !== 'codex' : false) throw new Error('Native Codex review cannot apply Gemini settings; use the async local reviewer.'); writeFileSync(requestPath, `${JSON.stringify(request, null, 2)}\n`, { mode: 0o600, flag: 'wx' }); process.stdout.write(`${JSON.stringify({ prompt: request.prompt, schema: request.schema, provider: 'codex', model: request.reviewer.model, reasoningEffort: request.reviewer.reasoningEffort, reviewTimeoutMs: request.reviewer.reviewTimeoutMs, requestPath }, null, 2)}\n`); return; }
-  if (command === 'validate' && requestPath && rest.length === 1) { const request = JSON.parse(readFileSync(requestPath, 'utf8')); const decision = JSON.parse(readFileSync(rest[0], 'utf8')); const result = validateReviewResponse(request, decision); process.stdout.write(`${JSON.stringify(result, null, 2)}\n`); measurement?.finish({ decision: result, publication: 'returned-to-caller', observation: { hostExecution: 'unknown' } }); return; }
+  if (command === 'validate' && requestPath && rest.length === 1) { const request = JSON.parse(readFileSync(requestPath, 'utf8')); measurement = resumeNativeMeasurement(requestPath, /** @type {import('./measurement.mts').MeasurementRequest} */ (request)); const decision = JSON.parse(readFileSync(rest[0], 'utf8')); const result = validateReviewResponse(request, decision); process.stdout.write(`${JSON.stringify(result, null, 2)}\n`); measurement?.finish({ decision: result, publication: 'returned-to-caller', observation: { hostExecution: 'unknown' } }); return; }
   usage();
   } catch (error) { measurement?.finish({ state: 'error', decision: validatedDecision, observation: { hostExecution: 'unknown', failureStage: validatedDecision === undefined ? 'validation-or-preparation' : 'publication' } }); throw error; }
 }
