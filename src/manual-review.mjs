@@ -1,4 +1,2 @@
 #!/usr/bin/env node
-import { runManualReviewCli } from './local-gate.mjs';
-
-runManualReviewCli();
+import './local-review/manual-review.mts';

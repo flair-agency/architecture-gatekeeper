@@ -191,6 +191,9 @@ import { runHookCli } from '@flair-agency/architecture-gatekeeper';
 runHookCli();
 ```
 
+An exact Git dependency builds the emitted `dist/` files during installation;
+published registry packages already contain those files.
+
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
 inputs. See `examples/config.json`. Package resolution is local and fixed: the
 launcher imports its already installed exact package version and must not use

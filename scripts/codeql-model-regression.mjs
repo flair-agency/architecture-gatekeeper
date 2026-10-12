@@ -116,20 +116,20 @@ prepareLegacyAuthority({ root: process.argv[2], baseSha: 'a'.repeat(40), headSha
   const accessorLine = 3;
   const hasAccessor = (list, callFile, callLine, sinkFile, sinkLine) => threads(list).some(thread =>
     threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine) && threadHas(thread, callFile, callLine) && threadHas(thread, sinkFile, sinkLine));
-  assert.ok(hasAccessor(results.false, 'src/materialize-regular-git-snapshot.mjs', 16, 'src/authority-validation/legacy-git-snapshot.mts', 31),
+  assert.ok(hasAccessor(results.false, 'src/materialize-regular-git-snapshot.mjs', 27, 'src/authority-validation/legacy-git-snapshot.mts', 31),
     'Baseline must trace accessor through materializer into Git snapshot cwd');
-  assert.ok(hasAccessor(results.false, 'src/prepare-legacy-ci-authority.mjs', 84, 'src/prepare-legacy-ci-authority.mjs', 32),
+  assert.ok(hasAccessor(results.false, 'src/prepare-legacy-ci-authority.mjs', 76, 'src/prepare-legacy-ci-authority.mjs', 34),
     'Baseline must trace accessor into preparer git diff cwd');
-  assert.equal(hasAccessor(results.true, 'src/materialize-regular-git-snapshot.mjs', 16, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
+  assert.equal(hasAccessor(results.true, 'src/materialize-regular-git-snapshot.mjs', 27, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
     'Model must remove materializer accessor flow');
-  assert.equal(hasAccessor(results.true, 'src/prepare-legacy-ci-authority.mjs', 84, 'src/prepare-legacy-ci-authority.mjs', 32), false,
+  assert.equal(hasAccessor(results.true, 'src/prepare-legacy-ci-authority.mjs', 76, 'src/prepare-legacy-ci-authority.mjs', 34), false,
     'Model must remove preparer accessor flow to git diff cwd');
   assert.ok(threads(results.true).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-cli-reader')) &&
     threadHas(thread, 'src/authority-validation/legacy-git-snapshot.mts', 31)), 'Generic reader CLI root flow must remain');
   assert.ok(threads(results.true).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli')) &&
-    threadHas(thread, 'src/prepare-legacy-ci-authority.mjs', 32)), 'Generic preparer CLI root flow to git diff cwd must remain');
+    threadHas(thread, 'src/prepare-legacy-ci-authority.mjs', 34)), 'Generic preparer CLI root flow to git diff cwd must remain');
   assert.ok(threads(results.true).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli')) &&
-    threadHas(thread, 'src/prepare-legacy-ci-authority.mjs', 34) && threadHas(thread, 'src/authority-validation/legacy-git-snapshot.mts', 31)),
+    threadHas(thread, 'src/prepare-legacy-ci-authority.mjs', 36) && threadHas(thread, 'src/authority-validation/legacy-git-snapshot.mts', 31)),
     'Generic preparer CLI root flow to snapshot reader must remain');
 
   assert.equal(threads(results.true).some(thread => threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine)), false,
@@ -145,7 +145,7 @@ prepareLegacyAuthority({ root: process.argv[2], baseSha: 'a'.repeat(40), headSha
   }
   const diffSinkResults = results.true.filter(result => result.locations.some(location =>
     location.physicalLocation.artifactLocation.uri === 'src/prepare-legacy-ci-authority.mjs' &&
-    location.physicalLocation.region.startLine === 12));
+    location.physicalLocation.region.startLine === 14));
   assert.ok(threads(diffSinkResults).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli'))),
     'Generic preparer CLI root must remain at the actual git diff cwd sink');
   const workspaceAlerts = list => alerts(list).filter(alert => alert.file === 'workspace-probe.mjs');
