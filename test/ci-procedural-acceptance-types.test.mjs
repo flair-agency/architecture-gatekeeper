@@ -32,7 +32,9 @@ test('procedural acceptance types accept both existing routes and flat facade ca
 });
 
 test('procedural acceptance types require every core routing observation', () => {
-  assert.deepEqual(diagnostics('negative.mts'), []);
+  const negative = diagnostics('negative.mts');
+  assert.deepEqual(negative.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [[2345, 4]]);
+  assert.match(ts.flattenDiagnosticMessageText(negative[0].messageText, '\n'), /selectedAuthorityChanged.*missing/s);
 });
 
 test('flat entrypoint keeps its sole public export and exact CLI routing output', async () => {
