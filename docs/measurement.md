@@ -103,7 +103,7 @@ change their meaning during export.
 | Manual | Committed review inputs and proposed task digest | A task review does not establish that uncommitted implementation was reviewed. |
 | UserPromptSubmit | Proposed task, recorded HEAD, hashed session | Internal result availability is observed; Hook discovery, host delivery and task correction are unknown. Known input-parse/event/root failures remain error observations with unknown request identity. A non-PASS remains blocking under the existing Hook contract. |
 | PostToolUse | Existing tracked patch SHA-256, requestId and recorded HEAD | Queued, unchanged, deduplicated, incomplete and stale-HEAD cases remain separate. Untracked/oversized/unsupported inputs retain the existing incomplete result, including CLI stdin overflow before semantic screening. Inactive Hooks and later working-tree edits are not observed. |
-| Native Skill | Preparation and later validation linked by private request location and requestId | Start/prepared persists without validation. Validation observes a valid response, not actual host settings, execution, delivery or action. Errors before successful native preparation cannot be captured. |
+| Native Skill | Preparation and later validation linked by private request location and requestId | Start/prepared persists without validation. Validation observes a valid response, not actual host settings, execution, delivery or action. Known preparation errors are recorded. Unreadable or structurally invalid request files leave independent error observations with unknown request identity; later retries retain that history. |
 
 A terminal is never synthesized as PASS. Starts without terminals are `missing`
 in aggregation; torn/malformed files contribute export `gaps`. Errors and
