@@ -445,7 +445,7 @@ of `.codex/gatekeeper/ordinary-gemini-admission.json` are:
   "enabled": true,
   "workflowId": 381385696,
   "runNumber": 1,
-  "callerSha256": "ee0690f61eddf48c152c41e791b76b1549b60087259718d1bbf3f493e9ff8b21",
+  "callerSha256": "4cf30713b143df2ea08927648d5ff4911ee378990203a16c56ffdf7fbba7c81c",
   "providerSelectorSha256": "e3e7a8a5c8f61c6b3fc7e0eed879e662be902299304d2501843cc06821fb5b9c",
   "serviceAccountSelectorSha256": "af5c0a83eb95b8969994e2b9667a0f2964bce2cb43e390441e40e280e1992e92"
 }
@@ -470,7 +470,7 @@ it did not consume the approved PR #517 review session. Earlier failed captures
 The selector values themselves remain private.
 
 The inactive corrected caller artifact has SHA-256
-`9e7c45a0aea5b4d957267b4efccfbc21998184a5ecd42ef4db5d252d52c5815f`.
+`f2d45ee526ae4133d9f34e5fdd7637500e5ef4848d34fa40c0408d7eea88331a`.
 Its prospective enabled artifact has the `callerSha256` value above. The only
 permitted activation delta between these two artifacts is replacing the
 `architecture-gate` job's literal `if: false` and explanatory comment with this
@@ -480,6 +480,31 @@ exact comment and guard; every other caller byte remains identical:
 # One selected workflow instance/ordinal/attempt must pass the protected admission step.
 if: needs.classify-self-repository.outputs.classification == 'same-repository' && needs.protected-admission.outputs.admitted == 'true' && github.event_name == 'pull_request_target' && github.event.action == 'ready_for_review' && github.event.pull_request.draft == false && github.event.pull_request.number == 517 && github.event.pull_request.head.sha == 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' && github.run_attempt == 1
 ```
+
+The corrected caller binds `GITHUB_SHA` to the same validated
+`GITHUB_WORKFLOW_SHA` whose commit supplies the caller and configuration.
+On current GitHub.com, `pull_request_target` uses the default branch execution
+context; that context is distinct from the PR target branch and its protected
+base. The event and live API must still separately agree on the exact feature
+base, head, merge, ordered parents and tree above. No PR-tuple check is removed.
+The [official event specification](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target)
+and workflow-SHA definition govern this distinction; actual hosted source
+provenance remains a required observation, not a claim supplied by this record.
+
+The prior source pair adopted through #532 was inactive
+`9e7c45a0aea5b4d957267b4efccfbc21998184a5ecd42ef4db5d252d52c5815f`
+and prospective enabled
+`ee0690f61eddf48c152c41e791b76b1549b60087259718d1bbf3f493e9ff8b21`.
+Those bytes compared `GITHUB_SHA` with the feature base and therefore denied the
+selected current GitHub.com event before API reads. The source correction
+replaces only that host-context comparison in both artifacts; between the
+corrected inert and enabled artifacts, only the literal comment/guard delta
+shown above is permitted. The prior candidate was never deployed and no READY
+was emitted for it. Retain its failed-design finding and incomplete verification
+as history; the corrected source is a new prerequisite-gated candidate, not a
+rewritten prior result. Workflow ID, ordinal, attempt, PR tuple, fingerprints,
+credential boundaries, operational ceilings and the existing single-session
+approval remain unchanged. No additional session or routing scope is selected.
 
 The selected protected-base inputs are policy
 `.codex/gatekeeper/gemini-verification-policy.json` (version 6), prompt
