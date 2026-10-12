@@ -1,0 +1,245 @@
+name: Issue 329 synthetic Codex PASS handoff
+
+on:
+  push:
+    branches:
+      - codex/issue329-codex-pass-handoff-fixture
+    paths:
+      - .github/workflows/issue329-codex-pass-handoff-fixture.yml
+
+permissions: {}
+
+concurrency:
+  group: issue329-codex-pass-handoff-fixture-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  producer:
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/codex/issue329-codex-pass-handoff-fixture' && github.event_name == 'push'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      expected: ${{ steps.validate.outputs.expected }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Enforce exact synthetic fixture trigger
+        env:
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          const workflowPath = '.github/workflows/issue329-codex-pass-handoff-fixture.yml';
+          const fail = () => { console.error('Fixture trigger guard failed.'); process.exit(1); };
+          if (process.env.REPOSITORY !== 'flair-agency/architecture-gatekeeper' ||
+              process.env.REF !== 'refs/heads/codex/issue329-codex-pass-handoff-fixture' ||
+              process.env.EVENT_NAME !== 'push') fail();
+          const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          const sha = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
+          if (!sha(event.before) || event.before === '0'.repeat(40) || !sha(event.after) ||
+              event.after !== process.env.GITHUB_SHA) fail();
+          const git = args => execFileSync('git', args, { encoding: 'utf8', timeout: 5_000, maxBuffer: 65_536 }).trim();
+          if (git(['rev-parse', 'HEAD']) !== event.after) fail();
+          const commit = git(['rev-list', '--parents', '-n', '1', event.after]).split(/\s+/);
+          if (commit.length !== 2 || commit[0] !== event.after || commit[1] !== event.before) fail();
+          const changed = git(['diff', '--name-only', '--no-renames', event.before, event.after, '--', workflowPath])
+            .split(/\r?\n/).filter(Boolean);
+          if (changed.length !== 1 || changed[0] !== workflowPath) fail();
+          NODE
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked development dependencies
+        run: npm ci --ignore-scripts
+      - name: Build emitted runtime
+        run: npm run build
+      - name: Validate synthetic PASS against the original consumer contract
+        id: validate
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          import { validateCodexPass } from './dist/ci-review/codex-pass-producer.mjs';
+          import { digestDecision } from './dist/ci-report.mjs';
+
+          const fail = () => { console.error('Synthetic PASS validation failed.'); process.exit(1); };
+          const repository = process.env.GITHUB_REPOSITORY;
+          const eventSha = process.env.GITHUB_SHA;
+          const workflowSha = process.env.GITHUB_WORKFLOW_SHA;
+          const workflowRef = process.env.GITHUB_WORKFLOW_REF;
+          if (workflowSha !== eventSha || !workflowRef?.startsWith(`${repository}/.github/workflows/issue329-codex-pass-handoff-fixture.yml@refs/heads/`)) fail();
+          const syntheticSha = avoid => {
+            for (const char of 'abcdef0123456789') {
+              const value = char.repeat(40);
+              if (!avoid.has(value)) { avoid.add(value); return value; }
+            }
+            fail();
+          };
+          const used = new Set([eventSha]);
+          const context = {
+            repository,
+            runId: process.env.GITHUB_RUN_ID,
+            runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+            eventSha,
+            callerWorkflowSha: workflowSha,
+            callerWorkflowRef: workflowRef,
+            workflowRepository: repository,
+            workflowSha,
+            workflowRef,
+            baseSha: syntheticSha(used),
+            headSha: eventSha,
+            reviewedSha: syntheticSha(used),
+          };
+          const schema = JSON.parse(readFileSync('.codex/gatekeeper/ci-decision.schema.json', 'utf8'));
+          const rulesText = readFileSync('.codex/gatekeeper/decision.validation.json', 'utf8');
+          const authorities = JSON.parse(readFileSync('.codex/gatekeeper/authorities.json', 'utf8'));
+          const authorityIds = authorities.authorities.map(item => item.id);
+          const provenance = {
+            version: 1,
+            manifestSha256: 'd'.repeat(64),
+            setDigest: 'e'.repeat(64),
+            members: authorityIds.map(id => ({ id, repository, resolvedCommit: context.baseSha,
+              path: `docs/${id}.md`, sha256: 'f'.repeat(64) })),
+          };
+          const valueFor = value => {
+            if (value.enum) return value.enum.includes('PASS') ? 'PASS' : value.enum[0];
+            if (value.type === 'object') return Object.fromEntries(value.required.map(key => [key, valueFor(value.properties[key])]));
+            if (value.type === 'array') return value.minItems ? [valueFor(value.items)] : [];
+            if (value.type === 'integer') return 1;
+            return 'bounded synthetic claim';
+          };
+          const decision = valueFor(schema);
+          decision.authorityIds = authorityIds;
+          decision.summary = `Synthetic hosted handoff masking check: issue329-marker-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`;
+          const authorityText = JSON.stringify(provenance);
+          const result = validateCodexPass({
+            context,
+            decisionText: JSON.stringify(decision),
+            schemaText: JSON.stringify(schema),
+            rulesText,
+            authorityText,
+            authorityEncoded: Buffer.from(authorityText).toString('base64'),
+            legacyText: null,
+            legacyEncoded: '',
+            policyVersion: '2',
+            mode: 'enforced',
+            policyResult: 'success',
+            reviewResult: 'success',
+          });
+          if (!result || result.expected.decisionDigest !== digestDecision(decision)) fail();
+          writeFileSync(join(process.env.RUNNER_TEMP, 'issue329-pass-projection.json'), JSON.stringify(result.projection), { flag: 'wx', mode: 0o600 });
+          appendFileSync(process.env.GITHUB_OUTPUT, `expected=${JSON.stringify(result.expected)}\n`);
+          NODE
+      - name: Publish validated ordinary Codex PASS display
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: |
+          marker="issue329-marker-${RUN_ID}-${RUN_ATTEMPT}"
+          echo "::add-mask::${marker}"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          import { emitPassDisplay } from './dist/ci-review/codex-pass-publication.mjs';
+          emitPassDisplay(JSON.parse(readFileSync(join(process.env.RUNNER_TEMP, 'issue329-pass-projection.json'), 'utf8')));
+          NODE
+
+  reporter:
+    needs: [producer]
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/codex/issue329-codex-pass-handoff-fixture' && github.event_name == 'push'
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Enforce exact synthetic fixture trigger
+        env:
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          const workflowPath = '.github/workflows/issue329-codex-pass-handoff-fixture.yml';
+          const fail = () => { console.error('Fixture trigger guard failed.'); process.exit(1); };
+          if (process.env.REPOSITORY !== 'flair-agency/architecture-gatekeeper' ||
+              process.env.REF !== 'refs/heads/codex/issue329-codex-pass-handoff-fixture' ||
+              process.env.EVENT_NAME !== 'push') fail();
+          const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          const sha = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
+          if (!sha(event.before) || event.before === '0'.repeat(40) || !sha(event.after) ||
+              event.after !== process.env.GITHUB_SHA) fail();
+          const git = args => execFileSync('git', args, { encoding: 'utf8', timeout: 5_000, maxBuffer: 65_536 }).trim();
+          if (git(['rev-parse', 'HEAD']) !== event.after) fail();
+          const commit = git(['rev-list', '--parents', '-n', '1', event.after]).split(/\s+/);
+          if (commit.length !== 2 || commit[0] !== event.after || commit[1] !== event.before) fail();
+          const changed = git(['diff', '--name-only', '--no-renames', event.before, event.after, '--', workflowPath])
+            .split(/\r?\n/).filter(Boolean);
+          if (changed.length !== 1 || changed[0] !== workflowPath) fail();
+          NODE
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked development dependencies
+        run: npm ci --ignore-scripts
+      - name: Build emitted runtime
+        run: npm run build
+      - name: Retrieve masked display and verify the original acceptance boundary
+        env:
+          EXPECTED_JSON: ${{ needs.producer.outputs.expected }}
+          GITHUB_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { retrievePassDisplay } from './dist/github/codex-pass-log.mjs';
+          import { digestDecision, renderReport } from './dist/ci-report.mjs';
+          import { assertEnforcedAcceptance } from './dist/ci-enforced-acceptance.mjs';
+          const fail = () => { console.error('Synthetic hosted handoff verification failed.'); process.exit(1); };
+          const expected = JSON.parse(process.env.EXPECTED_JSON);
+          if (expected.runId !== process.env.RUN_ID || expected.runAttempt !== process.env.RUN_ATTEMPT) fail();
+          const decision = await retrievePassDisplay(expected, process.env.GITHUB_TOKEN);
+          const marker = `issue329-marker-${process.env.RUN_ID}-${process.env.RUN_ATTEMPT}`;
+          if (typeof decision.summary !== 'string' || !decision.summary.includes('***') || decision.summary.includes(marker) ||
+              digestDecision(decision) === expected.decisionDigest) fail();
+          const report = renderReport({ conclusion: 'PASS', summary: decision.summary, decision },
+            { decisionDigest: expected.decisionDigest, reviewedSha: expected.reviewedSha });
+          if (!report.includes('***') || !report.includes(expected.decisionDigest) || report.includes(marker)) fail();
+          const accepted = assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'PASS', ownerAmendmentSelected: 'G0',
+            ownerAmendmentAttemptResult: 'success', ownerAmendmentAttempted: 'false' });
+          if (accepted.route !== 'ordinary-pass') fail();
+          for (const attempted of ['true', undefined]) {
+            let rejected = false;
+            try { assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'PASS', ownerAmendmentSelected: 'G0',
+              ownerAmendmentAttemptResult: 'success', ownerAmendmentAttempted: attempted }); } catch { rejected = true; }
+            if (!rejected) fail();
+          }
+          console.log(report);
+          console.log('Synthetic display-only PASS handoff reached the existing ordinary acceptance predicate; no model review or acceptance authority was exercised.');
+          NODE

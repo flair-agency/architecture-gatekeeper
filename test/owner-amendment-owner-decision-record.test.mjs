@@ -39,6 +39,62 @@ test('builds a versioned OWNER_DECISION record from exact protected inputs and t
     recordBytes: Buffer.from(`${JSON.stringify(record)}\n`) }), record);
 });
 
+test('retains the caller-owned Buffer toString result in the base64 observation', () => {
+  const x = args();
+  x.decisionBytes = Buffer.from(x.decisionBytes);
+  x.decisionBytes.toString = () => 17;
+  const record = buildOwnerAmendmentOwnerDecisionRecord(x);
+  assert.equal(record.decisionBytesBase64, 17);
+});
+
+test('retains context getter mutations made during validation before the context spread', () => {
+  const x = args();
+  Object.defineProperty(x.context, 'runAttempt', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      Object.defineProperty(x.context, 'runAttempt', {
+        value: '1', enumerable: true, configurable: true, writable: true,
+      });
+      delete x.context.mergeSha;
+      x.context.version = 99;
+      x.context.kind = 'mutated-by-context-getter';
+      return '1';
+    },
+  });
+  const record = buildOwnerAmendmentOwnerDecisionRecord(x);
+  assert.equal(record.version, 99);
+  assert.equal(record.kind, 'mutated-by-context-getter');
+  assert.equal(Object.hasOwn(record, 'mergeSha'), false);
+});
+
+test('preserves the enumerable toJSON mutation and its record receiver during JSON sizing', () => {
+  const x = args();
+  let observedThis;
+  Object.defineProperty(x.context, 'runAttempt', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      Object.defineProperty(x.context, 'toJSON', {
+        enumerable: true,
+        configurable: true,
+        value() {
+          observedThis = this;
+          delete this.decisionSha256;
+          delete this.authority;
+          delete this.version;
+          delete this.kind;
+          return this;
+        },
+      });
+      return '1';
+    },
+  });
+  const record = buildOwnerAmendmentOwnerDecisionRecord(x);
+  assert.equal(observedThis, record);
+  for (const key of ['decisionSha256', 'authority', 'version', 'kind']) assert.equal(Object.hasOwn(record, key), false);
+});
+
 test('rejects BLOCK, PASS, and missing-decision confusion or incomplete Authority Set results', () => {
   for (const wrongDecision of ['BLOCK', 'PASS']) {
     const x = args();

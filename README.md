@@ -112,6 +112,9 @@ files. Its optional local `REPORT_PATH` must name
 `architecture-gate-report.md` in the current directory; it creates that file
 exclusively and never overwrites an existing destination. See the
 [report filesystem boundary](docs/integration-reference.md#report-filesystem-boundary).
+For a complete consumer-owned local v2 configuration and CI policy v4 example,
+including the separate optional G0 selection, see
+[examples/consumer-v4](examples/consumer-v4/README.md).
 
 #### Self-repository Fork contributions
 
@@ -153,6 +156,9 @@ operations, development and release guides, or normative contract.
 
 The predecessor-selected `preview-unverified-procedure-v1` lifecycle API and
 its route-specific limits are documented in the [integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api).
+An installed `architecture-preview-lifecycle` command exposes prepare,
+complete, finalize and fresh through bounded JSON on stdin/stdout, using the
+invoking checkout as its fixed root.
 All preview procedures remain `UNVERIFIED` and do not provide protected
 acceptance.
 

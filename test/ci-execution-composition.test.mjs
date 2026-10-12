@@ -109,7 +109,10 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
     assert.equal(observation.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github-response');
     assert.equal(observation.env.GATEKEEPER_RUNTIME_ROOT, '${{ steps.validation_runtime_location.outputs.root }}');
     assert.doesNotMatch(observe, /continue-on-error/);
-    assert.match(text, /final_message: \$\{\{ \(needs\.policy\.outputs\.execution_selection != 'policy' && steps\.codex\.outputs\.final-message\) \|\| steps\.execution\.outputs\.final_message \}\}/);
+    const ordinaryOutput = "(needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message";
+    assert.equal(parsed.jobs.review.outputs.final_message, file === '.github/workflows/architecture-gate.yml'
+      ? "${{ steps.pass-display.outputs.pass_conclusion != 'PASS' && (" + ordinaryOutput + ") || '' }}"
+      : '${{ ' + ordinaryOutput + ' }}');
     const reportJob = text.match(/  report:\n([\s\S]*?)\n  accept:/)?.[1];
     const acceptJob = text.match(/  accept:\n([\s\S]*)$/)?.[1];
     assert.ok(reportJob, file);

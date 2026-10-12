@@ -2,27 +2,8 @@
 import { readFileSync, statSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { decodeLimits } from './prepare-authority-set.mjs';
-import { MULTI_AUTHORITY_PROFILE } from './authority-set.mjs';
-
-/** A selected route needs a protected output schema that can report source IDs. */
-export function validateAuthorityReviewSchema(schema, profile = 'v1') {
-  if (!schema || typeof schema !== 'object' || Array.isArray(schema) ||
-      schema.type !== 'object' || !Array.isArray(schema.required) ||
-      !schema.required.includes('authorityIds') ||
-      !schema.properties || typeof schema.properties !== 'object' ||
-      Array.isArray(schema.properties)) throw new Error('Protected decision schema must require authorityIds.');
-  const ids = schema.properties.authorityIds;
-  if (!ids || ids.type !== 'array' || ids.items?.type !== 'string' ||
-      !Number.isSafeInteger(ids.minItems) || ids.minItems < 1) {
-    throw new Error('Protected decision schema must define authorityIds as a nonempty string array.');
-  }
-  if (profile === MULTI_AUTHORITY_PROFILE &&
-      (!schema.required.includes('authoritySetDigest') || schema.properties.authoritySetDigest?.type !== 'string' ||
-       !schema.required.includes('ownerDecisionId') || schema.properties.ownerDecisionId?.type !== 'string')) {
-    throw new Error('Multi-document review schema must require authoritySetDigest and ownerDecisionId.');
-  }
-  return schema;
-}
+import { validateAuthorityReviewSchema } from './authority-validation/preflight-authority-set-review.mts';
+export { validateAuthorityReviewSchema };
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {

@@ -17,7 +17,8 @@ test('rejects reported authority outside the configured boundary', () => assert.
 test('packages the manual review CLI', () => {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(manifest.bin['architecture-review'], 'dist/manual-review.mjs');
-  assert.match(readFileSync(new URL('../src/manual-review.mjs', import.meta.url), 'utf8'), /runManualReviewCli\(\)/);
+  assert.match(readFileSync(new URL('../dist/manual-review.mjs', import.meta.url), 'utf8'), /import ['"]\.\/local-review\/manual-review\.mjs['"]/);
+  assert.match(readFileSync(new URL('../dist/local-review/manual-review.mjs', import.meta.url), 'utf8'), /runManualReviewCli\(\)/);
   assert.equal(typeof runManualReviewCli, 'function');
 });
 
@@ -162,6 +163,20 @@ function runManual({ root, bin }, extraEnv = {}) {
     env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, ...extraEnv }
   });
 }
+
+test('importing the manual command retains its unconditional review dispatch', t => {
+  const fixture = manualFixture(t);
+  const command = new URL('../dist/manual-review.mjs', import.meta.url).href;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e',
+    `process.argv = ['node', process.execPath, 'Review on command import']; await import(${JSON.stringify(command)});`], {
+    cwd: fixture.root, encoding: 'utf8', timeout: 10000,
+    env: { ...process.env, PATH: `${fixture.bin}:${process.env.PATH}` },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.error, undefined);
+  assert.equal(JSON.parse(result.stdout).decision, 'BLOCK');
+  assert.equal('hookSpecificOutput' in JSON.parse(result.stdout), false);
+});
 
 test('manual review returns BLOCK without Hook context, Hook output or session state', t => {
   const fixture = manualFixture(t);

@@ -13,13 +13,13 @@ export type OwnerAmendmentTagRefRequest = {
   readonly bSha: unknown;
 };
 export type OwnerAmendmentTagAttemptInput = {
-  repository?: unknown;
-  baseSha?: unknown;
-  bSha?: unknown;
-  baseBranch?: unknown;
-  triggerProfile?: unknown;
-  policyBytes?: unknown;
-  readTagRef?: (request: OwnerAmendmentTagRefRequest) => Awaitable<unknown>;
+  repository: unknown;
+  baseSha: unknown;
+  bSha: unknown;
+  baseBranch: unknown;
+  triggerProfile: unknown;
+  policyBytes: unknown;
+  readTagRef: (request: OwnerAmendmentTagRefRequest) => Awaitable<unknown>;
 };
 export type OwnerAmendmentTagAttempt =
   | Readonly<{ status: 'OWNER_AMENDMENT_NOT_APPLICABLE'; attempted: false; tagRef: null }>
@@ -27,8 +27,9 @@ export type OwnerAmendmentTagAttempt =
 export type OwnerAmendmentTagAbsent = Extract<OwnerAmendmentTagAttempt, { attempted: false }>;
 
 /** Classify an exact-B protected amendment tag before any semantic/scope validation. */
+export function classifyOwnerAmendmentTagAttempt(input: OwnerAmendmentTagAttemptInput): Promise<OwnerAmendmentTagAttempt>;
 export async function classifyOwnerAmendmentTagAttempt({ repository, baseSha, bSha, baseBranch,
-  triggerProfile, policyBytes, readTagRef } : OwnerAmendmentTagAttemptInput = {}): Promise<OwnerAmendmentTagAttempt> {
+  triggerProfile, policyBytes, readTagRef } : OwnerAmendmentTagAttemptInput = {} as OwnerAmendmentTagAttemptInput): Promise<OwnerAmendmentTagAttempt> {
   if (repository !== SELF_REPOSITORY || !SHA1.test((baseSha ?? '') as string) || !SHA1.test((bSha ?? '') as string) ||
       baseSha === bSha || baseBranch !== 'main' || !TRIGGER_PROFILES.has(triggerProfile as string) ||
       !Buffer.isBuffer(policyBytes) || !policyBytes.length || typeof readTagRef !== 'function') {

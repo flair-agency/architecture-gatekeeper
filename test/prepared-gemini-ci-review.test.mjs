@@ -59,14 +59,15 @@ function fixture(t, mode = 'success', responseText = 'raw protected-CI response 
   const reportPath = join(root, 'observation.json');
   const cliEntrypoint = join(root, 'fake-cli.mjs');
   writeFileSync(cliEntrypoint, `
-import { writeFileSync, readFileSync } from 'node:fs';
+import { renameSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 const mode = ${JSON.stringify(mode)};
 const responseText = ${JSON.stringify(responseText)};
 if (process.argv.includes('--version')) { process.stdout.write('0.62.0'); process.exit(0); }
 let prompt = '';
 for await (const chunk of process.stdin) prompt += chunk;
-writeFileSync(${JSON.stringify(reportPath)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')), referenceText: readFileSync('evidence/reference-0001.txt', 'utf8'), manifest: JSON.parse(readFileSync('manifest.json', 'utf8')), evidence: Object.fromEntries(JSON.parse(readFileSync('manifest.json', 'utf8')).files.flatMap(item => ['before', 'after'].filter(side => item[side]).map(side => [item[side].filename, readFileSync(item[side].filename, 'utf8')])).concat(JSON.parse(readFileSync('manifest.json', 'utf8')).references.map(item => [item.filename, readFileSync(item.filename, 'utf8')]))) }));
+writeFileSync(${JSON.stringify(`${reportPath}.pending`)}, JSON.stringify({ prompt, endpoint: process.env.GOOGLE_VERTEX_BASE_URL, env: process.env, settings: JSON.parse(readFileSync(join(process.env.HOME, '.gemini/settings.json'), 'utf8')), referenceText: readFileSync('evidence/reference-0001.txt', 'utf8'), manifest: JSON.parse(readFileSync('manifest.json', 'utf8')), evidence: Object.fromEntries(JSON.parse(readFileSync('manifest.json', 'utf8')).files.flatMap(item => ['before', 'after'].filter(side => item[side]).map(side => [item[side].filename, readFileSync(item[side].filename, 'utf8')])).concat(JSON.parse(readFileSync('manifest.json', 'utf8')).references.map(item => [item.filename, readFileSync(item.filename, 'utf8')]))) }));
+renameSync(${JSON.stringify(`${reportPath}.pending`)}, ${JSON.stringify(reportPath)});
 if (mode === 'budget') {
   const result = await fetch(process.env.GOOGLE_VERTEX_BASE_URL + '/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent?alt=sse', { method: 'POST', body: '{}' });
   if (result.status !== 429) throw new Error('Expected reservation rejection');
