@@ -17,3 +17,12 @@ test('real CI diagnostic CLI contains bootstrap errors without altering required
   assert.equal(disabled.status, 0); assert.equal(disabled.stdout, ''); assert.equal(disabled.stderr, '');
 
 });
+
+test('actual CI bootstrap CLI isolates an unavailable warning sink', t => {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), 'agk-ci-warning-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const helper = new URL('./helpers/measurement-ci-warning-child.mjs', import.meta.url).pathname;
+  const result = spawnSync(process.execPath, [helper], { cwd: root,
+    env: { ...process.env, AGK_MEASUREMENT_DIR: join(root, 'forbidden'), GITHUB_WORKSPACE: root }, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr); assert.equal(result.stdout, ''); assert.equal(result.stderr, '');
+});
