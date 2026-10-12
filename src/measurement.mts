@@ -74,6 +74,10 @@ function* measurementDirectoryEntries(path: string, maximumEntries: number) {
     }
   } finally { handle.closeSync(); }
 }
+function reviewedRoot(value: unknown = process.cwd()): string {
+  if (typeof value !== 'string' || !value) throw new Error('Invalid diagnostic working root.');
+  return value;
+}
 function directory(path: string | undefined, root?: string, remainingWrites = 1) {
   // POSIX mode bits cannot establish directory privacy on Windows. Until a
   // Windows ACL boundary is supported, refuse capture/export before any I/O.
@@ -159,7 +163,7 @@ export function beginMeasurement(options: MeasurementOptions = {}): MeasurementA
     if (!selected) return noop;
     if (!route || !ROUTES.has(route)) throw new Error('Unknown measurement route.');
     if (changeId && (typeof changeId !== 'string' || changeId.length > 200)) throw new Error('Invalid change identity.');
-    const dir = directory(selected, cwd, 3);
+    const dir = directory(selected, reviewedRoot(cwd), 3);
     const start = { version: 1, kind: 'agk-diagnostic', attemptId: randomUUID(), phase: 'start', route, startedAt: new Date().toISOString(), runtime: runtime(),
       repositoryId: cwd ? measurementDigest(realpathSync(cwd)) : null, changeId: changeId || null,
       sessionId: sessionId ? measurementDigest(sessionId) : null, correlation: correlation || null, context };
@@ -244,7 +248,7 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
 export function resumeNativeMeasurement(requestPath: string, request: MeasurementRequest, selected = process.env.AGK_MEASUREMENT_DIR): MeasurementAttempt {
   if (!selected) return noop;
   try {
-    const dir = directory(selected, request.repositoryRoot);
+    const dir = directory(selected, reviewedRoot(request.repositoryRoot));
     const correlation = measurementDigest(resolve(requestPath));
     const records = loadMeasurementDirectory(dir).records as RecordView[];
     // A torn/oversized terminal is still an exclusive terminal file. Do not
@@ -313,7 +317,7 @@ export function redactMeasurement(value: MeasurementRecord) {
 
 export function resumeMeasurement(attemptId: string, selected: string | undefined): MeasurementAttempt {
   try {
-    const dir = directory(selected);
+    const dir = directory(selected, reviewedRoot());
     if (!/^[a-f0-9-]{36}$/.test(attemptId)) throw new Error('Invalid attempt identity.');
     try { readDiagnosticText(join(dir, `${attemptId}.terminal.json`), MAX_BYTES); throw new Error('Attempt already completed.'); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
