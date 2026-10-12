@@ -134,8 +134,12 @@ concurrent writers; subsequent storage exhaustion remains a collection gap.
 At the directory limit logging warns and stops; it never silently deletes
 older attempts. Directory enumeration stops at the first overflow entry, counts
 all names before record filtering and closes its handle even when export fails.
-A directory at 4,096 entries remains exportable; any larger directory is rejected,
-including when excess entries are not record filenames. Export/archive and delete
+A directory at 4,096 entries remains exportable when its matched record text fits
+the cumulative 4 MiB parse/retention budget; larger entry counts are rejected,
+including when excess entries are not record filenames. Malformed JSON also
+consumes this text budget. At most one extra bounded file can be read before
+overflow detection. Overflow rejects the whole load; native resumption becomes
+a no-op rather than selecting from a partially inspected history. Export/archive and delete
 privately under an owner retention
 policy before reaching the cap. Parsing rejects symlinks, hard-linked input
 files, oversized files, duplicate keys and nesting beyond 32 levels. These
