@@ -2,7 +2,7 @@ import { MEASUREMENT_ENVELOPE_FIELDS, validateMeasurementPhases } from './measur
 import { rejectDuplicateJsonKeys } from './authority-set.mjs';
 import { readRegularGitSnapshot } from './legacy-git-snapshot.mjs';
 import { createHash, randomUUID } from 'node:crypto';
-import { closeSync, constants, fstatSync, lstatSync, openSync, opendirSync, readFileSync, readSync, realpathSync, writeFileSync } from 'node:fs';
+import { closeSync, constants, fstatSync, lstatSync, openSync, opendirSync, readFileSync, readSync, realpathSync, writeFileSync, writeSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { readDiagnosticText, resolveDiagnosticPath } from './diagnostic-path.mts';
 
@@ -56,7 +56,11 @@ const ROUTES = new Set(['manual', 'UserPromptSubmit', 'PostToolUse', 'native', '
 const STATES = new Set(['completed', 'error', 'incomplete', 'unsupported', 'deduplicated', 'unchanged', 'queued', 'cancelled', 'missing']);
 export const measurementDigest = (value: unknown): string => createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
 const within = (root: string, target: string) => { const r = relative(root, target); return r === '' || (r !== '..' && !r.startsWith(`..${sep}`) && !isAbsolute(r)); };
-const warn = () => process.stderr.write('AGK measurement gap: diagnostic recording unavailable.\n');
+export function warnMeasurementGap(message = 'AGK measurement gap: diagnostic recording unavailable.\n'): void {
+  // A synchronous descriptor write contains closed-pipe errors without queuing
+  // an unhandled stream error. Hosts without a usable descriptor may lose it.
+  try { writeSync(process.stderr.fd, message); } catch { /* Warning delivery is optional too. */ }
+}
 const noop = Object.freeze({ request() {}, finish() {}, id: null });
 // Count every directory entry before matching record names. The iterator
 // stops on the first overflow and closes its handle on success or failure.
@@ -150,7 +154,7 @@ function runtime() {
 export function beginMeasurement(options: MeasurementOptions = {}): MeasurementAttempt {
   try {
     if (!options || typeof options !== 'object') throw new Error('Invalid measurement options.');
-    const { route, cwd, directory: selected = process.env.AGK_MEASUREMENT_DIR,
+    const { route, cwd = process.cwd(), directory: selected = process.env.AGK_MEASUREMENT_DIR,
       changeId = process.env.AGK_MEASUREMENT_CHANGE_ID, sessionId, correlation, context = {} } = options;
     if (!selected) return noop;
     if (!route || !ROUTES.has(route)) throw new Error('Unknown measurement route.');
@@ -162,7 +166,7 @@ export function beginMeasurement(options: MeasurementOptions = {}): MeasurementA
     const snapshot = snapshotJson(start);
     put(dir, snapshot);
     return recorder(dir, snapshot);
-  } catch { warn(); return noop; }
+  } catch { warnMeasurementGap(); return noop; }
 }
 function recorder(dir: string, start: RecordView): MeasurementAttempt {
   const envelope: RecordView = { ...Object.fromEntries(MEASUREMENT_ENVELOPE_FIELDS.filter(field => Object.hasOwn(start, field)).map(field => [field, start[field]])),
@@ -211,7 +215,7 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
         put(dir, { ...start, phase: 'prepared', request: snapshot });
         request = snapshot;
         prepared = true;
-      } catch { warn(); }
+      } catch { warnMeasurementGap(); }
       finally { preparing = false; }
     },
     finish(value = {}) {
@@ -232,7 +236,7 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
         // The file limit also applies when completing older attempts.
         directory(dir);
         put(dir, record);
-      } catch { warn(); }
+      } catch { warnMeasurementGap(); }
     }
   };
 }
@@ -257,7 +261,7 @@ export function resumeNativeMeasurement(requestPath: string, request: Measuremen
     validateMeasurementPhases(records.filter(r => r.attemptId === start.attemptId));
     const result = recorder(dir, start);
     return result;
-  } catch { warn(); return noop; }
+  } catch { warnMeasurementGap(); return noop; }
 }
 export function validateMeasurementRecord(value: unknown): MeasurementRecord {
   const record = value as RecordView;
@@ -325,5 +329,5 @@ export function resumeMeasurement(attemptId: string, selected: string | undefine
       validateMeasurementPhases([start, prepared]);
     }
     return recorder(dir, prepared || start);
-  } catch { warn(); return noop; }
+  } catch { warnMeasurementGap(); return noop; }
 }
