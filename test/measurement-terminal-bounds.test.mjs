@@ -25,7 +25,9 @@ function check(directory, gap) {
   assert.deepEqual(terminal.request, loaded.records.find(r => r.phase === 'prepared').request);
   for (const name of readdirSync(directory)) assert.ok(readFileSync(join(directory, name)).length <= MAX);
   for (const records of [loaded.records, loaded.records.map(redactMeasurement)]) {
-    assert.doesNotThrow(() => validateMeasurementDataset({ version: 1, records, population: [], cases: [], audits: [] }));
+    const data = { version: 1, records, population: [], cases: [], audits: [] };
+    if (Buffer.byteLength(JSON.stringify(data)) > MAX) assert.throws(() => validateMeasurementDataset(data), /JSON limit/);
+    else assert.doesNotThrow(() => validateMeasurementDataset(data));
   }
   return terminal;
 }
