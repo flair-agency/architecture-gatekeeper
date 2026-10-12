@@ -46,7 +46,9 @@ function parseJson(bytes, label) {
   catch (error) { fail(`${label} is not strict JSON (${error.message}).`); }
 }
 
-function apiUrl(path) { return `${API}/repos/${path}`; }
+function apiUrl(path, query = '') {
+  return `${API}/repos/${path.split('/').map(encodeURIComponent).join('/')}${query}`;
+}
 function parseRepo(repository) {
   if (typeof repository !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(repository)) fail('repository identity is invalid.');
   return repository;
@@ -143,7 +145,7 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   same(pr.base?.ref, targetBranch, 'pull request target branch');
   same(pr.head?.sha, bSha, 'pull request exact B');
 
-  const jobsPage = await request(apiUrl(`${repository}/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100`));
+  const jobsPage = await request(apiUrl(`${repository}/actions/runs/${runId}/attempts/${attempt}/jobs`, '?per_page=100'));
   if (!Array.isArray(jobsPage.jobs) || !Number.isSafeInteger(jobsPage.total_count) || jobsPage.total_count > 100) fail('producer job listing is missing or exceeds the bounded page.');
   const matchingJobs = jobsPage.jobs.filter(job => String(job.id) === String(jobId));
   if (matchingJobs.length !== 1) fail('selected producer job ID is absent or ambiguous.');
@@ -183,16 +185,21 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   if (typeof job.check_run_url !== 'string') fail('producer job has no check run identity.');
   const checkUrl = new URL(job.check_run_url);
   const checkRunPathPrefix = `/repos/${repository}/check-runs/`;
-  if (checkUrl.origin !== API || !checkUrl.pathname.startsWith(checkRunPathPrefix) ||
-      !DECIMAL.test(checkUrl.pathname.slice(checkRunPathPrefix.length))) fail('producer check run URL is outside the selected repository.');
-  const check = await request(checkUrl.href);
+  const checkPath = checkUrl.pathname;
+  const checkRunId = checkPath.slice(checkRunPathPrefix.length);
+  if (checkUrl.origin !== API || !checkPath.startsWith(checkRunPathPrefix) ||
+      !DECIMAL.test(checkRunId) || checkUrl.username || checkUrl.password || checkUrl.search || checkUrl.hash) {
+    fail('producer check run URL is outside the selected repository.');
+  }
+  const checkRunApiUrl = apiUrl(`${repository}/check-runs/${checkRunId}`);
+  const check = await request(checkRunApiUrl);
   same(check.name, jobName, 'producer check-run name');
   same(check.status, 'completed', 'producer check-run status');
   same(check.conclusion, 'success', 'producer check-run conclusion');
   same(check.head_sha, run.head_sha, 'producer check-run run head');
   same(check.app?.id, ACTIONS_APP_ID, 'producer GitHub Actions app ID');
-  same(String(check.id), String(checkUrl.pathname.split('/').at(-1)), 'producer check-run ID');
-  const annotationUrl = `${checkUrl.href}/annotations?per_page=100`;
+  same(String(check.id), checkRunId, 'producer check-run ID');
+  const annotationUrl = `${checkRunApiUrl}/annotations?per_page=100`;
   const annotationResponse = await fetchImpl(annotationUrl, { headers, redirect: 'follow' });
   if (!annotationResponse?.ok) fail(`producer annotation request failed (${annotationResponse?.status ?? 'no response'}).`);
   const linkHeader = annotationResponse.headers?.get?.('link') ?? '';
@@ -219,12 +226,14 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   }
   if (typeof acceptJob.check_run_url !== 'string') fail('Gatekeeper accept job has no check run identity.');
   const acceptCheckUrl = new URL(acceptJob.check_run_url);
+  const acceptCheckPath = acceptCheckUrl.pathname;
+  const acceptCheckRunId = acceptCheckPath.slice(checkRunPathPrefix.length);
   if (acceptCheckUrl.origin !== API ||
-      !acceptCheckUrl.pathname.startsWith(checkRunPathPrefix) ||
-      !DECIMAL.test(acceptCheckUrl.pathname.slice(checkRunPathPrefix.length))) {
+      !acceptCheckPath.startsWith(checkRunPathPrefix) || !DECIMAL.test(acceptCheckRunId) ||
+      acceptCheckUrl.username || acceptCheckUrl.password || acceptCheckUrl.search || acceptCheckUrl.hash) {
     fail('Gatekeeper accept check run URL is outside the selected repository.');
   }
-  const acceptCheck = await request(acceptCheckUrl.href);
+  const acceptCheck = await request(apiUrl(`${repository}/check-runs/${acceptCheckRunId}`));
   same(acceptCheck.name, acceptName, 'Gatekeeper accept check-run name');
   same(acceptCheck.status, 'completed', 'Gatekeeper accept check-run status');
   same(acceptCheck.conclusion, 'success', 'Gatekeeper accept check-run conclusion');
@@ -232,7 +241,7 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   same(acceptCheck.app?.id, ACTIONS_APP_ID, 'Gatekeeper accept GitHub Actions app ID');
   same(String(acceptCheck.id), String(acceptCheckUrl.pathname.split('/').at(-1)), 'Gatekeeper accept check-run ID');
 
-  const artifactsPage = await request(apiUrl(`${repository}/actions/runs/${runId}/artifacts?per_page=100`));
+  const artifactsPage = await request(apiUrl(`${repository}/actions/runs/${runId}/artifacts`, '?per_page=100'));
   if (!Array.isArray(artifactsPage.artifacts) || !Number.isSafeInteger(artifactsPage.total_count) || artifactsPage.total_count > 100) fail('artifact listing is missing or exceeds the bounded page.');
   const artifactName = `${ARTIFACT_NAME_PREFIX}${bSha}-${attempt}`;
   const artifacts = artifactsPage.artifacts.filter(artifact => artifact.name === artifactName);
