@@ -217,3 +217,17 @@ test('scope counts retain bounded string labels and classify malformed observati
     assert.deepEqual(aggregateMeasurement(data).coverage.completedByScope,{[value]:1});
   }
 });
+
+test('reported finding counts and finding indexes must be safe and bounded before any metric',()=>{
+ for(const value of [Number.MAX_SAFE_INTEGER+1,1e20,-1,1.5,true,'1',{},131072]) {
+  const data=baseDataset();data.records[0].findingCount=value;
+  for(const run of [validateMeasurementDataset,aggregateMeasurement,d=>sampleMeasurementPopulation(d,{seed:'fixed',count:1})]) assert.throws(()=>run(data),/finding count/);
+ }
+ for(const value of [Number.MAX_SAFE_INTEGER+1,1e20,-1,1.5]) {
+  const data=baseDataset();data.cases[0].findingRefs[0].index=value;
+  assert.throws(()=>aggregateMeasurement(data),/finding reference/);
+ }
+ const data=baseDataset();data.records[0].decision='BLOCK';data.records[0].findingCount=131071;data.cases[0].findingRefs[0].index=131070;
+ assert.doesNotThrow(()=>validateMeasurementDataset(data));
+ data.cases[0].findingRefs[0].index=131071;assert.throws(()=>aggregateMeasurement(data),/finding reference/);
+});

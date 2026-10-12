@@ -29,6 +29,9 @@ type ObservationView = MeasurementRecord & {
   startedAt: string; completedAt?: string; state?: string;
   request?: { scope?: { kind?: unknown } };
 };
+// A 256 KiB private JSON record cannot hold more one-byte finding values
+// separated by commas, even before counting its mandatory wrapper.
+const MAX_REPORTED_FINDINGS = Math.floor((256 * 1024 - 2) / 2);
 const decisionView = (value: unknown) => value as { decision?: unknown; findings?: unknown[] } | null | undefined;
 
 const enumValue = (value: unknown, allowed: readonly unknown[]) => allowed.includes(value);
@@ -92,6 +95,8 @@ export function validateMeasurementDataset(value: unknown): MeasurementDataset {
   const normalizedRecords: MeasurementRecord[] = [];
   for (const record of data.records) {
     validateMeasurementRecord(record);
+    if (record.findingCount !== undefined && record.findingCount !== null &&
+        (!Number.isSafeInteger(record.findingCount) || (record.findingCount as number) < 0 || (record.findingCount as number) > MAX_REPORTED_FINDINGS)) reject('finding reference: invalid finding count');
     const key = `${record.attemptId}.${record.phase}`;
     const duplicate = observations.get(key);
     if (duplicate) {
@@ -127,7 +132,7 @@ export function validateMeasurementDataset(value: unknown): MeasurementDataset {
       const count = r?.findingCount ?? privateCount;
       const decision = typeof r?.decision === 'string' ? r.decision : privateDecision?.decision;
       if (!r || r.route === 'ci-outcome' || !enumValue(decision, ['PASS', 'BLOCK', 'OWNER_DECISION']) ||
-          (r.findingCount !== undefined && privateCount !== undefined && r.findingCount !== privateCount) || r.state !== 'completed' || !Number.isInteger(ref.index) || ref.index < 0 || !Number.isInteger(count) || ref.index >= (count as number) || (r.changeId && r.changeId !== item.changeId)) reject('finding reference');
+          (r.findingCount !== undefined && privateCount !== undefined && r.findingCount !== privateCount) || r.state !== 'completed' || !Number.isSafeInteger(ref.index) || ref.index < 0 || !Number.isSafeInteger(count) || (count as number) > MAX_REPORTED_FINDINGS || ref.index >= (count as number) || (r.changeId && r.changeId !== item.changeId)) reject('finding reference');
     }
     cases.set(item.caseId, item);
   }

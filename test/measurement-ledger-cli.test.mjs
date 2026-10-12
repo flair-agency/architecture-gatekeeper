@@ -21,6 +21,8 @@ test('real aggregate and sample CLIs reject inconsistent ledgers without emittin
   const path = join(parent, 'dataset.json');
   const mutations = [
     [d => { d.cases[0].disposition = 'corrected'; }, /final audit disposition/],
+    [d => { d.records[0].findingCount=9007199254740992; }, /finding count/],
+    [d => { d.cases[0].findingRefs[0].index=9007199254740992; }, /finding reference/],
     [d => { d.audits[0].finalViolationCaseIds = []; }, /final audit omits integrated violation/],
     [d => { d.records[0].route = 'ci-outcome'; }, /finding reference/],
     [d => { d.population[0].initialRef = { decision: 'BLOCK' }; }, /population reference/],
