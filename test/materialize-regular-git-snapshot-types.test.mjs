@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const fixtureRoot = join(root, 'test/fixtures/materialize-regular-git-snapshot-contract');
+const tsconfigPath = join(root, 'tsconfig.json');
+const tsconfigRead = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
+assert.equal(tsconfigRead.error, undefined, 'the adopted tsconfig must parse');
+const tsconfig = ts.parseJsonConfigFileContent(tsconfigRead.config, ts.sys, root, undefined, tsconfigPath);
+assert.deepEqual(tsconfig.errors, [], 'the adopted tsconfig must not contain errors');
+assert.equal(tsconfig.options.strict, true);
+assert.equal(tsconfig.options.noImplicitAny, true);
+assert.equal(tsconfig.options.noEmitOnError, true);
+const compilerOptions = { ...tsconfig.options, rootDir: root, noEmit: true };
+
+function diagnosticsFor(fixture) {
+  const file = join(fixtureRoot, fixture);
+  const program = ts.createProgram([file], compilerOptions);
+  const diagnostics = ts.getPreEmitDiagnostics(program);
+  const fixtureDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
+  const otherDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file);
+  assert.equal(otherDiagnostics.length, 0, otherDiagnostics.map(diagnostic =>
+    `${diagnostic.file?.fileName ?? '<global>'}:${diagnostic.code}:${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')}`
+  ).join('\n'));
+  return fixtureDiagnostics;
+}
+
+test('materialized snapshot exposes only the observed path and computed digest contracts', () => {
+  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+});
+
+test('materialized snapshot requires the accessed input fields and keeps observations unknown', () => {
+  assert.deepEqual(diagnosticsFor('negative.mts'), []);
+});

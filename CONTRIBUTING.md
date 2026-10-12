@@ -21,7 +21,9 @@ public issue.
 
 ## Development workflow
 
-The repository requires Node.js 22 or newer.
+The installed package requires Node.js 22 or newer. Source development that
+loads `.mts` files directly requires Node.js 22.18 or newer on the Node 22
+line; earlier Node 22 releases can run the emitted `dist/` tree.
 
 1. Fork the repository and create a focused branch from `main`.
 2. Keep each pull request to one reviewable outcome.

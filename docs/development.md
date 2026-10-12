@@ -126,10 +126,16 @@ Flat facades retain public exports and the original CLI guards; policy CLI stays
 preserve asynchronous dispatch and runtime operations. External
 JSON and unchecked property rereads remain unknown. Adoption eligibility is
 unknown because the existing validator rereads a caller-owned result; adoption
-and canonical states remain separate literal states. The legacy CI preparer and multi-authority addition migrations remain deferred,
-with their original generic input/output risk and alert locations; no dismissal
-or trust-model expansion is made. Types provide no
-authentication, owner authorization, immutable evidence or protected acceptance.
+and canonical states remain separate literal states. The legacy CI preparer
+remains at its flat path with its original Git, filesystem and CLI operations;
+only its existing exact `authorityFiles` decision check is extracted to
+`src/ci-review/legacy-authority-decision.mts`. Parsed decisions and provenance
+observations remain unknown, and the helper returns an unknown observation. A
+local source-only CodeQL comparison reports 57 of 58 prior fingerprints and all
+58 flows; hosted CodeQL analysis and model regression passed in #548. This partial extraction does not
+claim fingerprint equivalence, risk removal, authentication, owner authorization,
+immutable evidence or protected acceptance. The multi-authority addition
+migration also remains partial; no model expansion or alert dismissal is made.
 
 The current BLOCK handoff stack types `owner-amendment-block-handoff`,
 `owner-amendment-block-handoff-compose`, and `owner-amendment-block-handoff-orchestrator`.
@@ -216,10 +222,102 @@ owner-addition provenance relocations remain deferred in Draft #520 after
 hosted CodeQL registered alerts #224–#234. No model expansion or dismissal is
 made; local runtime equivalence does not override a failing hosted check.
 
+The Gemini CLI slice types response extraction, process supervision and parent
+proxy-session composition. Flat exports, original error paths and defaults remain
+unchanged. Required byte limits and process inputs have explicit contracts;
+thinking controls require the existing model-specific budget or level branch.
+Unknown process observations, nullable child outcomes and mutable returned
+results retain their actual boundaries. Deadline, cancellation, workspace-control
+and credential-confinement checks retain their original operations.
+
+The internal-adapter slice types the Codex transport, materialized Gemini CLI
+session and protected prepared-review adapter. Required request, workspace,
+protected prompt/schema and credential inputs have explicit contracts, with
+mandatory model-specific thinking controls. Parsed Codex output remains unknown.
+Flat exports, read-only invocation, validation, proxy scope and cleanup preserve
+their original operations. The parent proxy composes the typed session directly.
+
+The local-review and runner-path slice types local reviewer composition and
+fixed runner temporary paths. The native CLI remains at its original flat
+`.mjs` implementation and is outside this typed migration. Required async
+deadlines, synchronous versus awaited callbacks and complete envelope fields
+have explicit contracts. External decisions, JSON and manifest readbacks remain
+unknown; exact byte reads return Buffer and successful paths return strings.
+Native CLI guards and operations, runtime default adapters,
+deadline/cancellation, closed path tables and GitHub output checks retain their
+original operations.
+The approved runner environment accessor remains at its original model path.
+
+The local entrypoint slice types the Hook and manual-review adapters and the
+PostToolUse screening path. Sync reviewer callbacks reject known Promise and
+thenable results; async callbacks retain their awaited result and complete
+envelope contracts. External Hook JSON, context readbacks and decisions remain
+unknown until the existing runtime checks. The Hook direct-run guard stays in
+the flat executable facade. Manual review keeps its unconditional module-load
+dispatch through a side-effect facade; importing that command still executes it.
+Debounce, stored context, refusal, deadlines and cancellation keep their original
+operations. Typed options do not validate external decisions or authorize PASS.
+
+The CI composition slice types the existing procedural acceptance predicate
+and the CI report's parsers, rendering and delivery helpers. The predicate's
+literal outcomes describe routing only; they do not authenticate an execution
+or establish protected acceptance. Report JSON and coercion-only observations
+remain unknown, while parser-owned branches and locally constructed results
+have explicit types. Fetch contracts retain native fetch and minimal synthetic
+GET/acknowledgement responses. The report CLI and its filesystem output sinks
+remain at the original flat path with their original operations; that original
+module is only partially migrated. Flat entrypoints and guards remain intact.
+
+The GitHub command slice types the existing ruleset-readback CLI and adds a
+checked JavaScript return contract to the runner-environment accessor. Ruleset
+readback retains unconditional module-load execution, credential revocation
+before storage, bounded readbacks and the original private file modes. The
+runner accessor stays at its approved model path and returns only the string
+established by its existing runtime check; this does not authenticate provenance.
+
+Three checked JavaScript bridges remain at their existing source paths: the
+runner-environment accessor, snapshot materializer and native CLI. The native CLI
+checks its existing optional string-array arguments, working directory and async
+completion contract; its entire runtime body and direct-execution guard remain
+unchanged. The materializer retains
+two narrow `@ts-expect-error` boundaries where it composes the existing Git
+reader and filesystem writer. They preserve those operations without claiming
+that `outputPath` is a string: the original truthy guard permits native path-like
+and file-descriptor inputs. Six originals have partial helper migrations.
+The CI report keeps its flat CLI and filesystem sinks; the owner-addition
+finalizer keeps its finalizer and CLI operations; and multi-authority
+orchestration keeps its adapter while delegating selected eligibility helpers.
+Owner-addition CI delegates only the post-parse single-member selection while
+retaining its Git reads, file writes and command dispatch. GitHub OWNER_ADDITION
+provenance delegates the bounded single-entry ZIP parser while retaining fetch,
+token, artifact selection, digest binding and attestation validation at the
+flat path. These types describe existing parsed bytes and selected-member
+results; they do not authenticate provenance or establish acceptance. The legacy CI
+preparer is also partial: its decision check is extracted, while Git, filesystem
+and CLI operations remain at the original path.
+
+The 57-of-58-fingerprint local CodeQL comparison above concerns that legacy
+decision helper, not a move of the snapshot materializer sink. All 58 flows
+remain present; hosted CodeQL analysis and model regression passed in #548
+with the selected model unchanged. The materializer remains a checked JavaScript bridge at its original
+path with its original path-like output behavior.
+
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-Merged #518 has 68 of the original 96 modules typed and 28 remaining.
-This amendment-core candidate has 69 typed and 27 remaining.
+The internal-adapter candidate has 75 of the original 96 modules typed and
+21 remaining. The local-review/runner-path slice has 77 original modules in
+`.mts` and 19 original modules outside the typed migration. This local
+entrypoint foundation has 80 `.mts` modules and 16 original modules remaining.
+This CI composition candidate brings the count to 81 `.mts` modules and
+15 originals remaining; the partially typed report is included in the latter.
+The GitHub command candidate has 82 original modules fully migrated to `.mts`
+and 14 originals not fully migrated. Of those 14, three have checked
+JavaScript contracts (the runner-environment accessor, snapshot materializer
+and native CLI), and six have partial helper migrations (CI report,
+owner-addition finalizer, multi-authority orchestration, owner-addition CI and
+GitHub OWNER_ADDITION provenance and the legacy authority decision check). The other five remain JavaScript modules
+outside these migrations. These source-layout counts do not change the
+selected CodeQL model or establish acceptance evidence.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
@@ -234,7 +332,7 @@ and emitted static module references and targets across both source extensions.
 `npm run check:typescript` runs `tsc --noEmit --project tsconfig.json`.
 `npm run build` clears ignored `dist/` and runs the same project compiler to
 emit `.mjs`. The `allowJs` and `checkJs: false` settings include JavaScript in
-the build while strict type checking applies to `.mts`. Keep established flat
+the build; `.mjs` files opt into strict checking with `// @ts-check`. Keep established flat
 `src/*.mjs` facades and package aliases and
 bins; their runtime targets are in `dist/`. Source-location-sensitive modules
 such as preview lifecycle retain their flat emitted path. Audit `import.meta.url`,
@@ -259,13 +357,20 @@ node scripts/check-source-cycles.mjs
 npm test
 ```
 
+Installing this repository from an exact Git commit runs its `prepare` script
+and builds `dist/`, so the installed package's public commands and exports are
+present. CI and release workflows continue to install with lifecycle scripts
+disabled and invoke the build explicitly before packing. Registry archives
+include the already-built `dist/` files and do not need an install-time build.
+
 The committed tsconfig uses strict checking, `noImplicitAny`,
 `noEmitOnError`, and NodeNext ESM resolution. TypeScript 6.0.3 and Node 22 types
 pinned at 22.20.5 are development-only. CI and release jobs use Node 22, install
 the lockfile with lifecycle scripts disabled, and build before runtime tests
-and package creation. There are no checked-in generated runtime files and no
-install or publish lifecycle compilation. Registry credentials remain in
-their existing later steps.
+and package creation. Registry packages contain the emitted runtime and need
+no install-time or publish-time compilation; exact Git dependency installs
+run `prepare` to build it. There are no checked-in generated runtime files.
+Registry credentials remain in their existing later steps.
 
 External JSON, environment, API and evidence values remain `unknown` until
 existing runtime checks establish their usable shape. Preserve check order,
@@ -366,7 +471,8 @@ for local/manual, packaged and CI paths as applicable before broader rollout.
 
 ## Local CodeQL
 
-Run these commands from a source checkout (Node.js 22 or newer):
+Run these commands from a source checkout (Node.js 22.18 or newer on the Node
+22 line):
 
 ```bash
 npm run codeql

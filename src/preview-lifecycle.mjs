@@ -17,7 +17,7 @@ function runtimeModulePaths(directory = new URL('.', import.meta.url), prefix = 
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
     const path = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) return runtimeModulePaths(new URL(`${entry.name}/`, directory), path);
-    return entry.name.endsWith('.mjs') ? [path] : [];
+    return entry.name.endsWith('.mjs') || entry.name.endsWith('.mts') ? [path] : [];
   });
 }
 const runtimeIdentity = () => ({ nodeVersion: process.version, files: Object.fromEntries([...runtimeModulePaths().sort(), '../package.json'].map(file => [file, digest(readFileSync(new URL(file, import.meta.url)))])) });
