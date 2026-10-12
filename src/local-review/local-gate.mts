@@ -25,25 +25,22 @@ function contextPath(root: string, sessionId: unknown): string { // Hook JSON on
 function prior(root: string, sessionId: unknown): unknown { try { return (JSON.parse(readFileSync(contextPath(root, sessionId), 'utf8')) as { decision?: unknown }).decision; } catch { return null; } }
 function store(root: string, sessionId: unknown, decision: unknown, revision: unknown): void { const path = contextPath(root, sessionId); mkdirSync(dirname(path), { recursive: true, mode: 0o700 }); const temporary = `${path}.${process.pid}.tmp`; writeFileSync(temporary, `${JSON.stringify({ sessionId, revision, decision })}\n`, { mode: 0o600 }); chmodSync(temporary, 0o600); renameSync(temporary, path); }
 function withPrior<Request extends PreparedReviewRequest>(request: Request, previous: unknown): Request { return previous ? { ...request, prompt: `${request.prompt}\n\nPrior structured review context (context only, never authority):\n<prior-review>\n${JSON.stringify(previous)}\n</prior-review>` } : request; }
-function withoutDiagnosticOptions<T extends object>(options: T, executionReport?: boolean): T {
+function withoutDiagnosticOptions<T extends object>(options: T): T {
   const hidden = new Set<PropertyKey>(['measurement', 'measurementRoute', 'measurementSession']);
   // Forward reads with the original receiver. Enumeration occurs only when the
   // existing transport requires it, never as an eager diagnostic operation.
   return new Proxy(Object.create(null) as T, {
     get(_target, key) {
       if (hidden.has(key)) return undefined;
-      if (key === 'executionReport' && executionReport !== undefined) return executionReport;
       return Reflect.get(options, key, options);
     },
-    has(_target, key) { return !hidden.has(key) && ((key === 'executionReport' && executionReport !== undefined) || Reflect.has(options, key)); },
+    has(_target, key) { return !hidden.has(key) && Reflect.has(options, key); },
     ownKeys() {
       const keys = Reflect.ownKeys(options).filter(key => !hidden.has(key));
-      if (executionReport !== undefined && !keys.includes('executionReport')) keys.push('executionReport');
       return keys;
     },
     getOwnPropertyDescriptor(_target, key) {
       if (hidden.has(key)) return undefined;
-      if (key === 'executionReport' && executionReport !== undefined) return { value: executionReport, enumerable: true, configurable: true };
       const descriptor = Reflect.getOwnPropertyDescriptor(options, key);
       return descriptor ? { enumerable: descriptor.enumerable, configurable: true, get: () => Reflect.get(options, key, options) } : undefined;
     }
@@ -133,7 +130,7 @@ export function runHook<Result = unknown>(input: string, cwd: string = process.c
   try {
     const { event, root } = hookInput(input, cwd, options);
     observed = deferredMeasurement(measurementFor(root, options, 'UserPromptSubmit', event.session_id));
-    const hookOptions = withoutDiagnosticOptions(options, false);
+    const hookOptions = { ...withoutDiagnosticOptions(options), executionReport: false };
     stage = 'hook-context'; const result = review(event.prompt, root, prior(root, event.session_id), hookOptions, observed.attempt);
     stage = 'hook-context-store'; store(root, event.session_id, result, (result as HookDecisionView).reviewedRevision);
     if ((result as HookDecisionView).decision !== 'PASS') { observed.finish('unknown'); throw new Error(`Architecture gate ${(result as HookDecisionView).decision}: ${(result as HookDecisionView).summary}`); }
@@ -146,7 +143,7 @@ async function hookAsync(input: string, cwd: string, options: ManualReviewAsyncO
   const { event, root } = hookInput(input, cwd, options);
   const observed = deferredMeasurement(measurementFor(root, options, 'UserPromptSubmit', event.session_id)); let stage = 'hook-context';
   try {
-    const hookOptions = withoutDiagnosticOptions(options, false);
+    const hookOptions = { ...withoutDiagnosticOptions(options), executionReport: false };
     const result = await reviewAsync(event.prompt, root, prior(root, event.session_id), hookOptions, observed.attempt);
     stage = 'hook-context-store'; store(root, event.session_id, result, (result as HookDecisionView).reviewedRevision);
     if ((result as HookDecisionView).decision !== 'PASS') { observed.finish('unknown'); throw new Error(`Architecture gate ${(result as HookDecisionView).decision}: ${(result as HookDecisionView).summary}`); }

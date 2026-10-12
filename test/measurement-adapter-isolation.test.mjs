@@ -154,13 +154,23 @@ for (const verdict of ['PASS', 'BLOCK']) test(`manual options proxy retains lazy
   assert.equal(runManualReview('sync proxy task', root, options).decision, verdict);
   assert.equal((await runManualReviewAsync('async proxy task', root, options)).decision, verdict);
   const input = JSON.stringify({ hook_event_name: 'UserPromptSubmit', session_id: verdict, prompt: 'task', cwd: root });
-  if (verdict === 'PASS') assert.equal((await runHookAsync(input, root, options)).hookSpecificOutput.hookEventName, 'UserPromptSubmit');
-  else await assert.rejects(runHookAsync(input, root, options), /Architecture gate BLOCK/);
-  assert.equal(calls, 3);
+  // The original Hook composition enumerates caller options; retain that error.
+  await assert.rejects(runHookAsync(input, root, options), /options enumeration unavailable/);
+  assert.equal(calls, 2);
 });
 
 for (const route of ['manual-sync', 'manual-async', 'hook', 'PostToolUse']) test(`unavailable warning sink cannot change required adapter result: ${route}`, t => {
   const child = new URL('./helpers/measurement-adapter-fault-child.mjs', import.meta.url).pathname;
   const result = spawnSync(process.execPath, [child, route], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
+});
+
+test('Hook retains required option-getter failures while manual reads remain lazy', async t => {
+ const {root,records}=fixture(t);let calls=0;
+ const options={reviewer:()=>{calls++;return decision('PASS');},measurement:{directory:records}};
+ Object.defineProperty(options,'unrelated',{enumerable:true,get(){throw new Error('original caller getter failure');}});
+ assert.equal((await runManualReviewAsync('task',root,options)).decision,'PASS');
+ await assert.rejects(runHookAsync(JSON.stringify({hook_event_name:'UserPromptSubmit',session_id:'getter',prompt:'task',cwd:root}),root,options),/original caller getter failure/);
+ assert.equal(calls,1);
+ const terminal=loadMeasurementDirectory(records).records.find(r=>r.phase==='terminal'&&r.route==='UserPromptSubmit');assert.equal(terminal.state,'error');assert.equal(terminal.feedback.publication,'unknown');
 });

@@ -71,3 +71,22 @@ for (const fault of ['missing','malformed','nonfile']) test(`native request read
  const retry=invoke(directory);assert.equal(retry.status,0,retry.stderr);assert.equal(JSON.parse(retry.stdout).decision,'PASS');
  const terminals=loadMeasurementDirectory(directory).records.filter(r=>r.phase==='terminal');assert.equal(terminals.length,2);assert.deepEqual(terminals.find(r=>r.attemptId===failure.attemptId),failure);assert.equal(terminals.find(r=>r.attemptId!==failure.attemptId).decision.decision,'PASS');
 });
+
+for (const payload of [null,{},'invalid request']) test(`native invalid request shape is observed independently: ${JSON.stringify(payload)}`,t=>{
+ const {root,directory,cli,request,decision,env,bytes}=preparedFixture(t);
+ writeFileSync(request,JSON.stringify(payload));writeFileSync(decision,JSON.stringify({decision:'PASS',authorityFiles:['AGENTS.md'],reviewedScope:['fixture'],findings:[]}));
+ const invoke=dir=>spawnSync(process.execPath,[cli,'validate',request,decision],{cwd:root,env:{...env,AGK_MEASUREMENT_DIR:dir},encoding:'utf8'});
+ const original=invoke(''),observed=invoke(directory);assert.equal(observed.status,2,observed.stderr);assert.equal(observed.stdout,original.stdout);assert.ok(observed.stderr.endsWith(original.stderr));
+ const failure=loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal');assert.ok(failure);assert.equal(failure.state,'error');assert.equal(failure.request,null);assert.equal(failure.observation.failureStage,'validation');
+ writeFileSync(request,bytes);const retry=invoke(directory);assert.equal(retry.status,0,retry.stderr);
+ assert.deepEqual(loadMeasurementDirectory(directory).records.find(r=>r.attemptId===failure.attemptId&&r.phase==='terminal'),failure);
+});
+test('native semantic validation failure remains visible after valid retry',t=>{
+ const {root,directory,cli,request,decision,env}=preparedFixture(t);
+ const invoke=dir=>spawnSync(process.execPath,[cli,'validate',request,decision],{cwd:root,env:{...env,AGK_MEASUREMENT_DIR:dir},encoding:'utf8'});
+ writeFileSync(decision,JSON.stringify({decision:'PASS',authorityFiles:[],reviewedScope:[]}));
+ const original=invoke(''),observed=invoke(directory);assert.equal(observed.status,2,observed.stderr);assert.equal(observed.stderr,original.stderr);assert.equal(observed.stdout,'');
+ const failure=loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal');assert.equal(failure.state,'error');assert.equal(failure.decision,null);assert.equal(failure.observation.failureStage,'validation');
+ writeFileSync(decision,JSON.stringify({decision:'PASS',authorityFiles:['AGENTS.md'],reviewedScope:['fixture'],findings:[]}));const retry=invoke(directory);assert.equal(retry.status,0,retry.stderr);assert.equal(JSON.parse(retry.stdout).decision,'PASS');
+ assert.deepEqual(loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal'),failure);
+});

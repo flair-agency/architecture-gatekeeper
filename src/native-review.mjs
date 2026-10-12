@@ -3,7 +3,7 @@
 import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createReviewRequestAsync as prepareRequest, validateReviewResponse as validateResponse, repositoryRoot } from './review-contract.mjs';
-import { beginMeasurement, measurementDigest, resumeNativeMeasurement } from './measurement.mts';
+import { beginMeasurement, measurementDigest, resumeNativeMeasurement, warnMeasurementGap } from './measurement.mts';
 import { resolve } from 'node:path';
 function usage() { throw new Error('Usage: architecture-review-native prepare <request.json> <task...> | validate <request.json> <decision.json>'); }
 /**
@@ -22,9 +22,12 @@ export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = pro
   let stage = 'preparation';
   /** @param {string} [root] */
   function startObservation(root = process.cwd()) {
-    let selectedRoot = root;
-    if (process.env.AGK_MEASUREMENT_DIR) { try { selectedRoot = repositoryRoot(root); } catch { /* preparation will preserve its required error */ } }
-    return beginMeasurement({ route: 'native', cwd: selectedRoot, correlation: measurementDigest(resolve(requestPath)) });
+    try {
+      let selectedRoot = root;
+      if (process.env.AGK_MEASUREMENT_DIR) { try { selectedRoot = repositoryRoot(root); } catch { /* preparation preserves its required error */ } }
+      return beginMeasurement({ route: 'native', cwd: selectedRoot, correlation: measurementDigest(resolve(requestPath)) });
+    } catch { warnMeasurementGap(); return {id:null,request(){},finish(){}}; }
+
   }
   /** @type {typeof prepareRequest} */
   const createReviewRequestAsync = async (task, root) => {
@@ -65,6 +68,8 @@ export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = pro
     return;
   }
   usage();
-  } catch (error) { measurement?.finish({ state: 'error', decision: validatedDecision, observation: { hostExecution: 'unknown', failureStage: stage } }); throw error; }
+  } catch (error) {
+    if (command === 'validate' && requestPath && rest.length === 1 && stage === 'validation' && !measurement?.id) measurement = startObservation(cwd);
+    measurement?.finish({ state: 'error', decision: validatedDecision, observation: { hostExecution: 'unknown', failureStage: stage } }); throw error; }
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) { runNativeReviewCli().catch(error => { process.stderr.write(`${error.message}\n`); process.exitCode = 2; }); }
