@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 import { appendFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +22,12 @@ import {
   loadCodexPassReport,
 } from './ci-review/ci-report.mts';
 
+// These erased views describe existing unchecked operations, not validation.
+// Boxed JSON primitives and native failures retain their runtime behavior.
+/** @typedef {({length?: unknown} & object) | (string & {length?: unknown}) | (number & {length?: unknown}) | (boolean & {length?: unknown}) | null | undefined} JsonLengthRead */
+/** @typedef {{message?: unknown}} ErrorMessageRead */
+/** @typedef {Iterable<{valid: unknown; index: number; reason: unknown}>} InlineFindingOperations */
+
 export {
   COMMENT_MARKER,
   sanitizeReportApiContext,
@@ -37,6 +44,7 @@ export {
   loadCodexPassReport,
 };
 
+/** @returns {Promise<void>} */
 async function main() {
   const passReport = await loadCodexPassReport(process.env);
   const reportDecision = passReport ? JSON.stringify(passReport.decision) : process.env.DECISION || '';
@@ -57,6 +65,7 @@ async function main() {
   const authorityProvenance = parseAuthorityProvenance(process.env.AUTHORITY_PROVENANCE_BASE64,
     process.env.AUTHORITY_ROUTE_SELECTED === 'true' && process.env.REVIEW_RESULT === 'success');
   if (ownerAdditionProcedure?.version === 2) assertSameMultiAuthorityProvenance(authorityProvenance, ownerAdditionProcedure.authoritySet);
+  /** @type {ReturnType<typeof classifyReview> & {decision: (Record<string, unknown> & {findings?: JsonLengthRead}) | null}} */
   const classified = classifyReview({
     mode: process.env.MODE,
     policyResult: process.env.POLICY_RESULT,
@@ -84,7 +93,7 @@ async function main() {
       expectedHead: process.env.HEAD_SHA,
     });
   } catch (error) {
-    console.warn(`::warning title=Architecture Gate report API context rejected::${cleanText(error.message, 300)}`);
+    console.warn(`::warning title=Architecture Gate report API context rejected::${cleanText(/** @type {ErrorMessageRead} */ (error).message, 300)}`);
   }
   if (reportApiContext) {
     try {
@@ -94,11 +103,11 @@ async function main() {
         decision: classified.decision?.decision,
         findings: classified.decision?.findings,
       });
-      for (const item of inlineDelivery.checked || []) {
+      for (const item of /** @type {InlineFindingOperations} */ (inlineDelivery.checked || [])) {
         if (!item.valid) console.warn(`::warning title=Architecture Gate inline finding deferred::Finding ${item.index + 1}: ${cleanText(item.reason, 300)}`);
       }
     } catch (error) {
-      inlineDelivery = { status: 'unavailable', reason: cleanText(error.message, 500) };
+      inlineDelivery = { status: 'unavailable', reason: cleanText(/** @type {ErrorMessageRead} */ (error).message, 500) };
       console.warn(`::warning title=Architecture Gate inline review unavailable::${inlineDelivery.reason}`);
     }
   } else if (classified.decision?.findings?.length) {
@@ -133,7 +142,7 @@ async function main() {
     });
     console.log(`Architecture Gate PR comment: ${result.status}${result.reason ? ` (${result.reason})` : ''}`);
   } catch (error) {
-    console.warn(`::warning title=Architecture Gate comment unavailable::${cleanText(error.message, 500)}`);
+    console.warn(`::warning title=Architecture Gate comment unavailable::${cleanText(/** @type {ErrorMessageRead} */ (error).message, 500)}`);
   }
   if (process.env.GITHUB_OUTPUT) {
     await appendFile(process.env.GITHUB_OUTPUT, `conclusion=${classified.conclusion}\ndecision_digest=${decisionDigest}\n`);
