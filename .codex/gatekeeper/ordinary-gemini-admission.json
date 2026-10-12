@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "enabled": false,
-  "workflowId": null,
-  "runNumber": null,
-  "callerSha256": null,
-  "providerSelectorSha256": null,
-  "serviceAccountSelectorSha256": null
+  "enabled": true,
+  "workflowId": 381385696,
+  "runNumber": 1,
+  "callerSha256": "4cf30713b143df2ea08927648d5ff4911ee378990203a16c56ffdf7fbba7c81c",
+  "providerSelectorSha256": "e3e7a8a5c8f61c6b3fc7e0eed879e662be902299304d2501843cc06821fb5b9c",
+  "serviceAccountSelectorSha256": "af5c0a83eb95b8969994e2b9667a0f2964bce2cb43e390441e40e280e1992e92"
 }

@@ -1,110 +1,235 @@
-# Ordinary Gemini default-branch caller admission candidate
+# Ordinary Gemini bounded default-branch caller candidate
 
-**Status: inactive; admission preparation only.** The owner has already approved
-one bounded session for PR #517. That approval remains in force and does not
-supply the missing technical admission values. The caller's privileged job is
-still guarded by literal `if: false`, and the admission configuration is
-`enabled: false` with `workflowId`, `runNumber`, `callerSha256`,
-`providerSelectorSha256`, and `serviceAccountSelectorSha256` all `null`. No OIDC
-request or provider call is authorized by this inactive candidate.
+**Status: local enabled deployment candidate; not deployed.** The workflow
+source in this checkout is the enabled caller, SHA-256
+`4cf30713b143df2ea08927648d5ff4911ee378990203a16c56ffdf7fbba7c81c`.
+Its seven-key admission configuration is enabled with the exact fixed values
+recorded below. The corrected inert caller artifact hashes to
+`f2d45ee526ae4133d9f34e5fdd7637500e5ef4848d34fa40c0408d7eea88331a`.
 
-## Bounded selection and outstanding admission data
+The bounded selection was adopted through [PR #532](https://github.com/flair-agency/architecture-gatekeeper/pull/532)
+at `b340f5efce301479d391affe2663d0f703812389`, tree
+`70a632f7ac742687f7b2a65491ad891e851e8cd7`. Normal protected merge followed
+independent review, native AGK validation, successful hosted CI/CodeQL and actual
+protected accept; exact canonical document bytes were read back unchanged from
+the reviewed candidate. This local implementation still requires its own final
+verification, publication, protected acceptance and deployed-byte readback.
+No Google authentication, Gemini execution or host enforcement for PR #517 is
+claimed here.
 
-The selected proposal is limited to the existing ordinary caller on the default
-development branch, currently `main`, for one session on PR #517 targeting
-`feature/gemini-ci`. The immutable proposed tuple is:
+## Corrective host-context binding before deployment
 
-- PR head: `c4b0057d9dd47f79df2a896143f7ac6db5da2c2e`
-- protected base: `43e9a28571ad0508a425220256a18d6b140525b2`
-- reviewed merge: `20cc0c1a58ee8263898a56c8df34472bd14ea173`
-- ordered merge parents: `[protected base, reviewed head]`
-- reusable workflow revision: `7dc99525b4ff1510f1de310f6f5b877ab05bbfd2`
+Independent final code review found a P1 in the source pair selected by #532:
+its admission compared `GITHUB_SHA` with the feature PR base. Current GitHub.com
+supplies a default-branch event SHA, so this would deny the legitimate selected
+READY before any API reads and consume ordinal 1. The prior positive test had
+supplied the feature base as `GITHUB_SHA`, hiding the defect.
 
-This does not route Gemini to PRs targeting `main` or another branch and does
-not import FEATURE authority into the default-branch canonical Set. The caller
-continues to select its protected feature policy, prompt, schema,
-decision-validation files, and complete six-member Authority Set from the
-consumer target.
+The corrected source replaces only that comparison with
+`GITHUB_SHA === GITHUB_WORKFLOW_SHA` after workflow-SHA validation. Event and
+live-API feature base/head/merge, ordered-parent and tree checks remain exact.
+Both synthetic and actual Node-child positive fixtures now use a default-source
+SHA distinct from the feature base. Feature-base, wrong and omitted event SHAs
+are denied before API reads. The focused Node 22.18 suite passed all five tests.
 
-Before any OIDC-capable job can run, the fixed admission record must contain the
-actual numeric workflow ID, exactly one `run_number`, attempt 1, the exact
-caller SHA-256, and SHA-256 fingerprints of the owner-confirmed provider and
-service-account selectors. Those values are currently unavailable in the
-configuration. A failed or unrelated event consumes the selected ordinal; it
-cannot advance automatically to another run. A different ready event, retry,
-recreated workflow instance, or changed tuple is denied. The owner-approved
-session cannot be repeated or replaced with provider fallback.
+The previous inactive/enabled pair was
+`9e7c45a0aea5b4d957267b4efccfbc21998184a5ecd42ef4db5d252d52c5815f` /
+`ee0690f61eddf48c152c41e791b76b1549b60087259718d1bbf3f493e9ff8b21`.
+Those bytes were never deployed in this work. Their full-suite run was stopped
+when this P1 was found, and their native session ended after prepare, before
+invoking a reviewer; neither is final verification. Retain the defect and
+incomplete records. The revised source identities were adopted through [PR #551](https://github.com/flair-agency/architecture-gatekeeper/pull/551)
+at `5dbda3612a347ba931d124b93a68aff5198b1006`, tree
+`313c047148e722a869a81421be8b3fd332ec6150`, after protected PASS, actual accept
+and hosted CI/CodeQL success. Exact canonical readback matches the reviewed
+proposal. The original automated old-GHES premise was independently adjudicated
+against the official versioned source and preserved in #551. Its final native review is recorded below; protected implementation deployment
+acceptance remains required.
+All fingerprints, PR tuple, workflow ID, ordinal/attempt and operational caps
+remain unchanged; no READY, auth or Gemini request has occurred.
 
-The prospective activation delta, after canonical adoption and recording and
-verification of those fixed inputs, is limited to the architecture-gate job's
-`if` line. The expected prospective active-source SHA-256 is
-`9c792884f07d228a42ace202f221030273d6f51e74d738d7d09d3480d7001a68`; the
-prospective inactive-source SHA-256 is
-`b2622fa74c9c4e071726120c6146a8e10133bd6ea4399a66cc1b8c1d0374cad3`. These
-are source-planning references, not evidence that the current file or config
-has been activated. No source change to that line is made here.
+## Fixed prospective selection
 
-## Admission boundary and evidence map
+The proposal places the existing ordinary caller on the default development
+branch, currently `main`, for one `ready_for_review` session on PR #517 targeting
+`feature/gemini-ci`. Its immutable tuple is:
 
-| Risk or invariant | Current boundary and evidence | Remaining proof |
-| --- | --- | --- |
-| Candidate PR data must not choose trusted caller/configuration bytes. | The inline protected-admission Node script uses read-only GitHub API GETs to fetch the tree and regular-file blobs at `GITHUB_WORKFLOW_SHA`; it compares the caller's exact-byte SHA-256 with the config. It does not check out or evaluate candidate code. | Live host execution with the actual immutable source revision and fixed digest. |
-| The event, run, and PR must identify one exact session. | The script checks the event tuple, live PR/head/base/merge, run ID, workflow ID, run number, attempt 1, and ordered parents `[base, head]`. Its current source also requires a configuration with `enabled: true` and non-null fixed IDs/digests, so the checked-in false/null config fails closed. | Actual workflow ID, selected run number, fixed fingerprints, canonical record, and point-in-time live API admission. No auto-ordinal advancement. |
-| OIDC and provider access must stay behind admission. | Classifier and protected-admission jobs each have `id-token: none`; the admission job has only contents/actions/pull-request read permissions. The privileged `architecture-gate` job retains literal `if: false`, even though its reusable-workflow permissions include `id-token: write`. | Canonical adoption and the authorized one-session activation after every fixed input is verified. No OIDC/provider call occurred in this preparation. |
-| API input must be bounded and fail closed. | The inline script allows at most 12 API calls, 45 seconds overall, 8 seconds per request, and 1 MiB per response; redirects, malformed data, unavailable reads, or identity mismatches deny admission. | Live GitHub API behavior and host workflow-expression behavior. Local mocked responses do not prove either. |
-| Protected source identity and PR candidate identity must remain distinct. | The script reads caller/config from the commit identified by `GITHUB_WORKFLOW_SHA` (the default-caller workflow source) and independently requires the live run's `head_sha` and PR head to match the proposed candidate head. The workflow pin is fixed at `7dc99525b4ff1510f1de310f6f5b877ab05bbfd2`. | Exact live source revision and run metadata. A matching caller digest or selector fingerprint proves neither Google IAM configuration nor authentication. |
-| Provider selectors must match the owner-confirmed selection without disclosure. | The script compares SHA-256 of the exact UTF-8 selector bytes, with no appended newline, against the protected config. The original selector values are not needed in public canonical text. | Actual selector fingerprints and independent IAM/authentication evidence remain unavailable. No selector value or secret is recorded here. |
+- Head: `c4b0057d9dd47f79df2a896143f7ac6db5da2c2e`
+- Protected base and reusable workflow revision:
+  `c5686f63909af2e83b749ffa0b91d33cb9ea96ad`
+- Reviewed merge: `96ab3902f95250a1c80aecec45434e04272ad548`
+- Reviewed tree: `8107feae6dbf6bc38b279fcab724fd42a5ad0097`
+- Ordered merge parents: `[c5686f63909af2e83b749ffa0b91d33cb9ea96ad,
+  c4b0057d9dd47f79df2a896143f7ac6db5da2c2e]`
+- Existing caller workflow ID: `381385696`; selected run number `1`, attempt
+  `1` only.
 
-The current script is inline in the protected workflow. It has no candidate
-`eval`, shell interpolation of candidate content, or candidate-selected script
-path. Its live source/config reads are bounded. This preparation does not claim
-that GitHub evaluated the workflow or its expressions, or that a future
-admission would prove Google IAM state.
+This does not route Gemini to PRs targeting `main` or another branch, or add
+FEATURE authority to the default-branch canonical Set. The caller selects the
+protected feature policy, prompt, schema, decision-validation file and complete
+six-member Authority Set from the consumer target.
 
-## Prior-source and parallel evidence
+GitHub's current [`pull_request_target` event reference](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target)
+documents the event in the default branch of the base repository, with a
+GHES-before-3.20 conditional preserving the older PR-base context; its current
+GitHub.com table assigns `GITHUB_SHA` and `GITHUB_REF` to the default branch.
+The `branches` filter above selects the PR target branch, not the workflow-file
+revision. The [variables reference](https://docs.github.com/en/actions/reference/workflows-and-actions/variables)
+defines `GITHUB_WORKFLOW_SHA` as the commit SHA for the workflow file. Thus
+`c5686f6` identifies the protected PR base and reviewer inputs here, while the
+actual event caller source must be established from the hosted
+`GITHUB_WORKFLOW_SHA`; the reusable workflow has its own pinned revision. The
+official docs source records are
+`content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md`
+(blob `b365cf2bc6c7f22f26ab2730928974d7eaadcc59`) and
+`content/actions/reference/workflows-and-actions/variables.md` (blob
+`ed0dcd66e04d4f419380997793d1bfebe1f2336a`). No hosted run readback is
+available here, so the actual host-selected source remains a live E2E proof
+obligation.
 
-The protected Architecture Gatekeeper run `38161465058` reported `BLOCK`; its
-report remains preserved at [PR #530](https://github.com/flair-agency/architecture-gatekeeper/pull/530#issuecomment-6111946463).
-The owner later confirmed the WIF provider, service account, and repository
-binding and approved the bounded deployment in the [PR #530 discussion](https://github.com/flair-agency/architecture-gatekeeper/pull/530).
-Those statements satisfy the owner decision; this task does not ask for another
-approval. They are not independent Google Cloud readback or proof of current
-authentication. The `BLOCK` remains unchanged.
+The local prospective caller and the corrected inert artifact differ only in
+the `architecture-gate` explanatory comment and guard. The permitted prospective
+guard is:
 
-The [historical #334 verification comment](https://github.com/flair-agency/architecture-gatekeeper/issues/334#issuecomment-6091422910)
-records a prior authenticated private feature trial (run `38007536879`, attempt
-1): CLI 0.62, `gemini-3.8-flash` / `MEDIUM`, the existing 10-call cap, seven
-HTTP 200 responses, a validated 4,087-byte JSON response, and deterministic
-replay. It is evidence only for that prior feature trial. It proves neither
-this ordinary caller's admission nor authentication, cost, host protection,
-general stability, or acceptance. No paid call is repeated here.
+```yaml
+# One selected workflow instance/ordinal/attempt must pass the protected admission step.
+if: needs.classify-self-repository.outputs.classification == 'same-repository' && needs.protected-admission.outputs.admitted == 'true' && github.event_name == 'pull_request_target' && github.event.action == 'ready_for_review' && github.event.pull_request.draft == false && github.event.pull_request.number == 517 && github.event.pull_request.head.sha == 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' && github.run_attempt == 1
+```
 
-Earlier development verification recorded against the `6fe98cb8109d7b17f73bafde64df34a2c0fb0104`
-baseline and the earlier caller source is historical, not verification of the
-new admission script/configuration. In particular, prior CodeQL, native Skill
-E2E, source preparation, and workflow checks do not establish current source
-analysis or live host behavior. No new CodeQL, native E2E, or full-test success
-is claimed here. The full `npm test` run is being handled independently.
+The guard requires the protected admission result, same-repository
+classification, exact event/action, non-draft PR, fixed PR number and head, and
+attempt 1. The reusable workflow remains pinned to
+`c5686f63909af2e83b749ffa0b91d33cb9ea96ad`. The local configuration now contains the exact adopted seven-key enabled
+record, including the corrected caller digest adopted by #551. Local enabled
+bytes do not establish deployed source or live admission.
 
-Separately, PR #522 at current head `e839…` passed AGK run `38163248397` with
-an actual review report and successful CI, and both CodeQL languages passed.
-That parallel work is owned by its separate task and does not prove or activate
-this caller.
+## Admission, profile and bounds
 
-## Focused verification and remaining work
+The [caller workflow](../../.github/workflows/issue334-ordinary-feature-caller.yml)
+keeps classification and protected admission in separate jobs. Classification
+jobs have `id-token: none`; classification requires matching event and base
+repository IDs, valid full commit SHAs and the event PR number. The protected
+admission job has only `contents`, `actions` and `pull-requests` read
+permissions, `id-token: none`, and a three-minute job timeout. Both jobs write
+only a short allowlisted output line after checking the output path, regular
+file identity, link count and no-follow open.
 
-The current caller-focused five-test suite and `test/workflow-structure.test.mjs`
-passed. The caller suite executes the actual inline admission script against a
-mocked GitHub API fixture and checks exact identity, ordered-parent, byte,
-size, deadline, API-count, and fail-closed cases. It also uses a synthetic YAML
-parser/evaluator; these checks are local diagnostics, not GitHub's expression
-engine, live API admission, or protected acceptance. Exact current-source
-CodeQL and native E2E verification remain pending. No `/review` attempt is
-waived.
+The inline admission script binds the event, live run, workflow, PR, merge
+commit, caller/config blobs and repository IDs to the fixed tuple. It reads
+regular blobs at the same host-selected `GITHUB_WORKFLOW_SHA`; checks exact
+ordered parents and merge tree; verifies the caller SHA and exact config keys;
+and compares SHA-256 of the provider and service-account selector bytes. It
+permits at most 12 API reads, 45 seconds overall, 8 seconds per read, 1,048,576
+bytes per response and 100,000 bytes per blob. Redirects, malformed or missing
+data, mismatched identities and bound overruns deny admission. No candidate
+script or candidate-selected revision is executed.
 
-The remaining activation prerequisites are the actual fixed workflow ID and
-run number, exact caller digest, selector fingerprints, their canonical record
-and verification, canonical adoption and exact target readback, followed by
-read-only live admission against the immutable PR tuple. Only then may the
-previously approved single workflow session proceed. Its HTTP calls and
-internal retries remain under existing consumer-policy caps and deadlines.
+The proposed fixed admission values are workflow ID `381385696`, run number 1,
+attempt 1, caller digest
+`4cf30713b143df2ea08927648d5ff4911ee378990203a16c56ffdf7fbba7c81c`, provider
+selector digest
+`e3e7a8a5c8f61c6b3fc7e0eed879e662be902299304d2501843cc06821fb5b9c`, and
+service-account selector digest
+`af5c0a83eb95b8969994e2b9667a0f2964bce2cb43e390441e40e280e1992e92`. The raw
+service-account selector fingerprint is distinct from the digest of the
+trimmed effective account identity,
+`2180acf4e4c9e0a0a7ec6f997652c2f34e302d2b285bbeb3fd3c1d09688189c4`. Selector
+values remain private. Fingerprint equality binds bytes; it does not prove
+Google IAM state or successful authentication.
+
+The selected protected policy is v6 with Gemini CLI `0.62.0`, model
+`gemini-3.8-flash`, `thinkingLevel: MEDIUM`, no `thinkingBudget`, a 180-second
+session deadline, 16,384 maximum output tokens, encoded prompt limit 196,608
+bytes, and stdout/stderr limits of 65,536 bytes each. Workspace limits are 32
+files, 131,072 bytes per file and 524,288 bytes total. One WIF acquisition has a
+60-second overall authentication bound; it requests a 300-second service
+account token and checks observed expiry is 240–360 seconds from issuance. The
+region is `global`; project is derived from the same normalized, strictly
+parsed service-account identity. The runner has no explicit renewal handle or
+provider fallback. A session-local counter reserves every upstream dispatch
+before send, including CLI-internal retries and uncertain sends, with a
+defensive cap of 10. These are source settings, not hosted execution evidence.
+
+## Captured diagnostics and offline input preparation
+
+The separate selector-fingerprint workflow is ID `381535290`, not the ordinary
+caller. Its first capture, [run `38171030538`](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38171030538), failed generic selector
+validation. Its second capture, [run `38174516659`](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38174516659), failed with the fixed reason
+`selector_validation/provider_resource_shape`; it produced no hashes and did
+not reach the service-account comparison. That result does not establish an
+incorrect configured Secret. The earlier suggestion that an administrator
+must change the setting is withdrawn: the historical auth action reads its
+input through `@actions/core.getInput`, while the diagnostic validates the raw
+selector directly. No setting change or further approval is requested here.
+
+Capture 3, [run `38188331694`](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38188331694) (run number 3, attempt 1), succeeded on the
+`main` push at `32d95063485a3983ed8c37343efad21dc724244d`. It recorded the raw
+selector fingerprints above and compared the trimmed effective account
+identity to digest `2180acf4e4c9e0a0a7ec6f997652c2f34e302d2b285bbeb3fd3c1d09688189c4`.
+It acquired no OIDC or provider credential, made no model call, and did not
+consume the PR #517 session. The retained record is
+`/workspace/agk-resume-evidence/diagnostic3-record.json`.
+
+The pinned credential-free preparer also succeeded for the exact base/head/
+merge/tree tuple above. It selected 12 snapshots (one changed candidate file
+and 11 base references), totaling 143,024 blob bytes; serialized context was
+148,882 bytes. The composed prompt was 147,670 UTF-8 bytes and the encoded
+transport prompt was 150,799 bytes, below the 196,608-byte limit. Each selected
+file and the packet stayed within the workspace limits. This check did not
+acquire credentials, run the Gemini CLI, send model input or mutate hosted
+Actions. Its retained local evidence is
+`/workspace/agk-resume-evidence/pr517-offline-input-bounds.json`.
+
+The original protected Gatekeeper run `38161465058` reported `BLOCK`; its report
+remains preserved at [PR #530](https://github.com/flair-agency/architecture-gatekeeper/pull/530#issuecomment-6111946463).
+That historical result remains unchanged. It is distinct from the later
+selector diagnostics and is not converted to PASS by this deployment proposal.
+
+## Risk, boundary, evidence and remaining proof
+
+| Risk or invariant | Production boundary and source limit | Retained tests or evidence | Remaining proof |
+| --- | --- | --- | --- |
+| Candidate data must not select the trusted caller, policy or tuple. | Inline caller fixes the PR, refs, revisions, workflow/config paths and digest checks; API reads use `GITHUB_WORKFLOW_SHA`. | `test/issue334-ordinary-feature-caller.test.mjs` and `test/workflow-structure.test.mjs` contain synthetic source/API and workflow structure checks; offline preparer evidence binds the immutable tuple. | Final full tests and live GitHub API/workflow-expression behavior for the deployed source. |
+| OIDC must remain behind bounded admission. | Classifier and admission have no OIDC permission; only the exact guard can schedule the credential-capable reusable workflow. Read limits: 12 calls, 45 seconds overall, 8 seconds each, 1 MiB response and 100,000-byte blob. | Caller-focused and workflow-structure test sources; diagnostic captures 1–3; no credential call in capture 3 or offline prep. | Canonical #532/#551 adoption/readback is complete; exact deployed-byte readback, current public run-history check and operator allowance/use accounting under the current instruction before READY, followed by live admission. Private allowance state is not asserted here. |
+| Selector bytes and normalized account identity must stay distinct. | Admission hashes exact selector bytes; diagnostic 3 separately compared the trimmed effective account identity. | Retained `diagnostic3-record.json`; earlier failures preserved with their actual reasons. | Verify exact current caller/config digests during live admission; fingerprint equality alone does not prove IAM or authentication. |
+| Reviewer inputs must fit the existing selected bounds. | Pinned protected preparer, Authority Set, prompt encoding and workspace limits enforce the policy caps before credential acquisition. | Exact-tuple offline preparation: 150,799 encoded prompt bytes; 12 snapshots/143,024 blob bytes and 148,882 serialized context bytes. | Completed source-scoped full/native/CodeQL results are recorded below; one live bounded hosted session remains. Offline preparation is not a model or hosted E2E result. |
+| Admission failure, exhausted ordinal or uncertain provider result must not trigger another session. | Fixed workflow ID, run 1, attempt 1, fixed PR tuple, no auto-advance, rerun, repeat-ready admission or provider fallback; 10 upstream dispatch cap inside the session. | Source and focused synthetic caller coverage; historical failure results remain intact. | Re-read run history immediately before READY and retain the existing one-session approval under the current operator instruction; then record live run, auth, review and reporting evidence. |
+
+The public workflow API history readback after diagnostic capture 3 reported
+`total_count: 0` at that time. This does not establish the private approved
+session ledger. Before READY, re-read the history for workflow `381385696` and
+account for session use under the current operator instruction below; a different workflow instance, ordinal,
+attempt or source tuple is denied. There is no auto-advance or second session.
+
+The earlier report of 1,439 passing tests, native review and CodeQL results
+belongs to the prior inactive #530/#532 candidate revision only. It does not
+verify this final prospective source. Corrected full-suite verification passed 1,504 tests with zero failures, skips
+or cancellations in Node 22.18 Docker with network disabled and source/runtime/
+dependencies read-only; only an identical disposable test directory was writable
+for generated type fixtures. CodeQL CLI 2.27.1, JavaScript queries 2.4.6 and
+Actions queries 0.6.36 completed at the corrected caller source: 58 JavaScript
+and 0 Actions findings. Every unmodified raw result object matched the adopted
+executable baseline; no result normalization, dismissal, suppression or SARIF
+rewriting occurred. These checks followed each other without heavy CPU overlap.
+Final native implementation review passed against the complete adopted Set at
+`5dbda3612a347ba931d124b93a68aff5198b1006`, candidate tree
+`a5cc77fc34a8977e338b3e7842cd1fb6e8473997`; installed-runtime validation
+exited 0. The exact returned decision digest is
+`ba1575dc791a73eeb351d26773bc3418aac1dee3e57f8575a031da71f7f2c97b`.
+This remains local architecture feedback; protected deployment acceptance and
+actual hosted execution proof remain pending. The historical BLOCK, diagnostic failures
+and successful credential-free checks do not establish implementation deployment,
+host enforcement, authentication, Gemini review or acceptance.
+
+## Current operator instruction and session accounting
+
+After the review, the operator clarified in this resume that the developmental
+execution allowance is not managed through a strict private-ledger re-read
+procedure. Retain the existing bounded single-session approval and execution
+ceilings; do not add a formal ledger-access blocker or claim a private file was
+read when it was unavailable. The original native decision is preserved exactly
+with its review-time limitations. This clarification changes no caller bytes,
+configuration, workflow ordinal, PR source, retry/fallback prohibition or host
+acceptance requirement. Fresh public workflow history and exact deployed/PR
+readback still precede the single READY event. No Gemini call has occurred in
+this resume; account for the actual selected session and outcome when it runs.
