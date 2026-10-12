@@ -35,6 +35,14 @@ Packages with `read:packages` outside the project, and sign in to the local
 Codex CLI with `codex login`; configure a Git author identity so the consumer
 inputs can be committed. Do not put a package token in the repository.
 The package entrypoint below is pinned to `0.6.0-preview.3`.
+This walkthrough uses local configuration v2. Its `selfRepository` value,
+`example/architecture-review-demo`, is an example identity for this local
+fixture; replace it with the consumer's actual `OWNER/REPOSITORY` when using
+the configuration in a real repository.
+The architecture below is a minimal example fixture. Before relying on the
+walkthrough for a consumer, replace or adapt it under that consumer's
+governance using its owner-approved canonical architecture; these sample API
+and storage rules do not define the consumer's existing architecture.
 
 Create the complete consumer input set and package lock:
 
@@ -54,14 +62,35 @@ The API layer validates each request before storage. The storage layer persists
 validated records. The consumer repository owns this architecture.
 EOF
 
-cat > .codex/gatekeeper/config.json <<'EOF'
+cat > .codex/gatekeeper/authorities.json <<'EOF'
 {
   "version": 1,
-  "authorityFiles": ["docs/architecture.md"],
+  "authorities": [
+    {
+      "id": "architecture",
+      "repository": "self",
+      "revision": "authority-revision",
+      "path": "docs/architecture.md"
+    }
+  ]
+}
+EOF
+
+cat > .codex/gatekeeper/config.json <<'EOF'
+{
+  "version": 2,
+  "selfRepository": "example/architecture-review-demo",
+  "authorityManifestPath": ".codex/gatekeeper/authorities.json",
+  "authorityLimits": {
+    "maxManifestBytes": 16384,
+    "maxMembers": 16,
+    "maxFileBytes": 131072,
+    "maxTotalBytes": 262144,
+    "maxPromptBytes": 524288
+  },
   "promptPath": ".codex/gatekeeper/prompt.md",
   "schemaPath": ".codex/gatekeeper/decision.schema.json",
   "reviewerConfigPath": ".codex/gatekeeper/reviewer.config.json",
-  "requiredReportedAuthorityFiles": ["docs/architecture.md"],
   "requiredPassArrays": ["reviewedScope"],
   "reviewTimeoutMs": 180000
 }
@@ -71,19 +100,19 @@ cat > .codex/gatekeeper/prompt.md <<'EOF'
 Review the proposed change only against the committed consumer architecture
 included in the request. Return PASS if it follows that design, BLOCK if it
 conflicts with an existing rule, or OWNER_DECISION if the architecture does not
-decide the question. Report docs/architecture.md in authorityFiles and briefly
-describe the reviewed scope. Do not implement changes.
+decide the question. Report the selected authority ID `architecture` in
+authorityIds and briefly describe the reviewed scope. Do not implement changes.
 EOF
 
 cat > .codex/gatekeeper/decision.schema.json <<'EOF'
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["decision", "summary", "authorityFiles", "reviewedScope"],
+  "required": ["decision", "summary", "authorityIds", "reviewedScope"],
   "properties": {
-    "decision": { "enum": ["PASS", "BLOCK", "OWNER_DECISION"] },
+    "decision": { "type": "string", "enum": ["PASS", "BLOCK", "OWNER_DECISION"] },
     "summary": { "type": "string", "minLength": 1 },
-    "authorityFiles": {
+    "authorityIds": {
       "type": "array",
       "minItems": 1,
       "items": { "type": "string", "minLength": 1 }
@@ -114,16 +143,17 @@ npm ci
 git status --short
 ```
 
-The status command should print no paths. The config, prompt, schema, reviewer
-settings, authority document and exact package pin are committed before the
-review starts. Run the installed CLI with a specific proposed decision:
+The status command should print no paths. The v2 config, one-member manifest,
+prompt, schema, reviewer settings, authority document and exact package pin
+are committed before the review starts. Run the installed CLI with a specific
+proposed decision:
 
 ```sh
 ./node_modules/.bin/architecture-review \
   "For the proposed API change, should request validation stay in the API layer before storage persistence?"
 ```
 
-The CLI prints a schema-validated JSON decision, the reported authority and
+The CLI prints a schema-validated JSON decision, the reported authority ID and
 scope, and `reviewedRevision`. That field must equal `git rev-parse HEAD` from
 the consumer repository. The process exits 0 for a schema-valid `PASS`,
 `BLOCK`, or `OWNER_DECISION`; these are semantic review outcomes, not acceptance.
@@ -132,7 +162,10 @@ sample authority; `BLOCK` means it conflicts with a stated rule;
 `OWNER_DECISION` means the authority leaves that question open. The result is
 review evidence only and does not authorize implementation or repository
 acceptance. The semantic result depends on the actual proposal and consumer
-authority; the sample is not a test oracle.
+authority; the sample is not a test oracle. The historical
+[preview.3 demo transcript](first-review-demo.md) and its original readback
+retain their recorded configuration and result; they document that earlier
+demo rather than an end-to-end run of this v2 walkthrough.
 
 For other local provider settings, the terminal adapter follows the committed
 reviewer configuration: Codex uses child `codex exec`, while Gemini uses the
@@ -195,7 +228,10 @@ An exact Git dependency builds the emitted `dist/` files during installation;
 published registry packages already contain those files.
 
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
-inputs. See `examples/config.json`. Package resolution is local and fixed: the
+inputs. For a current local v2 Authority Set setup, use the complete
+[consumer example](../examples/consumer-v4/README.md). The former v1 sample is
+preserved at [`examples/legacy-v1/config.json`](../examples/legacy-v1/config.json).
+Package resolution is local and fixed: the
 launcher imports its already installed exact package version and must not use
 `npx` or another registry fallback. The Hook adapter selects the provider from
 committed reviewer settings. Codex uses an installed `codex` binary with hooks
@@ -524,6 +560,24 @@ only: either failure remains incomplete and cannot satisfy
 `Architecture Gate / accept`.
 GitHub's **Re-run jobs → Enable debug logging** can add runner and step traces
 for an individual attempt when more detail is needed.
+
+### Recommended current example and separate G0 selection
+
+The complete [consumer v2 local configuration and CI policy v4 example](../examples/consumer-v4/README.md)
+shows the supported Authority Set inputs and caller wiring. Its ordinary
+`main` path is enforced CI review selected by protected-base policy. G0 is a
+separate optional OWNER_ADDITION procedure; it does not replace or weaken the
+ordinary review. Use the policy v2 route when ordinary enforced CI is wanted
+without selecting G0. Policy v4 requires an explicit version-2 G0 selection.
+
+### Deprecated legacy local configuration v1 and CI policy v1
+
+New integrations should use local configuration v2 and CI policy v2 or v4 as
+appropriate. Local configuration v1 and CI policy v1 remain accepted for
+existing consumers, but are deprecated for new setups. This deprecation is
+limited to these two Gatekeeper configuration formats. It does not deprecate
+the upstream OpenAI Codex Action v1 line, Authority Set manifest version 1,
+or any review, addition, amendment, or evidence record schema version.
 
 Version 1 of `.codex/gatekeeper/ci-policy.json` accepts only `version`,
 `default`, and `branches` at the top level. Both `default` and every named

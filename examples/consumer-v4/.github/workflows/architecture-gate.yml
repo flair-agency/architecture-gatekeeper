@@ -1,0 +1,20 @@
+name: Architecture Gate
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  architecture-gate:
+    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-consumer.yml@2ea9ebe12be9d233c41a2dbc61e7a84caf3abbfb
+    with:
+      policy-path: .codex/gatekeeper/ci-policy.json
+      prompt-path: .codex/gatekeeper/ci-prompt.md
+      schema-path: .codex/gatekeeper/decision.schema.json
+      validation-path: ''
+      protected-review-instructions: true
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

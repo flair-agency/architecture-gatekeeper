@@ -11,7 +11,7 @@ synthetic consumer fixture. Its committed authority was:
 
 ## Reproduce the path
 
-1. Follow the setup portion of the [manual review walkthrough](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/integration-reference.md#manual-review) to create and commit the clean fixture, pin `@flair-agency/architecture-gatekeeper@0.6.0-preview.3`, and set its recorded Codex model configuration. This prepares the committed inputs for the Skill review.
+1. Follow the setup portion of the [manual review walkthrough's v1 setup](https://github.com/flair-agency/architecture-gatekeeper/blob/9974aa1cc1fc94287db47d2f5ed489fed067bd82/docs/integration-reference.md#manual-review) to create and commit the clean fixture, pin `@flair-agency/architecture-gatekeeper@0.6.0-preview.3`, and set its recorded Codex model configuration. The current walkthrough uses local configuration v2; this historical result used v1 and is not reproduced by following the current setup.
 2. The runtime package and Skill are distributed separately. Following [Codex's local Skill directory guidance](https://learn.chatgpt.com/docs/build-skills#where-to-save-skills), copy the complete matching Skill directory into `$HOME/.agents/skills/architecture-review`. The published [`v0.6.0-preview.3` source](https://github.com/flair-agency/architecture-gatekeeper/tree/v0.6.0-preview.3/skills/architecture-review) is pinned to commit `3f71fece350c3b5004cc81a7cb2253569a91e6b5`. These example setup commands install the whole directory and stop if that Skill already exists:
 
    ```bash

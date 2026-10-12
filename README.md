@@ -101,6 +101,9 @@ the consumer's protected-base policy. Gemini CI and other unwired provider
 targets are not activated consumer routes. This repository's self-only workflow
 settings do not establish consumer support or acceptance. See the [caller
 authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
+For a complete consumer-owned local v2 configuration and CI policy v4 example,
+including the separate optional G0 selection, see
+[examples/consumer-v4](examples/consumer-v4/README.md).
 
 #### Self-repository Fork contributions
 

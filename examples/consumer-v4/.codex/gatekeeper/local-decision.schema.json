@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "summary", "authorityIds", "reviewedScope", "ownerDecisionId"],
+  "properties": {
+    "decision": { "type": "string", "enum": ["PASS", "BLOCK", "OWNER_DECISION"] },
+    "summary": { "type": "string", "minLength": 1 },
+    "authorityIds": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "reviewedScope": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "ownerDecisionId": {
+      "type": "string",
+      "description": "Use an empty string for PASS or BLOCK. For OWNER_DECISION, provide the actual nonempty missing-decision identifier."
+    }
+  }
+}
