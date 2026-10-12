@@ -1,0 +1,21 @@
+import { beginMeasurement, aggregateMeasurement, sampleMeasurementPopulation } from '../../../src/measurement-api.mts';
+import { readMeasurementJson, parseMeasurementJson, validateMeasurementRecord } from '../../../src/measurement.mts';
+// CI typing is added with the dependent CI adapter slice.
+import { runMeasurementCli } from '../../../src/measurement-cli.mts';
+import { runManualReviewAsync } from '../../../src/local-review/local-gate.mts';
+
+const external: unknown = JSON.parse('{}');
+const attempt = beginMeasurement({ route: 'manual', cwd: '/repo', directory: '/private', changeId: 'change' });
+const id: string | null = attempt.id;
+attempt.request({ requestId: external, reviewedRevision: external, prompt: external, schema: external, reviewer: external }, { kind: 'proposed-task' });
+attempt.finish({ decision: external, execution: external, observation: { hostExecution: 'unknown' } });
+const parsed: unknown = parseMeasurementJson(external);
+const read: unknown = readMeasurementJson('/private/record.json');
+const checkedId: string = validateMeasurementRecord(external).attemptId;
+const report = aggregateMeasurement(external, { cohort: 'natural', domain: 'self' });
+const rate: number | null = report.metrics.precision.rate;
+const sample = sampleMeasurementPopulation(external, { seed: 'frozen', count: 5 });
+// No CI adapter is enabled in this slice.
+runMeasurementCli(['export', '/private']);
+runManualReviewAsync('task', '/repo', { measurement: { directory: '/private', changeId: 'change' } });
+void [id, checkedId, parsed, read, rate, sample];
