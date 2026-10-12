@@ -86,6 +86,8 @@ function datasetSnapshot(value: unknown): MeasurementDataset {
 export function validateMeasurementDataset(value: unknown): MeasurementDataset {
   const data = datasetSnapshot(value);
   if (data?.version !== 1 || !['records', 'population', 'cases', 'audits'].every(key => list(data[key as keyof MeasurementDataset]))) reject('version/collections');
+  if (data.collectionGaps !== undefined && data.collectionGaps !== null &&
+      (!Number.isSafeInteger(data.collectionGaps) || (data.collectionGaps as number) < 0)) reject('collection gap count');
   const observations = new Map<string, MeasurementRecord>();
   const normalizedRecords: MeasurementRecord[] = [];
   for (const record of data.records) {

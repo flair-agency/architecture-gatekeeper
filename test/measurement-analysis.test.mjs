@@ -75,3 +75,16 @@ test('local resolution denominator retains audited resolutions with no detection
     assert.equal(undetected.cases[0].firstDetection, 'unknown');
   }
 });
+
+
+test('collection gap counts distinguish absent or unknown from malformed data in every API', () => {
+  for (const run of [validateMeasurementDataset, aggregateMeasurement, d => sampleMeasurementPopulation(d, {seed:'fixed',count:1})]) {
+    for (const value of ['0',-1,0.5,Number.MAX_SAFE_INTEGER+1,{},[],true]) {
+      const data=dataset();data.collectionGaps=value;assert.throws(()=>run(data),/collection gap count/);
+    }
+    for (const value of [undefined,null,0,7,Number.MAX_SAFE_INTEGER]) {
+      const data=dataset();data.collectionGaps=value;assert.doesNotThrow(()=>run(data));
+      assert.equal(aggregateMeasurement(data).coverage.collectionGaps,value??null);
+    }
+  }
+});
