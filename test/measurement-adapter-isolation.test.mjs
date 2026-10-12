@@ -198,3 +198,14 @@ for (const enabled of [false, true]) test(`PostToolUse object event preserves or
   assert.equal(result.result.status, 'PASS'); assert.equal(calls, 1); assert.equal(reads, 3);
   if (enabled) assert.equal(loadMeasurementDirectory(records).records.find(r => r.phase === 'terminal').sessionId, null, 'object-form diagnostic session remains unknown');
 });
+
+
+for (const changed of [false, true]) test(`PostToolUse freshness describes an observed tracked snapshot (changed ${changed})`, async t => {
+  const { root, records } = fixture(t); writeFileSync(join(root, 'candidate.md'), 'before review');
+  const result = await runPostToolScreenHook({ hook_event_name: 'PostToolUse', session_id: 'freshness', tool_name: 'Edit', cwd: root }, {
+    cwd: root, batchDelayMs: 0, measurement: { directory: records }, reviewer: () => { if (changed) writeFileSync(join(root, 'candidate.md'), 'changed while reviewing'); return decision('PASS'); }
+  });
+  assert.equal(result.result.status, 'PASS', 'informational Hook behavior remains unchanged');
+  const terminal = loadMeasurementDirectory(records).records.find(r => r.phase === 'terminal');
+  assert.equal(terminal.observation.snapshotStillCurrent, !changed);
+});

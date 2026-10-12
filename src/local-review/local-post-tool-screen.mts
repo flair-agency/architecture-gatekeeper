@@ -7,7 +7,7 @@ import type { SpawnSyncOptionsWithBufferEncoding } from 'node:child_process';
 import { createReviewRequestAsync, repositoryRoot, validateReviewResponse, type PreparedReviewRequest } from '../review-contract/review-contract.mts';
 import { executeLocalReviewer, type LocalReviewerAsyncOptions, type LocalReviewerResult } from '../reviewer-transports/local-reviewer-execution.mts';
 
-type MeasurementCapture = { request(request: PreparedReviewRequest, scope: Record<string, unknown>): void; validatedDecision: unknown };
+type MeasurementCapture = { request(request: PreparedReviewRequest, scope: Record<string, unknown>): void; validatedDecision: unknown; enabled: boolean; snapshotStillCurrent: boolean | 'unknown' };
 type EventView = { [key: string]: unknown };
 // Object inputs may expose changing getters; repeated slice observations stay unknown.
 type EventMetadata = { sessionId?: string; turnId?: unknown; toolName?: unknown; toolUseId?: unknown };
@@ -325,6 +325,10 @@ async function screen(input: unknown, { cwd = process.cwd(), reviewer, reviewerR
       const result = incomplete('HEAD moved during semantic review; result is not associated with the current snapshot.', { reviewedRevision: candidate.head, requestId: identity, snapshotSha256: candidate.patchSha256 });
       return { result, output: outputFor(result, eventMeta, newerPending, timing) };
     }
+    if (measurement.enabled) {
+      try { const current = snapshot(root); measurement.snapshotStillCurrent = current.status === 'incomplete' ? 'unknown' : current.head === candidate.head && current.patchSha256 === candidate.patchSha256; }
+      catch { measurement.snapshotStillCurrent = 'unknown'; }
+    }
     const result = { status: decision.decision, summary: decision.summary || '', reviewedRevision: decision.reviewedRevision, requestId: identity, snapshotSha256: candidate.patchSha256, reviewerExecution: executionResult.execution };
     atomicJson(identityPath(state), { requestId: identity, recordedAt: Date.now() });
     newerPending = exists(markerPath(state));
@@ -357,7 +361,7 @@ function postToolMeasurement(input: unknown, options: PostToolScreenOptions, cwd
 async function observedPostToolScreen(input: unknown, options: PostToolScreenOptions, publish?: (output: string | null) => void): Promise<{ result: ScreenResult; output: string | null }> {
   const { cwd = process.cwd(), reviewer, reviewerResultFormat, batchDelayMs = DEFAULT_BATCH_DELAY_MS } = options;
   const measurement = postToolMeasurement(input, options, cwd);
-  const capture: MeasurementCapture = { request: (request, scope) => measurement.request(request, scope), validatedDecision: null };
+  const capture: MeasurementCapture = { request: (request, scope) => measurement.request(request, scope), validatedDecision: null, enabled: Boolean(measurement.id), snapshotStillCurrent: 'unknown' };
   let stage = 'screen';
   try {
     const value = await screen(input, { cwd, reviewer, reviewerResultFormat, batchDelayMs } as PostToolScreenOptions, capture);
@@ -365,7 +369,7 @@ async function observedPostToolScreen(input: unknown, options: PostToolScreenOpt
     const state = ['PASS', 'BLOCK', 'OWNER_DECISION'].includes(status) ? 'completed' : status === 'queued-latest' ? 'queued' : status === 'unchanged' && value.result.requestId ? 'deduplicated' : status;
     stage = 'publication'; publish?.(value.output);
     measurement.finish({ state, decision: capture.validatedDecision, execution: value.result.reviewerExecution || null,
-      publication: value.output ? 'returned-to-caller' : 'unknown', observation: { snapshotStillCurrent: state === 'completed' ? true : null } });
+      publication: value.output ? 'returned-to-caller' : 'unknown', observation: { snapshotStillCurrent: state === 'completed' ? capture.snapshotStillCurrent : 'unknown' } });
     return value;
   } catch (error) { measurement.finish({ state: 'error', decision: capture.validatedDecision, observation: { failureStage: stage } }); throw error; }
 }
