@@ -128,3 +128,15 @@ for (const payload of ['{torn', 'x'.repeat(256 * 1024 + 1)]) test(`native select
   assert.equal(readFileSync(terminalPath, 'utf8'), payload); assert.equal(loadMeasurementDirectory(f.directory).gaps, 1);
   assert.equal(resumeNativeMeasurement(f.requestPath, f.request, f.directory).id, null);
 });
+
+
+test('explicit resumption workspace retains containment without requiring the runner current directory', t => {
+  const f = fixture(t);
+  for (const root of [f.directory, null, '', 42]) {
+    assert.equal(resumeMeasurement(f.attempt.id, f.directory, root).id, null);
+    assert.ok(!loadMeasurementDirectory(f.directory).records.some(r => r.phase === 'terminal'));
+  }
+  const resumed = resumeMeasurement(f.attempt.id, f.directory, f.root);
+  assert.equal(resumed.id, f.attempt.id); resumed.finish({ state: 'completed' });
+  assert.equal(loadMeasurementDirectory(f.directory).records.find(r => r.phase === 'terminal').state, 'completed');
+});

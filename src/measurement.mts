@@ -315,9 +315,9 @@ export function redactMeasurement(value: MeasurementRecord) {
     decision, findingCount: count, ci: ciContext, observation, feedback: { publication: record.feedback?.publication === 'returned-to-caller' ? 'returned-to-caller' : 'unknown', delivery: 'unknown', response: 'unknown' } };
 }
 
-export function resumeMeasurement(attemptId: string, selected: string | undefined): MeasurementAttempt {
+export function resumeMeasurement(attemptId: string, selected: string | undefined, cwd: unknown = process.cwd()): MeasurementAttempt {
   try {
-    const dir = directory(selected, reviewedRoot());
+    const dir = directory(selected, reviewedRoot(cwd));
     if (!/^[a-f0-9-]{36}$/.test(attemptId)) throw new Error('Invalid attempt identity.');
     try { readDiagnosticText(join(dir, `${attemptId}.terminal.json`), MAX_BYTES); throw new Error('Attempt already completed.'); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
