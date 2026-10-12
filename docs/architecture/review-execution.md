@@ -445,7 +445,7 @@ of `.codex/gatekeeper/ordinary-gemini-admission.json` are:
   "enabled": true,
   "workflowId": 381385696,
   "runNumber": 1,
-  "callerSha256": "cff2bc8294a760366d7876dd85120bd4bf2b54ec0eb863fef6eab0cbadbb5c84",
+  "callerSha256": "4befbe3144aebceac3309527a8d6cbe67779fb05fb36664ea0ea3a129775c74a",
   "providerSelectorSha256": "e3e7a8a5c8f61c6b3fc7e0eed879e662be902299304d2501843cc06821fb5b9c",
   "serviceAccountSelectorSha256": "af5c0a83eb95b8969994e2b9667a0f2964bce2cb43e390441e40e280e1992e92"
 }
@@ -470,7 +470,7 @@ it did not consume the approved PR #517 review session. Earlier failed captures
 The selector values themselves remain private.
 
 The inactive corrected caller artifact has SHA-256
-`4e2fe8b901a24eb08d16259c1a036299f4e01975e7670714f93069a576cbf25d`.
+`9f9b292c3c1b1a8e9fa3c38c8a3826d20fb92202fa3136522915629ae95d0be2`.
 Its prospective enabled artifact has the `callerSha256` value above. The only
 permitted activation delta between these two artifacts is replacing the
 `architecture-gate` job's literal `if: false` and explanatory comment with this
@@ -522,6 +522,23 @@ its accepted source-scoped results and the new P1 remain historical evidence.
 Only the comment/guard delta above distinguishes the current inert/enabled
 pair. No new session, ordinal, workflow instance, authority scope, credential
 capability or routing selection is authorized by this corrective source record.
+
+The subsequent #554 pair was inactive
+`4e2fe8b901a24eb08d16259c1a036299f4e01975e7670714f93069a576cbf25d`
+and prospective enabled
+`cff2bc8294a760366d7876dd85120bd4bf2b54ec0eb863fef6eab0cbadbb5c84`.
+A further independent P1 identified the corresponding selector restriction:
+coherent protected configuration and queued Secret changes could select
+different provider/account bytes while preserving caller bytes. The current
+source also pins both raw selector fingerprints above as literal expected
+values and rejects configuration disagreement before subsequent admission
+reads. Keep the final queued-Secret SHA-256 comparisons and every existing
+source, PR, workflow, ordinal and bound check. No selector value changes or
+additional identity, session, capability or routing selection is authorized.
+The #554 pair was not deployed; preserve its source-scoped accepted results
+and the new P1. Current inert/enabled bytes retain only the exact activation
+comment/guard delta above. Synthetic selector-digest fixtures, if used for
+local tests, prove neither real Secret preimages nor Google authentication.
 
 The selected protected-base inputs are policy
 `.codex/gatekeeper/gemini-verification-policy.json` (version 6), prompt
