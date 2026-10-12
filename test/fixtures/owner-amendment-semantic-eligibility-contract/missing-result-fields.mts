@@ -12,309 +12,309 @@ type AmendmentResult = ReturnType<Dependencies['validateAmendmentRecord']>;
 type SelfAmendment = Extract<AmendmentResult, { triggerProfile: 'completed-owner-decision-self-v1' }>;
 type TagResult = ReturnType<Dependencies['validateTag']>;
 
-// @ts-expect-error protected input result cannot be null.
+// protected input result cannot be null.
 const nullProtectedInputs: ProtectedInputs = null;
-// @ts-expect-error protected input result must include its required validated fields.
+// protected input result must include its required validated fields.
 const emptyProtectedInputs: ProtectedInputs = {};
-// @ts-expect-error protected Authority Set cannot be null.
+// protected Authority Set cannot be null.
 const nullProtectedAuthoritySet: ProtectedAuthoritySet = null;
-// @ts-expect-error protected Authority Set must include its required validated fields.
+// protected Authority Set must include its required validated fields.
 const emptyProtectedAuthoritySet: ProtectedAuthoritySet = {};
-// @ts-expect-error protected Authority Set member cannot be null.
+// protected Authority Set member cannot be null.
 const nullProtectedAuthorityMember: ProtectedAuthorityMember = null;
-// @ts-expect-error protected Authority Set member must include its required validated fields.
+// protected Authority Set member must include its required validated fields.
 const emptyProtectedAuthorityMember: ProtectedAuthorityMember = {};
-// @ts-expect-error protected Authority Set change cannot be null.
+// protected Authority Set change cannot be null.
 const nullProtectedChange: ProtectedChange = null;
-// @ts-expect-error protected Authority Set change must include its required validated fields.
+// protected Authority Set change must include its required validated fields.
 const emptyProtectedChange: ProtectedChange = {};
-// @ts-expect-error protected protected-selection result cannot be null.
+// protected protected-selection result cannot be null.
 const nullProtectedSelection: ProtectedSelection = null;
-// @ts-expect-error protected protected-selection result must include its required validated fields.
+// protected protected-selection result must include its required validated fields.
 const emptyProtectedSelection: ProtectedSelection = {};
-// @ts-expect-error selected Gatekeeper identity cannot be null.
+// selected Gatekeeper identity cannot be null.
 const nullSelectedGatekeeper: SelectedGatekeeper = null;
-// @ts-expect-error selected Gatekeeper identity must include its required validated fields.
+// selected Gatekeeper identity must include its required validated fields.
 const emptySelectedGatekeeper: SelectedGatekeeper = {};
-// @ts-expect-error non-null selected Gatekeeper package cannot be null.
+// non-null selected Gatekeeper package cannot be null.
 const nullGatekeeperPackage: GatekeeperPackage = null;
-// @ts-expect-error non-null selected Gatekeeper package must include its required validated fields.
+// non-null selected Gatekeeper package must include its required validated fields.
 const emptyGatekeeperPackage: GatekeeperPackage = {};
-// @ts-expect-error trigger provenance result cannot be null.
+// trigger provenance result cannot be null.
 const nullTriggerResult: TriggerResult = null;
-// @ts-expect-error trigger provenance result must include its required validated fields.
+// trigger provenance result must include its required validated fields.
 const emptyTriggerResult: TriggerResult = {};
-// @ts-expect-error AmendmentRecord result cannot be null.
+// AmendmentRecord result cannot be null.
 const nullAmendmentResult: AmendmentResult = null;
-// @ts-expect-error AmendmentRecord result must include its required validated fields.
+// AmendmentRecord result must include its required validated fields.
 const emptyAmendmentResult: AmendmentResult = {};
-// @ts-expect-error self AmendmentRecord result cannot be null.
+// self AmendmentRecord result cannot be null.
 const nullSelfAmendment: SelfAmendment = null;
-// @ts-expect-error self AmendmentRecord result must include its required validated fields.
+// self AmendmentRecord result must include its required validated fields.
 const emptySelfAmendment: SelfAmendment = {};
-// @ts-expect-error tag validation result cannot be null.
+// tag validation result cannot be null.
 const nullTagResult: TagResult = null;
-// @ts-expect-error tag validation result must include its required validated fields.
+// tag validation result must include its required validated fields.
 const emptyTagResult: TagResult = {};
 
 declare const protectedInputs: ProtectedInputs;
 const { baseBranch: omittedBaseBranchFromProtectedInputs, ...withoutBaseBranchFromProtectedInputs } = protectedInputs;
 void omittedBaseBranchFromProtectedInputs;
-// @ts-expect-error ProtectedInputs.baseBranch is required by the observed validation path.
+// ProtectedInputs.baseBranch is required by the observed validation path.
 const missingBaseBranchFromProtectedInputs: ProtectedInputs = withoutBaseBranchFromProtectedInputs;
 const { policyBytes: omittedPolicyBytesFromProtectedInputs, ...withoutPolicyBytesFromProtectedInputs } = protectedInputs;
 void omittedPolicyBytesFromProtectedInputs;
-// @ts-expect-error ProtectedInputs.policyBytes is required by the observed validation path.
+// ProtectedInputs.policyBytes is required by the observed validation path.
 const missingPolicyBytesFromProtectedInputs: ProtectedInputs = withoutPolicyBytesFromProtectedInputs;
 const { manifestBytes: omittedManifestBytesFromProtectedInputs, ...withoutManifestBytesFromProtectedInputs } = protectedInputs;
 void omittedManifestBytesFromProtectedInputs;
-// @ts-expect-error ProtectedInputs.manifestBytes is required by the observed validation path.
+// ProtectedInputs.manifestBytes is required by the observed validation path.
 const missingManifestBytesFromProtectedInputs: ProtectedInputs = withoutManifestBytesFromProtectedInputs;
 const { authoritySet: omittedAuthoritySetFromProtectedInputs, ...withoutAuthoritySetFromProtectedInputs } = protectedInputs;
 void omittedAuthoritySetFromProtectedInputs;
-// @ts-expect-error ProtectedInputs.authoritySet is required by the observed validation path.
+// ProtectedInputs.authoritySet is required by the observed validation path.
 const missingAuthoritySetFromProtectedInputs: ProtectedInputs = withoutAuthoritySetFromProtectedInputs;
 const { changes: omittedChangesFromProtectedInputs, ...withoutChangesFromProtectedInputs } = protectedInputs;
 void omittedChangesFromProtectedInputs;
-// @ts-expect-error ProtectedInputs.changes is required by the observed validation path.
+// ProtectedInputs.changes is required by the observed validation path.
 const missingChangesFromProtectedInputs: ProtectedInputs = withoutChangesFromProtectedInputs;
 const { diffBytes: omittedDiffBytesFromProtectedInputs, ...withoutDiffBytesFromProtectedInputs } = protectedInputs;
 void omittedDiffBytesFromProtectedInputs;
-// @ts-expect-error ProtectedInputs.diffBytes is required by the observed validation path.
+// ProtectedInputs.diffBytes is required by the observed validation path.
 const missingDiffBytesFromProtectedInputs: ProtectedInputs = withoutDiffBytesFromProtectedInputs;
 
 declare const authoritySet: ProtectedAuthoritySet;
 const { digest: omittedDigestFromAuthoritySet, ...withoutDigestFromAuthoritySet } = authoritySet;
 void omittedDigestFromAuthoritySet;
-// @ts-expect-error ProtectedAuthoritySet.digest is required by the observed validation path.
+// ProtectedAuthoritySet.digest is required by the observed validation path.
 const missingDigestFromAuthoritySet: ProtectedAuthoritySet = withoutDigestFromAuthoritySet;
 const { members: omittedMembersFromAuthoritySet, ...withoutMembersFromAuthoritySet } = authoritySet;
 void omittedMembersFromAuthoritySet;
-// @ts-expect-error ProtectedAuthoritySet.members is required by the observed validation path.
+// ProtectedAuthoritySet.members is required by the observed validation path.
 const missingMembersFromAuthoritySet: ProtectedAuthoritySet = withoutMembersFromAuthoritySet;
 
 declare const member: ProtectedAuthorityMember;
 const { id: omittedIdFromMember, ...withoutIdFromMember } = member;
 void omittedIdFromMember;
-// @ts-expect-error ProtectedAuthorityMember.id is required by the observed validation path.
+// ProtectedAuthorityMember.id is required by the observed validation path.
 const missingIdFromMember: ProtectedAuthorityMember = withoutIdFromMember;
 const { repository: omittedRepositoryFromMember, ...withoutRepositoryFromMember } = member;
 void omittedRepositoryFromMember;
-// @ts-expect-error ProtectedAuthorityMember.repository is required by the observed validation path.
+// ProtectedAuthorityMember.repository is required by the observed validation path.
 const missingRepositoryFromMember: ProtectedAuthorityMember = withoutRepositoryFromMember;
 const { resolvedCommit: omittedResolvedCommitFromMember, ...withoutResolvedCommitFromMember } = member;
 void omittedResolvedCommitFromMember;
-// @ts-expect-error ProtectedAuthorityMember.resolvedCommit is required by the observed validation path.
+// ProtectedAuthorityMember.resolvedCommit is required by the observed validation path.
 const missingResolvedCommitFromMember: ProtectedAuthorityMember = withoutResolvedCommitFromMember;
 const { path: omittedPathFromMember, ...withoutPathFromMember } = member;
 void omittedPathFromMember;
-// @ts-expect-error ProtectedAuthorityMember.path is required by the observed validation path.
+// ProtectedAuthorityMember.path is required by the observed validation path.
 const missingPathFromMember: ProtectedAuthorityMember = withoutPathFromMember;
 const { byteLength: omittedByteLengthFromMember, ...withoutByteLengthFromMember } = member;
 void omittedByteLengthFromMember;
-// @ts-expect-error ProtectedAuthorityMember.byteLength is required by the observed validation path.
+// ProtectedAuthorityMember.byteLength is required by the observed validation path.
 const missingByteLengthFromMember: ProtectedAuthorityMember = withoutByteLengthFromMember;
 const { sha256: omittedSha256FromMember, ...withoutSha256FromMember } = member;
 void omittedSha256FromMember;
-// @ts-expect-error ProtectedAuthorityMember.sha256 is required by the observed validation path.
+// ProtectedAuthorityMember.sha256 is required by the observed validation path.
 const missingSha256FromMember: ProtectedAuthorityMember = withoutSha256FromMember;
 const { bytes: omittedBytesFromMember, ...withoutBytesFromMember } = member;
 void omittedBytesFromMember;
-// @ts-expect-error ProtectedAuthorityMember.bytes is required by the observed validation path.
+// ProtectedAuthorityMember.bytes is required by the observed validation path.
 const missingBytesFromMember: ProtectedAuthorityMember = withoutBytesFromMember;
 
 declare const change: ProtectedChange;
 const { path: omittedPathFromChange, ...withoutPathFromChange } = change;
 void omittedPathFromChange;
-// @ts-expect-error ProtectedChange.path is required by the observed validation path.
+// ProtectedChange.path is required by the observed validation path.
 const missingPathFromChange: ProtectedChange = withoutPathFromChange;
 const { beforeBytes: omittedBeforeBytesFromChange, ...withoutBeforeBytesFromChange } = change;
 void omittedBeforeBytesFromChange;
-// @ts-expect-error ProtectedChange.beforeBytes is required by the observed validation path.
+// ProtectedChange.beforeBytes is required by the observed validation path.
 const missingBeforeBytesFromChange: ProtectedChange = withoutBeforeBytesFromChange;
 const { afterBytes: omittedAfterBytesFromChange, ...withoutAfterBytesFromChange } = change;
 void omittedAfterBytesFromChange;
-// @ts-expect-error ProtectedChange.afterBytes is required by the observed validation path.
+// ProtectedChange.afterBytes is required by the observed validation path.
 const missingAfterBytesFromChange: ProtectedChange = withoutAfterBytesFromChange;
 
 declare const selection: ProtectedSelection;
 const { selectedProducer: omittedSelectedProducerFromSelection, ...withoutSelectedProducerFromSelection } = selection;
 void omittedSelectedProducerFromSelection;
-// @ts-expect-error ProtectedSelection.selectedProducer is required by the observed validation path.
+// ProtectedSelection.selectedProducer is required by the observed validation path.
 const missingSelectedProducerFromSelection: ProtectedSelection = withoutSelectedProducerFromSelection;
 const { selectedGatekeeper: omittedSelectedGatekeeperFromSelection, ...withoutSelectedGatekeeperFromSelection } = selection;
 void omittedSelectedGatekeeperFromSelection;
-// @ts-expect-error ProtectedSelection.selectedGatekeeper is required by the observed validation path.
+// ProtectedSelection.selectedGatekeeper is required by the observed validation path.
 const missingSelectedGatekeeperFromSelection: ProtectedSelection = withoutSelectedGatekeeperFromSelection;
 
 declare const selectedGatekeeper: SelectedGatekeeper;
 const { repository: omittedRepositoryFromSelectedGatekeeper, ...withoutRepositoryFromSelectedGatekeeper } = selectedGatekeeper;
 void omittedRepositoryFromSelectedGatekeeper;
-// @ts-expect-error SelectedGatekeeper.repository is required by the observed validation path.
+// SelectedGatekeeper.repository is required by the observed validation path.
 const missingRepositoryFromSelectedGatekeeper: SelectedGatekeeper = withoutRepositoryFromSelectedGatekeeper;
 const { revision: omittedRevisionFromSelectedGatekeeper, ...withoutRevisionFromSelectedGatekeeper } = selectedGatekeeper;
 void omittedRevisionFromSelectedGatekeeper;
-// @ts-expect-error SelectedGatekeeper.revision is required by the observed validation path.
+// SelectedGatekeeper.revision is required by the observed validation path.
 const missingRevisionFromSelectedGatekeeper: SelectedGatekeeper = withoutRevisionFromSelectedGatekeeper;
 const { package: omittedPackageFromSelectedGatekeeper, ...withoutPackageFromSelectedGatekeeper } = selectedGatekeeper;
 void omittedPackageFromSelectedGatekeeper;
-// @ts-expect-error SelectedGatekeeper.package is required by the observed validation path.
+// SelectedGatekeeper.package is required by the observed validation path.
 const missingPackageFromSelectedGatekeeper: SelectedGatekeeper = withoutPackageFromSelectedGatekeeper;
 
 declare const gatekeeperPackage: GatekeeperPackage;
 const { name: omittedNameFromGatekeeperPackage, ...withoutNameFromGatekeeperPackage } = gatekeeperPackage;
 void omittedNameFromGatekeeperPackage;
-// @ts-expect-error GatekeeperPackage.name is required by the observed validation path.
+// GatekeeperPackage.name is required by the observed validation path.
 const missingNameFromGatekeeperPackage: GatekeeperPackage = withoutNameFromGatekeeperPackage;
 const { version: omittedVersionFromGatekeeperPackage, ...withoutVersionFromGatekeeperPackage } = gatekeeperPackage;
 void omittedVersionFromGatekeeperPackage;
-// @ts-expect-error GatekeeperPackage.version is required by the observed validation path.
+// GatekeeperPackage.version is required by the observed validation path.
 const missingVersionFromGatekeeperPackage: GatekeeperPackage = withoutVersionFromGatekeeperPackage;
 const { integrity: omittedIntegrityFromGatekeeperPackage, ...withoutIntegrityFromGatekeeperPackage } = gatekeeperPackage;
 void omittedIntegrityFromGatekeeperPackage;
-// @ts-expect-error GatekeeperPackage.integrity is required by the observed validation path.
+// GatekeeperPackage.integrity is required by the observed validation path.
 const missingIntegrityFromGatekeeperPackage: GatekeeperPackage = withoutIntegrityFromGatekeeperPackage;
 
 declare const trigger: TriggerResult;
 const { status: omittedStatusFromTrigger, ...withoutStatusFromTrigger } = trigger;
 void omittedStatusFromTrigger;
-// @ts-expect-error TriggerResult.status is required by the observed validation path.
+// TriggerResult.status is required by the observed validation path.
 const missingStatusFromTrigger: TriggerResult = withoutStatusFromTrigger;
 const { repository: omittedRepositoryFromTrigger, ...withoutRepositoryFromTrigger } = trigger;
 void omittedRepositoryFromTrigger;
-// @ts-expect-error TriggerResult.repository is required by the observed validation path.
+// TriggerResult.repository is required by the observed validation path.
 const missingRepositoryFromTrigger: TriggerResult = withoutRepositoryFromTrigger;
 const { baseSha: omittedBaseShaFromTrigger, ...withoutBaseShaFromTrigger } = trigger;
 void omittedBaseShaFromTrigger;
-// @ts-expect-error TriggerResult.baseSha is required by the observed validation path.
+// TriggerResult.baseSha is required by the observed validation path.
 const missingBaseShaFromTrigger: TriggerResult = withoutBaseShaFromTrigger;
 const { triggerProfile: omittedTriggerProfileFromTrigger, ...withoutTriggerProfileFromTrigger } = trigger;
 void omittedTriggerProfileFromTrigger;
-// @ts-expect-error TriggerResult.triggerProfile is required by the observed validation path.
+// TriggerResult.triggerProfile is required by the observed validation path.
 const missingTriggerProfileFromTrigger: TriggerResult = withoutTriggerProfileFromTrigger;
 const { triggerReviewRecordSha256: omittedTriggerReviewRecordSha256FromTrigger, ...withoutTriggerReviewRecordSha256FromTrigger } = trigger;
 void omittedTriggerReviewRecordSha256FromTrigger;
-// @ts-expect-error TriggerResult.triggerReviewRecordSha256 is required by the observed validation path.
+// TriggerResult.triggerReviewRecordSha256 is required by the observed validation path.
 const missingTriggerReviewRecordSha256FromTrigger: TriggerResult = withoutTriggerReviewRecordSha256FromTrigger;
 const { workflowPath: omittedWorkflowPathFromTrigger, ...withoutWorkflowPathFromTrigger } = trigger;
 void omittedWorkflowPathFromTrigger;
-// @ts-expect-error TriggerResult.workflowPath is required by the observed validation path.
+// TriggerResult.workflowPath is required by the observed validation path.
 const missingWorkflowPathFromTrigger: TriggerResult = withoutWorkflowPathFromTrigger;
 const { workflowSha: omittedWorkflowShaFromTrigger, ...withoutWorkflowShaFromTrigger } = trigger;
 void omittedWorkflowShaFromTrigger;
-// @ts-expect-error TriggerResult.workflowSha is required by the observed validation path.
+// TriggerResult.workflowSha is required by the observed validation path.
 const missingWorkflowShaFromTrigger: TriggerResult = withoutWorkflowShaFromTrigger;
 const { workflowRef: omittedWorkflowRefFromTrigger, ...withoutWorkflowRefFromTrigger } = trigger;
 void omittedWorkflowRefFromTrigger;
-// @ts-expect-error TriggerResult.workflowRef is required by the observed validation path.
+// TriggerResult.workflowRef is required by the observed validation path.
 const missingWorkflowRefFromTrigger: TriggerResult = withoutWorkflowRefFromTrigger;
 const { runId: omittedRunIdFromTrigger, ...withoutRunIdFromTrigger } = trigger;
 void omittedRunIdFromTrigger;
-// @ts-expect-error TriggerResult.runId is required by the observed validation path.
+// TriggerResult.runId is required by the observed validation path.
 const missingRunIdFromTrigger: TriggerResult = withoutRunIdFromTrigger;
 const { runAttempt: omittedRunAttemptFromTrigger, ...withoutRunAttemptFromTrigger } = trigger;
 void omittedRunAttemptFromTrigger;
-// @ts-expect-error TriggerResult.runAttempt is required by the observed validation path.
+// TriggerResult.runAttempt is required by the observed validation path.
 const missingRunAttemptFromTrigger: TriggerResult = withoutRunAttemptFromTrigger;
 
 declare const amendment: AmendmentResult;
 const { status: omittedStatusFromAmendment, ...withoutStatusFromAmendment } = amendment;
 void omittedStatusFromAmendment;
-// @ts-expect-error AmendmentResult.status is required by the observed validation path.
+// AmendmentResult.status is required by the observed validation path.
 const missingStatusFromAmendment: AmendmentResult = withoutStatusFromAmendment;
 const { repository: omittedRepositoryFromAmendment, ...withoutRepositoryFromAmendment } = amendment;
 void omittedRepositoryFromAmendment;
-// @ts-expect-error AmendmentResult.repository is required by the observed validation path.
+// AmendmentResult.repository is required by the observed validation path.
 const missingRepositoryFromAmendment: AmendmentResult = withoutRepositoryFromAmendment;
 const { baseSha: omittedBaseShaFromAmendment, ...withoutBaseShaFromAmendment } = amendment;
 void omittedBaseShaFromAmendment;
-// @ts-expect-error AmendmentResult.baseSha is required by the observed validation path.
+// AmendmentResult.baseSha is required by the observed validation path.
 const missingBaseShaFromAmendment: AmendmentResult = withoutBaseShaFromAmendment;
 const { bSha: omittedBShaFromAmendment, ...withoutBShaFromAmendment } = amendment;
 void omittedBShaFromAmendment;
-// @ts-expect-error AmendmentResult.bSha is required by the observed validation path.
+// AmendmentResult.bSha is required by the observed validation path.
 const missingBShaFromAmendment: AmendmentResult = withoutBShaFromAmendment;
 const { policyRevision: omittedPolicyRevisionFromAmendment, ...withoutPolicyRevisionFromAmendment } = amendment;
 void omittedPolicyRevisionFromAmendment;
-// @ts-expect-error AmendmentResult.policyRevision is required by the observed validation path.
+// AmendmentResult.policyRevision is required by the observed validation path.
 const missingPolicyRevisionFromAmendment: AmendmentResult = withoutPolicyRevisionFromAmendment;
 const { triggerProfile: omittedTriggerProfileFromAmendment, ...withoutTriggerProfileFromAmendment } = amendment;
 void omittedTriggerProfileFromAmendment;
-// @ts-expect-error AmendmentResult.triggerProfile is required by the observed validation path.
+// AmendmentResult.triggerProfile is required by the observed validation path.
 const missingTriggerProfileFromAmendment: AmendmentResult = withoutTriggerProfileFromAmendment;
 const { triggerReviewRecordSha256: omittedTriggerReviewRecordSha256FromAmendment, ...withoutTriggerReviewRecordSha256FromAmendment } = amendment;
 void omittedTriggerReviewRecordSha256FromAmendment;
-// @ts-expect-error AmendmentResult.triggerReviewRecordSha256 is required by the observed validation path.
+// AmendmentResult.triggerReviewRecordSha256 is required by the observed validation path.
 const missingTriggerReviewRecordSha256FromAmendment: AmendmentResult = withoutTriggerReviewRecordSha256FromAmendment;
 const { priorAuthoritySetDigest: omittedPriorAuthoritySetDigestFromAmendment, ...withoutPriorAuthoritySetDigestFromAmendment } = amendment;
 void omittedPriorAuthoritySetDigestFromAmendment;
-// @ts-expect-error AmendmentResult.priorAuthoritySetDigest is required by the observed validation path.
+// AmendmentResult.priorAuthoritySetDigest is required by the observed validation path.
 const missingPriorAuthoritySetDigestFromAmendment: AmendmentResult = withoutPriorAuthoritySetDigestFromAmendment;
 const { resultingAuthoritySetDigest: omittedResultingAuthoritySetDigestFromAmendment, ...withoutResultingAuthoritySetDigestFromAmendment } = amendment;
 void omittedResultingAuthoritySetDigestFromAmendment;
-// @ts-expect-error AmendmentResult.resultingAuthoritySetDigest is required by the observed validation path.
+// AmendmentResult.resultingAuthoritySetDigest is required by the observed validation path.
 const missingResultingAuthoritySetDigestFromAmendment: AmendmentResult = withoutResultingAuthoritySetDigestFromAmendment;
 const { changes: omittedChangesFromAmendment, ...withoutChangesFromAmendment } = amendment;
 void omittedChangesFromAmendment;
-// @ts-expect-error AmendmentResult.changes is required by the observed validation path.
+// AmendmentResult.changes is required by the observed validation path.
 const missingChangesFromAmendment: AmendmentResult = withoutChangesFromAmendment;
 const { targetValidated: omittedTargetValidatedFromAmendment, ...withoutTargetValidatedFromAmendment } = amendment;
 void omittedTargetValidatedFromAmendment;
-// @ts-expect-error AmendmentResult.targetValidated is required by the observed validation path.
+// AmendmentResult.targetValidated is required by the observed validation path.
 const missingTargetValidatedFromAmendment: AmendmentResult = withoutTargetValidatedFromAmendment;
 const { purpose: omittedPurposeFromAmendment, ...withoutPurposeFromAmendment } = amendment;
 void omittedPurposeFromAmendment;
-// @ts-expect-error AmendmentResult.purpose is required by the observed validation path.
+// AmendmentResult.purpose is required by the observed validation path.
 const missingPurposeFromAmendment: AmendmentResult = withoutPurposeFromAmendment;
 
 declare const tag: TagResult;
 const { status: omittedStatusFromTag, ...withoutStatusFromTag } = tag;
 void omittedStatusFromTag;
-// @ts-expect-error TagResult.status is required by the observed validation path.
+// TagResult.status is required by the observed validation path.
 const missingStatusFromTag: TagResult = withoutStatusFromTag;
 const { repository: omittedRepositoryFromTag, ...withoutRepositoryFromTag } = tag;
 void omittedRepositoryFromTag;
-// @ts-expect-error TagResult.repository is required by the observed validation path.
+// TagResult.repository is required by the observed validation path.
 const missingRepositoryFromTag: TagResult = withoutRepositoryFromTag;
 const { baseSha: omittedBaseShaFromTag, ...withoutBaseShaFromTag } = tag;
 void omittedBaseShaFromTag;
-// @ts-expect-error TagResult.baseSha is required by the observed validation path.
+// TagResult.baseSha is required by the observed validation path.
 const missingBaseShaFromTag: TagResult = withoutBaseShaFromTag;
 const { bSha: omittedBShaFromTag, ...withoutBShaFromTag } = tag;
 void omittedBShaFromTag;
-// @ts-expect-error TagResult.bSha is required by the observed validation path.
+// TagResult.bSha is required by the observed validation path.
 const missingBShaFromTag: TagResult = withoutBShaFromTag;
 const { triggerProfile: omittedTriggerProfileFromTag, ...withoutTriggerProfileFromTag } = tag;
 void omittedTriggerProfileFromTag;
-// @ts-expect-error TagResult.triggerProfile is required by the observed validation path.
+// TagResult.triggerProfile is required by the observed validation path.
 const missingTriggerProfileFromTag: TagResult = withoutTriggerProfileFromTag;
 const { triggerReviewRecordSha256: omittedTriggerReviewRecordSha256FromTag, ...withoutTriggerReviewRecordSha256FromTag } = tag;
 void omittedTriggerReviewRecordSha256FromTag;
-// @ts-expect-error TagResult.triggerReviewRecordSha256 is required by the observed validation path.
+// TagResult.triggerReviewRecordSha256 is required by the observed validation path.
 const missingTriggerReviewRecordSha256FromTag: TagResult = withoutTriggerReviewRecordSha256FromTag;
 const { amendmentRecordSha256: omittedAmendmentRecordSha256FromTag, ...withoutAmendmentRecordSha256FromTag } = tag;
 void omittedAmendmentRecordSha256FromTag;
-// @ts-expect-error TagResult.amendmentRecordSha256 is required by the observed validation path.
+// TagResult.amendmentRecordSha256 is required by the observed validation path.
 const missingAmendmentRecordSha256FromTag: TagResult = withoutAmendmentRecordSha256FromTag;
 const { tagRef: omittedTagRefFromTag, ...withoutTagRefFromTag } = tag;
 void omittedTagRefFromTag;
-// @ts-expect-error TagResult.tagRef is required by the observed validation path.
+// TagResult.tagRef is required by the observed validation path.
 const missingTagRefFromTag: TagResult = withoutTagRefFromTag;
 const { tagObjectOid: omittedTagObjectOidFromTag, ...withoutTagObjectOidFromTag } = tag;
 void omittedTagObjectOidFromTag;
-// @ts-expect-error TagResult.tagObjectOid is required by the observed validation path.
+// TagResult.tagObjectOid is required by the observed validation path.
 const missingTagObjectOidFromTag: TagResult = withoutTagObjectOidFromTag;
 const { observedTagRefOid: omittedObservedTagRefOidFromTag, ...withoutObservedTagRefOidFromTag } = tag;
 void omittedObservedTagRefOidFromTag;
-// @ts-expect-error TagResult.observedTagRefOid is required by the observed validation path.
+// TagResult.observedTagRefOid is required by the observed validation path.
 const missingObservedTagRefOidFromTag: TagResult = withoutObservedTagRefOidFromTag;
 
 declare const selfAmendment: SelfAmendment;
 const { authorityId: omittedAuthorityIdFromSelfAmendment, ...withoutAuthorityIdFromSelfAmendment } = selfAmendment;
 void omittedAuthorityIdFromSelfAmendment;
-// @ts-expect-error authorityId is required for the self-amendment result profile.
+// authorityId is required for the self-amendment result profile.
 const missingAuthorityIdFromSelfAmendment: SelfAmendment = withoutAuthorityIdFromSelfAmendment;
 const { authorityPath: omittedAuthorityPathFromSelfAmendment, ...withoutAuthorityPathFromSelfAmendment } = selfAmendment;
 void omittedAuthorityPathFromSelfAmendment;
-// @ts-expect-error authorityPath is required for the self-amendment result profile.
+// authorityPath is required for the self-amendment result profile.
 const missingAuthorityPathFromSelfAmendment: SelfAmendment = withoutAuthorityPathFromSelfAmendment;
