@@ -280,14 +280,16 @@ export function resumeNativeMeasurement(requestPath: string, request: Measuremen
     return result;
   } catch { warnMeasurementGap(); return noop; }
 }
-// Accept UTC ISO timestamps at millisecond or exact-second precision only.
-// Compare their calendar round trip; Date.parse alone normalizes impossible dates.
+// Accept explicit ISO timezone timestamps at millisecond or exact-second precision.
+// Calendar round trips reject impossible dates without changing valid source text.
 function canonicalTimestamp(value: unknown): value is string {
   if (typeof value !== 'string') return false;
-  const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) return false;
-  const canonical = new Date(parsed).toISOString();
-  return value === canonical || value === canonical.replace('.000Z', 'Z');
+  const match = value.match(/^((?:\d{4}|[+-]\d{6})-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?)(?:Z|[+-]\d{2}:\d{2})$/);
+  if (!match || !Number.isFinite(Date.parse(value))) return false;
+  const calendar = Date.parse(`${match[1]}Z`);
+  if (!Number.isFinite(calendar)) return false;
+  const canonical = new Date(calendar).toISOString().slice(0, -1);
+  return match[1] === canonical || match[1] === canonical.replace(/\.000$/, '');
 }
 export function validateMeasurementRecord(value: unknown): MeasurementRecord {
   const record = value as RecordView;

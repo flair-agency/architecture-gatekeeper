@@ -115,12 +115,12 @@ test('calendar-invalid and non-ISO timestamps are rejected and exported only as 
   const record={version:1,kind:'agk-diagnostic',attemptId:'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',phase:'terminal',route:'manual',state:'completed',startedAt:'2026-10-01T00:00:00Z',completedAt:'2026-10-01T00:00:01Z'};
   const path=join(directory,`${record.attemptId}.terminal.json`);
   for (const field of ['startedAt','completedAt']) {
-    for (const value of ['0','2026-02-30T00:00:00Z','2026-10-01T24:00:00Z','2026-10-01','2026-10-01T00:00:00+00:00','2026-10-01T00:00:00.0Z','2026-10-01T00:00:00.0000Z']) {
+    for (const value of ['0','2026-02-30T00:00:00Z','2026-10-01T24:00:00Z','2026-10-01','2026-10-01T00:00:00+24:00','2026-10-01T00:00:00.0Z','2026-10-01T00:00:00.0000Z']) {
       const changed={...record,[field]:value};assert.throws(()=>validateMeasurementRecord(changed),/Invalid diagnostic record/);
       assert.throws(()=>redactMeasurement(changed),/Invalid diagnostic record/);writeFileSync(path,JSON.stringify(changed));
       const loaded=loadMeasurementDirectory(directory);assert.equal(loaded.gaps,1);assert.deepEqual(loaded.records,[]);
     }
-    for (const value of ['2026-10-01T00:00:00Z','2026-10-01T00:00:00.000Z','2024-02-29T00:00:00.123Z','+275760-09-13T00:00:00.000Z']) {
+    for (const value of ['2026-10-01T00:00:00Z','2026-10-01T00:00:00.000Z','2024-02-29T00:00:00.123Z','2024-02-29T09:00:00+09:00','2024-02-29T09:00:00.123+09:00','2024-02-29T00:00:00+00:00','+275760-09-13T00:00:00.000Z']) {
       const changed={...record,[field]:value};assert.doesNotThrow(()=>validateMeasurementRecord(changed));
       assert.equal(redactMeasurement(changed)[field],value,'valid timestamp text is preserved exactly');
     }
