@@ -49,7 +49,7 @@ test('resumed prepared recorder keeps its captured request and rejects another r
   const { root, directory } = fixture(t);
   const attempt = beginMeasurement({ route: 'native', cwd: root, directory, changeId: 'change-1' });
   attempt.request(request('a', 'prepared'), { kind: 'proposed-task' });
-  const resumed = resumeMeasurement(attempt.id, directory);
+  const resumed = resumeMeasurement(attempt.id, directory, root);
   assert.ok(resumed.id);
   resumed.request(request('c', 'replacement'), { kind: 'tracked-working-tree' });
   resumed.finish({ decision: { decision: 'PASS' } });
