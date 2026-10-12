@@ -247,6 +247,13 @@ Native CLI guards and operations, runtime default adapters,
 deadline/cancellation, closed path tables and GitHub output checks retain their
 original operations.
 The approved runner environment accessor remains at its original model path.
+The runner-accessor candidate moves its implementation to
+`github/github-runner-env.mts`, retaining a distinct no-argument string-returning
+flat wrapper at that model path. The complete original runtime AST is pinned
+for typed source and emitted implementation, including the single environment
+read, short-circuit check and original error. The unchanged CodeQL model must
+remove only the flat wrapper flow; a new direct-implementation probe must retain
+its unmodeled finding. Types and the wrapper authenticate no environment.
 
 The local entrypoint slice types the Hook and manual-review adapters and the
 PostToolUse screening path. Sync reviewer callbacks reject known Promise and
@@ -275,8 +282,8 @@ before storage, bounded readbacks and the original private file modes. The
 runner accessor stays at its approved model path and returns only the string
 established by its existing runtime check; this does not authenticate provenance.
 
-Four checked JavaScript bridges remain at their existing source paths: the
-runner-environment accessor, snapshot materializer, native CLI and CI report.
+After the runner-accessor candidate, three checked JavaScript bridges remain
+at their existing source paths: snapshot materializer, native CLI and CI report.
 The report CLI checks its existing private zero-argument `Promise<void>`
 completion contract. Erased operation views retain the original error-message
 reads, inline-item operations and optional findings-length read; external
@@ -322,13 +329,14 @@ entrypoint foundation has 80 `.mts` modules and 16 original modules remaining.
 This CI composition candidate brings the count to 81 `.mts` modules and
 15 originals remaining; the partially typed report is included in the latter.
 The GitHub command candidate has 82 original modules fully migrated to `.mts`
-and 14 originals not fully migrated. Of those 14, four have checked
-JavaScript contracts (the runner-environment accessor, snapshot materializer,
-native CLI and CI report), and six have partial helper migrations (CI report,
-owner-addition finalizer, multi-authority orchestration, owner-addition CI and
-GitHub OWNER_ADDITION provenance and the legacy authority decision check).
-CI report belongs to both categories; together they cover nine distinct originals.
-The other five remain JavaScript modules
+and 14 originals not fully migrated. The runner-accessor candidate adds one
+complete typed implementation, reaching 83/96 fully migrated and 13 originals
+not fully migrated. Of those 13, three have checked JavaScript contracts
+(snapshot materializer, native CLI and CI report), and six have partial helper
+migrations (CI report, owner-addition finalizer, multi-authority orchestration,
+owner-addition CI, GitHub OWNER_ADDITION provenance and the legacy authority
+decision check). CI report belongs to both categories; together they cover eight
+distinct originals. The other five remain JavaScript modules
 outside these migrations. These source-layout counts do not change the
 selected CodeQL model or establish acceptance evidence.
 Migration is partial and does not change consumer architecture or assurance policy.
