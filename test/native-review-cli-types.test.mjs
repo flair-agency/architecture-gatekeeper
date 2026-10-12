@@ -43,7 +43,11 @@ test('native CLI exposes its existing optional string-array/string inputs and as
 });
 
 test('native CLI rejects incompatible caller inputs and return claims', () => {
-  assert.deepEqual(summary.filter(item => item.file === negativeFile), []);
+  const negative = summary.filter(item => item.file === negativeFile);
+  assert.deepEqual(negative.map(({ code, line }) => [code, line]), [[2322, 4], [2345, 6], [2322, 8]]);
+  assert.match(negative[0].message, /number.*not assignable.*string/i);
+  assert.match(negative[1].message, /number.*not assignable.*string/i);
+  assert.match(negative[2].message, /Promise<void>.*not assignable.*void/i);
   assert.deepEqual(summary.filter(item => item.file !== positiveFile && item.file !== negativeFile), [],
     'the checked CLI and transitive imports must remain error-free');
 });
