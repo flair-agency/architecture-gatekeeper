@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { appendFileSync, cpSync, copyFileSync, mkdtempSync, readdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, copyFileSync, mkdtempSync, readdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -421,4 +421,22 @@ test('ruleset CLI source and emitted entrypoint fail closed before external acce
     assert.equal(result.stdout, '');
     assert.equal(result.stderr, 'Isolated ruleset readback incomplete; no handoff authorization or credential output.\n');
   }
+});
+
+
+test('stale runtime rejects before Git but a matching runtime still requires immutable Git verification', async t => {
+  const packageRoot = dirname(dirname(fileURLToPath(import.meta.resolve('@flair-agency/architecture-gatekeeper/preview-lifecycle'))));
+  const isolated = mkdtempSync(join(tmpdir(), 'preview-fast-rejection-')); t.after(() => rmSync(isolated, { recursive: true, force: true }));
+  cpSync(join(packageRoot, 'dist'), join(isolated, 'dist'), { recursive: true }); copyFileSync(join(packageRoot, 'package.json'), join(isolated, 'package.json'));
+  const runtime = await import(pathToFileURL(join(isolated, 'dist/preview-lifecycle.mjs')).href);
+  const f = fixture(t); const head = commitOn(f, 'stale-fast-rejection', { 'app.txt': 'candidate\n' });
+  const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
+  const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
+  const fakeGit = join(isolated, 'git'); writeFileSync(fakeGit, '#!/bin/sh\nexit 77\n'); chmodSync(fakeGit, 0o700);
+  const priorPath = process.env.PATH; process.env.PATH = `${isolated}:${priorPath}`;
+  t.after(() => { process.env.PATH = priorPath; });
+  await assert.rejects(runtime.completePreviewLifecycle(request, ordinary(decision()), f.root), /Command failed: git/);
+  appendFileSync(join(isolated, 'dist/measurement.mjs'), '\n// isolated runtime change\n');
+  await assert.rejects(runtime.completePreviewLifecycle(request, ordinary(decision()), f.root), /request differs from immutable predecessor inputs/);
+  await assert.rejects(runtime.validatePreviewReceipt(receipt, f.root), /request differs from immutable predecessor inputs/);
 });
