@@ -256,3 +256,26 @@ exited 0, exact decision digest
 Core workflow/config/test bytes are unchanged from the full-suite/CodeQL scope.
 New protected acceptance is still required; no current allowance availability
 or hosted readiness follows from these local review results.
+
+## Current-main composition verification
+
+Parallel PR #550 was integrated by normal merge. The composed implementation
+passed all 1,507 tests with zero failures, skips or cancellations, using the
+same Node 22.18 isolated Docker controls described above. Build and source
+cycles passed. Independent code review found no actionable finding. Native
+Skill E2E against the complete Set at
+`5c5799836cc71c703b22603b71449120ee4b8915`, candidate tree
+`0b64371b38c90c731634b6cceca4c374bcc618a1`, returned PASS; installed
+validation exited 0, exact decision digest
+`6668e9dd0aa5828d6a0e214a26ed40b304869ef274fbdd20a2e62545f7f1a3e0`.
+
+Fresh sequential CodeQL scans of that main and candidate each retained
+58 JavaScript and 0 Actions findings. Complete raw result objects matched as
+multisets with all fields retained; no suppression, normalization or SARIF
+rewriting occurred. Evidence is retained in
+`/workspace/agk-resume-evidence/pr530-main550-codeql-comparison.json`.
+Parallel PR #552 then added only the owner-approved diagnostic responsibility
+to `docs/architecture.md`; it was integrated by normal merge. Executable
+workflow/config/test bytes are unchanged. That updated complete Set requires
+fresh native feedback and protected acceptance before deployment. All earlier
+results retain their original source scope.
