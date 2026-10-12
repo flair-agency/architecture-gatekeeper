@@ -1,3 +1,5 @@
+import { readOwnerAmendmentTagForMergeGroup } from '../../../src/owner-amendment-tag-readback.mjs';
+import { readOwnerAmendmentTagForMergeGroup as readDirect } from '../../../src/owner-amendment/owner-amendment-tag-readback.mts';
 import type { OwnerAmendmentTagReadback, OwnerAmendmentTagReadbackInput, OwnerAmendmentTagFetch } from '../../../src/owner-amendment/owner-amendment-tag-readback.mjs';
 
 const wrongAsyncResponse: OwnerAmendmentTagFetch = async () => ({ ok: true, status: 200 });
@@ -6,6 +8,10 @@ const wrongJsonCallback: OwnerAmendmentTagFetch = async () => ({ ok: true, json:
 const wrongAsyncRaw: NonNullable<OwnerAmendmentTagReadbackInput['readTagObject']> = async () => 'not bytes';
 const wrongSyncRaw: NonNullable<OwnerAmendmentTagReadbackInput['readTagObject']> = () => ({ bytes: true });
 const incompleteInput: OwnerAmendmentTagReadbackInput = {};
+readOwnerAmendmentTagForMergeGroup();
+readDirect();
+readOwnerAmendmentTagForMergeGroup({});
+readDirect({});
 declare const result: OwnerAmendmentTagReadback;
 declare const callbackOid: Parameters<NonNullable<OwnerAmendmentTagReadbackInput['readTagObject']>>[3];
 const ruleset: string = result.rulesetReadback;

@@ -9,6 +9,10 @@ The `path-injection` barrier matches only the return of the no-argument
 It does not model `process.env`, other exports, caller paths, or filesystem
 validation helpers as trusted. Review changes to the accessor and this pack
 together; the invoking runner must preserve its own `GITHUB_OUTPUT` value.
+The flat function delegates to the typed implementation in
+`src/github/github-runner-env.mts` through a distinct wrapper. Direct imports
+of that implementation retain their baseline path-injection findings; the
+model file and its flat export match remain unchanged.
 
 GitHub default setup discovers repository model packs under
 `.github/codeql/extensions`. Local `npm run codeql` explicitly supplies this
@@ -21,7 +25,7 @@ with and without this pack using the standard `js/path-injection` query. The
 fixture copies the actual accessor and adds a different export to the same
 file. It requires that only the trusted accessor finding disappears, while
 other environment variables, direct `GITHUB_OUTPUT` use, CLI input, the other
-export, and a path checked for absolute/regular-file/link properties retain
+export, the directly imported typed implementation, and a path checked for absolute/regular-file/link properties retain
 all their baseline findings. A failed regression aborts the scan.
 
 References:

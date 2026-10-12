@@ -2,11 +2,13 @@ import { assertOwnerAmendmentTagAbsentAtAcceptance, classifyOwnerAmendmentTagAtt
 import { parseOwnerAmendmentSemanticTagObject } from '../../../../src/owner-amendment/owner-amendment-semantic-tag-object.mjs';
 
 const response = { status: 404, requestedUrl: 'https://api.github.com/unknown' };
-const syncInput: OwnerAmendmentTagAttemptInput = { readTagRef: () => response };
-const asyncInput: OwnerAmendmentTagAttemptInput = { readTagRef: async () => response };
+const protectedInput = { repository: 'flair-agency/architecture-gatekeeper', baseSha: 'a'.repeat(40), bSha: 'b'.repeat(40),
+  baseBranch: 'main', triggerProfile: 'completed-block-v1', policyBytes: Buffer.from('{}') };
+const syncInput: OwnerAmendmentTagAttemptInput = { ...protectedInput, readTagRef: () => response };
+const asyncInput: OwnerAmendmentTagAttemptInput = { ...protectedInput, readTagRef: async () => response };
 function thenable<T>(value: T): PromiseLike<T> { return Promise.resolve(value); }
-const thenableInput: OwnerAmendmentTagAttemptInput = { readTagRef: () => thenable(response) };
-const scalarInput: OwnerAmendmentTagAttemptInput = { readTagRef: () => 404 };
+const thenableInput: OwnerAmendmentTagAttemptInput = { ...protectedInput, readTagRef: () => thenable(response) };
+const scalarInput: OwnerAmendmentTagAttemptInput = { ...protectedInput, readTagRef: () => 404 };
 void [syncInput, asyncInput, thenableInput, scalarInput];
 void classifyOwnerAmendmentTagAttempt(syncInput);
 void assertOwnerAmendmentTagAbsentAtAcceptance(syncInput);

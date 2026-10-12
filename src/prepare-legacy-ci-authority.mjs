@@ -5,6 +5,8 @@ import { TextDecoder } from 'node:util';
 import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
 import { readRegularGitSnapshot } from './legacy-git-snapshot.mjs';
 import { trustedGitHubWorkspaceRoot } from './github-runner-workspace.mjs';
+import { validateLegacyAuthorityDecision } from './ci-review/legacy-authority-decision.mts';
+export { validateLegacyAuthorityDecision };
 
 const SHA = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -68,16 +70,6 @@ export function prepareLegacyAuthority({ root, baseSha, headSha, reviewedSha, ba
   return provenance;
 }
 
-export function validateLegacyAuthorityDecision(decisionJson, provenance) {
-  const decision = JSON.parse(decisionJson);
-  if (!['PASS', 'BLOCK', 'OWNER_DECISION'].includes(decision?.decision) || !Array.isArray(decision.authorityFiles) ||
-      decision.authorityFiles.length !== provenance.members.length ||
-      new Set(decision.authorityFiles).size !== decision.authorityFiles.length ||
-      provenance.members.some(member => !decision.authorityFiles.includes(member.path))) {
-    throw new Error('Legacy review did not report the exact base-selected authorityFiles.');
-  }
-  return decision;
-}
 
   if (process.argv[1]?.endsWith('/prepare-legacy-ci-authority.mjs')) {
   if (process.argv[2] === 'prepare') {

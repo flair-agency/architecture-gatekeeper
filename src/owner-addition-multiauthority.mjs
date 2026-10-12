@@ -3,17 +3,17 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest,
-  readCommittedAuthorityFile, rejectDuplicateJsonKeys, validateAuthoritySetDecision } from './authority-set.mjs';
+  readCommittedAuthorityFile, rejectDuplicateJsonKeys } from './authority-set.mjs';
 import { createGitHubAuthoritySource } from './github-authority-source.mjs';
 import { decodeLimits } from './prepare-authority-set.mjs';
 import { validateAuthorityReviewSchema } from './preflight-authority-set-review.mjs';
-import { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema,
-  validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema } from './owner-addition-validation.mjs';
+import { validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema } from './owner-addition-validation.mjs';
 import { validateMultiAuthorityAdditionG0Procedure } from './owner-decision-addition.mjs';
 import { assertSameMultiAuthorityProvenance, multiAuthorityProvenance,
-  validateMultiAuthorityDecision, validateMultiAuthorityProvenance } from './multi-authority-provenance.mjs';
+  validateMultiAuthorityDecision } from './multi-authority-provenance.mjs';
+import { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema } from './owner-addition/multi-authority-eligibility.mts';
+export { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema };
 
-const SPECIAL = ['version', 'authorityIds', 'authoritySetDigest'];
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const decode = bytes => new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
 function parse(source) { rejectDuplicateJsonKeys(source, 'owner-addition input'); return JSON.parse(source); }
@@ -21,43 +21,6 @@ function git(root, ...args) {
   return execFileSync('git', args, { cwd: root, encoding: 'buffer', maxBuffer: 2_000_000, timeout: 10_000,
     env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' } });
 }
-function legacySchema(schema) {
-  return { ...schema, required: schema.required.filter(key => !SPECIAL.includes(key)),
-    properties: Object.fromEntries(Object.entries(schema.properties).filter(([key]) => !SPECIAL.includes(key))) };
-}
-
-export function validateMultiAuthorityEligibilitySchema(schema) {
-  if (!schema || !Array.isArray(schema.required) || !schema.properties ||
-      SPECIAL.some(key => !schema.required.includes(key)) ||
-      schema.properties.version?.type !== 'integer' || JSON.stringify(schema.properties.version.enum) !== '[2]' ||
-      schema.properties.authoritySetDigest?.type !== 'string' ||
-      schema.properties.authorityIds?.type !== 'array' || schema.properties.authorityIds.minItems !== 1 ||
-      schema.properties.authorityIds.items?.type !== 'string') {
-    throw new Error('Multi-document eligibility schema must require version 2, authorityIds and authoritySetDigest.');
-  }
-  // Keep the v1 closed-schema restrictions and consumer boolean requirements.
-  for (const [key, allowed] of [['version', ['type', 'enum', 'description']],
-    ['authoritySetDigest', ['type', 'description']], ['authorityIds', ['type', 'minItems', 'items', 'description']]]) {
-    if (Object.keys(schema.properties[key]).some(name => !allowed.includes(name))) throw new Error('Unsupported multi-document eligibility schema rule.');
-  }
-  if (Object.keys(schema.properties.authorityIds.items).some(key => !['type', 'description'].includes(key)) ||
-      new Set(schema.required).size !== schema.required.length) throw new Error('Invalid multi-document eligibility schema.');
-  validateOwnerAdditionEligibilitySchema(legacySchema(schema));
-}
-
-export function validateMultiAuthorityEligibility(raw, schema, provenance) {
-  validateMultiAuthorityEligibilitySchema(schema);
-  validateMultiAuthorityProvenance(provenance);
-  const decision = parse(raw);
-  if (!decision || decision.version !== 2 || decision.authoritySetDigest !== provenance.setDigest) {
-    throw new Error('Multi-document eligibility version or Authority Set binding differs.');
-  }
-  validateAuthoritySetDecision({ decision: 'PASS', authorityIds: decision.authorityIds }, provenance);
-  const core = Object.fromEntries(Object.entries(decision).filter(([key]) => !SPECIAL.includes(key)));
-  validateOwnerAdditionEligibility(JSON.stringify(core), legacySchema(schema));
-  return decision;
-}
-
 /** All materialization is completed here; source credentials are not reviewer inputs. */
 export async function prepareMultiAuthorityAddition(env, selected, policyBytes, { fetchExternal } = {}) {
   const { GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: repository, BASE_SHA: baseSha, HEAD_SHA: headSha,

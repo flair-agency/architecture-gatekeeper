@@ -1,4 +1,6 @@
 import { createAndReadOwnerAmendmentTag } from '../../../src/owner-amendment-tag-adapter.mjs';
+import { classifyOwnerAmendmentTagAttempt as classifyAttempt } from '../../../src/owner-amendment-tag-attempt.mjs';
+import type { OwnerAmendmentTagAttemptInput } from '../../../src/owner-amendment/owner-amendment-tag-attempt.mts';
 import type {
   CreateAndReadOwnerAmendmentTagResult,
   OwnerAmendmentTagFetch,
@@ -27,6 +29,17 @@ for (const fetchImpl of [standardFetch, requiredOptionsFetch, syncFetch, asyncFe
   void createAndReadOwnerAmendmentTag({ ...input, fetchImpl, rulesetReadback: supplied });
 }
 for (const response of [syncJson, asyncJson, thenableJson]) void response;
+declare const selected: unknown;
+const attemptInput: OwnerAmendmentTagAttemptInput = {
+  repository: selected, baseSha: selected, bSha: selected, baseBranch: selected, triggerProfile: selected,
+  policyBytes: selected, readTagRef: () => selected,
+};
+const attemptResult: Promise<unknown> = classifyAttempt(attemptInput);
+const asyncAttempt: OwnerAmendmentTagAttemptInput = { ...attemptInput, readTagRef: async () => selected };
+const thenableAttempt: OwnerAmendmentTagAttemptInput = {
+  ...attemptInput, readTagRef: () => ({ then: jsonPromise.then.bind(jsonPromise) }),
+};
+void [attemptResult, asyncAttempt, thenableAttempt];
 already.then(result => {
   if (result.transportStatus === 'ALREADY_PRESENT_AND_READ_BACK') {
     const observation: unknown = result.refReadback;

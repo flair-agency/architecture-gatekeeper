@@ -27,7 +27,7 @@ test('merge-group amendment verifier remains inactive in the self workflow', () 
 });
 
 test('merge_group success is pre-transition verification and keeps adoption/canonical placement pending', () => {
-  const verifier = readFileSync(new URL('../src/owner-amendment-merge-group-acceptance.mjs', import.meta.url), 'utf8');
+  const verifier = readFileSync(new URL('../dist/owner-amendment/owner-amendment-merge-group-acceptance.mjs', import.meta.url), 'utf8');
   const script = readFileSync(new URL('../scripts/owner-amendment-merge-group-gate.mjs', import.meta.url), 'utf8');
   assert.match(verifier, /status: 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION'/);
   assert.doesNotMatch(verifier, /status: 'ACCEPTED_OWNER_AMENDMENT_G0'/);
@@ -37,7 +37,7 @@ test('merge_group success is pre-transition verification and keeps adoption/cano
 
 test('missing-tag merge-group route selects fresh exact-tuple ordinary PASS verification', () => {
   const script = readFileSync(new URL('../scripts/owner-amendment-merge-group-gate.mjs', import.meta.url), 'utf8');
-  const attempts = readFileSync(new URL('../src/owner-amendment-semantic-producer-attempts.mjs', import.meta.url), 'utf8');
+  const attempts = readFileSync(new URL('../dist/owner-amendment/owner-amendment-semantic-producer-attempts.mjs', import.meta.url), 'utf8');
   assert.match(script, /inspectOwnerAmendmentSemanticProducerAttempts/);
   assert.match(script, /searchParams\.set\('head_sha', bBaseSha\)/);
   assert.match(script, /searchParams\.set\('created', `\$\{createdFrom\}\.\.\$\{createdTo\}`\)/);
@@ -53,7 +53,7 @@ test('missing-tag merge-group route selects fresh exact-tuple ordinary PASS veri
   assert.match(attempts, /successful pre-queue semantic eligibility signer result but no protected amendment tag/);
   assert.match(script, /selectRoute\('ordinary', selection\)/);
   assert.match(script, /fresh ordinary review of the exact current base\/B tuple/);
-  const ordinary = readFileSync(new URL('../src/owner-amendment-merge-group-ordinary-review.mjs', import.meta.url), 'utf8');
+  const ordinary = readFileSync(new URL('../dist/owner-amendment/owner-amendment-merge-group-ordinary-review.mjs', import.meta.url), 'utf8');
   assert.match(ordinary, /prepareOwnerAmendmentMergeGroupOrdinaryReview/);
   assert.match(ordinary, /validateOwnerAmendmentMergeGroupOrdinaryDecision/);
   assert.match(ordinary, /decision\.decision !== 'PASS'/);

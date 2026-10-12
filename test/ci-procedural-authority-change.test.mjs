@@ -56,6 +56,24 @@ test('procedural v5 detects edits to every selected same-repository authority, n
     baseSha: 'b'.repeat(40), headSha: changedHead, cwd: f.root }), /does not match the recorded base/);
 });
 
+test('Git collaborator receives an unchecked late reread of a selected path', async t => {
+  const f = await gitFixture(t);
+  const selected = f.provenance.members[0];
+  const selectedPath = selected.path;
+  let pathReads = 0;
+  Object.defineProperty(selected, 'path', {
+    enumerable: true,
+    configurable: true,
+    get() { pathReads += 1; return pathReads <= 5 ? selectedPath : 17; },
+  });
+  let receivedArgs;
+  const changed = changedSelectedAuthorityPaths({ provenance: f.provenance, repository: f.repository,
+    baseSha: f.baseSha, headSha: f.baseSha, cwd: f.root,
+    execFile: (_file, args) => { receivedArgs = args; return Buffer.from(''); } });
+  assert.deepEqual(changed, []);
+  assert.equal(receivedArgs[7], 17);
+});
+
 const common = { policyVersion: '5', evidenceProducer: 'github-actions', reviewResult: 'success',
   ownerAdditionSelected: 'G0', ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE' };
 

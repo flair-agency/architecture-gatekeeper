@@ -17,7 +17,7 @@ function runtimeModulePaths(directory = new URL('.', import.meta.url), prefix = 
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
     const path = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) return runtimeModulePaths(new URL(`${entry.name}/`, directory), path);
-    return entry.name.endsWith('.mjs') ? [path] : [];
+    return entry.name.endsWith('.mjs') || entry.name.endsWith('.mts') ? [path] : [];
   });
 }
 const runtimeIdentity = () => ({ nodeVersion: process.version, files: Object.fromEntries([...runtimeModulePaths().sort(), '../package.json'].map(file => [file, digest(readFileSync(new URL(file, import.meta.url)))])) });
@@ -583,7 +583,9 @@ export async function observePreviewLifecycle(receipt, integrationSha, cwd = rec
   if (!eligibleB && !passedMigration) fail('step is not an eligible selected B procedure.');
   const raw = Buffer.from(rawReceiptBytes);
   if (!raw.length || raw.length > 4_194_304) fail('completed raw receipt exceeds 4 MiB.');
-  const rawText = utf8(raw); rejectDuplicateJsonKeys(rawText, 'completed receipt', { maxDepth: 64 });
+  // A bounded response or prior A receipt may be nested at the fixed
+  // receipt.request.spec.trigger.response path (four wrapper levels).
+  const rawText = utf8(raw); rejectDuplicateJsonKeys(rawText, 'completed receipt', { maxDepth: 68 });
   JSON.parse(rawText);
   if (!raw.equals(previewReceiptBytes(receipt))) fail('raw receipt bytes differ from completed receipt.');
   const receiptSha256 = digest(raw);

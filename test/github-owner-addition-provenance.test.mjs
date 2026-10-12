@@ -58,28 +58,31 @@ function unzipOne(zip) {
   return inflateRawSync(zip.subarray(dataOffset, dataOffset + compressedSize));
 }
 function encodedJson(value) { return Buffer.from(JSON.stringify(value)); }
-function prepare({ event = 'pull_request', runHead = candidate.syntheticSha } = {}) {
+function prepare({ event = 'pull_request', runHead = candidate.syntheticSha, selectedRepository = candidate.repository } = {}) {
+  const selectedAuthoritySet = { ...candidate.authoritySet, selfRepository: selectedRepository };
+  const selectedCandidate = { ...candidate, repository: selectedRepository, authoritySet: selectedAuthoritySet,
+    procedure: { ...candidate.procedure, repository: selectedRepository, authoritySet: selectedAuthoritySet } };
   const raw = {
-    procedure: encodedJson(candidate.procedure), ordinaryDecision: encodedJson(candidate.ordinary),
-    eligibilityDecision: encodedJson(candidate.eligibility), authoritySetProvenance: encodedJson(candidate.authoritySet),
+    procedure: encodedJson(selectedCandidate.procedure), ordinaryDecision: encodedJson(selectedCandidate.ordinary),
+    eligibilityDecision: encodedJson(selectedCandidate.eligibility), authoritySetProvenance: encodedJson(selectedCandidate.authoritySet),
   };
-  const envelope = { version: 1, repository: candidate.repository, targetBranch: candidate.targetBranch,
-    prNumber: candidate.pullRequestNumber, baseSha: candidate.baseSha, headSha: candidate.bSha,
-    runId: candidate.runId, runAttempt: candidate.attempt,
+  const envelope = { version: 1, repository: selectedCandidate.repository, targetBranch: selectedCandidate.targetBranch,
+    prNumber: selectedCandidate.pullRequestNumber, baseSha: selectedCandidate.baseSha, headSha: selectedCandidate.bSha,
+    runId: selectedCandidate.runId, runAttempt: selectedCandidate.attempt,
     procedureBase64: raw.procedure.toString('base64'), ordinaryDecisionBase64: raw.ordinaryDecision.toString('base64'),
     eligibilityDecisionBase64: raw.eligibilityDecision.toString('base64'), authoritySetProvenanceBase64: raw.authoritySetProvenance.toString('base64'),
     digests: Object.fromEntries(Object.entries(raw).map(([key, bytes]) => [key, digest(bytes)])) };
   const evidenceBytes = encodedJson(envelope);
   const zip = zipOne('eligibility-evidence.json', evidenceBytes);
   const completedAt = '2026-09-26T01:00:00.000Z';
-  const workflowRef = event === 'pull_request_target' ? `refs/heads/${candidate.targetBranch}`
-    : `refs/pull/${candidate.pullRequestNumber}/merge`;
-  const run = { id: candidate.runId, run_attempt: candidate.attempt, repository: { full_name: candidate.repository }, event,
-    status: 'completed', conclusion: 'success', path: `${candidate.callerPath}@${workflowRef}`, head_sha: runHead,
+  const workflowRef = event === 'pull_request_target' ? `refs/heads/${selectedCandidate.targetBranch}`
+    : `refs/pull/${selectedCandidate.pullRequestNumber}/merge`;
+  const run = { id: selectedCandidate.runId, run_attempt: selectedCandidate.attempt, repository: { full_name: selectedCandidate.repository }, event,
+    status: 'completed', conclusion: 'success', path: `${selectedCandidate.callerPath}@${workflowRef}`, head_sha: runHead,
     referenced_workflows: [{ ...gatekeeperWorkflow }],
-    run_started_at: '2026-09-26T00:55:00.000Z', pull_requests: [{ number: candidate.pullRequestNumber,
-      head: { sha: candidate.bSha }, base: { sha: candidate.baseSha, ref: candidate.targetBranch } }] };
-  const job = { id: candidate.jobId, name: candidate.jobName, status: 'completed', conclusion: 'success',
+    run_started_at: '2026-09-26T00:55:00.000Z', pull_requests: [{ number: selectedCandidate.pullRequestNumber,
+      head: { sha: selectedCandidate.bSha }, base: { sha: selectedCandidate.baseSha, ref: selectedCandidate.targetBranch } }] };
+  const job = { id: selectedCandidate.jobId, name: selectedCandidate.jobName, status: 'completed', conclusion: 'success',
     head_sha: runHead, completed_at: completedAt,
     steps: [
       { name: 'Preserve exact v5 pre-merge eligibility evidence', status: 'completed', conclusion: 'success', number: 7,
@@ -87,31 +90,31 @@ function prepare({ event = 'pull_request', runHead = candidate.syntheticSha } = 
       { name: 'Record exact uploaded eligibility artifact binding', status: 'completed', conclusion: 'success', number: 8,
         started_at: '2026-09-26T00:59:30.000Z', completed_at: '2026-09-26T00:59:31.000Z' },
     ],
-    check_run_url: `https://api.github.com/repos/${candidate.repository}/check-runs/555` };
-  const check = { id: 555, name: candidate.jobName, status: 'completed', conclusion: 'success', head_sha: runHead,
+    check_run_url: `https://api.github.com/repos/${selectedCandidate.repository}/check-runs/555` };
+  const check = { id: 555, name: selectedCandidate.jobName, status: 'completed', conclusion: 'success', head_sha: runHead,
     app: { id: 15368 } };
-  const acceptName = candidate.jobName.replace(/\/ owner-addition$/, '/ accept');
+  const acceptName = selectedCandidate.jobName.replace(/\/ owner-addition$/, '/ accept');
   const acceptJob = { id: 778, name: acceptName, status: 'completed', conclusion: 'success',
     head_sha: runHead, completed_at: '2026-09-26T01:03:00.000Z',
     steps: [],
-    check_run_url: `https://api.github.com/repos/${candidate.repository}/check-runs/556` };
+    check_run_url: `https://api.github.com/repos/${selectedCandidate.repository}/check-runs/556` };
   const acceptCheck = { id: 556, name: acceptName, status: 'completed', conclusion: 'success',
     head_sha: runHead, app: { id: 15368 } };
-  const artifact = { id: 987, name: `owner-addition-eligibility-evidence-${candidate.bSha}-${candidate.attempt}`, expired: false,
+  const artifact = { id: 987, name: `owner-addition-eligibility-evidence-${selectedCandidate.bSha}-${selectedCandidate.attempt}`, expired: false,
     size_in_bytes: zip.length, digest: `sha256:${digest(zip)}`, created_at: '2026-09-26T00:59:00.000Z',
-    workflow_run: { id: candidate.runId, head_sha: runHead } };
+    workflow_run: { id: selectedCandidate.runId, head_sha: runHead } };
   const annotations = [{ path: '.github/workflows/review.yml', start_line: 1, end_line: 1, annotation_level: 'notice',
     title: 'AGK_OWNER_ADDITION_ARTIFACT_V1', message: `id=${artifact.id};sha256=${digest(zip)}` }];
   const responses = new Map([
-    [`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}`, run],
-    [`/repos/${candidate.repository}/pulls/${candidate.pullRequestNumber}`, { number: candidate.pullRequestNumber,
-      base: { ref: candidate.targetBranch }, head: { sha: candidate.bSha } }],
-    [`/repos/${candidate.repository}/actions/runs/${candidate.runId}/attempts/${candidate.attempt}/jobs?per_page=100`, { total_count: 2, jobs: [job, acceptJob] }],
-    [`/repos/${candidate.repository}/check-runs/555`, check],
-    [`/repos/${candidate.repository}/check-runs/555/annotations?per_page=100`, annotations],
-    [`/repos/${candidate.repository}/check-runs/556`, acceptCheck],
-    [`/repos/${candidate.repository}/actions/runs/${candidate.runId}/artifacts?per_page=100`, { total_count: 1, artifacts: [artifact] }],
-    [`/repos/${candidate.repository}/actions/artifacts/${artifact.id}/zip`, zip],
+    [`/repos/${selectedCandidate.repository}/actions/runs/${selectedCandidate.runId}/attempts/${selectedCandidate.attempt}`, run],
+    [`/repos/${selectedCandidate.repository}/pulls/${selectedCandidate.pullRequestNumber}`, { number: selectedCandidate.pullRequestNumber,
+      base: { ref: selectedCandidate.targetBranch }, head: { sha: selectedCandidate.bSha } }],
+    [`/repos/${selectedCandidate.repository}/actions/runs/${selectedCandidate.runId}/attempts/${selectedCandidate.attempt}/jobs?per_page=100`, { total_count: 2, jobs: [job, acceptJob] }],
+    [`/repos/${selectedCandidate.repository}/check-runs/555`, check],
+    [`/repos/${selectedCandidate.repository}/check-runs/555/annotations?per_page=100`, annotations],
+    [`/repos/${selectedCandidate.repository}/check-runs/556`, acceptCheck],
+    [`/repos/${selectedCandidate.repository}/actions/runs/${selectedCandidate.runId}/artifacts?per_page=100`, { total_count: 1, artifacts: [artifact] }],
+    [`/repos/${selectedCandidate.repository}/actions/artifacts/${artifact.id}/zip`, zip],
   ]);
   const responseHeaders = new Map();
   const fetchImpl = async (url) => {
@@ -122,12 +125,12 @@ function prepare({ event = 'pull_request', runHead = candidate.syntheticSha } = 
     return { ok: true, headers: { get: name => name.toLowerCase() === 'link' ? responseHeaders.get(path) ?? null : null },
       json: async () => structuredClone(value) };
   };
-  const args = { githubToken: 'token', repository: candidate.repository, targetBranch: candidate.targetBranch,
-    pullRequestNumber: candidate.pullRequestNumber, baseSha: candidate.baseSha, bSha: candidate.bSha,
-    callerPath: candidate.callerPath, jobName: candidate.jobName, appId: 15368, runId: candidate.runId,
-    attempt: candidate.attempt, jobId: candidate.jobId, policySha256,
+  const args = { githubToken: 'token', repository: selectedCandidate.repository, targetBranch: selectedCandidate.targetBranch,
+    pullRequestNumber: selectedCandidate.pullRequestNumber, baseSha: selectedCandidate.baseSha, bSha: selectedCandidate.bSha,
+    callerPath: selectedCandidate.callerPath, jobName: selectedCandidate.jobName, appId: 15368, runId: selectedCandidate.runId,
+    attempt: selectedCandidate.attempt, jobId: selectedCandidate.jobId, policySha256,
     expectedGatekeeperWorkflow: gatekeeperWorkflow,
-    mergeAt: candidate.mergeAt, fetchImpl };
+    mergeAt: selectedCandidate.mergeAt, fetchImpl };
   return { args, responses, responseHeaders, artifact, zip, raw };
 }
 
@@ -149,6 +152,31 @@ test('verifies recorded-base run, producer, exact-B pre-merge artifact and retur
   assert.equal(result.provenance.artifactBinding.annotationTitle, 'AGK_OWNER_ADDITION_ARTIFACT_V1');
   assert.equal(result.provenance.artifactBinding.annotationMessage, `id=987;sha256=${digest(zip)}`);
   assert.equal(result.artifacts.evidenceArtifact.id, 987);
+});
+
+test('verifies a selected repository containing a literal dot', async () => {
+  const fixture = prepare({ selectedRepository: 'flair-agency/re.po' });
+  const result = await verifyOwnerAdditionEligibilityProvenance(fixture.args);
+  assert.equal(result.status, 'verified');
+  assert.equal(result.provenance.repository, 'flair-agency/re.po');
+});
+
+test('rejects dotted-repository lookalikes before requesting either check run', async t => {
+  for (const [name, index, message] of [
+    ['producer', 0, /producer check run URL is outside the selected repository/],
+    ['accept', 1, /Gatekeeper accept check run URL is outside the selected repository/],
+  ]) {
+    await t.test(name, async () => {
+      const fixture = prepare({ selectedRepository: 'flair-agency/re.po' });
+      const jobs = fixture.responses.get('/repos/flair-agency/re.po/actions/runs/9001/attempts/2/jobs?per_page=100').jobs;
+      jobs[index].check_run_url = jobs[index].check_run_url.replace('/re.po/', '/reXpo/');
+      const requested = [];
+      const fetchImpl = fixture.args.fetchImpl;
+      fixture.args.fetchImpl = async (...args) => { requested.push(args[0]); return fetchImpl(...args); };
+      await assert.rejects(() => verifyOwnerAdditionEligibilityProvenance(fixture.args), message);
+      assert.equal(requested.some(url => new URL(url).pathname.includes('/reXpo/')), false);
+    });
+  }
 });
 
 test('verifies a pull_request_target producer bound to the exact PR head', async () => {

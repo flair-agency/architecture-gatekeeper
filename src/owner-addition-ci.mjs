@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
 import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
 import { parseAuthorityManifest } from './authority-set.mjs';
+import { selectSingleOwnerAdditionMember } from './owner-addition/single-authority-member.mts';
 import { validateOwnerDecisionAdditionG0Procedure } from './owner-decision-addition.mjs';
 import { prepareMultiAuthorityAddition, validateMultiAuthorityEligibility } from './owner-addition-multiauthority.mjs';
 import { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema,
@@ -49,12 +50,7 @@ export function resolveSingleOwnerAdditionAuthorityId(root, baseSha, selected, a
   const limits = JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64').toString('utf8'));
   const manifestBytes = committedFile(root, baseSha, selected.authorityManifestPath, 65_536);
   const manifest = parseAuthorityManifest(manifestBytes, limits);
-  const member = manifest.authorities[0];
-  if (manifest.authorities.length !== 1 || member.repository !== 'self' ||
-      member.revision !== 'authority-revision' || member.path !== authorityPath) {
-    throw new Error('G0 owner addition requires the selected Authority Set to contain only its affected self member.');
-  }
-  return member.id;
+  return selectSingleOwnerAdditionMember(manifest, authorityPath);
 }
 
 async function prepare(env) {

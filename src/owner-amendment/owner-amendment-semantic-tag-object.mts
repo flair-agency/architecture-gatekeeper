@@ -4,9 +4,9 @@ const sha256 = (bytes: Buffer): string => createHash('sha256').update(bytes).dig
 const fail: (message: string) => never = message => { throw new Error(`Owner amendment semantic producer: ${message}`); };
 
 export type OwnerAmendmentSemanticTagBinding = {
-  bSha?: unknown;
-  triggerProfile?: unknown;
-  tagRef?: unknown;
+  bSha: unknown;
+  triggerProfile: unknown;
+  tagRef: unknown;
 };
 export type OwnerAmendmentSemanticTagEnvelope = Record<string, unknown>;
 export type OwnerAmendmentSemanticTagObject = {
@@ -17,7 +17,8 @@ export type OwnerAmendmentSemanticTagObject = {
 };
 
 /** Parse the exact protected annotated-tag bytes emitted by the amendment handoff. */
-export function parseOwnerAmendmentSemanticTagObject(objectBytes: unknown, { bSha, triggerProfile, tagRef }: OwnerAmendmentSemanticTagBinding = {}): OwnerAmendmentSemanticTagObject {
+export function parseOwnerAmendmentSemanticTagObject(objectBytes: unknown, binding: OwnerAmendmentSemanticTagBinding): OwnerAmendmentSemanticTagObject;
+export function parseOwnerAmendmentSemanticTagObject(objectBytes: unknown, { bSha, triggerProfile, tagRef }: OwnerAmendmentSemanticTagBinding = {} as OwnerAmendmentSemanticTagBinding): OwnerAmendmentSemanticTagObject {
   if (!Buffer.isBuffer(objectBytes) || !objectBytes.length || objectBytes.length > 262_144 ||
       !/^[a-f0-9]{40}$/.test((bSha ?? '') as string) ||
       !['completed-block-v1', 'completed-owner-decision-self-v1'].includes(triggerProfile as string) ||

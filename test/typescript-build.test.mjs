@@ -61,13 +61,18 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   mkdirSync(join(fixtureRoot, 'src/github'), { recursive: true });
   for (const module of ['github-associated-repository', 'github-cli-runner',
     'github-authority-source', 'github-merge-group-event', 'github-owner-amendment-readback',
-    'github-owner-addition-readback', 'github-app-check-reporter', 'github-ruleset-readback']) {
+    'github-owner-addition-readback', 'github-app-check-reporter', 'github-ruleset-readback', 'github-runner-env']) {
     cpSync(join(root, `src/github/${module}.mts`), join(fixtureRoot, `src/github/${module}.mts`));
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
   }
-  for (const module of ['runner-temp-path', 'github-runner-env', 'resolve-ci-policy', 'authority-set']) {
+  for (const module of ['runner-temp-path', 'resolve-ci-policy', 'authority-set']) {
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
   }
+  mkdirSync(join(fixtureRoot, 'src/runner-paths'), { recursive: true });
+  cpSync(join(root, 'src/runner-paths/runner-temp-path.mts'), join(fixtureRoot, 'src/runner-paths/runner-temp-path.mts'));
+  mkdirSync(join(fixtureRoot, 'src/authority-validation'), { recursive: true });
+  cpSync(join(root, 'src/authority-validation/authority-set.mts'), join(fixtureRoot, 'src/authority-validation/authority-set.mts'));
+  cpSync(join(root, 'src/authority-validation/resolve-ci-policy.mts'), join(fixtureRoot, 'src/authority-validation/resolve-ci-policy.mts'));
   writeFileSync(join(fixtureRoot, 'src/legacy.mjs'), 'export const legacyValue = 7;\n');
   writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), "import { legacyValue } from '../legacy.mjs';\nexport const answer: number = legacyValue + 35;\n");
   symlinkSync(join(root, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
@@ -79,6 +84,8 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   assert.equal(initialBuild.status, 0, initialBuild.stderr);
   assert.deepEqual(emittedFiles(dist), [
     'authority-set.mjs',
+    'authority-validation/authority-set.mjs',
+    'authority-validation/resolve-ci-policy.mjs',
     'ci-execution-result.mjs',
     'ci-execution/ci-execution-result.mjs',
     'github-app-check-reporter.mjs',
@@ -98,6 +105,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'github/github-owner-addition-readback.mjs',
     'github/github-owner-amendment-readback.mjs',
     'github/github-ruleset-readback.mjs',
+    'github/github-runner-env.mjs',
     'legacy.mjs',
     'owner-addition-validation.mjs',
     'owner-addition/owner-addition-validation.mjs',
@@ -125,6 +133,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'owner-amendment/owner-amendment-tag-readback.mjs',
     'owner-amendment/owner-amendment-workflow-run-merge-group-context.mjs',
     'resolve-ci-policy.mjs',
+    'runner-paths/runner-temp-path.mjs',
     'runner-temp-path.mjs',
   ]);
   assert.equal(readFileSync(join(dist, 'legacy.mjs'), 'utf8'), 'export const legacyValue = 7;\n');

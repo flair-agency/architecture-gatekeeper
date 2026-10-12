@@ -79,6 +79,36 @@ The package selects declared inputs from a recorded revision, invokes a review-o
 
 `PASS`, `BLOCK` and `OWNER_DECISION` are semantic results; the latter escalates to canonical consumer authority, not acceptance. `OWNER_ADDITION` adds a missing decision; `OWNER_AMENDMENT` changes, replaces, removes or refines an existing one. History is never rewritten as `PASS`.
 
+#### Opt-in diagnostic measurement (Issue #537 owner decision, 2026-10-12)
+
+The shared mechanism may provide consumer-opt-in diagnostic observation of
+local, manual, native and CI review attempts, bounded retention and redacted
+export, and offline descriptive analysis of explicitly adjudicated cases.
+The consumer owns opt-in, private storage, access, retention, exports, the
+eligible population and independent adjudication. Collection defaults off.
+
+Diagnostic records are evaluation data, not ReviewRecords, authenticated
+producer evidence, owner authorization, eligibility or acceptance. Collection,
+reconciliation and analysis cannot change selected authority, reviewer
+settings, required validation, semantic decisions or protected acceptance.
+Missing, cancelled, conflicting or unverified observations remain visible as
+gaps; later PASS alone establishes no correction or causal prevention.
+
+Full private narrative remains in owner-selected private local/job storage.
+Export uses an explicit whitelist of diagnostic identities, digests, states,
+counts and job/revision bindings; it excludes task/prompt/diff text, private
+authority names, finding narrative, reviewer settings and credentials. Storage,
+parsing and retention have explicit finite versioned limits. These measures
+confer no tamper resistance, producer authentication, parent-directory privacy,
+hostile same-user isolation or protected host enforcement.
+
+Diagnostic collection adds no provider, credential, token permission or
+acceptance route. Optional collection failure cannot fail or satisfy a
+required review. Native session allocation and required request/decision paths
+remain the trusted Skill host's responsibility under the existing native
+execution contract; diagnostic directory restrictions do not select or
+restrict those paths.
+
 ### Acceptance authority and host enforcement boundary
 
 | Responsibility | Authority |
@@ -196,6 +226,10 @@ See the [full normative section](architecture/review-execution.md#target-gemini-
 #### Target Gemini CI execution selection (Issue #252 owner decision, 2026-10-04)
 
 See the [full normative section](architecture/review-execution.md#target-gemini-ci-execution-selection-issue-252-owner-decision-2026-10-04).
+
+#### Target bounded default-branch ordinary Gemini caller deployment (owner decision, 2026-10-12)
+
+See the [full normative section](architecture/review-execution.md#target-bounded-default-branch-ordinary-gemini-caller-deployment-owner-decision-2026-10-12).
 
 #### GitHub step-output sink (owner decision, 2026-10-03)
 

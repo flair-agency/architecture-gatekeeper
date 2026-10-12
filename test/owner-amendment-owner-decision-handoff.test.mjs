@@ -99,3 +99,33 @@ test('fails closed when changed files are not completely represented by OWNER_DE
   assert.equal(added.status, 'INCOMPLETE');
   assert.match(added.reason, /selected self authority and changed authority paths are required/);
 });
+
+test('re-reads extracted record bytes when binding the verified provenance digest', async () => {
+  let recordReads = 0;
+  let transported = false;
+  const result = await handoffOwnerAmendmentOwnerDecision(input({
+    extractArtifact: () => ({
+      status: 'EXTRACTED_OWNER_AMENDMENT_BLOCK_ARTIFACT',
+      get reviewRecordBytes() {
+        recordReads += 1;
+        return recordReads < 3 ? reviewBytes : Buffer.from('changed extracted bytes');
+      },
+      attestationBundleBytes: bundle,
+    }),
+    createTag: async () => { transported = true; return { tagReadback: { sha: 'e'.repeat(40) } }; },
+  }));
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.match(result.reason, /producer provenance is not verified/);
+  assert.equal(recordReads, 3);
+  assert.equal(transported, false);
+});
+
+test('preserves a thenable tag callback and the unvalidated readback SHA value', async () => {
+  const result = await handoffOwnerAmendmentOwnerDecision(input({
+    createTag: () => ({ then(resolve) { resolve({ tagReadback: { sha: 17 } }); } }),
+  }));
+  assert.equal(result.status, 'OWNER_DECISION_TAG_TRANSPORTED_AND_READ_BACK');
+  assert.equal(result.tagObjectSha, 17);
+  assert.equal(result.principalAuthentication, 'not_verified');
+  assert.equal(result.exactClaimAuthorization, 'not_verified');
+});

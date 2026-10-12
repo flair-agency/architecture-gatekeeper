@@ -2,6 +2,7 @@
 import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
 
 const suppliedBin = process.argv[2];
@@ -146,6 +147,24 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   symlinkSync(packageNodeModules, join(root, 'node_modules'), 'dir');
   mkdirSync(join(apiTests, 'fixtures'));
   copyFileSync(new URL('./fixtures/preview-lifecycle-runtime.mjs', import.meta.url), join(apiTests, 'fixtures/preview-lifecycle-runtime.mjs'));
+  const previewFixtureModule = await import(pathToFileURL(join(apiTests, 'fixtures', 'preview-lifecycle-runtime.mjs')));
+  let disposePreviewFixture = () => {};
+  try {
+    const previewFixture = previewFixtureModule.fixture({ after: callback => { disposePreviewFixture = callback; } });
+    const previewHead = previewFixtureModule.commitOn(previewFixture, 'installed-cli-change', { 'app.txt': 'Installed CLI smoke change\n' });
+    const previewPrepare = spawnSync(process.execPath, [join(installedBin, 'architecture-preview-lifecycle'), 'prepare'], {
+      cwd: previewFixture.root, env, input: JSON.stringify({ spec: previewFixtureModule.spec(previewFixture, 'review', previewHead) }),
+      encoding: 'utf8', timeout: 30000,
+    });
+    if (previewPrepare.status !== 0) throw new Error(`installed preview lifecycle CLI prepare failed: ${previewPrepare.stderr}`);
+    const previewRequest = JSON.parse(previewPrepare.stdout);
+    if (previewRequest.profile !== 'preview-unverified-procedure-v1' || previewRequest.root !== realpathSync(previewFixture.root) ||
+      previewRequest.spec?.repository !== 'fixture/example' || previewRequest.spec?.headSha !== previewHead) {
+      throw new Error('installed preview lifecycle CLI returned an unexpected checkout-bound request');
+    }
+  } finally {
+    disposePreviewFixture();
+  }
   copyFileSync(new URL('./preview-lifecycle.test.mjs', import.meta.url), join(apiTests, 'preview-lifecycle.test.mjs'));
   copyFileSync(new URL('./preview-runtime-identity.test.mjs', import.meta.url), join(apiTests, 'preview-runtime-identity.test.mjs'));
   copyFileSync(new URL('./preview-amendment-block.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-block.test.mjs'));

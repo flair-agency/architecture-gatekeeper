@@ -35,6 +35,14 @@ Packages with `read:packages` outside the project, and sign in to the local
 Codex CLI with `codex login`; configure a Git author identity so the consumer
 inputs can be committed. Do not put a package token in the repository.
 The package entrypoint below is pinned to `0.6.0-preview.3`.
+This walkthrough uses local configuration v2. Its `selfRepository` value,
+`example/architecture-review-demo`, is an example identity for this local
+fixture; replace it with the consumer's actual `OWNER/REPOSITORY` when using
+the configuration in a real repository.
+The architecture below is a minimal example fixture. Before relying on the
+walkthrough for a consumer, replace or adapt it under that consumer's
+governance using its owner-approved canonical architecture; these sample API
+and storage rules do not define the consumer's existing architecture.
 
 Create the complete consumer input set and package lock:
 
@@ -54,14 +62,35 @@ The API layer validates each request before storage. The storage layer persists
 validated records. The consumer repository owns this architecture.
 EOF
 
-cat > .codex/gatekeeper/config.json <<'EOF'
+cat > .codex/gatekeeper/authorities.json <<'EOF'
 {
   "version": 1,
-  "authorityFiles": ["docs/architecture.md"],
+  "authorities": [
+    {
+      "id": "architecture",
+      "repository": "self",
+      "revision": "authority-revision",
+      "path": "docs/architecture.md"
+    }
+  ]
+}
+EOF
+
+cat > .codex/gatekeeper/config.json <<'EOF'
+{
+  "version": 2,
+  "selfRepository": "example/architecture-review-demo",
+  "authorityManifestPath": ".codex/gatekeeper/authorities.json",
+  "authorityLimits": {
+    "maxManifestBytes": 16384,
+    "maxMembers": 16,
+    "maxFileBytes": 131072,
+    "maxTotalBytes": 262144,
+    "maxPromptBytes": 524288
+  },
   "promptPath": ".codex/gatekeeper/prompt.md",
   "schemaPath": ".codex/gatekeeper/decision.schema.json",
   "reviewerConfigPath": ".codex/gatekeeper/reviewer.config.json",
-  "requiredReportedAuthorityFiles": ["docs/architecture.md"],
   "requiredPassArrays": ["reviewedScope"],
   "reviewTimeoutMs": 180000
 }
@@ -71,25 +100,27 @@ cat > .codex/gatekeeper/prompt.md <<'EOF'
 Review the proposed change only against the committed consumer architecture
 included in the request. Return PASS if it follows that design, BLOCK if it
 conflicts with an existing rule, or OWNER_DECISION if the architecture does not
-decide the question. Report docs/architecture.md in authorityFiles and briefly
-describe the reviewed scope. Do not implement changes.
+decide the question. Report the selected authority ID `architecture` in
+authorityIds and include at least one concise reviewedScope item describing
+the reviewed scope. Do not implement changes.
 EOF
 
 cat > .codex/gatekeeper/decision.schema.json <<'EOF'
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["decision", "summary", "authorityFiles", "reviewedScope"],
+  "required": ["decision", "summary", "authorityIds", "reviewedScope"],
   "properties": {
-    "decision": { "enum": ["PASS", "BLOCK", "OWNER_DECISION"] },
+    "decision": { "type": "string", "enum": ["PASS", "BLOCK", "OWNER_DECISION"] },
     "summary": { "type": "string", "minLength": 1 },
-    "authorityFiles": {
+    "authorityIds": {
       "type": "array",
       "minItems": 1,
       "items": { "type": "string", "minLength": 1 }
     },
     "reviewedScope": {
       "type": "array",
+      "minItems": 1,
       "items": { "type": "string", "minLength": 1 }
     }
   }
@@ -114,25 +145,29 @@ npm ci
 git status --short
 ```
 
-The status command should print no paths. The config, prompt, schema, reviewer
-settings, authority document and exact package pin are committed before the
-review starts. Run the installed CLI with a specific proposed decision:
+The status command should print no paths. The v2 config, one-member manifest,
+prompt, schema, reviewer settings, authority document and exact package pin
+are committed before the review starts. Run the installed CLI with a specific
+proposed decision:
 
 ```sh
 ./node_modules/.bin/architecture-review \
   "For the proposed API change, should request validation stay in the API layer before storage persistence?"
 ```
 
-The CLI prints a schema-validated JSON decision, the reported authority and
-scope, and `reviewedRevision`. That field must equal `git rev-parse HEAD` from
-the consumer repository. The process exits 0 for a schema-valid `PASS`,
+The CLI prints a schema-validated JSON decision, the reported authority ID and
+at least one nonempty `reviewedScope` item, and `reviewedRevision`. That field
+must equal `git rev-parse HEAD` from the consumer repository. The process exits 0 for a schema-valid `PASS`,
 `BLOCK`, or `OWNER_DECISION`; these are semantic review outcomes, not acceptance.
 `PASS` means the described proposal fits this
 sample authority; `BLOCK` means it conflicts with a stated rule;
 `OWNER_DECISION` means the authority leaves that question open. The result is
 review evidence only and does not authorize implementation or repository
 acceptance. The semantic result depends on the actual proposal and consumer
-authority; the sample is not a test oracle.
+authority; the sample is not a test oracle. The historical
+[preview.3 demo transcript](first-review-demo.md) and its original readback
+retain their recorded configuration and result; they document that earlier
+demo rather than an end-to-end run of this v2 walkthrough.
 
 For other local provider settings, the terminal adapter follows the committed
 reviewer configuration: Codex uses child `codex exec`, while Gemini uses the
@@ -191,8 +226,14 @@ import { runHookCli } from '@flair-agency/architecture-gatekeeper';
 runHookCli();
 ```
 
+An exact Git dependency builds the emitted `dist/` files during installation;
+published registry packages already contain those files.
+
 The repository-owned `.codex/gatekeeper/config.json` identifies committed
-inputs. See `examples/config.json`. Package resolution is local and fixed: the
+inputs. For a current local v2 Authority Set setup, use the complete
+[consumer example](../examples/consumer-v4/README.md). The former v1 sample is
+preserved at [`examples/legacy-v1/config.json`](../examples/legacy-v1/config.json).
+Package resolution is local and fixed: the
 launcher imports its already installed exact package version and must not use
 `npx` or another registry fallback. The Hook adapter selects the provider from
 committed reviewer settings. Codex uses an installed `codex` binary with hooks
@@ -553,6 +594,24 @@ only: either failure remains incomplete and cannot satisfy
 `Architecture Gate / accept`.
 GitHub's **Re-run jobs → Enable debug logging** can add runner and step traces
 for an individual attempt when more detail is needed.
+
+### Recommended current example and separate G0 selection
+
+The complete [consumer v2 local configuration and CI policy v4 example](../examples/consumer-v4/README.md)
+shows the supported Authority Set inputs and caller wiring. Its ordinary
+`main` path is enforced CI review selected by protected-base policy. G0 is a
+separate optional OWNER_ADDITION procedure; it does not replace or weaken the
+ordinary review. Use the policy v2 route when ordinary enforced CI is wanted
+without selecting G0. Policy v4 requires an explicit version-2 G0 selection.
+
+### Deprecated legacy local configuration v1 and CI policy v1
+
+New integrations should use local configuration v2 and CI policy v2 or v4 as
+appropriate. Local configuration v1 and CI policy v1 remain accepted for
+existing consumers, but are deprecated for new setups. This deprecation is
+limited to these two Gatekeeper configuration formats. It does not deprecate
+the upstream OpenAI Codex Action v1 line, Authority Set manifest version 1,
+or any review, addition, amendment, or evidence record schema version.
 
 Version 1 of `.codex/gatekeeper/ci-policy.json` accepts only `version`,
 `default`, and `branches` at the top level. Both `default` and every named
@@ -1233,6 +1292,53 @@ execution, owner, custody, policy-protection and host-enforcement assurances are
 `preparePreviewLifecycle`, `completePreviewLifecycle`, `validatePreviewReceipt`,
 `observePreviewLifecycle`, `prepareFreshPreviewReview` and `previewReceiptBytes`
 from `@flair-agency/architecture-gatekeeper/preview-lifecycle`.
+
+#### Installed CLI
+
+The installed `architecture-preview-lifecycle` command runs these same API
+operations without acquiring credentials or contacting a reviewer. Run it from
+the consumer checkout root, not a subdirectory. It has no root-path option: the
+invoking process working directory is the checkout root, and record roots must
+match it. Each operation reads one JSON object from stdin and writes one compact
+canonical JSON result to stdout with no trailing newline. Diagnostics are
+bounded on stderr. Validation failures exit nonzero before writing stdout; if a
+downstream closes stdout during result transport, the command exits nonzero and
+reports a fixed bounded diagnostic where stderr remains writable, but an
+incomplete output prefix may already have been delivered. Stdin is limited to
+16 MiB, parsed as fatal UTF-8 with duplicate-key checks, rejection of non-finite
+numbers, and a 128-level envelope depth bound;
+the nested `responseJson` is separately bounded to 64 levels, and
+`receiptJson` accepts a bounded 68 levels to allow the four fixed wrapping
+levels when an ordinary A receipt is carried as a B trigger. Each command
+rejects unknown outer keys. The 16 MiB ceiling follows from the existing 4 MiB
+raw-receipt limit: encoding that receipt as a JSON string can at most double
+its bytes through escaping (at most 8 MiB, plus the fixed envelope), while a
+fresh-review input contains the parsed receipt (at most 4 MiB), its exact-byte
+base64 copy (at most 5.34 MiB), and bounded metadata/wrappers. This leaves room
+under 16 MiB without changing the core receipt or response limits.
+`responseJson` and `receiptJson` are JSON text carried as strings to preserve
+the exact receipt bytes bound by the integration trailer. Completion refuses
+to emit a receipt larger than the existing 4 MiB observation limit, since that
+receipt could not proceed to the later CLI finalization step. `finalize` accepts
+only the byte-for-byte canonical receipt output from `complete`; a reordered or
+reformatted JSON object is rejected even if a Git trailer commits to those
+altered bytes.
+
+```sh
+architecture-preview-lifecycle prepare < spec.json
+architecture-preview-lifecycle complete < completion.json
+architecture-preview-lifecycle finalize < finalize.json
+architecture-preview-lifecycle fresh < fresh.json
+```
+
+The `prepare` input is `{ "spec": <version-1 lifecycle spec> }`;
+`complete` is `{ "request": <prepared request>, "responseJson": "<exact reviewer JSON>" }`;
+`finalize` is `{ "receiptJson": "<exact completed receipt JSON>", "integrationSha": "<40-hex commit>" }`;
+and `fresh` is `{ "finalRecord": <observed final record>, "aHeadSha": "<40-hex commit>" }`.
+The command delegates semantic, integrity, selected-authority and Git checks to
+the existing preview API. Outputs retain its `UNVERIFIED` assurance labels and
+do not imply reviewer execution, owner authentication, acceptance or host
+enforcement.
 
 Preparation rejects other unsupported modes, and receipt revalidation repeats
 the route checks so unsupported receipts cannot be treated as supported

@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { parseWorkflow, namedStep } from './helpers/workflow-structure.mjs';
+const wf=parseWorkflow(readFileSync(new URL('../.github/workflows/architecture-gate.yml',import.meta.url),'utf8'));
+test('self ordinary PASS publication follows all existing validators and has no producer credentials or writable token',()=>{
+  const review=wf.jobs.review;const publish=namedStep(review,'Publish validated ordinary Codex PASS display');
+  assert.match(publish.if,/steps.decision.outputs.kind == 'PASS'/);assert.match(publish.if,/mode == 'enforced'/);
+  assert.match(publish.if,/inputs.protected-review-instructions/);assert.match(publish.if,/pull_request_target/);
+  assert.match(publish.if,/base.ref == 'main'/);assert.equal(publish['working-directory'],'${{ runner.temp }}');
+  assert.equal(review.steps.at(-1),publish);
+  assert.ok(review.steps.indexOf(namedStep(review,'Apply consumer-owned decision validation'))<review.steps.indexOf(publish));
+  assert.ok(review.steps.indexOf(namedStep(review,'Require exact reported Authority IDs'))<review.steps.indexOf(publish));
+  assert.deepEqual(review.permissions,{contents:'read'});
+  assert.equal(publish.env.REVIEW_RESULT,'${{ steps.codex.outcome }}');
+  assert.equal(publish.env.AUTHORITY_ROUTE_SELECTED,"${{ needs.policy.outputs.authority_manifest_path != '' }}");
+  assert.equal(review.outputs.final_message,"${{ steps.pass-display.outputs.pass_conclusion != 'PASS' && ((needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message) || '' }}");
+  assert.equal(review.outputs.decision_kind,'${{ steps.decision.outputs.kind }}');
+});
+test('report gets exact job-log read privilege, selected metadata cannot fall back, G0 raw inputs and acceptance remain',()=>{
+  const report=wf.jobs.report;assert.deepEqual(report.permissions,{contents:'read',actions:'read','pull-requests':'write'});
+  const step=namedStep(report,'Publish human-readable result');
+  assert.equal(step.env.CODEX_PASS_CONCLUSION,'${{ needs.review.outputs.pass_conclusion }}');
+  assert.equal(step.env.CODEX_PASS_NONCE,'${{ needs.review.outputs.pass_nonce }}');
+  assert.equal(step.env.CODEX_PASS_DIGEST,'${{ needs.review.outputs.pass_digest }}');
+  assert.match(step.env.CODEX_PASS_SELECTED,/needs.review.outputs.decision_kind == 'PASS'/);
+  assert.equal(step.env.OWNER_ADDITION_SELECTED,"${{ needs.policy.outputs.owner_addition_grade == 'G0' }}");
+  assert.equal(namedStep(wf.jobs['block-review-record'],'Produce the exact protected-base BLOCK ReviewRecord').env.DECISION,'${{ needs.review.outputs.final_message }}');
+  assert.equal(namedStep(wf.jobs['owner-amendment-owner-decision-record'],'Produce the exact protected-base OWNER_DECISION ReviewRecord').env.DECISION,'${{ needs.review.outputs.final_message }}');
+  assert.equal(namedStep(wf.jobs['owner-addition'],'Verify the exact G0 procedure and prepare protected eligibility input').env.ORDINARY_DECISION,'${{ needs.review.outputs.final_message }}');
+  const accept=namedStep(wf.jobs.accept,'Require model-backed PASS or verified G0 owner addition/amendment');
+  assert.equal(accept.env.OWNER_AMENDMENT_SELECTED,'${{ needs.policy.outputs.owner_amendment_grade }}');
+  assert.equal(accept.env.OWNER_AMENDMENT_ATTEMPTED,"${{ needs['owner-amendment-attempt-classifier'].outputs.attempted }}");
+  assert.equal(accept.env.OWNER_AMENDMENT_SIGNER_STATUS,"${{ needs['owner-amendment-semantic-eligibility-signer'].outputs.status }}");
+  assert.ok(wf.jobs.accept.steps.includes(namedStep(wf.jobs.accept,'Recheck exact B amendment tag at final acceptance boundary')));
+});
