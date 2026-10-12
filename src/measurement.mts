@@ -2,6 +2,7 @@ import { MEASUREMENT_ENVELOPE_FIELDS, validateMeasurementPhases } from './measur
 import { rejectDuplicateJsonKeys, readCommittedAuthorityFile } from './authority-set.mjs';
 import { isCanonicalRepositoryPath } from './legacy-git-snapshot.mjs';
 import { repositoryRoot } from './review-contract.mjs';
+import { performance } from 'node:perf_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import { closeSync, constants, fstatSync, lstatSync, openSync, opendirSync, readFileSync, readSync, realpathSync, writeFileSync, writeSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -51,13 +52,14 @@ export interface MeasurementOptions {
 type DecisionView = { decision?: unknown; findings?: unknown };
 // Reuse the existing bounded committed-file reader for diagnostic metadata only.
 // Required snapshot callers retain their original implementation and behavior.
-function measurementGitSnapshot(root: string, commit: unknown, path: unknown) {
+function measurementGitSnapshot(root: string, commit: unknown, path: unknown, remainingTimeMs: () => number) {
   if (typeof commit !== 'string' || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(commit) || !isCanonicalRepositoryPath(path)) {
     throw new Error('Invalid diagnostic committed input selection.');
   }
-  const bytes = readCommittedAuthorityFile(root, commit, path as string, 65_536);
+  const bytes = readCommittedAuthorityFile(root, commit, path as string, 65_536, remainingTimeMs);
   return { bytes, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
+const ATTEMPT_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const MAX_BYTES = 256 * 1024;
 // Leave space for a bounded terminal without dropping immutable phase metadata.
 const TERMINAL_RESERVE_BYTES = 1024;
@@ -236,11 +238,13 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
           authoritySet: value.authoritySet || null, requestedReviewer: value.reviewer, scope };
         if (metadataRoot) {
           try {
-            const config = measurementGitSnapshot(metadataRoot, candidate.reviewedRevision, '.codex/gatekeeper/config.json');
+            const deadline = performance.now() + 10_000;
+            const remainingTimeMs = () => deadline - performance.now();
+            const config = measurementGitSnapshot(metadataRoot, candidate.reviewedRevision, '.codex/gatekeeper/config.json', remainingTimeMs);
             const selected = JSON.parse(config.bytes.toString('utf8')) as Record<string, string>;
             candidate.selectedInputDigests = { configSha256: config.sha256 };
             for (const key of ['validationPath', 'reviewerConfigPath']) {
-              if (selected[key]) candidate.selectedInputDigests![key] = measurementGitSnapshot(metadataRoot, candidate.reviewedRevision, selected[key]).sha256;
+              if (selected[key]) candidate.selectedInputDigests![key] = measurementGitSnapshot(metadataRoot, candidate.reviewedRevision, selected[key], remainingTimeMs).sha256;
             }
           } catch { candidate.selectedInputDigests = { gap: 'unavailable' }; }
         }
@@ -319,7 +323,7 @@ function canonicalTimestamp(value: unknown): value is string {
 }
 export function validateMeasurementRecord(value: unknown): MeasurementRecord {
   const record = value as RecordView;
-  if (!record || record.version !== 1 || record.kind !== 'agk-diagnostic' || typeof record.attemptId !== 'string' || !/^[0-9a-f-]{36}$/.test(record.attemptId) ||
+  if (!record || record.version !== 1 || record.kind !== 'agk-diagnostic' || typeof record.attemptId !== 'string' || !ATTEMPT_ID.test(record.attemptId) ||
       !ROUTES.has(record.route) || !['start', 'prepared', 'terminal'].includes(record.phase) || !canonicalTimestamp(record.startedAt) ||
       (record.phase === 'terminal' && (!STATES.has(record.state as string) || !canonicalTimestamp(record.completedAt)))) throw new Error('Invalid diagnostic record.');
   return record;
@@ -370,7 +374,7 @@ export function resumeMeasurement(attemptId: string, selected: string | undefine
   try {
     const root = resolveMeasurementWorkingRoot(cwd);
     const dir = directory(selected, root);
-    if (!/^[a-f0-9-]{36}$/.test(attemptId)) throw new Error('Invalid attempt identity.');
+    if (!ATTEMPT_ID.test(attemptId)) throw new Error('Invalid attempt identity.');
     try { readDiagnosticText(join(dir, `${attemptId}.terminal.json`), MAX_BYTES); throw new Error('Attempt already completed.'); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
     const start = validateMeasurementRecord(readMeasurementJson(join(dir, `${attemptId}.start.json`))) as RecordView;

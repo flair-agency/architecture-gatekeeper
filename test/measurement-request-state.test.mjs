@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { beginMeasurement, loadMeasurementDirectory, resumeMeasurement, redactMeasurement, measurementDigest } from '../dist/measurement.mjs';
+import { beginMeasurement, loadMeasurementDirectory, resumeMeasurement, redactMeasurement, measurementDigest, validateMeasurementRecord } from '../dist/measurement.mjs';
 
 function fixture(t) {
   const parent = mkdtempSync(join(realpathSync(tmpdir()), 'agk-measurement-request-state-'));
@@ -214,4 +214,24 @@ test('request primitive observations are read once and metadata uses the capture
   const attempt=beginMeasurement({route:'manual',cwd:root,directory});attempt.request(value);attempt.finish();
   assert.deepEqual(reads,{root:1,prompt:1,schema:1,revision:1});
   const request=terminalFor(directory,attempt).request;assert.equal(request.promptSha256,measurementDigest('prompt-1'));assert.equal(request.selectedPromptSha256,request.promptSha256);assert.equal(request.schemaSha256,measurementDigest({schema:1}));
+});
+
+test('attempt identity requires canonical 8-4-4-4-12 hexadecimal grouping', () => {
+  const valid={version:1,kind:'agk-diagnostic',attemptId:'12345678-abcd-abcd-abcd-123456789abc',phase:'start',route:'manual',startedAt:'2026-10-01T00:00:00.000Z'};
+  assert.doesNotThrow(()=>validateMeasurementRecord(valid));
+  for(const attemptId of ['a'.repeat(36),'-'.repeat(36),'1234567-8abcd-abcd-abcd-123456789abc','12345678-abcd-abcd-abc-123456789abcd']) {
+    assert.throws(()=>validateMeasurementRecord({...valid,attemptId}),/Invalid diagnostic record/);
+    assert.throws(()=>redactMeasurement({...valid,attemptId}),/Invalid diagnostic record/);
+  }
+});
+
+test('resumption refuses malformed grouped identities even when immutable start metadata matches',t=>{
+ const {root,directory}=fixture(t);const attempt=beginMeasurement({route:'manual',directory,cwd:root});assert.ok(attempt.id);
+ const start=loadMeasurementDirectory(directory).records.find(r=>r.phase==='start');
+ for(const attemptId of ['a'.repeat(36),'-'.repeat(36)]) {
+   writeFileSync(join(directory,`${attemptId}.start.json`),JSON.stringify({...start,attemptId}),{mode:0o600});
+   assert.equal(resumeMeasurement(attemptId,directory,root).id,null);
+ }
+ assert.equal(resumeMeasurement(attempt.id,directory,root).id,attempt.id);
+ assert.equal(loadMeasurementDirectory(directory).gaps,2);
 });

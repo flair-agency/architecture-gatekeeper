@@ -12,7 +12,7 @@ for (const scenario of ['subdirectory-root', 'cwd-option', 'cwd-environment', 'c
 }
 
 
-for (const stage of ['ls-tree','blob']) {
+for (const stage of ['ls-tree','blob','slow-sequence']) {
   test(`optional request capture returns a metadata gap when Git ${stage} stalls`,{skip:process.platform==='win32'},()=>{
     const child=new URL('./helpers/measurement-git-bound-child.mjs',import.meta.url).pathname;
     const result=spawnSync(process.execPath,[child,stage],{encoding:'utf8',timeout:20000});
