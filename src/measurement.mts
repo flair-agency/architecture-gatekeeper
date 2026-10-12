@@ -209,6 +209,7 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
   parseMeasurementJson(fallback);
   let finished = false;
   let preparing = false;
+  let requestRepositoryGap = false;
   let prepared = start.phase === 'prepared' || Boolean(start.request);
   directory(dir, undefined, prepared ? 1 : 2);
   return { id: start.attemptId,
@@ -216,19 +217,30 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
       if (finished || prepared || preparing) return;
       preparing = true;
       try {
-        const selectedTransportPrompt = transportPrompt === undefined ? value.prompt : transportPrompt;
+        const selectedRepositoryRoot = value.repositoryRoot;
+        let metadataRoot: string | undefined;
+        if (selectedRepositoryRoot !== undefined) {
+          try {
+            metadataRoot = resolveMeasurementWorkingRoot(selectedRepositoryRoot);
+            if (measurementDigest(metadataRoot) !== envelope.repositoryId) throw new Error('Request repository differs from attempt.');
+            requestRepositoryGap = false;
+          } catch (error) { requestRepositoryGap = true; throw error; }
+        } else if (requestRepositoryGap) { throw new Error('Request repository remains unverified.'); }
+        const selectedPrompt = value.prompt;
+        const selectedSchema = value.schema;
+        const selectedTransportPrompt = transportPrompt === undefined ? selectedPrompt : transportPrompt;
         const candidate: CapturedRequest = { requestId: value.requestId, reviewedRevision: value.reviewedRevision,
           promptSha256: typeof selectedTransportPrompt === 'string' ? measurementDigest(selectedTransportPrompt) : null,
-          selectedPromptSha256: typeof value.prompt === 'string' ? measurementDigest(value.prompt) : null,
-          schemaSha256: value.schema !== undefined ? measurementDigest(value.schema) : null,
+          selectedPromptSha256: typeof selectedPrompt === 'string' ? measurementDigest(selectedPrompt) : null,
+          schemaSha256: selectedSchema !== undefined ? measurementDigest(selectedSchema) : null,
           authoritySet: value.authoritySet || null, requestedReviewer: value.reviewer, scope };
-        if (value.repositoryRoot) {
+        if (metadataRoot) {
           try {
-            const config = measurementGitSnapshot(value.repositoryRoot, value.reviewedRevision, '.codex/gatekeeper/config.json');
+            const config = measurementGitSnapshot(metadataRoot, candidate.reviewedRevision, '.codex/gatekeeper/config.json');
             const selected = JSON.parse(config.bytes.toString('utf8')) as Record<string, string>;
             candidate.selectedInputDigests = { configSha256: config.sha256 };
             for (const key of ['validationPath', 'reviewerConfigPath']) {
-              if (selected[key]) candidate.selectedInputDigests![key] = measurementGitSnapshot(value.repositoryRoot, value.reviewedRevision, selected[key]).sha256;
+              if (selected[key]) candidate.selectedInputDigests![key] = measurementGitSnapshot(metadataRoot, candidate.reviewedRevision, selected[key]).sha256;
             }
           } catch { candidate.selectedInputDigests = { gap: 'unavailable' }; }
         }
@@ -245,6 +257,11 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
       if (finished) return;
       finished = true;
       try {
+        if (requestRepositoryGap) {
+          directory(dir);
+          put(dir, gap(new Date().toISOString(), 'repository-mismatch'));
+          return;
+        }
         const { state = 'completed', decision = null, execution = null, publication = 'unknown', observation = {} } = value;
         if (!STATES.has(state)) throw new Error('Unknown measurement state.');
         const completedAt = new Date().toISOString();
@@ -321,7 +338,8 @@ export function loadMeasurementDirectory(dir: string) {
 export function redactMeasurement(value: MeasurementRecord) {
   const record = value as RecordView;
   validateMeasurementRecord(record);
-  const hex = (v: unknown) => typeof v === 'string' && /^[a-f0-9]{40,64}$/.test(v) ? v : null;
+  const sha256 = (v: unknown) => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v) ? v : null;
+  const gitSha = (v: unknown) => typeof v === 'string' && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(v) ? v : null;
   const runtimeView = record.runtime as { package?: unknown; version?: unknown; collectorSha256?: unknown } | null | undefined;
   const runtimeIdentity = {
     package: runtimeView?.package === '@flair-agency/architecture-gatekeeper' ? runtimeView.package : null,
@@ -339,12 +357,12 @@ export function redactMeasurement(value: MeasurementRecord) {
   const ci = (record.context?.ci || {}) as MeasurementFields;
   const numeric = (v: unknown) => typeof v === 'string' && /^[1-9][0-9]{0,19}$/.test(v) ? v : null;
   const ciContext = Object.keys(ci).length ? { repositoryId: typeof ci.repository === 'string' ? measurementDigest(ci.repository) : null,
-    pr: numeric(ci.pr), runId: numeric(ci.runId), runAttempt: numeric(ci.runAttempt), workflowSha: hex(ci.workflowSha),
-    baseSha: hex(ci.baseSha), headSha: hex(ci.headSha), reviewedSha: hex(ci.reviewedSha), job: ['review', 'measurement'].includes(ci.job as string) ? ci.job : null } : null;
+    pr: numeric(ci.pr), runId: numeric(ci.runId), runAttempt: numeric(ci.runAttempt), workflowSha: gitSha(ci.workflowSha),
+    baseSha: gitSha(ci.baseSha), headSha: gitSha(ci.headSha), reviewedSha: gitSha(ci.reviewedSha), job: ['review', 'measurement'].includes(ci.job as string) ? ci.job : null } : null;
   return { version: 1, kind: 'agk-diagnostic', attemptId: record.attemptId, phase: record.phase, route: record.route, runtime: runtimeIdentity,
     startedAt: record.startedAt, ...(record.phase === 'terminal' ? { completedAt: record.completedAt, state: record.state } : {}),
-    changeId: record.changeId ? measurementDigest(record.changeId) : null, repositoryId: hex(record.repositoryId),
-    requestId: hex(record.request?.requestId), promptSha256: hex(record.request?.promptSha256), schemaSha256: hex(record.request?.schemaSha256), authorityProvenanceSha256: hex(record.request?.scope?.authorityProvenanceSha256), policySha256: hex(record.request?.scope?.policySha256), reviewedRevision: hex(record.request?.reviewedRevision), snapshotSha256: hex(record.request?.scope?.snapshotSha256), scopeKind: ['proposed-task', 'tracked-working-tree', 'ci-merge-revision'].includes(record.request?.scope?.kind as string) ? record.request!.scope.kind : null,
+    changeId: record.changeId ? measurementDigest(record.changeId) : null, repositoryId: sha256(record.repositoryId),
+    requestId: sha256(record.request?.requestId), promptSha256: sha256(record.request?.promptSha256), schemaSha256: sha256(record.request?.schemaSha256), authorityProvenanceSha256: sha256(record.request?.scope?.authorityProvenanceSha256), policySha256: sha256(record.request?.scope?.policySha256), reviewedRevision: gitSha(record.request?.reviewedRevision), snapshotSha256: sha256(record.request?.scope?.snapshotSha256), scopeKind: ['proposed-task', 'tracked-working-tree', 'ci-merge-revision'].includes(record.request?.scope?.kind as string) ? record.request!.scope.kind : null,
     decision, findingCount: count, ci: ciContext, observation, feedback: { publication: record.feedback?.publication === 'returned-to-caller' ? 'returned-to-caller' : 'unknown', delivery: 'unknown', response: 'unknown' } };
 }
 

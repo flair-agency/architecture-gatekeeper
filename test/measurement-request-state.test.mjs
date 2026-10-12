@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { beginMeasurement, loadMeasurementDirectory, resumeMeasurement } from '../dist/measurement.mjs';
+import { beginMeasurement, loadMeasurementDirectory, resumeMeasurement, redactMeasurement, measurementDigest } from '../dist/measurement.mjs';
 
 function fixture(t) {
   const parent = mkdtempSync(join(realpathSync(tmpdir()), 'agk-measurement-request-state-'));
@@ -170,4 +170,48 @@ test('oversized terminal capture becomes an incomplete gap without rewriting the
   assert.equal(terminal.state, 'incomplete'); assert.equal(terminal.decision, null);
   assert.deepEqual(terminal.observation, { gap: 'record-too-large' });
   assert.deepEqual(terminal.request, records.find(r => r.phase === 'prepared').request);
+});
+
+
+test('foreign request roots leave an incomplete gap rather than a completed review under the attempt root', t => {
+  const {root,directory}=fixture(t);const other=join(root,'other-repository');mkdirSync(other);
+  // Independent non-Git roots are sufficient to test identity before any Git I/O.
+  const attempt=beginMeasurement({route:'manual',cwd:root,directory});const decision=Object.freeze({decision:'PASS'});
+  attempt.request({...request('a','foreign'),repositoryRoot:other});attempt.finish({decision});
+  const records=loadMeasurementDirectory(directory).records;
+  assert.deepEqual(records.map(r=>r.phase).sort(),['start','terminal']);
+  const terminal=records.find(r=>r.phase==='terminal');assert.equal(terminal.state,'incomplete');
+  assert.equal(terminal.request,null);assert.equal(terminal.decision,null);assert.deepEqual(terminal.observation,{gap:'repository-mismatch'});
+  assert.equal(decision.decision,'PASS');
+});
+
+test('a matching request root may retry a rejected foreign request before a terminal is persisted', t => {
+  const {root,directory}=fixture(t);const other=join(root,'other');mkdirSync(other);
+  const attempt=beginMeasurement({route:'manual',cwd:root,directory});
+  attempt.request({...request('a','foreign'),repositoryRoot:other});
+  attempt.request({...request('c','correct'),repositoryRoot:root});attempt.finish({decision:{decision:'PASS'}});
+  const terminal=terminalFor(directory,attempt);assert.equal(terminal.state,'completed');assert.equal(terminal.request.requestId,'c'.repeat(64));
+});
+
+test('export accepts SHA-256 identities at64 characters and Git objects only at40 or64', t => {
+  const {root,directory}=fixture(t);const attempt=beginMeasurement({route:'manual',cwd:root,directory});
+  attempt.request(request('a','valid'),{snapshotSha256:'b'.repeat(64),authorityProvenanceSha256:'c'.repeat(64),policySha256:'d'.repeat(64)});attempt.finish();
+  const original=terminalFor(directory,attempt);
+  for (let width=39;width<=65;width++) {
+    const value='a'.repeat(width);
+    const record={...original,repositoryId:value,request:{...original.request,requestId:value,promptSha256:value,schemaSha256:value,reviewedRevision:value,scope:{snapshotSha256:value,authorityProvenanceSha256:value,policySha256:value}},context:{ci:{workflowSha:value,baseSha:value,headSha:value,reviewedSha:value}}};
+    const exported=redactMeasurement(record);
+    for (const field of ['repositoryId','requestId','promptSha256','schemaSha256','snapshotSha256','authorityProvenanceSha256','policySha256']) assert.equal(exported[field],width===64?value:null,`${field}/${width}`);
+    assert.equal(exported.reviewedRevision,width===40||width===64?value:null);
+    for (const field of ['workflowSha','baseSha','headSha','reviewedSha']) assert.equal(exported.ci[field],width===40||width===64?value:null,`${field}/${width}`);
+  }
+});
+
+
+test('request primitive observations are read once and metadata uses the captured revision', t => {
+  const {root,directory}=fixture(t);const reads={root:0,prompt:0,schema:0,revision:0};
+  const value={requestId:'a'.repeat(64),get repositoryRoot(){reads.root++;return root;},get prompt(){return `prompt-${++reads.prompt}`;},get schema(){return {schema:++reads.schema};},get reviewedRevision(){reads.revision++;return 'b'.repeat(40);}};
+  const attempt=beginMeasurement({route:'manual',cwd:root,directory});attempt.request(value);attempt.finish();
+  assert.deepEqual(reads,{root:1,prompt:1,schema:1,revision:1});
+  const request=terminalFor(directory,attempt).request;assert.equal(request.promptSha256,measurementDigest('prompt-1'));assert.equal(request.selectedPromptSha256,request.promptSha256);assert.equal(request.schemaSha256,measurementDigest({schema:1}));
 });
