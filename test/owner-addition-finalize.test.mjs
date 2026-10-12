@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
 import { buildOwnerAdditionFinalRecord, summarizeG0TagRefReadback, verifyG0TagObjectEvidence,
   verifyMergeAncestorComparison, parsePinnedGatekeeperWorkflow, parseGatekeeperWorkflowDefaults,
   readG0TagObjectReadback, validateOwnerAdditionProducerJobName, finalizeOwnerAddition } from '../dist/owner-addition-finalize.mjs';
@@ -153,6 +154,38 @@ test('caller workflow pins exactly one immutable Gatekeeper workflow and records
   assert.throws(() => parsePinnedGatekeeperWorkflow(Buffer.from(`${source}\n  other:\n    uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@${sha('5')}\n`)), /exactly one/);
   assert.equal(validateOwnerAdditionProducerJobName('architecture / owner-addition', parsed.callerJobId), 'architecture / owner-addition');
   assert.throws(() => validateOwnerAdditionProducerJobName('unrelated / owner-addition', parsed.callerJobId), /caller Gatekeeper job ID/);
+});
+
+test('caller scalar parsing preserves whitespace, literal hash and comment boundaries', () => {
+  const pin = `flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@${sha('5')}`;
+  for (const whitespace of [' ', '\t', '\v', '\f', '\u00a0', '\u2003', '\ufeff']) {
+    const source = `jobs:\n  architecture:\n    uses:${whitespace}"${pin}"${whitespace}# selected\n    with:\n      policy-path:${whitespace}literal#hash${whitespace}# comment\n      validation-path:${whitespace}''${whitespace}\n`;
+    assert.deepEqual(parsePinnedGatekeeperWorkflow(Buffer.from(source)), {
+      path: 'flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml',
+      sha: sha('5'), inputs: { 'policy-path': 'literal#hash', 'validation-path': '' }, callerJobId: 'architecture',
+    });
+  }
+  for (const separator of ['\r', '\u2028', '\u2029']) {
+    assert.throws(() => parsePinnedGatekeeperWorkflow(Buffer.from(`jobs:\n  architecture:\n    uses: ${pin}${separator}tail\n`)), /exactly one/);
+    assert.equal(parsePinnedGatekeeperWorkflow(Buffer.from(`jobs:\n  architecture:\n    uses:${separator}${pin}${separator}\n`)).sha, sha('5'));
+  }
+});
+
+test('a long invalid caller scalar terminates before the bounded child deadline', () => {
+  const moduleUrl = new URL('../dist/owner-addition-finalize.mjs', import.meta.url).href;
+  const script = `import { parsePinnedGatekeeperWorkflow } from ${JSON.stringify(moduleUrl)};
+    const pin = 'flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@${sha('5')}';
+    try {
+      parsePinnedGatekeeperWorkflow(Buffer.from('jobs:\\n  architecture:\\n    uses: ' + pin + ' '.repeat(131072) + 'x\\n'));
+      process.exitCode = 1;
+    } catch (error) { process.stdout.write(error.message); }`;
+  const child = spawnSync(process.execPath, ['--input-type=module', '--eval', script], {
+    encoding: 'utf8', timeout: 5000, env: { PATH: process.env.PATH },
+  });
+  assert.equal(child.error, undefined, 'the parser must finish within its bounded child execution');
+  assert.equal(child.status, 0);
+  assert.equal(child.stderr, '');
+  assert.match(child.stdout, /exact supported path pinned to a 40-character commit SHA/);
 });
 
 test('pinned reusable workflow defaults are read from the selected immutable workflow', () => {
