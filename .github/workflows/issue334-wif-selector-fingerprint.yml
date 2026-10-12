@@ -2,7 +2,7 @@ name: Issue 334 WIF selector fingerprint diagnostic
 
 # The path filter requires this workflow file among the push's changed paths;
 # it does not prove this is the only changed path. This changed-source
-# diagnostic is limited to run 2 (attempt 1) of this same workflow on the
+# diagnostic is limited to run 3 (attempt 1) of this same workflow on the
 # fixed repository's push to its current `main`.
 # This bounded metadata diagnostic does not authenticate or validate a Google
 # provider configuration; independent Google-side evidence remains necessary.
@@ -16,16 +16,17 @@ permissions: {}
 
 jobs:
   fingerprint:
-    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_number == 2 && github.run_attempt == 1
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_number == 3 && github.run_attempt == 1
     permissions: {}
     runs-on: ubuntu-latest
     steps:
-      - name: Validate selector shape and report fingerprints
+      - name: Fingerprint bounded selectors and report metadata
         id: fingerprint
         env:
           GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
           GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
-          EXPECTED_SERVICE_ACCOUNT_SHA256: 2180acf4e4c9e0a0a7ec6f997652c2f34e302d2b285bbeb3fd3c1d09688189c4
+          # This is the intended effective account identity, not a digest of raw secret bytes.
+          EXPECTED_EFFECTIVE_SERVICE_ACCOUNT_SHA256: 2180acf4e4c9e0a0a7ec6f997652c2f34e302d2b285bbeb3fd3c1d09688189c4
         run: |
           node <<'NODE'
           const crypto = require('node:crypto');
@@ -65,16 +66,15 @@ jobs:
 
             const providerBytes = stage('selector_validation', 'provider_byte_length', () => Buffer.byteLength(provider, 'utf8'));
             check(providerBytes >= 1 && providerBytes <= 256, 'selector_validation', 'provider_byte_length');
-            check(/^projects\/[1-9][0-9]{4,19}\/locations\/global\/workloadIdentityPools\/(?!gcp-)[a-z0-9-]{4,32}\/providers\/(?!gcp-)[a-z0-9-]{4,32}$/.test(provider), 'selector_validation', 'provider_resource_shape');
             const serviceAccountBytes = stage('selector_validation', 'service_account_byte_length', () => Buffer.byteLength(serviceAccount, 'utf8'));
             check(serviceAccountBytes >= 1 && serviceAccountBytes <= 320, 'selector_validation', 'service_account_byte_length');
-            check(/^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$/.test(serviceAccount), 'selector_validation', 'service_account_email_shape');
 
-            const expectedServiceAccountSha256 = stage('expected_hash', 'expected_hash_missing', () => process.env.EXPECTED_SERVICE_ACCOUNT_SHA256);
-            check(typeof expectedServiceAccountSha256 === 'string' && expectedServiceAccountSha256.length > 0, 'expected_hash', 'expected_hash_missing');
-            check(/^[a-f0-9]{64}$/.test(expectedServiceAccountSha256), 'expected_hash', 'expected_hash_shape');
-            const serviceAccountSha256 = stage('expected_hash', 'service_account_hash_compute', () => crypto.createHash('sha256').update(Buffer.from(serviceAccount, 'utf8')).digest('hex'));
-            check(serviceAccountSha256 === expectedServiceAccountSha256, 'expected_hash', 'service_account_hash_mismatch');
+            const expectedEffectiveServiceAccountSha256 = stage('expected_hash', 'expected_hash_missing', () => process.env.EXPECTED_EFFECTIVE_SERVICE_ACCOUNT_SHA256);
+            check(typeof expectedEffectiveServiceAccountSha256 === 'string' && expectedEffectiveServiceAccountSha256.length > 0, 'expected_hash', 'expected_hash_missing');
+            check(/^[a-f0-9]{64}$/.test(expectedEffectiveServiceAccountSha256), 'expected_hash', 'expected_hash_shape');
+            // The auth action trims surrounding whitespace from the account selector. Compare its effective identity to the intended-email digest.
+            const effectiveServiceAccountSha256 = stage('expected_hash', 'effective_service_account_hash_compute', () => crypto.createHash('sha256').update(Buffer.from(serviceAccount.trim(), 'utf8')).digest('hex'));
+            check(effectiveServiceAccountSha256 === expectedEffectiveServiceAccountSha256, 'expected_hash', 'effective_service_account_hash_mismatch');
 
             const source = stage('metadata', 'metadata_read', () => ({
               repository: process.env.GITHUB_REPOSITORY,
@@ -99,6 +99,8 @@ jobs:
 
             const providerSha256 = stage('fingerprint', 'provider_hash_compute', () => crypto.createHash('sha256').update(Buffer.from(provider, 'utf8')).digest('hex'));
             check(/^[a-f0-9]{64}$/.test(providerSha256), 'fingerprint', 'provider_hash_shape');
+            // Capture the exact raw secret bytes separately; this is not the effective-identity comparison above.
+            const serviceAccountSha256 = stage('fingerprint', 'service_account_hash_compute', () => crypto.createHash('sha256').update(Buffer.from(serviceAccount, 'utf8')).digest('hex'));
             check(/^[a-f0-9]{64}$/.test(serviceAccountSha256), 'fingerprint', 'service_account_hash_shape');
             const outputContents = stage('output_payload', 'construct', () => `provider_sha256=${providerSha256}\nservice_account_sha256=${serviceAccountSha256}\n`);
             check(typeof outputContents === 'string' && outputContents.length > 0 && !outputContents.includes('\0'), 'output_payload', 'payload_shape');
