@@ -40,6 +40,7 @@ function runtimeAst(path, rewriteAuthoredImports = false) {
   // paths. Compare the complete AST after only those declared path rewrites.
   const emittedImports = new Map([
     ['./measurement.mts', './measurement.mjs'],
+    ['./public-output.mts', './public-output.mjs'],
   ]);
   for (const node of rewriteAuthoredImports ? body : []) {
     if (node.type !== 'ImportDeclaration') continue;
