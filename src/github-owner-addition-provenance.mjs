@@ -182,7 +182,9 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   if (completedMs >= mergeTime || completedMs < runStarted) fail('eligibility producer did not complete within the pre-merge run interval.');
   if (typeof job.check_run_url !== 'string') fail('producer job has no check run identity.');
   const checkUrl = new URL(job.check_run_url);
-  if (checkUrl.origin !== API || !new RegExp(`^/repos/${repository.replace('/', '\\/')}/check-runs/\\d+$`).test(checkUrl.pathname)) fail('producer check run URL is outside the selected repository.');
+  const checkRunPathPrefix = `/repos/${repository}/check-runs/`;
+  if (checkUrl.origin !== API || !checkUrl.pathname.startsWith(checkRunPathPrefix) ||
+      !DECIMAL.test(checkUrl.pathname.slice(checkRunPathPrefix.length))) fail('producer check run URL is outside the selected repository.');
   const check = await request(checkUrl.href);
   same(check.name, jobName, 'producer check-run name');
   same(check.status, 'completed', 'producer check-run status');
@@ -218,7 +220,8 @@ export async function verifyOwnerAdditionEligibilityProvenance({ githubToken, re
   if (typeof acceptJob.check_run_url !== 'string') fail('Gatekeeper accept job has no check run identity.');
   const acceptCheckUrl = new URL(acceptJob.check_run_url);
   if (acceptCheckUrl.origin !== API ||
-      !new RegExp(`^/repos/${repository.replace('/', '\\/')}/check-runs/\\d+$`).test(acceptCheckUrl.pathname)) {
+      !acceptCheckUrl.pathname.startsWith(checkRunPathPrefix) ||
+      !DECIMAL.test(acceptCheckUrl.pathname.slice(checkRunPathPrefix.length))) {
     fail('Gatekeeper accept check run URL is outside the selected repository.');
   }
   const acceptCheck = await request(acceptCheckUrl.href);
