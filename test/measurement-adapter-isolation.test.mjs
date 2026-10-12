@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runHookAsync, runManualReviewAsync, runPostToolScreenHook } from '../dist/local-gate.mjs';
+import { runHookAsync, runManualReview, runManualReviewAsync, runPostToolScreenHook } from '../dist/local-gate.mjs';
 import { loadMeasurementDirectory, measurementDigest } from '../dist/measurement.mjs';
 
 function fixture(t) {
@@ -162,4 +162,25 @@ for (const overflow of [false, true]) test(`PostToolUse CLI output failure recor
   const invoke = directory => spawnSync(process.execPath, ['--input-type=module', '-e', script], { cwd: root, input, env: { ...process.env, AGK_MEASUREMENT_DIR: directory }, encoding: 'utf8' });
   const original = invoke(''); const observed = invoke(records); assert.equal(observed.status, original.status); assert.equal(observed.stdout, original.stdout);
   const terminal = loadMeasurementDirectory(records).records.find(r => r.phase === 'terminal'); assert.equal(terminal.state, 'error'); assert.equal(terminal.feedback.publication, 'unknown'); assert.equal(terminal.observation.failureStage, 'publication');
+});
+
+for (const verdict of ['PASS', 'BLOCK']) test(`manual options proxy retains lazy transport reads: ${verdict}`, async t => {
+  const { root } = fixture(t); let calls = 0;
+  const options = new Proxy({ reviewer() { calls++; return decision(verdict); } }, {
+    ownKeys() { throw new Error('options enumeration unavailable'); },
+    getOwnPropertyDescriptor() { throw new Error('options descriptors unavailable'); }
+  });
+  assert.equal(runManualReview('sync proxy task', root, options).decision, verdict);
+  assert.equal((await runManualReviewAsync('async proxy task', root, options)).decision, verdict);
+  const input = JSON.stringify({ hook_event_name: 'UserPromptSubmit', session_id: verdict, prompt: 'task', cwd: root });
+  if (verdict === 'PASS') assert.equal((await runHookAsync(input, root, options)).hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+  else await assert.rejects(runHookAsync(input, root, options), /Architecture gate BLOCK/);
+  assert.equal(calls, 3);
+});
+
+for (const route of ['manual-sync', 'manual-async', 'hook', 'PostToolUse']) test(`unavailable warning sink cannot change required adapter result: ${route}`, t => {
+  const { root } = fixture(t);
+  const child = new URL('./helpers/measurement-adapter-fault-child.mjs', import.meta.url).pathname;
+  const result = spawnSync(process.execPath, [child, root, route], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
 });

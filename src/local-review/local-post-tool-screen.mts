@@ -1,4 +1,4 @@
-import { beginMeasurement } from '../measurement.mts';
+import { beginMeasurement, warnMeasurementGap } from '../measurement.mts';
 import { createHash, randomUUID } from 'node:crypto';
 import { chmodSync, closeSync, linkSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
@@ -349,7 +349,7 @@ function postToolMeasurement(input: unknown, options: PostToolScreenOptions, cwd
       try { const event = typeof input === 'string' && Buffer.byteLength(input) <= 256 * 1024 ? JSON.parse(input) : input; sessionId = typeof (event as EventView | null | undefined)?.session_id === 'string' ? (event as EventView).session_id as string : undefined; } catch { /* unsupported input */ }
     }
     measurement = beginMeasurement({ ...options.measurement, directory: selected, route: 'PostToolUse', cwd: root, sessionId });
-  } catch { process.stderr.write('AGK measurement gap: diagnostic recording unavailable.\n'); measurement = { id: null, request() {}, finish() {} }; }
+  } catch { warnMeasurementGap(); measurement = { id: null, request() {}, finish() {} }; }
   return measurement;
 }
 
@@ -385,7 +385,7 @@ export function runPostToolScreenHookCli(): void {
     if (overflow) {
       let measurement;
       try { measurement = postToolMeasurement(null, {}, process.cwd()); }
-      catch { process.stderr.write('AGK measurement gap: diagnostic recording unavailable.\n'); }
+      catch { warnMeasurementGap(); }
       try {
         process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: 'Architecture screening informational: {"status":"incomplete","summary":"PostToolUse payload exceeds the 256 KiB input limit."}' }, systemMessage: 'Architecture screening incomplete: oversized PostToolUse payload.' }));
         measurement?.finish({ state: 'incomplete', publication: 'returned-to-caller', observation: { input: 'oversized' } });

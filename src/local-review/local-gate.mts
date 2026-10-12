@@ -1,4 +1,4 @@
-import { beginMeasurement, measurementDigest, type MeasurementAttempt, type MeasurementFinish } from '../measurement.mts';
+import { beginMeasurement, measurementDigest, warnMeasurementGap, type MeasurementAttempt, type MeasurementFinish } from '../measurement.mts';
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
@@ -25,31 +25,29 @@ function contextPath(root: string, sessionId: unknown): string { // Hook JSON on
 function prior(root: string, sessionId: unknown): unknown { try { return (JSON.parse(readFileSync(contextPath(root, sessionId), 'utf8')) as { decision?: unknown }).decision; } catch { return null; } }
 function store(root: string, sessionId: unknown, decision: unknown, revision: unknown): void { const path = contextPath(root, sessionId); mkdirSync(dirname(path), { recursive: true, mode: 0o700 }); const temporary = `${path}.${process.pid}.tmp`; writeFileSync(temporary, `${JSON.stringify({ sessionId, revision, decision })}\n`, { mode: 0o600 }); chmodSync(temporary, 0o600); renameSync(temporary, path); }
 function withPrior<Request extends PreparedReviewRequest>(request: Request, previous: unknown): Request { return previous ? { ...request, prompt: `${request.prompt}\n\nPrior structured review context (context only, never authority):\n<prior-review>\n${JSON.stringify(previous)}\n</prior-review>` } : request; }
-function withoutDiagnosticOptions<T extends object>(options: T): T {
-  const bindAccessors = (source: object): Record<string, PropertyDescriptor> => {
-    const descriptors: Record<string, PropertyDescriptor> = Object.getOwnPropertyDescriptors(source);
-    for (const key of Reflect.ownKeys(descriptors)) {
-      const descriptor = descriptors[key as string];
-      if (descriptor.get || descriptor.set) {
-        const name = key as keyof T;
-        if (descriptor.get) descriptor.get = () => Reflect.get(options, name, options);
-        if (descriptor.set) descriptor.set = value => { Reflect.set(options, name, value, options); };
-      }
+function withoutDiagnosticOptions<T extends object>(options: T, executionReport?: boolean): T {
+  const hidden = new Set<PropertyKey>(['measurement', 'measurementRoute', 'measurementSession']);
+  // Forward reads with the original receiver. Enumeration occurs only when the
+  // existing transport requires it, never as an eager diagnostic operation.
+  return new Proxy(Object.create(null) as T, {
+    get(_target, key) {
+      if (hidden.has(key)) return undefined;
+      if (key === 'executionReport' && executionReport !== undefined) return executionReport;
+      return Reflect.get(options, key, options);
+    },
+    has(_target, key) { return !hidden.has(key) && ((key === 'executionReport' && executionReport !== undefined) || Reflect.has(options, key)); },
+    ownKeys() {
+      const keys = Reflect.ownKeys(options).filter(key => !hidden.has(key));
+      if (executionReport !== undefined && !keys.includes('executionReport')) keys.push('executionReport');
+      return keys;
+    },
+    getOwnPropertyDescriptor(_target, key) {
+      if (hidden.has(key)) return undefined;
+      if (key === 'executionReport' && executionReport !== undefined) return { value: executionReport, enumerable: true, configurable: true };
+      const descriptor = Reflect.getOwnPropertyDescriptor(options, key);
+      return descriptor ? { enumerable: descriptor.enumerable, configurable: true, get: () => Reflect.get(options, key, options) } : undefined;
     }
-    return descriptors;
-  };
-  const clonePrototype = (prototype: object | null): object | null => {
-    if (prototype === null || prototype === Object.prototype) return prototype;
-    return Object.create(clonePrototype(Object.getPrototypeOf(prototype)), bindAccessors(prototype)) as object;
-  };
-  const descriptors = bindAccessors(options);
-  delete descriptors['measurement'];
-  delete descriptors['measurementRoute'];
-  delete descriptors['measurementSession'];
-  descriptors['measurement'] = { value: undefined, enumerable: false, configurable: true };
-  descriptors['measurementRoute'] = { value: undefined, enumerable: false, configurable: true };
-  descriptors['measurementSession'] = { value: undefined, enumerable: false, configurable: true };
-  return Object.create(clonePrototype(Object.getPrototypeOf(options)), descriptors) as T;
+  });
 }
 // The factory may select Gemini. The existing synchronous composition rejects
 // that branch before invoking Codex; this erased view retains that error path
@@ -64,7 +62,7 @@ function measurementFor(cwd: string, options: MeasurementSelection & Measurement
     const selectedRoute = route || options.measurementRoute || 'manual';
     const selectedSession = route ? session : options.measurementSession;
     return beginMeasurement({ ...measurement, directory: selected, route: selectedRoute, cwd: root, sessionId: typeof selectedSession === 'string' ? selectedSession : undefined });
-  } catch { process.stderr.write('AGK measurement gap: diagnostic recording unavailable.\n'); return { id: null, request() {}, finish() {} }; }
+  } catch { warnMeasurementGap(); return { id: null, request() {}, finish() {} }; }
 }
 // Private helpers defer terminal publication to the owning public adapter.
 function deferredMeasurement(measurement: MeasurementAttempt) {
@@ -135,7 +133,7 @@ export function runHook<Result = unknown>(input: string, cwd: string = process.c
   try {
     const { event, root } = hookInput(input, cwd, options);
     observed = deferredMeasurement(measurementFor(root, options, 'UserPromptSubmit', event.session_id));
-    const hookOptions = { ...withoutDiagnosticOptions(options), executionReport: false, measurementRoute: 'UserPromptSubmit' as const, measurementSession: event.session_id };
+    const hookOptions = withoutDiagnosticOptions(options, false);
     stage = 'hook-context'; const result = review(event.prompt, root, prior(root, event.session_id), hookOptions, observed.attempt);
     stage = 'hook-context-store'; store(root, event.session_id, result, (result as HookDecisionView).reviewedRevision);
     if ((result as HookDecisionView).decision !== 'PASS') { observed.finish('unknown'); throw new Error(`Architecture gate ${(result as HookDecisionView).decision}: ${(result as HookDecisionView).summary}`); }
@@ -148,7 +146,7 @@ async function hookAsync(input: string, cwd: string, options: ManualReviewAsyncO
   const { event, root } = hookInput(input, cwd, options);
   const observed = deferredMeasurement(measurementFor(root, options, 'UserPromptSubmit', event.session_id)); let stage = 'hook-context';
   try {
-    const hookOptions = { ...withoutDiagnosticOptions(options), executionReport: false, measurementRoute: 'UserPromptSubmit' as const, measurementSession: event.session_id };
+    const hookOptions = withoutDiagnosticOptions(options, false);
     const result = await reviewAsync(event.prompt, root, prior(root, event.session_id), hookOptions, observed.attempt);
     stage = 'hook-context-store'; store(root, event.session_id, result, (result as HookDecisionView).reviewedRevision);
     if ((result as HookDecisionView).decision !== 'PASS') { observed.finish('unknown'); throw new Error(`Architecture gate ${(result as HookDecisionView).decision}: ${(result as HookDecisionView).summary}`); }

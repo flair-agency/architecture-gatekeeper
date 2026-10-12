@@ -20,3 +20,24 @@ input gaps, context/output failure with original exceptions/exit/output, native
 prepare retry/resumption and actual native stdout failure. Typed-source and
 emitted identities remain core checks. Static child fixture programs pass data
 as arguments instead of constructing executable Hook source.
+
+## Consumer opt-in and retention
+
+Capture requires a POSIX host, a canonical private mode-0700 directory outside
+every reviewed worktree and direct mode-0600 records. Use a host home or temporary
+location, without parent symlink aliases. Windows capture is unsupported and
+leaves a gap; required review is unchanged. Set `AGK_MEASUREMENT_DIR` in the
+actual CLI/Hook host, optionally `AGK_MEASUREMENT_CHANGE_ID` (owner-supplied, at
+most 200 characters). The local APIs accept `measurement: { directory, changeId }`.
+For example, create `mkdir -m 700 "$HOME/agk-measurement"`, then run
+`AGK_MEASUREMENT_DIR="$HOME/agk-measurement" architecture-review 'Review the change'`.
+
+Records can retain private findings and scope; no local automatic upload is added.
+Consumers own access, disclosure and deletion. Storage is capped at 256 KiB per
+record and 4,096 entries. A full directory leaves collection gaps and does not
+delete old evidence; archive/delete privately before exhaustion. No atomic
+capacity reservation, tamper resistance or hostile same-user isolation is claimed.
+Offline export and dataset analysis are supplied by the next dependent slice.
+Warnings are best-effort even when stderr is unavailable. Reviewer options retain
+lazy property reads and the original getter receiver; diagnostic filtering does
+not eagerly enumerate an otherwise-valid Proxy.
