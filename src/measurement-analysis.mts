@@ -33,7 +33,7 @@ const decisionView = (value: unknown) => value as { decision?: unknown; findings
 
 const enumValue = (value: unknown, allowed: readonly unknown[]) => allowed.includes(value);
 const rate = (numerator: number, denominator: number) => ({ numerator, denominator, rate: denominator ? numerator / denominator : null });
-const identity = (value: unknown) => typeof value === 'string' && value.trim().length > 0 && value.length <= 200 && !/\p{Cc}/u.test(value);
+const identity = (value: unknown) => typeof value === 'string' && value.length <= 200 && /[^\s\p{Cf}]/u.test(value) && !/\p{Cc}/u.test(value);
 const reference = identity;
 const optionalReference = (value: unknown) => value === undefined || value === null || reference(value);
 const list = (value: unknown) => Array.isArray(value) && value.length <= 10000;
@@ -136,6 +136,10 @@ export function validateMeasurementDataset(value: unknown): MeasurementDataset {
     if (!changes.has(audit.changeId) || audited.has(audit.changeId) || typeof audit.blinded !== 'boolean' || !identity(audit.auditor) ||
         !reference(audit.initialRef) || !reference(audit.finalRef) || !reference(audit.authorityRef) || !list(audit.evidence) || !audit.evidence.length || !audit.evidence.every(reference) ||
         !list(audit.initialViolationCaseIds) || !list(audit.finalViolationCaseIds)) reject('audit evidence/identity');
+    const sampled = changes.get(audit.changeId)!;
+    for (const field of ['initialRef', 'finalRef'] as const) {
+      if (sampled[field] !== null && sampled[field] !== audit[field]) reject('audit sampled revision reference');
+    }
     audited.add(audit.changeId);
     for (const id of [...audit.initialViolationCaseIds, ...audit.finalViolationCaseIds]) {
       const item = cases.get(id);
@@ -200,7 +204,7 @@ export function aggregateMeasurement(value: unknown, { cohort = 'natural', domai
   const local = allResolved.filter(c => c.resolvedBeforeCI === true && firstDetections.get(c.caseId) === 'local');
   const states: Record<string, number> = {}; const scopeCounts = new Map<string, number>();
   for (const r of attempts) { const state = r.phase === 'terminal' ? r.state as string : 'missing'; states[state] = (states[state] || 0) + 1; }
-  for (const r of attempts.filter(r => r.phase === 'terminal' && r.state === 'completed')) { const scope = (r.scopeKind || r.request?.scope?.kind || 'unknown') as string; scopeCounts.set(scope, (scopeCounts.get(scope) || 0) + 1); }
+  for (const r of attempts.filter(r => r.phase === 'terminal' && r.state === 'completed')) { const observedScope = r.scopeKind ?? r.request?.scope?.kind; const scope = identity(observedScope) ? observedScope as string : 'unknown'; scopeCounts.set(scope, (scopeCounts.get(scope) || 0) + 1); }
   const reviewed = new Set(attempts.filter(r => r.phase === 'terminal' && r.state === 'completed' &&
     enumValue(typeof r.decision === 'string' ? r.decision : decisionView(r.decision)?.decision, ['PASS', 'BLOCK', 'OWNER_DECISION'])).map(r => r.changeId));
   const observed = new Set(attempts.map(r => r.changeId));

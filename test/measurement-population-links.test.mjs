@@ -180,3 +180,40 @@ test('all Unicode C1 controls are refused by identities, references and sampling
     assert.throws(()=>sampleMeasurementPopulation(baseDataset(),{seed:value,count:1}),/seed/);
   }
 });
+
+test('audits bind every known frozen population revision; absent revisions remain unknown', () => {
+  for (const field of ['initialRef','finalRef']) {
+    const data=baseDataset(); data.population[0][field]=data.audits[0][field];
+    for (const run of [validateMeasurementDataset,aggregateMeasurement,d=>sampleMeasurementPopulation(d,{seed:'fixed',count:1})]) {
+      assert.doesNotThrow(()=>run(data));
+      const mismatch=structuredClone(data); mismatch.audits[0][field]='different revision';
+      assert.throws(()=>run(mismatch),/audit sampled revision/);
+      const unknown=structuredClone(data); delete unknown.population[0][field]; assert.doesNotThrow(()=>run(unknown));
+      unknown.population[0][field]=null; assert.doesNotThrow(()=>run(unknown));
+    }
+  }
+});
+test('format-only identities, references and seeds are unusable; visible international text survives', () => {
+  const invalid=['\u200b','\u2060',' \u200b\u200d ','\u00ad','\ufeff\u2060'];
+  for (const value of invalid) {
+    for (const change of [d=>{d.cases[0].adjudicator=value;},d=>{d.audits[0].auditor=value;},d=>{d.cases[0].evidence=[value];},d=>{d.population[0].initialRef=value;}]) {
+      const data=baseDataset();change(data);
+      for (const run of [validateMeasurementDataset,aggregateMeasurement,d=>sampleMeasurementPopulation(d,{seed:'fixed',count:1})]) assert.throws(()=>run(data),/assessor|evidence|reference/);
+    }
+    assert.throws(()=>sampleMeasurementPopulation(baseDataset(),{seed:value,count:1}),/seed/);
+  }
+  for (const value of ['日本語','👩‍💻','a\u200db']) {
+    const data=baseDataset();data.cases[0].adjudicator=value; assert.doesNotThrow(()=>validateMeasurementDataset(data));
+    assert.doesNotThrow(()=>sampleMeasurementPopulation(data,{seed:value,count:1}));
+  }
+});
+test('scope counts retain bounded string labels and classify malformed observations as unknown', () => {
+  for (const field of ['private','exported']) for (const value of [true,42,[],['a','b'],{},'', ' ', 'x'.repeat(201),'a\nb','\u200b']) {
+    const data=baseDataset(); if(field==='private') data.records[0].request={scope:{kind:value}}; else data.records[0].scopeKind=value;
+    assert.deepEqual(aggregateMeasurement(data).coverage.completedByScope,{unknown:1});
+  }
+  for(const value of ['tracked-working-tree','__proto__','constructor']) {
+    const data=baseDataset();data.records[0].scopeKind=value;
+    assert.deepEqual(aggregateMeasurement(data).coverage.completedByScope,{[value]:1});
+  }
+});
