@@ -10,14 +10,16 @@ export function runCiMeasurement(command: string | undefined, env: NodeJS.Proces
   if (!env.AGK_MEASUREMENT_DIR) return;
   const dir = resolveDiagnosticPath(env.AGK_MEASUREMENT_DIR);
   // Reject an in-worktree target before optional bootstrap can create it.
-  if (env.GITHUB_WORKSPACE) {
-    const path = relative(realpathSync(env.GITHUB_WORKSPACE), dir);
+  const workingRoot = env.GITHUB_WORKSPACE ?? process.cwd();
+  if (typeof workingRoot !== 'string' || !workingRoot) throw new Error('Invalid diagnostic working root.');
+  {
+    const path = relative(realpathSync(workingRoot), dir);
     if (path === '' || (path !== '..' && !path.startsWith(`..${sep}`) && !isAbsolute(path))) throw new Error('Measurement directory must be outside the reviewed worktree.');
   }
   if (!existsSync(dir)) mkdirSync(dir, { mode: 0o700 });
   if (command === 'start' || command === 'outcome') {
     const observation = { policyJob: env.POLICY_RESULT, reviewJob: env.REVIEW_RESULT, reportJob: env.REPORT_RESULT, acceptJob: env.ACCEPT_RESULT };
-    const capture = beginMeasurement({ directory: dir, route: command === 'start' ? 'ci-review' : 'ci-outcome', cwd: env.GITHUB_WORKSPACE,
+    const capture = beginMeasurement({ directory: dir, route: command === 'start' ? 'ci-review' : 'ci-outcome', cwd: workingRoot,
       changeId: env.AGK_MEASUREMENT_CHANGE_ID, context: { ci: { repository: env.GITHUB_REPOSITORY, pr: env.PR_NUMBER, runId: env.GITHUB_RUN_ID,
         runAttempt: env.GITHUB_RUN_ATTEMPT, workflowSha: env.RUNTIME_SHA, baseSha: env.BASE_SHA, headSha: env.HEAD_SHA, reviewedSha: env.REVIEWED_SHA,
         job: command === 'start' ? 'review' : 'measurement' } } });
