@@ -11,7 +11,10 @@ owner authorization or protected acceptance. Collection is opt-in at the core
 call and defaults off. Failures return a no-op and warn; unobserved phases remain
 gaps. Private POSIX directories must be canonical, mode0700 and outside the
 reviewed worktree; Windows capture/export is unsupported. Record reads/writes
-retain 256KiB, depth32 and 4096-entry limits. Admission/request/resumption preflight
+retain 256KiB, depth32 and 4096-entry limits. Directory parsing/retention has a 4MiB cumulative text budget, including malformed
+JSON. At most one additional bounded file can be read before detecting overflow.
+Overflow refuses the whole load; native resumption returns a no-op rather than
+selecting from a partial history. This read budget does not reserve disk space. Admission/request/resumption preflight
 remaining phases; 1KiB is reserved for terminal gaps. No atomic reservation or
 hostile same-user isolation is claimed.
 

@@ -64,6 +64,7 @@ const MAX_BYTES = 256 * 1024;
 // Leave space for a bounded terminal without dropping immutable phase metadata.
 const TERMINAL_RESERVE_BYTES = 1024;
 const MAX_FILES = 4096;
+const MAX_DIRECTORY_READ_BYTES = 4 * 1024 * 1024;
 const ROUTES = new Set(['manual', 'UserPromptSubmit', 'PostToolUse', 'native', 'ci-review', 'ci-outcome']);
 const STATES = new Set(['completed', 'error', 'incomplete', 'unsupported', 'deduplicated', 'unchanged', 'queued', 'cancelled', 'missing']);
 export const measurementDigest = (value: unknown): string => createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
@@ -331,9 +332,16 @@ export function validateMeasurementRecord(value: unknown): MeasurementRecord {
 export function loadMeasurementDirectory(dir: string) {
   dir = directory(dir, undefined, 0);
   const names = [...measurementDirectoryEntries(dir, MAX_FILES)].filter(n => /^[0-9a-f-]{36}\.(start|prepared|terminal)\.json$/.test(n)).sort();
-  const records: MeasurementRecord[] = []; let gaps = 0;
+  const records: MeasurementRecord[] = []; let gaps = 0; let readBytes = 0;
   for (const name of names) {
-    try { const r = validateMeasurementRecord(readMeasurementJson(join(dir, name))); if (`${r.attemptId}.${r.phase}.json` !== name) throw new Error('File identity mismatch.'); records.push(r); }
+    let source: string;
+    try { source = readDiagnosticText(join(dir, name), MAX_BYTES); }
+    catch { gaps++; continue; }
+    readBytes += Buffer.byteLength(source);
+    // Count even malformed JSON before parsing or retaining it. Refuse the
+    // whole load so native selection cannot use a partially inspected history.
+    if (readBytes > MAX_DIRECTORY_READ_BYTES) throw new Error('Measurement directory read byte limit exceeded.');
+    try { const r = validateMeasurementRecord(parseMeasurementJson(source)); if (`${r.attemptId}.${r.phase}.json` !== name) throw new Error('File identity mismatch.'); records.push(r); }
     catch { gaps++; }
   }
   return { version: 1, records, gaps };
