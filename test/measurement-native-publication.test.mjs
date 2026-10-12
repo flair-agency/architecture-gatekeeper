@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {execFileSync,spawnSync} from 'node:child_process';
+import {execFileSync,spawnSync,spawn} from 'node:child_process';
 import {mkdirSync,mkdtempSync,realpathSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -93,4 +93,17 @@ test('native semantic validation failure remains visible after valid retry',t=>{
  const terminals=loadMeasurementDirectory(directory).records.filter(r=>r.phase==='terminal');
  assert.equal(terminals.length,2);assert.deepEqual(terminals.find(r=>r.attemptId===failure.attemptId),failure);
  const success=terminals.find(r=>r.attemptId!==failure.attemptId);assert.equal(success.state,'completed');assert.equal(success.decision.decision,'PASS');
+});
+
+for(const verdict of ['PASS','BLOCK']) test(`native closed real stdout pipe retains ${verdict} as an unpublished error`,async t=>{
+  const {root,directory,cli,request,decision,env}=preparedFixture(t);
+  writeFileSync(decision,JSON.stringify({decision:verdict,authorityFiles:['AGENTS.md'],reviewedScope:['fixture'],findings:[]}));
+  const child=spawn(process.execPath,[cli,'validate',request,decision],{cwd:root,env,stdio:['ignore','pipe','pipe']});
+  let stderr='';child.stderr.setEncoding('utf8');child.stderr.on('data',chunk=>{stderr+=chunk;});
+  const closed=new Promise((resolve,reject)=>{child.once('error',reject);child.once('close',(code,signal)=>resolve({code,signal}));});
+  const timeout=setTimeout(()=>child.kill('SIGKILL'),10000);t.after(()=>clearTimeout(timeout));
+  child.stdout.destroy();const result=await closed;assert.equal(result.code,2,stderr);assert.match(stderr,/EPIPE|broken pipe/i);
+  const terminal=loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal');
+  assert.equal(terminal.state,'error');assert.equal(terminal.decision.decision,verdict);
+  assert.equal(terminal.feedback.publication,'unknown');assert.equal(terminal.observation.failureStage,'publication');
 });

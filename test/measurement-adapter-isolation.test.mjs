@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { createMeasurementAdapterFixture } from './helpers/measurement-adapter-fixture.mjs';
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync, spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -129,11 +129,12 @@ test('successful and blocked Hook publication follows outer behavior', async t =
   for (const terminal of terminals) { assert.equal(terminal.state, 'completed'); assert.equal(terminal.feedback.publication, terminal.decision.decision === 'PASS' ? 'returned-to-caller' : 'unknown'); }
 });
 
-test('manual result-selection failure cannot publish an earlier completed terminal', async t => {
+for (const asyncCall of [false,true]) test(`manual result-selection failure retains validated decision (async ${asyncCall})`, async t => {
   const { root, records } = fixture(t); const options = { reviewer: () => decision('PASS'), measurement: { directory: records } };
   Object.defineProperty(options, 'executionReport', { get() { throw new Error('result selection unavailable'); } });
-  await assert.rejects(runManualReviewAsync('task', root, options), /result selection unavailable/);
-  const terminal = loadMeasurementDirectory(records).records.find(r => r.phase === 'terminal'); assert.equal(terminal.state, 'error'); assert.equal(terminal.feedback.publication, 'unknown');
+  if (asyncCall) await assert.rejects(runManualReviewAsync('task', root, options), /result selection unavailable/);
+  else assert.throws(()=>runManualReview('task',root,options),/result selection unavailable/);
+  const terminal = loadMeasurementDirectory(records).records.find(r => r.phase === 'terminal'); assert.equal(terminal.state, 'error'); assert.equal(terminal.feedback.publication, 'unknown'); assert.equal(terminal.decision.decision, 'PASS'); assert.equal(terminal.observation.validation, 'completed'); assert.equal(terminal.observation.failureStage, 'result-selection');
 });
 
 for (const overflow of [false, true]) test(`PostToolUse CLI output failure records a publication gap (overflow ${overflow})`, t => {
@@ -208,4 +209,27 @@ for (const changed of [false, true]) test(`PostToolUse freshness describes an ob
   assert.equal(result.result.status, 'PASS', 'informational Hook behavior remains unchanged');
   const terminal = loadMeasurementDirectory(records).records.find(r => r.phase === 'terminal');
   assert.equal(terminal.observation.snapshotStillCurrent, !changed);
+});
+
+test('PostToolUse retains exact falsy execution observations from supported reviewer envelopes', async t => {
+  for (const execution of [false,0,'',null]) {
+    const {root,records}=fixture(t);writeFileSync(join(root,'candidate.md'),'falsy observation');
+    const result=await runPostToolScreenHook({hook_event_name:'PostToolUse',session_id:'falsy',tool_name:'Edit',cwd:root},{cwd:root,batchDelayMs:0,
+      measurement:{directory:records},reviewerResultFormat:'envelope',reviewer:()=>({decision:decision('PASS'),execution})});
+    assert.equal(result.result.status,'PASS',JSON.stringify(result.result));assert.equal(result.result.reviewerExecution,execution);
+    assert.equal(loadMeasurementDirectory(records).records.find(r=>r.phase==='terminal').execution,execution);
+  }
+});
+
+test('synchronous Hook observes a closed real stdout pipe as unpublished',async t=>{
+ const {root,records}=fixture(t);
+ const helper=new URL('./helpers/measurement-hook-publication-child.mjs',import.meta.url).pathname;
+ const input=JSON.stringify({hook_event_name:'UserPromptSubmit',session_id:'closed-pipe',prompt:'task',cwd:root});
+ const child=spawn(process.execPath,[helper,input,'pipe'],{cwd:root,env:{...process.env,AGK_MEASUREMENT_DIR:records},stdio:['ignore','pipe','pipe']});
+ let stderr='';child.stderr.setEncoding('utf8');child.stderr.on('data',value=>{stderr+=value;});
+ const closed=new Promise((resolve,reject)=>{child.once('error',reject);child.once('close',code=>resolve(code));});
+ const timeout=setTimeout(()=>child.kill('SIGKILL'),10000);t.after(()=>clearTimeout(timeout));child.stdout.destroy();
+ assert.equal(await closed,2,stderr);assert.match(stderr,/EPIPE|broken pipe/i);
+ const terminal=loadMeasurementDirectory(records).records.find(r=>r.phase==='terminal');
+ assert.equal(terminal.state,'error');assert.equal(terminal.decision.decision,'PASS');assert.equal(terminal.feedback.publication,'unknown');assert.equal(terminal.observation.failureStage,'hook-publication');
 });

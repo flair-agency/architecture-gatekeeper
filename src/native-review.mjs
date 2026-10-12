@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createReviewRequestAsync as prepareRequest, validateReviewResponse as validateResponse, repositoryRoot } from './review-contract.mjs';
 import { beginMeasurement, measurementDigest, resumeNativeMeasurement, warnMeasurementGap } from './measurement.mts';
 import { resolve } from 'node:path';
+import { writePublicOutput } from './public-output.mts';
 function usage() { throw new Error('Usage: architecture-review-native prepare <request.json> <task...> | validate <request.json> <decision.json>'); }
 /**
  * Run the native review CLI with optional command-line input and working directory.
@@ -49,7 +50,7 @@ export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = pro
     stage = 'request-persistence';
     writeFileSync(requestPath, `${JSON.stringify(request, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
     stage = 'prepare-publication';
-    process.stdout.write(`${JSON.stringify({ prompt: request.prompt, schema: request.schema, provider: 'codex', model: request.reviewer.model, reasoningEffort: request.reviewer.reasoningEffort, reviewTimeoutMs: request.reviewer.reviewTimeoutMs, requestPath }, null, 2)}\n`);
+    await writePublicOutput(`${JSON.stringify({ prompt: request.prompt, schema: request.schema, provider: 'codex', model: request.reviewer.model, reasoningEffort: request.reviewer.reasoningEffort, reviewTimeoutMs: request.reviewer.reviewTimeoutMs, requestPath }, null, 2)}\n`);
     return;
   }
   if (command === 'validate' && requestPath && rest.length === 1) {
@@ -71,7 +72,7 @@ export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = pro
     stage = 'validation';
     const result = validateReviewResponse(request, decision);
     stage = 'publication';
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    await writePublicOutput(`${JSON.stringify(result, null, 2)}\n`);
     measurement?.finish({ decision: result, publication: 'returned-to-caller', observation: { hostExecution: 'unknown' } });
     return;
   }

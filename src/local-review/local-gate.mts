@@ -1,3 +1,4 @@
+import { writePublicOutput } from '../public-output.mts';
 import { beginMeasurement, measurementDigest, warnMeasurementGap, type MeasurementAttempt, type MeasurementFinish } from '../measurement.mts';
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
@@ -73,6 +74,7 @@ function deferredMeasurement(measurement: MeasurementAttempt) {
 function review(task: unknown, cwd: string, previous: unknown = null, options: ManualReviewSyncOptions = {}, capturedMeasurement = measurementFor(cwd, options)): ManualReviewOutcome {
   const measurement = capturedMeasurement;
   let stage = 'preparation';
+  let completed: MeasurementFinish = {};
   try {
     const request = createReviewRequest(task, cwd);
     const transportRequest = withPrior(request, previous);
@@ -81,14 +83,17 @@ function review(task: unknown, cwd: string, previous: unknown = null, options: M
     const result = (executeLocalReviewerSync as CanonicalSyncOperation)(transportRequest, withoutDiagnosticOptions(options));
     stage = 'validation';
     const decision = validateReviewResponse(request, result.decision);
+    completed = { decision, execution: result.execution, observation: { execution: 'completed', validation: 'completed' } };
+    stage = 'result-selection';
     const outcome = options.executionReport === true ? { decision, execution: result.execution } : decision;
     measurement.finish({ decision, execution: result.execution, publication: 'returned-to-caller', observation: { execution: 'completed', validation: 'completed' } });
     return outcome;
-  } catch (error) { measurement.finish({ state: 'error', observation: { failureStage: stage } }); throw error; }
+  } catch (error) { measurement.finish({ ...completed, state: 'error', observation: { ...completed.observation, failureStage: stage } }); throw error; }
 }
 async function reviewAsync(task: unknown, cwd: string, previous: unknown = null, options: ManualReviewAsyncOptions = {}, capturedMeasurement = measurementFor(cwd, options)): Promise<ManualReviewOutcome> {
   const measurement = capturedMeasurement;
   let stage = 'preparation';
+  let completed: MeasurementFinish = {};
   try {
     const request = await createReviewRequestAsync(task, cwd, previous);
     const transportRequest = request.version === 1 ? withPrior(request, previous) : request;
@@ -97,17 +102,19 @@ async function reviewAsync(task: unknown, cwd: string, previous: unknown = null,
     const result = await executeLocalReviewer(transportRequest, withoutDiagnosticOptions(options));
     stage = 'validation';
     const decision = validateReviewResponse(request, result.decision);
+    completed = { decision, execution: result.execution, observation: { execution: 'completed', validation: 'completed' } };
+    stage = 'result-selection';
     const outcome = options.executionReport === true ? { decision, execution: result.execution } : decision;
     measurement.finish({ decision, execution: result.execution, publication: 'returned-to-caller', observation: { execution: 'completed', validation: 'completed' } });
     return outcome;
-  } catch (error) { measurement.finish({ state: 'error', observation: { failureStage: stage } }); throw error; }
+  } catch (error) { measurement.finish({ ...completed, state: 'error', observation: { ...completed.observation, failureStage: stage } }); throw error; }
 }
 export function runManualReview<Result = unknown>(task: string, cwd: string = process.cwd(), options: ManualReviewSyncOptions<Result> = {}): ManualReviewOutcome { return review(task, cwd, null, options); }
 export async function runManualReviewAsync(task: string, cwd: string = process.cwd(), options: ManualReviewAsyncOptions = {}): Promise<ManualReviewOutcome> { return reviewAsync(task, cwd, null, options); }
 export function runManualReviewCli(argv: readonly string[] = process.argv.slice(2)): void {
   const executionReport = argv[0] === '--execution-report';
   const taskArgs = executionReport ? argv.slice(1) : argv;
-  const report = (task: string): Promise<void> => { const cwd = process.cwd(); const observed = deferredMeasurement(measurementFor(cwd, {})); return reviewAsync(task, cwd, null, { executionReport }, observed.attempt).then(result => { process.stdout.write(`${JSON.stringify(result, null, 2)}\n`); observed.finish(); }).catch(error => { observed.fail('publication'); fail((error as ErrorView).message); }); };
+  const report = (task: string): Promise<void> => { const cwd = process.cwd(); const observed = deferredMeasurement(measurementFor(cwd, {})); return reviewAsync(task, cwd, null, { executionReport }, observed.attempt).then(async result => { await writePublicOutput(`${JSON.stringify(result, null, 2)}\n`); observed.finish(); }).catch(error => { observed.fail('publication'); fail((error as ErrorView).message); }); };
   const task = taskArgs.join(' ').trim(); if (task) { void report(task); return; }
   let input = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', chunk => { input += chunk; }); process.stdin.on('end', () => { void report(input); });
 }
@@ -133,12 +140,12 @@ export function runHook<Result = unknown>(input: string, cwd: string = process.c
     stage = 'hook-context'; const result = review(event.prompt, root, prior(root, event.session_id), hookOptions, observed.attempt);
     stage = 'hook-context-store'; store(root, event.session_id, result, (result as HookDecisionView).reviewedRevision);
     if ((result as HookDecisionView).decision !== 'PASS') { observed.finish('unknown'); throw new Error(`Architecture gate ${(result as HookDecisionView).decision}: ${(result as HookDecisionView).summary}`); }
-    stage = 'hook-publication'; process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: `Architecture review:\n${JSON.stringify(result, null, 2)}` } }));
-    observed.finish();
+    stage = 'hook-publication'; const publication = writePublicOutput(JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: `Architecture review:\n${JSON.stringify(result, null, 2)}` } }));
+    void publication.then(() => observed!.finish()).catch(error => { observed!.fail('hook-publication'); fail(error.message); });
   } catch (error) { observed?.fail(stage); fail((error as ErrorView).message); }
 }
 async function hookAsync(input: string, cwd: string, options: ManualReviewAsyncOptions,
-  publish?: (result: { hookSpecificOutput: { hookEventName: 'UserPromptSubmit'; additionalContext: string } }) => void) {
+  publish?: (result: { hookSpecificOutput: { hookEventName: 'UserPromptSubmit'; additionalContext: string } }) => void | Promise<void>) {
   const { event, root } = hookInput(input, cwd, options);
   const observed = deferredMeasurement(measurementFor(root, options, 'UserPromptSubmit', event.session_id)); let stage = 'hook-context';
   try {
@@ -147,9 +154,9 @@ async function hookAsync(input: string, cwd: string, options: ManualReviewAsyncO
     stage = 'hook-context-store'; store(root, event.session_id, result, (result as HookDecisionView).reviewedRevision);
     if ((result as HookDecisionView).decision !== 'PASS') { observed.finish('unknown'); throw new Error(`Architecture gate ${(result as HookDecisionView).decision}: ${(result as HookDecisionView).summary}`); }
     stage = 'hook-publication'; const output = { hookSpecificOutput: { hookEventName: 'UserPromptSubmit' as const, additionalContext: `Architecture review:\n${JSON.stringify(result, null, 2)}` } };
-    publish?.(output); observed.finish(); return output;
+    await publish?.(output); observed.finish(); return output;
   } catch (error) { observed.fail(stage); throw error; }
 }
 export async function runHookAsync(input: string, cwd: string = process.cwd(), options: ManualReviewAsyncOptions = {}): Promise<{ hookSpecificOutput: { hookEventName: 'UserPromptSubmit'; additionalContext: string } }> { return hookAsync(input, cwd, options); }
-export function runHookCli(): void { let input = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', c => { input += c; }); process.stdin.on('end', () => { hookAsync(input, process.cwd(), {}, result => { process.stdout.write(JSON.stringify(result)); }).catch(error => fail((error as ErrorView).message)); }); }
+export function runHookCli(): void { let input = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', c => { input += c; }); process.stdin.on('end', () => { hookAsync(input, process.cwd(), {}, result => writePublicOutput(JSON.stringify(result))).catch(error => fail((error as ErrorView).message)); }); }
 export { validateDecision as validate };

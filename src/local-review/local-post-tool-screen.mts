@@ -1,3 +1,4 @@
+import { writePublicOutput } from '../public-output.mts';
 import { beginMeasurement, warnMeasurementGap } from '../measurement.mts';
 import { createHash, randomUUID } from 'node:crypto';
 import { chmodSync, closeSync, linkSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -358,20 +359,22 @@ function postToolMeasurement(input: unknown, options: PostToolScreenOptions, cwd
 }
 
 /** Record the full decision before the existing informational Hook renderer truncates output. */
-async function observedPostToolScreen(input: unknown, options: PostToolScreenOptions, publish?: (output: string | null) => void): Promise<{ result: ScreenResult; output: string | null }> {
+async function observedPostToolScreen(input: unknown, options: PostToolScreenOptions, publish?: (output: string | null) => void | Promise<void>): Promise<{ result: ScreenResult; output: string | null }> {
   const { cwd = process.cwd(), reviewer, reviewerResultFormat, batchDelayMs = DEFAULT_BATCH_DELAY_MS } = options;
   const measurement = postToolMeasurement(input, options, cwd);
   const capture: MeasurementCapture = { request: (request, scope) => measurement.request(request, scope), validatedDecision: null, enabled: Boolean(measurement.id), snapshotStillCurrent: 'unknown' };
   let stage = 'screen';
+  let execution: unknown = null;
   try {
     const value = await screen(input, { cwd, reviewer, reviewerResultFormat, batchDelayMs } as PostToolScreenOptions, capture);
     const status = value.result.status as string;
     const state = ['PASS', 'BLOCK', 'OWNER_DECISION'].includes(status) ? 'completed' : status === 'queued-latest' ? 'queued' : status === 'unchanged' && value.result.requestId ? 'deduplicated' : status;
-    stage = 'publication'; publish?.(value.output);
-    measurement.finish({ state, decision: capture.validatedDecision, execution: value.result.reviewerExecution || null,
+    execution = value.result.reviewerExecution ?? null;
+    stage = 'publication'; await publish?.(value.output);
+    measurement.finish({ state, decision: capture.validatedDecision, execution,
       publication: value.output ? 'returned-to-caller' : 'unknown', observation: { snapshotStillCurrent: state === 'completed' ? capture.snapshotStillCurrent : 'unknown' } });
     return value;
-  } catch (error) { measurement.finish({ state: 'error', decision: capture.validatedDecision, observation: { failureStage: stage } }); throw error; }
+  } catch (error) { measurement.finish({ state: 'error', decision: capture.validatedDecision, execution, observation: { failureStage: stage } }); throw error; }
 }
 export async function runPostToolScreenHook(input: unknown, options: PostToolScreenOptions = {}): Promise<{ result: ScreenResult; output: string | null }> { return observedPostToolScreen(input, options); }
 
@@ -385,18 +388,18 @@ export function runPostToolScreenHookCli(): void {
     input += chunk;
     if (Buffer.byteLength(input) > 256 * 1024) { input = ''; overflow = true; }
   });
-  process.stdin.on('end', () => {
+  process.stdin.on('end', async () => {
     if (overflow) {
       let measurement;
       try { measurement = postToolMeasurement(null, {}, process.cwd()); }
       catch { warnMeasurementGap(); }
       try {
-        process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: 'Architecture screening informational: {"status":"incomplete","summary":"PostToolUse payload exceeds the 256 KiB input limit."}' }, systemMessage: 'Architecture screening incomplete: oversized PostToolUse payload.' }));
+        await writePublicOutput(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: 'Architecture screening informational: {"status":"incomplete","summary":"PostToolUse payload exceeds the 256 KiB input limit."}' }, systemMessage: 'Architecture screening incomplete: oversized PostToolUse payload.' }));
         measurement?.finish({ state: 'incomplete', publication: 'returned-to-caller', observation: { input: 'oversized' } });
       } catch (error) { measurement?.finish({ state: 'error', observation: { input: 'oversized', failureStage: 'publication' } }); throw error; }
       return;
     }
-    void observedPostToolScreen(input, {}, output => { if (output) process.stdout.write(output); }).catch((error: unknown) => {
+    void observedPostToolScreen(input, {}, output => output ? writePublicOutput(output) : undefined).catch((error: unknown) => {
       process.stdout.write(outputFor(incomplete((error as { message?: unknown } | null)?.message || 'Local screening failed.'), {}));
     });
   });
