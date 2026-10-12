@@ -445,7 +445,7 @@ of `.codex/gatekeeper/ordinary-gemini-admission.json` are:
   "enabled": true,
   "workflowId": 381385696,
   "runNumber": 1,
-  "callerSha256": "4cf30713b143df2ea08927648d5ff4911ee378990203a16c56ffdf7fbba7c81c",
+  "callerSha256": "cff2bc8294a760366d7876dd85120bd4bf2b54ec0eb863fef6eab0cbadbb5c84",
   "providerSelectorSha256": "e3e7a8a5c8f61c6b3fc7e0eed879e662be902299304d2501843cc06821fb5b9c",
   "serviceAccountSelectorSha256": "af5c0a83eb95b8969994e2b9667a0f2964bce2cb43e390441e40e280e1992e92"
 }
@@ -470,7 +470,7 @@ it did not consume the approved PR #517 review session. Earlier failed captures
 The selector values themselves remain private.
 
 The inactive corrected caller artifact has SHA-256
-`f2d45ee526ae4133d9f34e5fdd7637500e5ef4848d34fa40c0408d7eea88331a`.
+`4e2fe8b901a24eb08d16259c1a036299f4e01975e7670714f93069a576cbf25d`.
 Its prospective enabled artifact has the `callerSha256` value above. The only
 permitted activation delta between these two artifacts is replacing the
 `architecture-gate` job's literal `if: false` and explanatory comment with this
@@ -505,6 +505,23 @@ as history; the corrected source is a new prerequisite-gated candidate, not a
 rewritten prior result. Workflow ID, ordinal, attempt, PR tuple, fingerprints,
 credential boundaries, operational ceilings and the existing single-session
 approval remain unchanged. No additional session or routing scope is selected.
+
+The subsequent #551 source pair was inactive
+`f2d45ee526ae4133d9f34e5fdd7637500e5ef4848d34fa40c0408d7eea88331a`
+and prospective enabled
+`4cf30713b143df2ea08927648d5ff4911ee378990203a16c56ffdf7fbba7c81c`.
+A further independent correctness finding identified that positive configuration
+workflow/run values could select another instance or ordinal if later protected
+configuration changed. The current corrected artifacts add literal workflow
+`381385696` and run `1` constants and reject configuration disagreement before
+subsequent admission API reads. Retain every existing event/live API, immutable
+source, caller digest, selector and PR-tuple check. Coordinated configuration,
+API and environment changes to run 2 or another workflow ID must be denied,
+including through real Node child execution. The #551 pair was not deployed;
+its accepted source-scoped results and the new P1 remain historical evidence.
+Only the comment/guard delta above distinguishes the current inert/enabled
+pair. No new session, ordinal, workflow instance, authority scope, credential
+capability or routing selection is authorized by this corrective source record.
 
 The selected protected-base inputs are policy
 `.codex/gatekeeper/gemini-verification-policy.json` (version 6), prompt
