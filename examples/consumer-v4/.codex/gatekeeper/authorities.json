@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "authorities": [
+    {
+      "id": "architecture",
+      "repository": "self",
+      "revision": "authority-revision",
+      "path": "docs/architecture.md"
+    },
+    {
+      "id": "security",
+      "repository": "self",
+      "revision": "authority-revision",
+      "path": "docs/security.md"
+    }
+  ]
+}

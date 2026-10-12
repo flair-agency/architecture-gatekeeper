@@ -1,11 +1,17 @@
 {
-  "version": 1,
-  "authorityFiles": ["AGENTS.md", "docs/architecture.md"],
+  "version": 2,
+  "selfRepository": "example/consumer",
+  "authorityManifestPath": ".codex/gatekeeper/authorities.json",
+  "authorityLimits": {
+    "maxManifestBytes": 16384,
+    "maxMembers": 16,
+    "maxFileBytes": 131072,
+    "maxTotalBytes": 262144,
+    "maxPromptBytes": 524288
+  },
   "promptPath": ".codex/gatekeeper/prompt.md",
-  "schemaPath": ".codex/gatekeeper/decision.schema.json",
-  "validationPath": ".codex/gatekeeper/decision.validation.json",
+  "schemaPath": ".codex/gatekeeper/local-decision.schema.json",
   "reviewerConfigPath": ".codex/gatekeeper/reviewer.config.json",
-  "requiredReportedAuthorityFiles": ["AGENTS.md"],
-  "requiredPassArrays": ["responsibility", "reviewedScope", "prohibitedChanges"],
-  "reviewTimeoutMs": 110000
+  "reviewTimeoutMs": 180000,
+  "requiredPassArrays": ["reviewedScope"]
 }

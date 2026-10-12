@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "authorityIds", "authoritySetDigest", "eligible", "onlyMissingDecision", "preservesExistingRules", "noContradiction", "noUnsupportedCompletionClaim", "noUnrelatedUnresolvedChoices", "matchesOrdinaryOwnerDecision", "summary"],
+  "properties": {
+    "version": { "type": "integer", "enum": [2] },
+    "authorityIds": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "authoritySetDigest": { "type": "string" },
+    "eligible": { "type": "boolean" },
+    "onlyMissingDecision": { "type": "boolean" },
+    "preservesExistingRules": { "type": "boolean" },
+    "noContradiction": { "type": "boolean" },
+    "noUnsupportedCompletionClaim": { "type": "boolean" },
+    "noUnrelatedUnresolvedChoices": { "type": "boolean" },
+    "matchesOrdinaryOwnerDecision": { "type": "boolean" },
+    "summary": { "type": "string" }
+  }
+}
