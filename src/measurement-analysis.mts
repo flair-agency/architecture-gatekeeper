@@ -33,7 +33,7 @@ const decisionView = (value: unknown) => value as { decision?: unknown; findings
 
 const enumValue = (value: unknown, allowed: readonly unknown[]) => allowed.includes(value);
 const rate = (numerator: number, denominator: number) => ({ numerator, denominator, rate: denominator ? numerator / denominator : null });
-const identity = (value: unknown) => typeof value === 'string' && value.trim().length > 0 && value.length <= 200 && !/[\u0000-\u001f\u007f]/.test(value);
+const identity = (value: unknown) => typeof value === 'string' && value.trim().length > 0 && value.length <= 200 && !/\p{Cc}/u.test(value);
 const reference = identity;
 const optionalReference = (value: unknown) => value === undefined || value === null || reference(value);
 const list = (value: unknown) => Array.isArray(value) && value.length <= 10000;
@@ -112,6 +112,7 @@ export function validateMeasurementDataset(value: unknown): MeasurementDataset {
         !enumValue(item.adjudication, ['valid', 'false-positive', 'unresolved']) ||
         !enumValue(item.disposition, ['corrected', 'withdrawn', 'integrated-violation', 'authorized-evolution', 'rejected-proposal', 'unresolved']) ||
         !list(item.findingRefs) || !list(item.evidence)) reject('case identity/classification');
+    if (item.resolvedBeforeCI !== undefined && item.resolvedBeforeCI !== null && typeof item.resolvedBeforeCI !== 'boolean') reject('resolution timing boolean');
     if (![item.initialRef, item.finalRef, item.authorityRef].every(optionalReference)) reject('case reference');
     if (!item.evidence.every(reference)) reject('case evidence reference');
     if (item.adjudication !== 'unresolved' && (!identity(item.adjudicator) || !item.evidence.length)) reject('adjudication needs explicit assessor/evidence');

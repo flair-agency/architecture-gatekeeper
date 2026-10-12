@@ -29,6 +29,9 @@ test('real aggregate and sample CLIs reject inconsistent ledgers without emittin
     [d => { d.audits[0].evidence = ['valid', {}]; }, /audit evidence/],
     [d => { d.cases[0].adjudicator = ' '; }, /assessor/],
     [d => { d.audits[0].auditor = '\t'; }, /audit evidence/],
+    [d => { d.cases[0].resolvedBeforeCI = 'true'; }, /resolution timing boolean/],
+    [d => { d.cases[0].adjudicator = '\u0085'; }, /assessor/],
+    [d => { d.audits[0].evidence = ['\u009f']; }, /audit evidence/],
     ...['0', -1, 0.5, Number.MAX_SAFE_INTEGER + 1, {}, [], true].map(value => [d => { d.collectionGaps = value; }, /collection gap count/]),
   ];
   for (const command of [['aggregate'], ['sample', 'seed', '1']]) {

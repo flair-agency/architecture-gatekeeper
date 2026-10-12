@@ -145,7 +145,7 @@ test('every case and audit evidence entry must be a bounded nonblank primitive r
 
 
 test('blank and control-bearing assessor identities cannot contribute to metrics or audit packets', () => {
-  for (const [section, field] of [['cases', 'adjudicator'], ['audits', 'auditor']]) for (const invalid of ['', ' ', '\t', '\0', 'assessor\n']) {
+  for (const [section, field] of [['cases', 'adjudicator'], ['audits', 'auditor']]) for (const invalid of ['', ' ', '\t', '\0', 'assessor\n', ...Array.from({length:32},(_,i)=>String.fromCharCode(0x80+i))]) {
     const data = baseDataset(); data[section][0][field] = invalid;
     for (const run of [validateMeasurementDataset, aggregateMeasurement, d => sampleMeasurementPopulation(d, { seed: 'fixed', count: 1 })]) assert.throws(() => run(data), /assessor|evidence/);
   }
@@ -155,5 +155,28 @@ test('blank and control-bearing assessor identities cannot contribute to metrics
     const cases = baseDataset(); cases.cases[0].caseId = invalid;
     assert.throws(() => validateMeasurementDataset(cases), /case identity/);
     assert.throws(() => sampleMeasurementPopulation(baseDataset(), { seed: invalid, count: 1 }), /seed/);
+  }
+});
+
+
+test('resolution timing accepts only boolean or explicitly unknown values in all APIs', () => {
+  for (const run of [validateMeasurementDataset, aggregateMeasurement, d=>sampleMeasurementPopulation(d,{seed:'fixed',count:1})]) {
+    for (const value of ['true','false',0,1,{},[]]) {
+      const data=baseDataset();data.cases[0].resolvedBeforeCI=value;assert.throws(()=>run(data),/resolution timing boolean/);
+    }
+    for (const value of [undefined,null,false,true]) {
+      const data=baseDataset();data.cases[0].resolvedBeforeCI=value;assert.doesNotThrow(()=>run(data));
+      assert.equal(aggregateMeasurement(data).metrics.localEarlyResolution.numerator,value===true?1:0);
+    }
+  }
+});
+
+test('all Unicode C1 controls are refused by identities, references and sampling seeds', () => {
+  for (let code=0x80;code<=0x9f;code++) {
+    const value=String.fromCharCode(code);
+    for (const change of [d=>{d.population[0].cohort='natural';d.population[0].initialRef=value;},d=>{d.cases[0].evidence=[value];},d=>{d.audits[0].evidence=[value];},d=>{d.cases[0].caseId=value;}]) {
+      const data=baseDataset();change(data);assert.throws(()=>validateMeasurementDataset(data),/reference|evidence|identity/);
+    }
+    assert.throws(()=>sampleMeasurementPopulation(baseDataset(),{seed:value,count:1}),/seed/);
   }
 });
