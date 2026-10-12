@@ -180,7 +180,8 @@ Normalization returns a dataset view and does not mutate the caller's export.
 Sum each export's `gaps` into dataset `collectionGaps` and keep it in pilot reporting;
 it cannot be assigned to a known attempt. Freeze the population, initial/final
 revision references, eligibility rules, time window and seed **before** audit.
-Population, case and audit references must be nonblank opaque strings of at most
+Population/case identities, assessor identities, sampling seeds and references
+must be nonblank opaque strings of at most
 200 characters without control characters; optional unknown references may be
 null or absent. The packet copies only checked IDs and initial/final references.
 Owners must supply outcome-neutral reference labels and material: structural

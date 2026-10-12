@@ -33,8 +33,8 @@ const decisionView = (value: unknown) => value as { decision?: unknown; findings
 
 const enumValue = (value: unknown, allowed: readonly unknown[]) => allowed.includes(value);
 const rate = (numerator: number, denominator: number) => ({ numerator, denominator, rate: denominator ? numerator / denominator : null });
-const identity = (value: unknown) => typeof value === 'string' && value.length > 0 && value.length <= 200;
-const reference = (value: unknown) => identity(value) && (value as string).trim().length > 0 && !/[\u0000-\u001f\u007f]/.test(value as string);
+const identity = (value: unknown) => typeof value === 'string' && value.trim().length > 0 && value.length <= 200 && !/[\u0000-\u001f\u007f]/.test(value);
+const reference = identity;
 const optionalReference = (value: unknown) => value === undefined || value === null || reference(value);
 const list = (value: unknown) => Array.isArray(value) && value.length <= 10000;
 const reject = (message: string): never => { throw new Error(`Invalid measurement dataset: ${message}`); };

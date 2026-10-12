@@ -142,3 +142,18 @@ test('every case and audit evidence entry must be a bounded nonblank primitive r
     for (const run of [validateMeasurementDataset, aggregateMeasurement, d => sampleMeasurementPopulation(d, { seed: 'fixed', count: 1 })]) assert.throws(() => run(data), /evidence/);
   }
 });
+
+
+test('blank and control-bearing assessor identities cannot contribute to metrics or audit packets', () => {
+  for (const [section, field] of [['cases', 'adjudicator'], ['audits', 'auditor']]) for (const invalid of ['', ' ', '\t', '\0', 'assessor\n']) {
+    const data = baseDataset(); data[section][0][field] = invalid;
+    for (const run of [validateMeasurementDataset, aggregateMeasurement, d => sampleMeasurementPopulation(d, { seed: 'fixed', count: 1 })]) assert.throws(() => run(data), /assessor|evidence/);
+  }
+  for (const invalid of [' ', '\t', '\0']) {
+    const population = baseDataset(); population.population[0].changeId = invalid;
+    assert.throws(() => validateMeasurementDataset(population), /population identity/);
+    const cases = baseDataset(); cases.cases[0].caseId = invalid;
+    assert.throws(() => validateMeasurementDataset(cases), /case identity/);
+    assert.throws(() => sampleMeasurementPopulation(baseDataset(), { seed: invalid, count: 1 }), /seed/);
+  }
+});
