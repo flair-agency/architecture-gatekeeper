@@ -193,7 +193,8 @@ export function aggregateMeasurement(value: unknown, { cohort = 'natural', domai
     return routes.size > 1 ? 'ambiguous' : routes.has('local') ? 'local' : 'ci';
   };
   const firstDetections = new Map(cases.map(c => [c.caseId, firstDetection(c)]));
-  const local = resolved.filter(c => c.resolvedBeforeCI === true && firstDetections.get(c.caseId) === 'local');
+  const allResolved = valid.filter(c => ['corrected', 'withdrawn'].includes(c.disposition));
+  const local = allResolved.filter(c => c.resolvedBeforeCI === true && firstDetections.get(c.caseId) === 'local');
   const states: Record<string, number> = {}; const scopeCounts = new Map<string, number>();
   for (const r of attempts) { const state = r.phase === 'terminal' ? r.state as string : 'missing'; states[state] = (states[state] || 0) + 1; }
   for (const r of attempts.filter(r => r.phase === 'terminal' && r.state === 'completed')) { const scope = (r.scopeKind || r.request?.scope?.kind || 'unknown') as string; scopeCounts.set(scope, (scopeCounts.get(scope) || 0) + 1); }
@@ -208,7 +209,7 @@ export function aggregateMeasurement(value: unknown, { cohort = 'natural', domai
     metrics: { precision: rate(adjudicated.filter(c => c.adjudication === 'valid').length, adjudicated.length),
       validFindingResolution: rate(resolved.length, known.length),
       integratedDriftIncidence: rate(audits.filter(a => a.finalViolationCaseIds.length > 0).length, audits.length),
-      recall: rate(initialDetected.length, initial.length), localEarlyResolution: rate(local.length, resolved.length) },
+      recall: rate(initialDetected.length, initial.length), localEarlyResolution: rate(local.length, allResolved.length) },
     counts: { eligibleChanges: population.length, auditedChanges: audits.length, blindedAudits: audits.filter(a => a.blinded).length,
       unresolvedCases: cases.filter(c => c.adjudication === 'unresolved' || c.disposition === 'unresolved').length,
       authorizedEvolution: cases.filter(c => c.kind === 'authorized-evolution' || c.disposition === 'authorized-evolution').length,

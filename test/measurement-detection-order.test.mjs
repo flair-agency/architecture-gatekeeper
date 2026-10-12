@@ -53,10 +53,10 @@ test('a tie among local routes alone is local and still requires explicit early-
   assert.equal(report.cases[0].firstDetection, 'local');
 });
 
-test('a case without a linked detection stays unknown and outside the resolved detected denominator', () => {
+test('a resolved case without linked detection stays unknown and remains in the local denominator', () => {
   const data = dataset(instant(0), instant(20), instant(10), instant(30));
   data.records = []; data.cases[0].findingRefs = [];
   const report = aggregateMeasurement(data);
-  assert.deepEqual(report.metrics.localEarlyResolution, { numerator: 0, denominator: 0, rate: null });
+  assert.deepEqual(report.metrics.localEarlyResolution, { numerator: 0, denominator: 1, rate: 0 });
   assert.equal(report.cases[0].firstDetection, 'unknown');
 });

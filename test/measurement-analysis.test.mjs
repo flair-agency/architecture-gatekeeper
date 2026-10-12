@@ -61,3 +61,17 @@ test('all object entrypoints enforce whole-dataset JSON size, depth and shape', 
     assert.doesNotThrow(() => JSON.stringify(run(normalized)));
   }
 });
+
+
+test('local resolution denominator retains audited resolutions with no detection observation', () => {
+  for (const disposition of ['corrected', 'withdrawn']) {
+    const data = dataset(); data.cases[1].disposition = disposition; data.audits[1].finalViolationCaseIds = [];
+    const mixed = aggregateMeasurement(data);
+    assert.deepEqual(mixed.metrics.localEarlyResolution, { numerator: 1, denominator: 2, rate: 0.5 });
+    assert.deepEqual(mixed.metrics.validFindingResolution, { numerator: 1, denominator: 1, rate: 1 });
+    data.cases = [data.cases[1]]; data.audits = [data.audits[1]];
+    const undetected = aggregateMeasurement(data);
+    assert.deepEqual(undetected.metrics.localEarlyResolution, { numerator: 0, denominator: 1, rate: 0 });
+    assert.equal(undetected.cases[0].firstDetection, 'unknown');
+  }
+});
