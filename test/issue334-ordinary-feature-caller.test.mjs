@@ -31,8 +31,37 @@ const classifierScript = extractInlineScript(source, 'Classify trusted base and 
 assert.ok(admissionScript, 'actual inline admission source is present');
 assert.ok(classifierScript, 'actual inline classifier source is present');
 
+// Synthetic-only selector preimages stand in for unavailable secret strings. The test maps
+// exactly these two selectors to their pinned digests; caller SHA and every other input use
+// ordinary SHA-256. This is not evidence about the real secret preimages or Google trust.
+const syntheticProviderSelector = 'projects/123456789/locations/global/workloadIdentityPools/agk/providers/github';
+const syntheticServiceAccountSelector = 'agk-gemini@agk-gemini.iam.gserviceaccount.com';
+const syntheticSelectorHashes = new Map([
+  [syntheticProviderSelector, 'e3e7a8a5c8f61c6b3fc7e0eed879e662be902299304d2501843cc06821fb5b9c'],
+  [syntheticServiceAccountSelector, 'af5c0a83eb95b8969994e2b9667a0f2964bce2cb43e390441e40e280e1992e92'],
+]);
+const syntheticCrypto = {
+  createHash(algorithm) {
+    const hash = createHash(algorithm);
+    let selectorDigest;
+    let updates = 0;
+    return {
+      update(value, encoding) {
+        selectorDigest = algorithm === 'sha256' && updates === 0 && typeof value === 'string'
+          ? syntheticSelectorHashes.get(value) : undefined;
+        updates++;
+        hash.update(value, encoding);
+        return this;
+      },
+      digest(encoding) {
+        return selectorDigest !== undefined && encoding === 'hex' ? selectorDigest : hash.digest(encoding);
+      },
+    };
+  },
+};
+
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-async function runInline(script, { env, fetchImpl, fsOverrides = {}, abortImpl = AbortSignal, nowImpl = Date.now }) {
+async function runInline(script, { env, fetchImpl, fsOverrides = {}, abortImpl = AbortSignal, nowImpl = Date.now, cryptoImpl = { createHash } }) {
   const transformed = script
     .replace("import * as fs from 'node:fs';", 'const fs = __fs;')
     .replace("import * as path from 'node:path';", 'const path = __path;')
@@ -44,7 +73,7 @@ async function runInline(script, { env, fetchImpl, fsOverrides = {}, abortImpl =
   const errors = [];
   const mockFs = { ...realFs, ...fsOverrides };
   const execute = new AsyncFunction('__fs', '__path', '__crypto', '__abort', '__now', 'process', 'console', 'fetch', transformed);
-  await execute(mockFs, pathModule, { createHash }, abortImpl, nowImpl, fakeProcess,
+  await execute(mockFs, pathModule, cryptoImpl, abortImpl, nowImpl, fakeProcess,
     { error: (...args) => errors.push(args.join(' ')) }, fetchImpl);
   return { status: fakeProcess.exitCode, stderr: errors.length ? `${errors.join('\n')}\n` : '' };
 }
@@ -91,7 +120,7 @@ test('prospective ordinary Gemini caller has the exact bounded enabled job guard
     enabled: true,
     workflowId: 381385696,
     runNumber: 1,
-    callerSha256: 'cff2bc8294a760366d7876dd85120bd4bf2b54ec0eb863fef6eab0cbadbb5c84',
+    callerSha256: '4befbe3144aebceac3309527a8d6cbe67779fb05fb36664ea0ea3a129775c74a',
     providerSelectorSha256: 'e3e7a8a5c8f61c6b3fc7e0eed879e662be902299304d2501843cc06821fb5b9c',
     serviceAccountSelectorSha256: 'af5c0a83eb95b8969994e2b9667a0f2964bce2cb43e390441e40e280e1992e92',
   });
@@ -116,8 +145,8 @@ test('admission executes actual gate source against mocked GitHub API and fails 
   ]) assert.ok(admissionScript.includes(identity), `expected protected identity ${identity}`);
   const config = { version: 1, enabled: true, workflowId: 381385696, runNumber: 1,
     callerSha256: createHash('sha256').update(callerBytes).digest('hex'),
-    providerSelectorSha256: createHash('sha256').update('projects/123456789/locations/global/workloadIdentityPools/agk/providers/github', 'utf8').digest('hex'),
-    serviceAccountSelectorSha256: createHash('sha256').update('agk-gemini@agk-gemini.iam.gserviceaccount.com', 'utf8').digest('hex') };
+    providerSelectorSha256: syntheticSelectorHashes.get(syntheticProviderSelector),
+    serviceAccountSelectorSha256: syntheticSelectorHashes.get(syntheticServiceAccountSelector) };
   assert.deepEqual({ workflowId: config.workflowId, runNumber: config.runNumber },
     { workflowId: 381385696, runNumber: 1 });
   const event = { action: 'ready_for_review', repository: { id: 123 }, pull_request: {
@@ -206,7 +235,7 @@ test('admission executes actual gate source against mocked GitHub API and fails 
         ...sink.envOverrides };
       if (sink.omitGithubSha) delete executionEnv.GITHUB_SHA;
       const result = await runInline(admissionScript, { env: executionEnv, fetchImpl, fsOverrides,
-        abortImpl: sink.abortImpl ?? AbortSignal, nowImpl: sink.nowImpl ?? Date.now });
+        abortImpl: sink.abortImpl ?? AbortSignal, nowImpl: sink.nowImpl ?? Date.now, cryptoImpl: syntheticCrypto });
       const expectedStatus = sink.expectedStatus ?? 0;
       assert.equal(result.status, expectedStatus, result.stderr);
       if (expectedCalls !== undefined) assert.equal(calls, expectedCalls);
@@ -229,7 +258,16 @@ test('admission executes actual gate source against mocked GitHub API and fails 
       await writeFile(fixturePath, JSON.stringify(fixture));
       await writeFile(eventPath, JSON.stringify(event));
       const prelude = `import {readFileSync as mockReadFileSync,writeFileSync as mockWriteFileSync} from 'node:fs';
+        import crypto from 'node:crypto';
+        import {syncBuiltinESMExports} from 'node:module';
         let mockCallCount=0;process.on('exit',()=>mockWriteFileSync(process.env.CALL_PATH,String(mockCallCount)));
+        const realCreateHash=crypto.createHash;
+        const selectorDigests=new Map([
+          ['${syntheticProviderSelector}','${syntheticSelectorHashes.get(syntheticProviderSelector)}'],
+          ['${syntheticServiceAccountSelector}','${syntheticSelectorHashes.get(syntheticServiceAccountSelector)}'],
+        ]);
+        crypto.createHash=algorithm=>{const hash=realCreateHash(algorithm);let mapped;let updates=0;return{update(value,encoding){mapped=algorithm==='sha256'&&updates===0&&typeof value==='string'?selectorDigests.get(value):undefined;updates++;hash.update(value,encoding);return this;},digest(encoding){return mapped!==undefined&&encoding==='hex'?mapped:hash.digest(encoding);}};};
+        syncBuiltinESMExports();
         const fixture=JSON.parse(mockReadFileSync(process.env.FIXTURE_PATH,'utf8'));
         globalThis.fetch=async(url,options)=>{mockCallCount++;const parsed=new URL(url);const path=parsed.pathname.replace('/repos/flair-agency/architecture-gatekeeper','')+parsed.search;if(parsed.origin!=='https://api.github.com'||options.redirect!=='error'||options.signal.aborted)throw new Error('unexpected request');const value=fixture[path];if(!value)return{ok:false};const bytes=new TextEncoder().encode(JSON.stringify(value));let sent=false;return{ok:true,body:{getReader:()=>({read:async()=>{if(sent)return{done:true};sent=true;return{done:false,value:bytes};},cancel:async()=>{}})}};};`;
       const result = spawnSync(process.execPath, ['--input-type=module', '-e', `${prelude}\n${admissionScript}`], {
@@ -252,6 +290,9 @@ test('admission executes actual gate source against mocked GitHub API and fails 
     assert.equal(Number(await readFile(callPath, 'utf8')), 12);
 
     const recreateWorkflowId = 381385697;
+    const changedProviderSelector = 'projects/123456789/locations/global/workloadIdentityPools/agk/providers/recreated';
+    const changedServiceAccountSelector = 'agk-gemini-recreated@agk-gemini.iam.gserviceaccount.com';
+    const realSelectorDigest = selector => createHash('sha256').update(selector, 'utf8').digest('hex');
     const coordinatedAdmissionMutations = [
       {
         name: 'run number 2',
@@ -270,6 +311,20 @@ test('admission executes actual gate source against mocked GitHub API and fails 
           fixture[`/actions/workflows/${recreateWorkflowId}`] = {
             id: recreateWorkflowId, path: '.github/workflows/issue334-ordinary-feature-caller.yml',
           };
+        },
+      },
+      {
+        name: 'coordinated provider selector change',
+        envOverrides: { GCP_WIF_PROVIDER_SELECTOR: changedProviderSelector },
+        mutate(fixture) {
+          replaceConfigBlob(fixture, { ...config, providerSelectorSha256: realSelectorDigest(changedProviderSelector) });
+        },
+      },
+      {
+        name: 'coordinated service account selector change',
+        envOverrides: { GCP_WIF_SERVICE_ACCOUNT_SELECTOR: changedServiceAccountSelector },
+        mutate(fixture) {
+          replaceConfigBlob(fixture, { ...config, serviceAccountSelectorSha256: realSelectorDigest(changedServiceAccountSelector) });
         },
       },
     ];
@@ -365,6 +420,7 @@ test('admission executes actual gate source against mocked GitHub API and fails 
       c => { replaceConfigBlob(c, { ...config, enabled: false }); },
       c => { replaceConfigBlob(c, { ...config, workflowId: null }); },
       c => { replaceConfigBlob(c, { ...config, providerSelectorSha256: '0'.repeat(64) }); },
+      c => { replaceConfigBlob(c, { ...config, serviceAccountSelectorSha256: '0'.repeat(64) }); },
       c => { replaceConfigBlob(c, { ...config, extra: 'unknown-field' }); },
       c => { c['/git/trees/' + '4'.repeat(40)].tree[0].mode = '120000'; },
       c => { c['/git/blobs/' + '5'.repeat(40)].content = 'not-base64-json'; },
@@ -374,7 +430,7 @@ test('admission executes actual gate source against mocked GitHub API and fails 
       assert.equal(await execute(mutation.mutate, false, () => {}, 'provider-selector', 'sa-selector', 5,
         workflowSha, { envOverrides: mutation.envOverrides }), 'admitted=false', mutation.name);
     }
-    assert.equal(await execute(c => replaceConfigBlob(c, admissionConfig), false, () => {}, 'provider-selector', 'sa-selector', 12), 'admitted=false');
+    assert.equal(await execute(c => replaceConfigBlob(c, admissionConfig), false, () => {}, 'provider-selector', 'sa-selector', 12), 'admitted=true');
     const configBytes = Buffer.from(JSON.stringify(config));
     assert.equal(await execute(c => replaceConfigBlobBytes(c,
       Buffer.concat([configBytes, Buffer.alloc(100_000 - configBytes.length, 0x20)])),
@@ -389,8 +445,8 @@ test('admission executes actual gate source against mocked GitHub API and fails 
     assert.equal(await execute(() => {}, false, e => { e.action = 'synchronize'; }, 'provider-selector', 'sa-selector', 0), 'admitted=false');
     assert.equal(await execute(() => {}, false, e => { delete e.pull_request.merge_commit_sha; }, 'provider-selector', 'sa-selector', 0), 'admitted=false');
     assert.equal(await execute(() => {}, false, e => { e.pull_request.head.repo.id = 456; }, 'provider-selector', 'sa-selector', 0), 'admitted=false');
-    assert.equal(await execute(() => {}, false, () => {}, 'wrong-provider-selector'), 'admitted=false');
-    assert.equal(await execute(() => {}, false, () => {}, 'provider-selector', ''), 'admitted=false');
+    assert.equal(await execute(() => {}, false, () => {}, 'wrong-provider-selector', 'sa-selector', 12), 'admitted=false');
+    assert.equal(await execute(() => {}, false, () => {}, 'provider-selector', '', 12), 'admitted=false');
     // github.sha must match the caller workflow revision, not the PR feature base or a default-branch context.
     assert.equal(await execute(() => {}, false, () => {}, 'provider-selector', 'sa-selector', 0, eventSha), 'admitted=false');
     assert.equal(await execute(() => {}, false, () => {}, 'provider-selector', 'sa-selector', 0, 'b'.repeat(40)), 'admitted=false');

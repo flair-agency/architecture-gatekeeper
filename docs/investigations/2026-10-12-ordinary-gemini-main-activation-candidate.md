@@ -2,11 +2,11 @@
 
 **Status: local enabled deployment candidate; not deployed.** The workflow
 source in this checkout is the enabled caller, SHA-256
-`cff2bc8294a760366d7876dd85120bd4bf2b54ec0eb863fef6eab0cbadbb5c84`.
+`4befbe3144aebceac3309527a8d6cbe67779fb05fb36664ea0ea3a129775c74a`.
 Its seven-key admission configuration is enabled with the exact fixed values
 recorded below. The corrected inert caller artifact hashes to
-`4e2fe8b901a24eb08d16259c1a036299f4e01975e7670714f93069a576cbf25d`.
-The current ordinal-pinned source pair is detailed below; preceding #551 source
+`9f9b292c3c1b1a8e9fa3c38c8a3826d20fb92202fa3136522915629ae95d0be2`.
+The current fingerprint-pinned source pair is detailed below; preceding #551 source
 narratives and verification remain scoped to that previous candidate.
 
 The bounded selection was adopted through [PR #532](https://github.com/flair-agency/architecture-gatekeeper/pull/532)
@@ -319,3 +319,58 @@ result objects matched the separately scanned current executable baseline.
 No value normalization, suppression or SARIF rewriting occurred. Comparison is
 retained in `/workspace/agk-resume-evidence/pr530-ordinal-codeql-comparison.json`.
 These results followed sequentially without full-test/CodeQL CPU overlap.
+
+## Literal raw-selector correction before deployment
+
+The accepted ordinal-corrected source `729bc43` was not deployed. Subsequent
+independent P1 comment 4244327698 identified the analogous selector gap:
+configuration and queued Secrets could change together to another provider
+or account. Preserve that finding and the earlier source-scoped protected
+PASS/report/accept, full tests and scans without rewriting them.
+
+The final correction adds only both canonical raw selector digests to the
+existing fixed `EXPECTED` selection and requires config agreement before later
+API reads. Actual production still imports real Node crypto and compares exact
+queued-Secret SHA-256 at the final boundary. Fixed workflow/ordinal and every
+other admission, credential and operational check remain. No configuration
+selection gap remains apparent after these pins; caller digest is independently
+computed from immutable executing bytes and cannot embed its own digest.
+
+All five focused tests passed. Coordinated config/Secret changes to provider or
+account deny after five reads in injected and actual Node-child execution.
+Canonical-config positive paths retain twelve reads; wrong/empty selector
+negatives reach the final twelve-read boundary. Positive fixtures narrowly map
+only two designated synthetic preimages to canonical digests; every other
+input, including caller bytes, uses real SHA-256. This synthetic cryptographic
+fixture verifies admission composition, not actual Secret preimages, IAM or
+Google authentication. No production cryptographic behavior changes.
+
+Enabled caller SHA-256 is
+`4befbe3144aebceac3309527a8d6cbe67779fb05fb36664ea0ea3a129775c74a`;
+inert counterpart is
+`9f9b292c3c1b1a8e9fa3c38c8a3826d20fb92202fa3136522915629ae95d0be2`.
+The seven-key configuration digest is
+`770658169cc5c23e92186f82b69856d0ed4efcbc68b128a3b52361a6c006813e`.
+Independent code review found no actionable finding. Full tests passed
+1,507/1,507 with zero failures/skips/cancellations under the same Node 22.18
+read-only/network-disabled Docker controls. Source cycles passed. Fresh CodeQL
+and native feedback against the adopted corrected record remain required
+before publication. Mandatory unused-session reconciliation and all live
+deployment/source/auth/report/accept obligations remain unchanged.
+
+Fresh selector-corrected CodeQL scan retained 58 JavaScript and 0 Actions
+findings. Full raw comparison shows three removed and three added result
+payloads, requiring investigation; raw equality is not established. No
+normalization, suppression or SARIF rewriting occurred.
+Evidence is `/workspace/agk-resume-evidence/pr530-selector-codeql-comparison.json`.
+Full tests and CodeQL ran sequentially. Build evidence remains applicable to
+unchanged runtime source; native review against corrected adopted authority
+and hosted protected acceptance remain required.
+
+The three raw CodeQL result pairs differ only in artifact-reference indices
+for two unchanged issue83 scripts. Every other result field is exactly equal;
+each reference resolves to the same URI/base and identical captured bytes,
+which also match protected Git source. No semantic finding was added or removed.
+All 58 findings, the three raw differences and original SARIF remain retained;
+raw payload equality is false. The separate reference-binding adjudication is
+`/workspace/agk-resume-evidence/pr530-selector-codeql-reference-adjudication.json`.
