@@ -346,7 +346,7 @@ function postToolMeasurement(input: unknown, options: PostToolScreenOptions, cwd
     if (selected) { try { root = repositoryRoot(cwd); } catch { /* incomplete invocation */ } }
     let sessionId;
     if (selected) {
-      try { const event = typeof input === 'string' && Buffer.byteLength(input) <= 256 * 1024 ? JSON.parse(input) : input; sessionId = typeof (event as EventView | null | undefined)?.session_id === 'string' ? (event as EventView).session_id as string : undefined; } catch { /* unsupported input */ }
+      try { if (typeof input === 'string' && Buffer.byteLength(input) <= 256 * 1024) { const event = JSON.parse(input); const value = (event as EventView | null | undefined)?.session_id; sessionId = typeof value === 'string' ? value : undefined; } } catch { /* unsupported input */ }
     }
     measurement = beginMeasurement({ ...options.measurement, directory: selected, route: 'PostToolUse', cwd: root, sessionId });
   } catch { warnMeasurementGap(); measurement = { id: null, request() {}, finish() {} }; }
@@ -355,12 +355,12 @@ function postToolMeasurement(input: unknown, options: PostToolScreenOptions, cwd
 
 /** Record the full decision before the existing informational Hook renderer truncates output. */
 async function observedPostToolScreen(input: unknown, options: PostToolScreenOptions, publish?: (output: string | null) => void): Promise<{ result: ScreenResult; output: string | null }> {
-  const cwd = options.cwd || process.cwd();
+  const { cwd = process.cwd(), reviewer, reviewerResultFormat, batchDelayMs = DEFAULT_BATCH_DELAY_MS } = options;
   const measurement = postToolMeasurement(input, options, cwd);
   const capture: MeasurementCapture = { request: (request, scope) => measurement.request(request, scope), validatedDecision: null };
   let stage = 'screen';
   try {
-    const value = await screen(input, options, capture);
+    const value = await screen(input, { cwd, reviewer, reviewerResultFormat, batchDelayMs } as PostToolScreenOptions, capture);
     const status = value.result.status as string;
     const state = ['PASS', 'BLOCK', 'OWNER_DECISION'].includes(status) ? 'completed' : status === 'queued-latest' ? 'queued' : status === 'unchanged' && value.result.requestId ? 'deduplicated' : status;
     stage = 'publication'; publish?.(value.output);

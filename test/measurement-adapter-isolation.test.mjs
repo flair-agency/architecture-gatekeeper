@@ -174,3 +174,27 @@ test('Hook retains required option-getter failures while manual reads remain laz
  assert.equal(calls,1);
  const terminal=loadMeasurementDirectory(records).records.find(r=>r.phase==='terminal'&&r.route==='UserPromptSubmit');assert.equal(terminal.state,'error');assert.equal(terminal.feedback.publication,'unknown');
 });
+
+
+for (const enabled of [false, true]) test(`PostToolUse observes required option getters once in original order (measurement ${enabled})`, async t => {
+  const { root, records } = fixture(t); writeFileSync(join(root, 'candidate.md'), 'changed');
+  const event = { hook_event_name: 'PostToolUse', session_id: 'option-getters', tool_name: 'Edit', cwd: root };
+  const reads = []; let calls = 0; const options = {};
+  for (const [field, value] of [['cwd', root], ['reviewer', () => { calls++; return decision('PASS'); }], ['reviewerResultFormat', undefined], ['batchDelayMs', 0]]) {
+    Object.defineProperty(options, field, { get() { reads.push(field); if (reads.filter(key => key === field).length > 1) throw new Error(`repeated ${field}`); return value; } });
+  }
+  if (enabled) options.measurement = { directory: records };
+  const result = await runPostToolScreenHook(event, options);
+  assert.equal(result.result.status, 'PASS'); assert.equal(calls, 1);
+  assert.deepEqual(reads, ['cwd', 'reviewer', 'reviewerResultFormat', 'batchDelayMs']);
+});
+
+for (const enabled of [false, true]) test(`PostToolUse object event preserves original session getter observations (measurement ${enabled})`, async t => {
+  const { root, records } = fixture(t); writeFileSync(join(root, 'candidate.md'), 'changed');
+  let reads = 0; let calls = 0;
+  const event = { hook_event_name: 'PostToolUse', tool_name: 'Edit', cwd: root };
+  Object.defineProperty(event, 'session_id', { get() { if (++reads > 3) throw new Error('diagnostics exhausted session getter'); return 'session'; } });
+  const result = await runPostToolScreenHook(event, { cwd: root, batchDelayMs: 0, reviewer: () => { calls++; return decision('PASS'); }, ...(enabled ? { measurement: { directory: records } } : {}) });
+  assert.equal(result.result.status, 'PASS'); assert.equal(calls, 1); assert.equal(reads, 3);
+  if (enabled) assert.equal(loadMeasurementDirectory(records).records.find(r => r.phase === 'terminal').sessionId, null, 'object-form diagnostic session remains unknown');
+});

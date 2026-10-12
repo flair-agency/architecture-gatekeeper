@@ -47,3 +47,8 @@ A failed request-file read creates a separate error observation with unknown
 request identity; it cannot safely resume the earlier request's preparation.
 Decision-file reads resume the known preparation first. Stage-specific failures
 retain their required errors, and later retries do not rewrite terminal history.
+
+PostToolUse snapshots its required option fields once in the original read order.
+For object-form events, the observer does not read caller event getters: diagnostic
+session identity stays unknown. Bounded JSON-string events retain their observed
+session identity. The required screen retains its original event reads.
