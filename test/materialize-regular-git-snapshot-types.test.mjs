@@ -33,5 +33,11 @@ test('materialized snapshot exposes only the observed path and computed digest c
 });
 
 test('materialized snapshot requires the accessed input fields and keeps observations unknown', () => {
-  assert.deepEqual(diagnosticsFor('negative.mts'), []);
+  const diagnostics = diagnosticsFor('negative.mts');
+  assert.deepEqual(diagnostics.map(diagnostic => [diagnostic.code,
+    diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line + 1]), [[2741, 6], [2322, 13], [2322, 15]]);
+  const messages = diagnostics.map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
+  assert.match(messages[0], /outputPath.*missing/i);
+  assert.match(messages[1], /unknown.*not assignable.*string/i);
+  assert.match(messages[2], /string.*not assignable.*number/i);
 });
