@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { loadMeasurementDirectory } from '../dist/measurement.mjs';
 import { runCiMeasurement } from '../dist/measurement-ci.mjs';
 import { parseWorkflow } from './helpers/workflow-structure.mjs';
@@ -210,5 +210,18 @@ test('real CI CLI resumes from runner temp against the reviewed workspace', t =>
     const terminal = loadMeasurementDirectory(f.directory).records.find(r => r.attemptId === attemptId && r.phase === 'terminal');
     assert.ok(terminal, 'finish writes a terminal under runner temp'); assert.equal(terminal.state, state);
     assert.equal(terminal.decision?.decision ?? null, state === 'completed' ? 'PASS' : null);
+  }
+});
+
+
+test('CI bootstrap resolves nested workspace to its Git root before creating diagnostic directories', t => {
+  const f = fixture(t);
+  const workspace = join(f.parent, 'checkout'); mkdirSync(workspace);
+  execFileSync('git', ['init', '--quiet'], { cwd: workspace });
+  const subdir = join(workspace, 'src'); mkdirSync(subdir);
+  for (const command of ['start', 'outcome', 'finish']) {
+    const target = join(workspace, `private-${command}`);
+    assert.throws(() => runCiMeasurement(command, { ...f.env, GITHUB_WORKSPACE: subdir, AGK_MEASUREMENT_DIR: target }), /outside the reviewed worktree/);
+    assert.equal(existsSync(target), false);
   }
 });

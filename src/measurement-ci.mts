@@ -3,14 +3,14 @@ import { existsSync, mkdirSync, realpathSync } from 'node:fs';
 import { appendGitHubOutput } from './runner-temp-path.mjs';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute, relative, sep } from 'node:path';
-import { beginMeasurement, measurementDigest, warnMeasurementGap, parseMeasurementJson, readMeasurementJson, resumeMeasurement } from './measurement.mts';
+import { beginMeasurement, measurementDigest, warnMeasurementGap, parseMeasurementJson, readMeasurementJson, resumeMeasurement, resolveMeasurementWorkingRoot } from './measurement.mts';
 import { readDiagnosticText, resolveDiagnosticPath } from './diagnostic-path.mts';
 
 export function runCiMeasurement(command: string | undefined, env: NodeJS.ProcessEnv = process.env) {
   if (!env.AGK_MEASUREMENT_DIR) return;
   const dir = resolveDiagnosticPath(env.AGK_MEASUREMENT_DIR);
   // Reject an in-worktree target before optional bootstrap can create it.
-  const workingRoot = env.GITHUB_WORKSPACE ?? process.cwd();
+  const workingRoot = resolveMeasurementWorkingRoot(env.GITHUB_WORKSPACE ?? process.cwd());
   if (typeof workingRoot !== 'string' || !workingRoot) throw new Error('Invalid diagnostic working root.');
   {
     const path = relative(realpathSync(workingRoot), dir);
