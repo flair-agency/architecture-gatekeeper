@@ -256,3 +256,11 @@ All original mixed-suite assertions are preserved at their owning production
 boundary. Core, adapter, analysis and CI tests execute without future-module
 imports. The union retains the original intended runtime apart from the stated
 corrections. Four-week pilot and enabled-host effectiveness remain #537 work.
+
+Split-scope reviews additionally exposed omitted-cwd containment, warning-sink
+failures, eager reviewer-option enumeration, missing packaged adapter guidance
+and native decision-file reads preceding diagnostic resumption. Each repair
+stays in its owning core/adapter/CI slice. Native missing, malformed and nonfile
+decisions now retain error observations before a later successful retry; required
+validation and exclusive request allocation are unchanged. Fault regressions
+fail the prior installed runtime and pass the corrected source/installed runtime.
