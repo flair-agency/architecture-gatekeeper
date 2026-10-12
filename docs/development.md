@@ -238,8 +238,11 @@ Flat exports, read-only invocation, validation, proxy scope and cleanup preserve
 their original operations. The parent proxy composes the typed session directly.
 
 The local-review and runner-path slice types local reviewer composition and
-fixed runner temporary paths. The native CLI remains at its original flat
-`.mjs` implementation and is outside this typed migration. Required async
+fixed runner temporary paths. The native CLI candidate places its complete
+implementation in `local-review/native-review.mts`, retaining the flat direct-run
+guard and function identity. Caller-owned file paths and exclusive 0600 request
+creation retain their existing operations; this move makes no path-confinement
+or host-private allocation guarantee. Required async
 deadlines, synchronous versus awaited callbacks and complete envelope fields
 have explicit contracts. External decisions, JSON and manifest readbacks remain
 unknown; exact byte reads return Buffer and successful paths return strings.
@@ -282,8 +285,10 @@ before storage, bounded readbacks and the original private file modes. The
 runner accessor stays at its approved model path and returns only the string
 established by its existing runtime check; this does not authenticate provenance.
 
-After the runner-accessor candidate, three checked JavaScript bridges remain
-at their existing source paths: snapshot materializer, native CLI and CI report.
+Before this native CLI candidate, adopted main has three checked JavaScript
+bridges at their existing source paths: snapshot materializer, native CLI and
+CI report. This candidate moves the complete native function to `.mts`; the
+snapshot materializer and CI report remain checked JavaScript bridges.
 The report CLI checks its existing private zero-argument `Promise<void>`
 completion contract. Erased operation views retain the original error-message
 reads, inline-item operations and optional findings-length read; external
@@ -294,10 +299,12 @@ Actual-config compile-only probes exercise the private function without adding
 a public export or argv parameter. A pinned complete runtime AST comparison
 binds source and emitted operations to the pre-change main tree. These checks
 do not prove CodeQL flow preservation; official model/flow verification remains
-required for the candidate. The native CLI
-checks its existing optional string-array arguments, working directory and async
-completion contract; its entire runtime body and direct-execution guard remain
-unchanged. The materializer retains
+required for the candidate. The native CLI candidate preserves its optional
+string-array arguments, working directory, async completion and complete
+function operations in the grouped implementation. Its original direct-run
+guard and error catch remain in the flat facade. Caller-owned file paths remain
+unchanged; this is not risk-removal or private-host allocation evidence.
+The materializer retains
 two narrow `@ts-expect-error` boundaries where it composes the existing Git
 reader and filesystem writer. They preserve those operations without claiming
 that `outputPath` is a string: the original truthy guard permits native path-like
@@ -331,14 +338,17 @@ This CI composition candidate brings the count to 81 `.mts` modules and
 The GitHub command candidate has 82 original modules fully migrated to `.mts`
 and 14 originals not fully migrated. The runner-accessor candidate adds one
 complete typed implementation, reaching 83/96 fully migrated and 13 originals
-not fully migrated. Of those 13, three have checked JavaScript contracts
+not fully migrated before this native CLI candidate. Of those 13, three have checked JavaScript contracts
 (snapshot materializer, native CLI and CI report), and six have partial helper
 migrations (CI report, owner-addition finalizer, multi-authority orchestration,
 owner-addition CI, GitHub OWNER_ADDITION provenance and the legacy authority
 decision check). CI report belongs to both categories; together they cover eight
 distinct originals. The other five remain JavaScript modules
 outside these migrations. These source-layout counts do not change the
-selected CodeQL model or establish acceptance evidence.
+selected CodeQL model or establish acceptance evidence. The complete native
+candidate would bring the inventory to 84/96 with 12 originals remaining only
+after required verification and protected adoption. Until then, adopted main
+remains at 83/96 with 13 originals not fully migrated.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation

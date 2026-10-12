@@ -73,6 +73,21 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   mkdirSync(join(fixtureRoot, 'src/authority-validation'), { recursive: true });
   cpSync(join(root, 'src/authority-validation/authority-set.mts'), join(fixtureRoot, 'src/authority-validation/authority-set.mts'));
   cpSync(join(root, 'src/authority-validation/resolve-ci-policy.mts'), join(fixtureRoot, 'src/authority-validation/resolve-ci-policy.mts'));
+  mkdirSync(join(fixtureRoot, 'src/local-review'), { recursive: true });
+  cpSync(join(root, 'src/local-review/native-review.mts'), join(fixtureRoot, 'src/local-review/native-review.mts'));
+  cpSync(join(root, 'src/native-review.mjs'), join(fixtureRoot, 'src/native-review.mjs'));
+  mkdirSync(join(fixtureRoot, 'src/review-contract'), { recursive: true });
+  // This isolated build fixture exercises the real native leaf and facade.
+  // The full source contract and runtime behavior have separate verification.
+  writeFileSync(join(fixtureRoot, 'src/review-contract/review-contract.mts'), `
+export async function createReviewRequestAsync(task: unknown, cwd: string): Promise<{
+  prompt: string; schema: unknown; reviewer: { provider?: string; model: string;
+    reasoningEffort: string; reviewTimeoutMs: number };
+}> { throw new Error('Unexecuted isolated build dependency'); }
+export function validateReviewResponse(request: unknown, decision: unknown): unknown {
+  throw new Error('Unexecuted isolated build dependency');
+}
+`);
   writeFileSync(join(fixtureRoot, 'src/legacy.mjs'), 'export const legacyValue = 7;\n');
   writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), "import { legacyValue } from '../legacy.mjs';\nexport const answer: number = legacyValue + 35;\n");
   symlinkSync(join(root, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
@@ -107,6 +122,8 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'github/github-ruleset-readback.mjs',
     'github/github-runner-env.mjs',
     'legacy.mjs',
+    'local-review/native-review.mjs',
+    'native-review.mjs',
     'owner-addition-validation.mjs',
     'owner-addition/owner-addition-validation.mjs',
     'owner-addition/peer.mjs',
@@ -133,6 +150,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'owner-amendment/owner-amendment-tag-readback.mjs',
     'owner-amendment/owner-amendment-workflow-run-merge-group-context.mjs',
     'resolve-ci-policy.mjs',
+    'review-contract/review-contract.mjs',
     'runner-paths/runner-temp-path.mjs',
     'runner-temp-path.mjs',
   ]);

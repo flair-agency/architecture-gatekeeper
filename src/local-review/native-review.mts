@@ -1,0 +1,9 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createReviewRequestAsync, validateReviewResponse } from '../review-contract/review-contract.mts';
+function usage() { throw new Error('Usage: architecture-review-native prepare <request.json> <task...> | validate <request.json> <decision.json>'); }
+export async function runNativeReviewCli(argv: string[] = process.argv.slice(2), cwd: string = process.cwd()): Promise<void> {
+  const [command, requestPath, ...rest] = argv;
+  if (command === 'prepare' && requestPath && rest.length) { const request = await createReviewRequestAsync(rest.join(' '), cwd); if (Object.hasOwn(request.reviewer, 'provider') ? request.reviewer.provider !== 'codex' : false) throw new Error('Native Codex review cannot apply Gemini settings; use the async local reviewer.'); writeFileSync(requestPath, `${JSON.stringify(request, null, 2)}\n`, { mode: 0o600, flag: 'wx' }); process.stdout.write(`${JSON.stringify({ prompt: request.prompt, schema: request.schema, provider: 'codex', model: request.reviewer.model, reasoningEffort: request.reviewer.reasoningEffort, reviewTimeoutMs: request.reviewer.reviewTimeoutMs, requestPath }, null, 2)}\n`); return; }
+  if (command === 'validate' && requestPath && rest.length === 1) { const request: unknown = JSON.parse(readFileSync(requestPath, 'utf8')); const decision: unknown = JSON.parse(readFileSync(rest[0], 'utf8')); process.stdout.write(`${JSON.stringify(validateReviewResponse(request, decision), null, 2)}\n`); return; }
+  usage();
+}

@@ -76,6 +76,8 @@ test('source runtime identity binds authored .mts and invalidates stale requests
   const request = await runtime.preparePreviewLifecycle(spec, f.root);
   assert.ok(request.runtime.files['authority-validation/authority-set.mts']);
   assert.ok(request.runtime.files['authority-set.mjs']);
+  assert.equal(request.runtime.files['local-review/native-review.mts'],
+    sha256(readFileSync(join(sourceRoot, 'src/local-review/native-review.mts'))));
   assert.equal(request.runtime.files['authority-validation/authority-set.mts'],
     sha256(readFileSync(join(sourceRoot, 'src/authority-validation/authority-set.mts'))));
   const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);

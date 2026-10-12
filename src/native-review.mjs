@@ -1,19 +1,6 @@
 #!/usr/bin/env node
-// @ts-check
-import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { createReviewRequestAsync, validateReviewResponse } from './review-contract.mjs';
-function usage() { throw new Error('Usage: architecture-review-native prepare <request.json> <task...> | validate <request.json> <decision.json>'); }
-/**
- * Run the native review CLI with optional command-line input and working directory.
- * @param {string[]} [argv]
- * @param {string} [cwd]
- * @returns {Promise<void>}
- */
-export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = process.cwd()) {
-  const [command, requestPath, ...rest] = argv;
-  if (command === 'prepare' && requestPath && rest.length) { const request = await createReviewRequestAsync(rest.join(' '), cwd); if (Object.hasOwn(request.reviewer, 'provider') ? request.reviewer.provider !== 'codex' : false) throw new Error('Native Codex review cannot apply Gemini settings; use the async local reviewer.'); writeFileSync(requestPath, `${JSON.stringify(request, null, 2)}\n`, { mode: 0o600, flag: 'wx' }); process.stdout.write(`${JSON.stringify({ prompt: request.prompt, schema: request.schema, provider: 'codex', model: request.reviewer.model, reasoningEffort: request.reviewer.reasoningEffort, reviewTimeoutMs: request.reviewer.reviewTimeoutMs, requestPath }, null, 2)}\n`); return; }
-  if (command === 'validate' && requestPath && rest.length === 1) { const request = JSON.parse(readFileSync(requestPath, 'utf8')); const decision = JSON.parse(readFileSync(rest[0], 'utf8')); process.stdout.write(`${JSON.stringify(validateReviewResponse(request, decision), null, 2)}\n`); return; }
-  usage();
-}
+import { runNativeReviewCli } from './local-review/native-review.mts';
+export { runNativeReviewCli };
 if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) { runNativeReviewCli().catch(error => { process.stderr.write(`${error.message}\n`); process.exitCode = 2; }); }

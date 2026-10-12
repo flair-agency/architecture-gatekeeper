@@ -73,7 +73,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'owner-addition/multi-authority-eligibility.mjs',
     'owner-addition/single-authority-member.mjs',
     'github/owner-addition-evidence-zip.mjs',
-    'github/github-runner-env.mjs');
+    'github/github-runner-env.mjs',
+    'local-review/native-review.mjs');
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -297,6 +298,13 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
         .replace(/from '\.\.\/reviewer-transports\//g, "from './")
         .replace(/from '\.\.\//g, "from './"));
   }
+  const nativeFacade = readFileSync(join(flatRoot, 'dist/native-review.mjs'), 'utf8');
+  const nativeGuard = nativeFacade.slice(nativeFacade.indexOf('if (process.argv[1]'));
+  assert.match(nativeGuard, /runNativeReviewCli\(\)\.catch/);
+  writeFileSync(join(flatRoot, 'dist/native-review.mjs'),
+    "#!/usr/bin/env node\nimport { realpathSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\n" +
+    readFileSync(join(flatRoot, 'dist/local-review/native-review.mjs'), 'utf8')
+      .replace(/from '\.\.\/review-contract\//g, "from './") + '\n' + nativeGuard);
   rmSync(join(flatRoot, 'dist/local-review'), { recursive: true });
   rmSync(join(flatRoot, 'dist/runner-paths'), { recursive: true });
   rmSync(join(flatRoot, 'dist/reviewer-transports'), { recursive: true });

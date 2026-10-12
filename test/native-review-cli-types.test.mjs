@@ -4,6 +4,7 @@ import test from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'acorn';
+import { createHash } from 'node:crypto';
 import ts from 'typescript';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,7 +36,12 @@ function canonical(value) {
 }
 
 function runtimeAst(path) {
-  return canonical(parse(readFileSync(path, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' }).body);
+  const source = readFileSync(path, 'utf8');
+  const emitted = ts.transpileModule(source, {
+    fileName: path,
+    compilerOptions: { ...parsed.options, noEmit: false },
+  }).outputText;
+  return canonical(parse(emitted, { ecmaVersion: 'latest', sourceType: 'module' }).body);
 }
 
 test('native CLI exposes its existing optional string-array/string inputs and async completion', () => {
@@ -52,12 +58,23 @@ test('native CLI rejects incompatible caller inputs and return claims', () => {
     'the checked CLI and transitive imports must remain error-free');
 });
 
-test('source and emitted native CLI retain the same complete runtime AST and direct-run guard', () => {
+test('typed native CLI retains the complete original operations and flat direct-run guard', async () => {
   const sourcePath = join(root, 'src/native-review.mjs');
   const emittedPath = join(root, 'dist/native-review.mjs');
   const source = readFileSync(sourcePath, 'utf8');
   const emitted = readFileSync(emittedPath, 'utf8');
   assert.deepEqual(runtimeAst(sourcePath), runtimeAst(emittedPath));
+  const implementationSource = join(root, 'src/local-review/native-review.mts');
+  const implementationEmitted = join(root, 'dist/local-review/native-review.mjs');
+  assert.deepEqual(runtimeAst(implementationSource), runtimeAst(implementationEmitted));
+  const operations = runtimeAst(implementationSource)
+    .filter(node => node.type === 'FunctionDeclaration' || node.type === 'ExportNamedDeclaration');
+  assert.equal(createHash('sha256').update(JSON.stringify(operations)).digest('hex'),
+    '47b0c27297dff6281061db1474fc7832f95f9d1fbaf5ce92448585898fc17d5b',
+    'the complete pre-migration usage and async CLI operations remain identical after type erasure');
+  const flat = await import('../dist/native-review.mjs');
+  const grouped = await import('../dist/local-review/native-review.mjs');
+  assert.equal(flat.runNativeReviewCli, grouped.runNativeReviewCli);
   for (const text of [source, emitted]) {
     assert.match(text, /if \(process\.argv\[1\] && fileURLToPath\(import\.meta\.url\) === realpathSync\(process\.argv\[1\]\)\)/);
   }
