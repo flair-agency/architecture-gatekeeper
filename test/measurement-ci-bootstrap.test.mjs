@@ -1,0 +1,19 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+test('real CI diagnostic CLI contains bootstrap errors without altering required review', t => {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), 'agk-invalid-cli-')); t.after(() => rmSync(root, { recursive: true, force: true }));
+  const runCi = (command, env) => spawnSync(process.execPath, [new URL('../dist/measurement-ci.mjs', import.meta.url).pathname, command],
+    { cwd: root, env: { ...process.env, ...env }, encoding: 'utf8' });
+  for (const [command, env] of [['unexpected', { AGK_MEASUREMENT_DIR: join(root, 'records') }],
+    ['start', { AGK_MEASUREMENT_DIR: join(root, 'forbidden'), GITHUB_WORKSPACE: root }]]) {
+    const result = runCi(command, env);
+    assert.equal(result.status, 0); assert.equal(result.stdout, ''); assert.equal(result.stderr, 'AGK measurement gap: CI diagnostic recording unavailable.\n');
+  }
+  const disabled = runCi('start', { AGK_MEASUREMENT_DIR: '' });
+  assert.equal(disabled.status, 0); assert.equal(disabled.stdout, ''); assert.equal(disabled.stderr, '');
+
+});

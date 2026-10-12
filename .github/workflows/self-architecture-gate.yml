@@ -70,6 +70,7 @@ jobs:
     uses: ./.github/workflows/architecture-gate.yml
     with:
       protected-review-instructions: true
+      measurement-enabled: ${{ vars.ARCHITECTURE_GATE_MEASUREMENT == 'true' }}
       # Off by default. Enable only for a bounded self-review cost experiment.
       self-flex-probe: ${{ vars.ARCHITECTURE_GATE_SELF_FLEX == 'true' && vars.ARCHITECTURE_GATE_SELF_FLEX_PR == format('{0}', github.event.pull_request.number) && vars.ARCHITECTURE_GATE_SELF_FLEX_HEAD == github.event.pull_request.head.sha }}
       review-job-timeout-minutes: ${{ fromJSON(vars.ARCHITECTURE_GATE_REVIEW_JOB_TIMEOUT_MINUTES || '7') }}

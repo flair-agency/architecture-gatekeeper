@@ -1,6 +1,6 @@
 import { beginMeasurement, aggregateMeasurement, sampleMeasurementPopulation } from '../../../src/measurement-api.mts';
 import { readMeasurementJson, parseMeasurementJson, validateMeasurementRecord } from '../../../src/measurement.mts';
-// CI typing is added with the dependent CI adapter slice.
+import { runCiMeasurement } from '../../../src/measurement-ci.mts';
 import { runMeasurementCli } from '../../../src/measurement-cli.mts';
 import { runManualReviewAsync } from '../../../src/local-review/local-gate.mts';
 
@@ -15,7 +15,7 @@ const checkedId: string = validateMeasurementRecord(external).attemptId;
 const report = aggregateMeasurement(external, { cohort: 'natural', domain: 'self' });
 const rate: number | null = report.metrics.precision.rate;
 const sample = sampleMeasurementPopulation(external, { seed: 'frozen', count: 5 });
-// No CI adapter is enabled in this slice.
+runCiMeasurement('start', { AGK_MEASUREMENT_DIR: '/private' });
 runMeasurementCli(['export', '/private']);
 runManualReviewAsync('task', '/repo', { measurement: { directory: '/private', changeId: 'change' } });
 void [id, checkedId, parsed, read, rate, sample];
