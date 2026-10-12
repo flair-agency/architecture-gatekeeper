@@ -179,6 +179,28 @@ test('rejects dotted-repository lookalikes before requesting either check run', 
   }
 });
 
+test('producer and accept URLs reject non-resource components before fetching them', async () => {
+  for (const [index, message] of [
+    [0, /producer check run URL is outside the selected repository/],
+    [1, /Gatekeeper accept check run URL is outside the selected repository/],
+  ]) {
+    for (const [component, value] of [['search', '?unselected=1'], ['hash', '#unselected'],
+      ['username', 'unselected'], ['password', 'unselected']]) {
+      const fixture = prepare();
+      const jobs = fixture.responses.get(`/repos/${candidate.repository}/actions/runs/9001/attempts/2/jobs?per_page=100`).jobs;
+      const url = new URL(jobs[index].check_run_url);
+      url[component] = value;
+      jobs[index].check_run_url = url.href;
+      const requested = [];
+      const fetchImpl = fixture.args.fetchImpl;
+      fixture.args.fetchImpl = async (...args) => { requested.push(args[0]); return fetchImpl(...args); };
+      await assert.rejects(() => verifyOwnerAdditionEligibilityProvenance(fixture.args), message,
+        `${index}:${component}`);
+      assert.equal(requested.includes(url.href), false, `${index}:${component} must fail before fetch`);
+    }
+  }
+});
+
 test('verifies a pull_request_target producer bound to the exact PR head', async () => {
   const { args } = prepare({ event: 'pull_request_target', runHead: candidate.bSha });
   const result = await verifyOwnerAdditionEligibilityProvenance(args);
