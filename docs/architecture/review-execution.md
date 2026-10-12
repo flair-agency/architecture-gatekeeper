@@ -380,6 +380,166 @@ Before activation, explicitly select and verify the remaining deployment setting
 and obtain authenticated route evidence for quality, cost, latency and decision
 consistency; determinism is not promised.
 
+#### Target bounded default-branch ordinary Gemini caller deployment (owner decision, 2026-10-12)
+
+The owner authorizes placing the existing caller on the default development
+branch, currently `main`, for one session on PR #517 targeting
+`feature/gemini-ci`. Its fixed head is
+`c4b0057d9dd47f79df2a896143f7ac6db5da2c2e`, protected base and runtime are
+`c5686f63909af2e83b749ffa0b91d33cb9ea96ad`, reviewed merge is
+`96ab3902f95250a1c80aecec45434e04272ad548`, and reviewed tree is
+`8107feae6dbf6bc38b279fcab724fd42a5ad0097`. The exact ordered merge parents
+are `[c5686f63909af2e83b749ffa0b91d33cb9ea96ad,
+c4b0057d9dd47f79df2a896143f7ac6db5da2c2e]`. The reusable workflow remains
+pinned to `c5686f63909af2e83b749ffa0b91d33cb9ea96ad`.
+
+This authorization does not select Gemini for PRs targeting `main` or another
+branch, or import FEATURE authority into the default-branch canonical Set.
+The caller continues to resolve the protected feature policy, prompt, schema,
+decision-validation files and complete six-member Authority Set from that
+consumer target. It grants no semantic or merge-acceptance authority, changes
+no validation or acceptance requirement, and preserves the original protected
+`BLOCK`. This is limited deployment for the first bounded authentication and
+ordinary hosted verification session, not completion or broader activation.
+
+Before OIDC issuance becomes available to the credential-capable job, the
+trusted read-only admission step must bind the immutable event and fresh live
+GitHub API observations to the fixed repository, PR, target branch, head,
+base, merge, ordered parents and tree above. It verifies base/head numeric
+repository identities and same-repository classification, and reads caller and
+configuration as regular immutable Git blobs from the same host-selected
+`GITHUB_WORKFLOW_SHA`. Candidate-selected caller or revision inputs are not
+accepted. Point-in-time API agreement is not atomic protection against a later
+PR change. The admission job has only contents/actions/pull-requests read
+permissions, no OIDC permission, checkout, external action or model call.
+Its bounds are 12 API reads, 45 seconds overall, 8 seconds per read, 1048576
+response bytes and 100000 blob bytes. Missing, malformed, mismatched,
+unavailable or over-bound input denies admission.
+
+The selected existing ordinary workflow instance is `381385696`, for exactly
+`run_number: 1` and `attempt: 1`. Its public API history readback after diagnostic
+capture 3 reported `total_count: 0`. Re-read that exact history immediately
+before READY and verify the existing private approved-session accounting;
+public CI alone does not establish the private allowance. A different workflow
+instance, recreated workflow, run ordinal, attempt or source tuple is denied.
+An unrelated event consumes the selected ordinal; there is no automatic
+advance or re-admission. Approval covers one operator-admitted workflow session
+only: no second session, workflow rerun, repeated-ready re-admission or provider
+fallback. HTTP calls and CLI-internal retries within that session remain subject
+to the selected caps and deadlines below.
+
+The owner confirms that the configured WIF provider, service account and target
+repository binding match the intended selection. Bind the queued repository
+Secret selector bytes to this already confirmed selection by SHA-256 of their
+exact UTF-8 bytes, without adding a newline. No separate Environment selects
+different Secrets in this profile. Fingerprint equality binds bytes; it does
+not establish owner intent, successful authentication, Google IAM correctness,
+principal authentication or host-protection assurance by itself.
+
+The canonical admission values selected for the separately reviewed deployment
+of `.codex/gatekeeper/ordinary-gemini-admission.json` are:
+
+```json
+{
+  "version": 1,
+  "enabled": true,
+  "workflowId": 381385696,
+  "runNumber": 1,
+  "callerSha256": "4cf30713b143df2ea08927648d5ff4911ee378990203a16c56ffdf7fbba7c81c",
+  "providerSelectorSha256": "e3e7a8a5c8f61c6b3fc7e0eed879e662be902299304d2501843cc06821fb5b9c",
+  "serviceAccountSelectorSha256": "af5c0a83eb95b8969994e2b9667a0f2964bce2cb43e390441e40e280e1992e92"
+}
+```
+
+The raw selector fingerprints were captured by existing diagnostic workflow
+`381535290`, [run 38188331694](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38188331694),
+run number 3, attempt 1, fingerprint job `114615426715`, which succeeded on the
+`main` push at `32d95063485a3983ed8c37343efad21dc724244d`. Its source SHA and
+`GITHUB_WORKFLOW_SHA` both equal that adopted commit; its tree is
+`f7e0f3456ad193960cd3b1c93c01fb4c94946dd3`. The diagnostic workflow SHA-256 is
+`67501937fb542ada33e0575d7e5f73a34f294e19711325da47b88e097b5e1232` and its
+test SHA-256 is
+`76dc978cdf5ab6ef5421a64a8f50f5598c744013b2d61193e57e87f042dd6eb3`.
+The diagnostic compared the trimmed effective account identity with intended
+email SHA-256
+`2180acf4e4c9e0a0a7ec6f997652c2f34e302d2b285bbeb3fd3c1d09688189c4`.
+That intended-email digest is distinct from the raw account selector fingerprint
+above. Capture 3 acquired no OIDC or provider credential and made no model call;
+it did not consume the approved PR #517 review session. Earlier failed captures
+1 and 2 remain historical. No diagnostic rerun or ordinal advance is selected.
+The selector values themselves remain private.
+
+The inactive corrected caller artifact has SHA-256
+`f2d45ee526ae4133d9f34e5fdd7637500e5ef4848d34fa40c0408d7eea88331a`.
+Its prospective enabled artifact has the `callerSha256` value above. The only
+permitted activation delta between these two artifacts is replacing the
+`architecture-gate` job's literal `if: false` and explanatory comment with this
+exact comment and guard; every other caller byte remains identical:
+
+```yaml
+# One selected workflow instance/ordinal/attempt must pass the protected admission step.
+if: needs.classify-self-repository.outputs.classification == 'same-repository' && needs.protected-admission.outputs.admitted == 'true' && github.event_name == 'pull_request_target' && github.event.action == 'ready_for_review' && github.event.pull_request.draft == false && github.event.pull_request.number == 517 && github.event.pull_request.head.sha == 'c4b0057d9dd47f79df2a896143f7ac6db5da2c2e' && github.run_attempt == 1
+```
+
+The corrected caller binds `GITHUB_SHA` to the same validated
+`GITHUB_WORKFLOW_SHA` whose commit supplies the caller and configuration.
+On current GitHub.com, `pull_request_target` uses the default branch execution
+context; that context is distinct from the PR target branch and its protected
+base. The event and live API must still separately agree on the exact feature
+base, head, merge, ordered parents and tree above. No PR-tuple check is removed.
+The [official event specification](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target)
+and workflow-SHA definition govern this distinction; actual hosted source
+provenance remains a required observation, not a claim supplied by this record.
+
+The prior source pair adopted through #532 was inactive
+`9e7c45a0aea5b4d957267b4efccfbc21998184a5ecd42ef4db5d252d52c5815f`
+and prospective enabled
+`ee0690f61eddf48c152c41e791b76b1549b60087259718d1bbf3f493e9ff8b21`.
+Those bytes compared `GITHUB_SHA` with the feature base and therefore denied the
+selected current GitHub.com event before API reads. The source correction
+replaces only that host-context comparison in both artifacts; between the
+corrected inert and enabled artifacts, only the literal comment/guard delta
+shown above is permitted. The prior candidate was never deployed and no READY
+was emitted for it. Retain its failed-design finding and incomplete verification
+as history; the corrected source is a new prerequisite-gated candidate, not a
+rewritten prior result. Workflow ID, ordinal, attempt, PR tuple, fingerprints,
+credential boundaries, operational ceilings and the existing single-session
+approval remain unchanged. No additional session or routing scope is selected.
+
+The selected protected-base inputs are policy
+`.codex/gatekeeper/gemini-verification-policy.json` (version 6), prompt
+`.codex/gatekeeper/ci-prompt.md`, schema
+`.codex/gatekeeper/ci-decision.schema.json`, validation
+`.codex/gatekeeper/decision.validation.json`, and complete manifest
+`.codex/gatekeeper/authorities.json`. The operational profile is Gemini CLI
+`0.62.0`, model `gemini-3.8-flash`, `thinkingLevel: MEDIUM`, no `thinkingBudget`,
+a 180-second session deadline, `maxOutputTokens: 16384`, and a 196608-byte
+encoded prompt limit. Workspace limits are 32 files, 131072 bytes per file and
+524288 bytes total; stdout and stderr are each limited to 65536 bytes. Use one
+credential acquisition with a 60-second authentication deadline; request a
+300-second credential and require observed expiry between 240 and 360 seconds.
+Use region `global`; derive the project only from the same normalized, strictly
+parsed effective service-account email. No explicit runner renewal handle or
+fallback is supplied. Count every upstream dispatch before sending, including
+CLI-internal retries and uncertain sends, with a defensive cap of 10 for this
+session. This cap is not a cross-session allocation or a permanent development
+allowance. These selected settings are not proof of hosted E2E or model quality.
+Existing [Gemini WIF authentication](#target-gemini-ci-authentication-selection-issue-252-owner-decision-2026-10-04)
+and [credential-isolated proxy](#target-multi-provider-credential-isolated-review-proxy-boundary-issue-252-owner-decision-2026-10-02)
+clauses continue to govern OIDC exchange, credential use and non-inheritance;
+this record establishes no same-user host isolation.
+
+This record does not adopt or deploy itself. Canonical adoption and exact
+protected target readback must precede publication of the separately reviewed
+caller/config deployment. The deployed caller remains literal `false` and its
+configuration remains disabled/null until that adoption and verified deployment
+prerequisites. Before the single READY event, require actual caller/config byte
+agreement, the fixed workflow instance and unused ordinal, current fixed PR
+source readback and the retained unused-session verification. Authentication,
+Gemini review, reporting and actual enforced accept remain live proof obligations.
+No new governance profile, G0 selection, acceptance rule, grant backend, tag,
+write capability or Gemini `main` target routing is selected.
+
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
 The GitHub-specific step-output adapter treats `GITHUB_OUTPUT` as a trusted

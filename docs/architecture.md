@@ -197,6 +197,10 @@ See the [full normative section](architecture/review-execution.md#target-gemini-
 
 See the [full normative section](architecture/review-execution.md#target-gemini-ci-execution-selection-issue-252-owner-decision-2026-10-04).
 
+#### Target bounded default-branch ordinary Gemini caller deployment (owner decision, 2026-10-12)
+
+See the [full normative section](architecture/review-execution.md#target-bounded-default-branch-ordinary-gemini-caller-deployment-owner-decision-2026-10-12).
+
 #### GitHub step-output sink (owner decision, 2026-10-03)
 
 See the [full normative section](architecture/review-execution.md#github-step-output-sink-owner-decision-2026-10-03).
