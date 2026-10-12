@@ -17,6 +17,18 @@ The caller pins reusable workflow source commit
 immutable source pin for review; change it only after reviewing a release and
 verifying the route for the consumer repository.
 
+GitHub loads a `pull_request_target` workflow definition from the base
+repository's default branch; `branches: [main]` limits this caller to pull
+requests targeting `main`. Keep the default branch protected and make the
+reviewed caller available there. Its job-level condition requires both head
+and base repository IDs and names to match the current repository before the
+secret-bearing reusable workflow can be called; cross-repository pull requests
+are skipped. The caller itself has no checkout or run steps. Do not add
+untrusted pull request code execution to this privileged path. Consumers must
+decide whether their host policy permits this event and separately configure
+and verify branch protection and required checks; this example does not prove
+those host settings.
+
 Before enabling the caller, add an `OPENAI_API_KEY` Actions secret in the
 consumer repository settings. The caller forwards only that selected secret,
 which is required by the Codex reviewer. This example's Authority Set contains

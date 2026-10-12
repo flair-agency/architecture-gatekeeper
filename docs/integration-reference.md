@@ -101,7 +101,8 @@ Review the proposed change only against the committed consumer architecture
 included in the request. Return PASS if it follows that design, BLOCK if it
 conflicts with an existing rule, or OWNER_DECISION if the architecture does not
 decide the question. Report the selected authority ID `architecture` in
-authorityIds and briefly describe the reviewed scope. Do not implement changes.
+authorityIds and include at least one concise reviewedScope item describing
+the reviewed scope. Do not implement changes.
 EOF
 
 cat > .codex/gatekeeper/decision.schema.json <<'EOF'
@@ -119,6 +120,7 @@ cat > .codex/gatekeeper/decision.schema.json <<'EOF'
     },
     "reviewedScope": {
       "type": "array",
+      "minItems": 1,
       "items": { "type": "string", "minLength": 1 }
     }
   }
@@ -154,8 +156,8 @@ proposed decision:
 ```
 
 The CLI prints a schema-validated JSON decision, the reported authority ID and
-scope, and `reviewedRevision`. That field must equal `git rev-parse HEAD` from
-the consumer repository. The process exits 0 for a schema-valid `PASS`,
+at least one nonempty `reviewedScope` item, and `reviewedRevision`. That field
+must equal `git rev-parse HEAD` from the consumer repository. The process exits 0 for a schema-valid `PASS`,
 `BLOCK`, or `OWNER_DECISION`; these are semantic review outcomes, not acceptance.
 `PASS` means the described proposal fits this
 sample authority; `BLOCK` means it conflicts with a stated rule;

@@ -1,7 +1,8 @@
 name: Architecture Gate
 
 on:
-  pull_request:
+  pull_request_target:
+    branches: [main]
 
 permissions:
   contents: read
@@ -9,6 +10,13 @@ permissions:
 
 jobs:
   architecture-gate:
+    # This job forwards OPENAI_API_KEY to a reusable workflow. Only invoke it
+    # for pull requests whose head and base are this repository itself.
+    if: >-
+      github.event.pull_request.head.repo.id == github.repository_id &&
+      github.event.pull_request.base.repo.id == github.repository_id &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.repo.full_name == github.repository
     uses: flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate-consumer.yml@2ea9ebe12be9d233c41a2dbc61e7a84caf3abbfb
     with:
       policy-path: .codex/gatekeeper/ci-policy.json
