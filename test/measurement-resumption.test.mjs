@@ -33,7 +33,7 @@ for (const [label, phase, mutation] of [
 ]) {
   test(`resumption refuses ${label} before writing any terminal`, t => {
     const f = fixture(t); replace(f, phase, mutation);
-    const resumed = resumeMeasurement(f.attempt.id, f.directory);
+    const resumed = resumeMeasurement(f.attempt.id, f.directory, f.root);
     assert.equal(resumed.id, null);
     assert.doesNotThrow(() => resumed.finish({ decision: { decision: 'PASS' } }));
     assert.ok(!loadMeasurementDirectory(f.directory).records.some(r => r.phase === 'terminal'));
@@ -43,9 +43,9 @@ for (const [label, phase, mutation] of [
 test('malformed preparation is a gap, while absent preparation remains resumable', t => {
   const f = fixture(t);
   writeFileSync(join(f.directory, `${f.attempt.id}.prepared.json`), '{bad');
-  assert.equal(resumeMeasurement(f.attempt.id, f.directory).id, null);
+  assert.equal(resumeMeasurement(f.attempt.id, f.directory, f.root).id, null);
   rmSync(join(f.directory, `${f.attempt.id}.prepared.json`));
-  const resumed = resumeMeasurement(f.attempt.id, f.directory);
+  const resumed = resumeMeasurement(f.attempt.id, f.directory, f.root);
   assert.equal(resumed.id, f.attempt.id);
   resumed.finish({ state: 'incomplete' });
   assert.equal(loadMeasurementDirectory(f.directory).records.find(r => r.phase === 'terminal').state, 'incomplete');
@@ -54,7 +54,7 @@ test('malformed preparation is a gap, while absent preparation remains resumable
 test('completed attempts cannot resume or append preparation after their terminal', t => {
   const f = fixture(t); f.attempt.finish();
   rmSync(join(f.directory, `${f.attempt.id}.prepared.json`));
-  const resumed = resumeMeasurement(f.attempt.id, f.directory);
+  const resumed = resumeMeasurement(f.attempt.id, f.directory, f.root);
   assert.equal(resumed.id, null);
   resumed.request(f.request); resumed.finish();
   assert.deepEqual(loadMeasurementDirectory(f.directory).records.map(r => r.phase).sort(), ['start', 'terminal']);
@@ -77,7 +77,7 @@ test('resumption checks any terminal through bounded parsing-independent direct-
   const terminal = join(f.directory, `${f.attempt.id}.terminal.json`);
   for (const bytes of ['{torn', 'x'.repeat(256 * 1024 + 1)]) {
     writeFileSync(terminal, bytes);
-    assert.equal(resumeMeasurement(f.attempt.id, f.directory).id, null);
+    assert.equal(resumeMeasurement(f.attempt.id, f.directory, f.root).id, null);
     assert.ok(!loadMeasurementDirectory(f.directory).records.some(r => r.phase === 'terminal'));
   }
 });
@@ -158,4 +158,16 @@ test('native selection skips newer unfinished candidates with conflicting phase 
   assert.equal(resumed.id, f.attempt.id); resumed.finish({ state: 'completed' });
   assert.deepEqual(loadMeasurementDirectory(f.directory).records.filter(r => r.phase === 'terminal').map(r => r.attemptId), [f.attempt.id]);
   assert.equal(resumeNativeMeasurement(f.requestPath, f.request, f.directory).id, null, 'all remaining candidates are corrupt');
+});
+
+
+test('shared diagnostic storage cannot resume another repository under its immutable identity', t => {
+  for (const route of ['ci-review', 'native']) {
+    const f = fixture(t, route); const other = join(f.directory, '..', `other-${route}`); mkdirSync(other);
+    const resumed = route === 'native' ? resumeNativeMeasurement(f.requestPath, { ...f.request, repositoryRoot: other }, f.directory) : resumeMeasurement(f.attempt.id, f.directory, other);
+    assert.equal(resumed.id, null); resumed.finish({ decision: { decision: 'PASS' } });
+    assert.ok(!loadMeasurementDirectory(f.directory).records.some(r => r.phase === 'terminal'));
+    const correct = route === 'native' ? resumeNativeMeasurement(f.requestPath, f.request, f.directory) : resumeMeasurement(f.attempt.id, f.directory, f.root);
+    assert.equal(correct.id, f.attempt.id); correct.finish({ state: 'completed' });
+  }
 });

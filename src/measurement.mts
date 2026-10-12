@@ -258,7 +258,8 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
 export function resumeNativeMeasurement(requestPath: string, request: MeasurementRequest, selected = process.env.AGK_MEASUREMENT_DIR): MeasurementAttempt {
   if (!selected) return noop;
   try {
-    const dir = directory(selected, resolveMeasurementWorkingRoot(request.repositoryRoot));
+    const root = resolveMeasurementWorkingRoot(request.repositoryRoot);
+    const dir = directory(selected, root);
     const correlation = measurementDigest(resolve(requestPath));
     const records = loadMeasurementDirectory(dir).records as RecordView[];
     // A torn/oversized terminal is still an exclusive terminal file. Do not
@@ -268,7 +269,7 @@ export function resumeNativeMeasurement(requestPath: string, request: Measuremen
       catch (error) { return (error as NodeJS.ErrnoException).code === 'ENOENT'; }
     };
     const collectorSha256 = runtime().collectorSha256;
-    const starts = records.filter(r => (r.runtime as { collectorSha256?: unknown } | null)?.collectorSha256 === collectorSha256 && r.phase === 'prepared' && r.route === 'native' && r.request?.requestId === request.requestId && r.correlation === correlation && unfinished(r.attemptId));
+    const starts = records.filter(r => (r.runtime as { collectorSha256?: unknown } | null)?.collectorSha256 === collectorSha256 && r.repositoryId === measurementDigest(root) && r.phase === 'prepared' && r.route === 'native' && r.request?.requestId === request.requestId && r.correlation === correlation && unfinished(r.attemptId));
     starts.sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
     const start = starts.find(candidate => {
       try { validateMeasurementPhases(records.filter(r => r.attemptId === candidate.attemptId)); return true; }
@@ -329,12 +330,14 @@ export function redactMeasurement(value: MeasurementRecord) {
 
 export function resumeMeasurement(attemptId: string, selected: string | undefined, cwd: unknown = process.cwd()): MeasurementAttempt {
   try {
-    const dir = directory(selected, resolveMeasurementWorkingRoot(cwd));
+    const root = resolveMeasurementWorkingRoot(cwd);
+    const dir = directory(selected, root);
     if (!/^[a-f0-9-]{36}$/.test(attemptId)) throw new Error('Invalid attempt identity.');
     try { readDiagnosticText(join(dir, `${attemptId}.terminal.json`), MAX_BYTES); throw new Error('Attempt already completed.'); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
     const start = validateMeasurementRecord(readMeasurementJson(join(dir, `${attemptId}.start.json`))) as RecordView;
     if (start.attemptId !== attemptId || start.phase !== 'start') throw new Error('Mismatched start observation.');
+    if (start.repositoryId !== measurementDigest(root)) throw new Error('Recorded repository differs from reviewed root.');
     if ((start.runtime as { collectorSha256?: unknown } | null)?.collectorSha256 !== runtime().collectorSha256) throw new Error('Collector runtime differs from start observation.');
     const preparedPath = join(dir, `${attemptId}.prepared.json`);
     let prepared: RecordView | undefined;
