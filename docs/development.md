@@ -126,10 +126,16 @@ Flat facades retain public exports and the original CLI guards; policy CLI stays
 preserve asynchronous dispatch and runtime operations. External
 JSON and unchecked property rereads remain unknown. Adoption eligibility is
 unknown because the existing validator rereads a caller-owned result; adoption
-and canonical states remain separate literal states. The legacy CI preparer and multi-authority addition migrations remain deferred,
-with their original generic input/output risk and alert locations; no dismissal
-or trust-model expansion is made. Types provide no
-authentication, owner authorization, immutable evidence or protected acceptance.
+and canonical states remain separate literal states. The legacy CI preparer
+remains at its flat path with its original Git, filesystem and CLI operations;
+only its existing exact `authorityFiles` decision check is extracted to
+`src/ci-review/legacy-authority-decision.mts`. Parsed decisions and provenance
+observations remain unknown, and the helper returns an unknown observation. A
+local source-only CodeQL comparison reports 57 of 58 prior fingerprints and all
+58 flows; hosted verification remains pending. This partial extraction does not
+claim fingerprint equivalence, risk removal, authentication, owner authorization,
+immutable evidence or protected acceptance. The multi-authority addition
+migration also remains partial; no model expansion or alert dismissal is made.
 
 The current BLOCK handoff stack types `owner-amendment-block-handoff`,
 `owner-amendment-block-handoff-compose`, and `owner-amendment-block-handoff-orchestrator`.
@@ -279,12 +285,15 @@ reader and filesystem writer. They preserve those operations without claiming
 that `outputPath` is a string: the original truthy guard permits native path-like
 and file-descriptor inputs. The finalizer and multi-authority orchestration
 files also remain partial migrations; their selected typed helpers do not move
-the rest of either adapter.
+the rest of either adapter. The legacy CI preparer remains another partial
+migration: only its decision check is extracted, with Git, filesystem and CLI
+operations at the original path.
 
-The legacy snapshot extraction stays deferred because a trial move changed an
-existing CodeQL source fingerprint. Its current metadata retains 57 of 58
-hashes and all 58 flows. Keep that source location and the current model; do
-not infer that extraction removed the risk.
+The 57-of-58-fingerprint local CodeQL comparison above concerns that legacy
+decision helper, not a move of the snapshot materializer sink. All 58 flows
+remain present; hosted verification is pending and the selected model is
+unchanged. The materializer remains a checked JavaScript bridge at its original
+path with its original path-like output behavior.
 
 The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
 retains the inventory, runtime limits and #423 preview-lifecycle boundary.
@@ -296,11 +305,12 @@ This CI composition candidate brings the count to 81 `.mts` modules and
 15 originals remaining; the partially typed report is included in the latter.
 The GitHub command candidate reaches 82 original modules in `.mts` and
 14 originals remaining. Of those 14, three have checked JavaScript contracts
-(the runner-environment accessor, snapshot materializer and native CLI), and three are
-partial helper migrations (CI report, owner-addition finalizer and
-multi-authority orchestration). The other eight remain JavaScript modules
-outside these migrations. These source-layout counts do not change the selected
-CodeQL model or establish acceptance evidence.
+(the runner-environment accessor, snapshot materializer and native CLI), and four are
+partial helper migrations (CI report, owner-addition finalizer, multi-authority
+orchestration and the legacy authority decision check). The legacy CI
+preparation and CLI body remain at their original flat path. The other seven
+remain JavaScript modules outside these migrations. These source-layout counts
+do not change the selected CodeQL model or establish acceptance evidence.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
