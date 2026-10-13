@@ -1,0 +1,98 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { chmodSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { beginMeasurement, loadMeasurementDirectory } from '../dist/measurement.mjs';
+
+function directory(t) {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), 'agk-entry-limit-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  return root;
+}
+
+test('export counts nonrecord entries and retains the exact full-directory boundary', t => {
+  const root = directory(t);
+  for (let i = 0; i < 4096; i++) writeFileSync(join(root, `not-a-record-${i}`), '');
+  assert.deepEqual(loadMeasurementDirectory(root), { version: 1, records: [], gaps: 0 });
+  assert.equal(beginMeasurement({ route: 'manual', directory: root }).id, null);
+  writeFileSync(join(root, 'overflow-not-a-record'), '');
+  assert.throws(() => loadMeasurementDirectory(root), /directory entry limit exceeded/);
+});
+
+for (const scenario of ['export', 'capture', 'read-failure']) {
+  test(`bounded directory iteration closes its handle after ${scenario}`, t => {
+    const root = directory(t);
+    // Isolated filesystem interceptors exercise an inexhaustible directory
+    // and a failed read through the production entrypoints, without allocating
+    // an unbounded fixture or changing another test's built-in bindings.
+    const script = `
+      import assert from 'node:assert/strict';
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
+      import { beginMeasurement, loadMeasurementDirectory } from ${JSON.stringify(new URL('../dist/measurement.mjs', import.meta.url).href)};
+      let reads = 0; let closes = 0;
+      fs.readdirSync = () => { throw new Error('Unbounded directory read must not be used.'); };
+      fs.opendirSync = (_path, options) => {
+        assert.equal(options.bufferSize, 32);
+        return { readSync() {
+          reads++;
+          if (process.argv[2] === 'read-failure' && reads === 3) throw new Error('Directory read failed.');
+          if (reads > 4097) throw new Error('Reader did not stop at the entry ceiling.');
+          return { name: 'not-a-record-' + reads };
+        }, closeSync() { closes++; } };
+      };
+      syncBuiltinESMExports();
+      if (process.argv[2] === 'capture') {
+        assert.equal(beginMeasurement({ route: 'manual', directory: process.argv[1] }).id, null);
+        assert.equal(reads, 4094); // first overflow when three phase entries must remain
+      } else {
+        assert.throws(() => loadMeasurementDirectory(process.argv[1]), process.argv[2] === 'read-failure' ? /Directory read failed/ : /directory entry limit exceeded/);
+        assert.equal(reads, process.argv[2] === 'read-failure' ? 3 : 4097);
+      }
+      assert.equal(closes, 1);
+    `;
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', script, root, scenario], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  });
+}
+
+test('diagnostic directories require all owner permissions before loading or capture', { skip: process.platform === 'win32' }, t => {
+  const root = directory(t);
+  for (const mode of [0o000,0o100,0o200,0o300,0o400,0o500,0o600,0o710,0o770]) {
+    chmodSync(root, mode);
+    try {
+      assert.throws(() => loadMeasurementDirectory(root), /private \(0700\)/, mode.toString(8));
+      assert.equal(beginMeasurement({ route: 'manual', directory: root }).id, null);
+    } finally { chmodSync(root, 0o700); }
+  }
+  assert.deepEqual(loadMeasurementDirectory(root), { version: 1, records: [], gaps: 0 });
+  const attempt = beginMeasurement({ route: 'manual', directory: root });
+  assert.ok(attempt.id); attempt.finish();
+  assert.ok(loadMeasurementDirectory(root).records.some(r => r.phase === 'terminal'));
+});
+
+test('foreign-owned diagnostics are rejected before capture, resumption, completion or export', {skip: process.platform === 'win32'}, t => {
+  const root = directory(t);
+  const script = `
+    import assert from 'node:assert/strict';
+    import fs from 'node:fs';
+    import {syncBuiltinESMExports} from 'node:module';
+    import {beginMeasurement,resumeMeasurement,resumeNativeMeasurement,loadMeasurementDirectory,measurementDigest} from ${JSON.stringify(new URL('../dist/measurement.mjs',import.meta.url).href)};
+    const dir=process.argv[1], requestPath=dir+'-request';
+    const request={requestId:'a'.repeat(64),repositoryRoot:process.cwd()};
+    const attempt=beginMeasurement({route:'native',directory:dir,correlation:measurementDigest(requestPath)});
+    assert.ok(attempt.id);attempt.request(request);
+    const stat=fs.lstatSync,write=fs.writeFileSync;let writes=0;
+    fs.lstatSync=(path,...args)=>{const value=stat(path,...args);if(path===dir)value.uid=process.geteuid()+1;return value;};
+    fs.writeFileSync=(...args)=>{writes++;return write(...args);};syncBuiltinESMExports();
+    assert.throws(()=>loadMeasurementDirectory(dir),/owned by the current effective user/);
+    assert.equal(beginMeasurement({route:'manual',directory:dir}).id,null);
+    assert.equal(resumeMeasurement(attempt.id,dir).id,null);
+    assert.equal(resumeNativeMeasurement(requestPath,request,dir).id,null);
+    attempt.finish();assert.equal(writes,0);
+  `;
+  const result=spawnSync(process.execPath,['--input-type=module','-e',script,root],{encoding:'utf8',timeout:5000});
+  assert.equal(result.status,0,result.stderr);
+});

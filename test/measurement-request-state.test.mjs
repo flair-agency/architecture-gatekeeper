@@ -1,0 +1,237 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { beginMeasurement, loadMeasurementDirectory, resumeMeasurement, redactMeasurement, measurementDigest, validateMeasurementRecord } from '../dist/measurement.mjs';
+
+function fixture(t) {
+  const parent = mkdtempSync(join(realpathSync(tmpdir()), 'agk-measurement-request-state-'));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  const root = join(parent, 'repo'); mkdirSync(root);
+  const directory = join(parent, 'records'); mkdirSync(directory, { mode: 0o700 });
+  return { root, directory };
+}
+function request(id, suffix) {
+  return { requestId: id.repeat(64), reviewedRevision: 'b'.repeat(40), prompt: `prompt-${suffix}`,
+    schema: { schema: suffix }, authoritySet: { members: [{ id: suffix }] }, reviewer: { model: suffix, settings: { effort: suffix } } };
+}
+function terminalFor(directory, attempt) {
+  return loadMeasurementDirectory(directory).records.find(record => record.attemptId === attempt.id && record.phase === 'terminal');
+}
+
+test('request snapshots caller-owned nested values and accepts only the first durable request', t => {
+  const { root, directory } = fixture(t);
+  const attempt = beginMeasurement({ route: 'manual', cwd: root, directory, changeId: 'change-1' });
+  const selected = request('a', 'selected');
+  const scope = { kind: 'proposed-task', nested: { label: 'selected' } };
+  attempt.request(selected, scope);
+  selected.authoritySet.members[0].id = 'mutated';
+  selected.reviewer.settings.effort = 'mutated';
+  scope.nested.label = 'mutated';
+  const ignored = request('c', 'ignored');
+  Object.defineProperty(ignored, 'prompt', { get() { throw new Error('second request must not be read'); } });
+  assert.doesNotThrow(() => attempt.request(ignored, { kind: 'tracked-working-tree' }));
+  attempt.finish({ decision: { decision: 'BLOCK' } });
+
+  const records = loadMeasurementDirectory(directory).records.filter(record => record.attemptId === attempt.id);
+  const prepared = records.find(record => record.phase === 'prepared');
+  const terminal = records.find(record => record.phase === 'terminal');
+  assert.deepEqual(prepared.request, terminal.request);
+  assert.equal(terminal.request.requestId, 'a'.repeat(64));
+  assert.deepEqual(terminal.request.authoritySet, { members: [{ id: 'selected' }] });
+  assert.deepEqual(terminal.request.requestedReviewer, { model: 'selected', settings: { effort: 'selected' } });
+  assert.deepEqual(terminal.request.scope, { kind: 'proposed-task', nested: { label: 'selected' } });
+  assert.equal(terminal.decision.decision, 'BLOCK');
+});
+
+test('resumed prepared recorder keeps its captured request and rejects another request', t => {
+  const { root, directory } = fixture(t);
+  const attempt = beginMeasurement({ route: 'native', cwd: root, directory, changeId: 'change-1' });
+  attempt.request(request('a', 'prepared'), { kind: 'proposed-task' });
+  const resumed = resumeMeasurement(attempt.id, directory, root);
+  assert.ok(resumed.id);
+  resumed.request(request('c', 'replacement'), { kind: 'tracked-working-tree' });
+  resumed.finish({ decision: { decision: 'PASS' } });
+
+  const records = loadMeasurementDirectory(directory).records.filter(record => record.attemptId === attempt.id);
+  const prepared = records.find(record => record.phase === 'prepared');
+  const terminal = records.find(record => record.phase === 'terminal');
+  assert.deepEqual(terminal.request, prepared.request);
+  assert.equal(terminal.request.requestId, 'a'.repeat(64));
+});
+
+test('request after finish is ignored and cannot add a prepared phase', t => {
+  const { root, directory } = fixture(t);
+  const attempt = beginMeasurement({ route: 'manual', cwd: root, directory, changeId: 'change-1' });
+  attempt.finish({ decision: { decision: 'BLOCK' } });
+  const late = request('a', 'late');
+  Object.defineProperty(late, 'prompt', { get() { throw new Error('finished request must not be read'); } });
+  assert.doesNotThrow(() => attempt.request(late, { kind: 'proposed-task' }));
+  const records = loadMeasurementDirectory(directory).records.filter(record => record.attemptId === attempt.id);
+  assert.deepEqual(records.map(record => record.phase).sort(), ['start', 'terminal']);
+  assert.equal(records.find(record => record.phase === 'terminal').request, null);
+});
+
+test('throwing request and finish getters stay inside the optional diagnostic boundary', t => {
+  const { root, directory } = fixture(t);
+  const attempt = beginMeasurement({ route: 'manual', cwd: root, directory, changeId: 'change-1' });
+  const malformed = request('a', 'malformed');
+  Object.defineProperty(malformed, 'prompt', { get() { throw new Error('malformed request getter'); } });
+  assert.doesNotThrow(() => attempt.request(malformed));
+  assert.doesNotThrow(() => attempt.finish({ decision: { decision: 'BLOCK' } }));
+  assert.equal(terminalFor(directory, attempt).decision.decision, 'BLOCK');
+
+  const other = beginMeasurement({ route: 'manual', cwd: root, directory, changeId: 'change-1' });
+  const malformedFinish = Object.defineProperty({}, 'state', { get() { throw new Error('malformed finish getter'); } });
+  assert.doesNotThrow(() => other.finish(malformedFinish));
+  const records = loadMeasurementDirectory(directory).records.filter(record => record.attemptId === other.id);
+  assert.deepEqual(records.map(record => record.phase), ['start']);
+  assert.doesNotThrow(() => other.request(request('c', 'after-failed-finish')));
+});
+
+test('beginMeasurement contains malformed diagnostic options and preserves valid reviews', t => {
+  const { root, directory } = fixture(t);
+  const throwing = Object.defineProperty({}, 'directory', { get() { throw new Error('unavailable diagnostic config'); } });
+  assert.doesNotThrow(() => beginMeasurement(throwing));
+  assert.equal(beginMeasurement(null).id, null);
+  assert.equal(beginMeasurement(/** @type {any} */ ({})).id, null);
+  const valid = beginMeasurement({ route: 'manual', cwd: root, directory, changeId: 'change-1' });
+  assert.ok(valid.id);
+  valid.finish({ decision: { decision: 'PASS' } });
+  assert.equal(terminalFor(directory, valid).decision.decision, 'PASS');
+});
+
+test('reentrant finish during request serialization leaves one terminal record without a request', t => {
+  const { root, directory } = fixture(t);
+  let attempt;
+  const scope = { toJSON() {
+    attempt.finish({ decision: { decision: 'BLOCK' } });
+    return { kind: 'proposed-task' };
+  } };
+  attempt = beginMeasurement({ route: 'manual', cwd: root, directory, changeId: 'change-1' });
+  assert.doesNotThrow(() => attempt.request(request('a', 'reentrant'), scope));
+  const records = loadMeasurementDirectory(directory).records.filter(record => record.attemptId === attempt.id);
+  assert.deepEqual(records.map(record => record.phase).sort(), ['start', 'terminal']);
+  const terminal = records.find(record => record.phase === 'terminal');
+  assert.equal(terminal.request, null);
+  assert.equal(terminal.decision.decision, 'BLOCK');
+});
+
+test('start context is snapshotted once before persistence and cannot reenter or mutate later phases', t => {
+  const { root, directory } = fixture(t);
+  let attempt;
+  let serializations = 0;
+  const context = { nested: { label: 'captured' }, toJSON() {
+    serializations++;
+    if (attempt) attempt.finish({ decision: { decision: 'BLOCK' } });
+    return { nested: this.nested };
+  } };
+  attempt = beginMeasurement({ route: 'manual', cwd: root, directory, changeId: 'change-1', context });
+  assert.equal(serializations, 1);
+  context.nested.label = 'mutated';
+  attempt.request(request('a', 'context-snapshot'), { kind: 'proposed-task' });
+  attempt.finish({ decision: { decision: 'PASS' } });
+
+  const records = loadMeasurementDirectory(directory).records.filter(record => record.attemptId === attempt.id);
+  assert.equal(serializations, 1, 'context toJSON must not be invoked again by prepared or terminal writes');
+  assert.deepEqual(records.map(record => record.phase).sort(), ['prepared', 'start', 'terminal']);
+  assert.deepEqual(records.find(record => record.phase === 'start').context, { nested: { label: 'captured' } });
+  assert.deepEqual(records.find(record => record.phase === 'terminal').context, { nested: { label: 'captured' } });
+  assert.equal(records.find(record => record.phase === 'terminal').decision.decision, 'PASS');
+});
+
+test('failed exclusive prepared write leaves request unset and permits a clean retry', t => {
+  const { root, directory } = fixture(t);
+  const attempt = beginMeasurement({ route: 'manual', cwd: root, directory, changeId: 'change-1' });
+  const preparedPath = join(directory, `${attempt.id}.prepared.json`);
+  writeFileSync(preparedPath, 'occupied');
+  attempt.request(request('a', 'failed'), { kind: 'proposed-task' });
+  unlinkSync(preparedPath);
+  attempt.request(request('c', 'retry'), { kind: 'tracked-working-tree' });
+  attempt.finish();
+
+  const records = loadMeasurementDirectory(directory).records.filter(record => record.attemptId === attempt.id);
+  assert.equal(records.filter(record => record.phase === 'prepared').length, 1);
+  assert.equal(records.find(record => record.phase === 'prepared').request.requestId, 'c'.repeat(64));
+  assert.equal(records.find(record => record.phase === 'terminal').request.requestId, 'c'.repeat(64));
+});
+
+
+test('oversized terminal capture becomes an incomplete gap without rewriting the prepared request', t => {
+  const { root, directory } = fixture(t);
+  const attempt = beginMeasurement({ route: 'manual', cwd: root, directory, changeId: 'change-1' });
+  attempt.request(request('a', 'selected'), { kind: 'proposed-task' });
+  const decision = { decision: 'BLOCK', summary: 's'.repeat(256 * 1024) };
+  assert.doesNotThrow(() => attempt.finish({ decision }));
+  assert.equal(decision.summary.length, 256 * 1024, 'capture must not mutate the caller result');
+  const records = loadMeasurementDirectory(directory).records;
+  const terminal = records.find(r => r.phase === 'terminal');
+  assert.equal(terminal.state, 'incomplete'); assert.equal(terminal.decision, null);
+  assert.deepEqual(terminal.observation, { gap: 'record-too-large' });
+  assert.deepEqual(terminal.request, records.find(r => r.phase === 'prepared').request);
+});
+
+
+test('foreign request roots leave an incomplete gap rather than a completed review under the attempt root', t => {
+  const {root,directory}=fixture(t);const other=join(root,'other-repository');mkdirSync(other);
+  // Independent non-Git roots are sufficient to test identity before any Git I/O.
+  const attempt=beginMeasurement({route:'manual',cwd:root,directory});const decision=Object.freeze({decision:'PASS'});
+  attempt.request({...request('a','foreign'),repositoryRoot:other});attempt.finish({decision});
+  const records=loadMeasurementDirectory(directory).records;
+  assert.deepEqual(records.map(r=>r.phase).sort(),['start','terminal']);
+  const terminal=records.find(r=>r.phase==='terminal');assert.equal(terminal.state,'incomplete');
+  assert.equal(terminal.request,null);assert.equal(terminal.decision,null);assert.deepEqual(terminal.observation,{gap:'repository-mismatch'});
+  assert.equal(decision.decision,'PASS');
+});
+
+test('a matching request root may retry a rejected foreign request before a terminal is persisted', t => {
+  const {root,directory}=fixture(t);const other=join(root,'other');mkdirSync(other);
+  const attempt=beginMeasurement({route:'manual',cwd:root,directory});
+  attempt.request({...request('a','foreign'),repositoryRoot:other});
+  attempt.request({...request('c','correct'),repositoryRoot:root});attempt.finish({decision:{decision:'PASS'}});
+  const terminal=terminalFor(directory,attempt);assert.equal(terminal.state,'completed');assert.equal(terminal.request.requestId,'c'.repeat(64));
+});
+
+test('export accepts SHA-256 identities at64 characters and Git objects only at40 or64', t => {
+  const {root,directory}=fixture(t);const attempt=beginMeasurement({route:'manual',cwd:root,directory});
+  attempt.request(request('a','valid'),{snapshotSha256:'b'.repeat(64),authorityProvenanceSha256:'c'.repeat(64),policySha256:'d'.repeat(64)});attempt.finish();
+  const original=terminalFor(directory,attempt);
+  for (let width=39;width<=65;width++) {
+    const value='a'.repeat(width);
+    const record={...original,repositoryId:value,request:{...original.request,requestId:value,promptSha256:value,schemaSha256:value,reviewedRevision:value,scope:{snapshotSha256:value,authorityProvenanceSha256:value,policySha256:value}},context:{ci:{workflowSha:value,baseSha:value,headSha:value,reviewedSha:value}}};
+    const exported=redactMeasurement(record);
+    for (const field of ['repositoryId','requestId','promptSha256','schemaSha256','snapshotSha256','authorityProvenanceSha256','policySha256']) assert.equal(exported[field],width===64?value:null,`${field}/${width}`);
+    assert.equal(exported.reviewedRevision,width===40||width===64?value:null);
+    for (const field of ['workflowSha','baseSha','headSha','reviewedSha']) assert.equal(exported.ci[field],width===40||width===64?value:null,`${field}/${width}`);
+  }
+});
+
+
+test('request primitive observations are read once and metadata uses the captured revision', t => {
+  const {root,directory}=fixture(t);const reads={root:0,prompt:0,schema:0,revision:0};
+  const value={requestId:'a'.repeat(64),get repositoryRoot(){reads.root++;return root;},get prompt(){return `prompt-${++reads.prompt}`;},get schema(){return {schema:++reads.schema};},get reviewedRevision(){reads.revision++;return 'b'.repeat(40);}};
+  const attempt=beginMeasurement({route:'manual',cwd:root,directory});attempt.request(value);attempt.finish();
+  assert.deepEqual(reads,{root:1,prompt:1,schema:1,revision:1});
+  const request=terminalFor(directory,attempt).request;assert.equal(request.promptSha256,measurementDigest('prompt-1'));assert.equal(request.selectedPromptSha256,request.promptSha256);assert.equal(request.schemaSha256,measurementDigest({schema:1}));
+});
+
+test('attempt identity requires canonical 8-4-4-4-12 hexadecimal grouping', () => {
+  const valid={version:1,kind:'agk-diagnostic',attemptId:'12345678-abcd-abcd-abcd-123456789abc',phase:'start',route:'manual',startedAt:'2026-10-01T00:00:00.000Z'};
+  assert.doesNotThrow(()=>validateMeasurementRecord(valid));
+  for(const attemptId of ['a'.repeat(36),'-'.repeat(36),'1234567-8abcd-abcd-abcd-123456789abc','12345678-abcd-abcd-abc-123456789abcd']) {
+    assert.throws(()=>validateMeasurementRecord({...valid,attemptId}),/Invalid diagnostic record/);
+    assert.throws(()=>redactMeasurement({...valid,attemptId}),/Invalid diagnostic record/);
+  }
+});
+
+test('resumption refuses malformed grouped identities even when immutable start metadata matches',t=>{
+ const {root,directory}=fixture(t);const attempt=beginMeasurement({route:'manual',directory,cwd:root});assert.ok(attempt.id);
+ const start=loadMeasurementDirectory(directory).records.find(r=>r.phase==='start');
+ for(const attemptId of ['a'.repeat(36),'-'.repeat(36)]) {
+   writeFileSync(join(directory,`${attemptId}.start.json`),JSON.stringify({...start,attemptId}),{mode:0o600});
+   assert.equal(resumeMeasurement(attemptId,directory,root).id,null);
+ }
+ assert.equal(resumeMeasurement(attempt.id,directory,root).id,attempt.id);
+ assert.equal(loadMeasurementDirectory(directory).gaps,2);
+});
