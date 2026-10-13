@@ -52,11 +52,11 @@ test('repeated review and outcome collector invocations publish distinct IDs for
 test('both reusable workflows name and guard each upload with its capture UUID', () => {
   for (const filename of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
     const workflow = parseWorkflow(readFileSync(new URL(`../.github/workflows/${filename}`, import.meta.url), 'utf8'));
-    const reviewSteps = workflow.jobs.review.steps;
+    const reviewSteps = workflow.jobs.measurement.steps;
     const reviewUpload = reviewSteps.find(step => step.name === 'Retain optional review attempt metadata');
-    assert.equal(reviewUpload.if, "always() && inputs.measurement-enabled && steps.measurement-start.outputs.attempt_id != ''");
+    assert.equal(reviewUpload.if, "always() && steps.review-measurement.outputs.review_attempt_id != ''");
     assert.equal(reviewUpload.with.name,
-      'agk-measurement-review-${{ github.run_id }}-${{ github.run_attempt }}-${{ steps.measurement-start.outputs.attempt_id }}');
+      'agk-measurement-review-${{ github.run_id }}-${{ github.run_attempt }}-${{ steps.review-measurement.outputs.review_attempt_id }}');
     assert.equal(reviewUpload.with['retention-days'], 30);
     assert.equal(reviewUpload.with.overwrite, false);
 
@@ -109,15 +109,17 @@ test('optional outcome job bootstrap and collection cannot fail required review,
     assert.ok(workflow.jobs.accept.needs.includes('review'));
     assert.ok(workflow.jobs.accept.needs.includes('report'));
     assert.ok(!workflow.jobs.accept.needs.includes('measurement'));
-    for (const name of optionalReviewSteps) {
-      const step = review.steps.find(candidate => candidate.name === name);
-      assert.ok(step, `${filename} must retain ${name}`);
-      assert.equal(step['continue-on-error'], true, `${filename} ${name} failure must remain optional`);
-      assert.match(step.if, /inputs\.measurement-enabled/);
-    }
-    const measurementStart = review.steps.find(step => step.name === 'Start optional diagnostic measurement');
-    assert.equal(measurementStart.if, "inputs.measurement-enabled && steps.validation_runtime_location.outputs.root != ''",
-      `${filename} must not start reviewer capture without a selected runtime root`);
+    for (const name of optionalReviewSteps) assert.ok(!review.steps.some(step => step.name === name));
+    const independent = measurement.steps.find(step => step.name === 'Collect completed review metadata independently');
+    assert.equal(independent['continue-on-error'], true);
+    assert.equal(independent['timeout-minutes'], 1);
+    assert.match(independent.run, /measurement-ci\.mjs collect/);
+    assert.match(independent.run, /measurement-cli\.mjs export/);
+    assert.equal(independent.env.REVIEW_RESULT, '${{ needs.review.result }}');
+    assert.equal(independent.env.REVIEW_DECISION_KIND, '${{ needs.review.outputs.decision_kind }}');
+    const reviewUpload = measurement.steps.find(step => step.name === 'Retain optional review attempt metadata');
+    assert.equal(reviewUpload['continue-on-error'], true);
+    for (const name of ['review', 'report', 'accept']) assert.ok(!workflow.jobs[name].needs.includes('measurement'));
     for (const name of ['Check out the pinned validation runtime', 'Relocate pinned validation runtime', 'Build the pinned validation runtime']) {
       const step = review.steps.find(candidate => candidate.name === name);
       assert.equal(step.if, selectedRuntimeCondition, `${filename} ${name} must retain the protected validator selection predicate`);

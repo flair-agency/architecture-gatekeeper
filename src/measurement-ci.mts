@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { retrieveCiReviewJob } from './measurement-ci-jobs.mts';
 import { existsSync, mkdirSync, realpathSync } from 'node:fs';
 import { appendGitHubOutput } from './runner-temp-path.mjs';
 import { fileURLToPath } from 'node:url';
@@ -69,8 +70,43 @@ export function runCiMeasurement(command: string | undefined, env: NodeJS.Proces
   }
   throw new Error('Unknown CI measurement phase.');
 }
+
+/** Observe completed public job facts from the independent optional collector. */
+export async function collectCiMeasurement(env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch) {
+  if (!env.AGK_MEASUREMENT_DIR) return;
+  const dir = resolveDiagnosticPath(env.AGK_MEASUREMENT_DIR);
+  const workingRoot = resolveMeasurementWorkingRoot(env.GITHUB_WORKSPACE ?? process.cwd());
+  const path = relative(realpathSync(workingRoot), dir);
+  if (path === '' || (path !== '..' && !path.startsWith(`..${sep}`) && !isAbsolute(path))) throw new Error('Measurement directory must be outside the reviewed worktree.');
+  if (!existsSync(dir)) mkdirSync(dir, {mode: 0o700});
+  const capture = beginMeasurement({directory: dir, route: 'ci-review', cwd: workingRoot, changeId: env.AGK_MEASUREMENT_CHANGE_ID,
+    context: {ci: {repository: env.GITHUB_REPOSITORY, pr: env.PR_NUMBER, runId: env.GITHUB_RUN_ID, runAttempt: env.GITHUB_RUN_ATTEMPT,
+      workflowSha: env.RUNTIME_SHA, baseSha: env.BASE_SHA, headSha: env.HEAD_SHA, reviewedSha: env.REVIEWED_SHA, job: 'review'}}});
+  if (!capture.id) return;
+  // These are collector phases. No request/prompt/schema/execution identity is
+  // inferred from a successful job or reconstructed from private review text.
+  capture.request({reviewedRevision: env.REVIEWED_SHA}, {kind: 'ci-merge-revision'});
+  try {
+    const observed = await retrieveCiReviewJob(env, fetchImpl);
+    const kind = env.REVIEW_DECISION_KIND;
+    const display = env.REVIEW_PASS_CONCLUSION;
+    const conflicting = display === 'PASS' && kind && kind !== 'PASS';
+    const boundRevision = typeof env.REVIEWED_SHA === 'string' && /^[a-f0-9]{40}$/.test(env.REVIEWED_SHA);
+    const semantic = observed.jobOutcome === 'success' && observed.stepOutcome === 'success' && boundRevision && !conflicting ?
+      display === 'PASS' ? 'PASS' : ['PASS', 'BLOCK', 'OWNER_DECISION'].includes(kind as string) ? kind : null : null;
+    capture.finish({state: observed.jobOutcome === 'cancelled' ? 'cancelled' : semantic ? 'completed' : 'incomplete',
+      decision: semantic ? {decision: semantic} : null,
+      observation: {ciAcquisition: 'public-job-metadata', timingSource: 'collector', jobId: observed.jobId,
+        reviewJob: observed.jobOutcome, reviewStepOutcome: observed.stepOutcome, jobTiming: observed.jobTiming,
+        reviewTiming: observed.reviewTiming, publishedDecision: semantic ? 'observed' : 'unknown'}});
+  } catch {
+    capture.finish({state: 'incomplete', observation: {ciAcquisition: 'unavailable', timingSource: 'collector'}});
+  }
+  appendGitHubOutput(`review_attempt_id=${capture.id}\n`);
+}
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  // Optional observation cannot fail required review/acceptance checks.
-  try { runCiMeasurement(process.argv[2]); }
-  catch { warnMeasurementGap('AGK measurement gap: CI diagnostic recording unavailable.\n'); }
+  try {
+    if (process.argv[2] === 'collect') await collectCiMeasurement();
+    else runCiMeasurement(process.argv[2]);
+  } catch { warnMeasurementGap('AGK measurement gap: CI diagnostic recording unavailable.\n'); }
 }

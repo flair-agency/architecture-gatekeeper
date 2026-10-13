@@ -388,6 +388,20 @@ export function redactMeasurement(value: MeasurementRecord) {
   for (const key of ['reviewJob', 'reportJob', 'acceptJob', 'policyJob']) {
     if (['success', 'failure', 'cancelled', 'skipped'].includes(record.observation?.[key] as string)) observation[key] = record.observation![key];
   }
+  if (record.route === 'ci-review' && record.observation?.timingSource === 'collector') {
+    observation.timingSource = 'collector';
+    observation.ciAcquisition = record.observation.ciAcquisition === 'public-job-metadata' ? 'public-job-metadata' : 'unavailable';
+    const id = record.observation.jobId;
+    observation.jobId = typeof id === 'string' && /^[1-9][0-9]{0,19}$/.test(id) ? id : null;
+    observation.reviewStepOutcome = ['success', 'failure', 'cancelled', 'skipped'].includes(record.observation.reviewStepOutcome as string) ? record.observation.reviewStepOutcome : 'unknown';
+    for (const key of ['jobTiming', 'reviewTiming']) {
+      const timing = record.observation[key] as MeasurementFields | null | undefined;
+      observation[key] = timing && canonicalTimestamp(timing.startedAt) && canonicalTimestamp(timing.completedAt) &&
+        Number.isSafeInteger(timing.elapsedMs) && (timing.elapsedMs as number) >= 0 &&
+        Date.parse(timing.completedAt) - Date.parse(timing.startedAt) === timing.elapsedMs ?
+        {startedAt: timing.startedAt, completedAt: timing.completedAt, elapsedMs: timing.elapsedMs} : null;
+    }
+  }
   const ci = (record.context?.ci || {}) as MeasurementFields;
   const numeric = (v: unknown) => typeof v === 'string' && /^[1-9][0-9]{0,19}$/.test(v) ? v : null;
   const ciContext = Object.keys(ci).length ? { repositoryId: typeof ci.repository === 'string' ? measurementDigest(ci.repository) : null,

@@ -350,29 +350,6 @@ jobs:
           node "$GATEKEEPER_RUNTIME_ROOT/dist/preflight-authority-set-review.mjs" \
             "$RUNNER_TEMP/architecture-gate-decision.schema.json" \
             "$RUNNER_TEMP/architecture-gate-review-prompt.md"
-      - name: Start optional diagnostic measurement
-        id: measurement-start
-        if: inputs.measurement-enabled && steps.validation_runtime_location.outputs.root != ''
-        continue-on-error: true
-        working-directory: ${{ runner.temp }}
-        env:
-          AGK_MEASUREMENT_DIR: ${{ runner.temp }}/agk-review-measurement
-          AGK_MEASUREMENT_CHANGE_ID: ${{ github.repository }}#${{ github.event.pull_request.number }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          REVIEWED_SHA: ${{ steps.revision.outputs.sha }}
-          RUNTIME_SHA: ${{ job.workflow_sha }}
-          REVIEW_PROVIDER: ${{ needs.policy.outputs.provider }}
-          REVIEW_MODEL: ${{ needs.policy.outputs.model }}
-          REVIEW_EFFORT: ${{ needs.policy.outputs.effort }}
-          POLICY_SHA256: ${{ needs.policy.outputs.policy_sha256 }}
-          AUTHORITY_PROVENANCE_BASE64: ${{ steps.authority.outputs.provenance }}
-          LEGACY_AUTHORITY_PROVENANCE_BASE64: ${{ steps.legacy-authority.outputs.provenance }}
-          PROMPT_PATH: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-review-prompt.md', runner.temp) || needs.policy.outputs.authority_manifest_path != '' && format('{0}/architecture-gate-review-prompt.md', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-prompt.md', runner.temp) || format('{0}/{1}', github.workspace, inputs.prompt-path) }}
-          SCHEMA_PATH: ${{ needs.policy.outputs.policy_version == '1' && format('{0}/architecture-gate-decision.schema.json', runner.temp) || inputs.protected-review-instructions && format('{0}/architecture-gate-decision.schema.json', runner.temp) || format('{0}/{1}', github.workspace, inputs.schema-path) }}
-          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
-        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/measurement-ci.mjs" start
       - name: Run read-only architecture review
         id: codex
         timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_step_timeout_minutes) }}
@@ -432,14 +409,12 @@ jobs:
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-decision-kind.mjs"
       - name: Apply consumer-owned decision validation
-        id: measurement-consumer-validation
         if: (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '')
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: printf '%s' "$DECISION" | node "$GATEKEEPER_RUNTIME_ROOT/dist/validate-decision.mjs" "$RUNNER_TEMP/architecture-gate-decision.validation.json"
       - name: Require exact reported legacy authority files
-        id: measurement-legacy-validation
         if: needs.policy.outputs.policy_version == '1'
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
@@ -447,52 +422,13 @@ jobs:
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" validate
       - name: Require exact reported Authority IDs
-        id: measurement-authority-validation
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
           DECISION: ${{ steps.codex.outputs.final-message }}
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: printf '%s' "$DECISION" | node "$GATEKEEPER_RUNTIME_ROOT/dist/validate-authority-set-decision.mjs" "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
-      - name: Complete optional diagnostic measurement
-        if: always() && inputs.measurement-enabled && steps.measurement-start.outputs.attempt_id != ''
-        continue-on-error: true
-        working-directory: ${{ runner.temp }}
-        env:
-          AGK_MEASUREMENT_DIR: ${{ runner.temp }}/agk-review-measurement
-          MEASUREMENT_ATTEMPT_ID: ${{ steps.measurement-start.outputs.attempt_id }}
-          REVIEW_RESPONSE: ${{ steps.codex.outputs.final-message }}
-          REVIEW_OUTCOME: ${{ steps.codex.outcome }}
-          EXECUTION_OBSERVATION_SELECTED: ${{ needs.policy.outputs.execution_selection == 'policy' }}
-          EXECUTION_OBSERVATION_OUTCOME: ${{ steps.execution.outcome }}
-          DECISION_KIND_OUTCOME: ${{ steps.decision.outcome }}
-          DECISION_KIND_SELECTED: ${{ needs.policy.outputs.mode == 'procedural' || (needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.owner_addition_grade == 'G0') }}
-          CONSUMER_VALIDATION: ${{ steps.measurement-consumer-validation.outcome }}
-          CONSUMER_VALIDATION_SELECTED: ${{ (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '') }}
-          LEGACY_VALIDATION: ${{ steps.measurement-legacy-validation.outcome }}
-          LEGACY_VALIDATION_SELECTED: ${{ needs.policy.outputs.policy_version == '1' }}
-          AUTHORITY_VALIDATION: ${{ steps.measurement-authority-validation.outcome }}
-          AUTHORITY_VALIDATION_SELECTED: ${{ needs.policy.outputs.authority_manifest_path != '' }}
-          REVIEW_OUTPUT_FILE: ${{ runner.temp }}/architecture-gate-codex-final.json
-          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
-        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/measurement-ci.mjs" finish
-      - name: Export optional redacted diagnostics
-        if: always() && inputs.measurement-enabled && steps.validation_runtime_location.outputs.root != ''
-        continue-on-error: true
-        working-directory: ${{ runner.temp }}
-        env:
-          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
-        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/measurement-cli.mjs" export "$RUNNER_TEMP/agk-review-measurement" > "$RUNNER_TEMP/agk-review-measurement-export.json"
-      - name: Retain optional review attempt metadata
-        if: always() && inputs.measurement-enabled && steps.measurement-start.outputs.attempt_id != ''
-        continue-on-error: true
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: agk-measurement-review-${{ github.run_id }}-${{ github.run_attempt }}-${{ steps.measurement-start.outputs.attempt_id }}
-          path: ${{ runner.temp }}/agk-review-measurement-export.json
-          if-no-files-found: warn
-          retention-days: 30
-          overwrite: false
+
 
   owner-addition:
     if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.owner_addition_grade == 'G0' && needs.review.outputs.decision_kind == 'OWNER_DECISION'
@@ -759,6 +695,33 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm run build
+      - name: Collect completed review metadata independently
+        id: review-measurement
+        continue-on-error: true
+        timeout-minutes: 1
+        env:
+          AGK_MEASUREMENT_DIR: ${{ runner.temp }}/agk-review-measurement
+          AGK_MEASUREMENT_CHANGE_ID: ${{ github.repository }}#${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          RUNTIME_SHA: ${{ job.workflow_sha }}
+          REVIEW_RESULT: ${{ needs.review.result }}
+          REVIEW_DECISION_KIND: ${{ needs.review.outputs.decision_kind }}
+        run: |
+          node dist/measurement-ci.mjs collect
+          node dist/measurement-cli.mjs export "$AGK_MEASUREMENT_DIR" > "$RUNNER_TEMP/agk-review-measurement-export.json"
+      - name: Retain optional review attempt metadata
+        if: always() && steps.review-measurement.outputs.review_attempt_id != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: agk-measurement-review-${{ github.run_id }}-${{ github.run_attempt }}-${{ steps.review-measurement.outputs.review_attempt_id }}
+          path: ${{ runner.temp }}/agk-review-measurement-export.json
+          if-no-files-found: warn
+          retention-days: 30
+          overwrite: false
       - name: Record independent job outcomes
         id: outcome-measurement
         continue-on-error: true

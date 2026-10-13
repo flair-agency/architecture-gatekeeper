@@ -107,22 +107,18 @@ test('CI collector requires successful selected steps and skipped unselected ste
   }
 });
 
-test('both reusable workflows pass the selected check predicates and decision outcome to diagnostics', () => {
+test('both workflows keep validation inside required review and publish only completed metadata to diagnostics', () => {
   for (const filename of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
     const workflow = parseWorkflow(readFileSync(new URL(`../.github/workflows/${filename}`, import.meta.url), 'utf8'));
-    const steps = workflow.jobs.review.steps;
-    const finish = steps.find(step => step.name === 'Complete optional diagnostic measurement');
-    assert.equal(finish['continue-on-error'], true);
-    assert.equal(finish.env.EXECUTION_OBSERVATION_SELECTED, "${{ needs.policy.outputs.execution_selection == 'policy' }}");
-    assert.equal(finish.env.EXECUTION_OBSERVATION_OUTCOME, '${{ steps.execution.outcome }}');
-    assert.equal(finish.env.DECISION_KIND_OUTCOME, '${{ steps.decision.outcome }}');
-    for (const [flag, id] of [['DECISION_KIND_SELECTED', 'decision'], ['CONSUMER_VALIDATION_SELECTED', 'measurement-consumer-validation'],
-      ['LEGACY_VALIDATION_SELECTED', 'measurement-legacy-validation'], ['AUTHORITY_VALIDATION_SELECTED', 'measurement-authority-validation']]) {
-      assert.equal(finish.env[flag], `\${{ ${steps.find(step => step.id === id).if} }}`);
+    const collector = workflow.jobs.measurement.steps.find(step => step.id === 'review-measurement');
+    assert.equal(collector.env.REVIEW_RESULT, '${{ needs.review.result }}');
+    assert.equal(collector.env.REVIEW_DECISION_KIND, '${{ needs.review.outputs.decision_kind }}');
+    for (const key of ['REVIEW_RESPONSE', 'REVIEW_OUTPUT_FILE', 'PROMPT_PATH', 'SCHEMA_PATH', 'REVIEW_MODEL', 'REVIEW_EFFORT']) assert.equal(collector.env[key], undefined);
+    for (const name of ['Record ordinary execution observation', 'Identify the completed ordinary decision', 'Apply consumer-owned decision validation', 'Require exact reported legacy authority files', 'Require exact reported Authority IDs']) {
+      const step = workflow.jobs.review.steps.find(s => s.name === name); assert.ok(step); assert.equal(step['continue-on-error'], undefined);
     }
   }
 });
-
 
 test('policy-owned execution observation failure stays incomplete even when every validator is unselected', t => {
   const f = fixture(t);
@@ -167,20 +163,15 @@ test('completion covers every combination of selected stages, with failures isol
   }
 });
 
-test('all required post-model stages preceding completion have explicit diagnostic bindings', () => {
+test('all required post-model stages retain validation and reporting order with no diagnostic waits', () => {
   for (const filename of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
     const steps = parseWorkflow(readFileSync(new URL(`../.github/workflows/${filename}`, import.meta.url), 'utf8')).jobs.review.steps;
     const codex = steps.findIndex(step => step.id === 'codex');
-    const finish = steps.findIndex(step => step.name === 'Complete optional diagnostic measurement');
-    assert.deepEqual(steps.slice(codex + 1, finish).filter(step => step['continue-on-error'] !== true).map(step => step.id),
-      ['execution', 'decision', 'measurement-consumer-validation', 'measurement-legacy-validation', 'measurement-authority-validation']);
-    // The later display is reporting, separately observed by ci-outcome; it
-    // cannot turn the validated response into a different semantic decision.
-    assert.deepEqual(steps.slice(finish + 1).filter(step => step['continue-on-error'] !== true).map(step => step.id),
-      filename === 'architecture-gate.yml' ? ['pass-display'] : []);
+    assert.deepEqual(steps.slice(codex + 1).filter(step => step['continue-on-error'] !== true).map(step => step.id),
+      ['execution', 'decision', undefined, undefined, undefined, ...(filename === 'architecture-gate.yml' ? ['pass-display'] : [])]);
+    assert.ok(!steps.some(step => /measurement-(?:ci|cli)\.mjs/.test(step.run || '')));
   }
 });
-
 
 test('CI diagnostic bootstrap refuses in-worktree directories before creating them', t => {
   const f = fixture(t);

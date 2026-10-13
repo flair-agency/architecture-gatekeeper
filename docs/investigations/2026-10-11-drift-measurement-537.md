@@ -264,3 +264,26 @@ stays in its owning core/adapter/CI slice. Native missing, malformed and nonfile
 decisions now retain error observations before a later successful retry; required
 validation and exclusive request allocation are unchanged. Fault regressions
 fail the prior installed runtime and pass the corrected source/installed runtime.
+
+
+## Independent post-review CI collection after owner adoption
+
+PR #575 adopted the acquisition boundary on main016632b. Foreground diagnostic
+start/finish/export/upload and diagnostic-only validation IDs are removed from
+both required review jobs. Their conditions, deadlines, permissions, outputs,
+validation order and report/accept dependencies retain their previous semantics.
+The existing independent optional job now acquires metadata after required jobs
+finish, with no credentials or fallback: exact public repository/run/attempt,
+two requests, 256KiB per response and one 10-second acquisition deadline. It
+rejects private, missing, ambiguous, partial, malformed or mismatched sources.
+
+Only already-published validated decision kind/PASS metadata is used, together
+with consistent completed-job metadata. Job success without published decision
+does not establish a semantic result. Prompt, request, schema, reviewer execution,
+finding count and freshness remain unknown; detailed legacy standalone recorder
+tests above do not claim those facts for the new independent workflow collector.
+Collector phase timestamps describe collection. Whitelist export separately
+records observed job/step intervals; aggregation uses observed job duration and
+completion for CI latency and detection order, and excludes unavailable timing.
+It never substitutes collector time for an unavailable review observation.
+Enabled-host evaluation and the #537 pilot remain open.

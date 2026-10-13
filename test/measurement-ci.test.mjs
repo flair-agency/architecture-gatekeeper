@@ -73,8 +73,8 @@ test('CI measurement is default-off and never a prerequisite for acceptance; no 
     assert.ok(!w.jobs.accept.needs.includes('measurement')); assert.deepEqual(w.jobs.measurement.needs, ['policy','review','report','accept']);
     assert.deepEqual(w.jobs.measurement.permissions, {});
     const steps = w.jobs.review.steps;
-    assert.ok(steps.findIndex(s => s.id === 'measurement-start') < steps.findIndex(s => s.id === 'codex'));
-    const finish = steps.find(s => s.name === 'Complete optional diagnostic measurement'); assert.equal(finish['continue-on-error'], true); assert.match(finish.if, /always\(\)/);
+    assert.ok(!steps.some(s => /measurement-(?:ci|cli)\.mjs/.test(s.run || '')));
+    const collector = w.jobs.measurement.steps.find(s => s.id === 'review-measurement'); assert.equal(collector['continue-on-error'], true); assert.equal(collector['timeout-minutes'], 1);
     for (const j of [w.jobs.review, w.jobs.measurement]) for (const s of j.steps.filter(s => s.uses?.startsWith('actions/upload-artifact'))) {
       if (s.with.name.startsWith('agk-measurement')) { assert.match(s.with.path, /-export\.json$/); assert.equal(s.with['retention-days'], 30); assert.equal(s.with.overwrite, false); }
     }
@@ -90,8 +90,8 @@ test('diagnostic selection preserves required runtime bootstrap conditions and f
       assert.equal(step.if, requiredBootstrap);
       assert.equal(step['continue-on-error'], undefined);
     }
-    assert.equal(w.jobs.review.steps.find(s => s.id === 'measurement-start').if,
-      "inputs.measurement-enabled && steps.validation_runtime_location.outputs.root != ''");
+    assert.ok(!w.jobs.review.steps.some(s => s.id === 'measurement-start'));
+    assert.equal(w.jobs.measurement.if, 'always() && inputs.measurement-enabled');
     assert.equal(w.jobs.measurement['continue-on-error'], true);
   }
 });

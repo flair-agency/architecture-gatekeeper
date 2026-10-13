@@ -34,3 +34,13 @@ test('empty and invalid negative intervals retain existing filtering behavior', 
   assert.equal(filtered.overhead.latencySamples, 2);
   assert.equal(filtered.overhead.medianElapsedMs, 2);
 });
+
+test('independent CI collection time never becomes review latency', () => {
+  const data=dataset([1]);data.records[0].route='ci-review';
+  data.records[0].observation={timingSource:'collector',ciAcquisition:'unavailable'};
+  assert.equal(aggregateMeasurement(data).overhead.latencySamples,0);
+  data.records[0].observation={timingSource:'collector',ciAcquisition:'public-job-metadata',jobTiming:{startedAt:'2025-01-01T00:00:00Z',completedAt:'2025-01-01T00:00:10Z',elapsedMs:10000}};
+  assert.equal(aggregateMeasurement(data).overhead.medianElapsedMs,10000);
+  data.records[0].observation.jobTiming.elapsedMs=1;
+  assert.equal(aggregateMeasurement(data).overhead.latencySamples,0);
+});

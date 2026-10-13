@@ -60,3 +60,14 @@ test('a resolved case without linked detection stays unknown and remains in the 
   assert.deepEqual(report.metrics.localEarlyResolution, { numerator: 0, denominator: 1, rate: 0 });
   assert.equal(report.cases[0].firstDetection, 'unknown');
 });
+
+test('independently collected CI result uses observed job completion rather than later collection', () => {
+  const data=dataset(instant(0),instant(20),instant(40),instant(50));
+  data.records[1].observation={timingSource:'collector',ciAcquisition:'public-job-metadata',jobTiming:{startedAt:instant(0),completedAt:instant(10),elapsedMs:10000}};
+  const report=aggregateMeasurement(data);assert.equal(report.cases[0].firstDetection,'ci');assert.equal(report.metrics.localEarlyResolution.numerator,0);
+});
+test('missing independently observed CI time leaves detection order unknown', () => {
+  const data=dataset(instant(0),instant(20),instant(40),instant(50));
+  data.records[1].observation={timingSource:'collector',ciAcquisition:'unavailable'};
+  const report=aggregateMeasurement(data);assert.equal(report.cases[0].firstDetection,'unknown');assert.equal(report.metrics.localEarlyResolution.numerator,0);
+});
