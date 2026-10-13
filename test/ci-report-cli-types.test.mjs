@@ -20,8 +20,8 @@ assert.equal(parsed.options.noImplicitAny, true);
 assert.equal(parsed.options.allowJs, true);
 assert.match(source, /^\/\/ @ts-check$/m);
 
-// The CLI is private. Append compile-only calls to a virtual copy of its actual
-// source rather than exporting it or inventing an argv adapter for the test.
+// Append compile-only calls to a virtual copy of the actual exported CLI
+// source so its supported transport and completion contracts stay checked.
 function diagnosticsFor(probe) {
   const options = { ...parsed.options, noEmit: true };
   const host = ts.createCompilerHost(options);
@@ -38,13 +38,17 @@ function diagnosticsFor(probe) {
   }));
 }
 
-test('private report CLI has its original zero-argument Promise<void> contract', () => {
-  assert.deepEqual(diagnosticsFor('/** @type {Promise<void>} */ const completion = main();'), []);
+test('report CLI accepts an optional ReportFetch and returns Promise<void>', () => {
+  for (const probe of [
+    '/** @type {Promise<void>} */ const completion = main();',
+    '/** @type {Promise<void>} */ const completion = main(undefined);',
+    '/** @type {import("./ci-review/ci-report.mts").ReportFetch} */ const transport = fetch; /** @type {Promise<void>} */ const completion = main(transport);',
+  ]) assert.deepEqual(diagnosticsFor(probe), []);
 });
 
-test('private report CLI rejects argv and a value-producing completion claim', () => {
+test('report CLI rejects argv and a value-producing completion claim', () => {
   const cases = [
-    { probe: "main(['unused']);", code: 2554, message: /Expected 0 arguments, but got 1/ },
+    { probe: "main(['unused']);", code: 2345, message: /not assignable.*ReportFetch/s },
     { probe: '/** @type {Promise<string>} */ const completion = main();', code: 2322,
       message: /Promise<void>.*Promise<string>/s },
   ];
@@ -76,11 +80,14 @@ function runtimeDigest(text) {
   return createHash('sha256').update(JSON.stringify(canonical(ast.body))).digest('hex');
 }
 
-test('source and emitted report CLI preserve the complete pre-change runtime AST', () => {
-  // Baseline: e6cb272d1c78dea50a48eee1ad9c523b260187b0:src/ci-report.mjs.
+test('source and emitted report CLI bind the complete reviewed merged runtime AST', () => {
+  // Historical pre-change baseline at e6cb272d1c78dea50a48eee1ad9c523b260187b0:
+  // 105764db4749d7ac70ef554bb1185b415bd40d367b93e93a0d8b896c8fa0ad30.
+  // Reviewed merge: main 89189 + feature c568; the historical digest is not
+  // an equivalence claim for the intentionally added feature CLI behavior.
   // Only coordinates, literal spelling and the compiler's .mts import rewrite
   // are normalized. Main, exports, property reads, dispatch and sinks are bound.
-  const baseline = '105764db4749d7ac70ef554bb1185b415bd40d367b93e93a0d8b896c8fa0ad30';
+  const baseline = '0e7aa8c11145d9f604a7b28e23691e2484917ea17329be597dfdbfc384c4aaaa';
   assert.equal(runtimeDigest(source), baseline);
   assert.equal(runtimeDigest(readFileSync(join(root, 'dist/ci-report.mjs'), 'utf8')), baseline);
 });

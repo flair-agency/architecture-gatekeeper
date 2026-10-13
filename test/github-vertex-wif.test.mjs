@@ -1,0 +1,241 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { acquireGitHubVertexWifCredential } from '../dist/github-vertex-wif.mjs';
+
+const input = Object.freeze({
+  workloadIdentityProvider: 'projects/123456789012/locations/global/workloadIdentityPools/ci-pool/providers/github',
+  serviceAccount: 'gemini-ci@sample-project.iam.gserviceaccount.com',
+  project: 'sample-project', region: 'us-central1',
+  oidcRequestUrl: 'https://pipelines.actions.githubusercontent.com/fixture/idtoken?api-version=2.0', oidcRequestToken: 'request-secret',
+});
+const jsonResponse = (value, status = 200) => new Response(JSON.stringify(value), { status });
+const expiration = () => new Date(Date.now() + 300_000).toISOString();
+const stsValue = { access_token: 'sts-token-secret', issued_token_type: 'urn:ietf:params:oauth:token-type:access_token', token_type: 'Bearer', expires_in: 300 };
+function fetchSequence(overrides = {}) {
+  const calls = [];
+  const results = [jsonResponse({ value: 'github-assertion-secret' }), jsonResponse(stsValue), jsonResponse({ accessToken: 'final-secret', expireTime: expiration() })];
+  for (const [index, response] of Object.entries(overrides)) results[Number(index)] = response;
+  return { calls, fetch: async (url, init) => { calls.push({ url: String(url), init }); return results[calls.length - 1]; } };
+}
+
+test('performs the exact parent-only GitHub OIDC, STS, and IAM token exchange', async () => {
+  const f = fetchSequence();
+  const result = await acquireGitHubVertexWifCredential(input, f.fetch);
+  assert.deepEqual(result, { token: 'final-secret', project: 'sample-project', region: 'us-central1' });
+  assert.equal(Object.isFrozen(result), true);
+  assert.equal(f.calls.length, 3);
+  const [oidc, sts, iam] = f.calls;
+  assert.equal(oidc.url, 'https://pipelines.actions.githubusercontent.com/fixture/idtoken?api-version=2.0&audience=https%3A%2F%2Fiam.googleapis.com%2Fprojects%2F123456789012%2Flocations%2Fglobal%2FworkloadIdentityPools%2Fci-pool%2Fproviders%2Fgithub');
+  assert.equal(oidc.init.method, 'GET');
+  assert.equal(oidc.init.redirect, 'manual');
+  assert.equal(oidc.init.headers.authorization, 'Bearer request-secret');
+  assert.equal(sts.url, 'https://sts.googleapis.com/v1/token');
+  assert.equal(sts.init.headers['content-type'], 'application/json');
+  assert.deepEqual(JSON.parse(sts.init.body), { grantType: 'urn:ietf:params:oauth:grant-type:token-exchange',
+    audience: `//iam.googleapis.com/${input.workloadIdentityProvider}`, scope: 'https://www.googleapis.com/auth/cloud-platform',
+    requestedTokenType: 'urn:ietf:params:oauth:token-type:access_token', subjectTokenType: 'urn:ietf:params:oauth:token-type:jwt',
+    subjectToken: 'github-assertion-secret' });
+  assert.equal(iam.url, `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(input.serviceAccount)}:generateAccessToken`);
+  assert.equal(iam.init.headers.authorization, 'Bearer sts-token-secret');
+  assert.deepEqual(JSON.parse(iam.init.body), { scope: ['https://www.googleapis.com/auth/cloud-platform'], lifetime: '300s' });
+  for (const call of f.calls) assert.equal(call.init.signal instanceof AbortSignal, true);
+});
+
+test('preserves all supported Vertex endpoint location identifiers', async () => {
+  for (const region of ['global', 'us', 'eu', 'us-central1']) {
+    const f = fetchSequence();
+    const result = await acquireGitHubVertexWifCredential({ ...input, region }, f.fetch);
+    assert.equal(result.region, region);
+    assert.equal(f.calls.length, 3);
+  }
+  for (const region of ['US', 'europe', 'us/evil', '']) {
+    let sends = 0;
+    await assert.rejects(acquireGitHubVertexWifCredential({ ...input, region }, async () => { sends++; }), /failed at input/);
+    assert.equal(sends, 0);
+  }
+});
+
+test('serializes bounded provider text to fixed endpoints and leaves naming decisions to STS', async () => {
+  const providers = ['1-ci-pool', 'gcp-reserved', 'a'.repeat(33), 'pool_name', 'UPPER', 'with.dot',
+    'projects/999999999999999999999999/locations/global/workloadIdentityPools/./providers/..',
+    'https://attacker.example/path?x=1#fragment', `?/#%"quoted"\u0027`];
+  for (const selected of providers) {
+    const f = fetchSequence();
+    await acquireGitHubVertexWifCredential({ ...input, workloadIdentityProvider: selected }, f.fetch);
+    assert.equal(f.calls.length, 3);
+    assert.equal(f.calls[0].url.startsWith('https://pipelines.actions.githubusercontent.com/fixture/idtoken?'), true);
+    assert.equal(f.calls[1].url, 'https://sts.googleapis.com/v1/token');
+    assert.equal(f.calls[2].url, `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(input.serviceAccount)}:generateAccessToken`);
+    assert.equal(new URL(f.calls[0].url).searchParams.get('audience'), `https://iam.googleapis.com/${selected}`);
+    assert.equal(JSON.parse(f.calls[1].init.body).audience, `//iam.googleapis.com/${selected}`);
+  }
+});
+
+test('matches auth Action edge trimming for bounded provider and service-account inputs', async () => {
+  const f = fetchSequence();
+  const result = await acquireGitHubVertexWifCredential({ ...input,
+    workloadIdentityProvider: ` \t${input.workloadIdentityProvider}\n`,
+    serviceAccount: ` \t${input.serviceAccount}\n` }, f.fetch);
+  assert.deepEqual(result, { token: 'final-secret', project: 'sample-project', region: 'us-central1' });
+  assert.match(new URL(f.calls[0].url).searchParams.get('audience'), /projects\/123456789012\//);
+  assert.match(f.calls[2].url, /gemini-ci%40sample-project/);
+  for (const candidate of [
+    { workloadIdentityProvider: ' '.repeat(257) + input.workloadIdentityProvider, serviceAccount: input.serviceAccount },
+    { workloadIdentityProvider: input.workloadIdentityProvider, serviceAccount: ' '.repeat(321) + input.serviceAccount },
+    { workloadIdentityProvider: '', serviceAccount: input.serviceAccount },
+    { workloadIdentityProvider: ' \t\n', serviceAccount: input.serviceAccount },
+    { workloadIdentityProvider: 'provider value', serviceAccount: input.serviceAccount },
+    { workloadIdentityProvider: 'provider\nvalue', serviceAccount: input.serviceAccount },
+    { workloadIdentityProvider: 'provider\u007fvalue', serviceAccount: input.serviceAccount },
+  ]) {
+    let sends = 0;
+    await assert.rejects(acquireGitHubVertexWifCredential({ ...input, ...candidate }, async () => { sends++; }), /failed at input/);
+    assert.equal(sends, 0);
+  }
+});
+
+test('Google STS rejection stops after the exchange with a sanitized failure', async () => {
+  const calls = [];
+  const error = await acquireGitHubVertexWifCredential({ ...input,
+    workloadIdentityProvider: 'https://attacker.example/?audience=fixture' }, async (url, init) => {
+    calls.push({ url: String(url), init });
+    if (calls.length === 1) return jsonResponse({ value: 'github-assertion-secret' });
+    return jsonResponse({ error: 'invalid_target: provider does not exist' }, 400);
+  }).then(() => null, failure => failure);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].url, 'https://sts.googleapis.com/v1/token');
+  assert.match(error.message, /sts_exchange/);
+  assert.doesNotMatch(error.message, /invalid_target|attacker|github-assertion-secret/);
+});
+
+test('rejects invalid exact input records before sending', async () => {
+  const accessor = { ...input };
+  Object.defineProperty(accessor, 'region', { enumerable: true, get() { throw new Error('secret'); } });
+  const invalid = [ { ...input, unexpected: true }, accessor, new Proxy({ ...input }, {}),
+    { ...input, oidcRequestUrl: 'https://attacker.example/token' },
+    { ...input, oidcRequestUrl: 'https://evilactions.githubusercontent.com/token' },
+    { ...input, oidcRequestUrl: 'https://trusted.actions.githubusercontent.com/' },
+    { ...input, oidcRequestUrl: 'https://user@pipelines.actions.githubusercontent.com/token' },
+    { ...input, serviceAccount: 'attacker@example.com' } ];
+  for (const candidate of invalid) {
+    let sends = 0;
+    await assert.rejects(acquireGitHubVertexWifCredential(candidate, async () => { sends++; }), /GitHub Vertex WIF failed at input/);
+    assert.equal(sends, 0);
+  }
+});
+
+test('stops after a failed or redirected stage and sanitizes diagnostics', async () => {
+  const cases = [
+    [jsonResponse({ error: 'request-secret github-assertion-secret' }, 403), 1],
+    [new Response('', { status: 302, headers: { location: 'https://attacker.example/' } }), 1],
+  ];
+  for (const [failure, expectedCalls] of cases) {
+    const calls = [];
+    await assert.rejects(acquireGitHubVertexWifCredential(input, async () => { calls.push(1); return failure; }), error => {
+      assert.equal(calls.length, expectedCalls);
+      assert.doesNotMatch(error.message, /request-secret|github-assertion-secret|attacker/);
+      return true;
+    });
+  }
+  const calls = [];
+  await assert.rejects(acquireGitHubVertexWifCredential(input, async () => {
+    calls.push(1);
+    return calls.length === 1 ? jsonResponse({ value: 'github-assertion-secret' }) : jsonResponse({ error: 'sts-token-secret' }, 403);
+  }));
+  assert.equal(calls.length, 2);
+});
+
+test('rejects malformed, unreadable, and oversized bodies and stops later exchanges', async () => {
+  for (const response of [new Response('not json'), new Response('x'.repeat(65_537)), new Response(null, { status: 200 })]) {
+    let calls = 0;
+    await assert.rejects(acquireGitHubVertexWifCredential(input, async () => { calls++; return response; }));
+    assert.equal(calls, 1);
+  }
+  const invalidSts = fetchSequence({ 1: jsonResponse({ access_token: 'bad', token_type: 'Bearer' }) });
+  await assert.rejects(acquireGitHubVertexWifCredential(input, invalidSts.fetch));
+  assert.equal(invalidSts.calls.length, 2);
+  const invalidIam = fetchSequence({ 2: jsonResponse({ accessToken: 'bad', expireTime: 'not a date' }) });
+  await assert.rejects(acquireGitHubVertexWifCredential(input, invalidIam.fetch));
+  assert.equal(invalidIam.calls.length, 3);
+  const shortSts = fetchSequence({ 1: jsonResponse({ ...stsValue, expires_in: 119 }) });
+  await assert.rejects(acquireGitHubVertexWifCredential(input, shortSts.fetch));
+  assert.equal(shortSts.calls.length, 2);
+  const shortIam = fetchSequence({ 2: jsonResponse({ accessToken: 'bad', expireTime: new Date(Date.now() + 239_000).toISOString() }) });
+  await assert.rejects(acquireGitHubVertexWifCredential(input, shortIam.fetch));
+  assert.equal(shortIam.calls.length, 3);
+});
+
+test('aborts a hanging fetch and response stream at the finite overall deadline', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const calls = [];
+  const pendingFetch = acquireGitHubVertexWifCredential(input, (_url, init) => new Promise((resolve, reject) => {
+    calls.push(1);
+    init.signal.addEventListener('abort', () => reject(new Error('request-secret')), { once: true });
+  }));
+  t.mock.timers.tick(60_000);
+  await assert.rejects(pendingFetch, /GitHub Vertex WIF failed at timeout/);
+  assert.equal(calls.length, 1);
+
+  t.mock.timers.reset();
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let pullStarted = false;
+  const streamCalls = [];
+  const pendingStream = acquireGitHubVertexWifCredential(input, async (_url, init) => {
+    streamCalls.push(1);
+    if (streamCalls.length !== 1) throw new Error('later request must not happen');
+    return new Response(new ReadableStream({ pull() { pullStarted = true; return new Promise(() => {}); }, cancel() {} }));
+  });
+  while (!pullStarted) await new Promise(resolve => setImmediate(resolve));
+  assert.equal(pullStarted, true);
+  t.mock.timers.tick(60_000);
+  await assert.rejects(pendingStream, /GitHub Vertex WIF failed at timeout/);
+  assert.equal(streamCalls.length, 1);
+
+  t.mock.timers.reset();
+  const thirdCalls = [];
+  const thirdFailure = await acquireGitHubVertexWifCredential(input, async (_url, init) => {
+    thirdCalls.push(init);
+    if (thirdCalls.length === 1) return jsonResponse({ value: 'assertion' });
+    if (thirdCalls.length === 2) return jsonResponse(stsValue);
+    return jsonResponse({ error: 'final-secret' }, 403);
+  }).then(() => null, error => error);
+  assert.match(thirdFailure.message, /service_account_token/);
+  assert.doesNotMatch(thirdFailure.message, /final-secret|assertion|sts-token-secret/);
+  assert.equal(thirdCalls.length, 3);
+});
+
+// Registration belongs to the trusted parent; no candidate callback is accepted in input.
+test('registers each credential before its next use and before returning the final token', async () => {
+  const registered = [];
+  const f = fetchSequence();
+  const result = await acquireGitHubVertexWifCredential(input, async (url, init) => {
+    const required = ['request-secret', 'github-assertion-secret', 'sts-token-secret'][f.calls.length];
+    assert.ok(registered.includes(required));
+    return f.fetch(url, init);
+  }, secret => { registered.push(secret); });
+  assert.deepEqual(registered, ['request-secret', 'github-assertion-secret', 'sts-token-secret', 'final-secret']);
+  assert.ok(registered.includes(result.token));
+});
+
+test('registration failure prevents credential use and exposes no secret in diagnostics', async () => {
+  for (const failingSecret of ['request-secret', 'github-assertion-secret', 'sts-token-secret', 'final-secret']) {
+    const f = fetchSequence();
+    await assert.rejects(acquireGitHubVertexWifCredential(input, f.fetch, secret => {
+      if (secret === failingSecret) throw new Error(secret);
+    }), error => {
+      assert.match(error.message, /secret_registration/);
+      assert.doesNotMatch(error.message, /request-secret|github-assertion-secret|sts-token-secret|final-secret/);
+      return true;
+    });
+    assert.equal(f.calls.length, ['request-secret', 'github-assertion-secret', 'sts-token-secret', 'final-secret'].indexOf(failingSecret));
+  }
+});
+
+test('rejects asynchronous registration before any credential dispatch', async () => {
+  for (const registrar of [async () => {}, async () => { throw new Error('private-secret'); },
+    () => ({ then() { throw new Error('thenable must not be called'); } })]) {
+    const f = fetchSequence();
+    await assert.rejects(acquireGitHubVertexWifCredential(input, f.fetch, registrar), /secret_registration/);
+    assert.equal(f.calls.length, 0);
+  }
+});

@@ -206,16 +206,32 @@ test('actual reporter CLI requires structured masked display and original canoni
   };`);
   const e={...process.env,...env(p),AUTHORITY_ROUTE_SELECTED:'true',AUTHORITY_PROVENANCE_BASE64:input().authorityEncoded,
     LEGACY_AUTHORITY_PROVENANCE_BASE64:'',POLICY_VERSION:'2',PR_NUMBER:'1',DECISION:'',OWNER_ADDITION_SELECTED:'false',
-    GITHUB_OUTPUT:join(dir,'output'),GITHUB_STEP_SUMMARY:join(dir,'summary'),REPORT_PATH:join(dir,'report')};
+    GITHUB_OUTPUT:join(dir,'_runner_file_commands/set_output_00000000-0000-0000-0000-000000000001'),
+    GITHUB_STEP_SUMMARY:join(dir,'_runner_file_commands/step_summary_00000000-0000-0000-0000-000000000001'),
+    REPORT_PATH:join(dir,'architecture-gate-report.md')};
   const command=new URL('../dist/ci-report.mjs',import.meta.url).pathname;
-  const invoke=()=>spawnSync(process.execPath,['--import',shim,command],{env:e,encoding:'utf8'});
+  const invoke=()=>spawnSync(process.execPath,['--import',shim,command],{cwd:dir,env:e,encoding:'utf8'});
   try{
+    mkdirSync(join(dir,'_runner_file_commands'));
     writeFileSync(e.GITHUB_OUTPUT,'');writeFileSync(e.GITHUB_STEP_SUMMARY,'');
     const ok=invoke();assert.equal(ok.status,0,ok.stderr);
     assert.equal(readFileSync(e.GITHUB_OUTPUT,'utf8'),`conclusion=PASS\ndecision_digest=${p.expected.decisionDigest}\n`);
     assert.match(readFileSync(e.REPORT_PATH,'utf8'),/\*\*\*/);
     assert.ok(readFileSync(e.REPORT_PATH,'utf8').includes(p.expected.decisionDigest));
-    delete e.CODEX_PASS_NONCE;writeFileSync(e.GITHUB_OUTPUT,'');writeFileSync(e.GITHUB_STEP_SUMMARY,'');rmSync(e.REPORT_PATH);
+    // The merged reporter must reject an existing fixed copy and arbitrary
+    // paths before publishing any summary or GitHub output.
+    const recordedReport=readFileSync(e.REPORT_PATH,'utf8');
+    writeFileSync(e.GITHUB_OUTPUT,'');writeFileSync(e.GITHUB_STEP_SUMMARY,'');
+    const existing=invoke();assert.notEqual(existing.status,0);
+    assert.equal(readFileSync(e.REPORT_PATH,'utf8'),recordedReport);
+    assert.equal(readFileSync(e.GITHUB_OUTPUT,'utf8'),'');assert.equal(readFileSync(e.GITHUB_STEP_SUMMARY,'utf8'),'');
+    rmSync(e.REPORT_PATH);
+    const fixedReportPath=e.REPORT_PATH;e.REPORT_PATH=join(dir,'arbitrary-report.md');
+    const arbitrary=invoke();assert.notEqual(arbitrary.status,0);
+    assert.throws(()=>readFileSync(e.REPORT_PATH));
+    assert.equal(readFileSync(e.GITHUB_OUTPUT,'utf8'),'');assert.equal(readFileSync(e.GITHUB_STEP_SUMMARY,'utf8'),'');
+    e.REPORT_PATH=fixedReportPath;
+    delete e.CODEX_PASS_NONCE;writeFileSync(e.GITHUB_OUTPUT,'');writeFileSync(e.GITHUB_STEP_SUMMARY,'');
     const bad=invoke();assert.notEqual(bad.status,0);assert.equal(readFileSync(e.GITHUB_OUTPUT,'utf8'),'');assert.equal(readFileSync(e.GITHUB_STEP_SUMMARY,'utf8'),'');
     assert.throws(()=>readFileSync(e.REPORT_PATH));
   }finally{rmSync(dir,{recursive:true,force:true});}
