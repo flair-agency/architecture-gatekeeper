@@ -5,10 +5,10 @@ import type { ReviewFileContextLimits, ReviewFileContextPacket } from '../review
 import type { GeminiCliThinkingOptions } from './gemini-cli-process.mts';
 
 const OPTION_KEYS = new Set([
-  'cliEntrypoint', 'privateParentDirectory', 'prompt', 'model', 'thinkingBudget', 'thinkingLevel',
+  'cliEntrypoint', 'privateParentDirectory', 'prompt', 'model', 'thinkingBudget', 'thinkingLevel', 'maxOutputTokens',
   'project', 'region', 'timeoutMs', 'maxPromptBytes', 'maxStdoutBytes', 'maxStderrBytes', 'signal',
 ]);
-const INPUT_KEYS = new Set(['packet', 'workspaceLimits', 'workspaceParentDirectory', 'processOptions', 'credentials']);
+const INPUT_KEYS = new Set(['packet', 'workspaceLimits', 'workspaceParentDirectory', 'processOptions', 'credentials', 'reserveDispatch']);
 const MAX_SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 
 interface GeminiCliProxySessionProcessOptionsCommon {
@@ -21,6 +21,7 @@ interface GeminiCliProxySessionProcessOptionsCommon {
   maxPromptBytes: number;
   maxStdoutBytes: number;
   maxStderrBytes: number;
+  maxOutputTokens?: number;
   signal?: AbortSignal;
 }
 
@@ -39,6 +40,7 @@ export interface GeminiCliProxySessionInput<Model extends string = string> {
   workspaceParentDirectory: string;
   processOptions: GeminiCliProxySessionProcessOptions<Model>;
   credentials: { type: 'bearer'; value: string };
+  reserveDispatch?: () => boolean;
 }
 
 interface GeminiSecurityProxyConfiguration {
@@ -50,6 +52,7 @@ interface GeminiSecurityProxyConfiguration {
   allowStreaming: true;
   deadlineMs: number;
   signal: AbortSignal;
+  reserveDispatch?: () => boolean;
 }
 type GeminiSecurityProxyOptions = Parameters<typeof startGeminiSecurityProxy>[0] & GeminiSecurityProxyConfiguration;
 
@@ -58,6 +61,9 @@ function validateInput<Model extends string>(input: GeminiCliProxySessionInput<M
     throw new Error('Gemini CLI proxy session received unsupported input.');
   }
   const { processOptions, credentials } = input;
+  if (input.reserveDispatch !== undefined && typeof input.reserveDispatch !== 'function') {
+    throw new Error('Gemini CLI proxy session dispatch reservation must be a trusted parent function.');
+  }
   if (!processOptions || typeof processOptions !== 'object' || Array.isArray(processOptions) ||
       Object.keys(processOptions).some(key => !OPTION_KEYS.has(key))) {
     throw new Error('Gemini CLI proxy session requires fixed process options and does not accept proxy overrides.');
@@ -116,6 +122,7 @@ export async function runGeminiCliProxySession<const Model extends string = stri
       allowStreaming: true,
       deadlineMs: beforeProxy,
       signal,
+      ...(input.reserveDispatch !== undefined ? { reserveDispatch: input.reserveDispatch } : {}),
     } as GeminiSecurityProxyOptions);
     const remaining = remainingDeadlineMs(deadlineAt);
     if (remaining === 0 || deadlineController.signal.aborted) {

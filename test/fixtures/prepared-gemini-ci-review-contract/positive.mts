@@ -13,6 +13,7 @@ const packet = {
 const processBase = {
   cliEntrypoint: '/opt/gemini.mjs', privateParentDirectory: '/tmp/private',
   project: 'selected-project', region: 'us-central1', timeoutMs: 5000,
+  maxOutputTokens: 16384,
   maxPromptBytes: 4096, maxStdoutBytes: 2048, maxStderrBytes: 2048,
 };
 const sessionBase = {
@@ -21,6 +22,7 @@ const sessionBase = {
 };
 
 const flashInput: PreparedGeminiCiReviewInput<'gemini-3.8-flash'> = {
+  protectedReviewer: { provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM' },
   protectedPromptText: 'Review selected evidence.',
   protectedDecisionSchemaText: '{"type":"object"}',
   proxySessionOptions: {
@@ -29,6 +31,7 @@ const flashInput: PreparedGeminiCiReviewInput<'gemini-3.8-flash'> = {
   },
 };
 const budgetInput: PreparedGeminiCiReviewInput<'gemini-2.5-flash'> = {
+  protectedReviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingLevel: 'MEDIUM' },
   protectedPromptText: 'Review selected evidence.',
   protectedDecisionSchemaText: '{"type":"object"}',
   proxySessionOptions: {
@@ -37,6 +40,7 @@ const budgetInput: PreparedGeminiCiReviewInput<'gemini-2.5-flash'> = {
   },
 };
 const defaultAliasFlash: PreparedGeminiCiReviewInput = {
+  protectedReviewer: { provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM' },
   protectedPromptText: 'Review selected evidence.',
   protectedDecisionSchemaText: '{"type":"object"}',
   proxySessionOptions: {
@@ -45,6 +49,7 @@ const defaultAliasFlash: PreparedGeminiCiReviewInput = {
   },
 };
 const defaultAliasBudget: PreparedGeminiCiReviewInput = {
+  protectedReviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingLevel: 'MEDIUM' },
   protectedPromptText: 'Review selected evidence.',
   protectedDecisionSchemaText: '{"type":"object"}',
   proxySessionOptions: {
@@ -55,6 +60,7 @@ const defaultAliasBudget: PreparedGeminiCiReviewInput = {
 type FlashModel = 'gemini-3.8-flash' | 'gemini-2.5-flash';
 declare const unionModel: FlashModel;
 const correlatedUnion: PreparedGeminiCiReviewInput<FlashModel> = {
+  protectedReviewer: { provider: 'gemini', model: unionModel, thinkingLevel: 'MEDIUM' },
   protectedPromptText: 'Review selected evidence.',
   protectedDecisionSchemaText: '{"type":"object"}',
   proxySessionOptions: {
@@ -65,6 +71,7 @@ const correlatedUnion: PreparedGeminiCiReviewInput<FlashModel> = {
   },
 };
 const correlatedCall = runGrouped({
+  protectedReviewer: { provider: 'gemini', model: unionModel, thinkingLevel: 'MEDIUM' },
   protectedPromptText: 'Review selected evidence.',
   protectedDecisionSchemaText: '{"type":"object"}',
   proxySessionOptions: {
@@ -86,11 +93,14 @@ void correlatedUnion;
 void correlatedCall;
 void typedUnionCall;
 
-// A caller with a runtime-selected model can provide either supported
-// capability shape; the process layer keeps the selected model authoritative.
+// These compile-only records describe model capability shapes, not runtime
+// admission. The prepared adapter requires gemini-3.8-flash/MEDIUM and rejects
+// every unsupported/mismatched selection before proxy or CLI startup.
+// Direct lower-level callers retain their separate generic thinking contracts.
 function dispatchDynamic(model: string, thinking: { thinkingBudget: number } | { thinkingLevel: 'LOW' | 'MEDIUM' | 'HIGH' }) {
   return runGrouped({
-    protectedPromptText: 'Review selected evidence.',
+    protectedReviewer: { provider: 'gemini', model: model, thinkingLevel: 'MEDIUM' },
+  protectedPromptText: 'Review selected evidence.',
     protectedDecisionSchemaText: '{"type":"object"}',
     proxySessionOptions: {
       ...sessionBase,
@@ -105,7 +115,7 @@ void dispatchDynamic;
 const lowerSession: Promise<string> = runGeminiCliProxySession({
   ...sessionBase,
   processOptions: {
-    ...processBase, prompt: 'already protected', model: 'gemini-3.8-flash', thinkingLevel: 'LOW',
+    ...processBase, maxOutputTokens: 16384, prompt: 'already protected', model: 'gemini-3.8-flash', thinkingLevel: 'LOW',
   },
 });
 const lowerProcess = runGeminiCliProcess({

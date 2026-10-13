@@ -200,7 +200,8 @@ export function prepareReviewFileContext({ root, baseSha, headSha, reviewedSha, 
   let checkedOutSha: string;
   try { checkedOutSha = utf8.decode(git(checkout, ['rev-parse', '--verify', 'HEAD^{commit}'], 256)).trim(); }
   catch { fail('checkout HEAD cannot be verified.'); }
-  if (checkedOutSha !== reviewedSha) fail('checkout HEAD does not equal the reviewed merge revision.');
+  // Evidence is read by immutable Git object ID, never from the mutable worktree.
+  if (checkedOutSha !== baseSha && checkedOutSha !== reviewedSha) fail('checkout HEAD is neither the protected base nor the reviewed merge revision.');
   let parents: string[];
   try { parents = utf8.decode(git(checkout, ['rev-list', '--parents', '-n', '1', reviewedSha], 256)).trim().split(/\s+/); }
   catch { fail('reviewed merge commit cannot be verified.'); }
