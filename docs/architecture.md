@@ -131,6 +131,33 @@ same-user isolation, dismiss unrelated findings, or authorize protected
 acceptance. This decision records the selected boundary; implementation,
 model regression and hosted verification remain separate prerequisites.
 
+#### Independent CI diagnostic acquisition (PR #572 owner decision, 2026-10-13)
+
+For opt-in CI observation, the owner selects a separate optional post-review
+collector job. Diagnostic start, completion, export, upload, artifact transfer
+and acquisition waits must not consume the required review job's deadline.
+The collector may depend on completed required jobs; review, reporting and
+acceptance must not depend on successful diagnostic collection. Required job
+and reviewer deadlines, conditions, permissions and acceptance outputs retain
+their existing meanings.
+
+The collector may consume already-published validated result metadata and
+public GitHub workflow-job metadata for the exact selected repository, run
+and attempt. Public acquisition has finite request, byte and time bounds and
+uses anonymous access only, without credential acquisition, token fallback or
+additional repository permissions. Reject missing, malformed, ambiguous or
+mismatched bindings; unavailable private-host data remains an explicit gap.
+No collection failure, cancellation or stall can satisfy or fail required
+review, reporting or acceptance.
+
+Record collector timing separately from observed review/job/step timing. Use
+review timing only when actually available and consistently bound. Unavailable
+request, prompt, schema, execution, finding-count and freshness facts remain
+unknown; job success alone does not establish them. Existing private storage,
+whitelist export and unauthenticated-diagnostic limitations continue to apply.
+This decision records the acquisition boundary, not implemented support,
+authenticated execution, host enforcement or completed pilot evidence.
+
 ### Acceptance authority and host enforcement boundary
 
 | Responsibility | Authority |
