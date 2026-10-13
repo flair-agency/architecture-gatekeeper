@@ -8,7 +8,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 const suppliedBin = process.argv[2];
 if (!suppliedBin) throw new Error('Usage: installed-smoke.mjs <installed-bin-directory>');
 const installedBin = isAbsolute(suppliedBin) ? suppliedBin : resolve(suppliedBin);
-const parent = mkdtempSync(join(tmpdir(), 'architecture-gate-installed-'));
+const parent = mkdtempSync(join(realpathSync(tmpdir()), 'architecture-gate-installed-'));
 try {
   const root = join(parent, 'consumer'); const gate = join(root, '.codex', 'gatekeeper'); const mockBin = join(parent, 'mock-bin');
   mkdirSync(gate, { recursive: true }); mkdirSync(mockBin);
@@ -26,9 +26,13 @@ const args = process.argv.slice(2); const output = args[args.indexOf('--output-l
 process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, process.env.MOCK_DECISION_JSON || ${JSON.stringify(JSON.stringify(decision))}));
 `); chmodSync(codex, 0o755);
   execFileSync('git', ['init'], { cwd: root }); execFileSync('git', ['config', 'user.name', 'Smoke'], { cwd: root }); execFileSync('git', ['config', 'user.email', 'smoke@example.invalid'], { cwd: root }); execFileSync('git', ['add', '.'], { cwd: root }); execFileSync('git', ['commit', '-m', 'fixture'], { cwd: root });
-  const env = { ...process.env, PATH: `${mockBin}:${process.env.PATH}` };
+  const measurementDir = join(parent, 'measurement'); mkdirSync(measurementDir, { mode: 0o700 });
+  const env = { ...process.env, PATH: `${mockBin}:${process.env.PATH}`, AGK_MEASUREMENT_DIR: measurementDir, AGK_MEASUREMENT_CHANGE_ID: 'installed-fixture' };
   const run = (name, args = [], input) => { const result = spawnSync(join(installedBin, name), args, { cwd: root, env, input, encoding: 'utf8' }); if (result.status !== 0) throw new Error(`${name} failed: ${result.stderr}`); return result.stdout; };
   const manual = JSON.parse(run('architecture-review', ['Review installed standalone adapter']));
+  const measurementExport = JSON.parse(run('architecture-measurement', ['export', measurementDir]));
+  if (!measurementExport.records.some(r => r.phase === 'terminal' && r.decision === 'PASS')) throw new Error('installed measurement CLI lost manual result');
+  if (JSON.stringify(measurementExport).includes('installed adapter passed')) throw new Error('installed measurement export leaked summary');
   if (manual.decision !== 'PASS') throw new Error('standalone adapter did not pass');
   const hook = JSON.parse(run('architecture-gatekeeper', [], JSON.stringify({ hook_event_name: 'UserPromptSubmit', session_id: 'installed-smoke', cwd: root, prompt: 'Review installed Hook adapter' })));
   if (!hook.hookSpecificOutput?.additionalContext.includes('"decision": "PASS"')) throw new Error('Hook adapter did not pass');
@@ -139,12 +143,17 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   // Run the existing ordinary semantic fixture against the installed public
   // subpath, with Node resolving the package from this isolated consumer.
   const packageNodeModules = join(process.cwd(), 'node_modules');
+  const measurementApi = await import(pathToFileURL(join(packageNodeModules, '@flair-agency/architecture-gatekeeper/dist/measurement-api.mjs')));
+  if (typeof measurementApi.aggregateMeasurement !== 'function' || typeof measurementApi.beginMeasurement !== 'function') throw new Error('installed measurement API missing');
   if (realpathSync(installedBin) !== realpathSync(join(packageNodeModules, '.bin'))) {
     throw new Error('installed smoke must run from the installation prefix');
   }
   const apiTests = join(root, 'api-tests');
   mkdirSync(apiTests);
+  const measurementExportTest = join(apiTests, 'measurement-export.mjs');
+  writeFileSync(measurementExportTest, "import { aggregateMeasurement } from '@flair-agency/architecture-gatekeeper/measurement';\nconst report = aggregateMeasurement({version:1, records:[], population:[], cases:[], audits:[]});\nif (report.metrics.precision.rate !== null) throw new Error('installed measurement API denominator failed');\n");
   symlinkSync(packageNodeModules, join(root, 'node_modules'), 'dir');
+  execFileSync(process.execPath, [measurementExportTest], { cwd: root, timeout: 30000 });
   mkdirSync(join(apiTests, 'fixtures'));
   copyFileSync(new URL('./fixtures/preview-lifecycle-runtime.mjs', import.meta.url), join(apiTests, 'fixtures/preview-lifecycle-runtime.mjs'));
   const previewFixtureModule = await import(pathToFileURL(join(apiTests, 'fixtures', 'preview-lifecycle-runtime.mjs')));

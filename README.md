@@ -45,6 +45,7 @@ Each consumer owns its architecture, review inputs and acceptance policy.
 | Use a host-native review workflow | [Codex Skill](docs/integration-reference.md#codex-skill-installation) | Separately installed Skill and host reviewer |
 | Review pull requests | [CI integration](docs/integration-reference.md#ci-integration) | Protected-base policy and host-controlled execution |
 | Operate or troubleshoot a review | [Owner intervention](docs/owner-intervention.md) | `BLOCK`, `OWNER_DECISION`, incomplete results and recovery |
+| Measure review effectiveness | [Diagnostic measurement](docs/measurement.md) | Opt-in local/native records, adjudicated cases and blind audits |
 | Enable optional local/native diagnostics | [Measurement adapters](docs/measurement-adapters.md) | Default-off observers and private storage |
 | Change or release this package | [Development](docs/development.md) and [release guide](docs/release.md) | Maintainer procedures |
 | Read the rules and assurance limits | [Architecture contract](docs/architecture.md) and [documentation map](docs/README.md) | Normative contract and guide index |
@@ -141,6 +142,16 @@ settings do not apply to ordinary consumers.
 
 Use the [documentation map](docs/README.md) to find the integration walkthrough,
 operations, development and release guides, or normative contract.
+
+### Diagnostic measurement
+
+Capture and directory export require a POSIX host; Windows support is limited
+to offline dataset analysis. Use the [measurement guide](docs/measurement.md)
+to collect local/native review attempts, export redacted records and assess
+findings against independent case
+judgments and blind audits. Collection is opt-in; descriptive metrics include
+denominators and missing observations without claiming causal drift prevention.
+CI capture and workflow opt-in are supplied by the dependent CI observation PR.
 
 ### Unverified preview lifecycle API
 
