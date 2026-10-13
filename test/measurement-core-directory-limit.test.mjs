@@ -72,3 +72,27 @@ test('diagnostic directories require all owner permissions before loading or cap
   assert.ok(attempt.id); attempt.finish();
   assert.ok(loadMeasurementDirectory(root).records.some(r => r.phase === 'terminal'));
 });
+
+test('foreign-owned diagnostics are rejected before capture, resumption, completion or export', {skip: process.platform === 'win32'}, t => {
+  const root = directory(t);
+  const script = `
+    import assert from 'node:assert/strict';
+    import fs from 'node:fs';
+    import {syncBuiltinESMExports} from 'node:module';
+    import {beginMeasurement,resumeMeasurement,resumeNativeMeasurement,loadMeasurementDirectory,measurementDigest} from ${JSON.stringify(new URL('../dist/measurement.mjs',import.meta.url).href)};
+    const dir=process.argv[1], requestPath=dir+'-request';
+    const request={requestId:'a'.repeat(64),repositoryRoot:process.cwd()};
+    const attempt=beginMeasurement({route:'native',directory:dir,correlation:measurementDigest(requestPath)});
+    assert.ok(attempt.id);attempt.request(request);
+    const stat=fs.lstatSync,write=fs.writeFileSync;let writes=0;
+    fs.lstatSync=(path,...args)=>{const value=stat(path,...args);if(path===dir)value.uid=process.geteuid()+1;return value;};
+    fs.writeFileSync=(...args)=>{writes++;return write(...args);};syncBuiltinESMExports();
+    assert.throws(()=>loadMeasurementDirectory(dir),/owned by the current effective user/);
+    assert.equal(beginMeasurement({route:'manual',directory:dir}).id,null);
+    assert.equal(resumeMeasurement(attempt.id,dir).id,null);
+    assert.equal(resumeNativeMeasurement(requestPath,request,dir).id,null);
+    attempt.finish();assert.equal(writes,0);
+  `;
+  const result=spawnSync(process.execPath,['--input-type=module','-e',script,root],{encoding:'utf8',timeout:5000});
+  assert.equal(result.status,0,result.stderr);
+});

@@ -171,3 +171,21 @@ test('shared diagnostic storage cannot resume another repository under its immut
     assert.equal(correct.id, f.attempt.id); correct.finish({ state: 'completed' });
   }
 });
+
+for (const corruption of ['missing', 'malformed', 'oversized', 'directory']) test(`native resumption rejects ${corruption} immutable start and retains an older complete candidate`, t => {
+  const f = fixture(t, 'native');
+  const newer = beginMeasurement({ route: 'native', cwd: f.root, directory: f.directory, correlation: measurementDigest(f.requestPath) });
+  newer.request(f.request, { kind: 'proposed-task' });
+  for (const phase of ['start', 'prepared']) {
+    const path = join(f.directory, `${newer.id}.${phase}.json`);
+    const record = JSON.parse(readFileSync(path)); record.startedAt = '2099-01-01T00:00:00.000Z'; writeFileSync(path, JSON.stringify(record));
+  }
+  const path = join(f.directory, `${newer.id}.start.json`); rmSync(path);
+  if (corruption === 'malformed') writeFileSync(path, '{bad');
+  if (corruption === 'oversized') writeFileSync(path, 'x'.repeat(256 * 1024 + 1));
+  if (corruption === 'directory') mkdirSync(path);
+  const resumed = resumeNativeMeasurement(f.requestPath, f.request, f.directory);
+  assert.equal(resumed.id, f.attempt.id); resumed.finish();
+  assert.equal(resumeNativeMeasurement(f.requestPath, f.request, f.directory).id, null);
+  assert.ok(!loadMeasurementDirectory(f.directory).records.some(r => r.attemptId === newer.id && r.phase === 'terminal'));
+});

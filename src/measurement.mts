@@ -108,6 +108,7 @@ function directory(path: string | undefined, root?: string, remainingWrites = 1)
   const canonical = realpathSync(path);
   const stat = lstatSync(path);
   if (canonical !== resolve(path) || !stat.isDirectory() || stat.isSymbolicLink() || (stat.mode & 0o777) !== 0o700) throw new Error('Measurement directory must be canonical and private (0700).');
+  if (typeof process.geteuid !== 'function' || stat.uid !== process.geteuid()) throw new Error('Measurement directory must be owned by the current effective user.');
   if (root && within(realpathSync(root), canonical)) throw new Error('Measurement directory must be outside the reviewed worktree.');
   if (remainingWrites) for (const _ of measurementDirectoryEntries(canonical, MAX_FILES - remainingWrites)) { /* leave room for every remaining phase */ }
   return canonical;
@@ -303,7 +304,11 @@ export function resumeNativeMeasurement(requestPath: string, request: Measuremen
     const starts = records.filter(r => (r.runtime as { collectorSha256?: unknown } | null)?.collectorSha256 === collectorSha256 && r.repositoryId === measurementDigest(root) && r.phase === 'prepared' && r.route === 'native' && r.request?.requestId === request.requestId && r.correlation === correlation && unfinished(r.attemptId));
     starts.sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
     const start = starts.find(candidate => {
-      try { validateMeasurementPhases(records.filter(r => r.attemptId === candidate.attemptId)); return true; }
+      try {
+        const phases = records.filter(r => r.attemptId === candidate.attemptId);
+        if (!phases.some(r => r.phase === 'start')) return false;
+        validateMeasurementPhases(phases); return true;
+      }
       catch { return false; /* a corrupt candidate must not shadow a valid older one */ }
     });
     if (!start) throw new Error('Native preparation observation missing or already completed.');
