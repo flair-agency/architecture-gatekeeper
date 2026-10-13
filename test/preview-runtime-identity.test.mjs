@@ -73,7 +73,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'owner-addition/multi-authority-eligibility.mjs',
     'owner-addition/single-authority-member.mjs',
     'github/owner-addition-evidence-zip.mjs',
-    'github/github-runner-env.mjs');
+    'github/github-runner-env.mjs',
+    'github/github-owner-addition-provenance.mjs');
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -257,10 +258,11 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   writeFileSync(join(flatRoot, 'dist/owner-addition-evidence-zip-helper.mjs'),
     readFileSync(join(flatRoot, 'dist/github/owner-addition-evidence-zip.mjs')));
   const githubOwnerAdditionProvenancePath = join(flatRoot, 'dist/github-owner-addition-provenance.mjs');
-  const githubOwnerAdditionProvenanceSource = readFileSync(githubOwnerAdditionProvenancePath, 'utf8');
-  assert.match(githubOwnerAdditionProvenanceSource, /from (["'])\.\/github\/owner-addition-evidence-zip\.mjs\1/);
+  const githubOwnerAdditionProvenanceSource = readFileSync(join(flatRoot, 'dist/github/github-owner-addition-provenance.mjs'), 'utf8');
+  assert.match(githubOwnerAdditionProvenanceSource, /from (["'])\.\/owner-addition-evidence-zip\.mjs\1/);
   writeFileSync(githubOwnerAdditionProvenancePath, githubOwnerAdditionProvenanceSource
-    .replace(/from (["'])\.\/github\/owner-addition-evidence-zip\.mjs\1/, "from './owner-addition-evidence-zip-helper.mjs'"));
+    .replace(/from '\.\.\//g, "from './")
+    .replace(/from (["'])\.\/owner-addition-evidence-zip\.mjs\1/, "from './owner-addition-evidence-zip-helper.mjs'"));
   for (const file of ['owner-amendment-block-handoff.mjs',
     'owner-amendment-block-handoff-compose.mjs', 'owner-amendment-block-handoff-orchestrator.mjs',
     'owner-amendment-owner-decision-handoff.mjs', 'owner-amendment-owner-decision-handoff-cli.mjs',

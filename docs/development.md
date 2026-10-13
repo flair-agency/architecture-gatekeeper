@@ -301,15 +301,21 @@ unchanged. The materializer retains
 two narrow `@ts-expect-error` boundaries where it composes the existing Git
 reader and filesystem writer. They preserve those operations without claiming
 that `outputPath` is a string: the original truthy guard permits native path-like
-and file-descriptor inputs. Six originals have partial helper migrations.
+and file-descriptor inputs. Five originals have partial helper migrations.
 The CI report keeps its flat CLI and filesystem sinks; the owner-addition
 finalizer keeps its finalizer and CLI operations; and multi-authority
 orchestration keeps its adapter while delegating selected eligibility helpers.
 Owner-addition CI delegates only the post-parse single-member selection while
-retaining its Git reads, file writes and command dispatch. GitHub OWNER_ADDITION
-provenance delegates the bounded single-entry ZIP parser while retaining fetch,
-token, artifact selection, digest binding and attestation validation at the
-flat path. These types describe existing parsed bytes and selected-member
+retaining its Git reads, file writes and command dispatch. The GitHub
+OWNER_ADDITION provenance candidate moves its complete verifier to
+`github/github-owner-addition-provenance.mts`, including fetch, token, artifact
+selection, digest binding and evidence validation. Its flat entrypoint is a pure
+re-export, and the bounded ZIP parser remains in its existing typed leaf.
+External JSON and property rereads remain unknown. Readonly result views do not
+freeze observations or authenticate producer identity. Complete original runtime
+operations are pinned after type erasure in source and emitted output; exact
+public-head CodeQL, installed identity and protected acceptance remain required.
+These types describe existing parsed bytes and selected-member
 results; they do not authenticate provenance or establish acceptance. The legacy CI
 preparer is also partial: its decision check is extracted, while Git, filesystem
 and CLI operations remain at the original path.
@@ -331,11 +337,13 @@ This CI composition candidate brings the count to 81 `.mts` modules and
 The GitHub command candidate has 82 original modules fully migrated to `.mts`
 and 14 originals not fully migrated. The runner-accessor candidate adds one
 complete typed implementation, reaching 83/96 fully migrated and 13 originals
-not fully migrated. Of those 13, three have checked JavaScript contracts
-(snapshot materializer, native CLI and CI report), and six have partial helper
+not fully migrated. The complete GitHub provenance candidate would bring that
+inventory to 84/96 and 12 unfinished originals after protected adoption.
+Of those 12, three have checked JavaScript contracts
+(snapshot materializer, native CLI and CI report), and five have partial helper
 migrations (CI report, owner-addition finalizer, multi-authority orchestration,
-owner-addition CI, GitHub OWNER_ADDITION provenance and the legacy authority
-decision check). CI report belongs to both categories; together they cover eight
+owner-addition CI and the legacy authority
+decision check). CI report belongs to both categories; together they cover seven
 distinct originals. The other five remain JavaScript modules
 outside these migrations. These source-layout counts do not change the
 selected CodeQL model or establish acceptance evidence.

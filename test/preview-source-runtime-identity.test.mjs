@@ -78,6 +78,8 @@ test('source runtime identity binds authored .mts and invalidates stale requests
   assert.ok(request.runtime.files['authority-set.mjs']);
   assert.equal(request.runtime.files['authority-validation/authority-set.mts'],
     sha256(readFileSync(join(sourceRoot, 'src/authority-validation/authority-set.mts'))));
+  assert.equal(request.runtime.files['github/github-owner-addition-provenance.mts'],
+    sha256(readFileSync(join(sourceRoot, 'src/github/github-owner-addition-provenance.mts'))));
   const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
   await runtime.validatePreviewReceipt(receipt, f.root);
 

@@ -61,7 +61,8 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   mkdirSync(join(fixtureRoot, 'src/github'), { recursive: true });
   for (const module of ['github-associated-repository', 'github-cli-runner',
     'github-authority-source', 'github-merge-group-event', 'github-owner-amendment-readback',
-    'github-owner-addition-readback', 'github-app-check-reporter', 'github-ruleset-readback', 'github-runner-env']) {
+    'github-owner-addition-readback', 'github-app-check-reporter', 'github-ruleset-readback', 'github-runner-env',
+    'github-owner-addition-provenance']) {
     cpSync(join(root, `src/github/${module}.mts`), join(fixtureRoot, `src/github/${module}.mts`));
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
   }
@@ -71,6 +72,9 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   mkdirSync(join(fixtureRoot, 'src/runner-paths'), { recursive: true });
   cpSync(join(root, 'src/runner-paths/runner-temp-path.mts'), join(fixtureRoot, 'src/runner-paths/runner-temp-path.mts'));
   mkdirSync(join(fixtureRoot, 'src/authority-validation'), { recursive: true });
+  cpSync(join(root, 'src/github/owner-addition-evidence-zip.mts'), join(fixtureRoot, 'src/github/owner-addition-evidence-zip.mts'));
+  cpSync(join(root, 'src/multi-authority-provenance.mjs'), join(fixtureRoot, 'src/multi-authority-provenance.mjs'));
+  cpSync(join(root, 'src/authority-validation/multi-authority-provenance.mts'), join(fixtureRoot, 'src/authority-validation/multi-authority-provenance.mts'));
   cpSync(join(root, 'src/authority-validation/authority-set.mts'), join(fixtureRoot, 'src/authority-validation/authority-set.mts'));
   cpSync(join(root, 'src/authority-validation/resolve-ci-policy.mts'), join(fixtureRoot, 'src/authority-validation/resolve-ci-policy.mts'));
   writeFileSync(join(fixtureRoot, 'src/legacy.mjs'), 'export const legacyValue = 7;\n');
@@ -85,6 +89,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   assert.deepEqual(emittedFiles(dist), [
     'authority-set.mjs',
     'authority-validation/authority-set.mjs',
+    'authority-validation/multi-authority-provenance.mjs',
     'authority-validation/resolve-ci-policy.mjs',
     'ci-execution-result.mjs',
     'ci-execution/ci-execution-result.mjs',
@@ -93,6 +98,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'github-authority-source.mjs',
     'github-cli-runner.mjs',
     'github-merge-group-event.mjs',
+    'github-owner-addition-provenance.mjs',
     'github-owner-addition-readback.mjs',
     'github-owner-amendment-readback.mjs',
     'github-ruleset-readback.mjs',
@@ -102,11 +108,14 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'github/github-authority-source.mjs',
     'github/github-cli-runner.mjs',
     'github/github-merge-group-event.mjs',
+    'github/github-owner-addition-provenance.mjs',
     'github/github-owner-addition-readback.mjs',
     'github/github-owner-amendment-readback.mjs',
     'github/github-ruleset-readback.mjs',
     'github/github-runner-env.mjs',
+    'github/owner-addition-evidence-zip.mjs',
     'legacy.mjs',
+    'multi-authority-provenance.mjs',
     'owner-addition-validation.mjs',
     'owner-addition/owner-addition-validation.mjs',
     'owner-addition/peer.mjs',
