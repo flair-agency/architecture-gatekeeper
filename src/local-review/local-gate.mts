@@ -81,6 +81,7 @@ function review(task: unknown, cwd: string, previous: unknown = null, options: M
     measurement.request(request, { kind: 'proposed-task', taskSha256: measurementDigest(task) }, transportRequest.prompt);
     stage = 'execution';
     const result = (executeLocalReviewerSync as CanonicalSyncOperation)(transportRequest, withoutDiagnosticOptions(options));
+    completed = { execution: result.execution, observation: { execution: 'completed' } };
     stage = 'validation';
     const decision = validateReviewResponse(request, result.decision);
     completed = { decision, execution: result.execution, observation: { execution: 'completed', validation: 'completed' } };
@@ -100,6 +101,7 @@ async function reviewAsync(task: unknown, cwd: string, previous: unknown = null,
     measurement.request(request, { kind: 'proposed-task', taskSha256: measurementDigest(task) }, transportRequest.prompt);
     stage = 'execution';
     const result = await executeLocalReviewer(transportRequest, withoutDiagnosticOptions(options));
+    completed = { execution: result.execution, observation: { execution: 'completed' } };
     stage = 'validation';
     const decision = validateReviewResponse(request, result.decision);
     completed = { decision, execution: result.execution, observation: { execution: 'completed', validation: 'completed' } };

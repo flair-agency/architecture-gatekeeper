@@ -8,7 +8,7 @@ import type { SpawnSyncOptionsWithBufferEncoding } from 'node:child_process';
 import { createReviewRequestAsync, repositoryRoot, validateReviewResponse, type PreparedReviewRequest } from '../review-contract/review-contract.mts';
 import { executeLocalReviewer, type LocalReviewerAsyncOptions, type LocalReviewerResult } from '../reviewer-transports/local-reviewer-execution.mts';
 
-type MeasurementCapture = { request(request: PreparedReviewRequest, scope: Record<string, unknown>): void; validatedDecision: unknown; enabled: boolean; snapshotStillCurrent: boolean | 'unknown' };
+type MeasurementCapture = { request(request: PreparedReviewRequest, scope: Record<string, unknown>): void; validatedDecision: unknown; execution: unknown; executionCompleted: boolean; enabled: boolean; snapshotStillCurrent: boolean | 'unknown' };
 type EventView = { [key: string]: unknown };
 // Object inputs may expose changing getters; repeated slice observations stay unknown.
 type EventMetadata = { sessionId?: string; turnId?: unknown; toolName?: unknown; toolUseId?: unknown };
@@ -319,6 +319,8 @@ async function screen(input: unknown, { cwd = process.cwd(), reviewer, reviewerR
     newerPending = exists(markerPath(state));
     timing.reviewStartedAt = new Date().toISOString();
     const executionResult: LocalReviewerResult = await executeLocalReviewer(request, { reviewer, reviewerResultFormat } as LocalReviewerAsyncOptions<PreparedReviewRequest>);
+    measurement.execution = executionResult.execution;
+    measurement.executionCompleted = true;
     const decision = validateReviewResponse(request, executionResult.decision);
     measurement.validatedDecision = decision;
     timing.reviewCompletedAt = new Date().toISOString();
@@ -362,19 +364,17 @@ function postToolMeasurement(input: unknown, options: PostToolScreenOptions, cwd
 async function observedPostToolScreen(input: unknown, options: PostToolScreenOptions, publish?: (output: string | null) => void | Promise<void>): Promise<{ result: ScreenResult; output: string | null }> {
   const { cwd = process.cwd(), reviewer, reviewerResultFormat, batchDelayMs = DEFAULT_BATCH_DELAY_MS } = options;
   const measurement = postToolMeasurement(input, options, cwd);
-  const capture: MeasurementCapture = { request: (request, scope) => measurement.request(request, scope), validatedDecision: null, enabled: Boolean(measurement.id), snapshotStillCurrent: 'unknown' };
+  const capture: MeasurementCapture = { request: (request, scope) => measurement.request(request, scope), validatedDecision: null, execution: null, executionCompleted: false, enabled: Boolean(measurement.id), snapshotStillCurrent: 'unknown' };
   let stage = 'screen';
-  let execution: unknown = null;
   try {
     const value = await screen(input, { cwd, reviewer, reviewerResultFormat, batchDelayMs } as PostToolScreenOptions, capture);
     const status = value.result.status as string;
     const state = ['PASS', 'BLOCK', 'OWNER_DECISION'].includes(status) ? 'completed' : status === 'queued-latest' ? 'queued' : status === 'unchanged' && value.result.requestId ? 'deduplicated' : status;
-    execution = value.result.reviewerExecution ?? null;
     stage = 'publication'; await publish?.(value.output);
-    measurement.finish({ state, decision: capture.validatedDecision, execution,
-      publication: value.output ? 'returned-to-caller' : 'unknown', observation: { snapshotStillCurrent: state === 'completed' ? capture.snapshotStillCurrent : 'unknown' } });
+    measurement.finish({ state, decision: capture.validatedDecision, execution: capture.execution,
+      publication: value.output ? 'returned-to-caller' : 'unknown', observation: { ...(capture.executionCompleted ? { execution: 'completed' } : {}), snapshotStillCurrent: state === 'completed' ? capture.snapshotStillCurrent : 'unknown' } });
     return value;
-  } catch (error) { measurement.finish({ state: 'error', decision: capture.validatedDecision, execution, observation: { failureStage: stage } }); throw error; }
+  } catch (error) { measurement.finish({ state: 'error', decision: capture.validatedDecision, execution: capture.execution, observation: { ...(capture.executionCompleted ? { execution: 'completed' } : {}), failureStage: stage } }); throw error; }
 }
 export async function runPostToolScreenHook(input: unknown, options: PostToolScreenOptions = {}): Promise<{ result: ScreenResult; output: string | null }> { return observedPostToolScreen(input, options); }
 

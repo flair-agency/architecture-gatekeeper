@@ -233,3 +233,33 @@ test('synchronous Hook observes a closed real stdout pipe as unpublished',async 
  const terminal=loadMeasurementDirectory(records).records.find(r=>r.phase==='terminal');
  assert.equal(terminal.state,'error');assert.equal(terminal.decision.decision,'PASS');assert.equal(terminal.feedback.publication,'unknown');assert.equal(terminal.observation.failureStage,'hook-publication');
 });
+
+for (const route of ['manual-sync','manual-async','hook','PostToolUse']) test(`validation failure retains observed execution: ${route}`, async t => {
+  const {root,records}=fixture(t);writeFileSync(join(root,'candidate.md'),'changed');
+  const execution={status:'completed',fixture:'transport-returned'};
+  const options={reviewerResultFormat:'envelope',reviewer:()=>({decision:{decision:'invalid'},execution}),measurement:{directory:records}};
+  if(route==='PostToolUse') {
+    const value=await runPostToolScreenHook({hook_event_name:'PostToolUse',cwd:root,session_id:'invalid',tool_name:'Edit'},{...options,cwd:root,batchDelayMs:0});
+    assert.equal(value.result.status,'incomplete');
+  } else {
+    const error=await Promise.resolve().then(()=>route==='manual-sync'?runManualReview('task',root,options):route==='manual-async'?runManualReviewAsync('task',root,options):runHookAsync(JSON.stringify({hook_event_name:'UserPromptSubmit',cwd:root,session_id:'invalid',prompt:'task'}),root,options)).catch(e=>e);
+    assert.ok(error instanceof Error);
+  }
+  const terminal=loadMeasurementDirectory(records).records.find(r=>r.phase==='terminal');
+  assert.equal(terminal.decision,null);assert.deepEqual(terminal.execution,execution);
+  assert.equal(terminal.observation.execution,'completed');
+});
+
+for (const fault of ['stale-head','identity-store']) test(`PostToolUse retains execution after ${fault}`, async t=>{
+  const {root,records}=fixture(t);writeFileSync(join(root,'candidate.md'),'changed');
+  const execution={status:'completed',fixture:fault};
+  const value=await runPostToolScreenHook({hook_event_name:'PostToolUse',cwd:root,session_id:fault,tool_name:'Edit'},{cwd:root,batchDelayMs:0,measurement:{directory:records},reviewerResultFormat:'envelope',reviewer:()=>{
+    if(fault==='stale-head')execFileSync('git',['commit','--allow-empty','-m','move'],{cwd:root,stdio:'ignore'});
+    else mkdirSync(join(root,'.git/architecture-gatekeeper-post-tool-screen/last.json'));
+    return {decision:decision('PASS'),execution};
+  }});
+  assert.equal(value.result.status,'incomplete');
+  const terminal=loadMeasurementDirectory(records).records.find(r=>r.phase==='terminal');
+  assert.equal(terminal.decision.decision,'PASS');assert.deepEqual(terminal.execution,execution);
+  assert.equal(terminal.observation.execution,'completed');
+});
