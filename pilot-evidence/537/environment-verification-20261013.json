@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "purpose": "environment-verification-not-natural-pilot-effectiveness",
+  "checkedAtUtc": "2026-10-13 14:17:57 UTC",
+  "scheduledDelivery": {
+    "status": "verified",
+    "actualRunAtUtc": "2026-10-13T14:12:06.112713Z",
+    "messageDeliveredIntoOriginChat": true,
+    "GitHubWriteAndReadback": "matched",
+    "evidencePath": "pilot-evidence/537/scheduled-connectivity-probe-20261013.json",
+    "immediateStartApi": "still-404; not-used-for-scheduled-run"
+  },
+  "artifactTransport": {
+    "version": 1,
+    "purpose": "artifact-transport-only-not-measurement-effectiveness",
+    "sourceArtifactId": 11810327925,
+    "sourceRunId": 38393716099,
+    "connectorDownloadSucceeded": true,
+    "cloudWorkspaceDownloadSucceeded": true,
+    "compressedBytes": 923315,
+    "archiveSha256": "60f584c33ff0f4724fd8aa5f2a84d3e9767f8bdaf290847afcae88412a48564a",
+    "zipEntryCount": 11,
+    "uncompressedBytes": 11616795,
+    "zipDirectoryAndPathChecksPassed": true,
+    "privateContentsNotPublished": true,
+    "measurementRecordAcquisitionVerified": false
+  },
+  "localReview": {
+    "standaloneCli": "unsupported-with-current-observed-authentication: child responses transport HTTP401; no validated decision",
+    "nativeSkillPreparation": "verified",
+    "nativeReviewerInvocation": false,
+    "nativeSkillE2EVerified": false,
+    "automaticHookDelivery": "not-observed",
+    "privateRawDurableBackup": "unverified"
+  },
+  "readyScope": [
+    "Scheduled instruction delivery into origin chat",
+    "GitHub connector read/write/readback",
+    "GitHub artifact download via connector and Sediment file ID into Cloud workspace",
+    "Bounded ZIP directory/path inspection",
+    "Pinned runtime export/aggregation",
+    "Pinned native request preparation"
+  ],
+  "remaining": [
+    "Actual measurement-enabled self-CI artifact production and record validation not observed",
+    "Standalone child Codex CLI authentication needs an authorized working host; no credentials replaced",
+    "Native reviewer invocation and actual Hook delivery remain unverified"
+  ],
+  "models": {
+    "realPreflightCallsDispatched": 2,
+    "maximumApprovedCalls": 3,
+    "additionalModelCallsAfterScheduledProbe": 0
+  },
+  "changes": {
+    "runtimeSource": false,
+    "main": false,
+    "canonicalAuthority": false,
+    "credentials": false,
+    "acceptance": false,
+    "existingAutomations": false,
+    "diagnosticWorkflowAdded": false
+  }
+}
