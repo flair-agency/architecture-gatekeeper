@@ -9,8 +9,10 @@ follow separately; #537's enabled-host observations and pilot remain open.
 Records are diagnostic observations, never authority, authenticated execution,
 owner authorization or protected acceptance. Collection is opt-in at the core
 call and defaults off. Failures return a no-op and warn; unobserved phases remain
-gaps. Private POSIX directories must be canonical, mode0700 and outside the
-reviewed worktree; Windows capture/export is unsupported. Record reads/writes
+gaps. Private POSIX directories must be canonical, mode0700, owned by the effective user and outside the
+reviewed worktree; Windows capture/export is unsupported. Every recorder phase
+retains its selected reviewed root. Loading/export resolves the effective working
+root by default, or accepts an explicit reviewed root, before enumeration or reads. Record reads/writes
 retain 256KiB, depth32 and 4096-entry limits. Directory loading has a 4MiB cumulative raw-byte budget before decoding or
 parsing, including invalid UTF-8, malformed JSON and partially failed reads.
 At most one additional bounded read can occur before detecting overflow.

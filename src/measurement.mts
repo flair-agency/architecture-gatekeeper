@@ -192,10 +192,10 @@ export function beginMeasurement(options: MeasurementOptions = {}): MeasurementA
       sessionId: sessionId ? measurementDigest(sessionId) : null, correlation: correlation || null, context };
     const snapshot = snapshotJson(start);
     put(dir, snapshot);
-    return recorder(dir, snapshot);
+    return recorder(dir, snapshot, root);
   } catch { warnMeasurementGap(); return noop; }
 }
-function recorder(dir: string, start: RecordView): MeasurementAttempt {
+function recorder(dir: string, start: RecordView, root: string): MeasurementAttempt {
   const envelope: RecordView = { ...Object.fromEntries(MEASUREMENT_ENVELOPE_FIELDS.filter(field => Object.hasOwn(start, field)).map(field => [field, start[field]])),
     version: start.version, kind: start.kind, attemptId: start.attemptId, route: start.route, startedAt: start.startedAt, phase: 'start' };
   let request = start.request || null;
@@ -215,7 +215,7 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
   let preparing = false;
   let requestRepositoryGap = false;
   let prepared = start.phase === 'prepared' || Boolean(start.request);
-  directory(dir, undefined, prepared ? 1 : 2);
+  directory(dir, root, prepared ? 1 : 2);
   return { id: start.attemptId,
     request(value, scope = {}, transportPrompt) {
       if (finished || prepared || preparing) return;
@@ -252,7 +252,7 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
         }
         const snapshot = snapshotJson(candidate);
         if (finished) return;
-        directory(dir, undefined, 2);
+        directory(dir, root, 2);
         put(dir, { ...start, phase: 'prepared', request: snapshot });
         request = snapshot;
         prepared = true;
@@ -264,7 +264,7 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
       finished = true;
       try {
         if (requestRepositoryGap) {
-          directory(dir);
+          directory(dir, root);
           put(dir, gap(new Date().toISOString(), 'repository-mismatch'));
           return;
         }
@@ -280,7 +280,7 @@ function recorder(dir: string, start: RecordView): MeasurementAttempt {
           record = Buffer.byteLength(serialized) + 1 > MAX_BYTES ? gap(completedAt, 'record-too-large') : parseMeasurementJson(serialized) as MeasurementRecord;
         } catch { record = gap(completedAt, 'invalid-record-payload'); }
         // The file limit also applies when completing older attempts.
-        directory(dir);
+        directory(dir, root);
         put(dir, record);
       } catch { warnMeasurementGap(); }
     }
@@ -293,7 +293,7 @@ export function resumeNativeMeasurement(requestPath: string, request: Measuremen
     const root = resolveMeasurementWorkingRoot(request.repositoryRoot);
     const dir = directory(selected, root);
     const correlation = measurementDigest(resolve(requestPath));
-    const records = loadMeasurementDirectory(dir).records as RecordView[];
+    const records = loadMeasurementDirectory(dir, root).records as RecordView[];
     // A torn/oversized terminal is still an exclusive terminal file. Do not
     // select that attempt merely because parsing omitted it from the loader.
     const unfinished = (id: string) => {
@@ -312,7 +312,7 @@ export function resumeNativeMeasurement(requestPath: string, request: Measuremen
       catch { return false; /* a corrupt candidate must not shadow a valid older one */ }
     });
     if (!start) throw new Error('Native preparation observation missing or already completed.');
-    const result = recorder(dir, start);
+    const result = recorder(dir, start, root);
     return result;
   } catch { warnMeasurementGap(); return noop; }
 }
@@ -334,8 +334,8 @@ export function validateMeasurementRecord(value: unknown): MeasurementRecord {
       (record.phase === 'terminal' && (!STATES.has(record.state as string) || !canonicalTimestamp(record.completedAt)))) throw new Error('Invalid diagnostic record.');
   return record;
 }
-export function loadMeasurementDirectory(dir: string) {
-  dir = directory(dir, undefined, 0);
+export function loadMeasurementDirectory(dir: string, cwd?: unknown) {
+  dir = directory(dir, resolveMeasurementWorkingRoot(cwd), 0);
   const names = [...measurementDirectoryEntries(dir, MAX_FILES)].filter(n => /^[0-9a-f-]{36}\.(start|prepared|terminal)\.json$/.test(n)).sort();
   const records: MeasurementRecord[] = []; let gaps = 0; let readBytes = 0;
   const budgetExceeded = new Error('Measurement directory read byte limit exceeded.');
@@ -408,6 +408,6 @@ export function resumeMeasurement(attemptId: string, selected: string | undefine
       if (prepared.attemptId !== attemptId || prepared.phase !== 'prepared') throw new Error('Mismatched prepared observation.');
       validateMeasurementPhases([start, prepared]);
     }
-    return recorder(dir, prepared || start);
+    return recorder(dir, prepared || start, root);
   } catch { warnMeasurementGap(); return noop; }
 }
