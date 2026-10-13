@@ -39,6 +39,47 @@ test('real finalizer composes selected policy, producer evidence, immutable work
   assert.ok(requests.every(request => request.options?.headers?.authorization === 'Bearer fixture-token'));
 });
 
+test('real finalizer rejects malformed artifact tag OIDs before credential-bearing tag dispatch', async () => {
+  for (const tagObjectOid of ['../commits/other', 'valid?ref=other', 'valid#fragment', 'f'.repeat(39)]) {
+    const fixture = ownerAdditionFinalizeFixture({ procedurePatch: { tagObjectOid } });
+    let record;
+    await assert.rejects((async () => { record = await finalizeOwnerAddition(fixture.args); })(),
+      /G0 tag object SHA is not a SHA-1 Git object ID/);
+    assert.equal(record, undefined);
+    assert.ok(fixture.requests.some(request => request.route.endsWith('/actions/artifacts/987/zip')),
+      'the real verifier must decode the artifact before this finalizer boundary is reached');
+    assert.ok(fixture.requests.at(-1).route.includes('/contents/docs/architecture.md?ref='));
+    assert.equal(fixture.requests.some(request => request.route.includes('/git/tags/')), false);
+  }
+});
+
+test('real finalizer confines optional tag-ref reads while retaining immutable adoption evidence', async () => {
+  for (const segment of ['.', '..']) {
+    const fixture = ownerAdditionFinalizeFixture({ procedurePatch: {
+      tagRef: `refs/tags/architecture-owner-addition/${segment}/other`,
+    } });
+    const record = await finalizeOwnerAddition(fixture.args);
+    assert.equal(record.outcome.adoption, 'valid');
+    assert.equal(record.outcome.canonical, 'verified');
+    assert.equal(record.addition.refReadback.status, 'unavailable');
+    assert.equal(record.addition.refReadback.immutableTagObject, 'verified');
+    assert.ok(fixture.requests.some(request => request.route.includes('/git/tags/')));
+    assert.equal(fixture.requests.some(request => request.route.includes('/git/ref/tags/')), false);
+    assert.equal(fixture.requests.some(request => request.route.endsWith('/other')), false);
+  }
+  const fixture = ownerAdditionFinalizeFixture({ procedurePatch: {
+    tagRef: 'refs/tags/architecture-owner-addition/probe?ref=other#fragment',
+  } });
+  const record = await finalizeOwnerAddition(fixture.args);
+  assert.equal(record.outcome.adoption, 'valid');
+  assert.equal(record.addition.refReadback.status, 'unavailable');
+  const request = fixture.requests.find(request => request.route.includes('/git/ref/tags/'));
+  assert.equal(request.url,
+    'https://api.github.com/repos/flair-agency/example/git/ref/tags/architecture-owner-addition/probe%3Fref%3Dother%23fragment');
+  assert.equal(new URL(request.url).search, '');
+  assert.equal(new URL(request.url).hash, '');
+});
+
 const invalidCases = [
   ['wrong-repository', /pull request is not merged into the requested repository/, /\/pulls\/129$/],
   ['wrong-base', /workflow-associated recorded base differs/, /\/actions\/runs\/9001\/attempts\/2$/],
