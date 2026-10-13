@@ -107,7 +107,7 @@ function directory(path: string | undefined, root?: string, remainingWrites = 1)
   path = resolveDiagnosticPath(path);
   const canonical = realpathSync(path);
   const stat = lstatSync(path);
-  if (canonical !== resolve(path) || !stat.isDirectory() || stat.isSymbolicLink() || (stat.mode & 0o077)) throw new Error('Measurement directory must be canonical and private (0700).');
+  if (canonical !== resolve(path) || !stat.isDirectory() || stat.isSymbolicLink() || (stat.mode & 0o777) !== 0o700) throw new Error('Measurement directory must be canonical and private (0700).');
   if (root && within(realpathSync(root), canonical)) throw new Error('Measurement directory must be outside the reviewed worktree.');
   if (remainingWrites) for (const _ of measurementDirectoryEntries(canonical, MAX_FILES - remainingWrites)) { /* leave room for every remaining phase */ }
   return canonical;

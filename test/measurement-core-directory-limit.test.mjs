@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -57,3 +57,18 @@ for (const scenario of ['export', 'capture', 'read-failure']) {
     assert.equal(result.status, 0, result.stderr);
   });
 }
+
+test('diagnostic directories require all owner permissions before loading or capture', { skip: process.platform === 'win32' }, t => {
+  const root = directory(t);
+  for (const mode of [0o000,0o100,0o200,0o300,0o400,0o500,0o600,0o710,0o770]) {
+    chmodSync(root, mode);
+    try {
+      assert.throws(() => loadMeasurementDirectory(root), /private \(0700\)/, mode.toString(8));
+      assert.equal(beginMeasurement({ route: 'manual', directory: root }).id, null);
+    } finally { chmodSync(root, 0o700); }
+  }
+  assert.deepEqual(loadMeasurementDirectory(root), { version: 1, records: [], gaps: 0 });
+  const attempt = beginMeasurement({ route: 'manual', directory: root });
+  assert.ok(attempt.id); attempt.finish();
+  assert.ok(loadMeasurementDirectory(root).records.some(r => r.phase === 'terminal'));
+});
