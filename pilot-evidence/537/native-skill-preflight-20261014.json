@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "recordKind": "environment-preflight-receipt",
+  "recordedAt": "2026-10-13T16:05:58.835798+00:00",
+  "cohort": "fixture",
+  "windowEligible": false,
+  "primaryMetricEligible": false,
+  "reviewedRevision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+  "nativeSkill": {
+    "prepareSucceeded": true,
+    "separateHostNativeReviewerInvoked": true,
+    "actualReturnedDecisionValidated": true,
+    "validationExitCode": 0,
+    "semanticDecision": "PASS",
+    "reviewedRepositoryUnchanged": true,
+    "temporarySessionCleanupVerified": true,
+    "dispatchAt": "2026-10-13T16:01:57.370582+00:00",
+    "returnObservedAt": "2026-10-13T16:03:39Z",
+    "exactHardTimeoutAttested": false,
+    "filesystemReadOnlyEnforcementAttested": false,
+    "completeE2E": true
+  },
+  "measurementExport": {
+    "version": 1,
+    "records": [
+      {
+        "version": 1,
+        "kind": "agk-diagnostic",
+        "attemptId": "756af984-663c-4258-85d4-65a171534050",
+        "phase": "prepared",
+        "route": "native",
+        "runtime": {
+          "package": "@flair-agency/architecture-gatekeeper",
+          "version": "0.6.0-preview.4",
+          "collectorSha256": "8600a34951d2f946b6a6d423a6ac8dbbe8aff8d8a4d14d89159521fc1de5924d"
+        },
+        "startedAt": "2026-10-13T15:58:04.372Z",
+        "changeId": "8ac0c2e59e971ca4ab66b3cb41db47ecc74907167e70fb1b2915dd2bdcbe6b93",
+        "repositoryId": "4ad96418110c49157182a64accc075e7b47ae638c0db62db0221ba901e23eff2",
+        "requestId": "95ed312ca743c5d739e26d30eaf332b01ffeb1d70e124ead95d38a7145bed9d8",
+        "promptSha256": "7e09c3b9967677e2f1c0933f7b919d2e0d712c4b1e52dc0e355fcde0e97f7064",
+        "schemaSha256": "0a2a751496752688e7624b492801db537d0af7c5fde1723d4d502a6d348fe961",
+        "authorityProvenanceSha256": null,
+        "policySha256": null,
+        "reviewedRevision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+        "snapshotSha256": null,
+        "scopeKind": "proposed-task",
+        "decision": null,
+        "findingCount": null,
+        "ci": null,
+        "observation": {},
+        "feedback": {
+          "publication": "unknown",
+          "delivery": "unknown",
+          "response": "unknown"
+        }
+      },
+      {
+        "version": 1,
+        "kind": "agk-diagnostic",
+        "attemptId": "756af984-663c-4258-85d4-65a171534050",
+        "phase": "start",
+        "route": "native",
+        "runtime": {
+          "package": "@flair-agency/architecture-gatekeeper",
+          "version": "0.6.0-preview.4",
+          "collectorSha256": "8600a34951d2f946b6a6d423a6ac8dbbe8aff8d8a4d14d89159521fc1de5924d"
+        },
+        "startedAt": "2026-10-13T15:58:04.372Z",
+        "changeId": "8ac0c2e59e971ca4ab66b3cb41db47ecc74907167e70fb1b2915dd2bdcbe6b93",
+        "repositoryId": "4ad96418110c49157182a64accc075e7b47ae638c0db62db0221ba901e23eff2",
+        "requestId": null,
+        "promptSha256": null,
+        "schemaSha256": null,
+        "authorityProvenanceSha256": null,
+        "policySha256": null,
+        "reviewedRevision": null,
+        "snapshotSha256": null,
+        "scopeKind": null,
+        "decision": null,
+        "findingCount": null,
+        "ci": null,
+        "observation": {},
+        "feedback": {
+          "publication": "unknown",
+          "delivery": "unknown",
+          "response": "unknown"
+        }
+      },
+      {
+        "version": 1,
+        "kind": "agk-diagnostic",
+        "attemptId": "756af984-663c-4258-85d4-65a171534050",
+        "phase": "terminal",
+        "route": "native",
+        "runtime": {
+          "package": "@flair-agency/architecture-gatekeeper",
+          "version": "0.6.0-preview.4",
+          "collectorSha256": "8600a34951d2f946b6a6d423a6ac8dbbe8aff8d8a4d14d89159521fc1de5924d"
+        },
+        "startedAt": "2026-10-13T15:58:04.372Z",
+        "completedAt": "2026-10-13T16:04:16.474Z",
+        "state": "completed",
+        "changeId": "8ac0c2e59e971ca4ab66b3cb41db47ecc74907167e70fb1b2915dd2bdcbe6b93",
+        "repositoryId": "4ad96418110c49157182a64accc075e7b47ae638c0db62db0221ba901e23eff2",
+        "requestId": "95ed312ca743c5d739e26d30eaf332b01ffeb1d70e124ead95d38a7145bed9d8",
+        "promptSha256": "7e09c3b9967677e2f1c0933f7b919d2e0d712c4b1e52dc0e355fcde0e97f7064",
+        "schemaSha256": "0a2a751496752688e7624b492801db537d0af7c5fde1723d4d502a6d348fe961",
+        "authorityProvenanceSha256": null,
+        "policySha256": null,
+        "reviewedRevision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+        "snapshotSha256": null,
+        "scopeKind": "proposed-task",
+        "decision": "PASS",
+        "findingCount": 0,
+        "ci": null,
+        "observation": {},
+        "feedback": {
+          "publication": "returned-to-caller",
+          "delivery": "unknown",
+          "response": "unknown"
+        }
+      }
+    ],
+    "gaps": 0
+  },
+  "scope": "Operating-plan responsibility review; not implementation compliance, full host coverage or pilot effectiveness.",
+  "rawEvidence": {
+    "access": "private; exact request, prompt, schema, reviewer decision, validation and measurement records preserved outside Git",
+    "durableCrossEnvironmentBackupVerified": false
+  },
+  "remainingGaps": [
+    "Standalone child CLI authentication failed with HTTP401; native result does not repair that separate route.",
+    "Automatic Hook execution and active-session delivery remain unverified.",
+    "Measurement-enabled real non-PASS and cancellation coverage remain unverified.",
+    "Natural-case adjudication and four-week aggregate report remain pending."
+  ],
+  "budget": {
+    "approvedPreflightReviewCalls": 3,
+    "dispatchedPreflightReviewCalls": 3,
+    "remainingPreflightReviewCalls": 0,
+    "additionalProtectedCiRuns": 0
+  },
+  "assurance": "Diagnostic execution evidence only; no protected acceptance or causal prevention credit."
+}
