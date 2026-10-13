@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "purpose": "tested-environment-recovery-route",
+  "transportSteps": [
+    "Enumerate runs and attempts with GitHub connector; fetch each run's artifacts. Reconcile missing observations.",
+    "Use github_download_workflow_artifact for a selected non-expired agk-measurement-review-/agk-measurement-outcome- artifact. Preserve id/run/attempt and expected size.",
+    "Use download_file with the returned Sediment file_id to obtain a local workspace ZIP. Do not publish or persist signed download URLs or shell-curl those URLs.",
+    "For measurement archives: limit compressed ZIP to 2 MiB, sum uncompressed entries to 8 MiB, entry count to 8, and reject absolute paths, parent traversal, duplicate names, symlinks and unexpected non-JSON entries before extraction. Limit each JSON to the production reader's 256 KiB/depth limits; overflow remains a collection gap.",
+    "Validate archive records using the pinned production measurement validator and normalize/redact only via the production allowlist. Include all phases of an attempt; do not replace unknowns with success.",
+    "Write only validated redacted measurement exports and public inventory into timestamped archive JSON on the evidence branch, then read back and compare. Stop on write/read/validation failure and report the gap."
+  ],
+  "scopeLimits": [
+    "The observed artifact transport used a real CodeQL artifact, not an AGK measurement export; it establishes byte retrieval only.",
+    "Full measurement record recovery must still be exercised on a real post-enablement artifact.",
+    "Records cannot establish actual active-session Hook feedback delivery or protected acceptance.",
+    "Weekly automation remains unchanged and configured for four runs; scheduled one-shot message delivery was observed.",
+    "Native prepare succeeds but no new native reviewer was invoked in this environment check.",
+    "Standalone nested Codex review currently fails with HTTP401. Preserve original settings and credentials; no auth bypass or provider substitution.",
+    "Run state/history/cancellation evidence must be reconciled separately; workflow success is not a validated semantic decision.",
+    "If combined datasets exceed production size/entry limits, preserve archived chunks and report unsupported aggregation; do not silently drop attempts."
+  ],
+  "evidence": "pilot-evidence/537/environment-verification-20261013.json"
+}
