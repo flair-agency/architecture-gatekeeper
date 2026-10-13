@@ -24,11 +24,12 @@ function oid(value, label) {
   return value;
 }
 function parseRepo(repo) {
-  if (typeof repo !== 'string' || !/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(repo)) fail('repository must be owner/name.');
+  if (typeof repo !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(repo)) fail('repository must be owner/name.');
   return repo;
 }
-function contentPath(path) {
-  return path.split('/').map(encodeURIComponent).join('/');
+function apiResourceUrl(repository, components, query = '') {
+  const repoPath = repository.split('/').map(encodeURIComponent).join('/');
+  return `${api}/repos/${repoPath}/${components.map(encodeURIComponent).join('/')}${query}`;
 }
 
 export function verifyG0TagObjectEvidence(procedure, tagObject) {
@@ -91,6 +92,20 @@ function scalar(value, label, allowEmpty = false) {
   return result;
 }
 
+function workflowScalarSuffix(line, offset) {
+  const value = line.slice(offset).trim();
+  // The former dot capture excluded interior line terminators; surrounding
+  // whitespace was consumed separately and remains trimmed here.
+  return /[\r\u2028\u2029]/.test(value) ? null : value;
+}
+
+function withoutWorkflowComment(value) {
+  for (let index = value.indexOf('#'); index >= 0; index = value.indexOf('#', index + 1)) {
+    if (index > 0 && /\s/.test(value[index - 1])) return value.slice(0, index).trimEnd();
+  }
+  return value;
+}
+
 export function parsePinnedGatekeeperWorkflow(callerWorkflowBytes) {
   const source = Buffer.from(callerWorkflowBytes).toString('utf8');
   if (!source || source.includes('\uFFFD')) fail('caller workflow is not valid UTF-8.');
@@ -99,9 +114,11 @@ export function parsePinnedGatekeeperWorkflow(callerWorkflowBytes) {
   const targetMarker = 'flair-agency/architecture-gatekeeper/.github/workflows/';
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
-    const match = line.match(/^(\s*)uses:\s*(.*?)\s*$/);
-    if (!match || match[2].startsWith('#')) continue;
-    const use = scalar(match[2].replace(/\s+#.*$/, ''), 'caller uses value');
+    const match = line.match(/^(\s*)uses:/);
+    if (!match) continue;
+    const value = workflowScalarSuffix(line, match[0].length);
+    if (value === null || value.startsWith('#')) continue;
+    const use = scalar(withoutWorkflowComment(value), 'caller uses value');
     if (use.includes(targetMarker)) usesLines.push({ index, indent: match[1].length, use });
   }
   if (usesLines.length !== 1) fail('recorded-base caller must contain exactly one Gatekeeper reusable workflow use.');
@@ -137,10 +154,12 @@ export function parsePinnedGatekeeperWorkflow(callerWorkflowBytes) {
         if (!entry.trim() || entry.trimStart().startsWith('#')) continue;
         const childIndent = entry.match(/^\s*/)[0].length;
         if (childIndent <= selectedUse.indent) break;
-        const input = entry.match(/^\s+([a-z][a-z-]*):\s*(.*?)\s*$/);
+        const input = entry.match(/^\s+([a-z][a-z-]*):/);
         if (!input || !['policy-path', 'prompt-path', 'schema-path', 'validation-path'].includes(input[1])) continue;
+        const value = workflowScalarSuffix(entry, input[0].length);
+        if (value === null) continue;
         if (Object.hasOwn(values, input[1])) fail(`caller workflow repeats ${input[1]}.`);
-        values[input[1]] = scalar(input[2].replace(/\s+#.*$/, ''), `caller ${input[1]}`, input[1] === 'validation-path');
+        values[input[1]] = scalar(withoutWorkflowComment(value), `caller ${input[1]}`, input[1] === 'validation-path');
       }
       break;
     }
@@ -174,9 +193,12 @@ export function parseGatekeeperWorkflowDefaults(workflowBytes) {
     const start = indices[0];
     let end = start + 1;
     while (end < lines.length && (!lines[end].trim() || lines[end].match(/^\s*/)[0].length > 6)) end++;
-    const defaultLines = lines.slice(start + 1, end).map(line => /^\s{8}default:\s*(.*?)\s*$/.exec(line)).filter(Boolean);
+    const defaultLines = lines.slice(start + 1, end).map(line => {
+      const match = /^\s{8}default:/.exec(line);
+      return match ? workflowScalarSuffix(line, match[0].length) : null;
+    }).filter(value => value !== null);
     if (defaultLines.length !== 1) fail(`pinned Gatekeeper workflow must provide exactly one literal ${name} default.`);
-    defaults[name] = scalar(defaultLines[0][1], `pinned ${name} default`, name === 'validation-path');
+    defaults[name] = scalar(defaultLines[0], `pinned ${name} default`, name === 'validation-path');
   }
   return defaults;
 }
@@ -196,36 +218,36 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
   if (!fetchImpl) fail('fetch implementation is unavailable.');
   const headers = { accept: 'application/vnd.github+json', authorization: `Bearer ${githubToken}`,
     'x-github-api-version': '2022-11-28' };
-  const request = async (path, repo = repository) => {
-    const response = await fetchImpl(`${api}/repos/${repo}/${path}`, { headers, redirect: 'follow' });
+  const request = async (components, repo = repository, query = '') => {
+    const response = await fetchImpl(apiResourceUrl(repo, components, query), { headers, redirect: 'follow' });
     if (!response?.ok) fail(`GitHub API request failed (${response?.status ?? 'no response'}).`);
     return response.json();
   };
   const file = async (path, revision, repo = repository) => {
-    const item = object(await request(`contents/${contentPath(path)}?ref=${encodeURIComponent(revision)}`, repo), `${path} content`);
+    const item = object(await request(['contents', ...path.split('/')], repo, `?ref=${encodeURIComponent(revision)}`), `${path} content`);
     if (item.type !== 'file' || item.encoding !== 'base64' || typeof item.content !== 'string') fail(`${path} is not a regular base64 file.`);
     const bytes = Buffer.from(item.content.replace(/\n/g, ''), 'base64');
     if (!bytes.length || bytes.length > 524_288) fail(`${path} is empty or exceeds its byte limit.`);
     return bytes;
   };
 
-  const pr = object(await request(`pulls/${pullRequestNumber}`), 'pull request');
+  const pr = object(await request(['pulls', pullRequestNumber]), 'pull request');
   if (pr.number !== pullRequestNumber || pr.state !== 'closed' || pr.merged !== true ||
       pr.base?.repo?.full_name?.toLowerCase() !== repository.toLowerCase()) fail('pull request is not merged into the requested repository.');
   const targetBranch = pr.base.ref;
   const mergeSha = oid(pr.merge_commit_sha, 'merge commit SHA');
-  const mergeRaw = object(await request(`git/commits/${mergeSha}`), 'merge commit');
+  const mergeRaw = object(await request(['git', 'commits', mergeSha]), 'merge commit');
   const parents = (mergeRaw.parents || []).map(parent => oid(parent.sha, 'merge parent'));
   if (parents.length !== 2) fail('v0.5.1 finalization supports ordinary merge commits only.');
   const baseSha = parents[0];
   const bSha = oid(pr.head?.sha, 'exact B SHA');
   if (parents[1] !== bSha) fail('merge commit second parent is not exact B.');
   const mergeTree = oid(mergeRaw.tree?.sha, 'merge tree');
-  const bCommit = object(await request(`git/commits/${bSha}`), 'B commit');
+  const bCommit = object(await request(['git', 'commits', bSha]), 'B commit');
   const bTree = oid(bCommit.tree?.sha, 'B tree');
   if (mergeTree !== bTree) fail('merge tree differs from exact B tree.');
 
-  const runInfo = object(await request(`actions/runs/${runId}/attempts/${attempt}`), 'selected producer run');
+  const runInfo = object(await request(['actions', 'runs', runId, 'attempts', attempt]), 'selected producer run');
   if (typeof runInfo.path !== 'string') fail('selected producer run has no workflow path.');
   const callerPath = runInfo.path.split('@', 1)[0];
   if (!/^\.github\/workflows\/[A-Za-z0-9._/-]+\.ya?ml$/.test(callerPath) || callerPath.split('/').some(part => part === '.' || part === '..')) {
@@ -259,7 +281,7 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
     fail('recorded-base policy does not select the v5 procedural GitHub Actions route.');
   }
   const jobName = validateOwnerAdditionProducerJobName(selected.adoptionEvidenceJobName, gatekeeperWorkflow.callerJobId);
-  const jobs = object(await request(`actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100`), 'producer jobs');
+  const jobs = object(await request(['actions', 'runs', runId, 'attempts', attempt, 'jobs'], repository, '?per_page=100'), 'producer jobs');
   if (!Array.isArray(jobs.jobs) || jobs.total_count > 100) fail('producer job listing is missing or too large.');
   const producerJobs = jobs.jobs.filter(job => job.name === jobName);
   if (producerJobs.length !== 1) fail('recorded-base producer job name is absent or ambiguous in the selected run.');
@@ -281,21 +303,22 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
   const authorityBytes = await file(authorityPath, bSha);
   const authorityDigest = hash(authorityBytes);
   if (authorityDigest !== procedureSource.newAuthoritySha256) fail('B authority bytes do not match the verified G0 procedure.');
-  const tagObjectResponse = await fetchImpl(`${api}/repos/${repository}/git/tags/${procedureSource.tagObjectOid}`,
+  const tagObjectOid = oid(procedureSource.tagObjectOid, 'G0 tag object SHA');
+  const tagObjectResponse = await fetchImpl(apiResourceUrl(repository, ['git', 'tags', tagObjectOid]),
     { headers, redirect: 'follow' });
   const tagObjectReadback = await readG0TagObjectReadback(tagObjectResponse, procedureSource);
   const additionRecord = tagObjectReadback.additionRecord;
   let tagRefResult = null;
   try {
-    const response = await fetchImpl(`${api}/repos/${repository}/git/ref/tags/${contentPath(procedureSource.tagRef.replace(/^refs\/tags\//, ''))}`,
+    const response = await fetchImpl(apiResourceUrl(repository, ['git', 'ref', 'tags', ...procedureSource.tagRef.replace(/^refs\/tags\//, '').split('/')]),
       { headers, redirect: 'follow' });
     if (response.ok) tagRefResult = await response.json();
   } catch { /* Point-in-time tag-ref availability is informative, not adoption evidence. */ }
   const tagRefReadback = summarizeG0TagRefReadback(tagRefResult, procedureSource.tagRef, procedureSource.tagObjectOid);
-  const targetRefRaw = object(await request(`git/ref/heads/${contentPath(targetBranch)}`), 'target branch ref');
+  const targetRefRaw = object(await request(['git', 'ref', 'heads', ...targetBranch.split('/')]), 'target branch ref');
   const targetSha = oid(targetRefRaw.object?.sha, 'target branch SHA');
-  const targetCommit = await request(`git/commits/${targetSha}`);
-  const comparison = object(await request(`compare/${mergeSha}...${targetSha}?per_page=250`), 'target ancestry comparison');
+  const targetCommit = await request(['git', 'commits', targetSha]);
+  const comparison = object(await request(['compare', `${mergeSha}...${targetSha}`], repository, '?per_page=250'), 'target ancestry comparison');
   const ancestorShas = verifyMergeAncestorComparison(comparison, mergeSha, targetSha);
   const authorityAtTarget = await file(authorityPath, targetSha);
   const readback = verifyOwnerAdditionReadback({ repository,

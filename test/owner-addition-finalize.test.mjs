@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
 import { buildOwnerAdditionFinalRecord, summarizeG0TagRefReadback, verifyG0TagObjectEvidence,
   verifyMergeAncestorComparison, parsePinnedGatekeeperWorkflow, parseGatekeeperWorkflowDefaults,
   readG0TagObjectReadback, validateOwnerAdditionProducerJobName, finalizeOwnerAddition } from '../dist/owner-addition-finalize.mjs';
@@ -155,6 +156,38 @@ test('caller workflow pins exactly one immutable Gatekeeper workflow and records
   assert.throws(() => validateOwnerAdditionProducerJobName('unrelated / owner-addition', parsed.callerJobId), /caller Gatekeeper job ID/);
 });
 
+test('caller scalar parsing preserves whitespace, literal hash and comment boundaries', () => {
+  const pin = `flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@${sha('5')}`;
+  for (const whitespace of [' ', '\t', '\v', '\f', '\u00a0', '\u2003', '\ufeff']) {
+    const source = `jobs:\n  architecture:\n    uses:${whitespace}"${pin}"${whitespace}# selected\n    with:\n      policy-path:${whitespace}literal#hash${whitespace}# comment\n      validation-path:${whitespace}''${whitespace}\n`;
+    assert.deepEqual(parsePinnedGatekeeperWorkflow(Buffer.from(source)), {
+      path: 'flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml',
+      sha: sha('5'), inputs: { 'policy-path': 'literal#hash', 'validation-path': '' }, callerJobId: 'architecture',
+    });
+  }
+  for (const separator of ['\r', '\u2028', '\u2029']) {
+    assert.throws(() => parsePinnedGatekeeperWorkflow(Buffer.from(`jobs:\n  architecture:\n    uses: ${pin}${separator}tail\n`)), /exactly one/);
+    assert.equal(parsePinnedGatekeeperWorkflow(Buffer.from(`jobs:\n  architecture:\n    uses:${separator}${pin}${separator}\n`)).sha, sha('5'));
+  }
+});
+
+test('a long invalid caller scalar terminates before the bounded child deadline', () => {
+  const moduleUrl = new URL('../dist/owner-addition-finalize.mjs', import.meta.url).href;
+  const script = `import { parsePinnedGatekeeperWorkflow } from ${JSON.stringify(moduleUrl)};
+    const pin = 'flair-agency/architecture-gatekeeper/.github/workflows/architecture-gate.yml@${sha('5')}';
+    try {
+      parsePinnedGatekeeperWorkflow(Buffer.from('jobs:\\n  architecture:\\n    uses: ' + pin + ' '.repeat(131072) + 'x\\n'));
+      process.exitCode = 1;
+    } catch (error) { process.stdout.write(error.message); }`;
+  const child = spawnSync(process.execPath, ['--input-type=module', '--eval', script], {
+    encoding: 'utf8', timeout: 5000, env: { PATH: process.env.PATH },
+  });
+  assert.equal(child.error, undefined, 'the parser must finish within its bounded child execution');
+  assert.equal(child.status, 0);
+  assert.equal(child.stderr, '');
+  assert.match(child.stdout, /exact supported path pinned to a 40-character commit SHA/);
+});
+
 test('pinned reusable workflow defaults are read from the selected immutable workflow', () => {
   const source = `name: Architecture Gate\non:\n  workflow_call:\n    inputs:\n      policy-path:\n        type: string\n        default: .codex/policy.json\n      prompt-path:\n        type: string\n        default: .codex/prompt.md\n      schema-path:\n        type: string\n        default: .codex/schema.json\n      validation-path:\n        type: string\n        default: ''\n`;
   assert.deepEqual(parseGatekeeperWorkflowDefaults(Buffer.from(source)), {
@@ -174,7 +207,10 @@ test('consumer workflow pin preserves selected path and rejects moving refs, uns
   assert.throws(() => parsePinnedGatekeeperWorkflow(Buffer.from(source + caller('architecture-gate.yml'))), /exactly one/);
 });
 
-for (const workflow of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
+for (const [workflow, repository] of [
+  ['architecture-gate.yml', 'example/re.po'],
+  ['architecture-gate-consumer.yml', 'example/consumer'],
+]) {
   test(`finalizer fetches selected ${workflow} from its exact recorded pin`, async () => {
     const requested = [];
     const caller = `jobs:\n  architecture:\n    uses: flair-agency/architecture-gatekeeper/.github/workflows/${workflow}@${sha('5')}\n`;
@@ -184,7 +220,7 @@ for (const workflow of ['architecture-gate.yml', 'architecture-gate-consumer.yml
       requested.push(url);
       let data;
       if (path.endsWith('/pulls/1')) data = { number: 1, state: 'closed', merged: true,
-        base: { ref: 'main', repo: { full_name: 'example/consumer' } },
+        base: { ref: 'main', repo: { full_name: repository } },
         head: { sha: sha('b') }, merge_commit_sha: sha('c') };
       else if (path.endsWith(`/git/commits/${sha('c')}`)) data = {
         parents: [{ sha: sha('a') }, { sha: sha('b') }], tree: { sha: sha('d') } };
@@ -196,10 +232,21 @@ for (const workflow of ['architecture-gate.yml', 'architecture-gate-consumer.yml
       else throw new Error(`Unexpected fetch: ${url}`);
       return { ok: true, json: async () => data };
     };
-    await assert.rejects(finalizeOwnerAddition({ repository: 'example/consumer', pullRequestNumber: 1,
+    await assert.rejects(finalizeOwnerAddition({ repository, pullRequestNumber: 1,
       githubToken: 'fixture-token', runId: '100', fetchImpl }), error => error === boundary);
     assert.equal(requested.at(-1),
       `https://api.github.com/repos/flair-agency/architecture-gatekeeper/contents/.github/workflows/${workflow}?ref=${sha('5')}`);
     assert.ok(requested.some(url => url.endsWith(`caller.yml?ref=${sha('a')}`)));
+    assert.equal(requested[0], `https://api.github.com/repos/${repository}/pulls/1`);
   });
 }
+
+test('finalizer rejects unsupported repository identities before any GitHub request', async () => {
+  for (const repository of ['example/.', 'example/..', 'example/../other', 'example/repo?x=1', 'example/repo#fragment']) {
+    let fetched = false;
+    await assert.rejects(finalizeOwnerAddition({ repository, pullRequestNumber: 1,
+      githubToken: 'fixture-token', runId: '100', fetchImpl: async () => { fetched = true; } }),
+    /repository must be owner\/name/);
+    assert.equal(fetched, false);
+  }
+});
