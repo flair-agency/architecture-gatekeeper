@@ -21,6 +21,7 @@ interface GeminiCliProcessCommonOptions {
   readonly maxPromptBytes: number;
   readonly maxStdoutBytes: number;
   readonly maxStderrBytes: number;
+  readonly maxOutputTokens?: number;
   readonly signal?: AbortSignal;
 }
 
@@ -80,7 +81,7 @@ export function encodeGeminiCliPromptForTransport(prompt: string): string {
 
 function validate(options: GeminiCliProcessRuntimeOptions): string {
   if (process.platform === 'win32') throw new Error('Gemini CLI process supervisor supports POSIX platforms only.');
-  const { cliEntrypoint, workspaceDirectory, privateParentDirectory, prompt, model, thinkingBudget, thinkingLevel,
+  const { cliEntrypoint, workspaceDirectory, privateParentDirectory, prompt, model, thinkingBudget, thinkingLevel, maxOutputTokens,
     project, region, proxyUrl, timeoutMs, maxPromptBytes, maxStdoutBytes, maxStderrBytes } = options ?? {};
   for (const [value, label] of [[cliEntrypoint, 'CLI entrypoint'], [workspaceDirectory, 'workspace directory'], [privateParentDirectory, 'private parent directory']]) {
     if (typeof value !== 'string' || !value || !value.startsWith('/')) throw new Error(`Gemini CLI ${label} must be an absolute path.`);
@@ -100,6 +101,9 @@ function validate(options: GeminiCliProcessRuntimeOptions): string {
     if (thinkingLevel !== undefined) throw new Error('Gemini CLI thinkingLevel is supported only for gemini-3.8-flash.');
     // Number.isSafeInteger rejects nonnumbers before this original comparison.
     if (!Number.isSafeInteger(thinkingBudget) || (thinkingBudget as number) < 0) throw new Error('Gemini CLI thinking budget must be a nonnegative safe integer.');
+  }
+  if (maxOutputTokens !== undefined && (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1)) {
+    throw new Error('Gemini CLI maxOutputTokens must be a positive safe integer when selected.');
   }
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_TIMEOUT) throw new Error('Gemini CLI timeout is invalid.');
   positive(maxStdoutBytes, 'stdout'); positive(maxStderrBytes, 'stderr');
@@ -218,7 +222,7 @@ function settings(options: GeminiCliProcessRuntimeOptions) {
     security: { auth: { selectedType: 'vertex-ai' } },
     modelConfigs: {
       customOverrides: [{ match: { model: options.model }, modelConfig: {
-        generateContentConfig: { thinkingConfig },
+        generateContentConfig: { thinkingConfig, ...(options.maxOutputTokens !== undefined ? { maxOutputTokens: options.maxOutputTokens } : {}) },
       } }],
     },
   };

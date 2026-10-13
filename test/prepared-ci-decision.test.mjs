@@ -86,6 +86,7 @@ test('supports existing v2 prepared provenance validation without changing its b
 test('rejects malformed JSON, duplicate JSON keys, invalid schema and invalid UTF-8', () => {
   const good = input({ decision: 'PASS', authorityIds: ids });
   assert.throws(() => validatePreparedCiDecision({ ...good, responseBytes: Buffer.from('{bad') }), /decision is invalid JSON/);
+  assert.throws(() => validatePreparedCiDecision({ ...good, responseBytes: Buffer.from(`\`\`\`json\n${JSON.stringify({ decision: 'PASS', authorityIds: ids })}\n\`\`\``) }), /decision is invalid JSON/);
   assert.throws(() => validatePreparedCiDecision({ ...good, responseBytes: Buffer.from('{"decision":"PASS","decision":"BLOCK"}') }), /decision is invalid JSON/);
   assert.throws(() => validatePreparedCiDecision({ ...good, schemaBytes: Buffer.from('{"type":"object","badKeyword":true}') }), /unsupported keyword/);
   assert.throws(() => validatePreparedCiDecision({ ...good, responseBytes: Buffer.from([0xff]) }), /not valid UTF-8/);

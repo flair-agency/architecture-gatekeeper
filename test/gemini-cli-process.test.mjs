@@ -251,3 +251,21 @@ test('delivers a 512 KiB prompt in full and rejects early stdin closure', async 
   const early = base('early-stdin'); t.after(() => rmSync(early.root, { recursive: true, force: true }));
   await assert.rejects(runGeminiCliProcess({ ...options(early), prompt, maxPromptBytes: 600 * 1024 }), /closed prompt stdin/);
 });
+
+ test('applies an optional output-token selection without inventing a default', async t => {
+  for (const maxOutputTokens of [undefined, 8192, 16384]) {
+    const fixture = base(); t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+    await runGeminiCliProcess({ ...options(fixture), maxOutputTokens });
+    const seen = JSON.parse((await import('node:fs')).readFileSync(join(fixture.workspaceDirectory, 'observed.json'), 'utf8'));
+    const config = seen.settings.modelConfigs.customOverrides[0].modelConfig.generateContentConfig;
+    assert.equal(Object.hasOwn(config, 'maxOutputTokens'), maxOutputTokens !== undefined);
+    if (maxOutputTokens !== undefined) assert.equal(config.maxOutputTokens, maxOutputTokens);
+    assert.deepEqual(config.thinkingConfig, { thinkingBudget: 1024, includeThoughts: false });
+  }
+  for (const maxOutputTokens of [0, -1, 1.5, '16384', null, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    const fixture = base(); t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+    await assert.rejects(runGeminiCliProcess({ ...options(fixture), maxOutputTokens }), /maxOutputTokens must be a positive safe integer/);
+    assert.equal(existsSync(join(fixture.workspaceDirectory, 'observed.json')), false);
+    assert.deepEqual(readdirSync(fixture.privateParentDirectory), []);
+  }
+});

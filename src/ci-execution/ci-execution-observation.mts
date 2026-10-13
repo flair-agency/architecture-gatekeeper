@@ -6,6 +6,7 @@
  * response. Callers must provide trusted, revision-bound metadata; fixed GitHub inputs
  * describe expected configuration, not authenticated backend execution.
  */
+import { randomUUID } from 'node:crypto';
 import { TextDecoder } from 'node:util';
 import { rejectDuplicateJsonKeys } from '../authority-set.mjs';
 import { normalizeCiExecutionResult } from './ci-execution-result.mts';
@@ -15,6 +16,7 @@ const MAX_STDIN_BYTES = 512 * 1024;
 const MAX_RESPONSE_BYTES = 65_536;
 const ALLOWED_OUTCOMES = new Set(['success', 'failure', 'cancelled', 'skipped', 'unknown']);
 const utf8 = new TextDecoder('utf-8', { fatal: true });
+const responseUtf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const ERROR_MESSAGE = 'Invalid CI execution observation input.';
 
 type InputStream = AsyncIterable<Uint8Array> & { destroy(): unknown };
@@ -110,9 +112,29 @@ function githubEnvelope(env: GitHubEnvironment): Record<string, unknown> {
 export function runCiExecutionObservationGitHubCli(
   env: GitHubEnvironment = process.env,
   stderr: OutputStream = process.stderr,
+  { publishResponse = false }: { publishResponse?: boolean } = {},
 ): number {
   try {
     const result = normalizeCiExecutionResult(githubEnvelope(env));
+    if (publishResponse && result.status === 'completed') {
+      // Transport opaque bytes only. The downstream protected validators still
+      // own semantic completion. Never publish stale bytes after host failure.
+      const response = responseUtf8.decode(result.responseBytes);
+      if (response.includes('\0')) throw new Error('invalid output protocol text');
+      let delimiter: string;
+      do { delimiter = `agk_${randomUUID()}`; } while (response.includes(delimiter));
+      const output = `final_message<<${delimiter}\n${response}\n${delimiter}\n`;
+      // Retain the shared runner sink's per-write bound. Iterate code points so
+      // chunking cannot split a UTF-8 character or alter the response text.
+      let chunk = '';
+      let length = 0;
+      for (const char of output) {
+        const bytes = Buffer.byteLength(char, 'utf8');
+        if (length + bytes > 16_384) { appendGitHubOutput(chunk); chunk = ''; length = 0; }
+        chunk += char; length += bytes;
+      }
+      if (chunk) appendGitHubOutput(chunk);
+    }
     appendGitHubOutput(`execution_status=${result.status}\n`);
     return result.status === 'completed' ? 0 : 1;
   } catch {
