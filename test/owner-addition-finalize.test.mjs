@@ -207,8 +207,14 @@ test('consumer workflow pin preserves selected path and rejects moving refs, uns
   assert.throws(() => parsePinnedGatekeeperWorkflow(Buffer.from(source + caller('architecture-gate.yml'))), /exactly one/);
 });
 
-for (const workflow of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
-  test(`finalizer fetches selected ${workflow} from its exact recorded pin`, async () => {
+for (const [workflow, repository] of [
+  ['architecture-gate.yml', 'example/re.po'],
+  ['architecture-gate-consumer.yml', 'example/consumer'],
+  ['architecture-gate.yml', 'example/.github'],
+  ['architecture-gate.yml', 'example/_repo'],
+  ['architecture-gate.yml', 'example/-repo'],
+]) {
+  test(`finalizer fetches selected ${workflow} for ${repository} from its exact recorded pin`, async () => {
     const requested = [];
     const caller = `jobs:\n  architecture:\n    uses: flair-agency/architecture-gatekeeper/.github/workflows/${workflow}@${sha('5')}\n`;
     const boundary = new Error('Reached selected reusable workflow fetch');
@@ -217,7 +223,7 @@ for (const workflow of ['architecture-gate.yml', 'architecture-gate-consumer.yml
       requested.push(url);
       let data;
       if (path.endsWith('/pulls/1')) data = { number: 1, state: 'closed', merged: true,
-        base: { ref: 'main', repo: { full_name: 'example/consumer' } },
+        base: { ref: 'main', repo: { full_name: repository } },
         head: { sha: sha('b') }, merge_commit_sha: sha('c') };
       else if (path.endsWith(`/git/commits/${sha('c')}`)) data = {
         parents: [{ sha: sha('a') }, { sha: sha('b') }], tree: { sha: sha('d') } };
@@ -229,10 +235,21 @@ for (const workflow of ['architecture-gate.yml', 'architecture-gate-consumer.yml
       else throw new Error(`Unexpected fetch: ${url}`);
       return { ok: true, json: async () => data };
     };
-    await assert.rejects(finalizeOwnerAddition({ repository: 'example/consumer', pullRequestNumber: 1,
+    await assert.rejects(finalizeOwnerAddition({ repository, pullRequestNumber: 1,
       githubToken: 'fixture-token', runId: '100', fetchImpl }), error => error === boundary);
     assert.equal(requested.at(-1),
       `https://api.github.com/repos/flair-agency/architecture-gatekeeper/contents/.github/workflows/${workflow}?ref=${sha('5')}`);
     assert.ok(requested.some(url => url.endsWith(`caller.yml?ref=${sha('a')}`)));
+    assert.equal(requested[0], `https://api.github.com/repos/${repository}/pulls/1`);
   });
 }
+
+test('finalizer rejects unsupported repository identities before any GitHub request', async () => {
+  for (const repository of ['example/.', 'example/..', './repo', '../repo', '_owner/repo', '.owner/repo', 'example/../other', 'example/repo?x=1', 'example/repo#fragment']) {
+    let fetched = false;
+    await assert.rejects(finalizeOwnerAddition({ repository, pullRequestNumber: 1,
+      githubToken: 'fixture-token', runId: '100', fetchImpl: async () => { fetched = true; } }),
+    /repository must be owner\/name/);
+    assert.equal(fetched, false);
+  }
+});
