@@ -275,8 +275,19 @@ before storage, bounded readbacks and the original private file modes. The
 runner accessor stays at its approved model path and returns only the string
 established by its existing runtime check; this does not authenticate provenance.
 
-Three checked JavaScript bridges remain at their existing source paths: the
-runner-environment accessor, snapshot materializer and native CLI. The native CLI
+Four checked JavaScript bridges remain at their existing source paths: the
+runner-environment accessor, snapshot materializer, native CLI and CI report.
+The report CLI checks its existing private zero-argument `Promise<void>`
+completion contract. Erased operation views retain the original error-message
+reads, inline-item operations and optional findings-length read; external
+observations remain unchecked. These views do not validate an error, guarantee
+an iterable result or authorize a decision. The original optional chain,
+exports, direct-run guard and filesystem sink statements remain intact.
+Actual-config compile-only probes exercise the private function without adding
+a public export or argv parameter. A pinned complete runtime AST comparison
+binds source and emitted operations to the pre-change main tree. These checks
+do not prove CodeQL flow preservation; official model/flow verification remains
+required for the candidate. The native CLI
 checks its existing optional string-array arguments, working directory and async
 completion contract; its entire runtime body and direct-execution guard remain
 unchanged. The materializer retains
@@ -311,11 +322,13 @@ entrypoint foundation has 80 `.mts` modules and 16 original modules remaining.
 This CI composition candidate brings the count to 81 `.mts` modules and
 15 originals remaining; the partially typed report is included in the latter.
 The GitHub command candidate has 82 original modules fully migrated to `.mts`
-and 14 originals not fully migrated. Of those 14, three have checked
-JavaScript contracts (the runner-environment accessor, snapshot materializer
-and native CLI), and six have partial helper migrations (CI report,
+and 14 originals not fully migrated. Of those 14, four have checked
+JavaScript contracts (the runner-environment accessor, snapshot materializer,
+native CLI and CI report), and six have partial helper migrations (CI report,
 owner-addition finalizer, multi-authority orchestration, owner-addition CI and
-GitHub OWNER_ADDITION provenance and the legacy authority decision check). The other five remain JavaScript modules
+GitHub OWNER_ADDITION provenance and the legacy authority decision check).
+CI report belongs to both categories; together they cover nine distinct originals.
+The other five remain JavaScript modules
 outside these migrations. These source-layout counts do not change the
 selected CodeQL model or establish acceptance evidence.
 Migration is partial and does not change consumer architecture or assurance policy.
