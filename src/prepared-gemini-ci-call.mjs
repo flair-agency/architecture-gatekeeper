@@ -50,6 +50,9 @@ export function buildPreparedGeminiCiCall(supplied) {
       typeof credentialData.token !== 'string' || typeof credentialData.project !== 'string' || typeof credentialData.region !== 'string') {
     throw new Error('Gemini CI call requires explicit runtime, private directory, and credential strings.');
   }
+  if (credentialData.region !== 'global') {
+    throw new Error('Gemini CI call requires the fixed global Vertex region.');
+  }
 
   // Snapshot supported plain-data records before retaining caller-owned values.
   const protectedReviewer = snapshotPreparedReviewData(preparedData.protectedReviewer);
