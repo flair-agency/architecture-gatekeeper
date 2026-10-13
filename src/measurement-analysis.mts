@@ -144,7 +144,7 @@ export function validateMeasurementDataset(value: unknown): MeasurementDataset {
       const count = r?.findingCount ?? privateCount;
       const decision = typeof r?.decision === 'string' ? r.decision : privateDecision?.decision;
       if (!r || r.route === 'ci-outcome' || !enumValue(decision, ['PASS', 'BLOCK', 'OWNER_DECISION']) ||
-          (r.findingCount !== undefined && privateCount !== undefined && r.findingCount !== privateCount) || r.state !== 'completed' || !Number.isSafeInteger(ref.index) || ref.index < 0 || !Number.isSafeInteger(count) || (count as number) > MAX_REPORTED_FINDINGS || ref.index >= (count as number) || (r.changeId && r.changeId !== item.changeId)) reject('finding reference');
+          (r.findingCount !== undefined && privateCount !== undefined && r.findingCount !== privateCount) || r.state !== 'completed' || !Number.isSafeInteger(ref.index) || ref.index < 0 || !Number.isSafeInteger(count) || (count as number) > MAX_REPORTED_FINDINGS || ref.index >= (count as number) || r.changeId !== item.changeId) reject('finding reference');
     }
     cases.set(item.caseId, item);
   }
@@ -161,6 +161,9 @@ export function validateMeasurementDataset(value: unknown): MeasurementDataset {
     for (const id of [...audit.initialViolationCaseIds, ...audit.finalViolationCaseIds]) {
       const item = cases.get(id);
       if (!item || item.changeId !== audit.changeId || item.kind !== 'architecture-violation' || item.adjudication !== 'valid') reject('audit case');
+      for (const field of ['initialRef', 'finalRef'] as const) {
+        if (item[field] !== undefined && item[field] !== null && item[field] !== audit[field]) reject('audit case revision reference');
+      }
     }
     for (const id of audit.finalViolationCaseIds) {
       if (cases.get(id)?.disposition !== 'integrated-violation') reject('final audit disposition');

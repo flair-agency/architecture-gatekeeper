@@ -20,6 +20,8 @@ test('real aggregate and sample CLIs reject inconsistent ledgers without emittin
   const parent = mkdtempSync(join(realpathSync(tmpdir()), 'agk-ledger-cli-')); t.after(() => rmSync(parent, { recursive: true, force: true }));
   const path = join(parent, 'dataset.json');
   const mutations = [
+    [d => { delete d.records[0].changeId; }, /finding reference/],
+    [d => { d.cases[0].initialRef="foreign"; }, /audit case revision/],
     [d => { d.cases[0].disposition='authorized-evolution'; }, /case classification conflict/],
     [d => { d.population[0].initialRef=d.audits[0].initialRef;d.cases[0].initialRef='foreign'; }, /case frozen revision/],
     [d => { d.cases[0].disposition = 'corrected'; }, /final audit disposition/],

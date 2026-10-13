@@ -15,7 +15,7 @@ function dataset() {
     { ...base, attemptId: id, phase: 'start' }, { ...base, attemptId: id, phase: 'terminal', completedAt: '2026-10-01T00:00:01Z', state: 'completed', decision: block },
     { ...base, attemptId: ci, route: 'ci-review', phase: 'terminal', completedAt: '2026-10-01T00:00:02Z', state: 'completed', decision: block },
     { ...base, attemptId: pending, changeId: 'change-2', phase: 'start' }];
-  const evidence = { adjudicator: 'assessor', initialRef: 'initial snapshot', finalRef: 'final commit', authorityRef: 'authority revision', evidence: ['review notes'] };
+  const evidence = { adjudicator: 'assessor', initialRef: 'initial', finalRef: 'final', authorityRef: 'authority revision', evidence: ['review notes'] };
   return { version: 1, plan: { window: 'fixed fixture window' }, records,
     population: [1,2,3].map(n => ({ changeId: `change-${n}`, eligible: true, cohort: 'natural', domain: 'self' })),
     cases: [{ ...evidence, caseId: 'defect', changeId: 'change-1', kind: 'architecture-violation', adjudication: 'valid', disposition: 'corrected', resolvedBeforeCI: true, findingRefs: [{ attemptId: id, index: 0 }, { attemptId: ci, index: 0 }] },

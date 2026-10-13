@@ -225,7 +225,10 @@ cannot also classify its disposition as authorized evolution or a rejected
 proposal; those stay separate from implemented violations. An integrated
 violation disposition requires a valid architecture-violation case. Every known
 case initial/final reference must match the corresponding known frozen population
-reference, whether or not an audit is present. Missing references stay unknown.
+reference, whether or not an audit is present. Missing references stay unknown. Finding references require an exact recorded
+change ID; observations with uncertain change linkage remain unlinked coverage
+gaps. Each known initial/final reference of an audit-linked case must also match
+the audit snapshot, even when the population does not freeze those references.
 
 An audit has `changeId`, `blinded`, `auditor`, `initialRef`, `finalRef`,
 `authorityRef`, nonempty `evidence`, `initialViolationCaseIds` and

@@ -254,3 +254,21 @@ test('known case revisions bind the frozen change with or without an audit while
   }
  }
 });
+
+test('finding references require exact terminal change identity; uncertain observations remain unlinked',()=>{
+ for(const value of [undefined,null,'',0,false,'other-change']) {
+  const data=baseDataset();if(value===undefined)delete data.records[0].changeId;else data.records[0].changeId=value;
+  for(const run of [validateMeasurementDataset,aggregateMeasurement,d=>sampleMeasurementPopulation(d,{seed:'fixed',count:1})])assert.throws(()=>run(data),/finding reference/);
+  const gap=structuredClone(data);gap.cases[0].findingRefs=[];assert.doesNotThrow(()=>validateMeasurementDataset(gap));assert.equal(aggregateMeasurement(gap).coverage.unlinkedAttempts,1);
+ }
+});
+test('audit-linked case snapshots agree even without frozen population references',()=>{
+ for(const field of ['initialRef','finalRef'])for(const population of [undefined,null])for(const final of [false,true]) {
+  const data=baseDataset();data.population[0][field]=population;
+  if(final){data.cases[0].disposition='integrated-violation';data.audits[0].finalViolationCaseIds=['defect'];}
+  for(const run of [validateMeasurementDataset,aggregateMeasurement,d=>sampleMeasurementPopulation(d,{seed:'fixed',count:1})]) {
+   assert.doesNotThrow(()=>run(data));const wrong=structuredClone(data);wrong.cases[0][field]='foreign case revision';assert.throws(()=>run(wrong),/audit case revision/);
+   const unknown=structuredClone(data);unknown.cases[0][field]=null;unknown.cases[0].disposition='unresolved';unknown.audits[0].finalViolationCaseIds=[];assert.doesNotThrow(()=>run(unknown));assert.equal(validateMeasurementDataset(unknown).cases[0][field],null);
+  }
+ }
+});
