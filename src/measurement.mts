@@ -94,19 +94,20 @@ export function resolveMeasurementWorkingRoot(value: unknown = process.cwd()): s
   // identity. Non-Git working roots remain supported; an unresolved Git marker
   // is a gap, never permission to fall back to a narrower subdirectory.
   for (let ancestor = canonical; ; ancestor = dirname(ancestor)) {
-    try {
-      lstatSync(join(ancestor, '.git'));
-      // Ambient repository/config selectors must not replace the marker found
-      // above. Keep this isolation local to optional diagnostics.
-      const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_/i.test(name)));
-      const selected = execFileSync('git', ['rev-parse', '--show-toplevel'], {
-        cwd: ancestor, env, encoding: 'utf8', timeout: 5000, maxBuffer: 4096, stdio: ['ignore', 'pipe', 'pipe'],
-      }).trim();
-      if (realpathSync(selected) !== ancestor) throw new Error('Diagnostic Git root does not match its worktree marker.');
-      return ancestor;
+    try { lstatSync(join(ancestor, '.git')); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      if (dirname(ancestor) === ancestor) return canonical;
+      continue;
     }
-    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-    if (dirname(ancestor) === ancestor) return canonical;
+    // Once a marker is found, all Git/returned-root failures remain gaps.
+    // Ambient repository/config selectors cannot replace that marker.
+    const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_/i.test(name)));
+    const selected = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd: ancestor, env, encoding: 'utf8', timeout: 5000, maxBuffer: 4096, stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
+    if (realpathSync(selected) !== ancestor) throw new Error('Diagnostic Git root does not match its worktree marker.');
+    return ancestor;
   }
 }
 function directory(path: string | undefined, root?: string, remainingWrites = 1) {
