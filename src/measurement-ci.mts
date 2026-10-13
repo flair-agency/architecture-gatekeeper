@@ -95,12 +95,22 @@ export async function collectCiMeasurement(env: NodeJS.ProcessEnv = process.env,
   capture.request({reviewedRevision: env.REVIEWED_SHA}, {kind: 'ci-merge-revision'});
   try {
     const observed = await retrieveCiReviewJob(env, fetchImpl);
-    const kind = env.REVIEW_DECISION_KIND;
-    const display = env.REVIEW_PASS_CONCLUSION;
-    const conflicting = display === 'PASS' && kind && kind !== 'PASS';
+    // This existing job output has already passed the selected validators when
+    // the review job succeeds. Read only its semantic kind; do not reconstruct
+    // private finding counts or retain its narrative in diagnostic records.
+    let published: unknown = null;
+    if (env.REVIEW_PUBLISHED_DECISION) {
+      try {
+        const value = parseMeasurementJson(env.REVIEW_PUBLISHED_DECISION) as {decision?: unknown};
+        published = value?.decision;
+      } catch { /* malformed published output remains a gap */ }
+    }
+    const validKind = (value: unknown): value is string => typeof value === 'string' && ['PASS', 'BLOCK', 'OWNER_DECISION'].includes(value);
+    const kinds = [env.REVIEW_DECISION_KIND, env.REVIEW_PASS_CONCLUSION, published].filter(value => value !== undefined && value !== null && value !== '');
+    const kind = kinds.length && kinds.every(validKind) && new Set(kinds).size === 1 ? kinds[0] : null;
+    const malformedPublished = !!env.REVIEW_PUBLISHED_DECISION && !validKind(published);
     const boundRevision = typeof env.REVIEWED_SHA === 'string' && /^[a-f0-9]{40}$/.test(env.REVIEWED_SHA);
-    const semantic = observed.jobOutcome === 'success' && observed.stepOutcome === 'success' && boundRevision && !conflicting ?
-      display === 'PASS' ? 'PASS' : ['PASS', 'BLOCK', 'OWNER_DECISION'].includes(kind as string) ? kind : null : null;
+    const semantic = observed.jobOutcome === 'success' && observed.stepOutcome === 'success' && boundRevision && !malformedPublished ? kind : null;
     capture.finish({state: observed.jobOutcome === 'cancelled' ? 'cancelled' : semantic ? 'completed' : 'incomplete',
       decision: semantic ? {decision: semantic} : null,
       observation: {ciAcquisition: 'public-job-metadata', timingSource: 'collector', jobId: observed.jobId,

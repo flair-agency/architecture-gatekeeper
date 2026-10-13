@@ -329,7 +329,7 @@ export function resumeNativeMeasurement(requestPath: string, request: Measuremen
 }
 // Accept explicit ISO timezone timestamps at millisecond or exact-second precision.
 // Calendar round trips reject impossible dates without changing valid source text.
-function canonicalTimestamp(value: unknown): value is string {
+export function canonicalTimestamp(value: unknown): value is string {
   if (typeof value !== 'string') return false;
   const match = value.match(/^((?:\d{4}|[+-]\d{6})-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?)(?:Z|[+-]\d{2}:\d{2})$/);
   if (!match || !Number.isFinite(Date.parse(value))) return false;
@@ -390,10 +390,11 @@ export function redactMeasurement(value: MeasurementRecord) {
   }
   if (record.route === 'ci-review' && record.observation?.timingSource === 'collector') {
     observation.timingSource = 'collector';
+    if (record.observation.reviewJob === 'timed_out') observation.reviewJob = 'timed_out';
     observation.ciAcquisition = record.observation.ciAcquisition === 'public-job-metadata' ? 'public-job-metadata' : 'unavailable';
     const id = record.observation.jobId;
     observation.jobId = typeof id === 'string' && /^[1-9][0-9]{0,19}$/.test(id) ? id : null;
-    observation.reviewStepOutcome = ['success', 'failure', 'cancelled', 'skipped'].includes(record.observation.reviewStepOutcome as string) ? record.observation.reviewStepOutcome : 'unknown';
+    observation.reviewStepOutcome = ['success', 'failure', 'cancelled', 'skipped', 'timed_out'].includes(record.observation.reviewStepOutcome as string) ? record.observation.reviewStepOutcome : 'unknown';
     for (const key of ['jobTiming', 'reviewTiming']) {
       const timing = record.observation[key] as MeasurementFields | null | undefined;
       observation[key] = timing && canonicalTimestamp(timing.startedAt) && canonicalTimestamp(timing.completedAt) &&

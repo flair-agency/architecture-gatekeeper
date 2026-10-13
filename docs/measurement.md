@@ -107,9 +107,26 @@ change their meaning during export.
 | CI ordinary review | Published decision/reviewed revision and exact public repository/run/attempt/head job metadata | An independent optional job runs after required review/report/accept. Request, prompt, schema, reviewer, execution, finding count and freshness remain unknown. Metadata is limited to two anonymous requests, 256 KiB per response and a shared 10-second deadline. Missing, inconsistent, private or unavailable metadata remains a gap. Whole-run cancellation can leave no record; secondary owner reviews are outside this collector. |
 | CI outcome | Policy/review/report/accept **job outcomes**, separately | Job success does not prove feedback publication or merge. Actual integration requires a population/audit record. |
 
+For reusable workflows invoked multiple times in one run (including a matrix),
+set `measurement-review-job-name` to the exact public REST review-job display
+name for that invocation, including its caller/matrix prefix. The bounded
+selector must match exactly one ordinary review job in the selected run/attempt;
+missing or duplicate matches remain gaps. Without it, collection requires one
+unique ordinary review job across the run. The selector provides diagnostic
+consistency, not authenticated invocation identity.
+
+Timed-out REST conclusions are compared to the `needs` failure result while
+retaining the exact `timed_out` observation. Job and step timestamps use the
+same calendar/offset validation as retained measurement records; source offsets
+remain visible and elapsed times compare instants.
+
 The current CI collector records a semantic decision only when both the public
 review job and its ordinary review step succeeded and the existing published
-decision/reviewed-revision outputs are present and nonconflicting. It does not
+decision/reviewed-revision outputs are present and nonconflicting. For ordinary
+enforced routes without a separate kind output, it extracts only the kind from
+the existing validated final-message output inside the optional collector.
+Malformed, oversized or conflicting published outputs remain gaps; private
+narrative is not retained and finding counts remain unknown. It does not
 reconstruct individual validator outcomes or private review facts. Failed,
 cancelled, skipped, missing or inconsistent observations remain incomplete.
 Collector phase timing is separate from checked public job/step timing; analysis

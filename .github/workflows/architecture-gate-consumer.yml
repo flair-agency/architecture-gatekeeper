@@ -28,6 +28,10 @@ on:
         description: Retain redacted per-attempt diagnostic records; never acceptance evidence
         type: boolean
         default: false
+      measurement-review-job-name:
+        description: Exact public review job display name for this invocation; required to disambiguate multiple calls
+        type: string
+        default: ''
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -709,6 +713,8 @@ jobs:
           RUNTIME_SHA: ${{ job.workflow_sha }}
           REVIEW_RESULT: ${{ needs.review.result }}
           REVIEW_DECISION_KIND: ${{ needs.review.outputs.decision_kind }}
+          REVIEW_PUBLISHED_DECISION: ${{ needs.review.outputs.final_message }}
+          REVIEW_JOB_NAME: ${{ inputs.measurement-review-job-name }}
         run: |
           node dist/measurement-ci.mjs collect
           node dist/measurement-cli.mjs export "$AGK_MEASUREMENT_DIR" > "$RUNNER_TEMP/agk-review-measurement-export.json"

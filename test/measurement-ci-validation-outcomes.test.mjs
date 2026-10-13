@@ -113,6 +113,8 @@ test('both workflows keep validation inside required review and publish only com
     const collector = workflow.jobs.measurement.steps.find(step => step.id === 'review-measurement');
     assert.equal(collector.env.REVIEW_RESULT, '${{ needs.review.result }}');
     assert.equal(collector.env.REVIEW_DECISION_KIND, '${{ needs.review.outputs.decision_kind }}');
+    assert.equal(collector.env.REVIEW_PUBLISHED_DECISION, '${{ needs.review.outputs.final_message }}');
+    assert.equal(collector.env.REVIEW_JOB_NAME, '${{ inputs.measurement-review-job-name }}');
     for (const key of ['REVIEW_RESPONSE', 'REVIEW_OUTPUT_FILE', 'PROMPT_PATH', 'SCHEMA_PATH', 'REVIEW_MODEL', 'REVIEW_EFFORT']) assert.equal(collector.env[key], undefined);
     for (const name of ['Record ordinary execution observation', 'Identify the completed ordinary decision', 'Apply consumer-owned decision validation', 'Require exact reported legacy authority files', 'Require exact reported Authority IDs']) {
       const step = workflow.jobs.review.steps.find(s => s.name === name); assert.ok(step); assert.equal(step['continue-on-error'], undefined);

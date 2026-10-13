@@ -117,6 +117,8 @@ test('optional outcome job bootstrap and collection cannot fail required review,
     assert.match(independent.run, /measurement-cli\.mjs export/);
     assert.equal(independent.env.REVIEW_RESULT, '${{ needs.review.result }}');
     assert.equal(independent.env.REVIEW_DECISION_KIND, '${{ needs.review.outputs.decision_kind }}');
+    assert.equal(independent.env.REVIEW_PUBLISHED_DECISION, '${{ needs.review.outputs.final_message }}');
+    assert.equal(independent.env.REVIEW_JOB_NAME, '${{ inputs.measurement-review-job-name }}');
     const reviewUpload = measurement.steps.find(step => step.name === 'Retain optional review attempt metadata');
     assert.equal(reviewUpload['continue-on-error'], true);
     for (const name of ['review', 'report', 'accept']) assert.ok(!workflow.jobs[name].needs.includes('measurement'));
