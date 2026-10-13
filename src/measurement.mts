@@ -1,7 +1,7 @@
 import { MEASUREMENT_ENVELOPE_FIELDS, validateMeasurementPhases } from './measurement-consistency.mts';
 import { rejectDuplicateJsonKeys, readCommittedAuthorityFile } from './authority-set.mjs';
 import { isCanonicalRepositoryPath } from './legacy-git-snapshot.mjs';
-import { repositoryRoot } from './review-contract.mjs';
+import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import { closeSync, constants, fstatSync, lstatSync, openSync, opendirSync, readFileSync, readSync, realpathSync, writeFileSync, writeSync } from 'node:fs';
@@ -56,7 +56,7 @@ function measurementGitSnapshot(root: string, commit: unknown, path: unknown, re
   if (typeof commit !== 'string' || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(commit) || !isCanonicalRepositoryPath(path)) {
     throw new Error('Invalid diagnostic committed input selection.');
   }
-  const bytes = readCommittedAuthorityFile(root, commit, path as string, 65_536, remainingTimeMs, commit.length === 64 ? 64 : 40);
+  const bytes = readCommittedAuthorityFile(root, commit, path as string, 65_536, remainingTimeMs, commit.length === 64 ? 64 : 40, true);
   return { bytes, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
 const ATTEMPT_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
@@ -94,7 +94,17 @@ export function resolveMeasurementWorkingRoot(value: unknown = process.cwd()): s
   // identity. Non-Git working roots remain supported; an unresolved Git marker
   // is a gap, never permission to fall back to a narrower subdirectory.
   for (let ancestor = canonical; ; ancestor = dirname(ancestor)) {
-    try { lstatSync(join(ancestor, '.git')); return repositoryRoot(canonical); }
+    try {
+      lstatSync(join(ancestor, '.git'));
+      // Ambient repository/config selectors must not replace the marker found
+      // above. Keep this isolation local to optional diagnostics.
+      const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_/i.test(name)));
+      const selected = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+        cwd: ancestor, env, encoding: 'utf8', timeout: 5000, maxBuffer: 4096, stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim();
+      if (realpathSync(selected) !== ancestor) throw new Error('Diagnostic Git root does not match its worktree marker.');
+      return ancestor;
+    }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
     if (dirname(ancestor) === ancestor) return canonical;
   }

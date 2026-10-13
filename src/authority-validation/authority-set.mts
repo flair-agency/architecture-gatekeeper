@@ -164,24 +164,24 @@ export function parseAuthorityManifest(input: unknown, limits: unknown, profile:
   return manifest as unknown as AuthorityManifest;
 }
 
-function git(root: string, args: string[], maxBuffer: number, remainingTimeMs?: () => number): Buffer {
+function git(root: string, args: string[], maxBuffer: number, remainingTimeMs?: () => number, diagnosticIgnoreGitOverrides = false): Buffer {
   try {
     const remaining = remainingTimeMs ? remainingTimeMs() : 10_000;
     if (!Number.isFinite(remaining) || remaining <= 0) fail('committed input time budget exhausted.');
     return execFileSync('git', ['-C', root, ...args], {
       encoding: 'buffer', maxBuffer, timeout: Math.max(1, Math.ceil(Math.min(10_000, remaining))),
-      env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' },
+      env: { ...(diagnosticIgnoreGitOverrides ? Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_/i.test(name))) : process.env), GIT_NO_REPLACE_OBJECTS: '1' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
   } catch { fail('cannot verify committed self authority object.'); }
 }
 // Optional remaining time can only narrow the existing per-process maximum.
 // Required authority callers omit it and retain the original 10-second limit.
-export function readCommittedAuthorityFile(root: string, revision: string, path: string, maxBytes: number, remainingTimeMs?: () => number, diagnosticObjectIdWidth: 40 | 64 = 40): Buffer {
+export function readCommittedAuthorityFile(root: string, revision: string, path: string, maxBytes: number, remainingTimeMs?: () => number, diagnosticObjectIdWidth: 40 | 64 = 40, diagnosticIgnoreGitOverrides = false): Buffer {
   // Required authority callers retain width40. Diagnostic snapshots may
   // explicitly match their already-validated full revision's object width.
   if (diagnosticObjectIdWidth !== 40 && diagnosticObjectIdWidth !== 64) fail('unsupported diagnostic object-ID width.');
-  const readGit = (args: string[], maxBuffer: number) => git(root, args, maxBuffer, remainingTimeMs);
+  const readGit = (args: string[], maxBuffer: number) => git(root, args, maxBuffer, remainingTimeMs, diagnosticIgnoreGitOverrides);
   if (readGit(['cat-file', '-t', revision], 256).toString('utf8').trim() !== 'commit') fail('self authority revision is not a commit.');
   const tree = readGit(['ls-tree', '-z', '--full-tree', revision, '--', path], 4_096);
   const records = tree.toString('utf8').split('\0').filter(Boolean);
