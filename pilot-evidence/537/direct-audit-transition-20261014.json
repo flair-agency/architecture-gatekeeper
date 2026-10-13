@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "date": "2026-10-14",
+  "timezone": "Asia/Tokyo",
+  "purpose": "independent-audit-transport-and-scoped-source-comparison",
+  "changeId": "c3b261a16e78ab49599e886bc915ec682d73347c90dc23774732d9ee1655b7fa",
+  "cohort": "historical-natural",
+  "windowEligible": false,
+  "primaryPilotSample": false,
+  "transport": {
+    "initial": "Existing owner-created chat assessment preserved and recovered through transcript with matching sealed SHA-256",
+    "final": "Coordinator spawned a clean-history independent subagent and retrieved its actual result from private shared files",
+    "additionalUserDeliveryRequired": false,
+    "parentHistoryInherited": false,
+    "AGKOutcomesSupplied": false,
+    "assessorChanged": true,
+    "physicalIsolationAttested": false
+  },
+  "initial": {
+    "revision": "73f2ae9f45415b01521bc57cc0aff7c8673bb421",
+    "authorityRevision": "1054d1ba88db7bf1fc20af4d182eb614d31c6f01",
+    "sealedSha256": "747285ad2d737112b2969a089b9be58b049b507f87374e320645cb6a64edbf9c"
+  },
+  "final": {
+    "revision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+    "authorityRevision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+    "resultSha256": "51d7c5ed2d8a0a5fa4e530495d39a1cddb2b4758429dead55b8eb027746ea3c4",
+    "sourceDigestsVerified": 9,
+    "referenceRangesVerified": 15,
+    "metadataCorrectionRecorded": true,
+    "originalResultPreserved": true
+  },
+  "comparison": {
+    "initialIssueAbsentInFinalSource": true,
+    "originalInvariantRelaxed": false,
+    "scope": "specific opt-in measurement source boundary",
+    "AGKDetectionAssociation": "unresolved",
+    "caseLedgerAdjudication": "pending",
+    "causalPreventionClaim": false
+  },
+  "privacy": {
+    "fullAssessmentRecords": "retained privately; no raw finding narrative published",
+    "rawModelSettingsOrPromptsPublished": false
+  },
+  "limits": [
+    "Initial assessor had prior exposure to later authority; paired blinding is not fully established.",
+    "Final evaluation knows the sealed independent initial finding; no AGK outcomes supplied.",
+    "Legacy non-measurement diagnostics and absent helper implementation remain outside the resolved scope.",
+    "Historical case is excluded from prospective population rates; no protected acceptance established."
+  ]
+}
