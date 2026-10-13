@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "kind": "pilot537-connectivity-check",
+  "checkedDate": "2026-10-13",
+  "timezone": "Asia/Tokyo",
+  "overall": "partial-not-end-to-end-verified",
+  "checks": [
+    {
+      "component": "archive-write-readback",
+      "status": "verified",
+      "evidence": "pilot-evidence/537/plan-20261013.json was committed and read back byte-content-equivalent; initial dataset/report committed."
+    },
+    {
+      "component": "installed-export-and-aggregate",
+      "status": "verified-locally",
+      "evidence": "Actual failed manual-attempt records exported; production aggregation accepted the initial dataset, eligible=6/noObservation=6/attempts=0. This is not CI artifact acquisition."
+    },
+    {
+      "component": "manual-review-execution",
+      "status": "failed",
+      "evidence": "Initial installed runtime execution failed before a validated decision; private start/prepared/error-terminal preserved. Root cause unknown."
+    },
+    {
+      "component": "scheduled-harvest-immediate-start",
+      "status": "failed-before-dispatch",
+      "evidence": "automations_run_now returned HTTP 404 Action not found prior to action invocation. Task remains configured/enabled; neither scheduled execution nor delivery is verified."
+    },
+    {
+      "component": "enabled-ci-artifact-acquisition",
+      "status": "not-exercised",
+      "evidence": "Latest self-review run 38392561042 attempt 2 predates the observation window; latest three checked self-review runs each have zero artifacts. No post-enablement/self-review run observed; variable update does not trigger a run."
+    },
+    {
+      "component": "artifact-download-validate-archive",
+      "status": "not-exercised",
+      "evidence": "No real measurement artifact was available. No synthetic record substituted."
+    }
+  ],
+  "bounds": {
+    "newReviewsStarted": 0,
+    "ciRerunsStarted": 0,
+    "canonicalAuthorityChanged": false,
+    "acceptanceCriteriaRelaxed": false
+  },
+  "nextRequired": [
+    "Confirm a real post-enablement self-CI run emits measurement artifacts.",
+    "Exercise real artifact download, validated whitelist extraction and archive readback.",
+    "Confirm actual scheduled-task execution and delivery; creation success alone is insufficient."
+  ]
+}
