@@ -30,6 +30,7 @@ export async function runPreparedGeminiCiProfileDecision(input, recordDispatch =
   const options = session.processOptions;
   if (Object.hasOwn(session, 'reserveDispatch') || options.timeoutMs !== 180_000 ||
       options.maxOutputTokens !== 16_384 || options.maxPromptBytes !== 196_608 ||
+      options.maxStdoutBytes !== 65_536 || options.maxStderrBytes !== 65_536 ||
       options.thinkingBudget !== undefined || options.model !== 'gemini-3.8-flash' ||
       options.thinkingLevel !== 'MEDIUM' || options.region !== 'global') {
     throw new Error('Gemini verification settings disagree with the selected Issue334 profile.');

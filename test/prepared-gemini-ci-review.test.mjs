@@ -585,7 +585,8 @@ test('prepared decision forwards parent-only reservation and leaves rejection in
 function verificationInput(f) {
   const reviewInput = input(f);
   Object.assign(reviewInput.proxySessionOptions.processOptions, {
-    timeoutMs: 180000, maxOutputTokens: 16384, maxPromptBytes: 196608, region: 'global',
+    timeoutMs: 180000, maxOutputTokens: 16384, maxPromptBytes: 196608,
+    maxStdoutBytes: 65536, maxStderrBytes: 65536, region: 'global',
   });
   return { reviewInput, authorityProvenance, validationRules, maxResponseBytes: 65536, maxSchemaBytes: 1048576 };
 }
@@ -665,6 +666,12 @@ test('ordinary profile rejects changed profile or context bounds before launchin
   const wrongRegion = verificationInput(f);
   wrongRegion.reviewInput.proxySessionOptions.processOptions.region = 'us-central1';
   await assert.rejects(runPreparedGeminiCiProfileDecision(wrongRegion), /settings disagree/);
+  const wrongStdout = verificationInput(f);
+  wrongStdout.reviewInput.proxySessionOptions.processOptions.maxStdoutBytes = 65_537;
+  await assert.rejects(runPreparedGeminiCiProfileDecision(wrongStdout), /settings disagree/);
+  const wrongStderr = verificationInput(f);
+  wrongStderr.reviewInput.proxySessionOptions.processOptions.maxStderrBytes = 65_537;
+  await assert.rejects(runPreparedGeminiCiProfileDecision(wrongStderr), /settings disagree/);
   const wrongContext = verificationInput(f);
   wrongContext.reviewInput.proxySessionOptions.workspaceLimits = { ...workspaceLimits, maxFiles: 33 };
   await assert.rejects(runPreparedGeminiCiProfileDecision(wrongContext), /context exceeds/);
