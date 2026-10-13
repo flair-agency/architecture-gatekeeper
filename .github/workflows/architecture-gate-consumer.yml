@@ -24,6 +24,14 @@ on:
       review-step-timeout-minutes:
         type: number
         default: 5
+      measurement-enabled:
+        description: Retain redacted per-attempt diagnostic records; never acceptance evidence
+        type: boolean
+        default: false
+      measurement-review-job-name:
+        description: Exact public review job display name for this invocation; required to disambiguate multiple calls
+        type: string
+        default: ''
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -424,6 +432,8 @@ jobs:
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: printf '%s' "$DECISION" | node "$GATEKEEPER_RUNTIME_ROOT/dist/validate-authority-set-decision.mjs" "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
+
+
   owner-addition:
     if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.owner_addition_grade == 'G0' && needs.review.outputs.decision_kind == 'OWNER_DECISION'
     needs: [policy, review]
@@ -651,3 +661,98 @@ jobs:
           EVIDENCE_PRODUCER: ${{ needs.policy.outputs.adoption_evidence_producer }}
           SELECTED_AUTHORITY_CHANGED: ${{ needs.review.outputs.selected_authority_changed }}
         run: node .architecture-gatekeeper-runtime/dist/ci-procedural-acceptance.mjs
+
+  measurement:
+    if: always() && inputs.measurement-enabled
+    continue-on-error: true
+    needs: [policy, review, report, accept]
+    permissions: {}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch the public pinned diagnostic runtime without credentials
+        env:
+          RUNTIME_REPOSITORY: ${{ job.workflow_repository }}
+          RUNTIME_SHA: ${{ job.workflow_sha }}
+          RUNTIME_SERVER: ${{ github.server_url }}
+          GIT_TERMINAL_PROMPT: '0'
+          GIT_ASKPASS: /bin/false
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_NOSYSTEM: '1'
+        run: |
+          set -euo pipefail
+          test "$RUNTIME_SERVER" = 'https://github.com'
+          [[ "$RUNTIME_REPOSITORY" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9_.-]+$ ]] || exit 1
+          test "${RUNTIME_REPOSITORY#*/}" != '.'
+          test "${RUNTIME_REPOSITORY#*/}" != '..'
+          [[ "$RUNTIME_SHA" =~ ^[a-f0-9]{40}$ ]] || exit 1
+          git init .
+          git -c credential.helper= -c http.extraheader= fetch --no-tags --depth=1 "https://github.com/$RUNTIME_REPOSITORY.git" "$RUNTIME_SHA"
+          test "$(git rev-parse FETCH_HEAD)" = "$RUNTIME_SHA"
+          git checkout --detach "$RUNTIME_SHA"
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          token: ''
+          package-manager-cache: false
+      - name: Build the pinned diagnostic runtime
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+      - name: Collect completed review metadata independently
+        id: review-measurement
+        continue-on-error: true
+        timeout-minutes: 1
+        env:
+          AGK_MEASUREMENT_DIR: ${{ runner.temp }}/agk-review-measurement
+          AGK_MEASUREMENT_CHANGE_ID: ${{ github.repository }}#${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          RUNTIME_SHA: ${{ job.workflow_sha }}
+          REVIEW_RESULT: ${{ needs.review.result }}
+          REVIEW_DECISION_KIND: ${{ needs.review.outputs.decision_kind }}
+          REVIEW_PUBLISHED_DECISION: ${{ needs.review.outputs.final_message }}
+          REVIEW_JOB_NAME: ${{ inputs.measurement-review-job-name }}
+        run: |
+          node dist/measurement-ci.mjs collect
+          node dist/measurement-cli.mjs export "$AGK_MEASUREMENT_DIR" > "$RUNNER_TEMP/agk-review-measurement-export.json"
+      - name: Retain optional review attempt metadata
+        if: always() && steps.review-measurement.outputs.review_attempt_id != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: agk-measurement-review-${{ github.run_id }}-${{ github.run_attempt }}-${{ steps.review-measurement.outputs.review_attempt_id }}
+          path: ${{ runner.temp }}/agk-review-measurement-export.json
+          if-no-files-found: warn
+          retention-days: 30
+          overwrite: false
+      - name: Record independent job outcomes
+        id: outcome-measurement
+        continue-on-error: true
+        env:
+          AGK_MEASUREMENT_DIR: ${{ runner.temp }}/agk-outcome-measurement
+          AGK_MEASUREMENT_CHANGE_ID: ${{ github.repository }}#${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          RUNTIME_SHA: ${{ job.workflow_sha }}
+          POLICY_RESULT: ${{ needs.policy.result }}
+          REVIEW_RESULT: ${{ needs.review.result }}
+          REPORT_RESULT: ${{ needs.report.result }}
+          ACCEPT_RESULT: ${{ needs.accept.result }}
+        run: |
+          node dist/measurement-ci.mjs outcome
+          node dist/measurement-cli.mjs export "$AGK_MEASUREMENT_DIR" > "$RUNNER_TEMP/agk-outcome-measurement-export.json"
+      - name: Retain independent job outcome metadata
+        if: always() && steps.outcome-measurement.outputs.attempt_id != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: agk-measurement-outcome-${{ github.run_id }}-${{ github.run_attempt }}-${{ steps.outcome-measurement.outputs.attempt_id }}
+          path: ${{ runner.temp }}/agk-outcome-measurement-export.json
+          if-no-files-found: warn
+          retention-days: 30
+          overwrite: false

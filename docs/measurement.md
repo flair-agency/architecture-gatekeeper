@@ -7,10 +7,6 @@ offline metrics. It does not complete the four-week pilot or establish a causal
 percentage of drift prevented. Measurement is diagnostic data, independent of
 ReviewRecords, owner authorization, eligibility, acceptance and actual integration.
 
-This stage enables local/native observation and offline analysis. CI collection and
-workflow opt-in are deferred to the dependent CI observation PR; no workflow input
-or self-CI variable is activated here.
-
 ## Local opt-in
 
 Create a private, canonical directory outside **every reviewed worktree**. Do
@@ -69,7 +65,11 @@ feedback observations and collection gaps. UserPromptSubmit records publication 
 unknown publication; a valid blocking verdict remains a completed review with
 unknown result publication. Native CLI publication is finalized after successful stdout output; output failure
 retains the validated decision with unknown publication. Manual and PostToolUse CLI publication similarly
-waits for their output boundary. Delivery remains unknown.
+waits for their output boundary. Delivery remains unknown. These detailed
+request, full-decision and execution fields describe local/native observations
+or the standalone legacy recorder. The current independent CI collector only
+records published decision metadata and checked public job facts; unavailable
+private fields remain null/unknown, as specified in the CI table below.
 
 Runtime package/version and collector
 hash identify the observer; the hash binds package metadata and the complete
@@ -104,6 +104,38 @@ change their meaning during export.
 | UserPromptSubmit | Proposed task, recorded HEAD, hashed session | Internal result availability is observed; Hook discovery, host delivery and task correction are unknown. Known input-parse/event/root failures remain error observations with unknown request identity. A non-PASS remains blocking under the existing Hook contract. |
 | PostToolUse | Existing tracked patch SHA-256, requestId and recorded HEAD | Queued, unchanged, deduplicated, incomplete and stale-HEAD cases remain separate. Untracked/oversized/unsupported inputs retain the existing incomplete result, including CLI stdin overflow before semantic screening. Inactive Hooks and later working-tree edits are not observed. |
 | Native Skill | Preparation and later validation linked by private request location and requestId | Start/prepared persists without validation. Validation observes a valid response, not actual host settings, execution, delivery or action. Known preparation errors are recorded. Unreadable or structurally invalid request files leave independent error observations with unknown request identity; later retries retain that history. |
+| CI ordinary review | Published decision/reviewed revision and exact public repository/run/attempt/head job metadata | An independent optional job runs after required review/report/accept. Request, prompt, schema, reviewer, execution, finding count and freshness remain unknown. Metadata is limited to two anonymous requests, 256 KiB per response and a shared 10-second deadline. Missing, inconsistent, private or unavailable metadata remains a gap. Whole-run cancellation can leave no record; secondary owner reviews are outside this collector. |
+| CI outcome | Policy/review/report/accept **job outcomes**, separately | Job success does not prove feedback publication or merge. Actual integration requires a population/audit record. |
+
+For reusable workflows invoked multiple times in one run (including a matrix),
+set `measurement-review-job-name` to the exact public REST review-job display
+name for that invocation, including its caller/matrix prefix. The bounded
+selector must match exactly one ordinary review job in the selected run/attempt;
+missing or duplicate matches remain gaps. Without it, collection requires one
+unique ordinary review job across the run. The selector provides diagnostic
+consistency, not authenticated invocation identity.
+
+Timed-out REST conclusions are compared to the `needs` failure result while
+retaining the exact `timed_out` observation. Job and step timestamps use the
+same calendar/offset validation as retained measurement records; source offsets
+remain visible and elapsed times compare instants.
+
+The current CI collector records a semantic decision only when both the public
+review job and its ordinary review step succeeded and the existing published
+decision/reviewed-revision outputs are present and nonconflicting. For ordinary
+enforced routes without a separate kind output, it extracts only the kind from
+the existing validated final-message output inside the optional collector.
+Malformed, oversized or conflicting published outputs remain gaps; private
+narrative is not retained and finding counts remain unknown. It does not
+reconstruct individual validator outcomes or private review facts. Failed,
+cancelled, skipped, missing or inconsistent observations remain incomplete.
+Collector phase timing is separate from checked public job/step timing; analysis
+uses the consistently bound review-step interval for latency and detection,
+leaving missing, inconsistent or out-of-job review timing unknown. Whole-job
+intervals remain separately exported and never supply missing review timing. Optional
+CI directory bootstrap rejects an in-worktree path before creating it.
+The standalone legacy start/finish recorder supports more detailed supplied
+observations, but the current workflows do not invoke it for review capture.
 
 A terminal is never synthesized as PASS. Starts without terminals are `missing`
 in aggregation; torn/malformed files contribute export `gaps`. Errors and
@@ -152,6 +184,56 @@ The diagnostic storage allowlist does not restrict those required review paths;
 trusted hosts may allocate private sessions on other mounted locations. Native
 I/O retains the existing host-allocation trust boundary independently of whether
 measurement is enabled.
+
+## CI opt-in and retention
+
+Both reusable workflows accept `measurement-enabled: true` (default false).
+The self caller selects it only when repository variable
+`ARCHITECTURE_GATE_MEASUREMENT` equals `true`; this change does not set that
+variable or weaken Fork admission. The separate optional `measurement` job
+collects completed review metadata and job outcomes **after** `accept`; required
+review, reporting and acceptance do not wait for it. The independent job builds
+the pinned public diagnostic runtime, then observes existing published outputs
+and bounded public metadata for the exact repository/run/attempt. It does not
+read review logs, responses or artifacts, use redirects/retries/pagination,
+acquire credentials or add a fallback to authenticated acquisition. Missing
+public metadata is a gap, not proof that review did not run.
+No reviewer/provider setting, credential or permission is added. The independent
+job declares `permissions: {}` and fetches the public workflow runtime
+anonymously from its full SHA, with credential helpers/headers and prompting
+disabled. Node setup receives an explicitly empty token and uses no package-manager
+cache. Private or non-github.com runtime retrieval is unsupported by this optional
+job and leaves a diagnostic gap; it does not fall back to source credentials.
+
+Artifacts `agk-measurement-review-<run>-<attempt>-<capture-UUID>` and
+`agk-measurement-outcome-<run>-<attempt>-<capture-UUID>` retain whitelist-only exports for 30
+days. They contain opaque identities, CI revision/run bindings, states,
+observed semantic decision kinds, collector package/version/hash, job outcomes
+and checked public job/step intervals. CI request/prompt/schema/reviewer,
+finding-count, execution and freshness fields remain null/unknown. Private
+summaries, finding text, authority names, model settings and paths are excluded.
+The current CI collector never acquires or saves full review findings, including
+in its runner-private records. Local/native or standalone legacy recorder
+capabilities do not imply current workflow coverage. Adjudicate cases
+using original review material when available, and mark unavailable material
+unresolved. Redacted exports alone cannot establish defect validity.
+Hashes may permit correlation or guesses; opt-in is still an owner privacy
+choice. Archive artifacts before expiry if the evaluation requires them.
+
+Artifact names include the run/attempt and the collector's UUID attempt ID,
+so repeated or matrix invocations of a reusable workflow retain separate review
+and outcome exports. An upload requires its collector's published attempt ID;
+missing capture identity leaves a collection gap. Artifact naming does not copy
+caller job labels or matrix values.
+
+Reconcile every planned run/attempt against downloaded artifacts. Reruns have
+separate run-attempt bindings. Compare the owner-frozen population and GitHub
+run inventory to exports; absent artifacts are missing observations, not absent
+violations. No-record eligible changes appear as `coverage.noObservation`.
+Collector starts with no terminal appear in `coverage.states.missing`. The
+independent outcome artifact can record review failure/skipping even when the
+review collector did not start. Entire-run cancellation may lose both. This
+implementation does not poll GitHub or infer cancellations from silence.
 
 ## Case ledger, blind audit and aggregation
 

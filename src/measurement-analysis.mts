@@ -187,6 +187,24 @@ export function sampleMeasurementPopulation(value: unknown, { seed, count, cohor
     sample: eligible.map(c => ({ change: c, rank: measurementDigest(`${seed}\n${c.changeId}`) })).sort((a, b) => a.rank.localeCompare(b.rank)).slice(0, count)
       .map(({ change }) => ({ changeId: change.changeId, initialRef: change.initialRef || null, finalRef: change.finalRef || null })) };
 }
+// Collector and whole-job time cannot stand in for review-step completion.
+// Imported review intervals must also be consistently contained in their job.
+function observedReviewInterval(record: ObservationView) {
+  const observation = record.observation as Record<string, unknown> | null | undefined;
+  if (record.route !== 'ci-review' || observation?.timingSource !== 'collector') return {startedAt: record.startedAt, completedAt: record.completedAt as string};
+  if (observation.ciAcquisition !== 'public-job-metadata') return null;
+  const checked = (value: unknown) => {
+    const timing = value as Record<string, unknown> | null | undefined;
+    if (!timing || typeof timing.startedAt !== 'string' || typeof timing.completedAt !== 'string' || !Number.isSafeInteger(timing.elapsedMs)) return null;
+    try {
+      validateMeasurementRecord({...record, startedAt: timing.startedAt, completedAt: timing.completedAt});
+      if ((timing.elapsedMs as number) < 0 || Date.parse(timing.completedAt) - Date.parse(timing.startedAt) !== timing.elapsedMs) return null;
+      return {startedAt: timing.startedAt, completedAt: timing.completedAt};
+    } catch { return null; }
+  };
+  const job = checked(observation.jobTiming), review = checked(observation.reviewTiming);
+  return job && review && Date.parse(review.startedAt) >= Date.parse(job.startedAt) && Date.parse(review.completedAt) <= Date.parse(job.completedAt) ? review : null;
+}
 export function aggregateMeasurement(value: unknown, { cohort = 'natural', domain = 'self' }: MeasurementCohort = {}) {
   const data = validateMeasurementDataset(value);
   if (!enumValue(cohort, ['natural', 'fixture']) || !enumValue(domain, ['self', 'consumer'])) reject('cohort/domain');
@@ -214,8 +232,10 @@ export function aggregateMeasurement(value: unknown, { cohort = 'natural', domai
   const firstDetection = (c: MeasurementCase) => {
     const refs = c.findingRefs.map(f => terminals.get(f.attemptId)).filter((r): r is ObservationView => r !== undefined);
     if (!refs.length) return 'unknown';
-    const earliest = Math.min(...refs.map(r => Date.parse(r.completedAt as string)));
-    const routes = new Set(refs.filter(r => Date.parse(r.completedAt as string) === earliest)
+    const times = refs.map(r => observedReviewInterval(r));
+    if (times.some(timing => timing === null)) return 'unknown';
+    const earliest = Math.min(...times.map(timing => Date.parse(timing!.completedAt)));
+    const routes = new Set(refs.filter((_, index) => Date.parse(times[index]!.completedAt) === earliest)
       .map(r => r.route.startsWith('ci-') ? 'ci' : 'local'));
     return routes.size > 1 ? 'ambiguous' : routes.has('local') ? 'local' : 'ci';
   };
@@ -228,7 +248,7 @@ export function aggregateMeasurement(value: unknown, { cohort = 'natural', domai
   const reviewed = new Set(attempts.filter(r => r.phase === 'terminal' && r.state === 'completed' &&
     enumValue(typeof r.decision === 'string' ? r.decision : decisionView(r.decision)?.decision, ['PASS', 'BLOCK', 'OWNER_DECISION'])).map(r => r.changeId));
   const observed = new Set(attempts.map(r => r.changeId));
-  const latency = attempts.filter(r => r.phase === 'terminal').map(r => Date.parse(r.completedAt as string) - Date.parse(r.startedAt)).filter(n => n >= 0).sort((a, b) => a - b);
+  const latency = attempts.filter(r => r.phase === 'terminal').map(observedReviewInterval).filter((timing): timing is NonNullable<typeof timing> => timing !== null).map(timing => Date.parse(timing.completedAt) - Date.parse(timing.startedAt)).filter(n => n >= 0).sort((a, b) => a - b);
   const middleLatency = Math.floor(latency.length / 2);
   const medianElapsedMs = !latency.length ? null : latency.length % 2
     ? latency[middleLatency] : latency[middleLatency - 1] + (latency[middleLatency] - latency[middleLatency - 1]) / 2;

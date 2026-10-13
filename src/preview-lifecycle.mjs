@@ -457,8 +457,27 @@ export async function preparePreviewLifecycle(spec, cwd = process.cwd()) {
     schema: responseSchema, prompt, reviewer: { model: policy.model, reasoningEffort: policy.reasoningEffort }, assurance });
 }
 
+// Reject changed runtime bytes before repeated Git/authority reconstruction.
+// This is only a negative shortcut: matching runtimes still undergo the full
+// immutable-input rebuild below. Skip it for accessor/custom-object inputs.
+function plainRecordedRuntime(request) {
+  try {
+    const property = Object.getOwnPropertyDescriptor(request, 'runtime');
+    const value = property?.value;
+    if (!value || Object.getPrototypeOf(value) !== Object.prototype) return;
+    const fields = Object.getOwnPropertyDescriptors(value);
+    if (Object.keys(fields).length !== 2 || typeof fields.nodeVersion?.value !== 'string') return;
+    const files = fields.files?.value;
+    if (!files || Object.getPrototypeOf(files) !== Object.prototype) return;
+    const entries = Object.entries(Object.getOwnPropertyDescriptors(files));
+    if (entries.some(([, item]) => !item.enumerable || typeof item.value !== 'string')) return;
+    return { nodeVersion: fields.nodeVersion.value, files: Object.fromEntries(entries.map(([key, item]) => [key, item.value])) };
+  } catch { /* Preserve the existing arbitrary-object validation path. */ }
+}
 async function validateRequest(request, root) {
   unseal(request, 'preview-lifecycle-request');
+  const recordedRuntime = plainRecordedRuntime(request);
+  if (recordedRuntime && hash(recordedRuntime) !== hash(runtimeIdentity())) fail('request differs from immutable predecessor inputs.');
   const rebuilt = await preparePreviewLifecycle(request.spec, root ?? request.root);
   if (rebuilt.integritySha256 !== request.integritySha256) fail('request differs from immutable predecessor inputs.');
 }
