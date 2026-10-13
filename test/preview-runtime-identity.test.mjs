@@ -67,6 +67,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'reviewer-transports/local-reviewer-execution.mjs',
     'runner-paths/runner-temp-path.mjs',
     'local-review/local-gate.mjs',
+    'local-review/native-review.mjs',
     'local-review/local-post-tool-screen.mjs',
     'local-review/manual-review.mjs',
     'owner-addition/owner-addition-finalize.mjs',
@@ -301,6 +302,15 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
         .replace(/from '\.\.\/reviewer-transports\//g, "from './")
         .replace(/from '\.\.\//g, "from './"));
   }
+  // Restore the complete former flat native body and its original guard before
+  // deleting grouped modules. Importing the restored API remains non-dispatching.
+  const nativeImplementation = readFileSync(join(flatRoot, 'dist/local-review/native-review.mjs'), 'utf8')
+    .replace(/from (["'])\.\.\//g, 'from $1./');
+  const nativeFacade = readFileSync(join(flatRoot, 'dist/native-review.mjs'), 'utf8');
+  const nativeGuard = nativeFacade.slice(nativeFacade.indexOf('if (process.argv[1]'));
+  assert.ok(nativeGuard.startsWith('if (process.argv[1]'));
+  writeFileSync(join(flatRoot, 'dist/native-review.mjs'),
+    "import { realpathSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\n" + nativeImplementation + '\n' + nativeGuard);
   rmSync(join(flatRoot, 'dist/local-review'), { recursive: true });
   rmSync(join(flatRoot, 'dist/runner-paths'), { recursive: true });
   rmSync(join(flatRoot, 'dist/reviewer-transports'), { recursive: true });
@@ -370,6 +380,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   assert.equal(typeof flatCodexTransport.runCodexReviewer, 'function');
   assert.equal(typeof flatLocalReviewer.executeLocalReviewerSync, 'function');
   assert.equal(typeof flatLocalReviewer.executeLocalReviewer, 'function');
+  const flatNative = await import(pathToFileURL(join(flatRoot, 'dist/native-review.mjs')).href);
+  assert.equal(typeof flatNative.runNativeReviewCli, 'function');
   const flatRuntime = await import(pathToFileURL(join(flatRoot, 'dist/preview-lifecycle.mjs')).href);
   const flatRequest = await flatRuntime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
   const expectedFlatPaths = readdirSync(join(flatRoot, 'dist')).filter(file => file.endsWith('.mjs')).sort();

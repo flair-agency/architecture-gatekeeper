@@ -238,8 +238,9 @@ Flat exports, read-only invocation, validation, proxy scope and cleanup preserve
 their original operations. The parent proxy composes the typed session directly.
 
 The local-review and runner-path slice types local reviewer composition and
-fixed runner temporary paths. The native CLI remains at its original flat
-`.mjs` implementation and is outside this typed migration. Required async
+fixed runner temporary paths. The complete native CLI candidate moves to
+`local-review/native-review.mts`; its executable flat facade retains the exact
+direct-run guard and catch. Required async
 deadlines, synchronous versus awaited callbacks and complete envelope fields
 have explicit contracts. External decisions, JSON and manifest readbacks remain
 unknown; exact byte reads return Buffer and successful paths return strings.
@@ -282,8 +283,8 @@ before storage, bounded readbacks and the original private file modes. The
 runner accessor stays at its approved model path and returns only the string
 established by its existing runtime check; this does not authenticate provenance.
 
-After the runner-accessor candidate, three checked JavaScript bridges remain
-at their existing source paths: snapshot materializer, native CLI and CI report.
+After the complete native candidate, two checked JavaScript bridges remain
+at their existing source paths: snapshot materializer and CI report.
 The report CLI checks its existing private zero-argument `Promise<void>`
 completion contract. Erased operation views retain the original error-message
 reads, inline-item operations and optional findings-length read; external
@@ -294,10 +295,15 @@ Actual-config compile-only probes exercise the private function without adding
 a public export or argv parameter. A pinned complete runtime AST comparison
 binds source and emitted operations to the pre-change main tree. These checks
 do not prove CodeQL flow preservation; official model/flow verification remains
-required for the candidate. The native CLI
-checks its existing optional string-array arguments, working directory and async
-completion contract; its entire runtime body and direct-execution guard remain
-unchanged. The materializer retains
+required for the candidate. The native CLI preserves its existing optional
+string-array arguments, working directory and async completion contract. Its
+complete adopted functions are pinned after type erasure, including measurement,
+required prepare/validate I/O and distinct original-host versus injected argument
+selection. External JSON remains unknown; erased property-read views add no
+validation. All three original native accessor flows and explicitly injected
+negative flows remain checked at the actual grouped production sinks. The
+adopted model packs are unchanged. This migration adopts no stream protocol,
+persistence transfer or new transport ceiling from Issue #566. The materializer retains
 two narrow `@ts-expect-error` boundaries where it composes the existing Git
 reader and filesystem writer. They preserve those operations without claiming
 that `outputPath` is a string: the original truthy guard permits native path-like
@@ -337,13 +343,14 @@ This CI composition candidate brings the count to 81 `.mts` modules and
 The GitHub command candidate has 82 original modules fully migrated to `.mts`
 and 14 originals not fully migrated. The runner-accessor candidate adds one
 complete typed implementation, reaching 83/96 fully migrated and 13 originals
-not fully migrated. The complete GitHub provenance candidate would bring that
-inventory to 84/96 and 12 unfinished originals after protected adoption.
-Of those 12, three have checked JavaScript contracts
-(snapshot materializer, native CLI and CI report), and five have partial helper
+not fully migrated. The complete GitHub provenance migration was adopted in
+#578, bringing the inventory to 84/96 and 12 unfinished originals.
+The complete native candidate would reach 85/96 and 11 unfinished originals
+after protected adoption. Of those 11, two have checked JavaScript contracts
+(snapshot materializer and CI report), and five have partial helper
 migrations (CI report, owner-addition finalizer, multi-authority orchestration,
 owner-addition CI and the legacy authority
-decision check). CI report belongs to both categories; together they cover seven
+decision check). CI report belongs to both categories; together they cover six
 distinct originals. The other five remain JavaScript modules
 outside these migrations. These source-layout counts do not change the
 selected CodeQL model or establish acceptance evidence.
