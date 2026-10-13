@@ -10,8 +10,8 @@ import ts from 'typescript';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-function copyNativeModules(fixtureRoot) {
-  const pending = [join(root, 'src/native-review.mjs')];
+function copyEntrypointModules(fixtureRoot) {
+  const pending = [join(root, 'src/native-review.mjs'), join(root, 'src/owner-addition-finalize.mjs')];
   const copied = new Set();
   while (pending.length) {
     const path = pending.pop();
@@ -106,7 +106,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   cpSync(join(root, 'src/authority-validation/multi-authority-provenance.mts'), join(fixtureRoot, 'src/authority-validation/multi-authority-provenance.mts'));
   cpSync(join(root, 'src/authority-validation/authority-set.mts'), join(fixtureRoot, 'src/authority-validation/authority-set.mts'));
   cpSync(join(root, 'src/authority-validation/resolve-ci-policy.mts'), join(fixtureRoot, 'src/authority-validation/resolve-ci-policy.mts'));
-  const nativeModules = copyNativeModules(fixtureRoot);
+  const entrypointModules = copyEntrypointModules(fixtureRoot);
   writeFileSync(join(fixtureRoot, 'src/legacy.mjs'), 'export const legacyValue = 7;\n');
   writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), "import { legacyValue } from '../legacy.mjs';\nexport const answer: number = legacyValue + 35;\n");
   symlinkSync(join(root, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
@@ -174,7 +174,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'resolve-ci-policy.mjs',
     'runner-paths/runner-temp-path.mjs',
     'runner-temp-path.mjs',
-    ...nativeModules,
+    ...entrypointModules,
   ])].sort());
   assert.equal(readFileSync(join(dist, 'legacy.mjs'), 'utf8'), 'export const legacyValue = 7;\n');
   assert.deepEqual(reExportTargets(join(dist, 'owner-addition-validation.mjs')), ['./owner-addition/owner-addition-validation.mjs']);

@@ -1,0 +1,445 @@
+#!/usr/bin/env node
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+import { resolveCiPolicy, parseCiPolicyJson } from '../resolve-ci-policy.mjs';
+import { verifyOwnerAdditionEligibilityProvenance } from '../github-owner-addition-provenance.mjs';
+import { verifyOwnerAdditionReadback } from '../github-owner-addition-readback.mjs';
+import { digestOwnerDecisionAddition } from '../owner-decision-addition.mjs';
+import { rejectDuplicateJsonKeys } from '../authority-set.mjs';
+import { buildOwnerAdditionFinalRecord, type OwnerAdditionFinalRecordInput } from './owner-addition-finalize.mts';
+export { buildOwnerAdditionFinalRecord };
+
+// Erased operational views preserve existing unchecked reads and native failures.
+// They validate neither external JSON nor callback observations.
+type UnknownRecord = Record<string, unknown>;
+type FetchObservation = { ok?: unknown; status?: unknown; json: () => unknown };
+type GitObjectObservation = UnknownRecord & { sha?: unknown; type?: unknown };
+type TagObjectObservation = UnknownRecord & { sha?: unknown; object?: GitObjectObservation | null; message?: unknown };
+type ProcedureObservation = UnknownRecord & { tagObjectOid?: unknown; headSha?: unknown; additionRecordSha256?: unknown };
+type RefObservation = UnknownRecord & { ref?: unknown; object?: GitObjectObservation | null };
+export type OwnerAdditionTagRefReadback =
+  | { status: 'unavailable'; ref: unknown }
+  | { status: 'matches' | 'moved'; ref: unknown; observedObjectOid: unknown; observedObjectType: unknown };
+type ComparisonObservation = UnknownRecord & { base_commit?: GitObjectObservation | null;
+  merge_base_commit?: GitObjectObservation | null; commits?: unknown };
+type ArtifactProcedureObservation = UnknownRecord & { authoritySet: OwnerAdditionFinalRecordInput['authoritySetProvenance']; tagRef: unknown };
+type ArtifactsObservation = { procedure: ArtifactProcedureObservation; ordinaryDecision: UnknownRecord;
+  authoritySetProvenance: OwnerAdditionFinalRecordInput['authoritySetProvenance'];
+  digests: { procedure: unknown; eligibilityDecision: unknown } };
+type PullRequestObservation = UnknownRecord & { base?: { ref?: unknown; repo?: { full_name?: string } | null } | null;
+  head?: { sha?: unknown } | null };
+type CommitObservation = UnknownRecord & { parents?: unknown; tree?: GitObjectObservation | null };
+export type OwnerAdditionFinalizerFetch = (url: string, options: {
+  headers: Record<string, string>; redirect: 'follow';
+}) => unknown;
+export type OwnerAdditionFinalizerInput = {
+  repository: unknown; pullRequestNumber: unknown; githubToken: unknown; runId: unknown;
+  attempt?: unknown; policyPath?: unknown; fetchImpl?: OwnerAdditionFinalizerFetch | null; identities?: unknown;
+};
+
+const api = 'https://api.github.com';
+const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
+
+function fail(message: string): never { throw new Error(`OWNER_ADDITION finalizer: ${message}`); }
+function object(value: unknown, label: string): UnknownRecord {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail(`${label} is malformed.`);
+  return value as UnknownRecord;
+}
+function oid(value: unknown, label: string): string {
+  if (typeof value !== 'string' || !/^[a-f0-9]{40}$/.test(value)) fail(`${label} is not a SHA-1 Git object ID.`);
+  return value;
+}
+function parseRepo(repo: unknown): string {
+  if (typeof repo !== 'string' || !/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(repo) ||
+      repo.split('/').some(part => part === '.' || part === '..')) fail('repository must be owner/name.');
+  return repo;
+}
+function apiResourceUrl(repository: string, components: unknown[], query = '') {
+  if (components.some(component => component === '.' || component === '..')) {
+    fail('GitHub resource path contains a dot segment.');
+  }
+  const repoPath = repository.split('/').map(encodeURIComponent).join('/');
+  return `${api}/repos/${repoPath}/${components.map(encodeURIComponent as (value: unknown) => string).join('/')}${query}`;
+}
+
+export function verifyG0TagObjectEvidence(procedure: unknown, tagObject: unknown): unknown {
+  object(procedure, 'G0 procedure');
+  object(tagObject, 'G0 tag object');
+  if ((tagObject as TagObjectObservation).sha !== (procedure as ProcedureObservation).tagObjectOid || (tagObject as TagObjectObservation).object?.type !== 'commit' ||
+      (tagObject as TagObjectObservation).object?.sha !== (procedure as ProcedureObservation).headSha || typeof (tagObject as TagObjectObservation).message !== 'string') {
+    fail('immutable G0 tag object does not bind exact B.');
+  }
+  let additionRecord: unknown;
+  try {
+    rejectDuplicateJsonKeys((tagObject as TagObjectObservation).message as string, 'G0 AdditionRecord');
+    additionRecord = JSON.parse((tagObject as TagObjectObservation).message as string) as unknown;
+  } catch { fail('G0 tag message is not a strict AdditionRecord JSON object.'); }
+  if (digestOwnerDecisionAddition(additionRecord) !== (procedure as ProcedureObservation).additionRecordSha256) {
+    fail('G0 tag AdditionRecord differs from the verified pre-merge procedure.');
+  }
+  return additionRecord;
+}
+
+export async function readG0TagObjectReadback(response: unknown, procedure: unknown): Promise<{ status: 'unavailable'; additionRecord: null } | { status: 'verified'; additionRecord: unknown }> {
+  if (!response || !Number.isSafeInteger((response as FetchObservation).status)) fail('G0 tag-object readback response is malformed.');
+  if ((response as FetchObservation).status === 404 || (response as FetchObservation).status === 410) return { status: 'unavailable', additionRecord: null };
+  if (!(response as FetchObservation).ok) fail(`G0 immutable tag-object readback failed (${(response as FetchObservation).status}).`);
+  let tagObject: unknown;
+  try { tagObject = await (response as FetchObservation).json(); } catch { fail('G0 immutable tag-object response is malformed.'); }
+  return { status: 'verified', additionRecord: verifyG0TagObjectEvidence(procedure, object(tagObject, 'G0 tag object')) };
+}
+
+export function summarizeG0TagRefReadback(refResult: unknown, expectedTagRef: unknown, expectedObjectOid: unknown): OwnerAdditionTagRefReadback {
+  if (!refResult) return { status: 'unavailable', ref: expectedTagRef };
+  if ((refResult as RefObservation).ref !== expectedTagRef || typeof (refResult as RefObservation).object?.sha !== 'string') {
+    return { status: 'unavailable', ref: expectedTagRef };
+  }
+  return { status: (refResult as RefObservation).object!.sha === expectedObjectOid ? 'matches' : 'moved',
+    ref: expectedTagRef, observedObjectOid: (refResult as RefObservation).object!.sha, observedObjectType: (refResult as RefObservation).object!.type ?? null };
+}
+
+export function verifyMergeAncestorComparison(comparison: unknown, mergeSha: unknown, targetSha: unknown): unknown[] {
+  object(comparison, 'GitHub compare result');
+  oid(mergeSha, 'merge commit SHA'); oid(targetSha, 'target commit SHA');
+  if (!['ahead', 'identical'].includes((comparison as ComparisonObservation).status as string) || (comparison as ComparisonObservation).base_commit?.sha !== mergeSha ||
+      (comparison as ComparisonObservation).merge_base_commit?.sha !== mergeSha ||
+      !Array.isArray((comparison as ComparisonObservation).commits) || ((comparison as ComparisonObservation).commits as unknown[]).length > 250 ||
+      ((comparison as ComparisonObservation).commits as Array<GitObjectObservation | null>).some(commit => !/^[a-f0-9]{40}$/.test((commit?.sha || '') as string))) {
+    fail('target ancestry response does not prove the exact merge commit is an ancestor within the bounded page.');
+  }
+  // The compare request itself uses mergeSha...targetSha. GitHub's identical
+  // response omits head_commit, so exact target identity comes from that URL
+  // and the separately fetched target ref/commit, not an optional response field.
+  return [mergeSha, ...((comparison as ComparisonObservation).commits as GitObjectObservation[]).map(commit => commit.sha)];
+}
+
+function scalar(value: string, label: string, allowEmpty = false) {
+  let result = value.trim();
+  if ((result.startsWith('"') && result.endsWith('"')) || (result.startsWith("'") && result.endsWith("'"))) {
+    result = result.slice(1, -1);
+  }
+  if ((!allowEmpty && !result) || /[${}`]/.test(result)) fail(`${label} must be a literal scalar.`);
+  return result;
+}
+
+function workflowScalarSuffix(line: string, offset: number) {
+  const value = line.slice(offset).trim();
+  // The former dot capture excluded interior line terminators; surrounding
+  // whitespace was consumed separately and remains trimmed here.
+  return /[\r\u2028\u2029]/.test(value) ? null : value;
+}
+
+function withoutWorkflowComment(value: string) {
+  for (let index = value.indexOf('#'); index >= 0; index = value.indexOf('#', index + 1)) {
+    if (index > 0 && /\s/.test(value[index - 1])) return value.slice(0, index).trimEnd();
+  }
+  return value;
+}
+
+export function parsePinnedGatekeeperWorkflow(callerWorkflowBytes: unknown) {
+  const source = Buffer.from(callerWorkflowBytes as Uint8Array).toString('utf8');
+  if (!source || source.includes('\uFFFD')) fail('caller workflow is not valid UTF-8.');
+  const lines = source.split(/\r?\n/);
+  const usesLines = [];
+  const targetMarker = 'flair-agency/architecture-gatekeeper/.github/workflows/';
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    const match = line.match(/^(\s*)uses:/);
+    if (!match) continue;
+    const value = workflowScalarSuffix(line, match[0].length);
+    if (value === null || value.startsWith('#')) continue;
+    const use = scalar(withoutWorkflowComment(value), 'caller uses value');
+    if (use.includes(targetMarker)) usesLines.push({ index, indent: match[1].length, use });
+  }
+  if (usesLines.length !== 1) fail('recorded-base caller must contain exactly one Gatekeeper reusable workflow use.');
+  const selectedUse = usesLines[0];
+  if (selectedUse.indent !== 4) fail('Gatekeeper reusable workflow must be declared as a caller job, not a step.');
+  let callerJobId;
+  for (let index = selectedUse.index - 1; index >= 0; index--) {
+    const line = lines[index];
+    if (!line.trim() || line.trimStart().startsWith('#')) continue;
+    const indent = line.match(/^\s*/)![0].length;
+    if (indent === 2) {
+      const job = line.match(/^  ([A-Za-z0-9_-]+):\s*(?:#.*)?$/);
+      if (job) callerJobId = job[1];
+      break;
+    }
+    if (indent < 2) break;
+  }
+  if (!callerJobId || !lines.slice(0, selectedUse.index).some(line => /^jobs:\s*$/.test(line))) {
+    fail('Gatekeeper reusable workflow caller job ID is ambiguous or missing.');
+  }
+  const match = selectedUse.use.match(/^flair-agency\/architecture-gatekeeper\/(\.github\/workflows\/architecture-gate(?:-consumer)?\.yml)@([a-f0-9]{40})$/);
+  if (!match) {
+    fail('Gatekeeper reusable workflow must use the exact supported path pinned to a 40-character commit SHA.');
+  }
+  const values: Record<string, string> = {};
+  for (let index = selectedUse.index + 1; index < lines.length; index++) {
+    const line = lines[index];
+    if (!line.trim() || line.trimStart().startsWith('#')) continue;
+    const indent = line.match(/^\s*/)![0].length;
+    if (indent === selectedUse.indent && /^\s*with:\s*$/.test(line)) {
+      for (let child = index + 1; child < lines.length; child++) {
+        const entry = lines[child];
+        if (!entry.trim() || entry.trimStart().startsWith('#')) continue;
+        const childIndent = entry.match(/^\s*/)![0].length;
+        if (childIndent <= selectedUse.indent) break;
+        const input = entry.match(/^\s+([a-z][a-z-]*):/);
+        if (!input || !['policy-path', 'prompt-path', 'schema-path', 'validation-path'].includes(input[1])) continue;
+        const value = workflowScalarSuffix(entry, input[0].length);
+        if (value === null) continue;
+        if (Object.hasOwn(values, input[1])) fail(`caller workflow repeats ${input[1]}.`);
+        values[input[1]] = scalar(withoutWorkflowComment(value), `caller ${input[1]}`, input[1] === 'validation-path');
+      }
+      break;
+    }
+    if (indent <= selectedUse.indent) break;
+  }
+  return { path: `flair-agency/architecture-gatekeeper/${match[1]}`, sha: match[2], inputs: values, callerJobId };
+}
+
+export function validateOwnerAdditionProducerJobName(jobName: unknown, callerJobId: unknown): string {
+  if (typeof callerJobId !== 'string' || !/^[A-Za-z0-9_-]+$/.test(callerJobId) ||
+      jobName !== `${callerJobId} / owner-addition`) {
+    fail('recorded-base policy producer job must match the caller Gatekeeper job ID and owner-addition job.');
+  }
+  return jobName;
+}
+
+export function parseGatekeeperWorkflowDefaults(workflowBytes: unknown) {
+  const source = Buffer.from(workflowBytes as Uint8Array).toString('utf8');
+  if (!source || source.includes('\uFFFD')) fail('pinned Gatekeeper workflow is not valid UTF-8.');
+  const lines = source.split(/\r?\n/);
+  const callLines = lines.map((line, index) => /^\s{2}workflow_call:\s*$/.test(line) ? index : -1).filter(index => index >= 0);
+  if (callLines.length !== 1) fail('pinned Gatekeeper workflow has ambiguous workflow_call declarations.');
+  const callIndex = callLines[0];
+  const inputsIndex = lines.findIndex((line, index) => index > callIndex && /^\s{4}inputs:\s*$/.test(line));
+  if (inputsIndex < 0) fail('pinned Gatekeeper workflow has no workflow_call input declarations.');
+  const defaults: Record<string, string> = {};
+  for (const name of ['policy-path', 'prompt-path', 'schema-path', 'validation-path']) {
+    const indices = lines.map((line, index) => /^\s{6}([a-z][a-z-]*):\s*$/.exec(line)?.[1] === name ? index : -1)
+      .filter(index => index > inputsIndex);
+    if (indices.length !== 1) fail(`pinned Gatekeeper workflow must declare exactly one ${name} input.`);
+    const start = indices[0];
+    let end = start + 1;
+    while (end < lines.length && (!lines[end].trim() || lines[end].match(/^\s*/)![0].length > 6)) end++;
+    const defaultLines = lines.slice(start + 1, end).map(line => {
+      const match = /^\s{8}default:/.exec(line);
+      return match ? workflowScalarSuffix(line, match[0].length) : null;
+    }).filter(value => value !== null);
+    if (defaultLines.length !== 1) fail(`pinned Gatekeeper workflow must provide exactly one literal ${name} default.`);
+    defaults[name] = scalar(defaultLines[0], `pinned ${name} default`, name === 'validation-path');
+  }
+  return defaults;
+}
+
+/** Create a serializable final record only from the trusted facts passed by adapters. */
+
+/**
+ * Fetch, validate and bind a merged B adoption. No consumer-repository files are
+ * changed; the caller may write the returned record to an explicitly chosen path.
+ */
+export async function finalizeOwnerAddition({ repository, pullRequestNumber, githubToken, runId, attempt = 1,
+  policyPath, fetchImpl = globalThis.fetch, identities = {} }: OwnerAdditionFinalizerInput) {
+  repository = parseRepo(repository);
+  if (!Number.isSafeInteger(pullRequestNumber) || (pullRequestNumber as number) < 1) fail('pull request number is invalid.');
+  if (!githubToken || typeof githubToken !== 'string') fail('GitHub token is required.');
+  if (!/^\d+$/.test(String(runId)) || !Number.isSafeInteger(Number(attempt)) || Number(attempt) < 1) fail('producer run ID and attempt are required.');
+  if (!fetchImpl) fail('fetch implementation is unavailable.');
+  const headers = { accept: 'application/vnd.github+json', authorization: `Bearer ${githubToken}`,
+    'x-github-api-version': '2022-11-28' };
+  const request = async (components: unknown[], repo: unknown = repository, query = '') => {
+    const response = await fetchImpl(apiResourceUrl(repo as string, components, query), { headers, redirect: 'follow' });
+    if (!(response as FetchObservation | null | undefined)?.ok) fail(`GitHub API request failed (${(response as FetchObservation | null | undefined)?.status ?? 'no response'}).`);
+    return (response as FetchObservation).json();
+  };
+  const file = async (path: string, revision: unknown, repo: unknown = repository) => {
+    const item = object(await request(['contents', ...path.split('/')], repo, `?ref=${encodeURIComponent(revision as string)}`), `${path} content`);
+    if (item.type !== 'file' || item.encoding !== 'base64' || typeof item.content !== 'string') fail(`${path} is not a regular base64 file.`);
+    const bytes = Buffer.from(item.content.replace(/\n/g, ''), 'base64');
+    if (!bytes.length || bytes.length > 524_288) fail(`${path} is empty or exceeds its byte limit.`);
+    return bytes;
+  };
+
+  const pr = object(await request(['pulls', pullRequestNumber]), 'pull request') as PullRequestObservation;
+  if (pr.number !== pullRequestNumber || pr.state !== 'closed' || pr.merged !== true ||
+      pr.base?.repo?.full_name?.toLowerCase() !== (repository as string).toLowerCase()) fail('pull request is not merged into the requested repository.');
+  const targetBranch = pr.base!.ref;
+  const mergeSha = oid(pr.merge_commit_sha, 'merge commit SHA');
+  const mergeRaw = object(await request(['git', 'commits', mergeSha]), 'merge commit') as CommitObservation;
+  const parents = ((mergeRaw.parents || []) as GitObjectObservation[]).map(parent => oid(parent.sha, 'merge parent'));
+  if (parents.length !== 2) fail('v0.5.1 finalization supports ordinary merge commits only.');
+  const baseSha = parents[0];
+  const bSha = oid(pr.head?.sha, 'exact B SHA');
+  if (parents[1] !== bSha) fail('merge commit second parent is not exact B.');
+  const mergeTree = oid(mergeRaw.tree?.sha, 'merge tree');
+  const bCommit = object(await request(['git', 'commits', bSha]), 'B commit') as CommitObservation;
+  const bTree = oid(bCommit.tree?.sha, 'B tree');
+  if (mergeTree !== bTree) fail('merge tree differs from exact B tree.');
+
+  const runInfo = object(await request(['actions', 'runs', runId, 'attempts', attempt]), 'selected producer run');
+  if (typeof runInfo.path !== 'string') fail('selected producer run has no workflow path.');
+  const callerPath = (runInfo.path as string).split('@', 1)[0];
+  if (!/^\.github\/workflows\/[A-Za-z0-9._/-]+\.ya?ml$/.test(callerPath) || callerPath.split('/').some(part => part === '.' || part === '..')) {
+    fail('selected producer run caller workflow path is invalid.');
+  }
+  const callerWorkflowBytes = await file(callerPath, baseSha);
+  const gatekeeperWorkflow = parsePinnedGatekeeperWorkflow(callerWorkflowBytes);
+  const reusableWorkflowBytes = await file(gatekeeperWorkflow.path.slice('flair-agency/architecture-gatekeeper/'.length), gatekeeperWorkflow.sha,
+    'flair-agency/architecture-gatekeeper');
+  const defaults = parseGatekeeperWorkflowDefaults(reusableWorkflowBytes);
+  const callerInputs = Object.fromEntries(Object.keys(defaults).map(name => [name,
+    Object.hasOwn(gatekeeperWorkflow.inputs, name) ? gatekeeperWorkflow.inputs[name] : defaults[name]])) as Record<string, string>;
+  for (const name of ['policy-path', 'prompt-path', 'schema-path']) {
+    if (!/^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/.test(callerInputs[name]) || callerInputs[name].split('/').some(part => part === '.' || part === '..')) {
+      fail(`effective caller ${name} is not a safe repository path.`);
+    }
+  }
+  if (callerInputs['validation-path'] &&
+      (!/^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/.test(callerInputs['validation-path']) ||
+       callerInputs['validation-path'].split('/').some(part => part === '.' || part === '..'))) {
+    fail('effective caller validation-path is not a safe repository path.');
+  }
+  if (policyPath && policyPath !== callerInputs['policy-path']) fail('explicit policy path differs from the recorded-base caller workflow input.');
+  policyPath = callerInputs['policy-path'];
+  const policyBytes = await file(policyPath as string, baseSha);
+  const policy = parseCiPolicyJson(policyBytes.toString('utf8')) as UnknownRecord & { version: unknown };
+  const selected = resolveCiPolicy(policy, targetBranch as string) as ReturnType<typeof resolveCiPolicy> & OwnerAdditionFinalRecordInput['selected'];
+  if (policy.version !== 5 || selected.mode !== 'procedural' || selected.adoptionEvidenceProducer !== 'github-actions' ||
+      selected.policyVersion !== 5 || typeof selected.adoptionEvidenceWorkflowPath !== 'string' ||
+      typeof selected.adoptionEvidenceJobName !== 'string' || selected.adoptionEvidenceWorkflowPath !== callerPath) {
+    fail('recorded-base policy does not select the v5 procedural GitHub Actions route.');
+  }
+  const jobName = validateOwnerAdditionProducerJobName(selected.adoptionEvidenceJobName, gatekeeperWorkflow.callerJobId);
+  const jobs = object(await request(['actions', 'runs', runId, 'attempts', attempt, 'jobs'], repository, '?per_page=100'), 'producer jobs') as UnknownRecord & { jobs?: unknown; total_count?: unknown };
+  if (!Array.isArray(jobs.jobs) || (jobs.total_count as number) > 100) fail('producer job listing is missing or too large.');
+  const producerJobs = (jobs.jobs as UnknownRecord[]).filter(job => job.name === jobName);
+  if (producerJobs.length !== 1) fail('recorded-base producer job name is absent or ambiguous in the selected run.');
+  const jobId = producerJobs[0].id;
+
+  // The provenance verifier derives exact artifact digests and member IDs after
+  // checking the artifact, while selecting producer solely from recorded policy.
+  const provenanceResult = await verifyOwnerAdditionEligibilityProvenance({ githubToken, repository,
+    targetBranch, pullRequestNumber, baseSha, bSha, callerPath, jobName, runId: String(runId), attempt: Number(attempt),
+    jobId: String(jobId), mergeAt: pr.merged_at, policySha256: hash(policyBytes),
+    expectedGatekeeperWorkflow: { path: gatekeeperWorkflow.path, sha: gatekeeperWorkflow.sha }, fetchImpl });
+  const artifacts = provenanceResult.artifacts as typeof provenanceResult.artifacts & ArtifactsObservation;
+  const procedureSource = artifacts.procedure;
+  const authorityPath = selected.ownerAdditionAuthorityPath;
+  if (procedureSource.policySha256 !== hash(policyBytes) || procedureSource.authorityPath !== authorityPath ||
+      procedureSource.repository !== repository || procedureSource.baseSha !== baseSha || procedureSource.headSha !== bSha) {
+    fail('verified procedure does not match the recorded-base policy or merged B.');
+  }
+  const authorityBytes = await file(authorityPath as string, bSha);
+  const authorityDigest = hash(authorityBytes);
+  if (authorityDigest !== procedureSource.newAuthoritySha256) fail('B authority bytes do not match the verified G0 procedure.');
+  const tagObjectOid = oid(procedureSource.tagObjectOid, 'G0 tag object SHA');
+  const tagObjectResponse = await fetchImpl(apiResourceUrl(repository as string, ['git', 'tags', tagObjectOid]),
+    { headers, redirect: 'follow' });
+  const tagObjectReadback = await readG0TagObjectReadback(tagObjectResponse, procedureSource);
+  const additionRecord = tagObjectReadback.additionRecord;
+  let tagRefResult: unknown = null;
+  try {
+    const response = await fetchImpl(apiResourceUrl(repository as string, ['git', 'ref', 'tags', ...(procedureSource.tagRef as string).replace(/^refs\/tags\//, '').split('/')]),
+      { headers, redirect: 'follow' });
+    if ((response as FetchObservation).ok) tagRefResult = await (response as FetchObservation).json();
+  } catch { /* Point-in-time tag-ref availability is informative, not adoption evidence. */ }
+  const tagRefReadback = summarizeG0TagRefReadback(tagRefResult, procedureSource.tagRef, procedureSource.tagObjectOid);
+  const targetRefRaw = object(await request(['git', 'ref', 'heads', ...(targetBranch as string).split('/')]), 'target branch ref') as RefObservation;
+  const targetSha = oid(targetRefRaw.object?.sha, 'target branch SHA');
+  const targetCommit = await request(['git', 'commits', targetSha]);
+  const comparison = object(await request(['compare', `${mergeSha}...${targetSha}`], repository, '?per_page=250'), 'target ancestry comparison');
+  const ancestorShas = verifyMergeAncestorComparison(comparison, mergeSha, targetSha);
+  const authorityAtTarget = await file(authorityPath as string, targetSha);
+  const readback = verifyOwnerAdditionReadback({ repository,
+    expected: { targetBranch, pullRequestNumber, baseSha, bSha, bTree, authorityPath, authorityDigest },
+    pullRequest: pr,
+    mergeCommit: { sha: mergeSha, tree: mergeTree, parents },
+    targetRef: { ref: targetRefRaw.ref, sha: targetSha },
+    targetCommit: { sha: targetSha, ancestorShas,
+      authoritySnapshot: { commitSha: targetSha, path: authorityPath, bytes: authorityAtTarget } },
+  });
+  const procedure = { status: 'verified', digest: artifacts.digests.procedure, repository,
+    baseSha, bSha, targetBranch, pullRequestNumber, tagTargetSha: bSha,
+    tagObjectOid: procedureSource.tagObjectOid, ownerDecisionId: procedureSource.missingDecisionId,
+    authorityId: procedureSource.authorityId, authorityPath: procedureSource.authorityPath,
+    tagRef: procedureSource.tagRef, additionRecordSha256: procedureSource.additionRecordSha256,
+    missingDecisionId: procedureSource.missingDecisionId,
+    authoritySetDigest: procedureSource.authoritySet.setDigest,
+    authorityIds: artifacts.authoritySetProvenance.members.map(member => member.id) };
+  const ordinaryDecision = { status: 'verified', decision: artifacts.ordinaryDecision.decision,
+    ownerDecisionId: artifacts.ordinaryDecision.ownerDecisionId, repository, baseSha, bSha,
+    authoritySetDigest: artifacts.ordinaryDecision.authoritySetDigest,
+    authorityIds: artifacts.ordinaryDecision.authorityIds };
+  const authoritySet = { status: 'verified', ids: procedure.authorityIds, digest: procedure.authoritySetDigest } as OwnerAdditionFinalRecordInput['authoritySet'];
+  const authoritySetProvenance = artifacts.authoritySetProvenance;
+  const eligibility = { status: 'verified', digest: artifacts.digests.eligibilityDecision,
+    result: 'eligible', repository, baseSha, bSha, pullRequestNumber,
+    authoritySetDigest: procedure.authoritySetDigest, authorityIds: procedure.authorityIds };
+  const { status: producerStatus, selection, workflow, repository: producerRepository, targetBranch: producerTarget,
+    pullRequestNumber: producerPr, baseSha: producerBase, bSha: producerB, authoritySetDigest: producerAuthoritySet,
+    procedureDigest, eligibilityDigest, completedAt } = provenanceResult.provenance;
+  const eligibilityEvidence = { status: 'verified', provenance: { status: producerStatus, selection, workflow,
+    repository: producerRepository, targetBranch: producerTarget, pullRequestNumber: producerPr,
+    baseSha: producerBase, bSha: producerB, authoritySetDigest: producerAuthoritySet,
+    procedureDigest, eligibilityDigest, completedAt },
+    completedAt: provenanceResult.completedAt };
+  const merged = readback.merge;
+  const promptPath = selected.ownerAdditionPromptPath;
+  const schemaPath = selected.ownerAdditionSchemaPath;
+  const promptBytes = await file(promptPath as string, baseSha);
+  const schemaBytes = await file(schemaPath as string, baseSha);
+  const ordinaryPromptBytes = await file(callerInputs['prompt-path'], baseSha);
+  const ordinarySchemaBytes = await file(callerInputs['schema-path'], baseSha);
+  const validationPath = callerInputs['validation-path'];
+  const validationBytes = validationPath ? await file(validationPath, baseSha) : null;
+  const boundIdentities = { ...(identities as UnknownRecord),
+    callerWorkflow: { path: callerPath, revision: baseSha, sha256: hash(callerWorkflowBytes), status: 'verified',
+      gatekeeperWorkflowPath: gatekeeperWorkflow.path, gatekeeperWorkflowSha: gatekeeperWorkflow.sha },
+    prompt: { path: promptPath, sha256: hash(promptBytes), status: 'verified', revision: baseSha },
+    schema: { path: schemaPath, sha256: hash(schemaBytes), status: 'verified', revision: baseSha },
+    ordinaryPrompt: { path: callerInputs['prompt-path'], sha256: hash(ordinaryPromptBytes), status: 'verified', revision: baseSha },
+    ordinarySchema: { path: callerInputs['schema-path'], sha256: hash(ordinarySchemaBytes), status: 'verified', revision: baseSha },
+    validation: validationPath ? { path: validationPath, sha256: hash(validationBytes!), status: 'verified', revision: baseSha }
+      : { path: null, sha256: null, status: 'not_selected' },
+    gatekeeper: { path: provenanceResult.gatekeeperWorkflow.path, sha: provenanceResult.gatekeeperWorkflow.sha,
+      status: 'verified' },
+    g0TagReadback: { ...tagRefReadback,
+      ...(tagObjectReadback.status === 'verified' ? { targetSha: procedureSource.headSha } : {}),
+      additionRecordSha256: procedureSource.additionRecordSha256,
+      immutableTagObject: tagObjectReadback.status },
+  };
+  const record = buildOwnerAdditionFinalRecord({ repository, targetBranch, pullRequestNumber, baseSha, bSha, bTree,
+    authorityDigest, policy, policySha256: hash(policyBytes), policyPath, procedure, ordinaryDecision, authoritySet,
+    selected, eligibility, authoritySetProvenance, eligibilityEvidence,
+    eligibilityArtifactBinding: provenanceResult.provenance.artifactBinding, merge: merged,
+    targetReadback: readback.targetReadback, identities: boundIdentities });
+  if (record.outcome.adoption !== 'valid' || record.outcome.canonical !== 'verified') fail(`final adoption is ${record.outcome.adoption}/${record.outcome.canonical}: ${JSON.stringify(record.outcome)}.`);
+  return record;
+}
+
+function tokenFromEnvironment() {
+  if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) return process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+  try { return execFileSync('gh', ['auth', 'token'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+  catch { fail('set GH_TOKEN/GITHUB_TOKEN or authenticate gh first.'); }
+}
+
+export async function runOwnerAdditionFinalizeCli(): Promise<void> {
+  const [repository, rawPr, ...options] = process.argv.slice(2);
+  let runId: string | undefined, attempt = 1, policyPath: string | undefined, outputPath: string | undefined;
+  for (let index = 0; index < options.length; index++) {
+    const option = options[index];
+    if (option === '--run-id') runId = options[++index];
+    else if (option === '--attempt') attempt = Number(options[++index]);
+    else if (option === '--policy-path') policyPath = options[++index];
+    else if (option === '--output') outputPath = options[++index];
+    else fail(`unknown option ${option}.`);
+  }
+  if (!repository || !rawPr || !runId) fail('usage: owner-addition-finalize <owner/repo> <PR> --run-id <id> [--attempt N] [--policy-path path] [--output path]');
+  const record = await finalizeOwnerAddition({ repository, pullRequestNumber: Number(rawPr), githubToken: tokenFromEnvironment(),
+    runId, attempt, policyPath });
+  const json = `${JSON.stringify(record, null, 2)}\n`;
+  if (outputPath) writeFileSync(outputPath, json, { flag: 'wx', mode: 0o600 });
+  else process.stdout.write(json);
+}
