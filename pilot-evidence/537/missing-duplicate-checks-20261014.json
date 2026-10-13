@@ -1,0 +1,249 @@
+{
+  "version": 1,
+  "checkedDate": "2026-10-14",
+  "timezone": "Asia/Tokyo",
+  "scope": "offline checks and historical inventory; not a new CI model review or prospective effectiveness result",
+  "installedRealExportVariants": {
+    "version": 1,
+    "purpose": "offline-fault-injection-on-real-export-copy",
+    "sourceRunId": 38417263808,
+    "sourceAttempt": 1,
+    "interpretation": "Copies deliberately remove or repeat records. These are focused synthetic checks, not observed CI cancellations/failures or natural changes.",
+    "conflictingDuplicateRejected": true,
+    "checks": [
+      {
+        "name": "actual-success-baseline",
+        "syntheticVariant": true,
+        "coverage": {
+          "eligible": 1,
+          "reviewed": 1,
+          "observed": 1,
+          "noObservation": 0,
+          "attempts": 1,
+          "states": {
+            "completed": 1
+          },
+          "completedByScope": {
+            "ci-merge-revision": 1
+          },
+          "collectionGaps": 0,
+          "unlinkedAttempts": 0,
+          "terminalWithoutStart": 0,
+          "delivery": "unknown",
+          "agentResponse": "unknown"
+        },
+        "metrics": {
+          "precision": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "validFindingResolution": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "integratedDriftIncidence": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "recall": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "localEarlyResolution": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          }
+        }
+      },
+      {
+        "name": "missing-terminal",
+        "syntheticVariant": true,
+        "coverage": {
+          "eligible": 1,
+          "reviewed": 0,
+          "observed": 1,
+          "noObservation": 0,
+          "attempts": 1,
+          "states": {
+            "missing": 1
+          },
+          "completedByScope": {},
+          "collectionGaps": 0,
+          "unlinkedAttempts": 0,
+          "terminalWithoutStart": 0,
+          "delivery": "unknown",
+          "agentResponse": "unknown"
+        },
+        "metrics": {
+          "precision": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "validFindingResolution": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "integratedDriftIncidence": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "recall": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "localEarlyResolution": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          }
+        }
+      },
+      {
+        "name": "missing-all-records",
+        "syntheticVariant": true,
+        "coverage": {
+          "eligible": 1,
+          "reviewed": 0,
+          "observed": 0,
+          "noObservation": 1,
+          "attempts": 0,
+          "states": {},
+          "completedByScope": {},
+          "collectionGaps": 0,
+          "unlinkedAttempts": 0,
+          "terminalWithoutStart": 0,
+          "delivery": "unknown",
+          "agentResponse": "unknown"
+        },
+        "metrics": {
+          "precision": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "validFindingResolution": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "integratedDriftIncidence": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "recall": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "localEarlyResolution": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          }
+        }
+      },
+      {
+        "name": "repeated-identical-download",
+        "syntheticVariant": true,
+        "coverage": {
+          "eligible": 1,
+          "reviewed": 1,
+          "observed": 1,
+          "noObservation": 0,
+          "attempts": 1,
+          "states": {
+            "completed": 1
+          },
+          "completedByScope": {
+            "ci-merge-revision": 1
+          },
+          "collectionGaps": 0,
+          "unlinkedAttempts": 0,
+          "terminalWithoutStart": 0,
+          "delivery": "unknown",
+          "agentResponse": "unknown"
+        },
+        "metrics": {
+          "precision": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "validFindingResolution": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "integratedDriftIncidence": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "recall": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "localEarlyResolution": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          }
+        }
+      }
+    ]
+  },
+  "existingFocusedVerification": {
+    "duplicateObservations": "passed",
+    "publicCiJobBindings": "passed",
+    "ciValidationOutcomes": {
+      "passed": 8,
+      "failed": 0,
+      "runtimeMs": 43381.674561,
+      "command": "timeout 120s node --test --test-reporter=tap test/measurement-ci-validation-outcomes.test.mjs",
+      "mode": "sandbox escalation for local fixtures only"
+    },
+    "initialRestrictedRun": "CI validation file failed after about 40.3 seconds; retained separately, subsequent bounded rerun passed."
+  },
+  "historicalRunInventory": {
+    "runId": 38392561042,
+    "attempts": [
+      {
+        "runId": 38392561042,
+        "runAttempt": 1,
+        "headSha": "9665aa5195ebee9f2b55fe1aef8c1303af9391cc",
+        "status": "completed",
+        "conclusion": "failure",
+        "createdAt": "2026-10-13T11:46:39Z",
+        "updatedAt": "2026-10-13T11:48:42Z",
+        "url": "https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38392561042"
+      },
+      {
+        "runId": 38392561042,
+        "runAttempt": 2,
+        "headSha": "9665aa5195ebee9f2b55fe1aef8c1303af9391cc",
+        "status": "completed",
+        "conclusion": "success",
+        "createdAt": "2026-10-13T11:51:34Z",
+        "updatedAt": "2026-10-13T11:54:43Z",
+        "url": "https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38392561042"
+      }
+    ],
+    "measurementArtifactsObserved": 0,
+    "outsidePilotWindow": true,
+    "semantics": "Workflow failure is not inferred to be semantic BLOCK. Missing artifacts stay missing; historical run success cannot supply missing measurement fields."
+  },
+  "liveNonPassMeasurementCoverage": "still-not-verified; offline injected variants do not establish an actual failed/cancelled measurement-enabled workflow.",
+  "newPaidReviews": 0,
+  "ciReruns": 0
+}
