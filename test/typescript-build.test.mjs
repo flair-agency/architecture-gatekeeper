@@ -3,11 +3,40 @@ import assert from 'node:assert/strict';
 import { cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'acorn';
+import ts from 'typescript';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+function copyNativeModules(fixtureRoot) {
+  const pending = [join(root, 'src/native-review.mjs')];
+  const copied = new Set();
+  while (pending.length) {
+    const path = pending.pop();
+    if (copied.has(path)) continue;
+    copied.add(path);
+    const destination = join(fixtureRoot, relative(root, path));
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(path, destination);
+    const source = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
+    const collect = node => {
+      let specifier;
+      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+        specifier = node.moduleSpecifier.text;
+      } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) {
+        specifier = node.argument.literal.text;
+      } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && ts.isStringLiteral(node.arguments[0])) {
+        specifier = node.arguments[0].text;
+      }
+      if (specifier?.startsWith('.')) pending.push(resolve(dirname(path), specifier));
+      ts.forEachChild(node, collect);
+    };
+    collect(source);
+  }
+  return [...copied].map(path => relative(join(root, 'src'), path).replace(/\.mts$/, '.mjs'));
+}
 
 function runBuild(fixtureRoot) {
   const result = spawnSync('npm', ['run', 'build'], {
@@ -77,6 +106,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   cpSync(join(root, 'src/authority-validation/multi-authority-provenance.mts'), join(fixtureRoot, 'src/authority-validation/multi-authority-provenance.mts'));
   cpSync(join(root, 'src/authority-validation/authority-set.mts'), join(fixtureRoot, 'src/authority-validation/authority-set.mts'));
   cpSync(join(root, 'src/authority-validation/resolve-ci-policy.mts'), join(fixtureRoot, 'src/authority-validation/resolve-ci-policy.mts'));
+  const nativeModules = copyNativeModules(fixtureRoot);
   writeFileSync(join(fixtureRoot, 'src/legacy.mjs'), 'export const legacyValue = 7;\n');
   writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), "import { legacyValue } from '../legacy.mjs';\nexport const answer: number = legacyValue + 35;\n");
   symlinkSync(join(root, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
@@ -86,7 +116,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   writeFileSync(join(dist, 'stale.mjs'), 'old artifact\n');
   const initialBuild = runBuild(fixtureRoot);
   assert.equal(initialBuild.status, 0, initialBuild.stderr);
-  assert.deepEqual(emittedFiles(dist), [
+  assert.deepEqual(emittedFiles(dist), [...new Set([
     'authority-set.mjs',
     'authority-validation/authority-set.mjs',
     'authority-validation/multi-authority-provenance.mjs',
@@ -144,7 +174,8 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'resolve-ci-policy.mjs',
     'runner-paths/runner-temp-path.mjs',
     'runner-temp-path.mjs',
-  ]);
+    ...nativeModules,
+  ])].sort());
   assert.equal(readFileSync(join(dist, 'legacy.mjs'), 'utf8'), 'export const legacyValue = 7;\n');
   assert.deepEqual(reExportTargets(join(dist, 'owner-addition-validation.mjs')), ['./owner-addition/owner-addition-validation.mjs']);
   assert.deepEqual(reExportTargets(join(dist, 'ci-execution-result.mjs')), ['./ci-execution/ci-execution-result.mjs']);

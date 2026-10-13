@@ -183,18 +183,19 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
     assertProbeFlow(results.false,'native-probe.mjs',line,true,tag);
     assertProbeFlow(results.true,'native-probe.mjs',line,!tag.startsWith('trusted-native-'),tag);
   }
-  const nativeSource=readFileSync(join(source,'src/native-review.mjs'),'utf8');
+  const nativeImplementationPath='src/local-review/native-review.mts';
+  const nativeSource=readFileSync(join(source,nativeImplementationPath),'utf8');
   const nativeSink=tag=>findLine(nativeSource,tag);
   const nativeAccessorSource=readFileSync(join(source,'src/native-session-paths.mjs'),'utf8');
   const nativeOrigin=name=>findLine(nativeAccessorSource,name==='trustedNativeRequestPath'?'native-request-origin':'native-decision-origin');
   for(const [name,sinkTag] of [['trustedNativeRequestPath','native-request-persistence'],['trustedNativeRequestPath','native-request-read'],['trustedNativeDecisionPath','native-decision-read']]) {
     const origin=nativeOrigin(name),sink=nativeSink(sinkTag);assert.ok(origin>0&&sink>0);
-    const flow=list=>threads(list).some(thread=>threadHas(thread,'src/native-session-paths.mjs',origin)&&threadHas(thread,'src/native-review.mjs',sink));
+    const flow=list=>threads(list).some(thread=>threadHas(thread,'src/native-session-paths.mjs',origin)&&threadHas(thread,nativeImplementationPath,sink));
     assert.ok(flow(results.false),`Baseline must trace original native accessor into production ${sinkTag}`);
     assert.equal(flow(results.true),false,`Model must remove only original accessor flow at ${sinkTag}`);
   }
   for(const [probeTag,sinkTag] of [['injected-native-prepare','native-request-persistence'],['injected-native-validate','native-request-read'],['injected-native-validate','native-decision-read']]) {
-    assert.ok(threads(results.true).some(thread=>threadHas(thread,'native-probe.mjs',findLine(nativeProbe,probeTag))&&threadHas(thread,'src/native-review.mjs',nativeSink(sinkTag))),`Injected array flow must remain at production ${sinkTag}`);
+    assert.ok(threads(results.true).some(thread=>threadHas(thread,'native-probe.mjs',findLine(nativeProbe,probeTag))&&threadHas(thread,nativeImplementationPath,nativeSink(sinkTag))),`Injected array flow must remain at production ${sinkTag}`);
   }
 
   const report = {
