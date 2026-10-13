@@ -156,7 +156,7 @@ test('protected runtime checkouts build their pinned distribution before use', (
         assert.equal(checkout.with.ref, '${{ job.workflow_sha }}', `${profile}.${jobName} runtime revision`);
         assert.equal(checkout.with['persist-credentials'], false, `${profile}.${jobName} runtime checkout credentials`);
 
-        const isolated = ['policy', 'review'].includes(jobName);
+        const isolated = ['policy', 'review', 'gemini-review'].includes(jobName);
         const node = steps[index + 1];
         const relocation = isolated ? steps[index + 2] : undefined;
         const nodeStep = node;

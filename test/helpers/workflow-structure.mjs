@@ -49,9 +49,9 @@ export function assertWorkflowStructure({ consumer, self, caller }) {
   const selfAddition = job(self, 'owner-addition');
   const consumerPolicyGuard = namedStep(consumerPolicy, 'Reject unwired reviewer providers');
   const selfPolicyGuard = namedStep(selfPolicy, 'Reject unwired reviewer providers');
-  for (const guard of [consumerPolicyGuard, selfPolicyGuard]) {
+  for (const [guard, expected] of [[consumerPolicyGuard, PROVIDER_GUARD_SCRIPT], [selfPolicyGuard, PROVIDER_GUARD_SCRIPT.replace('!= codex; then', '!= codex && test \"$SELECTED_PROVIDER\" != gemini; then')]]) {
     assert.equal(guard.env.SELECTED_PROVIDER, '${{ steps.resolve.outputs.provider }}');
-    assert.equal(guard.run.trim(), PROVIDER_GUARD_SCRIPT, 'provider guard must retain its selected-provider condition and failure behavior');
+    assert.equal(guard.run.trim(), expected, 'provider guard must retain its selected-provider condition and failure behavior');
   }
   assert.equal(consumerPolicyGuard.if, undefined, 'consumer provider guard must always run');
   assert.equal(selfPolicyGuard.if, undefined, 'self provider guard must always run');
