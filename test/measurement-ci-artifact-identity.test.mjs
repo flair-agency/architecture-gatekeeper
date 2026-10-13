@@ -101,7 +101,12 @@ test('optional outcome job bootstrap and collection cannot fail required review,
     assert.equal(upload['continue-on-error'], true);
 
     const review = workflow.jobs.review;
-    assert.equal(review.if, "(needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')");
+    assert.equal(
+      review.if,
+      filename === 'architecture-gate.yml'
+        ? "(needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.provider != 'gemini'"
+        : "(needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')",
+    );
     assert.deepEqual(review.needs, ['policy']);
     assert.equal(workflow.jobs.report.if, 'always()');
     assert.ok(workflow.jobs.report.needs.includes('review'));
