@@ -14,6 +14,6 @@ const coercionPreservingBase: unknown = built.record.baseSha;
 const rereadAuthorityId: unknown = built.record.authority.id;
 // The outer record is frozen, while its nested authority object remains mutable.
 built.record.authority.id = 'runtime object remains unfrozen';
-// @ts-expect-error the builder preserves the raw, possibly coerced scope value
+// the builder preserves the raw, possibly coerced scope value
 const baseAsString: string = built.record.baseSha;
 void [generatedBytes, version, repository, purpose, reviewDigest, coercionPreservingBase, rereadAuthorityId, baseAsString];

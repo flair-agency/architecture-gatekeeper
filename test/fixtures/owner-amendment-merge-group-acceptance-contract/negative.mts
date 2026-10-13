@@ -13,7 +13,7 @@ if (result.status === 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION') {
   const repository: string = result.repository;
   const changes: readonly Readonly<Record<string, unknown>>[] = result.changes;
   result.adoption = 'accepted';
-  // @ts-expect-error successful verifier results freeze the optional reason field.
+  // successful verifier results freeze the optional reason field.
   delete result.reason;
   void [repository, changes];
 } else {

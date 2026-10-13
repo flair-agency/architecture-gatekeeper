@@ -55,7 +55,7 @@ if (outcome.status === 'OWNER_DECISION_TAG_TRANSPORTED_AND_READ_BACK') {
   const typedHash: string = outcome.reviewRecordSha256;
   void typedHash;
   // Raw tag readback remains external data even on the successful status.
-  // @ts-expect-error raw readback sha has no owner-established string type
+  // raw readback sha has no owner-established string type
   const unjustifiedString: string = outcome.tagObjectSha;
   void unjustifiedString;
 } else {

@@ -55,14 +55,14 @@ const prepared = producer.prepare({ repository: 'flair-agency/architecture-gatek
   bSha: 'b'.repeat(40), triggerProfile: 'completed-block-v1', policyRevision: 'a'.repeat(40),
   triggerReviewRecordBytes: Buffer.alloc(0), triggerProducer: {}, amendmentRecordBytes: Buffer.alloc(0), tag: {},
   tagObjectBytes: Buffer.alloc(0), producer: {}, gatekeeper: {}, reviewModel: 'model', reviewReasoningEffort: 'low' });
-// @ts-expect-error prepared outputs are frozen.
+// prepared outputs are frozen.
 prepared.status = prepared.status;
 const status: 'PREPARED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY' = prepared.status;
 void status;
 
-// @ts-expect-error the factory requires its complete collaborator set.
+// the factory requires its complete collaborator set.
 createOwnerAmendmentSemanticEligibilityProducer();
-// @ts-expect-error an empty object omits all required collaborators.
+// an empty object omits all required collaborators.
 createOwnerAmendmentSemanticEligibilityProducer({});
 
 const resolveDiffIndependently: Dependencies['resolveExactGitDiff'] =
@@ -91,36 +91,36 @@ const composedPrepared = independentlyComposedProducer.prepare({ repository: 'ow
   reviewModel: 'model', reviewReasoningEffort: 'low' });
 const composed = independentlyComposedProducer.complete({ prepared: composedPrepared, decisionBytes: Buffer.alloc(0),
   producer: {}, gatekeeper: {}, reviewModel: 'model', reviewReasoningEffort: 'low' });
-// @ts-expect-error completed outputs are frozen.
+// completed outputs are frozen.
 composed.receiptBytes = composed.receiptBytes;
 const verified = independentlyComposedProducer.validateReceipt({ receiptBytes: composed.receiptBytes, expected: composed.receipt });
-// @ts-expect-error verified outputs are frozen.
+// verified outputs are frozen.
 verified.eligibility = verified.eligibility;
 const eligibility: 'ELIGIBLE' | 'INELIGIBLE' = verified.eligibility;
 void eligibility;
 
 const wrongStatusProducer = producer;
-// @ts-expect-error the prepared result exposes the producer's actual fixed status literal.
+// the prepared result exposes the producer's actual fixed status literal.
 const wrongStatus: 'VERIFIED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY_RECEIPT' = wrongStatusProducer.prepare({ repository: 'x/y', baseSha: 'a', bSha: 'b', triggerProfile: 'completed-block-v1',
   policyRevision: 'a', triggerReviewRecordBytes: Buffer.alloc(0), triggerProducer: {}, amendmentRecordBytes: Buffer.alloc(0), tag: {},
   tagObjectBytes: Buffer.alloc(0), producer: {}, gatekeeper: {}, reviewModel: 'model', reviewReasoningEffort: 'low' }).status;
 void wrongStatus;
 
-// @ts-expect-error The frozen producer's prepare method cannot be reassigned.
+// The frozen producer's prepare method cannot be reassigned.
 producer.prepare = producer.prepare;
-// @ts-expect-error The frozen producer's complete method cannot be reassigned.
+// The frozen producer's complete method cannot be reassigned.
 producer.complete = producer.complete;
-// @ts-expect-error The frozen producer's validateReceipt method cannot be reassigned.
+// The frozen producer's validateReceipt method cannot be reassigned.
 producer.validateReceipt = producer.validateReceipt;
-// @ts-expect-error The direct grouped overload requires its explicit input.
+// The direct grouped overload requires its explicit input.
 completeGrouped();
-// @ts-expect-error The direct grouped overload requires its explicit input.
+// The direct grouped overload requires its explicit input.
 validateGrouped();
-// @ts-expect-error The flat facade re-export requires its explicit input.
+// The flat facade re-export requires its explicit input.
 completeFlat();
-// @ts-expect-error The flat facade re-export requires its explicit input.
+// The flat facade re-export requires its explicit input.
 validateFlat();
-// @ts-expect-error Factory-produced complete requires its explicit input.
+// Factory-produced complete requires its explicit input.
 producer.complete();
-// @ts-expect-error Factory-produced validateReceipt requires its explicit input.
+// Factory-produced validateReceipt requires its explicit input.
 producer.validateReceipt();

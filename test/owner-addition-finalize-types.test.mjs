@@ -31,5 +31,11 @@ test('owner addition final record accepts complete operational input and preserv
 });
 
 test('owner addition final record requires operational input and leaves copied values unknown', () => {
-  assert.deepEqual(diagnostics('negative.mts'), []);
+  const negative = diagnostics('negative.mts');
+  assert.deepEqual(negative.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [
+    [2345, 4], [2322, 8], [2322, 11], [2322, 13], [2322, 17],
+  ]);
+  const messages = negative.map(item => ts.flattenDiagnosticMessageText(item.messageText, '\n'));
+  assert.match(messages[0], /OwnerAdditionFinalRecordInput.*missing/s);
+  messages.slice(1).forEach(message => assert.match(message, /unknown.*string/s));
 });

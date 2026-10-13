@@ -34,16 +34,16 @@ const version: 1 = result.version;
 const adoption: OwnerAdditionAdoptionResult['adoption'] = result.outcome.adoption;
 const canonical: OwnerAdditionAdoptionResult['canonical'] = result.outcome.canonical;
 const copiedPolicyVersion: unknown = result.selectedPolicy.version;
-// @ts-expect-error The serialized policy field is a copied observation, not a validated string.
+// The serialized policy field is a copied observation, not a validated string.
 const claimedPolicyVersion: string = result.selectedPolicy.version;
 if (input.eligibilityArtifactBinding) {
   const copiedCheckRunId: unknown = input.eligibilityArtifactBinding.checkRunId;
-  // @ts-expect-error Regex.test coercion does not validate the reread field as a string.
+  // Regex.test coercion does not validate the reread field as a string.
   const claimedCheckRunId: string = input.eligibilityArtifactBinding.checkRunId;
   void [copiedCheckRunId, claimedCheckRunId];
 }
 const copiedGeneratedAt: unknown = input.generatedAt;
-// @ts-expect-error Date.parse coercion does not make the public input a string.
+// Date.parse coercion does not make the public input a string.
 const claimedGeneratedAt: string = input.generatedAt;
 void version;
 void adoption;

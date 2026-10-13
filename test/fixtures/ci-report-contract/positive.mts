@@ -35,7 +35,7 @@ const classified = classifyReview({ mode: 'enforced', policyResult: 'success', r
 if (classified.conclusion === 'PASS') {
   const decision: Record<string, unknown> = classified.decision;
   void decision;
-  // @ts-expect-error a successful PASS always carries its parsed decision
+  // a successful PASS always carries its parsed decision
   const absent: null = classified.decision;
   void absent;
 }
@@ -71,17 +71,17 @@ const ownerAddition = parseOwnerAdditionProcedure(encode({ procedure: 'VALID_G0_
 renderReport(classified, { authorityProvenance: authority, legacyAuthorityProvenance: legacyEvidence,
   ownerAdditionProcedure: ownerAddition });
 
-// @ts-expect-error regex-coerced digest values remain unknown to render consumers
+// regex-coerced digest values remain unknown to render consumers
 const manifestDigest: string = authority?.manifestSha256;
 void manifestDigest;
-// @ts-expect-error regex-coerced commit values remain unknown to render consumers
+// regex-coerced commit values remain unknown to render consumers
 const legacyBase: string = legacyEvidence?.baseSha;
 void legacyBase;
-// @ts-expect-error regex-coerced owner fields remain unknown to render consumers
+// regex-coerced owner fields remain unknown to render consumers
 const ownerRepository: string = ownerAddition?.repository;
 void ownerRepository;
 const checkedFindings = validateInlineFindings([], { expectedHead: sha, currentHead: sha, files: [], decision: 'PASS' });
-// @ts-expect-error validator output may reflect external getter and Array method behavior
+// validator output may reflect external getter and Array method behavior
 const findingRows: unknown[] = checkedFindings;
 void findingRows;
 declare const delivery: Awaited<ReturnType<typeof postInlineReview>>;

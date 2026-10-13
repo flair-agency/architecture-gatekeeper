@@ -11,6 +11,9 @@ const configRead = ts.readConfigFile(configPath, ts.sys.readFile);
 assert.equal(configRead.error, undefined);
 const parsed = ts.parseJsonConfigFileContent(configRead.config, ts.sys, root, undefined, configPath);
 assert.deepEqual(parsed.errors, []);
+assert.equal(parsed.options.strict, true);
+assert.equal(parsed.options.noImplicitAny, true);
+assert.equal(parsed.options.noEmitOnError, true);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
 const files = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
 const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram(files, options));
@@ -24,6 +27,13 @@ test('enforced acceptance preserves the frozen ordinary route contract and accep
 });
 
 test('enforced acceptance rejects missing mandatory observations, route mutation and unsupported routes', () => {
-  assert.deepEqual(compact(summary.filter(item => item.file === files[1])), []);
+  const negative = summary.filter(item => item.file === files[1]);
+  assert.deepEqual(negative.map(({ code, line }) => [code, line]), [
+    [2554, 5], [2345, 7], [2345, 9], [2345, 11], [2554, 13], [2345, 15], [2540, 19], [2322, 21],
+  ]);
+  const messages = [/Expected 1 arguments/, /reviewResult, conclusion/, /conclusion.*missing/s,
+    /reviewResult.*missing/s, /Expected 1 arguments/, /reviewResult, conclusion/,
+    /route.*read.only/i, /owner-addition-pending.*blocked/s];
+  negative.forEach((diagnostic, index) => assert.match(diagnostic.message, messages[index]));
   assert.deepEqual(compact(summary.filter(item => !files.includes(item.file))), [], 'implementation dependencies must remain error-free');
 });

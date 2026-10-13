@@ -15,14 +15,14 @@ const priorDigest: string = built.record.priorAuthoritySetDigest;
 const rereadChangePath: unknown = built.record.changes[0].path;
 // The validator reads `path` again when it constructs the returned change.
 // That accessor result is not protected by the earlier checks.
-// @ts-expect-error the final path read is not guaranteed to be a string
+// the final path read is not guaranteed to be a string
 const guaranteedChangePath: string = built.record.changes[0].path;
 const coercedBaseSha: unknown = built.record.baseSha;
 // SHA fields intentionally retain unknown because the original builder tests
 // them with RegExp.test coercion and stores the input value in the record.
-// @ts-expect-error successful construction does not normalize the original SHA input
+// successful construction does not normalize the original SHA input
 const normalizedBaseSha: string = built.record.baseSha;
-// @ts-expect-error record metadata is read-only
+// record metadata is read-only
 built.record.authority.id = 'changed';
 
 declare const validationInput: OwnerAmendmentOwnerDecisionAmendmentRecordValidationInput;

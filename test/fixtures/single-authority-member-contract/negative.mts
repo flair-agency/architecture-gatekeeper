@@ -6,10 +6,10 @@ declare const limits: unknown;
 declare const authorityPath: unknown;
 const parsed = parseAuthorityManifest(manifestBytes, limits);
 
-// @ts-expect-error The helper requires the parsed manifest shape.
+// The helper requires the parsed manifest shape.
 selectSingleOwnerAdditionMember(manifestBytes, authorityPath);
-// @ts-expect-error The selected member ID is a string established by parsing.
+// The selected member ID is a string established by parsing.
 const wrongId: number = selectSingleOwnerAdditionMember(parsed, authorityPath);
-// @ts-expect-error The grouped helper requires both values.
+// The grouped helper requires both values.
 selectSingleOwnerAdditionMember(parsed);
 void wrongId;

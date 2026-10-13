@@ -23,30 +23,30 @@ const { verifyEligibility: _verifyEligibility, ...withoutEligibility } = complet
 const { runtime: _runtime, ...withoutRuntime } = complete;
 void [_selectBContext, _resolveProtectedPolicy, _verifyTrigger, _verifyTag, _resolveEligibilityReviewInputs, _verifyEligibility, _runtime];
 
-// @ts-expect-error selectBContext is required by the constructor's runtime guard.
+// selectBContext is required by the constructor's runtime guard.
 createOwnerAmendmentMergeGroupAcceptanceVerifier(withoutSelectBContext);
-// @ts-expect-error resolveProtectedPolicy is required by the constructor's runtime guard.
+// resolveProtectedPolicy is required by the constructor's runtime guard.
 createOwnerAmendmentMergeGroupAcceptanceVerifier(withoutProtectedPolicy);
-// @ts-expect-error verifyTrigger is required by the constructor's runtime guard.
+// verifyTrigger is required by the constructor's runtime guard.
 createOwnerAmendmentMergeGroupAcceptanceVerifier(withoutTrigger);
-// @ts-expect-error verifyTag is required by the constructor's runtime guard.
+// verifyTag is required by the constructor's runtime guard.
 createOwnerAmendmentMergeGroupAcceptanceVerifier(withoutTag);
-// @ts-expect-error resolveEligibilityReviewInputs is required by the constructor's runtime guard.
+// resolveEligibilityReviewInputs is required by the constructor's runtime guard.
 createOwnerAmendmentMergeGroupAcceptanceVerifier(withoutReviewInputs);
-// @ts-expect-error verifyEligibility is required by the constructor's runtime guard.
+// verifyEligibility is required by the constructor's runtime guard.
 createOwnerAmendmentMergeGroupAcceptanceVerifier(withoutEligibility);
-// @ts-expect-error runtime is required by the constructor's exact-key validation.
+// runtime is required by the constructor's exact-key validation.
 createOwnerAmendmentMergeGroupAcceptanceVerifier(withoutRuntime);
-// @ts-expect-error constructor requires the adapter object.
+// constructor requires the adapter object.
 createOwnerAmendmentMergeGroupAcceptanceVerifier();
-// @ts-expect-error an empty object omits every required collaborator and runtime.
+// an empty object omits every required collaborator and runtime.
 createOwnerAmendmentMergeGroupAcceptanceVerifier({});
 
-// @ts-expect-error runtime identity requires repository and revision.
+// runtime identity requires repository and revision.
 createOwnerAmendmentMergeGroupAcceptanceVerifier({ ...complete, runtime: {} });
-// @ts-expect-error runtime identity rejects null.
+// runtime identity rejects null.
 createOwnerAmendmentMergeGroupAcceptanceVerifier({ ...complete, runtime: null });
-// @ts-expect-error runtime repository is required.
+// runtime repository is required.
 createOwnerAmendmentMergeGroupAcceptanceVerifier({ ...complete, runtime: { revision: external } });
-// @ts-expect-error runtime revision is required.
+// runtime revision is required.
 createOwnerAmendmentMergeGroupAcceptanceVerifier({ ...complete, runtime: { repository: external } });

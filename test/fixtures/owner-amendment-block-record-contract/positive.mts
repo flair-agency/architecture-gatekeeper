@@ -32,9 +32,9 @@ const rebuiltPhysical = validatePhysical({ ...validationInput, record: physicalR
 const kind: unknown = rebuilt.kind;
 const version: unknown = rebuilt.version;
 // Context is spread after the initial literals, so accessors may replace them.
-// @ts-expect-error the final kind may come from a reread spread property
+// the final kind may come from a reread spread property
 const fixedKind: 'owner-amendment-block-review-record' = rebuilt.kind;
-// @ts-expect-error the final version may come from a reread spread property
+// the final version may come from a reread spread property
 const fixedVersion: 1 = rebuilt.version;
 const rawRepository: unknown = rebuilt.repository;
 const rawDecision: unknown = rebuilt.decision;
