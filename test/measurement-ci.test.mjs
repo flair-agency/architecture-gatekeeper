@@ -139,3 +139,9 @@ test('CI attempt publication uses only the checked runner sink, ignoring caller 
   assert.throws(() => runCiMeasurement('start', { AGK_MEASUREMENT_DIR: dir, GITHUB_WORKSPACE: root }), /direct regular file/);
   assert.equal(readFileSync(forged, 'utf8'), 'untouched'); process.env.GITHUB_OUTPUT = sink;
 });
+
+test('an injected workspace cannot widen the host diagnostic root boundary',t=>{
+ const {dir}=fixture(t);
+ assert.throws(()=>runCiMeasurement('outcome',{AGK_MEASUREMENT_DIR:dir,GITHUB_WORKSPACE:'/etc'}),/outside host/);
+ assert.deepEqual(readdirSync(dir),[]);
+});

@@ -151,8 +151,9 @@ to collect local and CI review attempts, export redacted records and assess
 findings against independent case
 judgments and blind audits. Collection is opt-in; descriptive metrics include
 denominators and missing observations without claiming causal drift prevention.
-CI review capture uses an already selected protected validation runtime; routes
-without it retain independent job-outcome observations and a review-capture gap.
+CI diagnostics run in an independent optional job after required review/report/accept.
+The pinned public runtime observes published decisions and bounded public job
+metadata; private request, finding-count, execution and freshness facts remain unknown.
 
 ### Unverified preview lifecycle API
 

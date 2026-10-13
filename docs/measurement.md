@@ -65,7 +65,11 @@ feedback observations and collection gaps. UserPromptSubmit records publication 
 unknown publication; a valid blocking verdict remains a completed review with
 unknown result publication. Native CLI publication is finalized after successful stdout output; output failure
 retains the validated decision with unknown publication. Manual and PostToolUse CLI publication similarly
-waits for their output boundary. Delivery remains unknown.
+waits for their output boundary. Delivery remains unknown. These detailed
+request, full-decision and execution fields describe local/native observations
+or the standalone legacy recorder. The current independent CI collector only
+records published decision metadata and checked public job facts; unavailable
+private fields remain null/unknown, as specified in the CI table below.
 
 Runtime package/version and collector
 hash identify the observer; the hash binds package metadata and the complete
@@ -100,15 +104,19 @@ change their meaning during export.
 | UserPromptSubmit | Proposed task, recorded HEAD, hashed session | Internal result availability is observed; Hook discovery, host delivery and task correction are unknown. Known input-parse/event/root failures remain error observations with unknown request identity. A non-PASS remains blocking under the existing Hook contract. |
 | PostToolUse | Existing tracked patch SHA-256, requestId and recorded HEAD | Queued, unchanged, deduplicated, incomplete and stale-HEAD cases remain separate. Untracked/oversized/unsupported inputs retain the existing incomplete result, including CLI stdin overflow before semantic screening. Inactive Hooks and later working-tree edits are not observed. |
 | Native Skill | Preparation and later validation linked by private request location and requestId | Start/prepared persists without validation. Validation observes a valid response, not actual host settings, execution, delivery or action. Known preparation errors are recorded. Unreadable or structurally invalid request files leave independent error observations with unknown request identity; later retries retain that history. |
-| CI ordinary review | Exact run/attempt, merge/base/head, protected workflow identity, selected inputs and validated response | Capture uses an already selected validation runtime. A route with no such runtime has no review-phase capture; diagnostics do not add checkout/build steps. Preparation failure and whole-run cancellation can leave no record. Owner-addition/amendment secondary reviews are outside this collector. |
+| CI ordinary review | Published decision/reviewed revision and exact public repository/run/attempt/head job metadata | An independent optional job runs after required review/report/accept. Request, prompt, schema, reviewer, execution, finding count and freshness remain unknown. Metadata is limited to two anonymous requests, 256 KiB per response and a shared 10-second deadline. Missing, inconsistent, private or unavailable metadata remains a gap. Whole-run cancellation can leave no record; secondary owner reviews are outside this collector. |
 | CI outcome | Policy/review/report/accept **job outcomes**, separately | Job success does not prove feedback publication or merge. Actual integration requires a population/audit record. |
 
-CI completion also requires success of the policy-selected ordinary execution
-observation, as well as all selected decision/authority/consumer validators.
-Skipped steps qualify only when explicitly unselected; failed, cancelled or
-missing required observation leaves the diagnostic review incomplete. Optional
-CI directory bootstrap rejects an in-worktree path before creating it. Later
-publication and acceptance remain separate job observations.
+The current CI collector records a semantic decision only when both the public
+review job and its ordinary review step succeeded and the existing published
+decision/reviewed-revision outputs are present and nonconflicting. It does not
+reconstruct individual validator outcomes or private review facts. Failed,
+cancelled, skipped, missing or inconsistent observations remain incomplete.
+Collector phase timing is separate from checked public job/step timing; analysis
+uses the observed job interval, leaving unavailable timing unknown. Optional
+CI directory bootstrap rejects an in-worktree path before creating it.
+The standalone legacy start/finish recorder supports more detailed supplied
+observations, but the current workflows do not invoke it for review capture.
 
 A terminal is never synthesized as PASS. Starts without terminals are `missing`
 in aggregation; torn/malformed files contribute export `gaps`. Errors and
@@ -163,15 +171,16 @@ measurement is enabled.
 Both reusable workflows accept `measurement-enabled: true` (default false).
 The self caller selects it only when repository variable
 `ARCHITECTURE_GATE_MEASUREMENT` equals `true`; this change does not set that
-variable or weaken Fork admission. Reviewer collection executes the pinned,
-relocated protected runtime when existing execution/validation selection already
-requires it. Measurement alone does not select runtime checkout, relocation or
-build inside the reviewed workspace. A route with no selected runtime skips
-review capture; this is a coverage gap, not proof that review did not run.
-A separate `measurement`
-job observes job outcomes **after** `accept`; acceptance does not depend on it.
+variable or weaken Fork admission. The separate optional `measurement` job
+collects completed review metadata and job outcomes **after** `accept`; required
+review, reporting and acceptance do not wait for it. The independent job builds
+the pinned public diagnostic runtime, then observes existing published outputs
+and bounded public metadata for the exact repository/run/attempt. It does not
+read review logs, responses or artifacts, use redirects/retries/pagination,
+acquire credentials or add a fallback to authenticated acquisition. Missing
+public metadata is a gap, not proof that review did not run.
 No reviewer/provider setting, credential or permission is added. The independent
-outcome job declares `permissions: {}` and fetches the public workflow runtime
+job declares `permissions: {}` and fetches the public workflow runtime
 anonymously from its full SHA, with credential helpers/headers and prompting
 disabled. Node setup receives an explicitly empty token and uses no package-manager
 cache. Private or non-github.com runtime retrieval is unsupported by this optional
@@ -180,11 +189,13 @@ job and leaves a diagnostic gap; it does not fall back to source credentials.
 Artifacts `agk-measurement-review-<run>-<attempt>-<capture-UUID>` and
 `agk-measurement-outcome-<run>-<attempt>-<capture-UUID>` retain whitelist-only exports for 30
 days. They contain opaque identities, CI revision/run bindings, states,
-semantic decision kinds, finding counts, collector package/version/hash and job
-outcomes. Private summaries,
-finding text, authority names, model settings and paths are excluded. Full CI
-findings exist only in the runner-private diagnostic files for that job; they
-are **not** uploaded or recovered by the later outcome job. Adjudicate cases
+observed semantic decision kinds, collector package/version/hash, job outcomes
+and checked public job/step intervals. CI request/prompt/schema/reviewer,
+finding-count, execution and freshness fields remain null/unknown. Private
+summaries, finding text, authority names, model settings and paths are excluded.
+The current CI collector never acquires or saves full review findings, including
+in its runner-private records. Local/native or standalone legacy recorder
+capabilities do not imply current workflow coverage. Adjudicate cases
 using original review material when available, and mark unavailable material
 unresolved. Redacted exports alone cannot establish defect validity.
 Hashes may permit correlation or guesses; opt-in is still an owner privacy

@@ -3,15 +3,22 @@ import { retrieveCiReviewJob } from './measurement-ci-jobs.mts';
 import { existsSync, mkdirSync, realpathSync } from 'node:fs';
 import { appendGitHubOutput } from './runner-temp-path.mjs';
 import { fileURLToPath } from 'node:url';
-import { isAbsolute, relative, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { beginMeasurement, measurementDigest, warnMeasurementGap, parseMeasurementJson, readMeasurementJson, resumeMeasurement, resolveMeasurementWorkingRoot } from './measurement.mts';
 import { readDiagnosticText, resolveDiagnosticPath } from './diagnostic-path.mts';
+
+function ciWorkingRoot(value: unknown) {
+  if (typeof value !== 'string' || !value) throw new Error('Invalid diagnostic working root.');
+  // The working-root probe follows the same host-root/canonical-parent guard
+  // as diagnostic file I/O. An injected workspace cannot widen that boundary.
+  return resolveMeasurementWorkingRoot(dirname(resolveDiagnosticPath(join(value, '.git'))));
+}
 
 export function runCiMeasurement(command: string | undefined, env: NodeJS.ProcessEnv = process.env) {
   if (!env.AGK_MEASUREMENT_DIR) return;
   const dir = resolveDiagnosticPath(env.AGK_MEASUREMENT_DIR);
   // Reject an in-worktree target before optional bootstrap can create it.
-  const workingRoot = resolveMeasurementWorkingRoot(env.GITHUB_WORKSPACE ?? process.cwd());
+  const workingRoot = ciWorkingRoot(env.GITHUB_WORKSPACE ?? process.cwd());
   if (typeof workingRoot !== 'string' || !workingRoot) throw new Error('Invalid diagnostic working root.');
   {
     const path = relative(realpathSync(workingRoot), dir);
@@ -75,7 +82,7 @@ export function runCiMeasurement(command: string | undefined, env: NodeJS.Proces
 export async function collectCiMeasurement(env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch) {
   if (!env.AGK_MEASUREMENT_DIR) return;
   const dir = resolveDiagnosticPath(env.AGK_MEASUREMENT_DIR);
-  const workingRoot = resolveMeasurementWorkingRoot(env.GITHUB_WORKSPACE ?? process.cwd());
+  const workingRoot = ciWorkingRoot(env.GITHUB_WORKSPACE ?? process.cwd());
   const path = relative(realpathSync(workingRoot), dir);
   if (path === '' || (path !== '..' && !path.startsWith(`..${sep}`) && !isAbsolute(path))) throw new Error('Measurement directory must be outside the reviewed worktree.');
   if (!existsSync(dir)) mkdirSync(dir, {mode: 0o700});

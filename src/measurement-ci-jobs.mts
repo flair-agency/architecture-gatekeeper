@@ -27,7 +27,8 @@ export async function retrieveCiReviewJob(env: NodeJS.ProcessEnv, fetchImpl: typ
       !outcomes.has(env.REVIEW_RESULT as string) || !Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_TIME_MS) fail();
   // pull_request_target event SHA is the base; run/job head_sha is the PR head.
   // Reviewed merge revision and pinned runtime revision remain separate fields.
-  const root = `https://api.github.com/repos/${repository}/actions/runs/${env.GITHUB_RUN_ID}/attempts/${env.GITHUB_RUN_ATTEMPT}`;
+  const [owner, name] = repository.split('/');
+  const root = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/actions/runs/${encodeURIComponent(env.GITHUB_RUN_ID!)}/attempts/${encodeURIComponent(env.GITHUB_RUN_ATTEMPT!)}`;
   const controller = new AbortController();
   let rejectDeadline!: (error: Error) => void;
   const deadline = new Promise<never>((_, reject) => { rejectDeadline = reject; });
