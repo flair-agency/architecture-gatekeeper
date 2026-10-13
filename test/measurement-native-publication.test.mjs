@@ -16,7 +16,7 @@ for (const verdict of ['PASS','BLOCK']) test(`native stdout failure preserves va
  const prepared=spawnSync(process.execPath,[cli,'prepare',request,'fixture'],{cwd:root,env,encoding:'utf8'});assert.equal(prepared.status,0,prepared.stderr);
  const bytes=readFileSync(request);writeFileSync(decision,JSON.stringify({decision:verdict,authorityFiles:['AGENTS.md'],reviewedScope:['fixture'],findings:[]}));
  const helper=new URL('./helpers/measurement-native-publication-child.mjs',import.meta.url).pathname;
- const result=spawnSync(process.execPath,[helper,request,decision],{cwd:root,env,encoding:'utf8'});assert.equal(result.status,2,result.stderr);assert.equal(result.stdout,'');assert.match(result.stderr,/native output unavailable/);assert.deepEqual(readFileSync(request),bytes);
+ const result=spawnSync(process.execPath,['--import',helper,cli,'validate',request,decision],{cwd:root,env,encoding:'utf8'});assert.equal(result.status,2,result.stderr);assert.equal(result.stdout,'');assert.match(result.stderr,/native output unavailable/);assert.deepEqual(readFileSync(request),bytes);
  const terminal=loadMeasurementDirectory(directory).records.find(r=>r.phase==='terminal');assert.equal(terminal.state,'error');assert.equal(terminal.decision.decision,verdict);assert.equal(terminal.feedback.publication,'unknown');assert.equal(terminal.observation.failureStage,'publication');
 });
 
