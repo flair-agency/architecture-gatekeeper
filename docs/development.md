@@ -508,19 +508,24 @@ The command analyzes JavaScript/TypeScript and Actions with the default suites,
 including the local threat model used by CI. Repository-owned model packs under
 `.github/codeql/extensions/` represent the selected GitHub runner output
 boundary and the owner-selected workspace boundary for two legacy GitHub CLI
-entrypoints. Local analysis explicitly loads both packs that GitHub default
+entrypoints, plus the two original native session path accessors adopted in
+PR #574. Direct arguments and explicitly injected native API arrays remain
+unmodeled. Local analysis explicitly loads all three packs that GitHub default
 setup discovers from this directory, using the platform path delimiter for
 `--additional-packs`.
 
 Before scanning the repository, the command runs the standard path-injection
-query with and without both models against generated fixtures. The output
+query with and without the selected models against generated fixtures. The output
 regression retains unrelated environment, CLI, other-accessor and checked-path
 findings. The workspace regression copies the production accessor and CLI
 entrypoints, then checks flows through actual Git snapshot and legacy authority
 operations. It retains direct workspace environment reads, other environment
 and CLI sources, same-file alternate exports, caller-selected roots, copied
 same-named accessors, and generic reader/preparer API flows, including the
-preparer's `git diff` working directory. Shared sink alert identity may persist
+preparer's `git diff` working directory. Native regressions trace all three
+production request/decision sinks, retain explicitly injected arrays at those
+sinks, and retain direct argv/environment, copied accessor, generic helper and
+candidate/reviewer-value flows. Shared sink alert identity may persist
 because those negative flows remain; SARIF counts do not claim a production
 finding reduction. Model or query incompatibility fails the regression and
 stops analysis. `npm run codeql:model` runs only this regression; the CI

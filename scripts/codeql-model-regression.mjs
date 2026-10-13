@@ -4,6 +4,7 @@ import { delimiter, join } from 'node:path';
 
 export const githubOutputModelName = 'flair-agency/github-output-model';
 export const githubWorkspaceModelName = 'flair-agency/github-workspace-model';
+export const nativeSessionModelName = 'flair-agency/native-session-model';
 export function githubOutputModelArgs(source) {
   return [`--model-packs=${githubOutputModelName}`, `--additional-packs=${join(source, '.github/codeql/extensions/github-output')}`];
 }
@@ -11,8 +12,8 @@ export function githubWorkspaceModelArgs(source) {
   return [`--model-packs=${githubWorkspaceModelName}`, `--additional-packs=${join(source, '.github/codeql/extensions/github-workspace')}`];
 }
 export function githubModelArgs(source) {
-  return [`--model-packs=${githubOutputModelName}`, `--model-packs=${githubWorkspaceModelName}`,
-    `--additional-packs=${[join(source, '.github/codeql/extensions/github-output'), join(source, '.github/codeql/extensions/github-workspace')].join(delimiter)}`];
+  return [`--model-packs=${githubOutputModelName}`, `--model-packs=${githubWorkspaceModelName}`, `--model-packs=${nativeSessionModelName}`,
+    `--additional-packs=${[join(source, '.github/codeql/extensions/github-output'), join(source, '.github/codeql/extensions/github-workspace'), join(source, '.github/codeql/extensions/native-session')].join(delimiter)}`];
 }
 
 /** Run the local path-injection regression against production callers and the selected model packs. */
@@ -68,6 +69,27 @@ prepareLegacyAuthority({ root: process.argv[2], baseSha: 'a'.repeat(40), headSha
     `\nexport function otherWorkspaceRoot() { return process.env.OTHER_WORKSPACE; }\nexport function callerSelectedRoot(root) { return root; }\n`);
   writeFileSync(join(fixture, 'src/untrusted-workspace.mjs'), readFileSync(join(fixture, 'src/github-runner-workspace.mjs'), 'utf8'));
   writeFileSync(join(fixture, 'workspace-probe.mjs'), workspaceProbe);
+
+  const nativeProbe = `import {readFileSync,writeFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {trustedNativeRequestPath,trustedNativeDecisionPath} from './src/native-session-paths.mjs';
+import {trustedNativeRequestPath as copiedPath} from './src/untrusted-native-session-paths.mjs';
+import {runNativeReviewCli} from './src/native-review.mjs';
+writeFileSync(trustedNativeRequestPath(),'original'); // trusted-native-request
+readFileSync(trustedNativeDecisionPath()); // trusted-native-decision
+readFileSync(process.argv[3]); // direct-native-argv
+readFileSync(process.env.NATIVE_REQUEST); // direct-native-env
+readFileSync(copiedPath()); // copied-native-accessor
+readFileSync(resolve(process.argv[4])); // generic-native-path
+const candidate={requestPath:process.argv[5]};
+readFileSync(candidate.requestPath); // candidate-native-path
+const reviewer={decisionPath:process.argv[6]};
+readFileSync(reviewer.decisionPath); // reviewer-native-path
+runNativeReviewCli(['prepare',process.argv[7],'task']); // injected-native-prepare
+runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-native-validate
+`;
+  writeFileSync(join(fixture,'src/untrusted-native-session-paths.mjs'),readFileSync(join(source,'src/native-session-paths.mjs'),'utf8'));
+  writeFileSync(join(fixture,'native-probe.mjs'),nativeProbe);
 
   const db = join(scan, 'db-model-regression');
   run(['database', 'create', db, '--language=javascript-typescript', `--source-root=${fixture}`, '--threads=2', '--ram=4096']);
@@ -155,12 +177,34 @@ prepareLegacyAuthority({ root: process.argv[2], baseSha: 'a'.repeat(40), headSha
   assert.deepEqual(workspaceAlerts(results.true), workspaceAlerts(results.false).filter(alert => !trustedLines.includes(alert.line)),
     'Workspace model must preserve all unrelated workspace probe findings');
 
+  const nativeTags=['trusted-native-request','trusted-native-decision','direct-native-argv','direct-native-env','copied-native-accessor','generic-native-path','candidate-native-path','reviewer-native-path','injected-native-prepare','injected-native-validate'];
+  for(const tag of nativeTags) {
+    const line=findLine(nativeProbe,tag);
+    assertProbeFlow(results.false,'native-probe.mjs',line,true,tag);
+    assertProbeFlow(results.true,'native-probe.mjs',line,!tag.startsWith('trusted-native-'),tag);
+  }
+  const nativeSource=readFileSync(join(source,'src/native-review.mjs'),'utf8');
+  const nativeSink=tag=>findLine(nativeSource,tag);
+  const nativeAccessorSource=readFileSync(join(source,'src/native-session-paths.mjs'),'utf8');
+  const nativeOrigin=name=>findLine(nativeAccessorSource,name==='trustedNativeRequestPath'?'native-request-origin':'native-decision-origin');
+  for(const [name,sinkTag] of [['trustedNativeRequestPath','native-request-persistence'],['trustedNativeRequestPath','native-request-read'],['trustedNativeDecisionPath','native-decision-read']]) {
+    const origin=nativeOrigin(name),sink=nativeSink(sinkTag);assert.ok(origin>0&&sink>0);
+    const flow=list=>threads(list).some(thread=>threadHas(thread,'src/native-session-paths.mjs',origin)&&threadHas(thread,'src/native-review.mjs',sink));
+    assert.ok(flow(results.false),`Baseline must trace original native accessor into production ${sinkTag}`);
+    assert.equal(flow(results.true),false,`Model must remove only original accessor flow at ${sinkTag}`);
+  }
+  for(const [probeTag,sinkTag] of [['injected-native-prepare','native-request-persistence'],['injected-native-validate','native-request-read'],['injected-native-validate','native-decision-read']]) {
+    assert.ok(threads(results.true).some(thread=>threadHas(thread,'native-probe.mjs',findLine(nativeProbe,probeTag))&&threadHas(thread,'src/native-review.mjs',nativeSink(sinkTag))),`Injected array flow must remain at production ${sinkTag}`);
+  }
+
   const report = {
     threatModel: 'local',
     baselineAlerts: alerts(results.false),
     modeledAlerts: alerts(results.true),
     modeledWorkspaceProbeFlows: workspaceTags.filter(tag => tag !== 'trusted-workspace-path'),
     trustedWorkspaceProbeFlowRemoved: true,
+    nativeOriginalAccessorProductionFlowsRemoved: true,
+    nativeInjectedProductionFlowsRetained: true,
     genericReaderAndPreparerFlowsRetained: true,
     note: 'SARIF alert counts aggregate flows at shared sinks; these counts do not represent production finding reduction or adoption.',
     passed: true,

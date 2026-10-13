@@ -32,7 +32,7 @@ test('collector identity is stable across relocated complete installations and e
   for (const record of [...first.records, ...second.records]) assert.equal(record.runtime.collectorSha256, digest);
 });
 
-for (const path of ['diagnostic-path.mjs', 'measurement-consistency.mjs', 'local-review/local-gate.mjs', 'local-review/local-post-tool-screen.mjs', 'native-review.mjs', 'authority-validation/json-schema.mjs']) {
+for (const path of ['diagnostic-path.mjs', 'measurement-consistency.mjs', 'local-review/local-gate.mjs', 'local-review/local-post-tool-screen.mjs', 'native-review.mjs', 'native-session-paths.mjs', 'authority-validation/json-schema.mjs']) {
   test(`collector digest changes when installed dependency/adapter changes: ${path}`, t => {
     const { copy } = fixture(t); const baseline = observe(copy('baseline')); const changed = copy('changed');
     const file = join(changed.root, 'dist', path); writeFileSync(file, readFileSync(file, 'utf8') + '\n// isolated identity mutation\n');

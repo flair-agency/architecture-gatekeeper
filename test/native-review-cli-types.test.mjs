@@ -34,8 +34,20 @@ function canonical(value) {
     .map(([key, child]) => [key, canonical(child)]));
 }
 
-function runtimeAst(path) {
-  return canonical(parse(readFileSync(path, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' }).body);
+function runtimeAst(path, rewriteAuthoredImports = false) {
+  const body = parse(readFileSync(path, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' }).body;
+  // tsc rewrites these authored TypeScript imports to their emitted runtime
+  // paths. Compare the complete AST after only those declared path rewrites.
+  const emittedImports = new Map([
+    ['./measurement.mts', './measurement.mjs'],
+    ['./public-output.mts', './public-output.mjs'],
+  ]);
+  for (const node of rewriteAuthoredImports ? body : []) {
+    if (node.type !== 'ImportDeclaration') continue;
+    const emitted = emittedImports.get(node.source.value);
+    if (emitted) { node.source.value = emitted; node.source.raw = JSON.stringify(emitted); }
+  }
+  return canonical(body);
 }
 
 test('native CLI exposes its existing optional string-array/string inputs and async completion', () => {
@@ -52,12 +64,12 @@ test('native CLI rejects incompatible caller inputs and return claims', () => {
     'the checked CLI and transitive imports must remain error-free');
 });
 
-test('source and emitted native CLI retain the same complete runtime AST and direct-run guard', () => {
+test('source and emitted native CLI retain the complete runtime AST after declared import rewriting', () => {
   const sourcePath = join(root, 'src/native-review.mjs');
   const emittedPath = join(root, 'dist/native-review.mjs');
   const source = readFileSync(sourcePath, 'utf8');
   const emitted = readFileSync(emittedPath, 'utf8');
-  assert.deepEqual(runtimeAst(sourcePath), runtimeAst(emittedPath));
+  assert.deepEqual(runtimeAst(sourcePath, true), runtimeAst(emittedPath));
   for (const text of [source, emitted]) {
     assert.match(text, /if \(process\.argv\[1\] && fileURLToPath\(import\.meta\.url\) === realpathSync\(process\.argv\[1\]\)\)/);
   }

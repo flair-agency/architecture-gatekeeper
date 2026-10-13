@@ -38,7 +38,10 @@ automatic local screening Hook, CI acceptance gate, and general code review.
    request filename to prepare: pre-creating the file conflicts with its `wx`
    exclusive-create behavior. Never derive these paths from candidate content,
    task text or reviewer output. The Skill execution side owns this allocation;
-   the native adapter does not verify its privacy or parent-directory integrity.
+   the native adapter does not attest directory privacy or isolate a hostile
+   same-user host. The host may allocate its private session root outside the
+   diagnostic collector's home, working or temporary roots. Diagnostic storage
+   restrictions do not apply to the required native request and decision paths.
 2. Run the repository's installed, version-pinned entrypoint:
    `architecture-review-native prepare <request-path> <task...>`.
    This Codex-native adapter supports recorded Codex settings only. A recorded

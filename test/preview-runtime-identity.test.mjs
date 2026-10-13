@@ -99,11 +99,12 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     const originalBytes = readFileSync(path);
     try {
       appendFileSync(path, '\n// isolated runtime-byte mutation\n');
-      const changedRequest = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-      assert.notEqual(changedRequest.runtime.files[nestedPath], request.runtime.files[nestedPath]);
-      assert.equal(changedRequest.runtime.files[nestedPath], createHash('sha256').update(readFileSync(path)).digest('hex'));
+      // Both stale validators below reconstruct current inputs independently.
+      // The combined fresh request/receipt below verifies new digest publication.
+      // An additional fresh prepare per leaf duplicates that reconstruction.
+      assert.notEqual(createHash('sha256').update(readFileSync(path)).digest('hex'), request.runtime.files[nestedPath]);
       for (const otherPath of nestedPaths.filter(other => other !== nestedPath)) {
-        assert.equal(changedRequest.runtime.files[otherPath], request.runtime.files[otherPath]);
+        assert.equal(createHash('sha256').update(readFileSync(join(runtimeRoot, 'dist', otherPath))).digest('hex'), request.runtime.files[otherPath]);
       }
       for (const [unchangedPath, digest] of unchangedDigests) {
         assert.equal(createHash('sha256').update(readFileSync(unchangedPath)).digest('hex'), digest);

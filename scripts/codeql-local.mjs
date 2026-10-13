@@ -44,7 +44,7 @@ export function runCodeql(overrides = {}) {
   const summary = { source, binary, scan, startedAt: new Date().toISOString(), languages: [] };
   writeFileSync(join(scan, 'summary.json'), JSON.stringify(summary, null, 2));
   verifyGithubOutputModel({ run, source, scan });
-  console.log('GitHub output/workspace CodeQL model regressions passed.');
+  console.log('GitHub output/workspace and native session CodeQL model regressions passed.');
   if (modelOnly) return;
   for (const [language, suite] of [['javascript-typescript', 'javascript'], ['actions', 'actions']]) {
     const db = join(scan, `db-${suite}`);

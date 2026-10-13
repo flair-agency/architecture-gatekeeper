@@ -45,6 +45,7 @@ Each consumer owns its architecture, review inputs and acceptance policy.
 | Use a host-native review workflow | [Codex Skill](docs/integration-reference.md#codex-skill-installation) | Separately installed Skill and host reviewer |
 | Review pull requests | [CI integration](docs/integration-reference.md#ci-integration) | Protected-base policy and host-controlled execution |
 | Operate or troubleshoot a review | [Owner intervention](docs/owner-intervention.md) | `BLOCK`, `OWNER_DECISION`, incomplete results and recovery |
+| Enable optional local/native diagnostics | [Measurement adapters](docs/measurement-adapters.md) | Default-off observers and private storage |
 | Change or release this package | [Development](docs/development.md) and [release guide](docs/release.md) | Maintainer procedures |
 | Read the rules and assurance limits | [Architecture contract](docs/architecture.md) and [documentation map](docs/README.md) | Normative contract and guide index |
 

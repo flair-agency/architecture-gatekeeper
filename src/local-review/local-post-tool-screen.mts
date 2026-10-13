@@ -1,3 +1,5 @@
+import { writePublicOutput } from '../public-output.mts';
+import { beginMeasurement, warnMeasurementGap } from '../measurement.mts';
 import { createHash, randomUUID } from 'node:crypto';
 import { chmodSync, closeSync, linkSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
@@ -6,6 +8,7 @@ import type { SpawnSyncOptionsWithBufferEncoding } from 'node:child_process';
 import { createReviewRequestAsync, repositoryRoot, validateReviewResponse, type PreparedReviewRequest } from '../review-contract/review-contract.mts';
 import { executeLocalReviewer, type LocalReviewerAsyncOptions, type LocalReviewerResult } from '../reviewer-transports/local-reviewer-execution.mts';
 
+type MeasurementCapture = { request(request: PreparedReviewRequest, scope: Record<string, unknown>): void; validatedDecision: unknown; execution: unknown; executionCompleted: boolean; enabled: boolean; snapshotStillCurrent: boolean | 'unknown' };
 type EventView = { [key: string]: unknown };
 // Object inputs may expose changing getters; repeated slice observations stay unknown.
 type EventMetadata = { sessionId?: string; turnId?: unknown; toolName?: unknown; toolUseId?: unknown };
@@ -24,6 +27,7 @@ type ReviewerOptionView<T> = T extends LocalReviewerAsyncOptions<PreparedReviewR
 export type PostToolScreenOptions = ReviewerOptionView<LocalReviewerAsyncOptions<PreparedReviewRequest>> & {
   cwd?: string;
   batchDelayMs?: number;
+  measurement?: { directory?: string; changeId?: string };
 };
 
 const PATCH_LIMIT = 64 * 1024;
@@ -254,7 +258,7 @@ async function waitForBatchDelay(delayMs: number): Promise<void> {
 }
 
 /** Run the opt-in informational PostToolUse tracked-change screen. */
-export async function runPostToolScreenHook(input: unknown, { cwd = process.cwd(), reviewer, reviewerResultFormat, batchDelayMs = DEFAULT_BATCH_DELAY_MS }: PostToolScreenOptions = {}): Promise<{ result: ScreenResult; output: string | null }> {
+async function screen(input: unknown, { cwd = process.cwd(), reviewer, reviewerResultFormat, batchDelayMs = DEFAULT_BATCH_DELAY_MS }: PostToolScreenOptions, measurement: MeasurementCapture): Promise<{ result: ScreenResult; output: string | null }> {
   let event: unknown;
   try { event = typeof input === 'string' ? JSON.parse(input) : input; }
   catch { const result = incomplete('Invalid PostToolUse JSON.'); return { result, output: outputFor(result, {}) }; }
@@ -302,6 +306,7 @@ export async function runPostToolScreenHook(input: unknown, { cwd = process.cwd(
     if (candidate.status === 'incomplete') return { result: candidate, output: outputFor(candidate, eventMeta, false, timing) };
     if (!candidate.hasChanges) return { result: { status: 'unchanged', summary: 'No tracked candidate changes.' }, output: null };
     const request: PreparedReviewRequest = await createReviewRequestAsync(taskFor(candidate), root);
+    measurement.request(request, { kind: 'tracked-working-tree', snapshotSha256: candidate.patchSha256 });
     if (request.reviewedRevision !== candidate.head || readHead(root) !== candidate.head) {
       const result = incomplete('Review request revision does not match the captured candidate snapshot.', { reviewedRevision: candidate.head, snapshotSha256: candidate.patchSha256 });
       return { result, output: outputFor(result, eventMeta) };
@@ -314,11 +319,18 @@ export async function runPostToolScreenHook(input: unknown, { cwd = process.cwd(
     newerPending = exists(markerPath(state));
     timing.reviewStartedAt = new Date().toISOString();
     const executionResult: LocalReviewerResult = await executeLocalReviewer(request, { reviewer, reviewerResultFormat } as LocalReviewerAsyncOptions<PreparedReviewRequest>);
+    measurement.execution = executionResult.execution;
+    measurement.executionCompleted = true;
     const decision = validateReviewResponse(request, executionResult.decision);
+    measurement.validatedDecision = decision;
     timing.reviewCompletedAt = new Date().toISOString();
     if (readHead(root) !== candidate.head) {
       const result = incomplete('HEAD moved during semantic review; result is not associated with the current snapshot.', { reviewedRevision: candidate.head, requestId: identity, snapshotSha256: candidate.patchSha256 });
       return { result, output: outputFor(result, eventMeta, newerPending, timing) };
+    }
+    if (measurement.enabled) {
+      try { const current = snapshot(root); measurement.snapshotStillCurrent = current.status === 'incomplete' ? 'unknown' : current.head === candidate.head && current.patchSha256 === candidate.patchSha256; }
+      catch { measurement.snapshotStillCurrent = 'unknown'; }
     }
     const result = { status: decision.decision, summary: decision.summary || '', reviewedRevision: decision.reviewedRevision, requestId: identity, snapshotSha256: candidate.patchSha256, reviewerExecution: executionResult.execution };
     atomicJson(identityPath(state), { requestId: identity, recordedAt: Date.now() });
@@ -333,6 +345,39 @@ export async function runPostToolScreenHook(input: unknown, { cwd = process.cwd(
   }
 }
 
+function postToolMeasurement(input: unknown, options: PostToolScreenOptions, cwd: string) {
+  let measurement;
+  try {
+    const selected = options.measurement?.directory ?? process.env.AGK_MEASUREMENT_DIR;
+    let root = cwd;
+    if (selected) { try { root = repositoryRoot(cwd); } catch { /* incomplete invocation */ } }
+    let sessionId;
+    if (selected) {
+      try { if (typeof input === 'string' && Buffer.byteLength(input) <= 256 * 1024) { const event = JSON.parse(input); const value = (event as EventView | null | undefined)?.session_id; sessionId = typeof value === 'string' ? value : undefined; } } catch { /* unsupported input */ }
+    }
+    measurement = beginMeasurement({ ...options.measurement, directory: selected, route: 'PostToolUse', cwd: root, sessionId });
+  } catch { warnMeasurementGap(); measurement = { id: null, request() {}, finish() {} }; }
+  return measurement;
+}
+
+/** Record the full decision before the existing informational Hook renderer truncates output. */
+async function observedPostToolScreen(input: unknown, options: PostToolScreenOptions, publish?: (output: string | null) => void | Promise<void>): Promise<{ result: ScreenResult; output: string | null }> {
+  const { cwd = process.cwd(), reviewer, reviewerResultFormat, batchDelayMs = DEFAULT_BATCH_DELAY_MS } = options;
+  const measurement = postToolMeasurement(input, options, cwd);
+  const capture: MeasurementCapture = { request: (request, scope) => measurement.request(request, scope), validatedDecision: null, execution: null, executionCompleted: false, enabled: Boolean(measurement.id), snapshotStillCurrent: 'unknown' };
+  let stage = 'screen';
+  try {
+    const value = await screen(input, { cwd, reviewer, reviewerResultFormat, batchDelayMs } as PostToolScreenOptions, capture);
+    const status = value.result.status as string;
+    const state = ['PASS', 'BLOCK', 'OWNER_DECISION'].includes(status) ? 'completed' : status === 'queued-latest' ? 'queued' : status === 'unchanged' && value.result.requestId ? 'deduplicated' : status;
+    stage = 'publication'; await publish?.(value.output);
+    measurement.finish({ state, decision: capture.validatedDecision, execution: capture.execution,
+      publication: value.output ? 'returned-to-caller' : 'unknown', observation: { ...(capture.executionCompleted ? { execution: 'completed' } : {}), snapshotStillCurrent: state === 'completed' ? capture.snapshotStillCurrent : 'unknown' } });
+    return value;
+  } catch (error) { measurement.finish({ state: 'error', decision: capture.validatedDecision, execution: capture.execution, observation: { ...(capture.executionCompleted ? { execution: 'completed' } : {}), failureStage: stage } }); throw error; }
+}
+export async function runPostToolScreenHook(input: unknown, options: PostToolScreenOptions = {}): Promise<{ result: ScreenResult; output: string | null }> { return observedPostToolScreen(input, options); }
+
 /** CLI entrypoint for use as a consumer-owned asynchronous Codex Hook command. */
 export function runPostToolScreenHookCli(): void {
   let input = '';
@@ -343,13 +388,20 @@ export function runPostToolScreenHookCli(): void {
     input += chunk;
     if (Buffer.byteLength(input) > 256 * 1024) { input = ''; overflow = true; }
   });
-  process.stdin.on('end', () => {
+  process.stdin.on('end', async () => {
     if (overflow) {
-      process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: 'Architecture screening informational: {"status":"incomplete","summary":"PostToolUse payload exceeds the 256 KiB input limit."}' }, systemMessage: 'Architecture screening incomplete: oversized PostToolUse payload.' }));
+      let measurement;
+      try { measurement = postToolMeasurement(null, {}, process.cwd()); }
+      catch { warnMeasurementGap(); }
+      try {
+        await writePublicOutput(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: 'Architecture screening informational: {"status":"incomplete","summary":"PostToolUse payload exceeds the 256 KiB input limit."}' }, systemMessage: 'Architecture screening incomplete: oversized PostToolUse payload.' }));
+        measurement?.finish({ state: 'incomplete', publication: 'returned-to-caller', observation: { input: 'oversized' } });
+      } catch (error) { measurement?.finish({ state: 'error', observation: { input: 'oversized', failureStage: 'publication' } }); throw error; }
       return;
     }
-    void runPostToolScreenHook(input).then(({ output }) => { if (output) process.stdout.write(output); }).catch((error: unknown) => {
-      process.stdout.write(outputFor(incomplete((error as { message?: unknown } | null)?.message || 'Local screening failed.'), {}));
+    void observedPostToolScreen(input, {}, output => output ? writePublicOutput(output) : undefined).catch(async (error: unknown) => {
+      try { await writePublicOutput(outputFor(incomplete((error as { message?: unknown } | null)?.message || 'Local screening failed.'), {})); }
+      catch { process.exitCode = 2; }
     });
   });
 }
