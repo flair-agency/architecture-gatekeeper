@@ -24,7 +24,8 @@ function oid(value, label) {
   return value;
 }
 function parseRepo(repo) {
-  if (typeof repo !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(repo)) fail('repository must be owner/name.');
+  if (typeof repo !== 'string' || !/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(repo) ||
+      repo.split('/').some(part => part === '.' || part === '..')) fail('repository must be owner/name.');
   return repo;
 }
 function apiResourceUrl(repository, components, query = '') {

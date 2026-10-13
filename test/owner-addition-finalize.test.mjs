@@ -210,8 +210,11 @@ test('consumer workflow pin preserves selected path and rejects moving refs, uns
 for (const [workflow, repository] of [
   ['architecture-gate.yml', 'example/re.po'],
   ['architecture-gate-consumer.yml', 'example/consumer'],
+  ['architecture-gate.yml', 'example/.github'],
+  ['architecture-gate.yml', 'example/_repo'],
+  ['architecture-gate.yml', 'example/-repo'],
 ]) {
-  test(`finalizer fetches selected ${workflow} from its exact recorded pin`, async () => {
+  test(`finalizer fetches selected ${workflow} for ${repository} from its exact recorded pin`, async () => {
     const requested = [];
     const caller = `jobs:\n  architecture:\n    uses: flair-agency/architecture-gatekeeper/.github/workflows/${workflow}@${sha('5')}\n`;
     const boundary = new Error('Reached selected reusable workflow fetch');
@@ -242,7 +245,7 @@ for (const [workflow, repository] of [
 }
 
 test('finalizer rejects unsupported repository identities before any GitHub request', async () => {
-  for (const repository of ['example/.', 'example/..', 'example/../other', 'example/repo?x=1', 'example/repo#fragment']) {
+  for (const repository of ['example/.', 'example/..', './repo', '../repo', '_owner/repo', '.owner/repo', 'example/../other', 'example/repo?x=1', 'example/repo#fragment']) {
     let fetched = false;
     await assert.rejects(finalizeOwnerAddition({ repository, pullRequestNumber: 1,
       githubToken: 'fixture-token', runId: '100', fetchImpl: async () => { fetched = true; } }),
