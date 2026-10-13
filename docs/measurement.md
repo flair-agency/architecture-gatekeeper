@@ -130,7 +130,9 @@ narrative is not retained and finding counts remain unknown. It does not
 reconstruct individual validator outcomes or private review facts. Failed,
 cancelled, skipped, missing or inconsistent observations remain incomplete.
 Collector phase timing is separate from checked public job/step timing; analysis
-uses the observed job interval, leaving unavailable timing unknown. Optional
+uses the consistently bound review-step interval for latency and detection,
+leaving missing, inconsistent or out-of-job review timing unknown. Whole-job
+intervals remain separately exported and never supply missing review timing. Optional
 CI directory bootstrap rejects an in-worktree path before creating it.
 The standalone legacy start/finish recorder supports more detailed supplied
 observations, but the current workflows do not invoke it for review capture.

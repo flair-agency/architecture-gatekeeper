@@ -283,7 +283,8 @@ does not establish a semantic result. Prompt, request, schema, reviewer executio
 finding count and freshness remain unknown; detailed legacy standalone recorder
 tests above do not claim those facts for the new independent workflow collector.
 Collector phase timestamps describe collection. Whitelist export separately
-records observed job/step intervals; aggregation uses observed job duration and
-completion for CI latency and detection order, and excludes unavailable timing.
+records observed job/step intervals; aggregation uses the bound review-step duration and
+completion for CI latency and detection order, and excludes unavailable or
+inconsistent timing. Whole-job duration remains separately exported.
 It never substitutes collector time for an unavailable review observation.
 Enabled-host evaluation and the #537 pilot remain open.

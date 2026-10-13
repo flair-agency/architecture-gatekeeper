@@ -61,13 +61,19 @@ test('a resolved case without linked detection stays unknown and remains in the 
   assert.equal(report.cases[0].firstDetection, 'unknown');
 });
 
-test('independently collected CI result uses observed job completion rather than later collection', () => {
+test('independently collected CI result uses review-step completion before job or collector completion', () => {
   const data=dataset(instant(0),instant(20),instant(40),instant(50));
-  data.records[1].observation={timingSource:'collector',ciAcquisition:'public-job-metadata',jobTiming:{startedAt:instant(0),completedAt:instant(10),elapsedMs:10000}};
+  data.records[1].observation={timingSource:'collector',ciAcquisition:'public-job-metadata',jobTiming:{startedAt:instant(0),completedAt:instant(30),elapsedMs:30000},reviewTiming:{startedAt:instant(1),completedAt:instant(10),elapsedMs:9000}};
   const report=aggregateMeasurement(data);assert.equal(report.cases[0].firstDetection,'ci');assert.equal(report.metrics.localEarlyResolution.numerator,0);
 });
 test('missing independently observed CI time leaves detection order unknown', () => {
   const data=dataset(instant(0),instant(20),instant(40),instant(50));
   data.records[1].observation={timingSource:'collector',ciAcquisition:'unavailable'};
   const report=aggregateMeasurement(data);assert.equal(report.cases[0].firstDetection,'unknown');assert.equal(report.metrics.localEarlyResolution.numerator,0);
+});
+
+test('whole-job completion alone cannot establish CI detection order',()=>{
+  const data=dataset(instant(0),instant(20),instant(40),instant(50));
+  data.records[1].observation={timingSource:'collector',ciAcquisition:'public-job-metadata',jobTiming:{startedAt:instant(0),completedAt:instant(10),elapsedMs:10000}};
+  const result=aggregateMeasurement(data);assert.equal(result.cases[0].firstDetection,'unknown');assert.equal(result.metrics.localEarlyResolution.numerator,0);
 });
