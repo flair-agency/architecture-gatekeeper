@@ -75,13 +75,14 @@ test('both repository models are loaded by local JavaScript analysis with platfo
   assert.deepEqual(githubModelArgs('/repo'), [
     '--model-packs=flair-agency/github-output-model',
     '--model-packs=flair-agency/github-workspace-model',
-    `--additional-packs=${['/repo/.github/codeql/extensions/github-output', '/repo/.github/codeql/extensions/github-workspace'].join(delimiter)}`,
+    '--model-packs=flair-agency/native-session-model',
+    `--additional-packs=${['/repo/.github/codeql/extensions/github-output', '/repo/.github/codeql/extensions/github-workspace', '/repo/.github/codeql/extensions/native-session'].join(delimiter)}`,
   ]);
   const h = harness(); h.run();
   const javascript = h.calls.find(call => call.args[0] === 'database' && call.args[1] === 'analyze' && call.args[2].endsWith('/db-javascript'));
   assert.ok(javascript.args.includes('--model-packs=flair-agency/github-output-model'));
   assert.ok(javascript.args.includes('--model-packs=flair-agency/github-workspace-model'));
-  assert.ok(javascript.args.includes(`--additional-packs=${['/repo/.github/codeql/extensions/github-output', '/repo/.github/codeql/extensions/github-workspace'].join(delimiter)}`));
+  assert.ok(javascript.args.includes(`--additional-packs=${['/repo/.github/codeql/extensions/github-output', '/repo/.github/codeql/extensions/github-workspace', '/repo/.github/codeql/extensions/native-session'].join(delimiter)}`));
   const actions = h.calls.find(call => call.args[0] === 'database' && call.args[1] === 'analyze' && call.args[2].endsWith('/db-actions'));
   assert.equal(actions.args.some(argument => argument.startsWith('--model-packs=')), false);
 });

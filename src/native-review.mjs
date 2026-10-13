@@ -6,6 +6,12 @@ import { createReviewRequestAsync as prepareRequest, validateReviewResponse as v
 import { beginMeasurement, measurementDigest, resumeNativeMeasurement, warnMeasurementGap } from './measurement.mts';
 import { resolve } from 'node:path';
 import { writePublicOutput } from './public-output.mts';
+import { trustedNativeRequestPath, trustedNativeDecisionPath } from './native-session-paths.mjs';
+/** @param {string[]} argv */
+function injectedNativeArguments(argv) {
+  const [command, requestPath, ...rest] = argv;
+  return { command, requestPath, decisionPath: rest[0], rest };
+}
 function usage() { throw new Error('Usage: architecture-review-native prepare <request.json> <task...> | validate <request.json> <decision.json>'); }
 /**
  * Run the native review CLI with optional command-line input and working directory.
@@ -13,8 +19,14 @@ function usage() { throw new Error('Usage: architecture-review-native prepare <r
  * @param {string} [cwd]
  * @returns {Promise<void>}
  */
-export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = process.cwd()) {
-  const [command, requestPath, ...rest] = argv;
+export async function runNativeReviewCli(argv, cwd = process.cwd()) {
+  // Original CLI session paths and explicitly injected arguments stay distinct.
+  // Parse injected arrays once with the original iterator/destructuring behavior.
+  const selected = argv === undefined ? {
+    command: process.argv[2], requestPath: trustedNativeRequestPath(),
+    decisionPath: trustedNativeDecisionPath(), rest: process.argv.slice(4),
+  } : injectedNativeArguments(argv);
+  const { command, requestPath, decisionPath, rest } = selected;
   // Keep required host-managed I/O intact; observe its request/validation calls.
   /** @type {ReturnType<typeof beginMeasurement> | undefined} */
   let measurement;
@@ -26,7 +38,7 @@ export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = pro
     try {
       let selectedRoot = root;
       if (process.env.AGK_MEASUREMENT_DIR) { try { selectedRoot = repositoryRoot(root); } catch { /* preparation preserves its required error */ } }
-      return beginMeasurement({ route: 'native', cwd: selectedRoot, correlation: measurementDigest(resolve(requestPath)) });
+      return beginMeasurement({ route: 'native', cwd: selectedRoot, correlation: measurementDigest(resolve(/** @type {string} */ (requestPath))) });
     } catch { warnMeasurementGap(); return {id:null,request(){},finish(){}}; }
 
   }
@@ -48,7 +60,7 @@ export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = pro
     const request = await createReviewRequestAsync(rest.join(' '), cwd);
     if (Object.hasOwn(request.reviewer, 'provider') ? request.reviewer.provider !== 'codex' : false) throw new Error('Native Codex review cannot apply Gemini settings; use the async local reviewer.');
     stage = 'request-persistence';
-    writeFileSync(requestPath, `${JSON.stringify(request, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
+    writeFileSync(requestPath, `${JSON.stringify(request, null, 2)}\n`, { mode: 0o600, flag: 'wx' }); // native-request-persistence
     stage = 'prepare-publication';
     await writePublicOutput(`${JSON.stringify({ prompt: request.prompt, schema: request.schema, provider: 'codex', model: request.reviewer.model, reasoningEffort: request.reviewer.reasoningEffort, reviewTimeoutMs: request.reviewer.reviewTimeoutMs, requestPath }, null, 2)}\n`);
     return;
@@ -56,7 +68,7 @@ export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = pro
   if (command === 'validate' && requestPath && rest.length === 1) {
     stage = 'request-read';
     let request;
-    try { request = JSON.parse(readFileSync(requestPath, 'utf8')); }
+    try { request = JSON.parse(readFileSync(requestPath, 'utf8')); } // native-request-read
     catch (error) { measurement = startObservation(cwd); throw error; }
     measurement = resumeNativeMeasurement(requestPath, /** @type {import('./measurement.mts').MeasurementRequest} */ (request));
     // A terminal belongs to one validation attempt. Observe a retry separately
@@ -68,7 +80,7 @@ export async function runNativeReviewCli(argv = process.argv.slice(2), cwd = pro
       }
     }
     stage = 'decision-read';
-    const decision = JSON.parse(readFileSync(rest[0], 'utf8'));
+    const decision = JSON.parse(readFileSync(/** @type {string} */ (decisionPath), 'utf8')); // native-decision-read
     stage = 'validation';
     const result = validateReviewResponse(request, decision);
     stage = 'publication';

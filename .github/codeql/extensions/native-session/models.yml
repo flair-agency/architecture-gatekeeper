@@ -1,0 +1,8 @@
+# Only original host-session path accessors adopted by PR #574.
+extensions:
+  - addsTo:
+      pack: codeql/javascript-all
+      extensible: barrierModel
+    data:
+      - ['file:src/native-session-paths.mjs', 'Member[trustedNativeRequestPath].ReturnValue', 'path-injection']
+      - ['file:src/native-session-paths.mjs', 'Member[trustedNativeDecisionPath].ReturnValue', 'path-injection']
