@@ -109,6 +109,28 @@ remain the trusted Skill host's responsibility under the existing native
 execution contract; diagnostic directory restrictions do not select or
 restrict those paths.
 
+#### Native session CodeQL representation (PR #569 owner decision, 2026-10-13)
+
+The owner retains the existing trusted Skill host boundary for native request
+and decision paths in the review execution contract. The invoking host must
+preserve its original native CLI session arguments; candidate content, task
+text and reviewer output cannot select or replace them. Host allocation,
+recording and cleanup, exclusive request creation, file permissions and
+required decision validation retain their existing responsibilities.
+
+Two dedicated no-argument accessors may expose only the original native CLI
+request path and decision path. A repository-scoped CodeQL path-injection
+barrier may model only those accessors' return values. Direct argv/environment
+reads, explicitly injected CLI argument arrays, candidate or reviewer values,
+and generic filesystem/path helpers remain outside this model. Preserve their
+negative flow regressions alongside the production-accessor positive cases.
+
+This representation does not authenticate the invoking host or its arguments,
+attest private allocation, supply a generic path sanitizer, establish hostile
+same-user isolation, dismiss unrelated findings, or authorize protected
+acceptance. This decision records the selected boundary; implementation,
+model regression and hosted verification remain separate prerequisites.
+
 ### Acceptance authority and host enforcement boundary
 
 | Responsibility | Authority |
