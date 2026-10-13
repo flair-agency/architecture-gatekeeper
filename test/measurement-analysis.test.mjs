@@ -88,3 +88,28 @@ test('collection gap counts distinguish absent or unknown from malformed data in
     }
   }
 });
+
+test('default-ignorable-only identities are rejected while visible combining sequences remain valid',()=>{
+  for(const invisible of ['\u034f','\ufe0f','\u034f\ufe0f','\u200d']) {
+    const data=dataset();data.cases[0].adjudicator=invisible;
+    assert.throws(()=>validateMeasurementDataset(data),/assessor/);
+    const audit=dataset();audit.audits[0].auditor=invisible;assert.throws(()=>validateMeasurementDataset(audit),/audit/);
+    const evidence=dataset();evidence.cases[0].evidence=[invisible];assert.throws(()=>validateMeasurementDataset(evidence),/evidence/);
+    assert.throws(()=>sampleMeasurementPopulation(dataset(),{seed:invisible,count:1}),/seed/);
+  }
+  for(const visible of ['e\u0301','担当者\u034f','👩\u200d💻','字\ufe0f']) {
+    const data=dataset();data.cases[0].adjudicator=visible;data.cases[0].evidence=[visible];data.audits[0].auditor=visible;
+    assert.doesNotThrow(()=>validateMeasurementDataset(data));assert.doesNotThrow(()=>sampleMeasurementPopulation(data,{seed:visible,count:1}));
+  }
+});
+
+test('sparse dataset arrays are refused rather than silently losing holes and length',()=>{
+  for(const run of [validateMeasurementDataset,aggregateMeasurement,d=>sampleMeasurementPopulation(d,{seed:'fixed',count:1})]) {
+    for(const size of [1,10001,200000]) {
+      const data=dataset();data.population=new Array(size);assert.throws(()=>run(data),/JSON (shape|limit)/);
+    }
+    const data=dataset();delete data.population[1];assert.throws(()=>run(data),/JSON shape/);
+    const plan=dataset();plan.plan={sparse:new Array(2)};assert.throws(()=>run(plan),/JSON shape/);
+    assert.doesNotThrow(()=>run(dataset()));
+  }
+});

@@ -36,7 +36,7 @@ const decisionView = (value: unknown) => value as { decision?: unknown; findings
 
 const enumValue = (value: unknown, allowed: readonly unknown[]) => allowed.includes(value);
 const rate = (numerator: number, denominator: number) => ({ numerator, denominator, rate: denominator ? numerator / denominator : null });
-const identity = (value: unknown) => typeof value === 'string' && value.length <= 200 && /[^\s\p{Cf}]/u.test(value) && !/\p{Cc}/u.test(value);
+const identity = (value: unknown) => typeof value === 'string' && value.length <= 200 && /[^\s\p{Cf}\p{Default_Ignorable_Code_Point}]/u.test(value) && !/\p{Cc}/u.test(value);
 const reference = identity;
 const optionalReference = (value: unknown) => value === undefined || value === null || reference(value);
 const list = (value: unknown) => Array.isArray(value) && value.length <= 10000;
@@ -72,6 +72,11 @@ function datasetSnapshot(value: unknown): MeasurementDataset {
     if (array ? prototype !== Array.prototype : prototype !== Object.prototype && prototype !== null) reject('JSON shape');
     const copy = (array ? [] : Object.create(null)) as Record<string, unknown>;
     if (array && (item as unknown[]).length > budget) reject('JSON limit');
+    // Sparse/non-enumerable indices cannot disappear when copied to a JSON array.
+    if (array) for (let i = 0; i < (item as unknown[]).length; i++) {
+      const property = Object.getOwnPropertyDescriptor(item, String(i));
+      if (!property || !Object.hasOwn(property, 'value') || !property.enumerable) reject('JSON shape: sparse array');
+    }
     const keys = Reflect.ownKeys(item as object);
     if (keys.length > budget) reject('JSON limit');
     for (const key of keys) {
