@@ -27,6 +27,7 @@ test('public acquisition binds exact repository/run/attempt and keeps job/step t
 });
 
 for(const [label,mutate] of [
+  ['unsafe numeric run',f=>{f.env.GITHUB_RUN_ID=String(Number.MAX_SAFE_INTEGER+1);f.run.id=Number.MAX_SAFE_INTEGER+1;}], ['unsafe numeric attempt',f=>{f.env.GITHUB_RUN_ATTEMPT=String(Number.MAX_SAFE_INTEGER+1);f.run.run_attempt=Number.MAX_SAFE_INTEGER+1;}],
   ['repository',f=>{f.run.repository.full_name='other/repo';}],['private repository',f=>{f.run.repository.private=true;}],
   ['run id',f=>{f.run.id=124;}],['run attempt',f=>{f.run.run_attempt=1;}],['run revision',f=>{f.run.head_sha='c'.repeat(40);}],
   ['missing job',f=>{f.data.jobs=[];f.data.total_count=0;}],['ambiguous jobs',f=>{f.data.jobs.push(structuredClone(f.job));f.data.total_count=2;}],

@@ -6,6 +6,7 @@ const outcomes = new Set(['success', 'failure', 'cancelled', 'skipped']);
 function fail(): never { throw new Error('Public CI diagnostic metadata unavailable or inconsistent.'); }
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const positive = (v: unknown): v is string => typeof v === 'string' && /^[1-9][0-9]{0,19}$/.test(v);
+const identifier = (v: unknown) => typeof v === 'number' ? Number.isSafeInteger(v) && v > 0 : positive(v);
 function interval(start: unknown, end: unknown) {
   const stamp = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(v) && Number.isFinite(Date.parse(v)) &&
     (new Date(v).toISOString() === v || new Date(v).toISOString().replace('.000Z', 'Z') === v);
@@ -55,7 +56,7 @@ export async function retrieveCiReviewJob(env: NodeJS.ProcessEnv, fetchImpl: typ
   }
   try {
     const run = await read(root);
-    if (!object(run) || !object(run.repository) || run.repository.full_name !== repository || run.repository.private !== false ||
+    if (!object(run) || !object(run.repository) || run.repository.full_name !== repository || run.repository.private !== false || !identifier(run.id) || !identifier(run.run_attempt) ||
         String(run.id) !== env.GITHUB_RUN_ID || String(run.run_attempt) !== env.GITHUB_RUN_ATTEMPT || run.head_sha !== env.HEAD_SHA) fail();
     const data = await read(root + '/jobs?per_page=100');
     if (!object(data) || !Array.isArray(data.jobs) || data.jobs.length > 100 || data.total_count !== data.jobs.length) fail();
@@ -63,7 +64,7 @@ export async function retrieveCiReviewJob(env: NodeJS.ProcessEnv, fetchImpl: typ
       job.steps.some((step: unknown) => object(step) && step.name === 'Run read-only architecture review'));
     if (candidates.length !== 1 || !object(candidates[0])) fail();
     const job = candidates[0];
-    if (!Number.isSafeInteger(job.id) || Number(job.id) < 1 || String(job.run_id) !== env.GITHUB_RUN_ID ||
+    if (!Number.isSafeInteger(job.id) || Number(job.id) < 1 || !identifier(job.run_id) || !identifier(job.run_attempt) || String(job.run_id) !== env.GITHUB_RUN_ID ||
         String(job.run_attempt) !== env.GITHUB_RUN_ATTEMPT || job.run_url !== `https://api.github.com/repos/${repository}/actions/runs/${env.GITHUB_RUN_ID}` ||
         job.head_sha !== env.HEAD_SHA || job.status !== 'completed' || job.conclusion !== env.REVIEW_RESULT || !Array.isArray(job.steps)) fail();
     const steps = job.steps.filter((step: unknown) => object(step) && step.name === 'Run read-only architecture review');
