@@ -1,0 +1,896 @@
+{
+  "version": 1,
+  "recordKind": "interim-evidence-completion-map",
+  "checkedAtUtc": "2026-10-13 16:17:52 UTC",
+  "issue": 537,
+  "status": "pilot-window-active; not-complete",
+  "ownerDecisionMadeByThisCheckpoint": false,
+  "inventory": {
+    "version": 1,
+    "recordKind": "public-pilot-inventory",
+    "checkedAtUtc": "2026-10-13 16:17:52 UTC",
+    "window": {
+      "start": "2026-10-13T22:43:35+09:00",
+      "endExclusive": "2026-11-10T22:43:35+09:00",
+      "durationDays": 28,
+      "timezone": "Asia/Tokyo"
+    },
+    "queryBounds": {
+      "runs": {
+        "perPage": 100,
+        "pagesRead": 1,
+        "total": 7,
+        "returned": 7,
+        "allReturned": true
+      },
+      "openPulls": {
+        "perPage": 100,
+        "pagesRead": 1,
+        "returned": 15,
+        "terminalShortPage": true
+      },
+      "updatedPulls": {
+        "perPage": 100,
+        "pagesRead": 1,
+        "returned": 100,
+        "lastReturnedUpdatedAt": "2026-10-09T23:57:13Z",
+        "olderThanWindowBoundaryReached": true
+      },
+      "fixtureTimeline": {
+        "pr": 577,
+        "perPage": 100,
+        "pagesRead": 1,
+        "returned": 9,
+        "terminalShortPage": true
+      }
+    },
+    "population": [
+      {
+        "prNumber": 563,
+        "draft": true,
+        "initialRef": "e70ddf7d6bbe2bc3cd91ad52ea7af5c1c2b3d61e",
+        "initialBaseRef": "75378ae615f8556a07a422fdbf6058e5e0e22eb7",
+        "baseBranch": "main",
+        "createdAt": "2026-10-12T07:01:44Z",
+        "updatedAt": "2026-10-12T07:35:08Z",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "92bfc661881d47474e3da8404a7e5fd690e4601b70ca287dc042f777d089a86c",
+        "latestObserved": {
+          "state": "open",
+          "draft": true,
+          "headSha": "e70ddf7d6bbe2bc3cd91ad52ea7af5c1c2b3d61e",
+          "baseSha": "75378ae615f8556a07a422fdbf6058e5e0e22eb7",
+          "updatedAt": "2026-10-12T07:35:08Z"
+        }
+      },
+      {
+        "prNumber": 520,
+        "draft": true,
+        "initialRef": "2bdb0f56c61243ba19be12f8c16524f7b9c5248d",
+        "initialBaseRef": "bee0020a9cfb1c006d9df8000e8d271e8e8047bd",
+        "baseBranch": "main",
+        "createdAt": "2026-10-11T13:56:31Z",
+        "updatedAt": "2026-10-11T14:04:30Z",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "4c4f1f99138754074bcb8c26acb953c14eb735329e1c72db7bd037afbc39c73a",
+        "latestObserved": {
+          "state": "open",
+          "draft": true,
+          "headSha": "2bdb0f56c61243ba19be12f8c16524f7b9c5248d",
+          "baseSha": "bee0020a9cfb1c006d9df8000e8d271e8e8047bd",
+          "updatedAt": "2026-10-11T14:04:30Z"
+        }
+      },
+      {
+        "prNumber": 517,
+        "draft": false,
+        "initialRef": "c4b0057d9dd47f79df2a896143f7ac6db5da2c2e",
+        "initialBaseRef": "c5686f63909af2e83b749ffa0b91d33cb9ea96ad",
+        "baseBranch": "feature/gemini-ci",
+        "createdAt": "2026-10-11T13:36:06Z",
+        "updatedAt": "2026-10-12T03:46:13Z",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "858b9fe8f870e6c468226833327a3561f242fbfcbe54f75e5cf23c511cd237c6",
+        "latestObserved": {
+          "state": "open",
+          "draft": false,
+          "headSha": "c4b0057d9dd47f79df2a896143f7ac6db5da2c2e",
+          "baseSha": "c5686f63909af2e83b749ffa0b91d33cb9ea96ad",
+          "updatedAt": "2026-10-12T03:46:13Z"
+        }
+      },
+      {
+        "prNumber": 514,
+        "draft": false,
+        "initialRef": "ddea69091e11cbc631c4d6b232f3746cf5118a03",
+        "initialBaseRef": "44cccedf2ce0d2b3ed4403c110b4a8d34ef3648e",
+        "baseBranch": "codex/preview4-selected-review-context",
+        "createdAt": "2026-10-11T12:25:03Z",
+        "updatedAt": "2026-10-11T16:24:41Z",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "61f093cb69c388fdd21b5928ae2bb1c61c3bf2c77dd01eec6501e6c15c92df03",
+        "latestObserved": {
+          "state": "open",
+          "draft": false,
+          "headSha": "ddea69091e11cbc631c4d6b232f3746cf5118a03",
+          "baseSha": "44cccedf2ce0d2b3ed4403c110b4a8d34ef3648e",
+          "updatedAt": "2026-10-11T16:24:41Z"
+        }
+      },
+      {
+        "prNumber": 510,
+        "draft": false,
+        "initialRef": "44cccedf2ce0d2b3ed4403c110b4a8d34ef3648e",
+        "initialBaseRef": "4ddf39e5ca7265b0921733e6bc27b3d77a6205e5",
+        "baseBranch": "main",
+        "createdAt": "2026-10-11T11:30:04Z",
+        "updatedAt": "2026-10-11T16:24:38Z",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "e8e3490939e57f27280e1dd68a1c6b257073415e4f4e13c271e3a448e2034246",
+        "latestObserved": {
+          "state": "open",
+          "draft": false,
+          "headSha": "44cccedf2ce0d2b3ed4403c110b4a8d34ef3648e",
+          "baseSha": "4ddf39e5ca7265b0921733e6bc27b3d77a6205e5",
+          "updatedAt": "2026-10-11T16:24:38Z"
+        }
+      },
+      {
+        "prNumber": 456,
+        "draft": true,
+        "initialRef": "4a7651f4e5d8288faa6b730a885689c441265cec",
+        "initialBaseRef": "c9f7b7541379ea79b23384b81772dbc40b47dce9",
+        "baseBranch": "main",
+        "createdAt": "2026-10-09T17:54:31Z",
+        "updatedAt": "2026-10-11T16:24:48Z",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "f2996c4abfdfb20841c39d979f41a9c2bc80c11874511f428742d5d2431f1565",
+        "latestObserved": {
+          "state": "open",
+          "draft": true,
+          "headSha": "4a7651f4e5d8288faa6b730a885689c441265cec",
+          "baseSha": "c9f7b7541379ea79b23384b81772dbc40b47dce9",
+          "updatedAt": "2026-10-11T16:24:48Z"
+        }
+      },
+      {
+        "prNumber": 423,
+        "draft": false,
+        "initialRef": "9c7f29557e374ede784cf276191ea65d0733d0f2",
+        "initialBaseRef": "d288bb64ee4916c207d378b1695cca0491f49223",
+        "baseBranch": "main",
+        "createdAt": "2026-10-08T01:16:53Z",
+        "updatedAt": "2026-10-11T16:24:45Z",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "2111f952733dbe58a10d405cb2ec53c67d6a1f92632af552a9787eff7e853202",
+        "latestObserved": {
+          "state": "open",
+          "draft": false,
+          "headSha": "9c7f29557e374ede784cf276191ea65d0733d0f2",
+          "baseSha": "d288bb64ee4916c207d378b1695cca0491f49223",
+          "updatedAt": "2026-10-11T16:24:45Z"
+        }
+      },
+      {
+        "prNumber": 322,
+        "draft": true,
+        "initialRef": "1147f8ce3ba86c40183ba160cda8b11a5af92dad",
+        "initialBaseRef": "d88f254acc11f2a2c3023522fa5d99074f9e4e0c",
+        "baseBranch": "main",
+        "createdAt": "2026-10-04T00:49:24Z",
+        "updatedAt": "2026-10-11T16:24:51Z",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "c9c7ffa863f3afbe9aa9b96b14e9e3a1fd0b9e36669b576b5de93db751a7e7fa",
+        "latestObserved": {
+          "state": "open",
+          "draft": true,
+          "headSha": "1147f8ce3ba86c40183ba160cda8b11a5af92dad",
+          "baseSha": "d88f254acc11f2a2c3023522fa5d99074f9e4e0c",
+          "updatedAt": "2026-10-11T16:24:51Z"
+        }
+      },
+      {
+        "prNumber": 297,
+        "draft": false,
+        "initialRef": "9355753dd1d6b7d0df3b5ad93693073161cdd5e0",
+        "initialBaseRef": "78c19edd646b17dbd8ee224cf4510a54b227b2b7",
+        "baseBranch": "main",
+        "createdAt": "2026-10-03T13:11:50Z",
+        "updatedAt": "2026-10-03T13:17:57Z",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "124db85c06874ae60938edf18f676837c04e56d96fd3091ed97530b30c5c49d0",
+        "latestObserved": {
+          "state": "open",
+          "draft": false,
+          "headSha": "9355753dd1d6b7d0df3b5ad93693073161cdd5e0",
+          "baseSha": "78c19edd646b17dbd8ee224cf4510a54b227b2b7",
+          "updatedAt": "2026-10-03T13:17:57Z"
+        }
+      },
+      {
+        "prNumber": 239,
+        "draft": true,
+        "initialRef": "d2b44befeee0e04fb6f0454d53eab50683e4c747",
+        "initialBaseRef": "d1f4d60425da6ba0ad0c36eefd2c8616138098fb",
+        "baseBranch": "codex/ordinary-self-app-diagnostic",
+        "createdAt": "2026-09-30T20:19:00Z",
+        "updatedAt": "2026-10-03T20:46:27Z",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "ebb059d35b1916e12fe93344c21e7bd99f40646502b2d917ae9f541c896751b2",
+        "latestObserved": {
+          "state": "open",
+          "draft": true,
+          "headSha": "d2b44befeee0e04fb6f0454d53eab50683e4c747",
+          "baseSha": "d1f4d60425da6ba0ad0c36eefd2c8616138098fb",
+          "updatedAt": "2026-10-03T20:46:27Z"
+        }
+      },
+      {
+        "prNumber": 238,
+        "draft": true,
+        "initialRef": "d1f4d60425da6ba0ad0c36eefd2c8616138098fb",
+        "initialBaseRef": "950fbf717125bb3f1080647b803a18e9d20ca9db",
+        "baseBranch": "codex/protected-self-receiver",
+        "createdAt": "2026-09-30T19:52:07Z",
+        "updatedAt": "2026-10-03T20:46:20Z",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "aad529379f79a3017069fba0852bee845317aaa2c36400f024013bd84f539a7f",
+        "latestObserved": {
+          "state": "open",
+          "draft": true,
+          "headSha": "d1f4d60425da6ba0ad0c36eefd2c8616138098fb",
+          "baseSha": "950fbf717125bb3f1080647b803a18e9d20ca9db",
+          "updatedAt": "2026-10-03T20:46:20Z"
+        }
+      },
+      {
+        "prNumber": 237,
+        "draft": false,
+        "initialRef": "188341ed13f723a13018f73d103f570cff9dc424",
+        "initialBaseRef": "fd5191cb91be04343970f346b2089d6c9eae1db4",
+        "baseBranch": "main",
+        "createdAt": "2026-09-30T19:20:07Z",
+        "updatedAt": "2026-10-03T20:46:15Z",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "8a72fcaca4b9d2c5a69897fccc25296680878517d354134ce1cd59c9dca16e44",
+        "latestObserved": {
+          "state": "open",
+          "draft": false,
+          "headSha": "188341ed13f723a13018f73d103f570cff9dc424",
+          "baseSha": "fd5191cb91be04343970f346b2089d6c9eae1db4",
+          "updatedAt": "2026-10-03T20:46:15Z"
+        }
+      },
+      {
+        "prNumber": 153,
+        "draft": true,
+        "initialRef": "03ab36a6d5e988cd84eac9cf401e37f2238654c4",
+        "initialBaseRef": "0c3bde73a96d8c5a0e2ac05493e8ad6dccc8a813",
+        "baseBranch": "main",
+        "createdAt": "2026-09-27T06:52:13Z",
+        "updatedAt": "2026-10-03T20:46:10Z",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "79cffd61b82f90ebac73ef1b1eb7ee4c61ed8af999bc96d28eed951edb857cc7",
+        "latestObserved": {
+          "state": "open",
+          "draft": true,
+          "headSha": "03ab36a6d5e988cd84eac9cf401e37f2238654c4",
+          "baseSha": "0c3bde73a96d8c5a0e2ac05493e8ad6dccc8a813",
+          "updatedAt": "2026-10-03T20:46:10Z"
+        }
+      },
+      {
+        "prNumber": 107,
+        "draft": true,
+        "initialRef": "f69bbc9693299b215dd1bc7ec2d17e4e34dfc12d",
+        "initialBaseRef": "64f4e693b5eb40030ecbf669783b61f8e1b27886",
+        "baseBranch": "main",
+        "createdAt": "2026-09-25T12:57:40Z",
+        "updatedAt": "2026-10-03T20:46:05Z",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "finalRef": null,
+        "changeId": "ad8ad99a6cab1a05c405b204f944706688298c34ef4a6eb3eecdcb7c9bb84897",
+        "latestObserved": {
+          "state": "open",
+          "draft": true,
+          "headSha": "f69bbc9693299b215dd1bc7ec2d17e4e34dfc12d",
+          "baseSha": "64f4e693b5eb40030ecbf669783b61f8e1b27886",
+          "updatedAt": "2026-10-03T20:46:05Z"
+        }
+      }
+    ],
+    "changedOrCreatedInWindow": [
+      {
+        "pr": 577,
+        "state": "open",
+        "draft": false,
+        "headSha": "921dae37f3ce7354135dcf239f1ea8995c0d2e68",
+        "baseSha": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+        "createdAt": "2026-10-13T14:28:55Z",
+        "updatedAt": "2026-10-13T14:59:37Z",
+        "mergedAt": null,
+        "cohort": "fixture"
+      }
+    ],
+    "runs": [
+      {
+        "id": 38418176535,
+        "name": "PR description",
+        "workflowId": 372880876,
+        "path": ".github/workflows/pr-description.yml",
+        "event": "pull_request_target",
+        "status": "completed",
+        "conclusion": "success",
+        "attempt": 1,
+        "createdAt": "2026-10-13T14:59:41Z",
+        "updatedAt": "2026-10-13T14:59:47Z",
+        "headSha": "921dae37f3ce7354135dcf239f1ea8995c0d2e68",
+        "prNumbers": [
+          577
+        ],
+        "cohort": "fixture"
+      },
+      {
+        "id": 38417263808,
+        "name": "Self Architecture Gate",
+        "workflowId": 363378101,
+        "path": ".github/workflows/self-architecture-gate.yml",
+        "event": "pull_request_target",
+        "status": "completed",
+        "conclusion": "success",
+        "attempt": 1,
+        "createdAt": "2026-10-13T14:53:27Z",
+        "updatedAt": "2026-10-13T14:56:28Z",
+        "headSha": "921dae37f3ce7354135dcf239f1ea8995c0d2e68",
+        "prNumbers": [
+          577
+        ],
+        "cohort": "fixture"
+      },
+      {
+        "id": 38417263860,
+        "name": "PR description",
+        "workflowId": 372880876,
+        "path": ".github/workflows/pr-description.yml",
+        "event": "pull_request_target",
+        "status": "completed",
+        "conclusion": "success",
+        "attempt": 1,
+        "createdAt": "2026-10-13T14:53:27Z",
+        "updatedAt": "2026-10-13T14:53:36Z",
+        "headSha": "921dae37f3ce7354135dcf239f1ea8995c0d2e68",
+        "prNumbers": [
+          577
+        ],
+        "cohort": "fixture"
+      },
+      {
+        "id": 38413732177,
+        "name": "Self Architecture Gate",
+        "workflowId": 363378101,
+        "path": ".github/workflows/self-architecture-gate.yml",
+        "event": "pull_request_target",
+        "status": "completed",
+        "conclusion": "success",
+        "attempt": 1,
+        "createdAt": "2026-10-13T14:28:59Z",
+        "updatedAt": "2026-10-13T14:29:06Z",
+        "headSha": "921dae37f3ce7354135dcf239f1ea8995c0d2e68",
+        "prNumbers": [
+          577
+        ],
+        "cohort": "fixture"
+      },
+      {
+        "id": 38413730453,
+        "name": "CI",
+        "workflowId": 368153510,
+        "path": ".github/workflows/ci.yml",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "attempt": 1,
+        "createdAt": "2026-10-13T14:28:58Z",
+        "updatedAt": "2026-10-13T14:34:53Z",
+        "headSha": "921dae37f3ce7354135dcf239f1ea8995c0d2e68",
+        "prNumbers": [
+          577
+        ],
+        "cohort": "fixture"
+      },
+      {
+        "id": 38413730259,
+        "name": "PR description",
+        "workflowId": 372880876,
+        "path": ".github/workflows/pr-description.yml",
+        "event": "pull_request_target",
+        "status": "completed",
+        "conclusion": "success",
+        "attempt": 1,
+        "createdAt": "2026-10-13T14:28:58Z",
+        "updatedAt": "2026-10-13T14:29:05Z",
+        "headSha": "921dae37f3ce7354135dcf239f1ea8995c0d2e68",
+        "prNumbers": [
+          577
+        ],
+        "cohort": "fixture"
+      },
+      {
+        "id": 38413725877,
+        "name": "PR #577",
+        "workflowId": 368124869,
+        "path": "dynamic/github-code-scanning/codeql",
+        "event": "dynamic",
+        "status": "completed",
+        "conclusion": "success",
+        "attempt": 1,
+        "createdAt": "2026-10-13T14:28:57Z",
+        "updatedAt": "2026-10-13T14:31:17Z",
+        "headSha": "921dae37f3ce7354135dcf239f1ea8995c0d2e68",
+        "prNumbers": [],
+        "cohort": "association-unresolved"
+      }
+    ],
+    "fixtureReadyForReview": [
+      {
+        "pr": 577,
+        "at": "2026-10-13T14:53:24Z"
+      }
+    ],
+    "draftGate": {
+      "runId": 38413732177,
+      "attempt": 1,
+      "jobFacts": [
+        {
+          "id": 115352497524,
+          "name": "classify-self-repository",
+          "conclusion": "success"
+        },
+        {
+          "id": 115352541321,
+          "name": "architecture-gate / accept",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115352541861,
+          "name": "architecture-gate",
+          "conclusion": "skipped"
+        }
+      ],
+      "artifacts": [],
+      "semanticReviewObserved": false
+    },
+    "recoveredGateArtifacts": [
+      {
+        "id": 11823699946,
+        "name": "agk-measurement-review-38417263808-1-2d8bf343-4537-43b3-bb9e-bed5c98c8006",
+        "runId": 38417263808,
+        "headSha": "921dae37f3ce7354135dcf239f1ea8995c0d2e68",
+        "sizeBytes": 1165,
+        "digest": "sha256:463eab1a2337b94ad53d501025d4f62c08e4cde5364e452fe5bb6c9d6671859e",
+        "createdAt": "2026-10-13T14:56:20Z",
+        "expiresAt": "2026-11-12T14:56:19Z",
+        "expired": false
+      },
+      {
+        "id": 11823634941,
+        "name": "agk-measurement-outcome-38417263808-1-847612c3-c5b1-4984-9f47-91e4d4010134",
+        "runId": 38417263808,
+        "headSha": "921dae37f3ce7354135dcf239f1ea8995c0d2e68",
+        "sizeBytes": 1009,
+        "digest": "sha256:da83557d281a83a54226f0a315d4bb1d3c1a9343496a5a3b956c8c74f3c7d36a",
+        "createdAt": "2026-10-13T14:56:21Z",
+        "expiresAt": "2026-11-12T14:56:20Z",
+        "expired": false
+      }
+    ],
+    "naturalSnapshot": {
+      "eligible": 6,
+      "newEligibleConfirmed": 0,
+      "postWindowGateRunsObserved": 0,
+      "reviewedChangedScopeObserved": 0,
+      "interpretation": "No measurement-enabled natural review observed as of snapshot; historical reviews are not imported as current-window capture."
+    },
+    "limitations": [
+      "Point-in-time public API snapshot, not authenticated integration or protected acceptance evidence.",
+      "Further updates and ready/closed/reopened history must be reconciled at each harvest and at window end.",
+      "Draft skipped gate success is not a semantic review completion.",
+      "#577 and native/manual preflights remain excluded from natural effectiveness rates."
+    ]
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC1",
+      "criterion": "Define the versioned record, eligible population, case identity/deduplication rules, metric denominators, retention and privacy boundaries — verify with reviewed documentation and representative CI/local records.",
+      "status": "partial; remains unchecked",
+      "evidence": [
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/plan-20261013.json",
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/ci-preflight-577-run-38417263808-attempt-1.json",
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/native-skill-preflight-20261014.json"
+      ],
+      "externalReferences": [],
+      "remaining": [
+        "Natural/local representative records and adjudicated case/deduplication ledger.",
+        "Durable private raw backup and applied retention remain unverified."
+      ]
+    },
+    {
+      "id": "AC2",
+      "criterion": "Retain CI attempts and outcomes independently of sticky comments, including missing terminal observations — verify a real self-CI success and non-PASS path plus focused rerun/cancellation/missing-record checks.",
+      "status": "partial; remains unchecked",
+      "evidence": [
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/ci-preflight-577-run-38417263808-attempt-1.json",
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/missing-duplicate-checks-20261014.json"
+      ],
+      "externalReferences": [],
+      "remaining": [
+        "A real measurement-enabled non-PASS/cancelled attempt.",
+        "Whole-run missing artifacts are retained in inventory; model-free injected checks do not replace real observations."
+      ]
+    },
+    {
+      "id": "AC3",
+      "criterion": "Capture supported local review routes with exact scope and full validated findings, while recording route-specific limits — verify actual installed-runtime manual and automatic local runs; document native Skill coverage or a concrete unsupported boundary.",
+      "status": "partial; remains unchecked",
+      "evidence": [
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/environment-verification-20261013.json",
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/native-skill-preflight-20261014.json"
+      ],
+      "externalReferences": [],
+      "remaining": [
+        "Standalone manual transport returned HTTP401.",
+        "Installed automatic local capture and actual Hook delivery remain unverified; successful native Skill covers a separate route."
+      ]
+    },
+    {
+      "id": "AC4",
+      "criterion": "Distinguish completion, publication, observed delivery and response without inventing delivery evidence — verify an active-session local case and termination/unknown-delivery cases in coordination with #244.",
+      "status": "partial; remains unchecked",
+      "evidence": [
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/native-skill-preflight-20261014.json"
+      ],
+      "externalReferences": [
+        "https://github.com/flair-agency/architecture-gatekeeper/issues/244#issuecomment-5926730201",
+        "https://github.com/flair-agency/architecture-gatekeeper/issues/244#issuecomment-5925695936"
+      ],
+      "remaining": [
+        "Current-runtime active-session execution/delivery and response correlation.",
+        "Prior #244 host observations are supplemental historical evidence and do not prove current measurement capture."
+      ]
+    },
+    {
+      "id": "AC5",
+      "criterion": "Trace at least one naturally occurring local or CI defect from detection to independently confirmed correction/withdrawal and final disposition — verify snapshot/revision links and adjudication; retain an ambiguous linkage as unresolved.",
+      "status": "partial; remains unchecked",
+      "evidence": [
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/direct-audit-transition-20261014.json"
+      ],
+      "externalReferences": [],
+      "remaining": [
+        "Exact AGK finding/attempt association and human case adjudication.",
+        "H001 and independent initial-F001/H002 are different root causes; primary-window natural trace not yet evidenced."
+      ]
+    },
+    {
+      "id": "AC6",
+      "criterion": "Deduplicate repeated/local-to-CI findings and separate owner decisions, ordinary bugs, false positives, execution failures and fixtures — verify a manually checked case ledger and focused association/classification checks.",
+      "status": "partial; remains unchecked",
+      "evidence": [
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/missing-duplicate-checks-20261014.json"
+      ],
+      "externalReferences": [],
+      "remaining": [
+        "Human-checked natural-case ledger and local-to-CI root-cause associations.",
+        "No detection or resolution credit assigned to unresolved historical links."
+      ]
+    },
+    {
+      "id": "AC7",
+      "criterion": "Define a blinded audit sample that includes PASS and incomplete/unreviewed scope — verify the predefined sampling plan and independently adjudicated audit records.",
+      "status": "partial; remains unchecked",
+      "evidence": [
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/plan-20261013.json",
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/direct-audit-transition-20261014.json"
+      ],
+      "externalReferences": [],
+      "remaining": [
+        "End-of-window population reconciliation and actual sample membership freeze.",
+        "Independent initial/final records including PASS and incomplete/unreviewed scope, with blinding limits retained."
+      ]
+    },
+    {
+      "id": "AC8",
+      "criterion": "Run an initial bounded self-repository pilot, proposed duration four weeks, and produce a reproducible aggregate report — verify exports and aggregation commands, all denominators/missingness, and explicit separation of observed resolution from causal prevention. Record a different agreed window if necessary.",
+      "status": "partial; remains unchecked",
+      "evidence": [
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/plan-20261013.json",
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/pilot-current-dataset-20261014.json"
+      ],
+      "externalReferences": [],
+      "remaining": [
+        "Window ends 2026-11-10T22:43:35+09:00; this is an interim checkpoint.",
+        "Final export reconciliation, audit, adjudication and aggregate report."
+      ]
+    },
+    {
+      "id": "AC9",
+      "criterion": "Preserve existing reviewer, Hook, credential and acceptance boundaries — verify focused checks for telemetry failures/output isolation and review the implementation against the complete selected canonical Authority Set before changes.",
+      "status": "partial; remains unchecked",
+      "evidence": [
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/native-skill-preflight-20261014.json",
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/missing-duplicate-checks-20261014.json"
+      ],
+      "externalReferences": [],
+      "remaining": [
+        "Final pilot report must retain evidence/acceptance distinctions and all collection limitations.",
+        "This operational checkpoint changes no runtime, authority, reviewer, credentials, Hooks or protected acceptance."
+      ]
+    },
+    {
+      "id": "AC10",
+      "criterion": "Record supported collection scope and remaining work without describing diagnostic records as protected acceptance or consumer-wide proof — verify the final report and documentation.",
+      "status": "partial; remains unchecked",
+      "evidence": [
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/environment-verification-20261013.json",
+        "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/native-skill-preflight-20261014.json"
+      ],
+      "externalReferences": [],
+      "remaining": [
+        "Final supported-scope report after the window and actual audit outcomes.",
+        "No consumer-wide or causal-prevention claim."
+      ]
+    }
+  ],
+  "collectionSchedule": {
+    "automationId": "6ace36563d588191a19a74c82ce4cd68",
+    "enabled": true,
+    "schedule": "BEGIN:VEVENT\nDTSTART;TZID=Asia/Tokyo:20261020T230000\nRRULE:FREQ=WEEKLY;COUNT=4\nEND:VEVENT",
+    "timezone": "Asia/Tokyo",
+    "lastRun": null,
+    "scheduledHarvestExecutionObserved": false,
+    "interpretation": "Configuration observed; future execution/recovery must be verified at actual run. Existing scheduled one-shot and manual artifact recovery were separately verified."
+  },
+  "reproduction": {
+    "runtimeVersion": "0.6.0-preview.4",
+    "sourceRevision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+    "dataset": "https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/pilot-current-dataset-20261014.json",
+    "commands": [
+      "architecture-measurement aggregate <dataset.json> natural self",
+      "architecture-measurement aggregate <dataset.json> fixture self"
+    ],
+    "hostPathRequirement": "Run from the private directory containing the dataset, or use an allowed canonical host temporary/home path. Do not weaken runtime path guards.",
+    "checks": [
+      "Installed CLI natural/fixture outputs match installed production object API exactly.",
+      "16 normalized phase records; 5 semantic-review attempts; CI outcome is retained separately.",
+      "Fixture: 2 completed, 2 errors, 1 missing terminal; natural: 6 eligible, 0 observed, rates null.",
+      "Original combined criteria preserved without marking partial evidence complete."
+    ],
+    "archiveReadbackVerified": true,
+    "archivedDatasetCliReproductionVerified": true
+  },
+  "nextActionsWithoutOwnerDecision": [
+    "Recover new existing natural artifacts and exact run/attempt jobs; do not launch models or CI.",
+    "Reconcile closed/reopened/ready-for-review history with fixed eligibility and fixture exclusions.",
+    "Preserve failures, skipped jobs and absent records without inferring semantic PASS or BLOCK.",
+    "Keep historical association candidates unresolved until evidence and required human adjudication exist.",
+    "At window end prepare neutral audit packets after population/sample freeze; do not close the issue solely because time elapsed."
+  ],
+  "blockedCapabilities": [
+    {
+      "item": "Private raw backup",
+      "reason": "No durable private destination currently verified; temporary Cloud copies are not a cross-environment backup.",
+      "status": "gap; do not upload private evidence to an unrelated service or public branch"
+    },
+    {
+      "item": "Standalone manual/automatic transport",
+      "reason": "Observed child model transport HTTP401 and no current-host Hook delivery proof.",
+      "status": "gap; no login, credential replacement, model fallback or extra preflight attempts"
+    }
+  ],
+  "budget": {
+    "newModelReviews": 0,
+    "newProtectedCiRuns": 0,
+    "preflightRemaining": 0
+  },
+  "assurance": "Diagnostic checkpoint, not acceptance, authorized authority evolution, causal drift prevention or completed pilot.",
+  "reports": {
+    "natural": {
+      "version": 1,
+      "cohort": "natural",
+      "domain": "self",
+      "plan": {
+        "windowStart": "2026-10-13T22:43:35+09:00",
+        "windowEnd": "2026-11-10T22:43:35+09:00",
+        "seed": "pilot537-103c45b7b73d076caa81e7ab0651e010",
+        "checkpointAtUtc": "2026-10-13 16:17:52 UTC",
+        "status": "interim; sample membership not frozen; historical audit separately retained"
+      },
+      "interpretation": "Observed detection and adjudicated resolution only; no causal prevention estimate. Sample rates do not estimate a population without a justified sampling plan.",
+      "metrics": {
+        "precision": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "validFindingResolution": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "integratedDriftIncidence": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "recall": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "localEarlyResolution": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        }
+      },
+      "counts": {
+        "eligibleChanges": 6,
+        "auditedChanges": 0,
+        "blindedAudits": 0,
+        "unresolvedCases": 0,
+        "authorizedEvolution": 0,
+        "proposedTasks": 0,
+        "ordinaryBugs": 0,
+        "validDetectedCases": 0,
+        "knownFinalValidCases": 0,
+        "ambiguousFirstDetectionCases": 0
+      },
+      "coverage": {
+        "eligible": 6,
+        "reviewed": 0,
+        "observed": 0,
+        "noObservation": 6,
+        "attempts": 0,
+        "states": {},
+        "completedByScope": {},
+        "collectionGaps": 0,
+        "unlinkedAttempts": 0,
+        "terminalWithoutStart": 0,
+        "delivery": "unknown",
+        "agentResponse": "unknown"
+      },
+      "overhead": {
+        "latencySamples": 0,
+        "medianElapsedMs": null,
+        "repeatedAttempts": 0,
+        "developerWaiting": "unknown",
+        "attributableUsage": "unknown",
+        "cost": "unknown"
+      },
+      "cases": []
+    },
+    "fixture": {
+      "version": 1,
+      "cohort": "fixture",
+      "domain": "self",
+      "plan": {
+        "windowStart": "2026-10-13T22:43:35+09:00",
+        "windowEnd": "2026-11-10T22:43:35+09:00",
+        "seed": "pilot537-103c45b7b73d076caa81e7ab0651e010",
+        "checkpointAtUtc": "2026-10-13 16:17:52 UTC",
+        "status": "interim; sample membership not frozen; historical audit separately retained"
+      },
+      "interpretation": "Observed detection and adjudicated resolution only; no causal prevention estimate. Sample rates do not estimate a population without a justified sampling plan.",
+      "metrics": {
+        "precision": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "validFindingResolution": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "integratedDriftIncidence": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "recall": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "localEarlyResolution": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        }
+      },
+      "counts": {
+        "eligibleChanges": 3,
+        "auditedChanges": 0,
+        "blindedAudits": 0,
+        "unresolvedCases": 0,
+        "authorizedEvolution": 0,
+        "proposedTasks": 0,
+        "ordinaryBugs": 0,
+        "validDetectedCases": 0,
+        "knownFinalValidCases": 0,
+        "ambiguousFirstDetectionCases": 0
+      },
+      "coverage": {
+        "eligible": 3,
+        "reviewed": 2,
+        "observed": 3,
+        "noObservation": 0,
+        "attempts": 5,
+        "states": {
+          "error": 2,
+          "missing": 1,
+          "completed": 2
+        },
+        "completedByScope": {
+          "proposed-task": 1,
+          "ci-merge-revision": 1
+        },
+        "collectionGaps": 0,
+        "unlinkedAttempts": 0,
+        "terminalWithoutStart": 0,
+        "delivery": "unknown",
+        "agentResponse": "unknown"
+      },
+      "overhead": {
+        "latencySamples": 4,
+        "medianElapsedMs": 37864,
+        "repeatedAttempts": 2,
+        "developerWaiting": "unknown",
+        "attributableUsage": "unknown",
+        "cost": "unknown"
+      },
+      "cases": []
+    }
+  }
+}
