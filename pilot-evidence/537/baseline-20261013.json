@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "kind": "pilot-initial-baseline",
+  "dataset": {
+    "version": 1,
+    "plan": {
+      "windowStart": "2026-10-13T22:43:35+09:00",
+      "windowEnd": "2026-11-10T22:43:35+09:00",
+      "seed": "pilot537-103c45b7b73d076caa81e7ab0651e010",
+      "eligibility": "Existing open non-Draft PRs at window start, plus PRs first becoming non-Draft in the window, across the self repository. Retain withdrawn/unmerged/failed/unsupported/unreviewed changes."
+    },
+    "records": [],
+    "population": [
+      {
+        "changeId": "92bfc661881d47474e3da8404a7e5fd690e4601b70ca287dc042f777d089a86c",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "e70ddf7d6bbe2bc3cd91ad52ea7af5c1c2b3d61e",
+        "finalRef": null
+      },
+      {
+        "changeId": "4c4f1f99138754074bcb8c26acb953c14eb735329e1c72db7bd037afbc39c73a",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "2bdb0f56c61243ba19be12f8c16524f7b9c5248d",
+        "finalRef": null
+      },
+      {
+        "changeId": "858b9fe8f870e6c468226833327a3561f242fbfcbe54f75e5cf23c511cd237c6",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "c4b0057d9dd47f79df2a896143f7ac6db5da2c2e",
+        "finalRef": null
+      },
+      {
+        "changeId": "61f093cb69c388fdd21b5928ae2bb1c61c3bf2c77dd01eec6501e6c15c92df03",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "ddea69091e11cbc631c4d6b232f3746cf5118a03",
+        "finalRef": null
+      },
+      {
+        "changeId": "e8e3490939e57f27280e1dd68a1c6b257073415e4f4e13c271e3a448e2034246",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "44cccedf2ce0d2b3ed4403c110b4a8d34ef3648e",
+        "finalRef": null
+      },
+      {
+        "changeId": "f2996c4abfdfb20841c39d979f41a9c2bc80c11874511f428742d5d2431f1565",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "4a7651f4e5d8288faa6b730a885689c441265cec",
+        "finalRef": null
+      },
+      {
+        "changeId": "2111f952733dbe58a10d405cb2ec53c67d6a1f92632af552a9787eff7e853202",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "9c7f29557e374ede784cf276191ea65d0733d0f2",
+        "finalRef": null
+      },
+      {
+        "changeId": "c9c7ffa863f3afbe9aa9b96b14e9e3a1fd0b9e36669b576b5de93db751a7e7fa",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "1147f8ce3ba86c40183ba160cda8b11a5af92dad",
+        "finalRef": null
+      },
+      {
+        "changeId": "124db85c06874ae60938edf18f676837c04e56d96fd3091ed97530b30c5c49d0",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "9355753dd1d6b7d0df3b5ad93693073161cdd5e0",
+        "finalRef": null
+      },
+      {
+        "changeId": "ebb059d35b1916e12fe93344c21e7bd99f40646502b2d917ae9f541c896751b2",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "d2b44befeee0e04fb6f0454d53eab50683e4c747",
+        "finalRef": null
+      },
+      {
+        "changeId": "aad529379f79a3017069fba0852bee845317aaa2c36400f024013bd84f539a7f",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "d1f4d60425da6ba0ad0c36eefd2c8616138098fb",
+        "finalRef": null
+      },
+      {
+        "changeId": "8a72fcaca4b9d2c5a69897fccc25296680878517d354134ce1cd59c9dca16e44",
+        "eligible": true,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "188341ed13f723a13018f73d103f570cff9dc424",
+        "finalRef": null
+      },
+      {
+        "changeId": "79cffd61b82f90ebac73ef1b1eb7ee4c61ed8af999bc96d28eed951edb857cc7",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "03ab36a6d5e988cd84eac9cf401e37f2238654c4",
+        "finalRef": null
+      },
+      {
+        "changeId": "ad8ad99a6cab1a05c405b204f944706688298c34ef4a6eb3eecdcb7c9bb84897",
+        "eligible": false,
+        "cohort": "natural",
+        "domain": "self",
+        "initialRef": "f69bbc9693299b215dd1bc7ec2d17e4e34dfc12d",
+        "finalRef": null
+      }
+    ],
+    "cases": [],
+    "audits": [],
+    "collectionGaps": 0
+  },
+  "report": {
+    "version": 1,
+    "cohort": "natural",
+    "domain": "self",
+    "plan": {
+      "windowStart": "2026-10-13T22:43:35+09:00",
+      "windowEnd": "2026-11-10T22:43:35+09:00",
+      "seed": "pilot537-103c45b7b73d076caa81e7ab0651e010",
+      "eligibility": "Existing open non-Draft PRs at window start, plus PRs first becoming non-Draft in the window, across the self repository. Retain withdrawn/unmerged/failed/unsupported/unreviewed changes."
+    },
+    "interpretation": "Observed detection and adjudicated resolution only; no causal prevention estimate. Sample rates do not estimate a population without a justified sampling plan.",
+    "metrics": {
+      "precision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "validFindingResolution": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "integratedDriftIncidence": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "recall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "localEarlyResolution": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      }
+    },
+    "counts": {
+      "eligibleChanges": 6,
+      "auditedChanges": 0,
+      "blindedAudits": 0,
+      "unresolvedCases": 0,
+      "authorizedEvolution": 0,
+      "proposedTasks": 0,
+      "ordinaryBugs": 0,
+      "validDetectedCases": 0,
+      "knownFinalValidCases": 0,
+      "ambiguousFirstDetectionCases": 0
+    },
+    "coverage": {
+      "eligible": 6,
+      "reviewed": 0,
+      "observed": 0,
+      "noObservation": 6,
+      "attempts": 0,
+      "states": {},
+      "completedByScope": {},
+      "collectionGaps": 0,
+      "unlinkedAttempts": 0,
+      "terminalWithoutStart": 0,
+      "delivery": "unknown",
+      "agentResponse": "unknown"
+    },
+    "overhead": {
+      "latencySamples": 0,
+      "medianElapsedMs": null,
+      "repeatedAttempts": 0,
+      "developerWaiting": "unknown",
+      "attributableUsage": "unknown",
+      "cost": "unknown"
+    },
+    "cases": []
+  }
+}
