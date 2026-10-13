@@ -333,14 +333,20 @@ export function loadMeasurementDirectory(dir: string) {
   dir = directory(dir, undefined, 0);
   const names = [...measurementDirectoryEntries(dir, MAX_FILES)].filter(n => /^[0-9a-f-]{36}\.(start|prepared|terminal)\.json$/.test(n)).sort();
   const records: MeasurementRecord[] = []; let gaps = 0; let readBytes = 0;
+  const budgetExceeded = new Error('Measurement directory read byte limit exceeded.');
+  const accountReadBytes = (count: number) => {
+    readBytes += count;
+    if (readBytes > MAX_DIRECTORY_READ_BYTES) throw budgetExceeded;
+  };
   for (const name of names) {
     let source: string;
-    try { source = readDiagnosticText(join(dir, name), MAX_BYTES); }
-    catch { gaps++; continue; }
-    readBytes += Buffer.byteLength(source);
-    // Count even malformed JSON before parsing or retaining it. Refuse the
-    // whole load so native selection cannot use a partially inspected history.
-    if (readBytes > MAX_DIRECTORY_READ_BYTES) throw new Error('Measurement directory read byte limit exceeded.');
+    try { source = readDiagnosticText(join(dir, name), MAX_BYTES, accountReadBytes); }
+    catch (error) {
+      // Invalid UTF-8, malformed JSON and partial I/O failures consume their
+      // actual read bytes too. Budget overflow refuses the complete history.
+      if (error === budgetExceeded) throw error;
+      gaps++; continue;
+    }
     try { const r = validateMeasurementRecord(parseMeasurementJson(source)); if (`${r.attemptId}.${r.phase}.json` !== name) throw new Error('File identity mismatch.'); records.push(r); }
     catch { gaps++; }
   }

@@ -37,7 +37,7 @@ function canonicalParent(target: string): string {
 }
 
 /** Read a direct, single-link regular file with bounded bytes and strict UTF-8. */
-export function readDiagnosticText(path: unknown, maximumBytes: number): string {
+export function readDiagnosticText(path: unknown, maximumBytes: number, accountReadBytes?: (bytes: number) => void): string {
   const target = resolveDiagnosticPath(path);
   // Windows does not expose O_NOFOLLOW. Inspect the leaf on every platform,
   // then bind the opened handle to that direct regular file before reading.
@@ -55,6 +55,10 @@ export function readDiagnosticText(path: unknown, maximumBytes: number): string 
       const count = readSync(fd, bytes, length, bytes.length - length, null);
       if (!count) break;
       length += count;
+      // Account actual I/O before decoding, including bytes from reads that
+      // later fail or exceed the individual file limit. Existing callers omit
+      // the optional observer and retain the same guards and decoding.
+      accountReadBytes?.(count);
     }
     if (length > maximumBytes) throw new Error('Diagnostic file exceeds limit.');
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, length));
