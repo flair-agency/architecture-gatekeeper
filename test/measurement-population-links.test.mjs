@@ -60,7 +60,7 @@ test('final audit violations require an integrated-violation disposition', () =>
   for (const disposition of ['corrected', 'withdrawn', 'authorized-evolution', 'rejected-proposal', 'unresolved']) {
     const data = baseDataset(); data.cases[0].disposition = disposition;
     data.audits[0].finalViolationCaseIds = ['defect'];
-    assert.throws(() => aggregateMeasurement(data), /final audit disposition/, disposition);
+    assert.throws(() => aggregateMeasurement(data), /case classification conflict|final audit disposition/, disposition);
   }
   const integrated = baseDataset(); integrated.cases[0].disposition = 'integrated-violation';
   integrated.audits[0].finalViolationCaseIds = ['defect'];
@@ -230,4 +230,27 @@ test('reported finding counts and finding indexes must be safe and bounded befor
  const data=baseDataset();data.records[0].decision='BLOCK';data.records[0].findingCount=131071;data.cases[0].findingRefs[0].index=131070;
  assert.doesNotThrow(()=>validateMeasurementDataset(data));
  data.cases[0].findingRefs[0].index=131071;assert.throws(()=>aggregateMeasurement(data),/finding reference/);
+});
+
+test('valid architecture cases cannot simultaneously classify authorized evolution or a rejected proposal',()=>{
+ for(const disposition of ['authorized-evolution','rejected-proposal']) {
+  const data=baseDataset();data.cases[0].disposition=disposition;
+  for(const run of [validateMeasurementDataset,aggregateMeasurement,d=>sampleMeasurementPopulation(d,{seed:'fixed',count:1})])assert.throws(()=>run(data),/case classification conflict/);
+ }
+ for(const kind of ['proposed-task','authorized-evolution','ordinary-bug']) {
+  const data=baseDataset();data.audits=[];data.cases[0].kind=kind;data.cases[0].disposition='integrated-violation';
+  assert.throws(()=>validateMeasurementDataset(data),/case classification conflict/);
+ }
+ const unresolved=baseDataset();unresolved.cases[0].disposition='unresolved';assert.doesNotThrow(()=>aggregateMeasurement(unresolved));
+ const separate=baseDataset();separate.audits=[];separate.cases[0].kind='authorized-evolution';separate.cases[0].disposition='authorized-evolution';assert.doesNotThrow(()=>aggregateMeasurement(separate));
+});
+test('known case revisions bind the frozen change with or without an audit while missing references stay unknown',()=>{
+ for(const field of ['initialRef','finalRef'])for(const audited of [true,false]) {
+  const data=baseDataset();data.population[0][field]=data.cases[0][field];if(!audited)data.audits=[];
+  for(const run of [validateMeasurementDataset,aggregateMeasurement,d=>sampleMeasurementPopulation(d,{seed:'fixed',count:1})]) {
+   assert.doesNotThrow(()=>run(data));const wrong=structuredClone(data);wrong.cases[0][field]='foreign snapshot';assert.throws(()=>run(wrong),/case frozen revision/);
+   const unknown=structuredClone(data);unknown.population[0][field]=null;assert.doesNotThrow(()=>run(unknown));
+   const missing=structuredClone(data);missing.cases[0][field]=null;missing.cases[0].disposition='unresolved';assert.doesNotThrow(()=>run(missing));
+  }
+ }
 });

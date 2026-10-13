@@ -122,6 +122,13 @@ export function validateMeasurementDataset(value: unknown): MeasurementDataset {
         !enumValue(item.adjudication, ['valid', 'false-positive', 'unresolved']) ||
         !enumValue(item.disposition, ['corrected', 'withdrawn', 'integrated-violation', 'authorized-evolution', 'rejected-proposal', 'unresolved']) ||
         !list(item.findingRefs) || !list(item.evidence)) reject('case identity/classification');
+    if ((item.kind === 'architecture-violation' && item.adjudication === 'valid' &&
+        ['authorized-evolution', 'rejected-proposal'].includes(item.disposition)) ||
+        (item.disposition === 'integrated-violation' && (item.kind !== 'architecture-violation' || item.adjudication !== 'valid'))) reject('case classification conflict');
+    const frozen = changes.get(item.changeId)!;
+    for (const field of ['initialRef', 'finalRef'] as const) {
+      if (frozen[field] !== null && item[field] !== undefined && item[field] !== null && frozen[field] !== item[field]) reject('case frozen revision reference');
+    }
     if (item.resolvedBeforeCI !== undefined && item.resolvedBeforeCI !== null && typeof item.resolvedBeforeCI !== 'boolean') reject('resolution timing boolean');
     if (![item.initialRef, item.finalRef, item.authorityRef].every(optionalReference)) reject('case reference');
     if (!item.evidence.every(reference)) reject('case evidence reference');

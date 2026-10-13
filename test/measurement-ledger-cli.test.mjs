@@ -20,6 +20,8 @@ test('real aggregate and sample CLIs reject inconsistent ledgers without emittin
   const parent = mkdtempSync(join(realpathSync(tmpdir()), 'agk-ledger-cli-')); t.after(() => rmSync(parent, { recursive: true, force: true }));
   const path = join(parent, 'dataset.json');
   const mutations = [
+    [d => { d.cases[0].disposition='authorized-evolution'; }, /case classification conflict/],
+    [d => { d.population[0].initialRef=d.audits[0].initialRef;d.cases[0].initialRef='foreign'; }, /case frozen revision/],
     [d => { d.cases[0].disposition = 'corrected'; }, /final audit disposition/],
     [d => { d.records[0].findingCount=9007199254740992; }, /finding count/],
     [d => { d.cases[0].findingRefs[0].index=9007199254740992; }, /finding reference/],
@@ -34,7 +36,7 @@ test('real aggregate and sample CLIs reject inconsistent ledgers without emittin
     [d => { d.cases[0].resolvedBeforeCI = 'true'; }, /resolution timing boolean/],
     [d => { d.cases[0].adjudicator = '\u0085'; }, /assessor/],
     [d => { d.audits[0].evidence = ['\u009f']; }, /audit evidence/],
-    [d => { d.population[0].initialRef='frozen';d.audits[0].initialRef='foreign'; }, /audit sampled revision/],
+    [d => { d.population[0].initialRef='frozen';d.cases[0].initialRef='frozen';d.audits[0].initialRef='foreign'; }, /audit sampled revision/],
     [d => { d.cases[0].adjudicator='\u200b'; }, /assessor/],
     ...['0', -1, 0.5, Number.MAX_SAFE_INTEGER + 1, {}, [], true].map(value => [d => { d.collectionGaps = value; }, /collection gap count/]),
   ];

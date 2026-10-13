@@ -220,7 +220,12 @@ references. Put repeated/local-to-CI reports of one root cause into the same
 case; exact request hashes can suggest repetition, but root-cause association
 requires adjudication. Leave ambiguous associations unresolved. Duplicate
 case IDs, a finding assigned more than once and invalid finding references are rejected. A later PASS never
-changes the case disposition automatically.
+changes the case disposition automatically. A valid architecture-violation case
+cannot also classify its disposition as authorized evolution or a rejected
+proposal; those stay separate from implemented violations. An integrated
+violation disposition requires a valid architecture-violation case. Every known
+case initial/final reference must match the corresponding known frozen population
+reference, whether or not an audit is present. Missing references stay unknown.
 
 An audit has `changeId`, `blinded`, `auditor`, `initialRef`, `finalRef`,
 `authorityRef`, nonempty `evidence`, `initialViolationCaseIds` and
