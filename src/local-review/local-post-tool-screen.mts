@@ -399,8 +399,9 @@ export function runPostToolScreenHookCli(): void {
       } catch (error) { measurement?.finish({ state: 'error', observation: { input: 'oversized', failureStage: 'publication' } }); throw error; }
       return;
     }
-    void observedPostToolScreen(input, {}, output => output ? writePublicOutput(output) : undefined).catch((error: unknown) => {
-      process.stdout.write(outputFor(incomplete((error as { message?: unknown } | null)?.message || 'Local screening failed.'), {}));
+    void observedPostToolScreen(input, {}, output => output ? writePublicOutput(output) : undefined).catch(async (error: unknown) => {
+      try { await writePublicOutput(outputFor(incomplete((error as { message?: unknown } | null)?.message || 'Local screening failed.'), {})); }
+      catch { process.exitCode = 2; }
     });
   });
 }
