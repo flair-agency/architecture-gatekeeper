@@ -177,13 +177,16 @@ function git(root: string, args: string[], maxBuffer: number, remainingTimeMs?: 
 }
 // Optional remaining time can only narrow the existing per-process maximum.
 // Required authority callers omit it and retain the original 10-second limit.
-export function readCommittedAuthorityFile(root: string, revision: string, path: string, maxBytes: number, remainingTimeMs?: () => number): Buffer {
+export function readCommittedAuthorityFile(root: string, revision: string, path: string, maxBytes: number, remainingTimeMs?: () => number, diagnosticObjectIdWidth: 40 | 64 = 40): Buffer {
+  // Required authority callers retain width40. Diagnostic snapshots may
+  // explicitly match their already-validated full revision's object width.
+  if (diagnosticObjectIdWidth !== 40 && diagnosticObjectIdWidth !== 64) fail('unsupported diagnostic object-ID width.');
   const readGit = (args: string[], maxBuffer: number) => git(root, args, maxBuffer, remainingTimeMs);
   if (readGit(['cat-file', '-t', revision], 256).toString('utf8').trim() !== 'commit') fail('self authority revision is not a commit.');
   const tree = readGit(['ls-tree', '-z', '--full-tree', revision, '--', path], 4_096);
   const records = tree.toString('utf8').split('\0').filter(Boolean);
   if (records.length !== 1) fail(`self authority path ${path} is missing or ambiguous.`);
-  const match = /^(100644|100755) blob ([a-f0-9]{40})\t(.+)$/.exec(records[0]);
+  const match = (diagnosticObjectIdWidth === 64 ? /^(100644|100755) blob ([a-f0-9]{64})\t(.+)$/ : /^(100644|100755) blob ([a-f0-9]{40})\t(.+)$/).exec(records[0]);
   if (!match || match[3] !== path) fail(`self authority path ${path} is not a regular file.`);
   const size = Number(readGit(['cat-file', '-s', match[2]], 256).toString('utf8').trim());
   if (!Number.isSafeInteger(size) || size < 1 || size > maxBytes) fail(`self authority path ${path} exceeds file limits.`);

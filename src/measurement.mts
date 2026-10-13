@@ -56,7 +56,7 @@ function measurementGitSnapshot(root: string, commit: unknown, path: unknown, re
   if (typeof commit !== 'string' || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(commit) || !isCanonicalRepositoryPath(path)) {
     throw new Error('Invalid diagnostic committed input selection.');
   }
-  const bytes = readCommittedAuthorityFile(root, commit, path as string, 65_536, remainingTimeMs);
+  const bytes = readCommittedAuthorityFile(root, commit, path as string, 65_536, remainingTimeMs, commit.length === 64 ? 64 : 40);
   return { bytes, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
 const ATTEMPT_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;

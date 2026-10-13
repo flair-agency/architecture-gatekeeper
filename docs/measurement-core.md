@@ -46,3 +46,8 @@ terminal-file presence through the existing bounded direct-file reader before
 choosing a candidate. Fault regressions retain the older unfinished attempt and
 never rewrite the unreadable terminal. Preview runtime identity also exercises
 all three new emitted core modules, invalidating old requests and receipts.
+
+Diagnostic metadata explicitly selects the full revision's40/64 object-ID width
+when reusing bounded regular-file reads. Required authority callers retain the
+default40 width and their existing authority-revision selection and deadlines;
+this diagnostic option does not enable SHA-256 authority manifests or acceptance.
