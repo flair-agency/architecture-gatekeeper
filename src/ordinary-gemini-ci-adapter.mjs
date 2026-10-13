@@ -109,6 +109,7 @@ export async function executeOrdinaryGeminiCiAdapter(supplied) {
   const input = exactRecord(supplied, ['preparation', 'credential'], 'Ordinary Gemini execution input');
   const state = PREPARATIONS.get(input.preparation);
   if (!state) throw new Error('Ordinary Gemini preparation must come from the trusted prepare phase.');
+  PREPARATIONS.delete(input.preparation);
   const currentRuntime = inspectPinnedGeminiCiRuntime({ runtimeDirectory: state.runtimeDirectory, lockBytes: state.lockBytes });
   for (const key of ['entry', 'privateDirectory', 'version', 'cliTarballIntegrity', 'lockSha256',
     'lockDeflateBase64', 'packageJsonSha256', 'entrySha256']) {

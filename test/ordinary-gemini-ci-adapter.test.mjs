@@ -139,6 +139,8 @@ test('executes one profile call and returns validated decision and bindings with
   assert.equal(JSON.stringify(observed.env).includes(credential.token), false);
   assert.equal(JSON.stringify(result).includes(credential.token), false);
   assert.equal(Object.hasOwn(result, 'final_message'), false);
+  await assert.rejects(executeOrdinaryGeminiCiAdapter({ preparation, credential }), /must come from the trusted prepare phase/);
+  assert.equal(readFileSync(f.invocationPath, 'utf8').trim().split('\n').length, 1);
 });
 
 test('rejects mismatched host parents and accessor/proxy control records before field reads', async t => {
@@ -199,6 +201,9 @@ test('rejects absent and invalid CLI outcomes without retry or fallback', async 
   await assert.rejects(executeOrdinaryGeminiCiAdapter({ preparation: preparedIncomplete,
     credential: { token: 'fixture-parent-token', project: 'fixture-project', region: 'global' } }),
     /invalid or error response envelope/);
+  await assert.rejects(executeOrdinaryGeminiCiAdapter({ preparation: preparedIncomplete,
+    credential: { token: 'fixture-parent-token', project: 'fixture-project', region: 'global' } }),
+    /must come from the trusted prepare phase/);
   assert.equal(readFileSync(incomplete.invocationPath, 'utf8').trim().split('\n').length, 1);
 
   for (const cliMode of ['nonzero', 'malformed']) {
