@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
+import { appendGitHubOutput } from './runner-temp-path.mjs';
 import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
 import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
@@ -131,7 +132,7 @@ async function prepare(env) {
   writeFileSync(join(outputDir, 'eligibility-prompt.md'), completePrompt, { mode: 0o600 });
   writeFileSync(join(outputDir, 'eligibility.schema.json'), schemaBytes, { mode: 0o600 });
   writeFileSync(join(outputDir, 'procedure.json'), JSON.stringify(procedure), { mode: 0o600 });
-  if (githubOutput) writeFileSync(githubOutput, `procedure_base64=${Buffer.from(JSON.stringify(procedure)).toString('base64')}\n`, { flag: 'a' });
+  if (githubOutput) appendGitHubOutput(`procedure_base64=${Buffer.from(JSON.stringify(procedure)).toString('base64')}\n`);
   return procedure;
 }
 
@@ -171,6 +172,6 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
           eligibilityDecision: sha256(eligibilityDecision), authoritySetProvenance: sha256(authoritySetProvenance) },
       }), { mode: 0o600 });
     }
-    if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, 'eligibility=ELIGIBLE\n', { flag: 'a' });
+    if (process.env.GITHUB_OUTPUT) appendGitHubOutput('eligibility=ELIGIBLE\n');
   } else throw new Error('Usage: owner-addition-ci.mjs prepare|validate');
 }

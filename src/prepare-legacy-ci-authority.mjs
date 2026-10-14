@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { appendGitHubOutput } from './runner-temp-path.mjs';
 import { TextDecoder } from 'node:util';
 import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
 import { readRegularGitSnapshot } from './legacy-git-snapshot.mjs';
@@ -82,8 +83,8 @@ export function prepareLegacyAuthority({ root, baseSha, headSha, reviewedSha, ba
       outputPromptPath: process.env.PROMPT_OUTPUT_PATH, outputSchemaPath: process.env.SCHEMA_OUTPUT_PATH,
       outputValidationPath: process.env.VALIDATION_OUTPUT_PATH,
       outputPath: process.env.OUTPUT_PATH, provenancePath: process.env.PROVENANCE_PATH });
-    if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT,
-      `provenance=${Buffer.from(JSON.stringify(result)).toString('base64')}\n`, { flag: 'a' });
+    if (process.env.GITHUB_OUTPUT) appendGitHubOutput(
+      `provenance=${Buffer.from(JSON.stringify(result)).toString('base64')}\n`);
   } else if (process.argv[2] === 'validate') {
     validateLegacyAuthorityDecision(process.env.DECISION || '', JSON.parse(readFileSync(process.env.PROVENANCE_PATH, 'utf8')));
   } else throw new Error('Usage: prepare-legacy-ci-authority.mjs prepare|validate');
