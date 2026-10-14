@@ -4,10 +4,22 @@
  * Zero external npm dependencies: uses native globalThis.fetch and Node.js standard library.
  */
 import { spawnSync } from 'node:child_process';
-import type { ReviewRequest, ReviewReviewerSettings } from '../review-contract/review-contract.mts';
+import type { CodexReasoningEffort, GeminiReviewerSettings, ReviewRequest, ReviewReviewerSettings } from '../review-contract/review-contract.mts';
 
+type GeminiReviewerRequestSettings =
+  | (Omit<ReviewReviewerSettings, 'provider' | 'reasoningEffort' | 'thinkingBudget'> & GeminiReviewerSettings)
+  | (Omit<ReviewReviewerSettings, 'provider' | 'reasoningEffort' | 'thinkingBudget'> & {
+      provider?: undefined;
+      reasoningEffort: CodexReasoningEffort;
+      thinkingBudget?: never;
+    })
+  | (Omit<ReviewReviewerSettings, 'provider' | 'reasoningEffort' | 'thinkingBudget'> & {
+      provider?: undefined;
+      reasoningEffort?: never;
+      thinkingBudget?: unknown;
+    });
 type GeminiRequestFor<Request extends ReviewRequest> = Request extends ReviewRequest
-  ? Omit<Request, 'reviewer'> & { reviewer: Omit<ReviewReviewerSettings, 'provider'> & { provider?: 'gemini' } }
+  ? Omit<Request, 'reviewer'> & { reviewer: GeminiReviewerRequestSettings }
   : never;
 export type GeminiReviewRequest = GeminiRequestFor<ReviewRequest>;
 

@@ -5,7 +5,7 @@ import {
   runGeminiReviewer,
 } from '../../../src/gemini-transport.mjs';
 import type { GeminiReviewRequest, GeminiTransportOptions } from '../../../src/reviewer-transports/gemini-transport.mts';
-import type { ReviewRequest } from '../../../src/review-contract/review-contract.mts';
+import type { GeminiReviewerSettings, ReviewRequest } from '../../../src/review-contract/review-contract.mts';
 
 const request: GeminiReviewRequest = {
   version: 1,
@@ -51,6 +51,17 @@ const credentials = resolveAuthCredentials({ resolveGcloudAccessToken: () => 'fi
 void [syncResult, asyncResult, thenableResult, standardResult, syncJsonResult, asyncJsonResult, thenableJsonResult, body, credentials];
 
 const requiredTimeout = resolveAuthCredentials({ resolveGcloudAccessToken: (timeoutMs: number) => String(timeoutMs) });
-const legacyRequest: GeminiReviewRequest = { ...request, reviewer: { model: 'gemini-2.5-flash', thinkingBudget: 1024 } };
-void runGeminiReviewer(legacyRequest, { proxyMode: 'studio' });
+const legacyEffortRequest: GeminiReviewRequest = { ...request, reviewer: { model: 'gemini-2.5-flash', reasoningEffort: 'low' } };
+const legacyOptionsBudgetRequest: GeminiReviewRequest = { ...request, reviewer: { model: 'gemini-2.5-flash' } };
+void runGeminiReviewer(legacyEffortRequest, { proxyMode: 'studio' });
+void runGeminiReviewer(legacyOptionsBudgetRequest, { proxyMode: 'studio', thinkingBudget: 1024 });
+const v2Request: GeminiReviewRequest = { ...request, version: 2, authoritySet: {}, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024 } };
+declare const externalThinkingBudget: unknown;
+const externalBudgetGeminiRequest: GeminiReviewRequest = { ...request, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: externalThinkingBudget } };
+declare const publicGeminiSettings: GeminiReviewerSettings;
+const publicSettingsRequest: GeminiReviewRequest = { ...request, reviewer: publicGeminiSettings };
+const legacyRequestThinkingBudget: GeminiReviewRequest = { ...request, reviewer: { model: 'gemini-2.5-flash', thinkingBudget: externalThinkingBudget } };
+void runGeminiReviewer(v2Request);
+void runGeminiReviewer(legacyRequestThinkingBudget, { thinkingBudget: 1024 });
+void [externalBudgetGeminiRequest, publicSettingsRequest];
 void requiredTimeout;

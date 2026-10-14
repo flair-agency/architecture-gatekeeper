@@ -6,4 +6,6 @@ runGeminiCiReview(42);
 const completion: Promise<string> = runGeminiCiReview();
 buildIsolatedRunnerEnv({}, 42);
 runIsolatedGeminiSession([1]);
+// @ts-expect-error The proxy reserves dispatch synchronously before sending.
+runIsolatedGeminiSession([], { proxyConfigOverride: { reserveDispatch: async () => true } });
 void completion;

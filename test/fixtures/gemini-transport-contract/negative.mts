@@ -23,3 +23,9 @@ prepareGeminiRequestBody(codexRequest);
 executeGeminiReviewer(codexRequest);
 // @ts-expect-error Active proxy mode must be one of the original validated modes.
 runGeminiReviewer(request, { proxyUrl: 'http://localhost:1234', proxyMode: 'studoi' });
+
+// @ts-expect-error An explicit Gemini route requires a thinkingBudget property.
+const missingBudget: GeminiReviewRequest = { ...request, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash' } };
+// @ts-expect-error An explicit Gemini route cannot use the legacy effort setting.
+const mixedGeminiSettings: GeminiReviewRequest = { ...request, reviewer: { provider: 'gemini', model: 'gemini-2.5-flash', thinkingBudget: 1024, reasoningEffort: 'low' } };
+void [missingBudget, mixedGeminiSettings];

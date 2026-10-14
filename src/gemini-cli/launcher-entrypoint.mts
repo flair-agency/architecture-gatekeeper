@@ -39,7 +39,7 @@ type LauncherOptions = {
   timeoutMs?: number;
   credentialsOptions?: Record<string, unknown>;
   runnerScript?: string;
-  proxyConfigOverride?: Record<string, unknown>;
+  proxyConfigOverride?: Record<string, unknown> & { reserveDispatch?: () => boolean };
 };
 type RequestObservation = { reviewer?: { reviewTimeoutMs?: unknown; model?: unknown } };
 type EffectiveProxyConfig = Record<string, unknown> & {
