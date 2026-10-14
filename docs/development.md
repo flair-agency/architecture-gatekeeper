@@ -405,23 +405,23 @@ Migration is partial and does not change consumer architecture or assurance poli
 
 ### Current original96 inventory and implementation boundaries
 
-[Original96](investigations/2026-10-08-source-layout-typescript-map.md) excludes new modules. Base `35b2405cc1818f66e2842d068a509f74e1a8f83c`: **88 adopted**; transferred #589: **93 implemented**, pending normal adoption. #587 retains partial prepare-legacy-ci-authority, owner-addition-ci and owner-addition-multiauthority.
+The fixed denominator is the original 96-module [source map](investigations/2026-10-08-source-layout-typescript-map.md); new ordinary-Gemini and measurement modules are outside it. The earlier checkpoint section records historical slice statuses and counts. The [exhaustive current inventory](investigations/2026-10-14-original96-typescript-inventory.md) supersedes those partial-implementation descriptions.
 
-| Original | Complete candidate #589 |
+The reviewed post-#589 baseline `2769e3f10833d17197049750958db1b24e6b4539` contains **93/96** adopted original migrations. The final-three #587 candidate implements **96/96**. Normal adoption of #587 completes **96/96**; its reviewed adopted baseline is 93. Implementation or a completed review status alone establishes no adoption or clean review.
+
+| Original | Complete #587 implementation |
 |---|---|
-| gemini-transport | `src/reviewer-transports/gemini-transport.mts` |
-| gemini-security-proxy | `src/gemini-cli/gemini-security-proxy.mts` |
-| gemini-ci-runner | `src/gemini-cli/ci-runner-entrypoint.mts` |
-| gemini-launcher | `src/gemini-cli/launcher-entrypoint.mts` |
-| preview-lifecycle | `src/preview-lifecycle-runtime.mts` |
+| prepare-legacy-ci-authority | `src/ci-review/legacy-ci-authority-preparer.mts` |
+| owner-addition-ci | `src/owner-addition/owner-addition-ci-operations.mts` |
+| owner-addition-multiauthority | `src/owner-addition/owner-addition-multiauthority.mts` |
 
-Complete adopted bodies: #590 `src/review-inputs/materialize-regular-git-snapshot.mts`, #585 `src/ci-review/ci-report-entrypoint.mts`, #581 `src/owner-addition/finalize-owner-addition.mts`. Native CLI #563 and provenance #578 are adopted.
+These leaves retain the existing preparation, Git reads, selected-authority checks, adapter invocation, output publication and synchronous/asynchronous CLI dispatch. Public API environment injection and generic caller-selected paths retain their runtime meaning. Multi-authority `policyBytes` accepts Node `BinaryLike` inputs, matching its original native digest operation; Buffer, Uint8Array, string and DataView caller fixtures describe that boundary. Erased contracts add no guards or trust, and external JSON and changing observations remain unknown.
 
-#590's CLI checks cwd-relative destinations against existing workspace/temporary roots. Generic descriptor/Buffer/URL behavior stays unmodeled/unchanged; hardlink and parent-replacement limits remain, without custody or race-resistance claims.
+Four original flat files retain top-level function declarations: `ci-procedural-authority-change.mjs` (thin CLI), `github-runner-env.mjs` (distinct native source barrier), `prepare-review-context.mjs` (thin CLI), and `validate-decision.mjs` (thin CLI). Other wrappers also retain top-level native I/O and direct-run guards; the four-function count is not an all-native-I/O count. Flat identities, provider/protected-policy checks and native operations remain controlling.
 
-#589 preserves guards, credentials and validators: the launcher child is the original flat runner; preview keeps its flat anchor. Observations stay unknown. Retain AST/byte identities, stale-input negatives and unchanged installed smoke.
+Source-only analysis of candidate `6eedd95c00799d8958537114aea6f1fde8cf33f5` reports 733 JavaScript/TypeScript files, 12 workflows, 40 JavaScript results and no Actions results, with zero normalized changes against `5835fb7d1b6d6505390a9ca38fd1aad43ee2dda9` and 24 generic CLI result relocations against the #589 baseline `7e008eadcbf764ef7635541ef7de154c3cee4d26`. Those moved HIGH identities do not establish identical fingerprints or removed risk. The existing development guidance states: “local runtime equivalence does not override a failing hosted check.” Retaining the public API with these failed hosted identities requires an explicit compatibility/risk disposition; this candidate supplies none. there is no model expansion, dismissal, bypass or new trust boundary. The 100-path fixture cap preserves official query/model semantics and all positive/negative assertions.
 
-#587 retains 24 generic HIGH flows at new typed identities; no risk removal, model expansion or dismissal. The 100-path fixture cap retains query/model semantics and all positive/negative assertions. Normative Set and policy/limits remain controlling.
+Actual candidate `6eedd95` passed strict/build/cycles and 104 focused compiler/runtime/identity checks. All 230 emitted runtime files are byte-identical to the actual all-nine archive `290ce96d1ebb6c8cc9ee3d3b37d12f90bb7ad94aceabcadbd51a74dfc1f1dd47`. The 2052-test full run at `6ab7076` remains its original execution and covers unchanged runtime bytes; it is not a fresh current-head execution. Fresh final-candidate build, package, Native and hosted/protected verification remain distinct. Six normative members and the three selected model packs are unchanged; #566's native stream/persistence proposal remains unapproved. No count advances from a private candidate or local review.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, `checkJs: false`, and
