@@ -1,4 +1,6 @@
 import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { resolveSafePath } from '../review-input-path.mjs';
 import { appendGitHubOutput } from '../runner-temp-path.mjs';
 import { readRegularGitSnapshot } from '../legacy-git-snapshot.mjs';
 import type { GitSnapshotOptions } from '../authority-validation/legacy-git-snapshot.mts';
@@ -34,6 +36,10 @@ export function materializeRegularGitSnapshot({ root, commit, path, outputPath, 
 export function runMaterializeRegularGitSnapshotCli(): void {
   const [, , commit, path, outputPath] = process.argv;
   if (!commit || !path || !outputPath) throw new Error('Usage: materialize-regular-git-snapshot.mjs <commit> <path> <output-path>');
-  const result = materializeRegularGitSnapshot({ root: trustedGitHubWorkspaceRoot(), commit, path, outputPath });
+  const root = trustedGitHubWorkspaceRoot();
+  if (!root) throw new Error(`Invalid committed snapshot selection: ${path}`);
+  // Apply existing path confinement only to CLI selection; this does not establish artifact custody.
+  const safeOutputPath = resolveSafePath(resolve(outputPath), root);
+  const result = materializeRegularGitSnapshot({ root, commit, path, outputPath: safeOutputPath });
   if (process.env.GITHUB_OUTPUT) appendGitHubOutput(`sha256=${result.sha256}\n`);
 }
