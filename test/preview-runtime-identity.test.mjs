@@ -57,6 +57,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'ci-review/ci-procedural-authority-change.mjs',
     'ci-review/ci-procedural-acceptance.mjs',
     'ci-review/ci-report.mjs',
+    'ci-review/ci-report-entrypoint.mjs',
     'owner-amendment/owner-amendment.mjs',
     'gemini-cli/gemini-cli-response.mjs',
     'gemini-cli/gemini-cli-process.mjs',
@@ -339,8 +340,13 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/github/codex-pass-log.mjs'), 'utf8')
       .replace(/from '\.\.\/ci-review\/codex-pass-publication\.mjs'/g, "from './codex-pass-publication.mjs'"));
   const reportCliPath = join(flatRoot, 'dist/ci-report.mjs');
-  writeFileSync(reportCliPath, readFileSync(reportCliPath, 'utf8')
-    .replace(/from ["']\.\/ci-review\/ci-report\.mjs["']/, "from './ci-report-helpers.mjs'"));
+  const reportFacade = readFileSync(reportCliPath, 'utf8');
+  const reportBody = readFileSync(join(flatRoot, 'dist/ci-review/ci-report-entrypoint.mjs'), 'utf8')
+    .replace(/from '\.\.\//g, "from './")
+    .replace(/from '\.\/ci-report\.mjs'/, "from './ci-report-helpers.mjs'");
+  const reportGuard = reportFacade.slice(reportFacade.lastIndexOf('\nif (process.argv[1]'));
+  // Reconstruct the complete former flat CLI, including its public main and guard.
+  writeFileSync(reportCliPath, "import { fileURLToPath } from 'node:url';\n" + reportBody + reportGuard);
   rmSync(join(flatRoot, 'dist/ci-review'), { recursive: true });
   rmSync(join(flatRoot, 'dist/authority-validation'), { recursive: true });
   rmSync(join(flatRoot, 'dist/review-inputs'), { recursive: true });

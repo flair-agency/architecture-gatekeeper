@@ -82,6 +82,8 @@ test('source runtime identity binds authored .mts and invalidates stale requests
     sha256(readFileSync(join(sourceRoot, 'src/github/github-owner-addition-provenance.mts'))));
   assert.equal(request.runtime.files['local-review/native-review.mts'],
     sha256(readFileSync(join(sourceRoot, 'src/local-review/native-review.mts'))));
+  assert.equal(request.runtime.files['ci-review/ci-report-entrypoint.mts'],
+    sha256(readFileSync(join(sourceRoot, 'src/ci-review/ci-report-entrypoint.mts'))));
   const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
   await runtime.validatePreviewReceipt(receipt, f.root);
 
@@ -96,4 +98,14 @@ test('source runtime identity binds authored .mts and invalidates stale requests
 
   const freshReceipt = await runtime.completePreviewLifecycle(changedRequest, ordinary(decision()), f.root);
   await runtime.validatePreviewReceipt(freshReceipt, f.root);
+  appendFileSync(join(sourceRoot, 'src/ci-review/ci-report-entrypoint.mts'), '\n// isolated report source-byte mutation\n');
+  const reportChanged = await runtime.preparePreviewLifecycle(spec, f.root);
+  assert.notEqual(reportChanged.runtime.files['ci-review/ci-report-entrypoint.mts'],
+    changedRequest.runtime.files['ci-review/ci-report-entrypoint.mts']);
+  await assert.rejects(runtime.completePreviewLifecycle(changedRequest, ordinary(decision()), f.root),
+    /request differs from immutable predecessor inputs/);
+  await assert.rejects(runtime.validatePreviewReceipt(freshReceipt, f.root),
+    /request differs from immutable predecessor inputs/);
+  const reportFreshReceipt = await runtime.completePreviewLifecycle(reportChanged, ordinary(decision()), f.root);
+  await runtime.validatePreviewReceipt(reportFreshReceipt, f.root);
 });
