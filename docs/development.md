@@ -133,12 +133,16 @@ The current review-input stack types `validate-decision`,
 `validate-authority-set-decision`, `preflight-authority-set-review`,
 `prepare-review-file-context`, `prepare-review-context`,
 `materialize-review-workspace`, and `review-security-proxy`.
-The materializer migration is deferred: hosted HIGH217 assigns a new identity
-to an existing generic CLI risk. Its original `.mjs` implementation and risk
-remain; no dismissal or model expansion is made. Flat exports, CLI dispatch
-and runtime operations remain intact. Untrusted JSON and unchecked property
-rereads retain unknown types; types do not prove authority provenance, risk
-reduction or protected acceptance.
+The original regular Git snapshot materializer is fully typed in
+`src/review-inputs/materialize-regular-git-snapshot.mts`, adopted in #590.
+Its flat export and direct-run guard remain. The real CLI resolves cwd-relative
+input and applies the existing workspace/temporary-path validator; destinations
+outside the helper's accepted roots are intentionally rejected. The generic
+public descriptor/Buffer/URL API remains unchanged. This owner-authorized
+necessary input correction removes the original CLI argv CodeQL finding without
+expanding any model. Hardlink aliases and post-validation parent replacement
+remain limits; no authentication, destination custody or race resistance is
+claimed. External JSON and mutable observations retain unknown types.
 
 The current authority-contract stack types `review-contract`, `resolve-ci-policy`, `prepare-authority-set`, `owner-addition-adoption`, `owner-decision-addition`.
 Flat facades retain public exports and the original CLI guards; policy CLI stays in its original flat file. Grouped authority runners
@@ -236,18 +240,22 @@ The amendment-core slice types canonical procedure parsing, digest calculation,
 G0 procedure validation and tag-envelope checks. Flat exports and original
 runtime operations remain unchanged. External readbacks stay unknown; owned
 parsed records and computed digests have explicit contracts. Types confer no
-owner authorization or new accepting route. The owner-addition CI and GitHub
-owner-addition provenance relocations remain deferred in Draft #520 after
-hosted CodeQL registered alerts #224–#234. No model expansion or dismissal is
+owner authorization or new accepting route. The earlier owner-addition CI and GitHub provenance relocations were deferred
+in Draft #520 after hosted CodeQL registered alerts #224–#234. The complete
+GitHub provenance migration was subsequently adopted in #578; the remaining
+owner-addition CI body is still pending in #587. No model expansion or dismissal is
 made; local runtime equivalence does not override a failing hosted check.
 
-The Gemini CLI slice types response extraction, process supervision and parent
-proxy-session composition. Flat exports, original error paths and defaults remain
-unchanged. Required byte limits and process inputs have explicit contracts;
-thinking controls require the existing model-specific budget or level branch.
-Unknown process observations, nullable child outcomes and mutable returned
-results retain their actual boundaries. Deadline, cancellation, workspace-control
-and credential-confinement checks retain their original operations.
+The earlier Gemini CLI slice typed response extraction, process supervision
+and parent proxy-session composition. The five-original candidate in #589 now
+moves the complete API transport, security proxy, runner and launcher bodies
+into their typed leaves; preview lifecycle has its complete typed runtime at
+its original flat directory depth. Flat exports and direct-run guards remain.
+The grouped launcher's default child resolves one directory above to the
+original flat runner. Runtime validators, error paths, rereads, deadlines,
+cancellation and credential confinement retain their original operations.
+Public types describe supported callback, provider and proxy-mode contracts;
+external responses and parsed decisions remain unknown.
 
 The internal-adapter slice types the Codex transport, materialized Gemini CLI
 session and protected prepared-review adapter. Required request, workspace,
@@ -349,55 +357,62 @@ and CLI operations remain at the original path.
 The 57-of-58-fingerprint local CodeQL comparison above concerns that legacy
 decision helper, not a move of the snapshot materializer sink. All 58 flows
 remain present; hosted CodeQL analysis and model regression passed in #548
-with the selected model unchanged. The materializer remains a checked JavaScript bridge at its original
-path with its original path-like output behavior.
+with the selected model unchanged. The materializer's separate complete
+migration and bounded CLI correction were subsequently adopted in #590.
 
-The [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md)
-retains the inventory, runtime limits and #423 preview-lifecycle boundary.
-The internal-adapter candidate has 75 of the original 96 modules typed and
-21 remaining. The local-review/runner-path slice has 77 original modules in
-`.mts` and 19 original modules outside the typed migration. This local
-entrypoint foundation has 80 `.mts` modules and 16 original modules remaining.
-This CI composition candidate brings the count to 81 `.mts` modules and
-15 originals remaining; the partially typed report is included in the latter.
-The GitHub command candidate has 82 original modules fully migrated to `.mts`
-and 14 originals not fully migrated. The runner-accessor candidate adds one
-complete typed implementation, reaching 83/96 fully migrated and 13 originals
-not fully migrated. The complete GitHub provenance migration was adopted in
-#578, bringing the inventory to 84/96 and 12 unfinished originals.
-The complete native migration was adopted in #563, reaching 85/96 and 11
-unfinished originals. Of those 11, two have checked JavaScript contracts
-(snapshot materializer and CI report), and five have partial helper
-migrations (CI report, owner-addition finalizer, multi-authority orchestration,
-owner-addition CI and the legacy authority
-decision check). CI report belongs to both categories; together they cover six
-distinct originals. The other five remain JavaScript modules
-outside these migrations. These source-layout counts do not change the
-selected CodeQL model or establish acceptance evidence.
-The complete finalizer migration, adopted in #581, moves its remaining API, parser and CLI body
-to `src/owner-addition/finalize-owner-addition.mts`, retaining the existing
-record builder and nine flat exports. It preserves the full risk-corrected
-operations, original flat guard condition, inline CLI behavior and external
-property rereads; callback results and parsed observations remain unknown.
-The preceding resource correction was adopted in #579; #581 reached 86/96 with 10
-unfinished originals: two checked JavaScript contracts and four partial helper
-migrations cover five distinct originals, with the other five owned separately.
-The complete report candidate moves the remaining reporting CLI, descriptor-based
-filesystem checks and masked Gemini projection reads to
-`src/ci-review/ci-report-entrypoint.mts`. It preserves the optional transport,
-global Fetch for protected Codex retrieval, original property reads, existing
-bounds, error ordering, fourteen flat exports and exact flat direct-run guard.
-Parsed JSON remains unknown; erased read views establish no validation or
-authentication. Actual source/emitted operation pins, compile-only native/sync/
-async/thenable composition, real build dependencies and stale/fresh identity
-checks cover the new leaf. Its own current-tree CodeQL, package, full and
-protected verification remain required before adoption. Adoption would reach
-87/96 with nine unfinished originals: one checked JavaScript contract and three
-partial helper migrations cover four distinct originals, plus five parallel-owned
-originals. This does not authorize changes in provider or acceptance policy.
-No migration count advances from a private candidate or local review. The
-native stream/persistence proposal in #566 remains unapproved.
-Migration is partial and does not change consumer architecture or assurance policy.
+### Current original96 inventory and implementation boundaries
+
+The fixed denominator is the original 96-module
+[source map](investigations/2026-10-08-source-layout-typescript-map.md).
+New ordinary-Gemini and measurement modules are outside that denominator.
+Earlier milestone counts are historical: #578 reached 84/96, #563 reached 85/96,
+#581 reached 86/96, #585 reached 87/96 and #590 reached 88/96.
+
+Adopted main `35b2405cc1818f66e2842d068a509f74e1a8f83c` has **88/96** complete
+original migrations and eight unfinished originals. The owner explicitly
+transferred the five Gemini/preview originals to this coordinator. Candidate
+#589 implements those five, reaching **93/96 implementation coverage**; its
+adoption count remains 88 until normal protected adoption. The remaining three
+CLI originals in Draft #587 still have partial helper migrations on main;
+private complete implementations do not count as adoption.
+
+| Original | Current complete or partial implementation | Status |
+|---|---|---|
+| materialize-regular-git-snapshot | `src/review-inputs/materialize-regular-git-snapshot.mts` | Complete, adopted in #590 |
+| gemini-transport | `src/reviewer-transports/gemini-transport.mts` | Complete candidate in #589 |
+| gemini-security-proxy | `src/gemini-cli/gemini-security-proxy.mts` | Complete candidate in #589 |
+| gemini-ci-runner | `src/gemini-cli/ci-runner-entrypoint.mts` | Complete candidate in #589 |
+| gemini-launcher | `src/gemini-cli/launcher-entrypoint.mts` | Complete candidate in #589 |
+| preview-lifecycle | `src/preview-lifecycle-runtime.mts` | Complete candidate in #589; flat directory retained |
+| prepare-legacy-ci-authority | `src/ci-review/legacy-authority-decision.mts` | Partial validator; preparation/CLI remain in `.mjs` on main |
+| owner-addition-ci | `src/owner-addition/single-authority-member.mts` | Partial selector; remaining body stays in `.mjs` on main |
+| owner-addition-multiauthority | `src/owner-addition/multi-authority-eligibility.mts` | Partial eligibility helper; orchestration stays in `.mjs` on main |
+
+The report adopted in #585 has its complete reporting CLI, descriptor checks
+and masked Gemini projection reads in `src/ci-review/ci-report-entrypoint.mts`,
+retaining fourteen flat exports and the optional transport. The finalizer
+adopted in #581 has its remaining body in
+`src/owner-addition/finalize-owner-addition.mts`, with the existing record builder
+and nine flat exports. Previously adopted thin command adapters and the original
+GitHub environment source wrapper remain explicit native I/O boundaries; types
+supply no producer authentication or host enforcement.
+
+Source/emitted operation pins, real default child execution, physical import
+closure and per-leaf byte mutations retain fresh/stale request and receipt
+checks. Installed consumers execute emitted `dist/` JavaScript. Verify archive
+bytes, empty offline installation and the unchanged official smoke groups
+(each 120000ms); a source extension count is not executed runtime coverage.
+
+Draft #587 retains 24 generic CLI flows whose typed locations register new HIGH
+identities; this is relocation, not risk removal or identical fingerprints.
+No model expansion, dismissal or adoption is inferred. The fixture's 100-path
+explanation cap changes neither query nor model and retains every positive and
+negative assertion, including the generic materializer API and confined CLI
+checks in both baseline and modeled modes. Six normative members, provider
+settings, permissions and acceptance remain controlling. #566's native stream/
+persistence proposal remains unapproved. No count advances from a private
+candidate or local review; the migration does not change consumer architecture
+or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, `checkJs: false`, and
