@@ -36,4 +36,3 @@ test('complete report CLI rejects invalid callbacks/completion and narrowed obse
   assert.match(local[2].message, /Promise<void>.*Promise<string>/s);
   assert.match(local[5].message, /unknown.*string/s);
 });
-

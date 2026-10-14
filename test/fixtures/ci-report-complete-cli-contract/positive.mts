@@ -8,4 +8,3 @@ const asynchronous: ReportFetch = async (_url: string, _options: ReportFetchRead
 const thenable: ReportFetch = () => externalThenable;
 const completions: Promise<void>[] = [main(), main(undefined), main(fetch), main(sync), main(asynchronous), main(thenable), physicalMain(sync)];
 void completions;
-

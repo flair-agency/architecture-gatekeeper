@@ -9,4 +9,3 @@ const nonBooleanResponse: ReportFetch = () => ({ ok: 'yes', json: () => observat
 const narrowedObservation: string = ({ json: () => observation }).json();
 main(fetch, undefined);
 const wrongInput: ReportFetch = (_url: number) => ({ ok: true as const, json: () => observation });
-

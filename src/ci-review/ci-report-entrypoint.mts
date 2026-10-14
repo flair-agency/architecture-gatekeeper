@@ -5,7 +5,6 @@ import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { appendGitHubOutput } from '../runner-temp-path.mjs';
 import { trustedGitHubOutputPath } from '../github-runner-env.mjs';
 import { MAX_ORDINARY_GEMINI_PROJECTION_BYTES } from '../ordinary-gemini-ci-publication.mts';
-import { fileURLToPath } from 'node:url';
 import { assertSameMultiAuthorityProvenance } from '../multi-authority-provenance.mjs';
 import {
   COMMENT_MARKER,
@@ -294,4 +293,3 @@ export async function main(fetchImpl: ReportFetch = fetch): Promise<void> {
     }
   } finally { if (summaryHandle) await summaryHandle.close(); }
 }
-
