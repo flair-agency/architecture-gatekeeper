@@ -356,7 +356,7 @@ test('fetch rejects ambiguous job attribution and wrong run-attempt metadata', a
     referenced_workflows: [referencedWorkflow(tuple)] };
   const baseJob = { id: 9981, run_id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: tuple.headSha,
     status: 'completed', conclusion: 'success', steps: [{ name: ORDINARY_GEMINI_PUBLICATION_STEP, status: 'completed', conclusion: 'success' }] };
-  for (const scenario of ['duplicate', 'wrong-attempt', 'wrong-run-head', 'wrong-job-head', 'wrong-repository', 'wrong-ref', 'wrong-ref-tag-collision', 'wrong-ref-field', 'wrong-sha', 'missing-ref-sha-path', 'wrong-null-path']) {
+  for (const scenario of ['duplicate', 'wrong-attempt', 'wrong-run-head', 'wrong-job-head', 'mismatched-run-job-head', 'wrong-repository', 'wrong-ref', 'wrong-ref-tag-collision', 'wrong-ref-field', 'wrong-sha', 'missing-ref-sha-path', 'wrong-null-path']) {
     const goodReference = referencedWorkflow(tuple);
     const badReference = scenario === 'wrong-repository'
       ? { ...goodReference, path: goodReference.path.replace(tuple.workflowRepository, 'other/repository') }
@@ -369,6 +369,7 @@ test('fetch rejects ambiguous job attribution and wrong run-attempt metadata', a
     if (scenario === 'missing-ref-sha-path') delete badReference.ref;
     const runForScenario = scenario === 'wrong-attempt' ? { ...baseRun, run_attempt: 1 }
       : scenario === 'wrong-run-head' ? { ...baseRun, head_sha: sha('9') }
+      : scenario === 'mismatched-run-job-head' ? { ...baseRun, head_sha: tuple.eventSha }
         : (['wrong-repository', 'wrong-ref', 'wrong-ref-tag-collision', 'wrong-ref-field', 'wrong-sha', 'missing-ref-sha-path', 'wrong-null-path'].includes(scenario))
             ? { ...baseRun, referenced_workflows: [badReference] } : baseRun;
     const requests = [];
@@ -382,7 +383,7 @@ test('fetch rejects ambiguous job attribution and wrong run-attempt metadata', a
       throw new Error('unexpected log retrieval after rejected metadata');
     };
     await assert.rejects(retrieveOrdinaryGeminiPublication({ apiToken: 'fixture', expected: tuple, outputPath, fetchImpl: fakeFetch }));
-    assert.equal(requests.length, ['duplicate', 'wrong-job-head'].includes(scenario) ? 2 : 1,
+    assert.equal(requests.length, ['duplicate', 'wrong-job-head', 'mismatched-run-job-head'].includes(scenario) ? 2 : 1,
       `${scenario} is rejected before fetching logs`);
     assert.equal(statSync(outputPath, { throwIfNoEntry: false }), undefined, `${scenario} writes no projection`);
   }

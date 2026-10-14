@@ -250,7 +250,7 @@ export async function retrieveOrdinaryGeminiPublication(input: {
       job.steps.some((step: unknown) => own(step) && step.name === ORDINARY_GEMINI_PUBLICATION_STEP));
     if (selected.length !== 1) fail();
     const job = selected[0] as JsonRecord;
-    const restJobHeadMatches = job.head_sha === tuple.headSha || job.head_sha === tuple.eventSha;
+    const restJobHeadMatches = (job.head_sha === tuple.headSha || job.head_sha === tuple.eventSha) && job.head_sha === run.head_sha;
     if (!Number.isSafeInteger(job.id) || Number(job.id) < 1 || String(job.run_id) !== tuple.runId || String(job.run_attempt) !== tuple.runAttempt ||
         !restJobHeadMatches || job.status !== 'completed' || job.conclusion !== 'success') fail();
     const emissionSteps = (job.steps as JsonRecord[]).filter(step => step.name === ORDINARY_GEMINI_PUBLICATION_STEP);
