@@ -41,6 +41,10 @@ if (isAbsolute(p)) {
 }
 `;
   writeFileSync(join(fixture, 'output-probe.mjs'), probe);
+  const materializerOutputProbe = `import { materializeRegularGitSnapshot } from './src/materialize-regular-git-snapshot.mjs';
+materializeRegularGitSnapshot({ root: '/repository', commit: 'a'.repeat(40), path: 'file.txt', outputPath: process.argv[2] }); // generic-materializer-output
+`;
+  writeFileSync(join(fixture, 'materializer-output-probe.mjs'), materializerOutputProbe);
   const workspaceProbe = `import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { trustedGitHubWorkspaceRoot, otherWorkspaceRoot, callerSelectedRoot } from './src/github-runner-workspace.mjs';
@@ -118,6 +122,10 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
       threadHas(threadFlow, file, line))));
     assert.equal(matching, expected, `${tag} flow ${expected ? 'was not detected' : 'was unexpectedly modeled'}`);
   };
+  for (const modeled of [false, true]) {
+    assertProbeFlow(results[modeled], 'materializer-output-probe.mjs', findLine(materializerOutputProbe, 'generic-materializer-output'), true,
+      'Generic materializer argv destination must remain unmodeled');
+  }
   const outputLines = ['trusted-output', 'implementation-output', 'env-output', 'cli-output', 'other-output', 'direct-output', 'checked-output'];
   for (const tag of outputLines) {
     assertProbeFlow(results.false, 'output-probe.mjs', findLine(probe, tag), true, tag);
@@ -138,14 +146,20 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
     'Output model must preserve each unrelated output finding');
 
   const threads = list => list.flatMap(result => (result.codeFlows || []).flatMap(codeFlow => codeFlow.threadFlows));
+  for (const modeled of [false, true]) {
+    assert.equal(threads(results[modeled]).some(thread =>
+      threadHas(thread, 'src/review-inputs/materialize-regular-git-snapshot.mts', 37) &&
+      threadHas(thread, 'src/review-inputs/materialize-regular-git-snapshot.mts', 32)), false,
+    'CLI argv destination must be confined before the materializer writer');
+  }
   const accessorLine = 3;
   const hasAccessor = (list, callFile, callLine, sinkFile, sinkLine) => threads(list).some(thread =>
     threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine) && threadHas(thread, callFile, callLine) && threadHas(thread, sinkFile, sinkLine));
-  assert.ok(hasAccessor(results.false, 'src/review-inputs/materialize-regular-git-snapshot.mts', 37, 'src/authority-validation/legacy-git-snapshot.mts', 31),
+  assert.ok(hasAccessor(results.false, 'src/review-inputs/materialize-regular-git-snapshot.mts', 39, 'src/authority-validation/legacy-git-snapshot.mts', 31),
     'Baseline must trace accessor through materializer into Git snapshot cwd');
   assert.ok(hasAccessor(results.false, 'src/ci-review/legacy-ci-authority-preparer.mts', 123, 'src/ci-review/legacy-ci-authority-preparer.mts', 82),
     'Baseline must trace accessor into preparer git diff cwd');
-  assert.equal(hasAccessor(results.true, 'src/review-inputs/materialize-regular-git-snapshot.mts', 37, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
+  assert.equal(hasAccessor(results.true, 'src/review-inputs/materialize-regular-git-snapshot.mts', 39, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
     'Model must remove materializer accessor flow');
   assert.equal(hasAccessor(results.true, 'src/ci-review/legacy-ci-authority-preparer.mts', 123, 'src/ci-review/legacy-ci-authority-preparer.mts', 82), false,
     'Model must remove preparer accessor flow to git diff cwd');
@@ -208,6 +222,8 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
     nativeOriginalAccessorProductionFlowsRemoved: true,
     nativeInjectedProductionFlowsRetained: true,
     genericReaderAndPreparerFlowsRetained: true,
+    genericMaterializerOutputFlowRetained: true,
+    materializerCliDestinationFlowRemoved: true,
     note: 'SARIF alert counts aggregate flows at shared sinks; these counts do not represent production finding reduction or adoption.',
     passed: true,
   };
