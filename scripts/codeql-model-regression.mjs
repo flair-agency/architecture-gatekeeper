@@ -140,11 +140,11 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
   const accessorLine = 3;
   const hasAccessor = (list, callFile, callLine, sinkFile, sinkLine) => threads(list).some(thread =>
     threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine) && threadHas(thread, callFile, callLine) && threadHas(thread, sinkFile, sinkLine));
-  assert.ok(hasAccessor(results.false, 'src/materialize-regular-git-snapshot.mjs', 28, 'src/authority-validation/legacy-git-snapshot.mts', 31),
+  assert.ok(hasAccessor(results.false, 'src/review-inputs/materialize-regular-git-snapshot.mts', 37, 'src/authority-validation/legacy-git-snapshot.mts', 31),
     'Baseline must trace accessor through materializer into Git snapshot cwd');
   assert.ok(hasAccessor(results.false, 'src/prepare-legacy-ci-authority.mjs', 77, 'src/prepare-legacy-ci-authority.mjs', 35),
     'Baseline must trace accessor into preparer git diff cwd');
-  assert.equal(hasAccessor(results.true, 'src/materialize-regular-git-snapshot.mjs', 28, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
+  assert.equal(hasAccessor(results.true, 'src/review-inputs/materialize-regular-git-snapshot.mts', 37, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
     'Model must remove materializer accessor flow');
   assert.equal(hasAccessor(results.true, 'src/prepare-legacy-ci-authority.mjs', 77, 'src/prepare-legacy-ci-authority.mjs', 35), false,
     'Model must remove preparer accessor flow to git diff cwd');
