@@ -40,7 +40,7 @@ for(const [label,mutate] of [
 ]) test(`public acquisition refuses ${label}`,async()=>{const f=metadata();mutate(f);await assert.rejects(retrieveCiReviewJob(f.env,f.fetchImpl));assert.ok(f.calls.length<=2);});
 
 test('invalid host selections fail before network; disabled capture performs no acquisition',async()=>{
-  for(const patch of [{GITHUB_SERVER_URL:'https://private.example'}, {GITHUB_REPOSITORY:'owner/../repo'}, {GITHUB_RUN_ID:'0'}, {GITHUB_RUN_ATTEMPT:'1e2'}, {HEAD_SHA:'main'}, {REVIEW_RESULT:'unknown'}]){
+  for(const patch of [{GITHUB_SERVER_URL:'https://private.example'}, {GITHUB_REPOSITORY:'owner/../repo'}, {GITHUB_RUN_ID:'0'}, {GITHUB_RUN_ATTEMPT:'1e2'}, {HEAD_SHA:'main'}, {EVENT_SHA:'main'}, {EVENT_SHA:''}, {REVIEW_PROVIDER:'claude'}, {REVIEW_RESULT:'unknown'}]){
     const f=metadata();await assert.rejects(retrieveCiReviewJob({...f.env,...patch},f.fetchImpl));assert.equal(f.calls.length,0);
   }
   const f=metadata();await collectCiMeasurement(f.env,f.fetchImpl);assert.equal(f.calls.length,0);
@@ -140,4 +140,45 @@ for(const [label,raw,kind] of [
 ])test(`published decision ${label} remains a gap without overwriting other observations`,async t=>{
   const f=metadata();f.env.REVIEW_DECISION_KIND=kind;f.env.REVIEW_PUBLISHED_DECISION=raw;const s=storage(t,f);await collectCiMeasurement(f.env,f.fetchImpl);
   const record=loadMeasurementDirectory(s.records).records.find(r=>r.phase==='terminal');assert.equal(record.state,'incomplete');assert.equal(record.decision,null);assert.equal(record.observation.ciAcquisition,'public-job-metadata');assert.equal(record.observation.reviewTiming.elapsedMs,8000);
+});
+
+test('Gemini provider selection acquires the Gemini publication step and accepts pull_request_target event SHA while retaining PR-head binding',async t=>{
+  const f=metadata();
+  f.env.REVIEW_PROVIDER='gemini';
+  f.env.EVENT_SHA='c'.repeat(40);
+  f.run.head_sha=f.env.EVENT_SHA;
+  f.job.head_sha=f.env.EVENT_SHA;
+  await assert.rejects(retrieveCiReviewJob(f.env,f.fetchImpl));
+  f.job.steps[0].name='Review with Gemini and emit the masked report projection';
+  const checked=await retrieveCiReviewJob(f.env,f.fetchImpl);
+  assert.equal(checked.jobId,'456');
+  assert.equal(checked.jobOutcome,'success');
+  assert.equal(checked.stepOutcome,'success');
+  assert.equal(checked.reviewTiming.elapsedMs,8000);
+
+  const s=storage(t,f);
+  await collectCiMeasurement(f.env,f.fetchImpl);
+  const terminal=loadMeasurementDirectory(s.records).records.find(r=>r.phase==='terminal');
+  const redacted=redactMeasurement(terminal);
+  assert.equal(terminal.state,'completed');
+  assert.deepEqual(terminal.decision,{decision:'PASS'});
+  assert.equal(redacted.ci.headSha,f.env.HEAD_SHA);
+  assert.equal(redacted.observation.ciAcquisition,'public-job-metadata');
+  assert.equal(redacted.observation.reviewTiming.elapsedMs,8000);
+
+  const mismatchedJobSha=metadata();
+  mismatchedJobSha.env.REVIEW_PROVIDER='gemini';
+  mismatchedJobSha.env.EVENT_SHA='c'.repeat(40);
+  mismatchedJobSha.job.steps[0].name='Review with Gemini and emit the masked report projection';
+  mismatchedJobSha.run.head_sha=mismatchedJobSha.env.EVENT_SHA;
+  mismatchedJobSha.job.head_sha=mismatchedJobSha.env.HEAD_SHA;
+  await assert.rejects(retrieveCiReviewJob(mismatchedJobSha.env,mismatchedJobSha.fetchImpl));
+
+  const unrelatedSha=metadata();
+  unrelatedSha.env.REVIEW_PROVIDER='gemini';
+  unrelatedSha.env.EVENT_SHA='c'.repeat(40);
+  unrelatedSha.job.steps[0].name='Review with Gemini and emit the masked report projection';
+  unrelatedSha.run.head_sha='d'.repeat(40);
+  unrelatedSha.job.head_sha='d'.repeat(40);
+  await assert.rejects(retrieveCiReviewJob(unrelatedSha.env,unrelatedSha.fetchImpl));
 });

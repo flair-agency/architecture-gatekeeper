@@ -112,6 +112,14 @@ test('both workflows keep validation inside required review and publish only com
     const workflow = parseWorkflow(readFileSync(new URL(`../.github/workflows/${filename}`, import.meta.url), 'utf8'));
     const collector = workflow.jobs.measurement.steps.find(step => step.id === 'review-measurement');
     assert.equal(
+      collector.env.EVENT_SHA,
+      filename === 'architecture-gate.yml' ? '${{ github.sha }}' : undefined,
+    );
+    assert.equal(
+      collector.env.REVIEW_PROVIDER,
+      filename === 'architecture-gate.yml' ? '${{ needs.policy.outputs.provider }}' : undefined,
+    );
+    assert.equal(
       collector.env.REVIEW_RESULT,
       filename === 'architecture-gate.yml'
         ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}"

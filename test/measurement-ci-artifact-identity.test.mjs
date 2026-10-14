@@ -138,6 +138,14 @@ test('optional outcome job bootstrap and collection cannot fail required review,
     assert.match(independent.run, /measurement-ci\.mjs collect/);
     assert.match(independent.run, /measurement-cli\.mjs export/);
     assert.equal(
+      independent.env.EVENT_SHA,
+      filename === 'architecture-gate.yml' ? '${{ github.sha }}' : undefined,
+    );
+    assert.equal(
+      independent.env.REVIEW_PROVIDER,
+      filename === 'architecture-gate.yml' ? '${{ needs.policy.outputs.provider }}' : undefined,
+    );
+    assert.equal(
       independent.env.REVIEWED_SHA,
       filename === 'architecture-gate.yml'
         ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.reviewed_sha }}"

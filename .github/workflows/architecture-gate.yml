@@ -1409,8 +1409,10 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_SHA: ${{ github.sha }}
           REVIEWED_SHA: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.reviewed_sha }}
           RUNTIME_SHA: ${{ job.workflow_sha }}
+          REVIEW_PROVIDER: ${{ needs.policy.outputs.provider }}
           REVIEW_RESULT: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}
           REVIEW_DECISION_KIND: ${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.decision_kind }}
           REVIEW_PUBLISHED_DECISION: ${{ needs.policy.outputs.provider == 'gemini' && '' || needs.review.outputs.final_message }}
