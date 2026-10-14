@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { isCanonicalRepositoryPath, readRegularGitSnapshot } from '../dist/legacy-git-snapshot.mjs';
+import { assertGitHubOutputCliBoundary } from './fixtures/github-output-cli-boundary.mjs';
 
 function committedFixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'legacy-snapshot-'));
@@ -38,6 +40,17 @@ test('committed snapshot retains exact binary bytes, Git object ID and digest de
   assert.deepEqual(snapshot.bytes, f.bytes);
   assert.equal(snapshot.sha256, createHash('sha256').update(f.bytes).digest('hex'));
   assert.equal(readRegularGitSnapshot({ root: f.root, commit: f.commit, path: 'inputs/executable' }).bytes.toString(), 'executable bytes\n');
+  const materialized = join(f.root, 'materialized.bin');
+  const output = join(f.root, 'runner-output');
+  writeFileSync(output, 'previous=value\n');
+  const args = [fileURLToPath(new URL('../dist/materialize-regular-git-snapshot.mjs', import.meta.url)),
+    f.commit, 'inputs/data.bin', materialized];
+  const env = { ...process.env, GITHUB_WORKSPACE: f.root, GITHUB_OUTPUT: output };
+  execFileSync(process.execPath, args, { cwd: f.root, env });
+  assert.deepEqual(readFileSync(materialized), f.bytes);
+  assert.equal(readFileSync(output, 'utf8'), `previous=value\nsha256=${snapshot.sha256}\n`);
+  assertGitHubOutputCliBoundary({ root: f.root, args, env, label: 'snapshot' });
+  assert.deepEqual(readFileSync(materialized), f.bytes);
 });
 
 test('committed snapshot rejects nonregular, missing, empty and oversized inputs at the owning Git boundary', t => {

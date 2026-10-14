@@ -6,6 +6,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertGitHubOutputCliBoundary } from './fixtures/github-output-cli-boundary.mjs';
 import { classifyReview, parseOwnerAdditionProcedure, renderReport } from '../dist/ci-report.mjs';
 import { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema,
   validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema,
@@ -73,6 +74,7 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
   run(root, 'git', 'checkout', '-q', '--detach', base);
   const outputDir = join(root, 'output');
   const outputFile = join(root, 'output.txt');
+  writeFileSync(outputFile, '', { mode: 0o600 });
   const env = { ...process.env, GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: 'example/project', BASE_SHA: base,
     HEAD_SHA: head, BASE_BRANCH: 'main', POLICY_PATH: '.codex/gatekeeper/ci-policy.json',
     OWNER_AUTHORITY_PATH: 'docs/architecture.md', OWNER_PROMPT_PATH: '.codex/gatekeeper/owner-addition.md',
@@ -83,6 +85,13 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
   execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: root, env });
   assert.ok(Buffer.byteLength(readFileSync(join(outputDir, 'eligibility-prompt.md'))) <= 524288);
   const output = readFileSync(outputFile, 'utf8');
+  assertGitHubOutputCliBoundary({ root, args: [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], env,
+    label: 'single-owner-prepare' });
+  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'],
+    { cwd: root, env: { ...env, DECISION: JSON.stringify(eligible) } });
+  assert.match(readFileSync(outputFile, 'utf8'), /eligibility=ELIGIBLE\n$/);
+  assertGitHubOutputCliBoundary({ root, args: [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'],
+    env: { ...env, DECISION: JSON.stringify(eligible) }, label: 'single-owner-validate' });
   const procedure = parseOwnerAdditionProcedure(output.match(/^procedure_base64=(.+)$/m)[1], true);
   assert.equal(procedure.headSha, head);
   assert.equal(procedure.policyRevision, base);

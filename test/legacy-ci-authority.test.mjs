@@ -4,8 +4,10 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { prepareLegacyAuthority, validateLegacyAuthorityDecision } from '../dist/prepare-legacy-ci-authority.mjs';
 import { verifyLegacyValidationSelection } from '../dist/verify-legacy-validation-selection.mjs';
+import { assertGitHubOutputCliBoundary } from './fixtures/github-output-cli-boundary.mjs';
 
 test('caller validation selection must match explicit base path or null', () => {
   assert.deepEqual(verifyLegacyValidationSelection('', ''), { validationPath: null });
@@ -76,6 +78,18 @@ test('legacy v1 uses recorded-base arbitrary authority paths and binds every rev
   assert.equal(readFileSync(args.outputValidationPath, 'utf8'), '{"rules":[]}');
   assert.deepEqual(validateLegacyAuthorityDecision(JSON.stringify({ decision: 'PASS', authorityFiles: [authorityPath] }), provenance).authorityFiles, [authorityPath]);
   assert.throws(() => validateLegacyAuthorityDecision(JSON.stringify({ decision: 'PASS', authorityFiles: [] }), provenance), /exact base-selected/);
+  const output = join(root, 'runner-output');
+  writeFileSync(output, 'previous=value\n');
+  const cli = [fileURLToPath(new URL('../dist/prepare-legacy-ci-authority.mjs', import.meta.url)), 'prepare'];
+  const env = { ...process.env, GITHUB_WORKSPACE: root, BASE_SHA: baseSha, HEAD_SHA: ordinaryHead,
+    REVIEWED_SHA: ordinaryHead, BASE_BRANCH: args.baseBranch, POLICY_PATH: policyPath,
+    PROMPT_OUTPUT_PATH: args.outputPromptPath, SCHEMA_OUTPUT_PATH: args.outputSchemaPath,
+    VALIDATION_OUTPUT_PATH: args.outputValidationPath, OUTPUT_PATH: args.outputPath,
+    PROVENANCE_PATH: args.provenancePath, GITHUB_OUTPUT: output };
+  execFileSync(process.execPath, cli, { cwd: root, env });
+  assert.equal(readFileSync(output, 'utf8'), `previous=value\nprovenance=${Buffer.from(JSON.stringify(provenance)).toString('base64')}\n`);
+  assertGitHubOutputCliBoundary({ root, args: cli, env, label: 'legacy-prepare' });
+  assert.deepEqual(JSON.parse(readFileSync(args.provenancePath, 'utf8')), provenance);
 
   write(root, policyPath, JSON.stringify({ ...policy, branches: { main: { ...policy.branches.main, authorityFiles: ['docs/other'] } } }));
   git(root, 'add', '.'); git(root, 'commit', '-qm', 'candidate policy self-selection');
