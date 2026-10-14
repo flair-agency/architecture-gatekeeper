@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import { resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 import { parseWorkflow } from './helpers/workflow-structure.mjs';
 
@@ -22,7 +24,7 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
       REVIEW_RESPONSE: 'steps.codex.outputs.final-message',
     })) assert.ok(block.includes(`${name}: \${{ ${expression} }}`));
     assert.match(text, /execution_settings_base64: \$\{\{ steps\.resolve\.outputs\.executionSettingsBase64 \}\}/);
-    assert.equal(observation.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github');
+    assert.equal(observation.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github-response');
     assert.equal(observation.env.GATEKEEPER_RUNTIME_ROOT, '${{ steps.validation_runtime_location.outputs.root }}');
     const checkout = text.split('name: Check out the pinned validation runtime')[1]?.split('      - name:')[0];
     assert.match(checkout, /id: validation_runtime/);
@@ -32,7 +34,7 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
     const observationPosition = text.indexOf('name: Record ordinary execution observation');
     const validationPosition = text.indexOf('name: Identify the completed ordinary decision');
     assert.ok(actionPosition < observationPosition && observationPosition < validationPosition);
-    assert.match(text, /DECISION: \$\{\{ steps\.codex\.outputs\.final-message \}\}/);
+    assert.ok(text.includes("DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}"));
     assert.doesNotMatch(block, /printf|>>|final_message:|continue-on-error/);
   });
 }
@@ -57,8 +59,8 @@ test('candidate-path observer cannot execute unless the pinned runtime checkout 
 
     const temp = mkdtempSync(join(tmpdir(), 'agk-runtime-checkout-'));
     try {
-      const candidateScript = join(temp, '.architecture-gatekeeper-validation-runtime', 'dist', 'ci-execution-observation.mjs');
-      mkdirSync(join(temp, '.architecture-gatekeeper-validation-runtime', 'dist'), { recursive: true });
+      const candidateScript = join(temp, 'dist', 'ci-execution-observation.mjs');
+      mkdirSync(join(temp, 'dist'), { recursive: true });
       const marker = join(temp, 'executed');
       writeFileSync(candidateScript, `import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 'ran');\n`);
       const invokeWhenEnabled = (state) => {
@@ -83,6 +85,169 @@ test('candidate-path observer cannot execute unless the pinned runtime checkout 
       rmSync(temp, { recursive: true, force: true });
     }
   }
+});
+
+test('ordinary execution handoff failures reach report and deny both acceptance routes offline', t => {
+  // These are local subprocesses with injected host observations. They do not run
+  // GitHub Actions or establish the host's real step/job outcome semantics.
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const observer = fileURLToPath(new URL('../dist/ci-execution-observation.mjs', import.meta.url));
+  const reporter = fileURLToPath(new URL('../dist/ci-report.mjs', import.meta.url));
+  const enforced = fileURLToPath(new URL('../dist/ci-enforced-acceptance.mjs', import.meta.url));
+  const procedural = fileURLToPath(new URL('../dist/ci-procedural-acceptance.mjs', import.meta.url));
+  const workflowMappings = [
+    '.github/workflows/architecture-gate.yml',
+    '.github/workflows/architecture-gate-consumer.yml',
+    '.github/workflows/architecture-gate-providers.yml',
+  ];
+  for (const file of workflowMappings) {
+    const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    const observe = text.split('      - name: Record ordinary execution observation\n')[1]?.split('      - name:')[0];
+    assert.ok(observe, file);
+    const parsed = parseWorkflow(text, file);
+    const observation = parsed.jobs.review.steps.find(step => step.name === 'Record ordinary execution observation');
+    assert.equal(observation.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github-response');
+    assert.equal(observation.env.GATEKEEPER_RUNTIME_ROOT, '${{ steps.validation_runtime_location.outputs.root }}');
+    assert.doesNotMatch(observe, /continue-on-error/);
+    const ordinaryOutput = "(needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message";
+    assert.equal(parsed.jobs.review.outputs.final_message, file === '.github/workflows/architecture-gate.yml'
+      ? "${{ steps.pass-display.outputs.pass_conclusion != 'PASS' && (" + ordinaryOutput + ") || '' }}"
+      : '${{ ' + ordinaryOutput + ' }}');
+    const reportJob = text.match(/  report:\n([\s\S]*?)\n  accept:/)?.[1];
+    const acceptJob = text.match(/  accept:\n([\s\S]*)$/)?.[1];
+    assert.ok(reportJob, file);
+    assert.ok(acceptJob, file);
+    const selectedResult = parsed.jobs['gemini-review']
+      ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}"
+      : '${{ needs.review.result }}';
+    assert.equal(parsed.jobs.report.steps.find(step => step.env?.REVIEW_RESULT)?.env.REVIEW_RESULT, selectedResult);
+    assert.match(reportJob, /DECISION: \$\{\{ needs\.review\.outputs\.final_message \}\}/);
+    assert.equal(parsed.jobs.accept.steps.find(step => step.env?.REVIEW_RESULT)?.env.REVIEW_RESULT, selectedResult);
+    assert.match(acceptJob, /CONCLUSION: \$\{\{ needs\.report\.outputs\.conclusion \}\}/);
+  }
+
+  const temp = mkdtempSync(join(tmpdir(), 'agk-failed-handoff-'));
+  t.after(() => rmSync(temp, { recursive: true, force: true }));
+  const baseEnv = { PATH: process.env.PATH };
+  let serial = 0;
+  const nextFiles = label => {
+    const dir = join(temp, `${label}-${serial++}`);
+    mkdirSync(dir);
+    const output = join(dir, 'github-output');
+    writeFileSync(output, '');
+    return { dir, output };
+  };
+  const invokeObserver = (outcome, response) => {
+    const files = nextFiles('observer');
+    const result = spawnSync(process.execPath, [observer, '--github-response'], {
+      cwd: files.dir,
+      env: { ...baseEnv, RUNNER_TEMP: files.dir, GITHUB_OUTPUT: realpathSync(files.output),
+        REVIEW_PROVIDER: 'codex', REVIEW_MODEL: 'gpt-6.1-sol',
+        REVIEW_SETTINGS_BASE64: Buffer.from(JSON.stringify({ reasoningEffort: 'medium' })).toString('base64'),
+        REVIEW_OUTCOME: outcome, REVIEW_RESPONSE: response },
+      encoding: 'utf8', input: '',
+      timeout: 10_000,
+    });
+    assert.equal(result.error, undefined, result.stderr);
+    assert.equal(result.status, outcome === 'success' && response ? 0 : 1, result.stderr);
+    const output = readFileSync(files.output, 'utf8');
+    const match = output.match(/^final_message<<([^\n]+)\n([\s\S]*?)\n\1\n/m);
+    return { result, output, decision: match?.[2] ?? '' };
+  };
+  const invokeReport = (label, { reviewResult, decision }) => {
+    const files = nextFiles(`report-${label}`);
+    const commands = join(files.dir, '_runner_file_commands');
+    mkdirSync(commands);
+    const commandId = randomUUID();
+    const output = join(commands, `set_output_${commandId}`);
+    const summary = join(commands, `step_summary_${commandId}`);
+    writeFileSync(output, '');
+    writeFileSync(summary, '');
+    const result = spawnSync(process.execPath, [reporter], {
+      cwd: files.dir,
+      env: { ...baseEnv, GITHUB_OUTPUT: realpathSync(output),
+        REPORT_PATH: join(files.dir, 'architecture-gate-report.md'), GITHUB_STEP_SUMMARY: summary,
+        GITHUB_API_URL: 'https://example.invalid',
+        MODE: 'enforced', POLICY_RESULT: 'success', REVIEW_RESULT: reviewResult,
+        DECISION: decision, OWNER_ADDITION_SELECTED: 'true', OWNER_ADDITION_RESULT: 'success',
+        OWNER_ADDITION_ELIGIBILITY: 'ELIGIBLE' },
+      encoding: 'utf8',
+      timeout: 10_000,
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 0, result.stderr);
+    const report = readFileSync(join(files.dir, 'architecture-gate-report.md'), 'utf8');
+    const reportOutputs = readFileSync(output, 'utf8');
+    assert.match(reportOutputs, /^conclusion=ERROR$/m);
+    const conclusion = reportOutputs.match(/^conclusion=(.+)$/m)?.[1];
+    assert.equal(conclusion, 'ERROR');
+    assert.doesNotMatch(`${result.stdout}${result.stderr}${report}${reportOutputs}`, /SYNTHETIC_RAW_MARKER/);
+    return { report, conclusion };
+  };
+  const deny = (acceptCli, { reviewResult, conclusion }) => {
+    const result = spawnSync(process.execPath, [acceptCli], {
+      cwd: root,
+      env: { ...baseEnv, REVIEW_RESULT: reviewResult, CONCLUSION: conclusion,
+        OWNER_ADDITION_SELECTED: 'G0', OWNER_ADDITION_RESULT: 'success', OWNER_ADDITION_ELIGIBILITY: 'ELIGIBLE',
+        POLICY_VERSION: '5', EVIDENCE_PRODUCER: 'github-actions', SELECTED_AUTHORITY_CHANGED: 'true' },
+      encoding: 'utf8',
+      timeout: 10_000,
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1, result.stderr);
+    if (reviewResult !== 'success') {
+      assert.match(result.stderr, acceptCli === enforced
+        ? /protected review did not complete successfully/i
+        : /requires its selected policy, producer and completed review/i);
+    } else if (acceptCli === enforced) {
+      assert.match(result.stderr, /requires model-backed PASS or verified selected G0 eligibility/i);
+    } else {
+      assert.match(result.stderr, /selected authority requires successful OWNER_ADDITION/i);
+    }
+    assert.doesNotMatch(`${result.stdout}${result.stderr}`, /SYNTHETIC_RAW_MARKER/);
+  };
+
+  const stalePass = '{"decision":"PASS","summary":"SYNTHETIC_RAW_MARKER"}';
+  for (const outcome of ['failure', 'cancelled', 'skipped']) {
+    const observed = invokeObserver(outcome, stalePass);
+    assert.equal(observed.result.status, 1, outcome);
+    assert.equal(observed.output, 'execution_status=incomplete\n', `${outcome}: ${observed.result.stdout} ${observed.result.stderr}`);
+    assert.equal(observed.decision, '', outcome);
+    assert.doesNotMatch(observed.result.stdout, /SYNTHETIC_RAW_MARKER/);
+    assert.doesNotMatch(observed.result.stderr, /SYNTHETIC_RAW_MARKER/);
+    assert.doesNotMatch(observed.output, /SYNTHETIC_RAW_MARKER/);
+    const { report, conclusion } = invokeReport(outcome, { reviewResult: 'failure', decision: observed.decision });
+    assert.match(report, /review did not complete successfully/i);
+    deny(enforced, { reviewResult: 'failure', conclusion });
+    deny(procedural, { reviewResult: 'failure', conclusion });
+  }
+
+  const empty = invokeObserver('success', '');
+  assert.equal(empty.result.status, 1);
+  assert.equal(empty.output, 'execution_status=incomplete\n');
+  assert.equal(empty.decision, '');
+  const emptyReport = invokeReport('empty-response', { reviewResult: 'failure', decision: empty.decision });
+  deny(enforced, { reviewResult: 'failure', conclusion: emptyReport.conclusion });
+  deny(procedural, { reviewResult: 'failure', conclusion: emptyReport.conclusion });
+
+  const completedButSuppressed = invokeObserver('success', stalePass);
+  assert.equal(completedButSuppressed.result.status, 0);
+  assert.match(completedButSuppressed.output, /execution_status=completed/);
+  // The empty downstream input is manually injected here; actual runner
+  // suppression behavior is exercised by the separate #432 fixture.
+  const suppressedReport = invokeReport('suppressed-output', { reviewResult: 'success', decision: '' });
+  assert.match(suppressedReport.report, /reporting input was absent/i);
+  deny(enforced, { reviewResult: 'success', conclusion: suppressedReport.conclusion });
+  deny(procedural, { reviewResult: 'success', conclusion: suppressedReport.conclusion });
+
+  const malformed = invokeObserver('success', 'malformed synthetic response');
+  assert.equal(malformed.result.status, 0);
+  assert.equal(malformed.decision, 'malformed synthetic response');
+  const malformedReport = invokeReport('malformed', { reviewResult: 'success', decision: malformed.decision });
+  assert.match(malformedReport.report, /invalid structured decision/i);
+  assert.doesNotMatch(`${malformedReport.report}`, /malformed synthetic response/);
+  deny(enforced, { reviewResult: 'success', conclusion: malformedReport.conclusion });
+  deny(procedural, { reviewResult: 'success', conclusion: malformedReport.conclusion });
 });
 
 test('self selects existing effective Codex limits without changing governance selection', () => {

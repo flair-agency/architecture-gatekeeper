@@ -299,11 +299,13 @@ test('run.path accepts plain and ref-qualified REST forms only for the protected
     { kind: 'reusable-branch-at', reusableRef: 'refs/heads/release@next', referencedPathRef: 'release@next', omitReferencedRef: true, path: '.github/workflows/architecture-gate.yml' },
     { kind: 'reusable-tag-ref', reusableRef: 'refs/tags/release-v2', referencedPathRef: 'release-v2', omitReferencedRef: true, path: '.github/workflows/architecture-gate.yml' },
     { kind: 'same-repository-local-call', reusableRef: 'refs/heads/main', resolvedShaPath: true, path: '.github/workflows/architecture-gate.yml' },
+    { kind: 'event-sha-rest-head', restHeadFromEventSha: true, path: '.github/workflows/issue334-ordinary-feature-caller.yml' },
     { kind: 'caller-other-repository', repository: 'other/repository', reject: true },
   ];
   for (const [index, scenario] of cases.entries()) {
     const callerContext = { ...context(), runId: String(712350 + index) };
     if (scenario.callerRef) callerContext.callerWorkflowRef = `${callerContext.repository}/.github/workflows/architecture-gate.yml@${scenario.callerRef}`;
+    if (scenario.restHeadFromEventSha) callerContext.callerWorkflowRef = `${callerContext.repository}/.github/workflows/issue334-ordinary-feature-caller.yml@refs/heads/main`;
     if (scenario.reusableRef) callerContext.workflowRef = `${callerContext.workflowRepository}/.github/workflows/architecture-gate-consumer.yml@${scenario.reusableRef}`;
     if (scenario.repository) callerContext.callerWorkflowRef = `${scenario.repository}/.github/workflows/architecture-gate.yml@refs/heads/main`;
     const value = createOrdinaryGeminiPublication({ context: callerContext, decision: decision('PASS'), authorityProvenance: provenance,
@@ -311,14 +313,15 @@ test('run.path accepts plain and ref-qualified REST forms only for the protected
       decisionDigest: digestDecision(decision('PASS')) });
     const tuple = expected(value);
     const path = scenario.path ?? '.github/workflows/architecture-gate.yml';
-    const run = { id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: tuple.headSha, path,
+    const restHeadSha = scenario.restHeadFromEventSha ? tuple.eventSha : tuple.headSha;
+    const run = { id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: restHeadSha, path,
       repository: { full_name: tuple.repository }, referenced_workflows: [referencedWorkflow(tuple)] };
     if (scenario.referencedPathRef || scenario.resolvedShaPath) {
       const reference = run.referenced_workflows[0];
       reference.path = `${tuple.workflowRepository}/.github/workflows/architecture-gate-consumer.yml@${scenario.resolvedShaPath ? tuple.workflowSha : scenario.referencedPathRef}`;
       if (scenario.omitReferencedRef) delete reference.ref;
     }
-    const job = { id: 9981, run_id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: tuple.headSha,
+    const job = { id: 9981, run_id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: restHeadSha,
       status: 'completed', conclusion: 'success', steps: [{ name: ORDINARY_GEMINI_PUBLICATION_STEP, status: 'completed', conclusion: 'success' }] };
     const log = maskedLog(value);
     const fakeFetch = async url => {
@@ -353,7 +356,7 @@ test('fetch rejects ambiguous job attribution and wrong run-attempt metadata', a
     referenced_workflows: [referencedWorkflow(tuple)] };
   const baseJob = { id: 9981, run_id: Number(tuple.runId), run_attempt: Number(tuple.runAttempt), head_sha: tuple.headSha,
     status: 'completed', conclusion: 'success', steps: [{ name: ORDINARY_GEMINI_PUBLICATION_STEP, status: 'completed', conclusion: 'success' }] };
-  for (const scenario of ['duplicate', 'wrong-attempt', 'wrong-run-head', 'wrong-job-head', 'wrong-repository', 'wrong-ref', 'wrong-ref-tag-collision', 'wrong-ref-field', 'wrong-sha', 'missing-ref-sha-path', 'wrong-null-path']) {
+  for (const scenario of ['duplicate', 'wrong-attempt', 'wrong-run-head', 'wrong-job-head', 'mismatched-run-job-head', 'wrong-repository', 'wrong-ref', 'wrong-ref-tag-collision', 'wrong-ref-field', 'wrong-sha', 'missing-ref-sha-path', 'wrong-null-path']) {
     const goodReference = referencedWorkflow(tuple);
     const badReference = scenario === 'wrong-repository'
       ? { ...goodReference, path: goodReference.path.replace(tuple.workflowRepository, 'other/repository') }
@@ -365,7 +368,8 @@ test('fetch rejects ambiguous job attribution and wrong run-attempt metadata', a
               : { ...goodReference, sha: sha('9') };
     if (scenario === 'missing-ref-sha-path') delete badReference.ref;
     const runForScenario = scenario === 'wrong-attempt' ? { ...baseRun, run_attempt: 1 }
-      : scenario === 'wrong-run-head' ? { ...baseRun, head_sha: tuple.eventSha }
+      : scenario === 'wrong-run-head' ? { ...baseRun, head_sha: sha('9') }
+      : scenario === 'mismatched-run-job-head' ? { ...baseRun, head_sha: tuple.eventSha }
         : (['wrong-repository', 'wrong-ref', 'wrong-ref-tag-collision', 'wrong-ref-field', 'wrong-sha', 'missing-ref-sha-path', 'wrong-null-path'].includes(scenario))
             ? { ...baseRun, referenced_workflows: [badReference] } : baseRun;
     const requests = [];
@@ -375,11 +379,11 @@ test('fetch rejects ambiguous job attribution and wrong run-attempt metadata', a
       if (value.endsWith(`/attempts/${tuple.runAttempt}`)) return Response.json(runForScenario);
       if (value.endsWith(`/attempts/${tuple.runAttempt}/jobs?per_page=100`)) return Response.json({ total_count: scenario === 'duplicate' ? 2 : 1,
         jobs: scenario === 'duplicate' ? [baseJob, { ...baseJob, id: 9982 }]
-        : scenario === 'wrong-job-head' ? [{ ...baseJob, head_sha: tuple.eventSha }] : [baseJob] });
+        : scenario === 'wrong-job-head' ? [{ ...baseJob, head_sha: sha('9') }] : [baseJob] });
       throw new Error('unexpected log retrieval after rejected metadata');
     };
     await assert.rejects(retrieveOrdinaryGeminiPublication({ apiToken: 'fixture', expected: tuple, outputPath, fetchImpl: fakeFetch }));
-    assert.equal(requests.length, ['duplicate', 'wrong-job-head'].includes(scenario) ? 2 : 1,
+    assert.equal(requests.length, ['duplicate', 'wrong-job-head', 'mismatched-run-job-head'].includes(scenario) ? 2 : 1,
       `${scenario} is rejected before fetching logs`);
     assert.equal(statSync(outputPath, { throwIfNoEntry: false }), undefined, `${scenario} writes no projection`);
   }

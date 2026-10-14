@@ -73,6 +73,25 @@ not protected acceptance. Record focused/full runtimes, actual package results
 and unresolved limits. The entrypoint and workflow investigations under
 `docs/investigations/2026-10-08-*.md` provide concrete #415/#416 examples.
 
+## Keeping the Gemini branch synchronized
+
+At Gemini development milestones, compare `feature/gemini-ci` with the current
+`main` and merge adopted main changes through an isolated synchronization PR.
+Resolve behavioral differences in the typed implementations, preserving flat
+entrypoints, main fixes and the feature's bounded Gemini implementation. Use
+normal merge history; do not rewrite branches used by parallel work.
+Synchronization does not renew execution approval or transfer a historical
+review to a new source tuple.
+
+The 2026-10-12 synchronization combines the main typed report helpers and Codex
+PASS retrieval with the feature's Gemini projection and filesystem guards.
+The report entrypoint retains the feature's optional report-publication fetch
+callback and exported `main`; protected Codex display retrieval continues to use
+the original full Fetch transport. The older zero-argument/private report CLI
+and unchanged-AST statements below describe the main migration before this
+behavioral integration. The synchronization tests bind the combined source and
+emitted AST and retain both providers' publication and negative cases.
+
 ## TypeScript source and runtime distribution
 
 The integrated #419 slices type OWNER_ADDITION validation, execution-result
