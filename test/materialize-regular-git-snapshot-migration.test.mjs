@@ -60,17 +60,20 @@ test('materializer facade keeps unknown observations and a non-validating typed 
   assert.match(diagnostics[3].message, /expected 0 arguments/i);
 });
 
-test('source and emitted operations preserve the original operation order and exact flat dispatch guard', () => {
+test('source and emitted operations preserve the original materializer and exact bounded CLI guard', () => {
   const oldMaterializer = [
     '50ce37287fb67c5ca2a3c013a254f69b49f1c9ba038be841abb14ba783389dc5',
     '0df5ed342f33de357bcec73746b8adb0bc82e20f306ea8fad3208b4c370d171f',
     '733619fec6904ceb99fe5676d16f55d4384eb26b9a9133e456727b9da49c2bd6',
     '910172fb792a4907a6f649eca71ace99a2dde8c5aa20b4a5c6fad8c166d1bb4c',
   ];
-  const oldCli = [
+  const boundedCli = [
     '6e68db107705473ee21a42e7964c12bfaeeb71ed4dfdcf33e85bd1b6c82ad13c',
     'bcda9dc440848a9519bc16dd3eb3b0c35b2d6e6be2b67667e41ffaa59a48169b',
-    '0955756f476adbeff0dc682310623a3da6a66fa31fcf6f7f6ebc4a8f77798aa9',
+    '4d1cf4019ca61bd7176da7dc44d2c8d1143f785e94cfb44c53406701550189ba',
+    'd403704fa4a67e5efbc2054da10be3148e3168fad464b726dd0db799f6b29d7e',
+    'badb0353e681887e5eeb87577462e251235aed91b73cf187afe0228080568c75',
+    '3a8a27ace29af6c04e9a5e16debcdb6761697d91197c51321cfbc6cbfccb913f',
     'a41ee065f5d5203bdec9653f7433a884a7172eecb1d54a3ed66a9fb00d266a46',
   ];
   const expectedGuardTest = 'b2c2410d297b6ec64395eabc4c5552fe9489be5a27ff22720501c89f1473bc09';
@@ -86,7 +89,7 @@ test('source and emitted operations preserve the original operation order and ex
   const emittedOperations = runtimeOperationHashes(emittedLeaf);
   assert.deepEqual(runtimeOperationHashes(transpiledLeaf), emittedOperations, 'the built runtime corresponds to authored typed source');
   assert.deepEqual(emittedOperations.materializer, oldMaterializer, 'guard, Git read, native write, and return remain in their original order');
-  assert.deepEqual(emittedOperations.cli, oldCli, 'argument checks, trusted workspace accessor, and output operation remain in their original order');
+  assert.deepEqual(emittedOperations.cli, boundedCli, 'exact CLI keeps argument checks and output append, reads workspace once, preserves missing-root failure, and confines only the CLI destination');
 });
 
 test('real source and emitted runtime identities bind the new leaf and reject stale requests and receipts', async t => {
