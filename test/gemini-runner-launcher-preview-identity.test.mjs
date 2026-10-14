@@ -9,19 +9,20 @@ import { ordinary, decision, fixture, spec, commitOn } from './fixtures/preview-
 
 const digest = value => createHash('sha256').update(value).digest('hex');
 
-test('preview diagnostic identity binds both new source leaves and rejects stale requests and receipts', async t => {
+for (const layout of ['src', 'dist']) test(`${layout} preview identity binds all provider leaves and rejects stale requests and receipts`, async t => {
   const sourceRoot = mkdtempSync(join(tmpdir(), 'gemini-runner-launcher-source-runtime-'));
   t.after(() => rmSync(sourceRoot, { recursive: true, force: true }));
-  cpSync(new URL('../src', import.meta.url), join(sourceRoot, 'src'), { recursive: true });
+  cpSync(new URL(`../${layout}`, import.meta.url), join(sourceRoot, layout), { recursive: true });
   copyFileSync(new URL('../package.json', import.meta.url), join(sourceRoot, 'package.json'));
-  const runtime = await import(pathToFileURL(join(sourceRoot, 'src/preview-lifecycle.mjs')).href);
+  const runtime = await import(pathToFileURL(join(sourceRoot, layout, 'preview-lifecycle.mjs')).href);
   const f = fixture(t);
   const head = commitOn(f, 'gemini-runner-launcher-runtime-identity', { 'app.txt': 'Changed application\n' });
   const requestSpec = spec(f, 'review', head);
-  const leaves = ['gemini-cli/ci-runner-entrypoint.mts', 'gemini-cli/launcher-entrypoint.mts'];
+  const extension = layout === 'src' ? 'mts' : 'mjs';
+  const leaves = ['gemini-cli/ci-runner-entrypoint', 'gemini-cli/launcher-entrypoint', 'gemini-cli/gemini-security-proxy', 'reviewer-transports/gemini-transport'].map(leaf => `${leaf}.${extension}`);
 
   for (const leaf of leaves) {
-    const path = join(sourceRoot, 'src', leaf);
+    const path = join(sourceRoot, layout, leaf);
     const original = readFileSync(path);
     const request = await runtime.preparePreviewLifecycle(requestSpec, f.root);
     assert.equal(request.runtime.files[leaf], digest(original), `${leaf} is in the actual preview runtime identity`);
