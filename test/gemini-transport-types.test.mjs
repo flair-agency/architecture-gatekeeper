@@ -24,7 +24,7 @@ function diagnosticsFor(name) {
   const diagnostics = ts.getPreEmitDiagnostics(program);
   assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file), [],
     'the transport and all imported source modules must remain strict-error-free');
-  return diagnostics.filter(item => item.file?.fileName === file);
+  return diagnostics.filter(item => item.file?.fileName === file).map(item => ({ code: item.code, message: ts.flattenDiagnosticMessageText(item.messageText, '\n'), line: item.file.getLineAndCharacterOfPosition(item.start).line + 1 }));
 }
 
 function astDigest(source) {

@@ -9,3 +9,7 @@ const session: Promise<number> = runIsolatedGeminiSession(['--model', 'gemini-2.
 const proxyOverride = { upstreamHost: '127.0.0.1', reserveDispatch: () => true, extensionOption: 'preserved' };
 const overriddenSession: Promise<number> = runIsolatedGeminiSession(['--model', 'gemini-2.5-flash'], { proxyConfigOverride: proxyOverride });
 void [options, output, review, env, session, overriddenSession];
+
+// Mandatory decision observations retain unknown externally observed values.
+declare const observedDecision: unknown;
+void import("../../../src/gemini-cli/ci-runner-entrypoint.mts").then(({ formatGitHubReviewOutputs }) => formatGitHubReviewOutputs({ decision: observedDecision }, "/var/tmp/output"));

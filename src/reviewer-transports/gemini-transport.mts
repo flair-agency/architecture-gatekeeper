@@ -23,7 +23,9 @@ type GeminiRequestFor<Request extends ReviewRequest> = Request extends ReviewReq
   : never;
 export type GeminiReviewRequest = GeminiRequestFor<ReviewRequest>;
 
-type ThinkingReviewerOptions = Pick<GeminiTransportOptions, 'reasoningEffort' | 'thinkingBudget'>;
+type ThinkingReviewerOptions =
+  | { reasoningEffort?: string; thinkingBudget?: never }
+  | { reasoningEffort?: never; thinkingBudget?: unknown };
 type ThinkingReviewerOperationView = {
   provider?: unknown;
   reasoningEffort?: unknown;
@@ -45,7 +47,7 @@ type GeminiExecution = {
   backendReportedModel?: string;
 };
 
-export interface GeminiTransportOptions {
+interface GeminiTransportCommonOptions {
   apiKey?: unknown;
   accessToken?: unknown;
   gcloudTimeoutMs?: number;
@@ -59,9 +61,24 @@ export interface GeminiTransportOptions {
   fetch?: GeminiFetch;
   proxyUrl?: string;
   proxyMode?: 'studio' | 'vertex';
-  reasoningEffort?: string;
-  thinkingBudget?: unknown;
 }
+export type GeminiTransportOptions = GeminiTransportCommonOptions & (
+  | { reasoningEffort?: string; thinkingBudget?: never }
+  | { reasoningEffort?: never; thinkingBudget?: unknown }
+);
+type GeminiRequestWith<Settings> = ReviewRequest extends infer Request
+  ? Request extends ReviewRequest
+    ? Omit<Request, 'reviewer'> & { reviewer: Settings }
+    : never
+  : never;
+type ExplicitGeminiRequest = GeminiRequestWith<Extract<GeminiReviewerRequestSettings, { provider: 'gemini' }>>;
+type LegacyEffortRequest = GeminiRequestWith<Extract<GeminiReviewerRequestSettings, { reasoningEffort: CodexReasoningEffort }>>;
+type LegacyBudgetRequest = GeminiRequestWith<Extract<GeminiReviewerRequestSettings, { reasoningEffort?: never; provider?: undefined }>>;
+type BudgetOptions = GeminiTransportCommonOptions & { reasoningEffort?: never; thinkingBudget?: unknown };
+type EffortOptions = GeminiTransportCommonOptions & { reasoningEffort?: string; thinkingBudget?: never };
+// Internal call views preserve the existing checked orchestration and property rereads.
+type PrepareGeminiOperation = (request: GeminiReviewRequest, options: GeminiTransportOptions) => Record<string, unknown>;
+type ExecuteGeminiOperation = (request: GeminiReviewRequest, options: GeminiTransportOptions) => Promise<{ decision: unknown; execution: GeminiExecution }>;
 
 // These observations describe original provider property reads only. Provider
 // JSON remains unknown until each existing operation inspects it.
@@ -209,6 +226,10 @@ export function resolveReviewerThinkingBudget(
 
   throw new Error('Architecture gate reviewer failed: missing or invalid reviewer reasoningEffort or thinkingBudget.');
 }
+
+export function prepareGeminiRequestBody(request: ExplicitGeminiRequest, options?: BudgetOptions): Record<string, unknown>;
+export function prepareGeminiRequestBody(request: LegacyEffortRequest, options?: EffortOptions): Record<string, unknown>;
+export function prepareGeminiRequestBody(request: LegacyBudgetRequest, options: BudgetOptions & { thinkingBudget: unknown }): Record<string, unknown>;
 
 /**
  * Prepares the request payload for Gemini generateContent API.
@@ -359,6 +380,10 @@ function resolveProviderBaseUrl(credentials: GeminiCredential, options: GeminiTr
 
   return 'https://generativelanguage.googleapis.com/v1beta';
 }
+
+export function executeGeminiReviewer(request: ExplicitGeminiRequest, options?: BudgetOptions): Promise<{ decision: unknown; execution: GeminiExecution }>;
+export function executeGeminiReviewer(request: LegacyEffortRequest, options?: EffortOptions): Promise<{ decision: unknown; execution: GeminiExecution }>;
+export function executeGeminiReviewer(request: LegacyBudgetRequest, options: BudgetOptions & { thinkingBudget: unknown }): Promise<{ decision: unknown; execution: GeminiExecution }>;
 
 /**
  * Executes an architecture review using the Gemini API and returns both
@@ -539,7 +564,7 @@ export async function executeGeminiReviewer(
       throw new Error('Architecture gate reviewer failed: dispatch must remain in the selected official provider scope.');
     }
 
-    const requestBody = prepareGeminiRequestBody(request, options);
+    const requestBody = (prepareGeminiRequestBody as PrepareGeminiOperation)(request, options);
     const fetchFn: GeminiFetch = options.fetch || globalThis.fetch;
 
     const headers: Record<string, string> = {
@@ -704,6 +729,10 @@ export async function executeGeminiReviewer(
   }
 }
 
+export function runGeminiReviewer(request: ExplicitGeminiRequest, options?: BudgetOptions): Promise<unknown>;
+export function runGeminiReviewer(request: LegacyEffortRequest, options?: EffortOptions): Promise<unknown>;
+export function runGeminiReviewer(request: LegacyBudgetRequest, options: BudgetOptions & { thinkingBudget: unknown }): Promise<unknown>;
+
 /**
  * Raw-decision transport API for Gemini reviewer.
  * Keeps backward compatibility: returns raw decision JSON directly.
@@ -713,6 +742,6 @@ export async function executeGeminiReviewer(
  * @returns {Promise<unknown>} Parsed provider JSON remains an unchecked observation.
  */
 export async function runGeminiReviewer(request: GeminiReviewRequest, options: GeminiTransportOptions = {}): Promise<unknown> {
-  const result = await executeGeminiReviewer(request, options);
+  const result = await (executeGeminiReviewer as ExecuteGeminiOperation)(request, options);
   return result.decision;
 }

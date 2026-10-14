@@ -9,3 +9,6 @@ runIsolatedGeminiSession([1]);
 // @ts-expect-error The proxy reserves dispatch synchronously before sending.
 runIsolatedGeminiSession([], { proxyConfigOverride: { reserveDispatch: async () => true } });
 void completion;
+
+// @ts-expect-error Output formatting requires the mandatory decision property.
+import("../../../src/gemini-cli/ci-runner-entrypoint.mts").then(({ formatGitHubReviewOutputs }) => formatGitHubReviewOutputs({}, "/var/tmp/output"));
