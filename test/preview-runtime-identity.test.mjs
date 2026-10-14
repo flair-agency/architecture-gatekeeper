@@ -71,6 +71,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'local-review/local-post-tool-screen.mjs',
     'local-review/manual-review.mjs',
     'owner-addition/owner-addition-finalize.mjs',
+    'owner-addition/finalize-owner-addition.mjs',
     'owner-addition/multi-authority-eligibility.mjs',
     'owner-addition/single-authority-member.mjs',
     'github/owner-addition-evidence-zip.mjs',
@@ -241,8 +242,27 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-finalize.mjs'), 'utf8')
       .replace(/from (["'])\.\.\/authority-validation\//g, "from $1./"));
   const finalizerCliPath = join(flatRoot, 'dist/owner-addition-finalize.mjs');
-  writeFileSync(finalizerCliPath, readFileSync(finalizerCliPath, 'utf8')
-    .replace(/from (["'])\.\/owner-addition\/owner-addition-finalize\.mjs\1/, "from './owner-addition-finalize-helper.mjs'"));
+  // Restore the complete former flat API/helper body and inline CLI body.
+  // The last compiler-emitted runner is bound separately by the operation pin;
+  // this fixture needs no compiler or parser in the installed runtime package.
+  const finalizerImplementation = readFileSync(join(flatRoot, 'dist/owner-addition/finalize-owner-addition.mjs'), 'utf8');
+  const finalizerCliMarker = 'export async function runOwnerAdditionFinalizeCli() {';
+  const finalizerCliStart = finalizerImplementation.lastIndexOf(finalizerCliMarker);
+  assert.ok(finalizerCliStart > 0);
+  const finalizerCliTail = finalizerImplementation.slice(finalizerCliStart + finalizerCliMarker.length);
+  assert.match(finalizerCliTail, /}\s*$/);
+  const formerCliBody = finalizerCliTail.slice(0, finalizerCliTail.lastIndexOf('}'));
+  const formerFinalizerBody = finalizerImplementation.slice(0, finalizerCliStart)
+    .replace(/^#![^\n]*\n/, '')
+    .replace(/from (["'])\.\.\//g, (match, quote) => `from ${quote}./`)
+    .replace(/from (["'])\.\/owner-addition-finalize\.mjs\1/g, "from './owner-addition-finalize-helper.mjs'");
+  const finalizerFacade = readFileSync(finalizerCliPath, 'utf8');
+  const finalizerGuardStart = finalizerFacade.indexOf('if (process.argv[1]');
+  assert.ok(finalizerGuardStart >= 0);
+  const finalizerGuardOpening = finalizerFacade.slice(finalizerGuardStart, finalizerFacade.indexOf('{', finalizerGuardStart) + 1);
+  writeFileSync(finalizerCliPath,
+    "import { realpathSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\n" +
+    formerFinalizerBody + '\n' + finalizerGuardOpening + formerCliBody + '}\n');
   writeFileSync(join(flatRoot, 'dist/multi-authority-eligibility-helper.mjs'),
     readFileSync(join(flatRoot, 'dist/owner-addition/multi-authority-eligibility.mjs'), 'utf8')
       .replace(/from (["'])\.\.\//g, "from $1./"));
@@ -357,6 +377,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   { decision: 'PASS', authorityFiles: ['docs/architecture.md'] });
   const flatFinalizer = await import(pathToFileURL(finalizerCliPath).href);
   assert.equal(typeof flatFinalizer.buildOwnerAdditionFinalRecord, 'function');
+  assert.equal(typeof flatFinalizer.finalizeOwnerAddition, 'function');
+  assert.equal(typeof flatFinalizer.parsePinnedGatekeeperWorkflow, 'function');
+  assert.equal('runOwnerAdditionFinalizeCli' in flatFinalizer, false, 'restore the original inline CLI rather than a new wrapper');
   const flatMultiAuthority = await import(pathToFileURL(multiAuthorityCliPath).href);
   assert.equal(typeof flatMultiAuthority.validateMultiAuthorityEligibility, 'function');
   assert.equal(typeof flatMultiAuthority.validateMultiAuthorityEligibilitySchema, 'function');

@@ -283,7 +283,7 @@ before storage, bounded readbacks and the original private file modes. The
 runner accessor stays at its approved model path and returns only the string
 established by its existing runtime check; this does not authenticate provenance.
 
-After the complete native candidate, two checked JavaScript bridges remain
+After the adopted complete native migration, two checked JavaScript bridges remain
 at their existing source paths: snapshot materializer and CI report.
 The report CLI checks its existing private zero-argument `Promise<void>`
 completion contract. Erased operation views retain the original error-message
@@ -307,13 +307,14 @@ persistence transfer or new transport ceiling from Issue #566. The materializer 
 two narrow `@ts-expect-error` boundaries where it composes the existing Git
 reader and filesystem writer. They preserve those operations without claiming
 that `outputPath` is a string: the original truthy guard permits native path-like
-and file-descriptor inputs. Five originals have partial helper migrations.
+and file-descriptor inputs. In the adopted 85/96 baseline, five originals have
+partial helper migrations.
 The CI report keeps its flat CLI and filesystem sinks; the owner-addition
 finalizer keeps its finalizer and CLI operations; and multi-authority
 orchestration keeps its adapter while delegating selected eligibility helpers.
 Owner-addition CI delegates only the post-parse single-member selection while
 retaining its Git reads, file writes and command dispatch. The GitHub
-OWNER_ADDITION provenance candidate moves its complete verifier to
+OWNER_ADDITION provenance migration, adopted in #578, moves its complete verifier to
 `github/github-owner-addition-provenance.mts`, including fetch, token, artifact
 selection, digest binding and evidence validation. Its flat entrypoint is a pure
 re-export, and the bounded ZIP parser remains in its existing typed leaf.
@@ -345,8 +346,8 @@ and 14 originals not fully migrated. The runner-accessor candidate adds one
 complete typed implementation, reaching 83/96 fully migrated and 13 originals
 not fully migrated. The complete GitHub provenance migration was adopted in
 #578, bringing the inventory to 84/96 and 12 unfinished originals.
-The complete native candidate would reach 85/96 and 11 unfinished originals
-after protected adoption. Of those 11, two have checked JavaScript contracts
+The complete native migration was adopted in #563, reaching 85/96 and 11
+unfinished originals. Of those 11, two have checked JavaScript contracts
 (snapshot materializer and CI report), and five have partial helper
 migrations (CI report, owner-addition finalizer, multi-authority orchestration,
 owner-addition CI and the legacy authority
@@ -354,6 +355,17 @@ decision check). CI report belongs to both categories; together they cover six
 distinct originals. The other five remain JavaScript modules
 outside these migrations. These source-layout counts do not change the
 selected CodeQL model or establish acceptance evidence.
+The complete finalizer candidate moves its remaining API, parser and CLI body
+to `src/owner-addition/finalize-owner-addition.mts`, retaining the existing
+record builder and nine flat exports. It preserves the full risk-corrected
+operations, original flat guard condition, inline CLI behavior and external
+property rereads; callback results and parsed observations remain unknown.
+The preceding #579 resource correction and this migration require their own
+normal protected adoption. The candidate would then reach 86/96 with 10
+unfinished originals: two checked JavaScript contracts and four partial helper
+migrations cover five distinct originals, with the other five owned separately.
+No migration count advances from a private candidate or local review. The
+native stream/persistence proposal in #566 remains unapproved.
 Migration is partial and does not change consumer architecture or assurance policy.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
