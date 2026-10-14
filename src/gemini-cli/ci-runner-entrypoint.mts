@@ -7,6 +7,7 @@
 import { constants, existsSync, lstatSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import type { ReviewRequest } from '../review-contract/review-contract.mts';
 import { runGeminiReviewer } from '../gemini-transport.mjs';
 import { validateJsonSchema } from '../json-schema.mjs';
 import { preflightReviewRequest, repositoryRoot, validateReviewResponse } from '../review-contract.mjs';
@@ -140,9 +141,9 @@ export function formatGitHubReviewOutputs(decision: ReviewDecisionObservation, o
  * Main execution routine for the Gemini CI review runner.
  * @param {string[]} argv
  * @param {string} cwd
- * @returns {Promise<object>} validated review decision
+ * @returns {Promise<unknown>} observed review decision
  */
-export async function runGeminiCiReview(argv: string[] = process.argv.slice(2), cwd: string = process.cwd()): Promise<object> {
+export async function runGeminiCiReview(argv: string[] = process.argv.slice(2), cwd: string = process.cwd()): Promise<unknown> {
   const options = parseArgs(argv);
   const request = resolveReviewRequest(options, cwd) as ReviewRequestObservation;
   const checkoutRoots: Set<string> = new Set();
@@ -204,13 +205,14 @@ export async function runGeminiCiReview(argv: string[] = process.argv.slice(2), 
   process.stderr.write(`[gemini-ci-runner] Invoking Gemini reviewer (${(request.reviewer as { model: unknown }).model})...\n`);
 
   // Transport invocation
-  const rawDecision = await runGeminiReviewer(request, transportOptions);
+  // This erased call view composes the existing preflight/compatibility routes; it adds no request validation.
+  const rawDecision = await runGeminiReviewer(request as unknown as ReviewRequest, transportOptions);
 
   // Schema-level deterministic validation
   validateJsonSchema(rawDecision, request.schema);
 
   // Validate complete review response if request is revision-bound or has authoritySet
-  let validatedDecision: object = rawDecision;
+  let validatedDecision: unknown = rawDecision;
   if (isRevisionBound) {
     validatedDecision = validateReviewResponse(request, rawDecision);
   }

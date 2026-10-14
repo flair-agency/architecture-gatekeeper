@@ -78,7 +78,7 @@ test('runner and launcher reject incompatible caller inputs and return claims at
   const negative = summary.filter(item => item.file === negativeFile);
   assert.deepEqual(negative.map(({ code, line }) => [code, line]), [[2322, 4], [2345, 5], [2322, 6], [2345, 7], [2322, 8]]);
   assert.match(negative[0].message, /number.*not assignable.*string/i);
-  assert.match(negative[2].message, /Promise<object>.*not assignable.*Promise<string>/i);
+  assert.match(negative[2].message, /Promise<unknown>.*not assignable.*Promise<string>/i);
   assert.deepEqual(summary.filter(item => item.file !== positiveFile && item.file !== negativeFile), [],
     'the typed entrypoints and all transitive imports remain error-free');
 });
