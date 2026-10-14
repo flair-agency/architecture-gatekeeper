@@ -521,16 +521,98 @@ settings remain separate. The candidate self policy selects its existing effecti
 7-minute job, 5-minute step and standard Codex profile for staged verification.
 Protected adoption and a subsequent opted-in hosted run remain required;
 configuration alone proves neither backend identity nor process termination.
-The provider-capable reusable workflow implements an ordinary Gemini review
-path with a pinned profile, protected selector inputs, parent-held WIF
-credentials, and a separate report job. The reporter retrieves only the unique
-completed projection step from the same run attempt, verifies its protected
-tuple, and renders the full report and inline findings through the existing
-report path. Masked display data cannot supply the semantic conclusion or
-decision digest, and report failure blocks acceptance. The existing
-Codex-only consumer workflow and this repository's protected self policy remain
-unchanged; consumer adoption remains inactive pending workflow adoption and
+The provider-capable reusable workflow (`.github/workflows/architecture-gate-providers.yml`)
+implements an ordinary Gemini review path with a pinned profile, protected
+selector inputs, parent-held WIF credentials, and a separate report job. The
+reporter retrieves only the unique completed projection step from the same run
+attempt, verifies its protected tuple (`run_id`, `run_attempt`, and
+`job.head_sha === run.head_sha`), and renders the full report and inline findings
+through the existing report path. Masked display data cannot supply the semantic
+conclusion or decision digest, and report failure blocks acceptance. The
+existing Codex-only consumer workflow (`.github/workflows/architecture-gate-consumer.yml`)
+and this repository's protected self policy remain unchanged; consumer adoption
+remains inactive pending broader owner authorization, workflow adoption, and
 representative hosted verification.
+
+#### Implemented Policy `v6` provider selection, caller boundary, and recovery
+
+This implementation does not establish general consumer support or broader
+activation beyond the single bounded PR `#517` verification session authorized in
+[`docs/architecture/review-execution.md`](architecture/review-execution.md). In
+the implemented `.github/workflows/architecture-gate-providers.yml` contract, an
+ordinary `enforced` branch explicitly selects `codex` or `gemini` in
+`.codex/gatekeeper/ci-policy.json` (`version: 6`), while `local-only` defaults
+and branch entries retain the bare `{ "mode": "local-only" }` waiver form
+(provider, model, and reasoning fields are rejected on `local-only` entries):
+
+```json
+{
+  "version": 6,
+  "default": { "mode": "local-only" },
+  "branches": {
+    "main": {
+      "mode": "enforced",
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "thinkingLevel": "MEDIUM",
+      "authorityManifestPath": ".codex/gatekeeper/authorities.json",
+      "authorityLimits": {
+        "maxManifestBytes": 16384,
+        "maxMembers": 16,
+        "maxFileBytes": 81920,
+        "maxTotalBytes": 262144,
+        "maxPromptBytes": 524288
+      }
+    }
+  }
+}
+```
+
+- **Authentication and caller prerequisites**: When `provider: "gemini"` is
+  selected on `.github/workflows/architecture-gate-providers.yml`, the caller job
+  must pass `with: protected-review-instructions: true` (required by `policy` for
+  Authority Set policies), an explicit caller `permissions` map granting all four
+  required scopes — `contents: read` (for runtime and candidate checkouts),
+  `pull-requests: write` (for `report` PR comment publication), `id-token: write`
+  (for `gemini-review` Google Cloud WIF exchange), and `actions: read` (for
+  `report` same-run job-log retrieval), since GitHub sets omitted caller scopes
+  to `none` and a called reusable workflow cannot elevate caller permissions —
+  the `GCP_WIF_PROVIDER` and `GCP_WIF_SERVICE_ACCOUNT` secrets, and
+  `CI_SOURCE_READ_TOKEN` when the selected Authority Set contains a private
+  external repository member (since `gemini-review` passes
+  `secrets.CI_SOURCE_READ_TOKEN || github.token` as `GATEKEEPER_SOURCE_READ_TOKEN`
+  for GitHub API external authority reads, and the caller's repository-scoped
+  `github.token` cannot read another private repository). No Codex CLI
+  or `OPENAI_API_KEY` is required on the Gemini route.
+- **Supported profile and hard bounds**: Policy `v6` supports only the ordinary
+  `enforced` (with explicit `provider: "codex" | "gemini"`) and bare `local-only`
+  modes. It rejects `ownerAddition`, `ownerAmendment`, and `adoptionEvidence`;
+  governance routes (`OWNER_ADDITION` and `OWNER_AMENDMENT`) remain Codex-only. The Gemini CI route enforces the
+  pinned `@google/gemini-cli@0.62.0` runtime, Vertex AI `gemini-3.8-flash`
+  (`global`, `thinkingLevel: MEDIUM`, no `thinkingBudget`), a 180-second session
+  deadline, a 10-request per-session upstream cap, and revision-bound context
+  ceilings (at most 32 combined packet files across changed candidate files and
+  protected reference files, 128 KiB per file, 512 KiB total packet, and 192 KiB
+  complete stdin prompt).
+- **Diagnostics and fail-closed reporting**: WIF failures, runtime bootstrap
+  failures, context ceiling violations, timeouts, cancellations, invalid JSON, or
+  missing/mismatched same-run projections fail `gemini-review` or `report`
+  without emitting successful report outputs or falling back to raw `DECISION`
+  text, causing `Require successful reporting` in `accept` to exit non-zero and
+  prevent `ci-enforced-acceptance.mjs` from running without leaking raw model
+  text or credentials.
+- **Explicit protected recovery and rollback**: There is no automatic provider
+  fallback, standby retry, or parallel result adoption. Switching a branch on the
+  implemented `.github/workflows/architecture-gate-providers.yml` contract from
+  `gemini` back to `codex` (or vice versa) requires a protected change to
+  `.codex/gatekeeper/ci-policy.json` updating `provider`, `model`, and the
+  provider's reasoning field (`reasoningEffort` for `codex`; `thinkingLevel` for
+  `gemini`), together with the corresponding caller secret (`OPENAI_API_KEY` for
+  `codex`; `GCP_WIF_PROVIDER` and `GCP_WIF_SERVICE_ACCOUNT` for `gemini`; plus
+  `CI_SOURCE_READ_TOKEN` when the Authority Set reads a private external
+  repository), and optionally reverting the reusable workflow reference to
+  `.github/workflows/architecture-gate-consumer.yml` once the protected policy
+  selects Codex-compatible settings.
 
 #### Report filesystem boundary
 

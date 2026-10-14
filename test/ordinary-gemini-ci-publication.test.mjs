@@ -123,8 +123,8 @@ function maskedLog(projection) {
   return lines.join('').replaceAll('candidate includes fixture-secret', 'candidate includes ***');
 }
 
-test('masked PASS and BLOCK publication retains the full display report and binds the original semantic digest', () => {
-  for (const outcome of ['PASS', 'BLOCK']) {
+test('masked PASS, BLOCK, and OWNER_DECISION publication retains the full display report and binds the original semantic digest', () => {
+  for (const outcome of ['PASS', 'BLOCK', 'OWNER_DECISION']) {
     const projection = makeProjection(outcome);
     const log = maskedLog(projection);
     assert.match(log, /::stop-commands::agk_ordinary_[a-f0-9]{64}/);
@@ -514,10 +514,10 @@ test('full projected findings publish only against the current protected PR head
   assert.equal(stale.status, 'fallback');
 });
 
-test('ci-report publishes full projected PASS/BLOCK bodies and emits outputs only after successful publication', async t => {
+test('ci-report publishes full projected PASS/BLOCK/OWNER_DECISION bodies and emits outputs only after successful publication', async t => {
   const parent = realpathSync(mkdtempSync(join(tmpdir(), 'ordinary-gemini-ci-report-main-')));
   t.after(() => rmSync(parent, { recursive: true, force: true }));
-  for (const outcome of ['PASS', 'BLOCK', 'large-projection', 'host-sink-binding', 'publish-failure', 'parent-substitution']) {
+  for (const outcome of ['PASS', 'BLOCK', 'OWNER_DECISION', 'large-projection', 'host-sink-binding', 'publish-failure', 'parent-substitution']) {
     const temp = join(parent, outcome);
     mkdirSync(temp, { mode: 0o700 });
     const commands = runnerCommandFiles(temp);
@@ -604,7 +604,8 @@ test('ci-report publishes full projected PASS/BLOCK bodies and emits outputs onl
     await withProcessCwd(temp, () => withProcessEnv(env, () => runCiReport(fetchImpl)));
     const body = readFileSync(summaryPath, 'utf8');
     const output = readFileSync(outputPath, 'utf8');
-    assert.match(readFileSync(hostReportPath, 'utf8'), new RegExp(`Architecture Gate — ${protectedOutcome}`));
+    const expectedHeading = protectedOutcome === 'OWNER_DECISION' ? 'OWNER DECISION REQUIRED' : protectedOutcome;
+    assert.match(readFileSync(hostReportPath, 'utf8'), new RegExp(`Architecture Gate — ${expectedHeading}`));
     if (outcome === 'host-sink-binding') {
       for (const path of [candidateReportPath, candidateSummaryPath, candidateProjectionPath, candidateOutputPath]) {
         assert.equal(readFileSync(path, 'utf8'), 'candidate must not choose this file');
@@ -612,7 +613,7 @@ test('ci-report publishes full projected PASS/BLOCK bodies and emits outputs onl
       assert.match(body, /Architecture Gate — PASS/);
       assert.match(output, /conclusion=PASS/);
     }
-    assert.match(body, new RegExp(`Architecture Gate — ${protectedOutcome}`));
+    assert.match(body, new RegExp(`Architecture Gate — ${expectedHeading}`));
     assert.match(body, /candidate includes \*\*\*/);
     assert.match(body, /Authority mismatch/);
     assert.match(body, /Per-gate evaluation details/);

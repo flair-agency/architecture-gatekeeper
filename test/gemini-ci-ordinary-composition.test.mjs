@@ -79,6 +79,13 @@ test('synthetic Gemini completion flows through the ordinary report and acceptan
   assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'BLOCK' }), /requires model-backed PASS/i);
   assert.throws(() => complete(JSON.stringify({ decision: 'BLOCK', authorityIds })), /BLOCK requires its reason/);
 
+  const ownerDecision = complete(JSON.stringify({ decision: 'OWNER_DECISION', summary: 'Escalated to owner.', authorityIds }));
+  const ownerDecisionClassified = classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success',
+    rawDecision: JSON.stringify(ownerDecision.decision) });
+  assert.equal(ownerDecisionClassified.conclusion, 'OWNER_DECISION');
+  assert.match(renderReport(ownerDecisionClassified, { authorityProvenance }), /Architecture Gate — OWNER DECISION REQUIRED/);
+  assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'OWNER_DECISION' }), /requires model-backed PASS/i);
+
   const stalePass = complete(JSON.stringify({ decision: 'PASS', authorityIds }), 'failure');
   assert.equal(stalePass.execution.status, 'incomplete');
   assert.equal(Object.hasOwn(stalePass, 'decision'), false);
