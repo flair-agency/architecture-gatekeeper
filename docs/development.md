@@ -304,15 +304,16 @@ established by its existing runtime check; this does not authenticate provenance
 
 After the adopted complete native migration, two checked JavaScript bridges remain
 at their existing source paths: snapshot materializer and CI report.
-The report CLI checks its existing private zero-argument `Promise<void>`
-completion contract. Erased operation views retain the original error-message
+The report CLI's public `main`, adopted in #582, accepts an optional
+`ReportFetch` and retains its `Promise<void>` completion contract. Erased operation views retain the original error-message
 reads, inline-item operations and optional findings-length read; external
 observations remain unchecked. These views do not validate an error, guarantee
 an iterable result or authorize a decision. The original optional chain,
-exports, direct-run guard and filesystem sink statements remain intact.
-Actual-config compile-only probes exercise the private function without adding
-a public export or argv parameter. A pinned complete runtime AST comparison
-binds source and emitted operations to the pre-change main tree. These checks
+exports, direct-run guard and adopted runner/report filesystem checks remain intact.
+Actual-config compile-only probes exercise the public function without adding
+an argv parameter. Complete helper and CLI operation pins, relocated import checks,
+the exact flat guard and fourteen export identities bind the source and emitted
+candidate to adopted #583/#581 composition. These checks
 do not prove CodeQL flow preservation; official model/flow verification remains
 required for the candidate. The native CLI preserves its existing optional
 string-array arguments, working directory and async completion contract. Its
@@ -326,10 +327,9 @@ persistence transfer or new transport ceiling from Issue #566. The materializer 
 two narrow `@ts-expect-error` boundaries where it composes the existing Git
 reader and filesystem writer. They preserve those operations without claiming
 that `outputPath` is a string: the original truthy guard permits native path-like
-and file-descriptor inputs. In the adopted 85/96 baseline, five originals have
+and file-descriptor inputs. In the adopted 86/96 baseline, four originals have
 partial helper migrations.
-The CI report keeps its flat CLI and filesystem sinks; the owner-addition
-finalizer keeps its finalizer and CLI operations; and multi-authority
+The CI report keeps its flat CLI and filesystem operations; multi-authority
 orchestration keeps its adapter while delegating selected eligibility helpers.
 Owner-addition CI delegates only the post-parse single-member selection while
 retaining its Git reads, file writes and command dispatch. The GitHub
@@ -374,15 +374,27 @@ decision check). CI report belongs to both categories; together they cover six
 distinct originals. The other five remain JavaScript modules
 outside these migrations. These source-layout counts do not change the
 selected CodeQL model or establish acceptance evidence.
-The complete finalizer candidate moves its remaining API, parser and CLI body
+The complete finalizer migration, adopted in #581, moves its remaining API, parser and CLI body
 to `src/owner-addition/finalize-owner-addition.mts`, retaining the existing
 record builder and nine flat exports. It preserves the full risk-corrected
 operations, original flat guard condition, inline CLI behavior and external
 property rereads; callback results and parsed observations remain unknown.
-The preceding resource correction was adopted in #579; this migration still
-requires its own normal protected adoption. The candidate would then reach 86/96 with 10
+The preceding resource correction was adopted in #579; #581 reached 86/96 with 10
 unfinished originals: two checked JavaScript contracts and four partial helper
 migrations cover five distinct originals, with the other five owned separately.
+The complete report candidate moves the remaining reporting CLI, descriptor-based
+filesystem checks and masked Gemini projection reads to
+`src/ci-review/ci-report-entrypoint.mts`. It preserves the optional transport,
+global Fetch for protected Codex retrieval, original property reads, existing
+bounds, error ordering, fourteen flat exports and exact flat direct-run guard.
+Parsed JSON remains unknown; erased read views establish no validation or
+authentication. Actual source/emitted operation pins, compile-only native/sync/
+async/thenable composition, real build dependencies and stale/fresh identity
+checks cover the new leaf. Its own current-tree CodeQL, package, full and
+protected verification remain required before adoption. Adoption would reach
+87/96 with nine unfinished originals: one checked JavaScript contract and three
+partial helper migrations cover four distinct originals, plus five parallel-owned
+originals. This does not authorize changes in provider or acceptance policy.
 No migration count advances from a private candidate or local review. The
 native stream/persistence proposal in #566 remains unapproved.
 Migration is partial and does not change consumer architecture or assurance policy.
