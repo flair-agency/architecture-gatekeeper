@@ -1,0 +1,419 @@
+{
+  "state": "PAUSED_AT_OWNER_REQUEST",
+  "inventory": {
+    "complete": 86,
+    "originals": 96,
+    "unfinished": 10
+  },
+  "adoptedMainAtVerification": "53fba7b09714e1b89ae1a19788487fd7e02d44b8",
+  "pr585": {
+    "head": "3ac9878c538bc11e4fe88529d252534c306489ff",
+    "tree": "18e75431e4c40b613c94429bf0eff77b3eb8936c",
+    "base": "53fba7b09714e1b89ae1a19788487fd7e02d44b8",
+    "draft": true,
+    "fullActualExit": {
+      "exitCode": 0,
+      "elapsedMs": 632448.3141859964,
+      "head": "6974e8fc38eab31a8fed6b306d53a1bc2b036843",
+      "tree": "18e75431e4c40b613c94429bf0eff77b3eb8936c",
+      "publicWholeTreeEqualHead": "3ac9878c538bc11e4fe88529d252534c306489ff",
+      "files": 261,
+      "node": "v22.18.0",
+      "testConcurrency": 2
+    },
+    "fullSummary": {
+      "tests": 2011,
+      "pass": 2011,
+      "fail": 0,
+      "skip": 0,
+      "tapDurationMs": 632373.738057
+    },
+    "focused": {
+      "tests": 75,
+      "pass": 75,
+      "skip": 0,
+      "actualExit": 0,
+      "tapDurationMs": 36521.040801
+    },
+    "codeql": {
+      "baseline": "/workspace/agk-task-artifacts/resume-20261014/codeql-finalizer-main512/.local/share/architecture-gatekeeper/codeql/scan-epvFrU",
+      "candidate": "/workspace/agk-task-artifacts/resume-20261014/codeql-ci-report-corrected/.local/share/architecture-gatekeeper/codeql/scan-2jrMqh",
+      "normalization": "Coordinates, artifact/rule table indexes and column fingerprint only; primary line hashes and full result/flow contents retained.",
+      "languages": {
+        "javascript": {
+          "baselineFindings": 45,
+          "candidateFindings": 45,
+          "primaryFingerprintsEqual": true,
+          "completeNormalizedResultsEqual": true,
+          "completeNormalizedFlowsEqual": true,
+          "baselineCoverage": {
+            "extracted": 719,
+            "expected": 691,
+            "expectedExtracted": 691,
+            "expectedMissing": []
+          },
+          "candidateCoverage": {
+            "extracted": 723,
+            "expected": 695,
+            "expectedExtracted": 695,
+            "expectedMissing": []
+          },
+          "missingResults": [],
+          "newResults": []
+        },
+        "actions": {
+          "baselineFindings": 0,
+          "candidateFindings": 0,
+          "primaryFingerprintsEqual": true,
+          "completeNormalizedResultsEqual": true,
+          "completeNormalizedFlowsEqual": true,
+          "baselineCoverage": {
+            "extracted": 12
+          },
+          "candidateCoverage": {
+            "extracted": 12
+          },
+          "missingResults": [],
+          "newResults": []
+        }
+      }
+    },
+    "integratedReview": "No findings; actual separate gpt-6.1-sol/low on published head",
+    "remaining": [
+      "actual archive/install and official smoke",
+      "actual independent native review and runtime validation",
+      "fresh hosted Code Review/Security and all review threads",
+      "normal non-skipped exact-context protected acceptance and expected-head merge"
+    ]
+  },
+  "githubOutputRiskfix": {
+    "head": "6d352177dbee087844bef45e606767521df306a2",
+    "tree": "f5f977c48b3893f8ce8b14a5b568c6d014808b59",
+    "base": "53fba7b09714e1b89ae1a19788487fd7e02d44b8",
+    "originalHead": "a83d02322fb246088de3f286d3de51641aca316a",
+    "state": "WIP_TESTS_NOT_EXECUTED",
+    "modules": 3,
+    "originalCliPublications": 4,
+    "integratedReview": "No findings; assertions reviewed only",
+    "operationDelta": "only four adopted output-adapter calls and three imports; all other operations match actual base"
+  },
+  "checkpointMappings": [
+    {
+      "originalHead": "6974e8fc38eab31a8fed6b306d53a1bc2b036843",
+      "publishedHead": "3ac9878c538bc11e4fe88529d252534c306489ff",
+      "tree": "18e75431e4c40b613c94429bf0eff77b3eb8936c",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-ci-report-full-ts-clean"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-ci-report-full-ts-clean"
+      ]
+    },
+    {
+      "originalHead": "88854f1c0b6d1baafcc69ae033881e774c9fb1db",
+      "publishedHead": "704e863c1819212f90364440f009768af39f650b",
+      "tree": "38744ddcd4514b706b865e50813c3b8812888047",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-ci-report-full-ts-codeql-current",
+        "/workspace/quality419-ci-report-full-ts-current"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-ci-report-full-ts-current"
+      ]
+    },
+    {
+      "originalHead": "4fb8b553cea2d8bd27f7f4b79168d8277dba0ce8",
+      "publishedHead": "b87ca51c51100bf8c84297134c7be22193f91250",
+      "tree": "37aa7e0253acb6e7d632507aabd7b3fc911371c7",
+      "checkpointBranch": "codex/quality419-pause-20261014-0830-ci-report-full-ts-main512",
+      "originalWorktrees": [
+        "/workspace/quality419-ci-report-full-ts-main512"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-ci-report-full-ts-main512"
+      ]
+    },
+    {
+      "originalHead": "3ac9878c538bc11e4fe88529d252534c306489ff",
+      "publishedHead": "3ac9878c538bc11e4fe88529d252534c306489ff",
+      "tree": "18e75431e4c40b613c94429bf0eff77b3eb8936c",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-ci-report-full-ts-public-corrected"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "704e863c1819212f90364440f009768af39f650b",
+      "publishedHead": "704e863c1819212f90364440f009768af39f650b",
+      "tree": "38744ddcd4514b706b865e50813c3b8812888047",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-ci-report-full-ts-public-current"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "e7afb43453f5c9fcbedf576a84ad7baca274372c",
+      "publishedHead": "0d8ecf884a61a62521d27fd3c756ebdc3a904c45",
+      "tree": "16b41ac2d6c7b53b6e0a94760d83b3dd6a503ba1",
+      "checkpointBranch": "codex/quality419-pause-20261014-0830-finalizer-api-compatible-source",
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-api-compatible-source"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "1e0c04d3180350d6663b7919161eb8f440e2fdf2",
+      "publishedHead": "cbf26d20a694b98696f11e38a9ad702039edc344",
+      "tree": "ee9ed1268d18b944de7876ff1814966434bbdcfa",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-api-current",
+        "/workspace/quality419-finalizer-api-exact-compatible-source"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-finalizer-api-current"
+      ]
+    },
+    {
+      "originalHead": "1e3cec1e1e733e56efd8961b214b5255d6f3ac06",
+      "publishedHead": "56080936bdae92f38e433bbdd84e6fd9ad58dbcc",
+      "tree": "12af7d007b1bc2038f2c771c0d72f0da8da52e66",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-api-current-source"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "cbf26d20a694b98696f11e38a9ad702039edc344",
+      "publishedHead": "cbf26d20a694b98696f11e38a9ad702039edc344",
+      "tree": "ee9ed1268d18b944de7876ff1814966434bbdcfa",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-api-exact-compatible-public"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "56080936bdae92f38e433bbdd84e6fd9ad58dbcc",
+      "publishedHead": "56080936bdae92f38e433bbdd84e6fd9ad58dbcc",
+      "tree": "12af7d007b1bc2038f2c771c0d72f0da8da52e66",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-api-public"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "7b67f3f5f91e7eea6d1e1aefd6d245e8fd9b591c",
+      "publishedHead": "b9c73cdedfe4ac552a96dfb1dc902010d765ea85",
+      "tree": "cbf41516e96435d4303b5a05fdbc4601be05f963",
+      "checkpointBranch": "codex/quality419-pause-20261014-0830-finalizer-api-resumed",
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-api-resumed"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-finalizer-api-resumed"
+      ]
+    },
+    {
+      "originalHead": "c742c4b268ecbb67ff30fada1754419ee050d217",
+      "publishedHead": "2479f36dfbc4ce1f61731131f500b837f302a3a1",
+      "tree": "3ff114c34b116c60ffadc7fbd7ef2750ec76db86",
+      "checkpointBranch": "codex/quality419-pause-20261014-0830-finalizer-full-ts",
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-full-ts"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-finalizer-full-ts"
+      ]
+    },
+    {
+      "originalHead": "29f0eeafdad6a5d924ab77df129a978356492c95",
+      "publishedHead": "cef0d322f22d12b7813aa80851ceb2b318f05d6a",
+      "tree": "065bb0c7888751186778cdbb607c5c170153dd80",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-full-ts-compatible",
+        "/workspace/quality419-finalizer-full-ts-compatible-source"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-finalizer-full-ts-compatible"
+      ]
+    },
+    {
+      "originalHead": "c653caf4f49a1b5174623c0499fd9ab9428e6384",
+      "publishedHead": "cef0d322f22d12b7813aa80851ceb2b318f05d6a",
+      "tree": "065bb0c7888751186778cdbb607c5c170153dd80",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-full-ts-current"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-finalizer-full-ts-current"
+      ]
+    },
+    {
+      "originalHead": "3e1c8764f760e66eda96630ad7efd6be935f2f9b",
+      "publishedHead": "51f1748d5849f84e3a6d06422e1d1d333e07859d",
+      "tree": "6b6a0d024183ad9b626f21748779e2b51b0ec03c",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-full-ts-main512"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-finalizer-full-ts-main512"
+      ]
+    },
+    {
+      "originalHead": "51f1748d5849f84e3a6d06422e1d1d333e07859d",
+      "publishedHead": "51f1748d5849f84e3a6d06422e1d1d333e07859d",
+      "tree": "6b6a0d024183ad9b626f21748779e2b51b0ec03c",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-full-ts-main512-public"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "cef0d322f22d12b7813aa80851ceb2b318f05d6a",
+      "publishedHead": "cef0d322f22d12b7813aa80851ceb2b318f05d6a",
+      "tree": "065bb0c7888751186778cdbb607c5c170153dd80",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-finalizer-full-ts-public"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "96d4b563ed9fa14af4a563f82ec24fe836142cd7",
+      "publishedHead": "16e45b988c77fa3cc7338b1f79db3985e44c442a",
+      "tree": "85e6f41dd926fd94cf334e8e0150f793ecc7b0ea",
+      "checkpointBranch": "codex/quality419-pause-20261014-0830-github-output-riskfix",
+      "originalWorktrees": [
+        "/workspace/quality419-github-output-riskfix"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-github-output-riskfix"
+      ]
+    },
+    {
+      "originalHead": "4e6c9df2959da165c8e4a57af5da8b7f84b6b988",
+      "publishedHead": "ba1b5952402db4549b6aa0dc4bf699da2f27b511",
+      "tree": "0df443b6a428208c101483e9535ee6e89b76956c",
+      "checkpointBranch": "codex/quality419-pause-20261014-0830-github-output-riskfix-main512",
+      "originalWorktrees": [
+        "/workspace/quality419-github-output-riskfix-main512"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-github-output-riskfix-main512"
+      ]
+    },
+    {
+      "originalHead": "fb28588d83d7d47e2d837117583c3d1fa2019cc3",
+      "publishedHead": "b82b96a0e0d3b5cf7a461de74505e46cd88fb461",
+      "tree": "87456716c362d7458f4a4bf3fbe3771bf9f9dfd9",
+      "checkpointBranch": "codex/quality419-pause-20261014-0830-github-output-riskfix-source",
+      "originalWorktrees": [
+        "/workspace/quality419-github-output-riskfix-source"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "51215db9cb168295ba246d7eed255a78714b8a27",
+      "publishedHead": "51215db9cb168295ba246d7eed255a78714b8a27",
+      "tree": "0325f48e5797f1905210fdd61af68dbf278576c0",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-main512-codeql-base"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "20933e2c7d14731d016b27f221bd5b1ef93e337f",
+      "publishedHead": "193e52194ceec8163a17b9db202e740ed2b7015d",
+      "tree": "c9a82f097654f6a61a9aa689814e4a5794f08dba",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-native-full-ts-current-source",
+        "/workspace/quality419-native-full-ts-resumed"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-native-full-ts-resumed"
+      ]
+    },
+    {
+      "originalHead": "193e52194ceec8163a17b9db202e740ed2b7015d",
+      "publishedHead": "193e52194ceec8163a17b9db202e740ed2b7015d",
+      "tree": "c9a82f097654f6a61a9aa689814e4a5794f08dba",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-native-full-ts-public"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "a83d02322fb246088de3f286d3de51641aca316a",
+      "publishedHead": "6d352177dbee087844bef45e606767521df306a2",
+      "tree": "f5f977c48b3893f8ce8b14a5b568c6d014808b59",
+      "checkpointBranch": "codex/quality419-pause-20261014-0830-output-riskfix-current",
+      "originalWorktrees": [
+        "/workspace/quality419-output-riskfix-current"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-output-riskfix-after581"
+      ]
+    },
+    {
+      "originalHead": "0ba5aeef533dac2c49fb118dd216ae9767beed88",
+      "publishedHead": "0ba5aeef533dac2c49fb118dd216ae9767beed88",
+      "tree": "094df5f981204e25e1868a85fca4ef2c8b964b0b",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-provenance-full-ts-public"
+      ],
+      "sourceBranches": []
+    },
+    {
+      "originalHead": "a117072b705c7b63820c04f9d60215fd557c5d27",
+      "publishedHead": "0ba5aeef533dac2c49fb118dd216ae9767beed88",
+      "tree": "094df5f981204e25e1868a85fca4ef2c8b964b0b",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-provenance-full-ts-resumed",
+        "/workspace/quality419-provenance-full-ts-resumed-source"
+      ],
+      "sourceBranches": [
+        "refs/heads/codex/quality419-provenance-full-ts-resumed"
+      ]
+    },
+    {
+      "originalHead": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+      "publishedHead": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+      "tree": "5ea5fd1caaba4c4d0dc2e6e7fba89aab14594ea5",
+      "checkpointBranch": null,
+      "originalWorktrees": [
+        "/workspace/quality419-resumed-main-source"
+      ],
+      "sourceBranches": []
+    }
+  ],
+  "localChecksBeforeHandoff": {
+    "worktrees": 68,
+    "dirty": 0,
+    "newWorktreesSynced": 32,
+    "newBranchesTracked": 14,
+    "newBranchesUnpushedCommits": 0
+  },
+  "originalObjectArchive": {
+    "path": "/workspace/agk-task-artifacts/resume-20261014/pause2-original-objects.pack",
+    "sha256": "aa3031620623094176b5e973360df2c3868d43a7ab80e52a1f4da15a4742f19d",
+    "scope": "Exact original current commits and complete current trees of new worktrees; not a complete historical-ancestry bundle. Retained locally; source snapshots are published."
+  },
+  "rootPaidGeminiCalls": 0,
+  "unapprovedNativeStreamIssue": 566
+}
