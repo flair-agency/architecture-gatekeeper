@@ -210,8 +210,9 @@ export async function retrieveOrdinaryGeminiPublication(input: {
     const callerRestPathWithShorthand = shorthandRef ? `${callerPath}@${shorthandRef}` : null;
     const runPathMatches = run.path === callerPath || run.path === callerRestPathWithRef ||
       (callerRestPathWithShorthand !== null && run.path === callerRestPathWithShorthand);
+    const restRunHeadMatches = run.head_sha === tuple.headSha || run.head_sha === tuple.eventSha;
     if (!own(runRepository) || String(run.id) !== tuple.runId || String(run.run_attempt) !== tuple.runAttempt ||
-        runRepository.full_name !== tuple.repository || run.head_sha !== tuple.headSha ||
+        runRepository.full_name !== tuple.repository || !restRunHeadMatches ||
         !runPathMatches) fail();
     if (!Array.isArray(run.referenced_workflows)) fail();
     const reusableReference = tuple.workflowRef.slice(tuple.workflowRepository.length + 1);
@@ -249,8 +250,9 @@ export async function retrieveOrdinaryGeminiPublication(input: {
       job.steps.some((step: unknown) => own(step) && step.name === ORDINARY_GEMINI_PUBLICATION_STEP));
     if (selected.length !== 1) fail();
     const job = selected[0] as JsonRecord;
+    const restJobHeadMatches = job.head_sha === tuple.headSha || job.head_sha === tuple.eventSha;
     if (!Number.isSafeInteger(job.id) || Number(job.id) < 1 || String(job.run_id) !== tuple.runId || String(job.run_attempt) !== tuple.runAttempt ||
-        job.head_sha !== tuple.headSha || job.status !== 'completed' || job.conclusion !== 'success') fail();
+        !restJobHeadMatches || job.status !== 'completed' || job.conclusion !== 'success') fail();
     const emissionSteps = (job.steps as JsonRecord[]).filter(step => step.name === ORDINARY_GEMINI_PUBLICATION_STEP);
     if (emissionSteps.length !== 1 || emissionSteps[0].status !== 'completed' || emissionSteps[0].conclusion !== 'success') fail();
     let logResult = await getApi('job-log', Number(job.id), MAX_ORDINARY_GEMINI_JOB_LOG_BYTES);
