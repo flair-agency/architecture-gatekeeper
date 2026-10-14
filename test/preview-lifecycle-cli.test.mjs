@@ -127,7 +127,20 @@ test('depth-64 A response triggers depth-68 B receipt through finalize and fresh
   git(f.root, 'update-ref', 'refs/heads/release/preview', integrationSha);
   failed(f.root, 'finalize', Buffer.from(JSON.stringify({ receiptJson: oneLevelDeeper, integrationSha })), /JSON nesting exceeds the supported depth/);
   await assert.rejects(observePreviewLifecycle(receipt, integrationSha, f.root, Buffer.from(oneLevelDeeper)), /nesting is too deep/);
-  await observePreviewLifecycle(receipt, integrationSha, f.root, Buffer.from(receiptText));
+  const expectedObservation = await observePreviewLifecycle(receipt, integrationSha, f.root, Buffer.from(receiptText));
+  const encodedReceipt = new TextEncoder().encode(receiptText);
+  for (const rawInput of [receiptText, encodedReceipt, encodedReceipt.buffer,
+    Array.from(encodedReceipt), Buffer.from(receiptText).toJSON(),
+    { valueOf: () => Buffer.from(receiptText).toJSON() }, { valueOf: () => receiptText },
+    { [Symbol.toPrimitive]: () => receiptText }]) {
+    const result = await observePreviewLifecycle(receipt, integrationSha, f.root, rawInput);
+    // Each readback stamps its own observation time and resulting integrity digest.
+    const { observedAt, integritySha256, ...bindings } = result;
+    const { observedAt: expectedTime, integritySha256: expectedIntegrity, ...expectedBindings } = expectedObservation;
+    assert.ok(Number.isFinite(Date.parse(observedAt)));
+    assert.match(integritySha256, /^[a-f0-9]{64}$/);
+    assert.deepEqual(bindings, expectedBindings);
+  }
   failed(f.root, 'finalize', Buffer.from(JSON.stringify({ receiptJson: `${receiptText} `, integrationSha })), /finalize failed/);
   failed(f.root, 'finalize', Buffer.from(JSON.stringify({ receiptJson: receiptText, integrationSha: f.base })), /finalize failed/);
   const finalBytes = run(f.root, 'finalize', { receiptJson: receiptText, integrationSha });
