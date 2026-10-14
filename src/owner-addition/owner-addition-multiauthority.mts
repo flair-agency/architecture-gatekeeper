@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, type BinaryLike } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,7 +14,7 @@ import { assertSameMultiAuthorityProvenance, multiAuthorityProvenance,
 import { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema } from './multi-authority-eligibility.mts';
 export { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema };
 
-const digest = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex');
+const digest = (bytes: BinaryLike): string => createHash('sha256').update(bytes).digest('hex');
 const decode = (bytes: Uint8Array): string => new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
 function parse(source: string): unknown { rejectDuplicateJsonKeys(source, 'owner-addition input'); return JSON.parse(source) as unknown; }
 function git(root: unknown, ...args: unknown[]): Buffer {
@@ -25,7 +25,7 @@ function git(root: unknown, ...args: unknown[]): Buffer {
 type MultiAuthorityPolicy = ReturnType<typeof import('../resolve-ci-policy.mjs').resolveCiPolicy>;
 // Assertions below retain the values and failure behavior of the existing helper/API calls; they do not add validation or trusted snapshots.
 export async function prepareMultiAuthorityAddition(env: NodeJS.ProcessEnv, selected: MultiAuthorityPolicy,
-  policyBytes: Buffer, { fetchExternal }: { fetchExternal?: Parameters<typeof materializeAuthoritySet>[0]['fetchExternal'] } = {}) {
+  policyBytes: BinaryLike, { fetchExternal }: { fetchExternal?: Parameters<typeof materializeAuthoritySet>[0]['fetchExternal'] } = {}) {
   const { GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: repository, BASE_SHA: baseSha, HEAD_SHA: headSha,
     OWNER_AUTHORITY_PATH: authorityPath, OWNER_PROMPT_PATH: promptPath, OWNER_SCHEMA_PATH: schemaPath,
     ORDINARY_SCHEMA_PATH: ordinarySchemaPath, ORDINARY_DECISION: ordinaryRaw, OUTPUT_DIR: outputDir } = env;

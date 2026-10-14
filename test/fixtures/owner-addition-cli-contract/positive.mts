@@ -28,3 +28,8 @@ void prepareMultiAuthorityAddition(env, selected, policyBytes, { fetchExternal: 
 void prepareMultiAuthorityAddition(env, selected, policyBytes, { fetchExternal: () => thenable });
 const cliResult: void = validateOwnerAdditionCiCli();
 void [id, cliResult];
+
+void prepareMultiAuthorityAddition(env, selected, Buffer.from('policy'), { fetchExternal: synchronousFetch });
+void prepareMultiAuthorityAddition(env, selected, new Uint8Array([112, 111, 108, 105, 99, 121]), { fetchExternal: asynchronousFetch });
+void prepareMultiAuthorityAddition(env, selected, 'policy', { fetchExternal: () => thenable });
+void prepareMultiAuthorityAddition(env, selected, new DataView(new ArrayBuffer(6)), { fetchExternal: synchronousFetch });

@@ -121,8 +121,9 @@ test('owner-addition public contracts reject incorrect API and callback operatio
   assert.deepEqual(diagnostics.filter(item => item.file !== negative && item.file !== positive), [],
     'every unexpected implementation or transitive diagnostic must fail');
   const local = diagnostics.filter(item => item.file === negative);
-  assert.deepEqual(local.map(({ code, line }) => [code, line]), [[2345, 7], [2322, 8], [2322, 9]]);
-  assert.match(local[0].message, /Buffer/);
+  assert.deepEqual(local.map(({ code, line }) => [code, line]), [[2345, 7], [2322, 8], [2322, 9], [2353, 11]]);
+  assert.match(local[0].message, /number.*BinaryLike|BinaryLike.*number/);
   assert.match(local[1].message, /AuthoritySetFetcher|function/i);
   assert.match(local[2].message, /Promise<void>|void/);
+  assert.match(local[3].message, /BinaryLike|bytes/);
 });
