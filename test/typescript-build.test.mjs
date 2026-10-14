@@ -11,7 +11,7 @@ import ts from 'typescript';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 function copyEntrypointModules(fixtureRoot) {
-  const pending = [join(root, 'src/native-review.mjs'), join(root, 'src/owner-addition-finalize.mjs')];
+  const pending = [join(root, 'src/native-review.mjs'), join(root, 'src/owner-addition-finalize.mjs'), join(root, 'src/ci-report.mjs')];
   const copied = new Set();
   while (pending.length) {
     const path = pending.pop();
