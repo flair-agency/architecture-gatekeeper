@@ -168,7 +168,7 @@ export async function runIsolatedGeminiSession(runnerArgv: string[] = process.ar
   if (cliApiKey) credsOptions.apiKey = cliApiKey;
   const credentials = resolveAuthCredentials({ ...credsOptions, resolveGcloudAccessToken: () => null });
   const allowedMode = credentials.type === 'bearer' ? 'vertex' : 'studio';
-  const runnerPath = options.runnerScript || resolve(dirname(fileURLToPath(import.meta.url)), 'gemini-ci-runner.mjs');
+  const runnerPath = options.runnerScript || resolve(dirname(fileURLToPath(import.meta.url)), '..', 'gemini-ci-runner.mjs');
   const credentialValues = [
     ...getSupportedEnvironmentCredentialValues(process.env),
     credentials.value,
