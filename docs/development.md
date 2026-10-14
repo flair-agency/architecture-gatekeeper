@@ -94,6 +94,24 @@ emitted AST and retain both providers' publication and negative cases.
 
 ## TypeScript source and runtime distribution
 
+The [2026-10-14 original96 inventory](investigations/2026-10-14-original96-typescript-inventory.md)
+records the complete combined implementation candidate and its adoption limits.
+The last nine original bodies are authored in typed leaves; source and emitted
+compatibility paths retain their exports and command guards. The preview leaf
+stays beside its flat facade to retain its package/runtime directory anchor.
+The grouped launcher explicitly resolves the original flat child runner through
+its parent directory; actual source and emitted default execution is required.
+
+The materializer CLI reuses the existing path guard for cwd-resolved destinations.
+Its generic public API retains native path/descriptor inputs and existing reader
+checks. The guard bounds static escapes but does not supply inode custody or
+post-check race resistance. Generic API flows remain unmodeled in CodeQL.
+The fixture analysis retains up to100 path explanations without changing query,
+threat model, model packs or any positive/negative assertion. Relocated finding
+identities are reported explicitly; local execution does not override a failing
+hosted check or establish protected adoption. Historical partial-delivery
+statements below describe their earlier checkpoints.
+
 The integrated #419 slices type OWNER_ADDITION validation, execution-result
 states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
 PR/run and live queue context, self-amendment scope, and amendment canonical
