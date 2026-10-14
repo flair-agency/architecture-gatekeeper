@@ -19,6 +19,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { existsSync, lstatSync, readFileSync } from 'node:fs';
+import type { GeminiProxyConfig } from './gemini-security-proxy.mts';
 import { startGeminiSecurityProxy } from '../gemini-security-proxy.mjs';
 import { getSupportedEnvironmentCredentialValues, resolveAuthCredentials, resolveVertexProject, resolveVertexRegion } from '../gemini-transport.mjs';
 import { resolveSafePath } from '../review-input-path.mjs';
@@ -157,8 +158,9 @@ export async function runIsolatedGeminiSession(runnerArgv: string[] = process.ar
 
   // Derive trusted scope constraints
   allowedModel = allowedModel || process.env.MODEL || process.env.REVIEW_MODEL || null;
-  allowedProject = resolveVertexProject({ projectId: allowedProject });
-  allowedRegion = resolveVertexRegion({ region: allowedRegion });
+  // Nullable observations retain the original truthy fallback at these transport calls.
+  allowedProject = resolveVertexProject({ projectId: allowedProject } as Parameters<typeof resolveVertexProject>[0]);
+  allowedRegion = resolveVertexRegion({ region: allowedRegion } as Parameters<typeof resolveVertexRegion>[0]);
 
   // Resolve credentials in the privileged supervisor context
   const credsOptions = { ...options.credentialsOptions };
@@ -221,7 +223,8 @@ export async function runIsolatedGeminiSession(runnerArgv: string[] = process.ar
   effectiveProxyConfig.deadlineMs = remainingMs;
   // Validate environment isolation before allocating the proxy listener.
   const runnerEnv = buildIsolatedRunnerEnv(process.env, '', credentialValues);
-  const proxy = await startGeminiSecurityProxy(effectiveProxyConfig);
+  // The override remains mutable; this erased view adds no scope validation.
+  const proxy = await startGeminiSecurityProxy(effectiveProxyConfig as GeminiProxyConfig);
 
   process.stderr.write(`[gemini-launcher] Security proxy active on ${proxy.endpointUrl}\n`);
 
