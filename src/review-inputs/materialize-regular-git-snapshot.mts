@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { appendGitHubOutput } from '../runner-temp-path.mjs';
 import { readRegularGitSnapshot } from '../legacy-git-snapshot.mjs';
-import type { GitSnapshotOptions } from '../authority-validation/legacy-git-snapshot.mjs';
+import type { GitSnapshotOptions } from '../authority-validation/legacy-git-snapshot.mts';
 import { trustedGitHubWorkspaceRoot } from '../github-runner-workspace.mjs';
 
 export interface MaterializeRegularGitSnapshotInput {
