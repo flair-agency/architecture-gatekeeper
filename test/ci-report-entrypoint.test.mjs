@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, linkSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -276,6 +276,25 @@ test('real ci-report CLI fails closed when the selected output sink cannot be wr
   mkdirSync(outputDirectory);
   const result = runCli(root, { GITHUB_OUTPUT: outputDirectory });
   assert.notEqual(result.status, 0, result.stdout);
-  assert.match(result.stderr, /EISDIR|illegal operation on a directory/);
+  assert.match(result.stderr, /Runner temporary path: runner-created output is not a direct regular file\./);
   assert.equal(result.requests.some(request => request.method === 'POST' && request.url.endsWith('/issues/17/comments')), true);
+});
+
+
+test('real ci-report CLI refuses linked runner-output files without modifying their target', t => {
+  for (const kind of ['symbolic', 'hard']) {
+    const root = fixtureRoot(t);
+    const target = join(root, 'unrelated-target');
+    const output = join(root, 'linked-output');
+    writeFileSync(target, 'unrelated contents');
+    if (kind === 'symbolic') symlinkSync(target, output);
+    else linkSync(target, output);
+    const result = runCli(root, { GITHUB_OUTPUT: output });
+    assert.equal(result.status, 1, result.stderr);
+    assert.equal(result.stdout, 'Architecture Gate inline review: created (1 finding(s))\nArchitecture Gate PR comment: created\n');
+    assert.match(result.stderr, /Runner temporary path: runner-created output is not a direct regular file\./);
+    assert.equal(readFileSync(target, 'utf8'), 'unrelated contents');
+    assert.equal(result.output, '');
+    assert.equal(result.requests.some(request => request.method === 'POST' && request.url.endsWith('/issues/17/comments')), true);
+  }
 });

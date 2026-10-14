@@ -41,7 +41,7 @@ function zipOne(name, bytes) {
   return Buffer.concat([archiveData, directory, end]);
 }
 
-export function ownerAdditionFinalizeFixture({ scenario = 'success' } = {}) {
+export function ownerAdditionFinalizeFixture({ scenario = 'success', procedurePatch = {} } = {}) {
   const repository = 'flair-agency/example';
   const baseSha = sha('a'); const bSha = sha('b'); const mergeSha = sha('c');
   const targetSha = sha('d'); const treeSha = sha('e'); const runId = '9001'; const attempt = 2;
@@ -80,7 +80,7 @@ export function ownerAdditionFinalizeFixture({ scenario = 'success' } = {}) {
   const procedure = { version: 2, repository, baseSha, headSha: bSha, policySha256: digest(policyBytes),
     missingDecisionId: 'missing-choice', authorityId: 'architecture', authorityPath, newAuthoritySha256: digest(authorityBytes),
     tagObjectOid, tagRef: `refs/tags/architecture-owner-addition/${bSha}`,
-    additionRecordSha256, authoritySet };
+    additionRecordSha256, authoritySet, ...procedurePatch };
   const ordinaryDecision = { version: 2, decision: 'OWNER_DECISION', ownerDecisionId: 'missing-choice',
     authoritySetDigest: authoritySet.setDigest, authorityIds: ['architecture', 'policy'] };
   const eligibilityDecision = { version: 2, authoritySetDigest: authoritySet.setDigest,

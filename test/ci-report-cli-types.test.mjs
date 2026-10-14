@@ -76,11 +76,11 @@ function runtimeDigest(text) {
   return createHash('sha256').update(JSON.stringify(canonical(ast.body))).digest('hex');
 }
 
-test('source and emitted report CLI preserve the complete pre-change runtime AST', () => {
-  // Baseline: e6cb272d1c78dea50a48eee1ad9c523b260187b0:src/ci-report.mjs.
+test('source and emitted report CLI preserve the complete sink-corrected runtime AST', () => {
+  // Baseline: immutable1e0c04d3 plus the explicit adopted output-adapter call/import delta.
   // Only coordinates, literal spelling and the compiler's .mts import rewrite
   // are normalized. Main, exports, property reads, dispatch and sinks are bound.
-  const baseline = '105764db4749d7ac70ef554bb1185b415bd40d367b93e93a0d8b896c8fa0ad30';
+  const baseline = 'c3e60b399a02f24664929dcbac3c62baa73c4160c2cfd6c58d916f1719d407e5';
   assert.equal(runtimeDigest(source), baseline);
   assert.equal(runtimeDigest(readFileSync(join(root, 'dist/ci-report.mjs'), 'utf8')), baseline);
 });
