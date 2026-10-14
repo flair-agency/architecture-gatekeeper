@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @ts-check
 import { appendFile, writeFile } from 'node:fs/promises';
+import { appendGitHubOutput } from './runner-temp-path.mjs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertSameMultiAuthorityProvenance } from './multi-authority-provenance.mjs';
@@ -145,7 +146,7 @@ async function main() {
     console.warn(`::warning title=Architecture Gate comment unavailable::${cleanText(/** @type {ErrorMessageRead} */ (error).message, 500)}`);
   }
   if (process.env.GITHUB_OUTPUT) {
-    await appendFile(process.env.GITHUB_OUTPUT, `conclusion=${classified.conclusion}\ndecision_digest=${decisionDigest}\n`);
+    await appendGitHubOutput(`conclusion=${classified.conclusion}\ndecision_digest=${decisionDigest}\n`);
   }
 }
 

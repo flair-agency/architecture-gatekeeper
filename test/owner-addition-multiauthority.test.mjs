@@ -87,6 +87,7 @@ async function fixture(t, options = {}) {
     OWNER_PROMPT_PATH: '.gate/eligibility.md', OWNER_SCHEMA_PATH: '.gate/eligibility.json', ORDINARY_SCHEMA_PATH: '.gate/ordinary.json',
     ORDINARY_DECISION: JSON.stringify(ordinary), ORDINARY_AUTHORITY_PROVENANCE_BASE64: encode(provenance),
     OUTPUT_DIR: join(root, 'addition-inputs'), GITHUB_OUTPUT: join(root, 'outputs') };
+  writeFileSync(env.GITHUB_OUTPUT, '', { mode: 0o600 });
   return { root, base, head, env, policyBytes, selected, provenance, ordinary, record, fetchExternal,
     prepare: overrides => prepareMultiAuthorityAddition({ ...env, ...overrides }, selected, policyBytes, { fetchExternal }) };
 }

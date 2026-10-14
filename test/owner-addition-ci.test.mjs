@@ -73,6 +73,7 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
   run(root, 'git', 'checkout', '-q', '--detach', base);
   const outputDir = join(root, 'output');
   const outputFile = join(root, 'output.txt');
+  writeFileSync(outputFile, '', { mode: 0o600 });
   const env = { ...process.env, GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: 'example/project', BASE_SHA: base,
     HEAD_SHA: head, BASE_BRANCH: 'main', POLICY_PATH: '.codex/gatekeeper/ci-policy.json',
     OWNER_AUTHORITY_PATH: 'docs/architecture.md', OWNER_PROMPT_PATH: '.codex/gatekeeper/owner-addition.md',
