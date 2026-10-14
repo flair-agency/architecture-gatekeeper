@@ -98,7 +98,8 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
     const sarif = join(scan, `model-regression-${modeled ? 'modeled' : 'baseline'}.sarif`);
     const args = ['database', 'analyze', db, 'codeql/javascript-queries:Security/CWE-022/TaintedPath.ql', '--threat-model=local', '--rerun'];
     if (modeled) args.push(...githubModelArgs(source));
-    args.push('--format=sarif-latest', `--output=${sarif}`, '--threads=2', '--ram=4096');
+    // Shared sinks have more than four explanations; retain bounded evidence for every production route.
+    args.push('--format=sarif-latest', '--max-paths=100', `--output=${sarif}`, '--threads=2', '--ram=4096');
     run(args);
     results[modeled] = JSON.parse(readFileSync(sarif, 'utf8')).runs.flatMap(r => r.results || []);
   }
