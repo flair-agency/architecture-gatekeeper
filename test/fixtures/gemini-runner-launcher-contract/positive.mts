@@ -6,4 +6,10 @@ const output: string = formatGitHubReviewOutputs({ decision: 'PASS' }, '/tmp/dec
 const review: Promise<unknown> = runGeminiCiReview();
 const env: Record<string, string> = buildIsolatedRunnerEnv({ PATH: '/usr/bin', GEMINI_API_KEY: 'hidden' }, 'http://127.0.0.1', ['hidden']);
 const session: Promise<number> = runIsolatedGeminiSession(['--model', 'gemini-2.5-flash'], { timeoutMs: 15 });
-void [options, output, review, env, session];
+const proxyOverride = { upstreamHost: '127.0.0.1', reserveDispatch: () => true, extensionOption: 'preserved' };
+const overriddenSession: Promise<number> = runIsolatedGeminiSession(['--model', 'gemini-2.5-flash'], { proxyConfigOverride: proxyOverride });
+void [options, output, review, env, session, overriddenSession];
+
+// Mandatory decision observations retain unknown externally observed values.
+declare const observedDecision: unknown;
+void import("../../../src/gemini-cli/ci-runner-entrypoint.mts").then(({ formatGitHubReviewOutputs }) => formatGitHubReviewOutputs({ decision: observedDecision }, "/var/tmp/output"));

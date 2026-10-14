@@ -1,3 +1,4 @@
+import type { WithImplicitCoercion } from 'node:buffer';
 import type { BinaryLike } from 'node:crypto';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -7,6 +8,8 @@ import { readCommittedAuthorityFile, materializeAuthoritySet, parseAuthorityMani
 import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
 import { validateJsonSchema, validateJsonSchemaDefinition } from './json-schema.mjs';
 import { validateDecisionRules } from './validate-decision.mjs';
+
+export type PreviewReceiptInput = WithImplicitCoercion<ArrayLike<number> | string> | WithImplicitCoercion<ArrayBufferLike> | WithImplicitCoercion<ReturnType<Buffer['toJSON']>>;
 
 // These erased views describe individual operations. External JSON and mutable
 // property observations remain unknown; casts add no validation or assurance.
@@ -554,14 +557,14 @@ export async function validatePreviewReceipt<T>(receipt: T, cwd: unknown = (rece
 
 
 /** Observes a real normal merge. OBSERVED adoption deliberately has unverified provenance. */
-export async function observePreviewLifecycle(receipt: unknown, integrationSha: unknown, cwd: unknown = (receipt as { request?: { root?: unknown } } | null | undefined)?.request?.root, rawReceiptBytes: Uint8Array = previewReceiptBytes(receipt)) {
+export async function observePreviewLifecycle(receipt: unknown, integrationSha: unknown, cwd: unknown = (receipt as { request?: { root?: unknown } } | null | undefined)?.request?.root, rawReceiptBytes: PreviewReceiptInput = previewReceiptBytes(receipt)) {
   await validatePreviewReceipt(receipt, cwd);
   const mode = (((receipt as { "request": unknown }).request as { "spec": unknown }).spec as { "mode": unknown }).mode;
   const eligibleB = (receipt as { "eligibility": unknown }).eligibility === 'ELIGIBLE' && ['addition', 'amendment'].includes((mode as string)) &&
     (mode !== 'amendment' || ['completed-block-v1', 'completed-owner-decision-v1'].includes(((((receipt as { "request": unknown }).request as { "selection": unknown }).selection as { "amendmentTriggerProfile": unknown }).amendmentTriggerProfile as string)));
   const passedMigration = mode === 'migration' && (receipt as { "eligibility": unknown }).eligibility === 'ELIGIBLE' && ((receipt as { "decision": unknown }).decision as { "decision": unknown }).decision === 'PASS';
   if (!eligibleB && !passedMigration) fail('step is not an eligible selected B procedure.');
-  const raw = Buffer.from(rawReceiptBytes);
+  const raw = Buffer.from(rawReceiptBytes as WithImplicitCoercion<ArrayLike<number> | string>);
   if (!raw.length || (raw.length as number) > 4_194_304) fail('completed raw receipt exceeds 4 MiB.');
   // A bounded response or prior A receipt may be nested at the fixed
   // receipt.request.spec.trigger.response path (four wrapper levels).

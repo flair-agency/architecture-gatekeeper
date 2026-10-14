@@ -29,7 +29,7 @@ test('lifecycle APIs reject trusted observations, acceptance claims, missing ope
   const diagnostics = diagnosticsFor('negative.mts');
   assert.deepEqual(diagnostics.map(({ code, line }) => [code, line]), [
     [2322, 5], [2322, 6], [2322, 8], [2322, 9], [2322, 10], [2322, 11], [2322, 12],
-    [2554, 13], [2554, 14], [2554, 15], [2554, 16], [2345, 17], [2345, 18],
+    [2554, 13], [2554, 14], [2554, 15], [2554, 16], [2345, 17], [2345, 18], [2345, 19],
   ]);
   for (const index of [0, 1, 2, 3, 6]) assert.match(diagnostics[index].message, /unknown/);
   assert.match(diagnostics[4].message, /PENDING.*ACCEPTED/);

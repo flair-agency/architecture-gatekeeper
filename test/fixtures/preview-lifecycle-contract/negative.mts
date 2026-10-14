@@ -14,5 +14,6 @@ preparePreviewLifecycle();
 completePreviewLifecycle(json);
 observePreviewLifecycle(json);
 prepareFreshPreviewReview(json);
-observePreviewLifecycle(json, json, json, 'bytes');
+observePreviewLifecycle(json, json, json, 42);
 preparePreviewLifecycle(json, 42);
+observePreviewLifecycle(json, json, json, false);

@@ -18,3 +18,15 @@ const verifiedPlacement: 'VERIFIED' = final.canonical;
 const integration: unknown = final.integrationSha;
 await prepareFreshPreviewReview(json, json, json);
 const raw: Buffer = previewReceiptBytes(json);
+
+await observePreviewLifecycle(json, json, json, 'receipt JSON');
+await observePreviewLifecycle(json, json, json, new ArrayBuffer(0));
+await observePreviewLifecycle(json, json, json, new SharedArrayBuffer(0));
+await observePreviewLifecycle(json, json, json, [123, 125]);
+await observePreviewLifecycle(json, json, json, Buffer.from('{}'));
+await observePreviewLifecycle(json, json, json, { valueOf: () => new Uint8Array([123, 125]) });
+await observePreviewLifecycle(json, json, json, { valueOf: () => new ArrayBuffer(0) });
+await observePreviewLifecycle(json, json, json, { [Symbol.toPrimitive]: (_hint: 'string') => '{}' });
+
+await observePreviewLifecycle(json, json, json, Buffer.from('{}').toJSON());
+await observePreviewLifecycle(json, json, json, { valueOf: () => Buffer.from('{}').toJSON() });

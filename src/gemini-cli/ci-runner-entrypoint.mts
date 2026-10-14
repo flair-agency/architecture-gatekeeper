@@ -7,7 +7,7 @@
 import { constants, existsSync, lstatSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { GeminiReviewRequest } from '../reviewer-transports/gemini-transport.mts';
+import type { GeminiReviewRequest, GeminiTransportOptions } from '../reviewer-transports/gemini-transport.mts';
 import { runGeminiReviewer } from '../gemini-transport.mjs';
 import { validateJsonSchema } from '../json-schema.mjs';
 import { preflightReviewRequest, repositoryRoot, validateReviewResponse } from '../review-contract.mjs';
@@ -23,7 +23,7 @@ type ReviewRequestObservation = {
   reviewer?: { model?: unknown };
   schema?: unknown;
 };
-type ReviewDecisionObservation = { [key: string]: unknown; decision?: unknown; summary?: unknown };
+type ReviewDecisionObservation = { [key: string]: unknown; decision: unknown; summary?: unknown };
 
 /**
  * Parses CLI arguments into an options object.
@@ -206,7 +206,7 @@ export async function runGeminiCiReview(argv: string[] = process.argv.slice(2), 
 
   // Transport invocation
   // This erased call view composes the existing preflight/compatibility routes; it adds no request validation.
-  const rawDecision = await runGeminiReviewer(request as unknown as GeminiReviewRequest, transportOptions);
+  const rawDecision = await (runGeminiReviewer as (request: GeminiReviewRequest, options: GeminiTransportOptions) => Promise<unknown>)(request as unknown as GeminiReviewRequest, transportOptions);
 
   // Schema-level deterministic validation
   validateJsonSchema(rawDecision, request.schema);
