@@ -94,6 +94,10 @@ emitted AST and retain both providers' publication and negative cases.
 
 ## TypeScript source and runtime distribution
 
+### Earlier implementation checkpoints
+
+Earlier slice statuses and counts are historical; the current inventory below supersedes them.
+
 The integrated #419 slices type OWNER_ADDITION validation, execution-result
 states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
 PR/run and live queue context, self-amendment scope, and amendment canonical
@@ -398,6 +402,26 @@ originals. This does not authorize changes in provider or acceptance policy.
 No migration count advances from a private candidate or local review. The
 native stream/persistence proposal in #566 remains unapproved.
 Migration is partial and does not change consumer architecture or assurance policy.
+
+### Current original96 inventory and implementation boundaries
+
+[Original96](investigations/2026-10-08-source-layout-typescript-map.md) excludes new modules. Base `35b2405cc1818f66e2842d068a509f74e1a8f83c`: **88 adopted**; transferred #589: **93 implemented**, pending normal adoption. #587 retains partial prepare-legacy-ci-authority, owner-addition-ci and owner-addition-multiauthority.
+
+| Original | Complete candidate #589 |
+|---|---|
+| gemini-transport | `src/reviewer-transports/gemini-transport.mts` |
+| gemini-security-proxy | `src/gemini-cli/gemini-security-proxy.mts` |
+| gemini-ci-runner | `src/gemini-cli/ci-runner-entrypoint.mts` |
+| gemini-launcher | `src/gemini-cli/launcher-entrypoint.mts` |
+| preview-lifecycle | `src/preview-lifecycle-runtime.mts` |
+
+Complete adopted bodies: #590 `src/review-inputs/materialize-regular-git-snapshot.mts`, #585 `src/ci-review/ci-report-entrypoint.mts`, #581 `src/owner-addition/finalize-owner-addition.mts`. Native CLI #563 and provenance #578 are adopted.
+
+#590's CLI checks cwd-relative destinations against existing workspace/temporary roots. Generic descriptor/Buffer/URL behavior stays unmodeled/unchanged; hardlink and parent-replacement limits remain, without custody or race-resistance claims.
+
+#589 preserves guards, credentials and validators: the launcher child is the original flat runner; preview keeps its flat anchor. Observations stay unknown. Retain AST/byte identities, stale-input negatives and unchanged installed smoke.
+
+#587 retains 24 generic HIGH flows at new typed identities; no risk removal, model expansion or dismissal. The 100-path fixture cap retains query/model semantics and all positive/negative assertions. Normative Set and policy/limits remain controlling.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, `checkJs: false`, and
