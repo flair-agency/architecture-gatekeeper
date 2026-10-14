@@ -405,31 +405,27 @@ Migration is partial and does not change consumer architecture or assurance poli
 
 ### Current original96 inventory and implementation boundaries
 
-The original [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md) fixes the denominator; new ordinary-Gemini and measurement modules are excluded. Historical milestones are #578:84, #563:85, #581:86, #585:87 and #590:88.
+The [original96 map](investigations/2026-10-08-source-layout-typescript-map.md) fixes the denominator; new ordinary-Gemini/measurement modules are excluded. Base `35b2405cc1818f66e2842d068a509f74e1a8f83c` has **88/96 adopted**. Owner-transferred #589 completes five more (**93/96 implementation**); only normal protected adoption advances that count. #587 contains the three remaining CLI candidates.
 
-Base `35b2405cc1818f66e2842d068a509f74e1a8f83c` has **88/96 adopted** originals. Owner-transferred candidate #589 completes five more (**93/96 implementation coverage**); only normal protected adoption advances the adopted count. Draft #587's three remaining CLI bodies are still partial on that base.
-
-| Original | Complete or partial implementation | Status |
+| Original | Implementation | Stage |
 |---|---|---|
 | materialize-regular-git-snapshot | `src/review-inputs/materialize-regular-git-snapshot.mts` | Adopted #590 |
-| gemini-transport | `src/reviewer-transports/gemini-transport.mts` | Complete candidate #589 |
-| gemini-security-proxy | `src/gemini-cli/gemini-security-proxy.mts` | Complete candidate #589 |
-| gemini-ci-runner | `src/gemini-cli/ci-runner-entrypoint.mts` | Complete candidate #589 |
-| gemini-launcher | `src/gemini-cli/launcher-entrypoint.mts` | Complete candidate #589 |
-| preview-lifecycle | `src/preview-lifecycle-runtime.mts` | Complete candidate #589; flat directory |
-| prepare-legacy-ci-authority | `src/ci-review/legacy-authority-decision.mts` | Partial validator; remaining body flat |
-| owner-addition-ci | `src/owner-addition/single-authority-member.mts` | Partial selector; remaining body flat |
-| owner-addition-multiauthority | `src/owner-addition/multi-authority-eligibility.mts` | Partial helper; remaining body flat |
+| gemini-transport | `src/reviewer-transports/gemini-transport.mts` | Candidate #589 |
+| gemini-security-proxy | `src/gemini-cli/gemini-security-proxy.mts` | Candidate #589 |
+| gemini-ci-runner | `src/gemini-cli/ci-runner-entrypoint.mts` | Candidate #589 |
+| gemini-launcher | `src/gemini-cli/launcher-entrypoint.mts` | Candidate #589 |
+| preview-lifecycle | `src/preview-lifecycle-runtime.mts` | Candidate #589; flat anchor |
+| prepare-legacy-ci-authority | `src/ci-review/legacy-authority-decision.mts` | Partial on base |
+| owner-addition-ci | `src/owner-addition/single-authority-member.mts` | Partial on base |
+| owner-addition-multiauthority | `src/owner-addition/multi-authority-eligibility.mts` | Partial on base |
 
-The complete GitHub provenance verifier was adopted in #578. #585's complete report is `src/ci-review/ci-report-entrypoint.mts` (fourteen flat exports, optional transport). #581's complete finalizer is `src/owner-addition/finalize-owner-addition.mts` (existing record builder, nine flat exports). Thin command adapters and the original GitHub environment wrapper retain explicit native I/O boundaries; types supply no authentication or host enforcement.
+#585 completed the report in `src/ci-review/ci-report-entrypoint.mts` (14 flat exports); #581 completed the finalizer in `src/owner-addition/finalize-owner-addition.mts` (9). Native CLI #563 and GitHub provenance #578 are adopted. Thin native adapters remain; types authenticate nothing.
 
-The materializer CLI, adopted in #590, resolves cwd-relative input and reuses existing workspace/temporary-path checking; destinations outside accepted roots are intentionally rejected. Its public descriptor/Buffer/URL API is unchanged and unmodeled. Hardlink aliases and parent replacement after validation remain demonstrated limits; this adds no custody, trusted storage, race resistance or expanded model.
+#590's CLI reuses existing workspace/temporary-path checking after cwd-relative resolution, intentionally rejecting external destinations. Its generic descriptor/Buffer/URL API remains unmodeled and unchanged. Hardlink and post-validation parent replacement limits remain; no custody, trusted storage or race resistance is added.
 
-#589 preserves credentials, deadlines, cancellation, validation and rereads. The relocated launcher's default child is the original flat runner; preview retains its flat directory anchor. Public request/options and callback types describe supported combinations while external settings and responses remain unknown.
+#589 preserves flat guards, exports, credentials, deadlines and validation. The launcher child remains the original flat runner; preview keeps its flat anchor. External settings/observations remain unknown. Retain operation pins, physical import closure, fresh/stale byte mutations, archive/install audits and official 120000ms smoke groups.
 
-Preserve operation pins, flat guards, physical import closure, default child execution and fresh/stale request/receipt byte mutations. Audit source/archive/empty-offline-install bytes and unchanged official smoke groups (120000ms each). Source-extension totals and local reviews do not establish protected adoption.
-
-#587 retains 24 generic CLI flows with new typed HIGH identities: relocation is neither risk removal nor identical fingerprints. No model expansion, dismissal or adoption is inferred. The fixture's 100-path explanation cap retains every positive/negative assertion, including generic materializer API and confined CLI cases in both modes; query/model semantics remain unchanged. Six normative members, provider/permission/acceptance settings and input limits still control. #566's stream/persistence proposal remains unapproved.
+#587's 24 generic HIGH flows gain typed identities; this is not risk removal or identical fingerprints. No model expansion, dismissal or adoption is inferred. The 100-path fixture cap preserves official query/model semantics and all positive/negative assertions, including generic API and CLI cases. Six normative members and provider/permission/acceptance/input limits remain unchanged; #566 remains unapproved.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, `checkJs: false`, and
