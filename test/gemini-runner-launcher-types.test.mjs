@@ -90,7 +90,16 @@ test('typed operations preserve complete original bodies and direct-run guard co
     assert.deepEqual(typed, emitted, 'typed implementation source and emitted operations match');
     const typedFunctions = declarations(typed);
     const newOperations = [...item.operationNames.map(name => typedFunctions.get(name)), ...typedFunctions.get(item.cliName).body.body].map(canonical);
-    assert.equal(sha(newOperations), item.operationsHash, 'typed helper and extracted CLI body retain every operation');
+    if (item.cliName === 'runGeminiLauncherCli') {
+      // The grouped launcher must resolve the original flat child, one directory above.
+      const launcher = newOperations.find(node => node.id?.name === 'runIsolatedGeminiSession');
+      const runner = launcher.body.body.find(node => node.type === 'VariableDeclaration' && node.declarations[0].id.name === 'runnerPath');
+      const relocation = runner.declarations[0].init.right.arguments;
+      assert.equal(relocation.length, 3);
+      assert.deepEqual(relocation.slice(1), [{ type: 'Literal', value: '..' }, { type: 'Literal', value: 'gemini-ci-runner.mjs' }]);
+      relocation.splice(1, 1); // Normalize only the asserted package-relative relocation for the baseline pin.
+    }
+    assert.equal(sha(newOperations), item.operationsHash, 'original operations retain only the asserted flat-child relocation');
 
     const originalGuardHash = '9fed90433dea3f8efa9bd315282edbcd920b68170b833132e345d2b4d482a4f5';
     for (const path of [item.flatSource, item.flatEmitted]) {
