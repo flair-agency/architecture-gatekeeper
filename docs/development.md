@@ -94,6 +94,10 @@ emitted AST and retain both providers' publication and negative cases.
 
 ## TypeScript source and runtime distribution
 
+### Earlier implementation checkpoints
+
+These slice descriptions record their original scope. The current inventory below supersedes their partial-migration status and historical counts.
+
 The integrated #419 slices type OWNER_ADDITION validation, execution-result
 states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
 PR/run and live queue context, self-amendment scope, and amendment canonical
@@ -362,57 +366,27 @@ migration and bounded CLI correction were subsequently adopted in #590.
 
 ### Current original96 inventory and implementation boundaries
 
-The fixed denominator is the original 96-module
-[source map](investigations/2026-10-08-source-layout-typescript-map.md).
-New ordinary-Gemini and measurement modules are outside that denominator.
-Earlier milestone counts are historical: #578 reached 84/96, #563 reached 85/96,
-#581 reached 86/96, #585 reached 87/96 and #590 reached 88/96.
+The original [96-module source map](investigations/2026-10-08-source-layout-typescript-map.md) fixes the denominator; new ordinary-Gemini and measurement modules are excluded. Historical milestones are #578:84, #563:85, #581:86, #585:87 and #590:88.
 
-Adopted main `35b2405cc1818f66e2842d068a509f74e1a8f83c` has **88/96** complete
-original migrations and eight unfinished originals. The owner explicitly
-transferred the five Gemini/preview originals to this coordinator. Candidate
-#589 implements those five, reaching **93/96 implementation coverage**; its
-adoption count remains 88 until normal protected adoption. The remaining three
-CLI originals in Draft #587 still have partial helper migrations on main;
-private complete implementations do not count as adoption.
+Base `35b2405cc1818f66e2842d068a509f74e1a8f83c` has **88/96 adopted** originals. Owner-transferred candidate #589 completes five more (**93/96 implementation coverage**); only normal protected adoption advances the adopted count. Draft #587's three remaining CLI bodies are still partial on that base.
 
-| Original | Current complete or partial implementation | Status |
+| Original | Complete or partial implementation | Status |
 |---|---|---|
-| materialize-regular-git-snapshot | `src/review-inputs/materialize-regular-git-snapshot.mts` | Complete, adopted in #590 |
-| gemini-transport | `src/reviewer-transports/gemini-transport.mts` | Complete candidate in #589 |
-| gemini-security-proxy | `src/gemini-cli/gemini-security-proxy.mts` | Complete candidate in #589 |
-| gemini-ci-runner | `src/gemini-cli/ci-runner-entrypoint.mts` | Complete candidate in #589 |
-| gemini-launcher | `src/gemini-cli/launcher-entrypoint.mts` | Complete candidate in #589 |
-| preview-lifecycle | `src/preview-lifecycle-runtime.mts` | Complete candidate in #589; flat directory retained |
-| prepare-legacy-ci-authority | `src/ci-review/legacy-authority-decision.mts` | Partial validator; preparation/CLI remain in `.mjs` on main |
-| owner-addition-ci | `src/owner-addition/single-authority-member.mts` | Partial selector; remaining body stays in `.mjs` on main |
-| owner-addition-multiauthority | `src/owner-addition/multi-authority-eligibility.mts` | Partial eligibility helper; orchestration stays in `.mjs` on main |
+| materialize-regular-git-snapshot | `src/review-inputs/materialize-regular-git-snapshot.mts` | Adopted #590 |
+| gemini-transport | `src/reviewer-transports/gemini-transport.mts` | Complete candidate #589 |
+| gemini-security-proxy | `src/gemini-cli/gemini-security-proxy.mts` | Complete candidate #589 |
+| gemini-ci-runner | `src/gemini-cli/ci-runner-entrypoint.mts` | Complete candidate #589 |
+| gemini-launcher | `src/gemini-cli/launcher-entrypoint.mts` | Complete candidate #589 |
+| preview-lifecycle | `src/preview-lifecycle-runtime.mts` | Complete candidate #589; flat directory |
+| prepare-legacy-ci-authority | `src/ci-review/legacy-authority-decision.mts` | Partial validator; remaining body flat |
+| owner-addition-ci | `src/owner-addition/single-authority-member.mts` | Partial selector; remaining body flat |
+| owner-addition-multiauthority | `src/owner-addition/multi-authority-eligibility.mts` | Partial helper; remaining body flat |
 
-The report adopted in #585 has its complete reporting CLI, descriptor checks
-and masked Gemini projection reads in `src/ci-review/ci-report-entrypoint.mts`,
-retaining fourteen flat exports and the optional transport. The finalizer
-adopted in #581 has its remaining body in
-`src/owner-addition/finalize-owner-addition.mts`, with the existing record builder
-and nine flat exports. Previously adopted thin command adapters and the original
-GitHub environment source wrapper remain explicit native I/O boundaries; types
-supply no producer authentication or host enforcement.
+#585's complete report is `src/ci-review/ci-report-entrypoint.mts` (fourteen flat exports, optional transport). #581's complete finalizer is `src/owner-addition/finalize-owner-addition.mts` (existing record builder, nine flat exports). Thin command adapters and the original GitHub environment wrapper retain explicit native I/O boundaries; types supply no authentication or host enforcement.
 
-Source/emitted operation pins, real default child execution, physical import
-closure and per-leaf byte mutations retain fresh/stale request and receipt
-checks. Installed consumers execute emitted `dist/` JavaScript. Verify archive
-bytes, empty offline installation and the unchanged official smoke groups
-(each 120000ms); a source extension count is not executed runtime coverage.
+Preserve operation pins, flat guards, physical import closure, default child execution and fresh/stale request/receipt byte mutations. Audit source/archive/empty-offline-install bytes and unchanged official smoke groups (120000ms each). Source-extension totals and local reviews do not establish protected adoption.
 
-Draft #587 retains 24 generic CLI flows whose typed locations register new HIGH
-identities; this is relocation, not risk removal or identical fingerprints.
-No model expansion, dismissal or adoption is inferred. The fixture's 100-path
-explanation cap changes neither query nor model and retains every positive and
-negative assertion, including the generic materializer API and confined CLI
-checks in both baseline and modeled modes. Six normative members, provider
-settings, permissions and acceptance remain controlling. #566's native stream/
-persistence proposal remains unapproved. No count advances from a private
-candidate or local review; the migration does not change consumer architecture
-or assurance policy.
+#587 retains 24 generic CLI flows with new typed HIGH identities: relocation is neither risk removal nor identical fingerprints. No model expansion, dismissal or adoption is inferred. The fixture's 100-path explanation cap retains every positive/negative assertion, including generic materializer API and confined CLI cases in both modes; query/model semantics remain unchanged. Six normative members, provider/permission/acceptance settings and input limits still control. #566's stream/persistence proposal remains unapproved.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, `checkJs: false`, and
