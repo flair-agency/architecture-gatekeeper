@@ -1365,7 +1365,7 @@ jobs:
   measurement:
     if: always() && inputs.measurement-enabled
     continue-on-error: true
-    needs: [policy, review, report, accept]
+    needs: [policy, review, gemini-review, report, accept]
     permissions: {}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1409,13 +1409,13 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          REVIEWED_SHA: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.reviewed_sha }}
           RUNTIME_SHA: ${{ job.workflow_sha }}
-          REVIEW_RESULT: ${{ needs.review.result }}
-          REVIEW_DECISION_KIND: ${{ needs.review.outputs.decision_kind }}
-          REVIEW_PUBLISHED_DECISION: ${{ needs.review.outputs.final_message }}
+          REVIEW_RESULT: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}
+          REVIEW_DECISION_KIND: ${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.decision_kind }}
+          REVIEW_PUBLISHED_DECISION: ${{ needs.policy.outputs.provider == 'gemini' && '' || needs.review.outputs.final_message }}
           REVIEW_JOB_NAME: ${{ inputs.measurement-review-job-name }}
-          REVIEW_PASS_CONCLUSION: ${{ needs.review.outputs.pass_conclusion }}
+          REVIEW_PASS_CONCLUSION: ${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.pass_conclusion }}
         run: |
           node dist/measurement-ci.mjs collect
           node dist/measurement-cli.mjs export "$AGK_MEASUREMENT_DIR" > "$RUNNER_TEMP/agk-review-measurement-export.json"
@@ -1438,10 +1438,10 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          REVIEWED_SHA: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.reviewed_sha }}
           RUNTIME_SHA: ${{ job.workflow_sha }}
           POLICY_RESULT: ${{ needs.policy.result }}
-          REVIEW_RESULT: ${{ needs.review.result }}
+          REVIEW_RESULT: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}
           REPORT_RESULT: ${{ needs.report.result }}
           ACCEPT_RESULT: ${{ needs.accept.result }}
         run: |

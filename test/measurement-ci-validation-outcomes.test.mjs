@@ -111,9 +111,24 @@ test('both workflows keep validation inside required review and publish only com
   for (const filename of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
     const workflow = parseWorkflow(readFileSync(new URL(`../.github/workflows/${filename}`, import.meta.url), 'utf8'));
     const collector = workflow.jobs.measurement.steps.find(step => step.id === 'review-measurement');
-    assert.equal(collector.env.REVIEW_RESULT, '${{ needs.review.result }}');
-    assert.equal(collector.env.REVIEW_DECISION_KIND, '${{ needs.review.outputs.decision_kind }}');
-    assert.equal(collector.env.REVIEW_PUBLISHED_DECISION, '${{ needs.review.outputs.final_message }}');
+    assert.equal(
+      collector.env.REVIEW_RESULT,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}"
+        : '${{ needs.review.result }}',
+    );
+    assert.equal(
+      collector.env.REVIEW_DECISION_KIND,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.decision_kind }}"
+        : '${{ needs.review.outputs.decision_kind }}',
+    );
+    assert.equal(
+      collector.env.REVIEW_PUBLISHED_DECISION,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs.policy.outputs.provider == 'gemini' && '' || needs.review.outputs.final_message }}"
+        : '${{ needs.review.outputs.final_message }}',
+    );
     assert.equal(collector.env.REVIEW_JOB_NAME, '${{ inputs.measurement-review-job-name }}');
     for (const key of ['REVIEW_RESPONSE', 'REVIEW_OUTPUT_FILE', 'PROMPT_PATH', 'SCHEMA_PATH', 'REVIEW_MODEL', 'REVIEW_EFFORT']) assert.equal(collector.env[key], undefined);
     for (const name of ['Record ordinary execution observation', 'Identify the completed ordinary decision', 'Apply consumer-owned decision validation', 'Require exact reported legacy authority files', 'Require exact reported Authority IDs']) {
