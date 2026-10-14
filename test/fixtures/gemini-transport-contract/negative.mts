@@ -1,7 +1,8 @@
-import { executeGeminiReviewer, resolveAuthCredentials, runGeminiReviewer } from '../../../src/gemini-transport.mjs';
+import { executeGeminiReviewer, prepareGeminiRequestBody, resolveAuthCredentials, runGeminiReviewer } from '../../../src/gemini-transport.mjs';
+import type { GeminiReviewRequest } from '../../../src/reviewer-transports/gemini-transport.mts';
 import type { ReviewRequest } from '../../../src/review-contract/review-contract.mts';
 
-declare const request: ReviewRequest;
+declare const request: GeminiReviewRequest;
 // @ts-expect-error Runtime does not await gcloud-token callbacks, so the resolver remains synchronous.
 resolveAuthCredentials({ resolveGcloudAccessToken: async () => 'token' });
 // @ts-expect-error A transport request requires the existing reviewer request fields.
@@ -12,3 +13,13 @@ const execution = await executeGeminiReviewer(request);
 // @ts-expect-error The execution envelope also leaves its decision unknown.
 const envelopeDecision: string = execution.decision;
 void [decision, envelopeDecision];
+
+declare const codexRequest: ReviewRequest & { reviewer: { provider: 'codex' } };
+// @ts-expect-error Explicit Codex requests are unsupported by the Gemini transport.
+runGeminiReviewer(codexRequest);
+// @ts-expect-error Body preparation also requires Gemini or providerless legacy settings.
+prepareGeminiRequestBody(codexRequest);
+// @ts-expect-error Execution does not accept an explicit Codex provider.
+executeGeminiReviewer(codexRequest);
+// @ts-expect-error Active proxy mode must be one of the original validated modes.
+runGeminiReviewer(request, { proxyUrl: 'http://localhost:1234', proxyMode: 'studoi' });

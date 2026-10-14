@@ -9,7 +9,7 @@ const studio: GeminiProxyConfig = {
 const vertex: GeminiProxyConfig = {
   allowedMode: 'vertex', allowedModel: 'gemini-test', allowedProject: 'project', allowedRegion: 'global',
   credentials: { type: 'bearer', value: 'synthetic' },
-  reserveDispatch: () => Promise.resolve(true),
+  reserveDispatch: () => false,
 };
 const route = validateGeminiRoute('/v1beta/models/gemini-test:generateContent');
 const unknownResult: unknown = route;

@@ -6,6 +6,11 @@
 import { spawnSync } from 'node:child_process';
 import type { ReviewRequest, ReviewReviewerSettings } from '../review-contract/review-contract.mts';
 
+type GeminiRequestFor<Request extends ReviewRequest> = Request extends ReviewRequest
+  ? Omit<Request, 'reviewer'> & { reviewer: Omit<ReviewReviewerSettings, 'provider'> & { provider?: 'gemini' } }
+  : never;
+export type GeminiReviewRequest = GeminiRequestFor<ReviewRequest>;
+
 type ThinkingReviewerOptions = Pick<GeminiTransportOptions, 'reasoningEffort' | 'thinkingBudget'>;
 type ThinkingReviewerOperationView = {
   provider?: unknown;
@@ -32,7 +37,7 @@ export interface GeminiTransportOptions {
   apiKey?: unknown;
   accessToken?: unknown;
   gcloudTimeoutMs?: number;
-  resolveGcloudAccessToken?: (timeoutMs?: number) => string | null;
+  resolveGcloudAccessToken?: (timeoutMs: number) => string | null;
   baseUrl?: string;
   projectId?: string;
   region?: string;
@@ -41,7 +46,7 @@ export interface GeminiTransportOptions {
   signal?: AbortSignal;
   fetch?: GeminiFetch;
   proxyUrl?: string;
-  proxyMode?: string;
+  proxyMode?: 'studio' | 'vertex';
   reasoningEffort?: string;
   thinkingBudget?: unknown;
 }
@@ -199,7 +204,7 @@ export function resolveReviewerThinkingBudget(
  * @param {object} [options]
  * @returns {object}
  */
-export function prepareGeminiRequestBody(request: ReviewRequest, options: GeminiTransportOptions = {}): Record<string, unknown> {
+export function prepareGeminiRequestBody(request: GeminiReviewRequest, options: GeminiTransportOptions = {}): Record<string, unknown> {
   const prompt = request.prompt;
   const schema = cleanJsonSchema(request.schema);
 
@@ -368,7 +373,7 @@ function resolveProviderBaseUrl(credentials: GeminiCredential, options: GeminiTr
  * @returns {Promise<{ decision: unknown, execution: { provider: 'gemini', requestedModel: string, appliedSettings: Record<string, unknown>, backendReportedModel?: string } }>}
  */
 export async function executeGeminiReviewer(
-  request: ReviewRequest,
+  request: GeminiReviewRequest,
   options: GeminiTransportOptions = {},
 ): Promise<{ decision: unknown; execution: GeminiExecution }> {
   if (!request?.reviewer?.model || typeof request.reviewer.model !== 'string') {
@@ -695,7 +700,7 @@ export async function executeGeminiReviewer(
  * @param {object} [options]
  * @returns {Promise<unknown>} Parsed provider JSON remains an unchecked observation.
  */
-export async function runGeminiReviewer(request: ReviewRequest, options: GeminiTransportOptions = {}): Promise<unknown> {
+export async function runGeminiReviewer(request: GeminiReviewRequest, options: GeminiTransportOptions = {}): Promise<unknown> {
   const result = await executeGeminiReviewer(request, options);
   return result.decision;
 }

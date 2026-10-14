@@ -48,10 +48,11 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
 });
 test('typed proxy contract rejects incompatible scopes and callback signatures', () => {
   const negative = diagnostics.filter(item => item.file === join(fixtureRoot, 'negative.mts'));
-  assert.deepEqual(negative.map(({ code, line }) => [code, line]), [[2322, 5], [2322, 6], [2322, 7]]);
-  assert.match(negative[0].message, /apiKey.*not assignable|not assignable.*apiKey/i);
-  assert.match(negative[1].message, /Target signature provides too few arguments/);
-  assert.match(negative[2].message, /Promise.*not assignable.*string/i);
+  assert.deepEqual(negative.map(({ code, line }) => [code, line]), [[2322, 4], [2322, 5], [2322, 6], [2322, 7]]);
+  assert.match(negative[0].message, /Promise<boolean>.*not assignable.*boolean/i);
+  assert.match(negative[1].message, /apiKey.*not assignable|not assignable.*apiKey/i);
+  assert.match(negative[2].message, /Target signature provides too few arguments/);
+  assert.match(negative[3].message, /Promise.*not assignable.*string/i);
 });
 test('complete proxy runtime operations retain adopted AST and flat export identities', async () => {
   const sourceFacade = ast(join(root, 'src/gemini-security-proxy.mjs'));

@@ -4,10 +4,10 @@ import {
   resolveAuthCredentials,
   runGeminiReviewer,
 } from '../../../src/gemini-transport.mjs';
-import type { GeminiTransportOptions } from '../../../src/reviewer-transports/gemini-transport.mts';
+import type { GeminiReviewRequest, GeminiTransportOptions } from '../../../src/reviewer-transports/gemini-transport.mts';
 import type { ReviewRequest } from '../../../src/review-contract/review-contract.mts';
 
-const request: ReviewRequest = {
+const request: GeminiReviewRequest = {
   version: 1,
   repositoryRoot: '/repo',
   reviewedRevision: 'revision',
@@ -49,3 +49,8 @@ const thenableJsonResult: Promise<unknown> = runGeminiReviewer(request, { apiKey
 const body: Record<string, unknown> = prepareGeminiRequestBody(request);
 const credentials = resolveAuthCredentials({ resolveGcloudAccessToken: () => 'fixture-token' });
 void [syncResult, asyncResult, thenableResult, standardResult, syncJsonResult, asyncJsonResult, thenableJsonResult, body, credentials];
+
+const requiredTimeout = resolveAuthCredentials({ resolveGcloudAccessToken: (timeoutMs: number) => String(timeoutMs) });
+const legacyRequest: GeminiReviewRequest = { ...request, reviewer: { model: 'gemini-2.5-flash', thinkingBudget: 1024 } };
+void runGeminiReviewer(legacyRequest, { proxyMode: 'studio' });
+void requiredTimeout;

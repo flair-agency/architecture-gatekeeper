@@ -32,7 +32,7 @@ type GeminiProxyConfigBase = {
   allowStreaming?: boolean;
   deadlineMs?: number;
   signal?: AbortSignal;
-  reserveDispatch?: () => unknown;
+  reserveDispatch?: () => boolean;
 };
 export type GeminiProxyConfig = GeminiProxyConfigBase & (
   | { allowedMode: 'studio'; credentials: { type: 'apiKey'; value: string } }
