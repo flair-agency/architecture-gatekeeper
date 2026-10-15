@@ -115,9 +115,25 @@ defense, authenticated artifact custody or complete race freedom is claimed.
 Caller-selected ordinary file destinations remain capabilities; untrusted
 callers must not be mistaken for authenticated invocation.
 
-Current initial verification: strict/build/source cycles passed; focused helper
-and three production suites passed 62/62, zero failures/skips, 8.88 seconds
-(Node 22.23.3, concurrency 2). These results precede final committed-head full,
-CodeQL, package, independent/Native and hosted/protected verification. Those
-remaining results must be recorded at their actual revisions before adoption.
-No local result waives a failing hosted check or authorizes #587 adoption.
+Source candidate `bc7274a` passed strict/build/source cycles and focused helper
+and production suites: 63/63, zero failures/skips, 12.68 seconds (Node 22.23.3,
+concurrency 2). Its source-only official CodeQL run completed with unchanged
+models/queries: 27 JavaScript findings (24 path-injection, two command-line
+injection, one bad-tag-filter), zero Actions findings. Nine findings are at
+shared artifact helper operations. Their caller-selected path taint remains;
+the lower aggregate count is not proof that risk disappeared. Default SARIF
+explanations are sampled and do not enumerate every incoming caller route.
+
+The actual `bc7274a` archive/offline install verified all 228 emitted modules,
+six normative members, eight bins and nine exports. Actual separate installed
+Native review returned PASS and runtime validation exited zero. Its full test
+attempt was stopped for the following fixture correction; it is not a full-pass
+result. The installed smoke failed because its synthetic all-flat runtime copy
+deleted the new dependency. The corrected fixture retains that dependency in
+flat form and adds the new emitted helper to stale-request/receipt identity
+invalidation coverage; no identity assertion is removed. The focused corrected
+identity case passed against the real installed runtime composition.
+
+Final full-suite, CodeQL, distribution, fresh reviews and hosted/protected results
+must retain their actual revision identities. No local result waives a failing
+hosted check or authorizes #587 adoption.
