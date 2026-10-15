@@ -13,8 +13,10 @@ const fail = (message: string): never => { throw new Error(`Artifact file: ${mes
 const noFollow = constants.O_NOFOLLOW ?? 0;
 const nonBlock = constants.O_NONBLOCK ?? 0;
 const same = (a: Stats, b: Stats): boolean => a.dev === b.dev && a.ino === b.ino;
-const regular = (stat: Stats): void => {
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) fail('a direct single-link regular file is required.');
+const regular = (stat: Stats, callerDescriptor = false): void => {
+  if (!stat.isFile() || stat.isSymbolicLink() || (callerDescriptor ? stat.nlink > 1 : stat.nlink !== 1)) {
+    fail('a direct single-link regular file is required.');
+  }
 };
 
 function nativePath(path: PathLike): FilePath {
@@ -127,7 +129,9 @@ export function ensureArtifactDirectory(path: PathLike): void {
 export function writeArtifactFile(path: PathLike | number, contents: string | NodeJS.ArrayBufferView,
   { append = false, mode = 0o600 }: { append?: boolean; mode?: number } = {}): void {
   if (typeof path === 'number') {
-    regular(fstatSync(path));
+    // An explicitly supplied open-then-unlinked regular fd is still a valid
+    // capability. Path-based opens require exactly one link throughout.
+    regular(fstatSync(path), true);
     // A caller-owned descriptor retains its offset and lifetime; do not truncate.
     writeFileSync(path, contents);
     return;
@@ -144,7 +148,7 @@ export function readArtifactFile(path: PathLike | number): Buffer;
 export function readArtifactFile(path: PathLike | number, encoding: BufferEncoding): string;
 export function readArtifactFile(path: PathLike | number, encoding?: BufferEncoding): Buffer | string {
   if (typeof path === 'number') {
-    regular(fstatSync(path));
+    regular(fstatSync(path), true);
     return encoding === undefined ? readFileSync(path) : readFileSync(path, encoding);
   }
   const fd = checkedOpen(nativePath(path), constants.O_RDONLY, false, 0o600);

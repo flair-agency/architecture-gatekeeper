@@ -565,7 +565,8 @@ File opening uses no-follow/nonblocking flags where available and never truncate
 as part of open. The helper checks the opened file's type, link count and identity,
 then rechecks its path and parent identities before reading, truncating or writing.
 Creation uses exclusive open after an absent-file observation. Caller-supplied
-descriptors are checked without closing, seeking or truncating them. This guards
+descriptors are checked without closing, seeking or truncating them; an explicitly
+supplied regular descriptor remains valid after its pathname is unlinked. This guards
 the tested substitutions; it does not authenticate caller-selected paths, grant
 artifact custody or isolate concurrent hostile same-user activity.
 

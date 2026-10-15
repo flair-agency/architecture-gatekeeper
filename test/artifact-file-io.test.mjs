@@ -131,6 +131,23 @@ test('descriptor reads begin at the current offset and leave the descriptor open
   } finally { fs.closeSync(fd); }
 });
 
+test('an open then unlinked regular descriptor remains usable', { skip: !unix }, t => {
+  const root = fixture(t);
+  const path = join(root, 'unlinked');
+  const fd = fs.openSync(path, 'w+', 0o600);
+  try {
+    fs.writeSync(fd, 'prefix:');
+    fs.unlinkSync(path);
+    assert.equal(fs.fstatSync(fd).nlink, 0);
+    writeArtifactFile(fd, 'value');
+    const bytes = Buffer.alloc(12);
+    fs.readSync(fd, bytes, 0, bytes.length, 0);
+    assert.equal(bytes.toString(), 'prefix:value');
+    assert.equal(readArtifactFile(fd, 'utf8'), '');
+    assert.equal(fs.fstatSync(fd).size, 12);
+  } finally { fs.closeSync(fd); }
+});
+
 test('ensureArtifactDirectory creates nested directories with private mode', t => {
   const root = fixture(t);
   const selected = join(root, 'nested', 'directory');

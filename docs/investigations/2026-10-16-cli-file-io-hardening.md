@@ -23,6 +23,8 @@ before data access. Missing writes use exclusive creation; file operations use
 no-follow/nonblocking flags where supported. Directory creation checks existing
 ancestors before mkdir and the resulting chain afterward. Caller-owned numeric
 descriptors remain open at their original offset and are not truncated.
+An open-then-unlinked regular descriptor remains usable; pathname-based opens
+still require one link and multiply linked descriptors are rejected.
 
 Valid string, Buffer, URL, relative and caller-selected external paths remain
 usable. Buffer paths retain native non-UTF-8 POSIX filename bytes. Ordinary
