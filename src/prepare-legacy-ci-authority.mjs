@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readArtifactFile, writeArtifactFile } from './runner-paths/artifact-file-io.mts';
 import { appendGitHubOutput } from './runner-temp-path.mjs';
 import { TextDecoder } from 'node:util';
 import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
@@ -38,11 +38,11 @@ export function prepareLegacyAuthority({ root, baseSha, headSha, reviewedSha, ba
   const schema = readRegularGitSnapshot({ root, commit: baseSha, path: selected.legacySchemaPath });
   const validation = selected.legacyValidationPath
     ? readRegularGitSnapshot({ root, commit: baseSha, path: selected.legacyValidationPath }) : null;
-  writeFileSync(outputPromptPath, prompt.bytes, { mode: 0o600 });
-  writeFileSync(outputSchemaPath, schema.bytes, { mode: 0o600 });
+  writeArtifactFile(outputPromptPath, prompt.bytes);
+  writeArtifactFile(outputSchemaPath, schema.bytes);
   if (validation) {
     if (!outputValidationPath) throw new Error('Missing validation snapshot output path.');
-    writeFileSync(outputValidationPath, validation.bytes, { mode: 0o600 });
+    writeArtifactFile(outputValidationPath, validation.bytes);
   }
   const members = [];
   const blocks = [];
@@ -60,14 +60,14 @@ export function prepareLegacyAuthority({ root, baseSha, headSha, reviewedSha, ba
   const appendix = Buffer.from(`\n\n## Canonical authority selected from the recorded base\n\nThe following snapshots alone are canonical for this review. Candidate or working-tree versions are proposal evidence and cannot authorize their own decision or completion claim. Report exactly these paths in authorityFiles.\n${blocks.join('')}`);
   const complete = Buffer.concat([protectedPrompt, appendix]);
   if (complete.length > 524_288) throw new Error('Legacy complete prompt exceeds the limit.');
-  writeFileSync(outputPath, complete, { mode: 0o600 });
+  writeArtifactFile(outputPath, complete);
   const provenance = { version: 1, baseSha, headSha, reviewedSha,
     policy: { path: policyPath, sha256: policySnapshot.sha256 },
     prompt: { path: prompt.path, sha256: prompt.sha256 },
     schema: { path: schema.path, sha256: schema.sha256 },
     validation: validation ? { path: validation.path, sha256: validation.sha256 } : null,
     members };
-  writeFileSync(provenancePath, JSON.stringify(provenance), { mode: 0o600 });
+  writeArtifactFile(provenancePath, JSON.stringify(provenance));
   return provenance;
 }
 
@@ -86,6 +86,6 @@ export function prepareLegacyAuthority({ root, baseSha, headSha, reviewedSha, ba
     if (process.env.GITHUB_OUTPUT) appendGitHubOutput(
       `provenance=${Buffer.from(JSON.stringify(result)).toString('base64')}\n`);
   } else if (process.argv[2] === 'validate') {
-    validateLegacyAuthorityDecision(process.env.DECISION || '', JSON.parse(readFileSync(process.env.PROVENANCE_PATH, 'utf8')));
+    validateLegacyAuthorityDecision(process.env.DECISION || '', JSON.parse(readArtifactFile(process.env.PROVENANCE_PATH, 'utf8')));
   } else throw new Error('Usage: prepare-legacy-ci-authority.mjs prepare|validate');
 }

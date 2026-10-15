@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { linkSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -135,6 +135,69 @@ test('legacy v1 does not attribute a base-only authority update to the candidate
     outputPath: join(root, 'complete.out'), provenancePath: join(root, 'provenance.json') });
   assert.equal(provenance.reviewedSha, reviewedSha);
   assert.match(readFileSync(join(root, 'complete.out'), 'utf8'), /Updated base authority/);
+});
+
+test('legacy prepare writes only to regular output leaves beneath real parents and preserves arbitrary output directories', t => {
+  const root = mkdtempSync(join(tmpdir(), 'legacy-artifact-boundary-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  git(root, 'init', '-q');
+  const policyPath = '.codex/gatekeeper/ci-policy.json';
+  const authorityPath = 'docs/architecture.md';
+  const promptPath = '.codex/gatekeeper/ci-prompt.md';
+  const schemaPath = '.codex/gatekeeper/decision.schema.json';
+  write(root, policyPath, JSON.stringify({ version: 1, default: { mode: 'local-only' }, branches: { main: {
+    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'low', authorityFiles: [authorityPath],
+    promptPath, schemaPath, validationPath: null,
+  } } }));
+  write(root, promptPath, 'Review the selected authority.');
+  write(root, schemaPath, '{"type":"object"}');
+  write(root, authorityPath, 'Canonical rule.');
+  git(root, 'add', '.'); git(root, 'commit', '-qm', 'base');
+  const baseSha = git(root, 'rev-parse', 'HEAD');
+  const cli = [fileURLToPath(new URL('../dist/prepare-legacy-ci-authority.mjs', import.meta.url)), 'prepare'];
+  const outputRoot = join(root, 'unusual', 'nested', 'outputs');
+  mkdirSync(outputRoot, { recursive: true });
+  const sentinel = join(root, 'sentinel');
+  const setup = () => ({ ...process.env, GITHUB_WORKSPACE: root, BASE_SHA: baseSha, HEAD_SHA: baseSha,
+    REVIEWED_SHA: baseSha, BASE_BRANCH: 'main', POLICY_PATH: policyPath,
+    PROMPT_OUTPUT_PATH: join(outputRoot, 'prompt.md'), SCHEMA_OUTPUT_PATH: join(outputRoot, 'schema.json'),
+    OUTPUT_PATH: join(outputRoot, 'complete.md'), PROVENANCE_PATH: join(outputRoot, 'provenance.json'),
+    GITHUB_OUTPUT: join(outputRoot, 'github-output') });
+
+  // Ordinary nested destinations remain supported, including the CLI's five outputs.
+  const normalEnv = setup();
+  writeFileSync(normalEnv.GITHUB_OUTPUT, 'old=value\n');
+  execFileSync(process.execPath, cli, { cwd: root, env: normalEnv });
+  assert.equal(readFileSync(normalEnv.PROMPT_OUTPUT_PATH, 'utf8'), 'Review the selected authority.');
+  assert.match(readFileSync(normalEnv.OUTPUT_PATH, 'utf8'), /Canonical rule/);
+  assert.match(readFileSync(normalEnv.PROVENANCE_PATH, 'utf8'), /"version":1/);
+  assert.match(readFileSync(normalEnv.GITHUB_OUTPUT, 'utf8'), /^old=value\nprovenance=/);
+
+  // Both symlinks and hard links at the leaf must fail inside the artifact writer.
+  for (const [label, makeLink] of [
+    ['symlink', path => symlinkSync(sentinel, path)],
+    ['hardlink', path => linkSync(sentinel, path)],
+  ]) {
+    writeFileSync(sentinel, 'sentinel stays intact');
+    const blocked = join(outputRoot, `blocked-${label}`);
+    makeLink(blocked);
+    const result = spawnSync(process.execPath, cli, { cwd: root, env: { ...setup(), PROMPT_OUTPUT_PATH: blocked }, encoding: 'utf8' });
+    assert.notEqual(result.status, 0, `${label} output leaf must be rejected`);
+    assert.match(result.stderr, /artifact|regular file|link/i);
+    assert.equal(readFileSync(sentinel, 'utf8'), 'sentinel stays intact');
+    unlinkSync(blocked);
+  }
+
+  writeFileSync(sentinel, 'parent sentinel stays intact');
+  const targetParent = join(root, 'sentinel-parent');
+  mkdirSync(targetParent);
+  const linkedParent = join(root, 'linked-output-parent');
+  symlinkSync(targetParent, linkedParent);
+  const parentResult = spawnSync(process.execPath, cli, { cwd: root,
+    env: { ...setup(), PROMPT_OUTPUT_PATH: join(linkedParent, 'prompt.md') }, encoding: 'utf8' });
+  assert.notEqual(parentResult.status, 0, 'symlink output parent must be rejected');
+  assert.match(parentResult.stderr, /artifact|directory|link/i);
+  assert.equal(readFileSync(sentinel, 'utf8'), 'parent sentinel stays intact');
 });
 
 const selectedPaths = {

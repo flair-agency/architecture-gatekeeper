@@ -542,6 +542,45 @@ extraction/query results before claiming analysis of the final candidate.
 Installed consumers receive the `dist/` JavaScript and need no TypeScript compiler; verify archive contents
 and clean/offline installation.
 
+## Artifact file I/O checks
+
+Legacy authority preparation and owner-addition artifact operations share
+`src/runner-paths/artifact-file-io.mts`. Existing runner-output and fixed-temp
+helpers are not interchangeable with this helper: they select process environment
+values or fixed storage paths, whereas these APIs retain caller-selected native
+destinations and injected environments. Their existing descriptor checks inform
+the new helper without extending any trusted accessor or CodeQL model.
+
+String, Buffer (including native non-UTF-8 POSIX names), file URL and numeric
+descriptor forms remain usable for ordinary files. Existing regular-file
+overwrite, modes, append creation and caller-owned descriptor offsets/lifetimes
+are retained. Linked files, multiply linked files, nonregular files and linked
+parent directories are rejected. This includes directory aliases with trailing
+or repeated separators; lexical normalization must not hide an alias before a
+`..` component. On platforms with conventional temporary-directory symlinks,
+callers must use the physical directory path. No checkout/temp confinement or
+new filename allowlist is imposed.
+
+File opening uses no-follow/nonblocking flags where available and never truncates
+as part of open. The helper checks the opened file's type, link count and identity,
+then rechecks its path and parent identities before reading, truncating or writing.
+Creation uses exclusive open after an absent-file observation. Caller-supplied
+descriptors are checked without closing, seeking or truncating them. This guards
+the tested substitutions; it does not authenticate caller-selected paths, grant
+artifact custody or isolate concurrent hostile same-user activity.
+
+Portable Node filesystem calls do not supply a directory-relative atomic open
+transaction. A parent replacement during missing-file/directory creation can
+leave an empty file or directory before a subsequent identity check rejects the
+operation. Replacement or hardlink creation after the final check also remains
+possible for an actor with sufficient filesystem access. These limits must remain
+visible; prechecks and successful tests are not a claim of complete race freedom.
+
+Retain production CLI/API sentinel tests, native-form compatibility cases and
+deterministic open-time substitution fixtures alongside the helper tests. CodeQL
+still evaluates caller-selected paths; file safety checks do not authorize a
+sanitizer model, alert dismissal, weaker query or protected acceptance.
+
 ## Static source import cycles
 
 `node scripts/check-source-cycles.mjs` checks the fixed `src/` tree containing

@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest,
   readCommittedAuthorityFile, rejectDuplicateJsonKeys } from './authority-set.mjs';
@@ -12,6 +11,7 @@ import { validateMultiAuthorityAdditionG0Procedure } from './owner-decision-addi
 import { assertSameMultiAuthorityProvenance, multiAuthorityProvenance,
   validateMultiAuthorityDecision } from './multi-authority-provenance.mjs';
 import { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema } from './owner-addition/multi-authority-eligibility.mts';
+import { ensureArtifactDirectory, writeArtifactFile } from './runner-paths/artifact-file-io.mts';
 export { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema };
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -88,10 +88,10 @@ export async function prepareMultiAuthorityAddition(env, selected, policyBytes, 
     `\nExact B diff (base ${baseSha}, head ${headSha}):\n${decode(diff)}\n`,
   ].join('');
   if (Buffer.byteLength(completePrompt) > limits.maxPromptBytes) throw new Error('Owner-addition complete prompt exceeds the review limit.');
-  mkdirSync(outputDir, { recursive: true, mode: 0o700 });
-  writeFileSync(join(outputDir, 'eligibility-prompt.md'), completePrompt, { mode: 0o600 });
-  writeFileSync(join(outputDir, 'eligibility.schema.json'), schemaBytes, { mode: 0o600 });
-  writeFileSync(join(outputDir, 'procedure.json'), JSON.stringify(procedure), { mode: 0o600 });
-  if (env.GITHUB_OUTPUT) writeFileSync(env.GITHUB_OUTPUT, `procedure_base64=${Buffer.from(JSON.stringify(procedure)).toString('base64')}\n`, { flag: 'a' });
+  ensureArtifactDirectory(outputDir);
+  writeArtifactFile(join(outputDir, 'eligibility-prompt.md'), completePrompt);
+  writeArtifactFile(join(outputDir, 'eligibility.schema.json'), schemaBytes);
+  writeArtifactFile(join(outputDir, 'procedure.json'), JSON.stringify(procedure));
+  if (env.GITHUB_OUTPUT) writeArtifactFile(env.GITHUB_OUTPUT, `procedure_base64=${Buffer.from(JSON.stringify(procedure)).toString('base64')}\n`, { append: true, mode: 0o666 });
   return procedure;
 }

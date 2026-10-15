@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { linkSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -138,6 +138,51 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
   validateOrdinaryOwnerDecisionSchema(JSON.parse(readFileSync(join(root, '.codex/gatekeeper/ordinary.schema.json'), 'utf8')));
   assert.throws(() => validateOrdinaryOwnerDecision('{"decision":"OWNER_DECISION","ownerDecisionId":"unrelated-owner","summary":"other"}', 'reporting-owner'), /exact missing decision/);
   assert.throws(() => validateOrdinaryOwnerDecision('{"decision":"OWNER_DECISION","summary":"other"}', 'reporting-owner'), /exact missing decision/);
+
+  // The actual validate command rejects linked schema/procedure inputs before parsing their targets.
+  const cli = join(sourceRoot, 'dist/owner-addition-ci.mjs');
+  const validateEnv = { ...env, DECISION: JSON.stringify(eligible) };
+  const sentinel = join(root, 'artifact-sentinel');
+  const schemaPath = join(outputDir, 'eligibility.schema.json');
+  for (const [name, artifactPath, kind] of [
+    ['schema symlink', schemaPath, 'symlink'],
+  ]) {
+    writeFileSync(sentinel, 'validation sentinel');
+    unlinkSync(artifactPath);
+    if (kind === 'symlink') symlinkSync(sentinel, artifactPath);
+    else linkSync(sentinel, artifactPath);
+    const result = spawnSync(process.execPath, [cli, 'validate'], { cwd: root, env: validateEnv, encoding: 'utf8' });
+    assert.notEqual(result.status, 0, `${name} must fail validation`);
+    assert.match(result.stderr, /Artifact file:/);
+    assert.doesNotMatch(result.stderr, /invalid JSON|unexpected token/i);
+    assert.equal(readFileSync(sentinel, 'utf8'), 'validation sentinel');
+    unlinkSync(artifactPath);
+    writeFileSync(artifactPath, JSON.stringify(schema));
+  }
+
+  // A prepare output leaf and an OUTPUT_DIR parent symlink are rejected by the CLI writer.
+  for (const kind of ['symlink', 'hardlink']) {
+    writeFileSync(sentinel, 'prepare sentinel');
+    const promptPath = join(outputDir, 'eligibility-prompt.md');
+    unlinkSync(promptPath);
+    if (kind === 'symlink') symlinkSync(sentinel, promptPath);
+    else linkSync(sentinel, promptPath);
+    const result = spawnSync(process.execPath, [cli, 'prepare'], { cwd: root, env, encoding: 'utf8' });
+    assert.notEqual(result.status, 0, `${kind} prepare output must fail`);
+    assert.match(result.stderr, /Artifact file:/);
+    assert.equal(readFileSync(sentinel, 'utf8'), 'prepare sentinel');
+    unlinkSync(promptPath);
+    writeFileSync(promptPath, prompt);
+  }
+  rmSync(outputDir, { recursive: true, force: true });
+  const outside = join(root, 'outside-output');
+  mkdirSync(outside);
+  const linkedOutputDir = join(root, 'linked-output-dir');
+  symlinkSync(outside, linkedOutputDir);
+  const parentResult = spawnSync(process.execPath, [cli, 'prepare'],
+    { cwd: root, env: { ...env, OUTPUT_DIR: linkedOutputDir }, encoding: 'utf8' });
+  assert.notEqual(parentResult.status, 0, 'OUTPUT_DIR symlink must fail');
+  assert.match(parentResult.stderr, /Artifact file:/);
 });
 
 test('G0 applies protected file and total limits to both authority snapshots', t => {

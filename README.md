@@ -114,6 +114,14 @@ files. Its optional local `REPORT_PATH` must name
 `architecture-gate-report.md` in the current directory; it creates that file
 exclusively and never overwrites an existing destination. See the
 [report filesystem boundary](docs/integration-reference.md#report-filesystem-boundary).
+
+Legacy authority preparation and owner-addition artifact I/O retain caller-selected
+destinations, but reject linked or nonregular files and linked parent directories.
+Use direct directory paths, including the physical temporary-directory path on
+systems whose usual temporary path is an alias. Multi-authority preparation
+continues to append to the injected `env.GITHUB_OUTPUT`, including creation of a
+missing ordinary file. See the [artifact I/O checks](docs/development.md#artifact-file-io-checks)
+for compatibility and race limitations.
 For a complete consumer-owned local v2 configuration and CI policy v4 example,
 including the separate optional G0 selection, see
 [examples/consumer-v4](examples/consumer-v4/README.md).
