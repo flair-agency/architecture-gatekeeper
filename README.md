@@ -118,6 +118,12 @@ For a complete consumer-owned local v2 configuration and CI policy v4 example,
 including the separate optional G0 selection, see
 [examples/consumer-v4](examples/consumer-v4/README.md).
 
+For ordinary policy-selected consumer reviews with a protected Authority Set,
+the prompt also carries the executing reusable-workflow identity, Git tree,
+blob and content digest, plus its relocated checkout path. This is availability
+evidence; the unchanged consumer prompt and authority still govern review, and
+a different or missing candidate pin does not qualify this source.
+
 An enforced v4 consumer policy may optionally select a protected-base
 `reviewReferenceManifestPath` containing up to two exact `<gitlink>/SKILL.md`
 paths. The reusable workflow requires its optional

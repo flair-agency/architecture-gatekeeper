@@ -288,6 +288,24 @@ test('self protected review binds the exact PR task context before Codex consume
   assert.ok(workflow.indexOf('name: Attach exact pull request task context to protected review') < workflow.indexOf('id: codex\n'));
 });
 
+test('consumer review attaches executing source only for trusted policy-selected ordinary review', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/architecture-gate-consumer.yml', import.meta.url), 'utf8');
+  const parsed = parseWorkflow(workflow, 'architecture-gate-consumer.yml');
+  const context = workflow.split('      - name: Attach exact pull request task context to protected review\n')[1]?.split('      - name:')[0];
+  assert.ok(context);
+  assert.match(context, /EXECUTION_SOURCE_ENABLED: \$\{\{ needs\.policy\.outputs\.execution_selection == 'policy' && needs\.policy\.outputs\.authority_manifest_path != '' \}\}/);
+  for (const [name, expression] of Object.entries({
+    EXECUTION_SOURCE_REPOSITORY: "needs.policy.outputs.execution_selection == 'policy' && needs.policy.outputs.authority_manifest_path != '' && job.workflow_repository || ''",
+    EXECUTION_SOURCE_SHA: "needs.policy.outputs.execution_selection == 'policy' && needs.policy.outputs.authority_manifest_path != '' && job.workflow_sha || ''",
+    EXECUTION_SOURCE_PATH: "needs.policy.outputs.execution_selection == 'policy' && needs.policy.outputs.authority_manifest_path != '' && '.github/workflows/architecture-gate-consumer.yml' || ''",
+  })) assert.ok(context.includes(`${name}: \${{ ${expression} }}`));
+  assert.doesNotMatch(context, /EXECUTION_SOURCE_ROOT:/, 'the relocated source root is derived from the executing CLI path');
+  assert.equal(parsed.jobs.review.steps.find(step => step.name === 'Attach exact pull request task context to protected review').run,
+    'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-review-context.mjs"');
+  assert.ok(!readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8').includes('EXECUTION_SOURCE_'),
+    'source attachment stays on the consumer execution path');
+});
+
 
 test('encoded expected settings agree with the same resolved Action configuration', () => {
   const policy = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/ci-policy.json', import.meta.url), 'utf8'));
