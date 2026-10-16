@@ -16,6 +16,7 @@ export interface ResolvedCiPolicy {
   legacySchemaPath?: unknown;
   legacyValidationPath?: unknown;
   authorityManifestPath?: unknown;
+  reviewReferenceManifestPath?: unknown;
   authorityLimitsBase64?: string;
   authorityProfile?: string;
   ownerAdditionVersion?: 2;
@@ -136,10 +137,18 @@ function validateV6Branch(branch: PolicyBranchView, label: string): void {
   validateAuthorityLimits((branch as PolicyBranchView).authorityLimits);
 }
 
+function validateReviewReferenceManifestPath(value: unknown, label: string): void {
+  if (typeof value !== 'string' || value.length > 240 ||
+      !/^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.json$/.test(value) ||
+      value.split('/').some(part => part === '.' || part === '..')) {
+    throw new Error(`Invalid supplemental review reference manifest path for ${label}`);
+  }
+}
+
 function validateBranch(branch: PolicyBranchView, label: string, version: number): void {
   if (version === 6) return validateV6Branch(branch, label);
   const allowed = version === 1 ? ['mode', 'model', 'reasoningEffort', 'authorityFiles', 'promptPath', 'schemaPath', 'validationPath', 'execution'] :
-    ['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'execution', 'ownerAddition', ...(version === 2 ? ['ownerAmendment'] : []), ...(version === 5 ? ['adoptionEvidence'] : [])];
+    ['mode', 'model', 'reasoningEffort', 'authorityManifestPath', 'authorityLimits', 'execution', 'ownerAddition', ...(version === 2 ? ['ownerAmendment'] : []), ...(version === 5 ? ['adoptionEvidence'] : []), ...(version === 4 ? ['reviewReferenceManifestPath'] : [])];
   requireOnlyKeys(branch, new Set(allowed), label);
   if (!MODES.has((branch as PolicyBranchView).mode as string)) throw new Error(`Invalid ${label} mode`);
   if ((branch as PolicyBranchView).mode === 'local-only') {
@@ -174,6 +183,10 @@ function validateBranch(branch: PolicyBranchView, label: string, version: number
     }
   }
   if (version === 2 || version === 4 || version === 5) {
+    if (Object.hasOwn(branch, 'reviewReferenceManifestPath')) {
+      if (version !== 4 || !Object.hasOwn(branch, 'authorityManifestPath')) throw new Error(`${label} supplemental review references require a v4 Authority Set`);
+      validateReviewReferenceManifestPath((branch as PolicyBranchView).reviewReferenceManifestPath, label);
+    }
     if (Object.hasOwn(branch, 'ownerAddition')) {
       requireOnlyKeys((branch as PolicyBranchView).ownerAddition, new Set(['grade', 'authorityPath', 'promptPath', 'schemaPath', ...([4, 5].includes(version) ? ['version', 'authorityId'] : [])]), `${label} owner addition`);
       if ([4, 5].includes(version) && (((branch as PolicyBranchView).ownerAddition as PolicyBranchView).version !== 2 ||
@@ -283,6 +296,9 @@ export function resolveCiPolicy(policy: unknown, baseBranch: string): ResolvedCi
     const profile = [4, 5].includes((policy as PolicyView).version as number) ? MULTI_AUTHORITY_PROFILE : 'v1';
     result.authorityLimitsBase64 = Buffer.from(JSON.stringify(validateAuthorityLimits(selected.authorityLimits, profile))).toString('base64');
     if ([4, 5].includes((policy as PolicyView).version as number)) result.authorityProfile = profile;
+    if ((policy as PolicyView).version === 4 && Object.hasOwn(selected, 'reviewReferenceManifestPath')) {
+      result.reviewReferenceManifestPath = selected.reviewReferenceManifestPath;
+    }
   }
   if (selected.ownerAddition) {
     if ([4, 5].includes((policy as PolicyView).version as number)) {

@@ -118,6 +118,19 @@ For a complete consumer-owned local v2 configuration and CI policy v4 example,
 including the separate optional G0 selection, see
 [examples/consumer-v4](examples/consumer-v4/README.md).
 
+An enforced v4 consumer policy may optionally select a protected-base
+`reviewReferenceManifestPath` containing up to two exact `<gitlink>/SKILL.md`
+paths. The reusable workflow requires its optional
+`review-reference-manifest-path` input to match that selection, binds each
+public GitHub source to the protected base `.gitmodules` entry and full Gitlink
+commit, and appends bounded snapshots as supplemental context to the ordinary
+review prompt. No selected path preserves the existing prompt flow; unresolved,
+mismatched, or oversized selected references stop review before dispatch.
+The selected-base manifest has `version: 1`, `maxReferenceBytes` (up to 65,536),
+`maxTotalBytes` (up to 131,072), and one or two exact paths in `references`;
+both limits must also fit the protected Authority Set limits. Snapshot text is
+labelled as supplemental evidence and cannot override the protected prompt.
+
 #### Self-repository Fork contributions
 
 This repository's self-review policy does not run privileged or paid review for

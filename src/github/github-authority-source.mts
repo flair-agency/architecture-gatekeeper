@@ -54,9 +54,24 @@ export type GitHubAuthorityFetch = (
   options: GitHubAuthorityFetchOptions,
 ) => GitHubAuthorityAwaitable<GitHubAuthorityFetchResponse>;
 
+export type GitHubPublicAuthorityFetchOptions = Omit<GitHubAuthorityFetchOptions, 'headers'> & {
+  headers: Omit<GitHubAuthorityFetchOptions['headers'], 'Authorization'> & { Authorization?: string };
+};
+
+export type GitHubPublicAuthorityFetch = (
+  url: string,
+  options: GitHubPublicAuthorityFetchOptions,
+) => GitHubAuthorityAwaitable<GitHubAuthorityFetchResponse>;
+
 export type GitHubAuthoritySourceOptions = {
   token?: unknown;
   fetchImpl?: GitHubAuthorityFetch;
+  timeoutMs?: unknown;
+  memberTimeoutMs?: unknown;
+};
+
+export type GitHubPublicAuthoritySourceOptions = {
+  fetchImpl?: GitHubPublicAuthorityFetch;
   timeoutMs?: unknown;
   memberTimeoutMs?: unknown;
 };
@@ -93,7 +108,7 @@ function validPath(path: unknown): path is string {
     path.split('/').every(segment => segment && segment !== '.' && segment !== '..' && SEGMENT.test(segment));
 }
 
-async function boundedJson(fetchImpl: GitHubAuthorityFetch, url: string, token: string, maxResponseBytes: number, timeoutMs: number): Promise<unknown> {
+async function boundedJson(fetchImpl: GitHubPublicAuthorityFetch, url: string, token: string | undefined, maxResponseBytes: number, timeoutMs: number): Promise<unknown> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -109,7 +124,7 @@ async function boundedJson(fetchImpl: GitHubAuthorityFetch, url: string, token: 
       signal: controller.signal,
       headers: {
         Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         'X-GitHub-Api-Version': '2022-11-28',
       },
     }));
@@ -152,9 +167,14 @@ function decodeBlob(blob: unknown, requestedSha: string, maxBytes: number): Buff
   return content;
 }
 
-/** Create a credential-confined fetchExternal adapter for immutable GitHub.com Git objects. */
-export function createGitHubAuthoritySource({ token, fetchImpl = globalThis.fetch, timeoutMs = 10_000, memberTimeoutMs = 30_000 }: GitHubAuthoritySourceOptions = {}): GitHubAuthoritySource {
-  if (typeof token !== 'string' || !token || token.length > 4_096 || /[\r\n]/.test(token) ||
+function createGitHubSource({ token, fetchImpl, timeoutMs, memberTimeoutMs }: {
+  token: string | undefined;
+  fetchImpl: GitHubPublicAuthorityFetch;
+  timeoutMs: unknown;
+  memberTimeoutMs: unknown;
+}, allowAnonymous: boolean): GitHubAuthoritySource {
+  if ((!allowAnonymous && (typeof token !== 'string' || !token || token.length > 4_096 || /[\r\n]/.test(token))) ||
+      (allowAnonymous && token !== undefined) ||
       typeof fetchImpl !== 'function' || !Number.isSafeInteger(timeoutMs) || (timeoutMs as number) < 1 || (timeoutMs as number) > MAX_TIMEOUT_MS ||
       !Number.isSafeInteger(memberTimeoutMs) || (memberTimeoutMs as number) < 1 || (memberTimeoutMs as number) > MAX_MEMBER_TIMEOUT_MS) fail();
   return async function fetchExternal({ repository, revision, path, maxBytes }) {
@@ -170,10 +190,11 @@ export function createGitHubAuthoritySource({ token, fetchImpl = globalThis.fetc
       if (++requests > MAX_REQUESTS_PER_MEMBER) fail();
       const remaining = Math.ceil(deadline - performance.now());
       if (remaining <= 0) fail();
-      return boundedJson(fetchImpl as GitHubAuthorityFetch, `${root}${suffix}`, token, limit, Math.min(timeoutMs as number, remaining));
+      return boundedJson(fetchImpl, `${root}${suffix}`, token, limit, Math.min(timeoutMs as number, remaining));
     };
     const metadata = await get('', MAX_METADATA_BYTES);
-    if (!metadata || (metadata as { full_name?: unknown }).full_name !== repository) fail();
+    if (!metadata || (metadata as { full_name?: unknown }).full_name !== repository ||
+        (allowAnonymous && (metadata as { private?: unknown }).private !== false)) fail();
 
     const commit = await get(`/git/commits/${resolvedCommit}`, MAX_METADATA_BYTES);
     if (!commit || (commit as { sha?: unknown }).sha !== resolvedCommit || !(commit as { tree?: unknown }).tree ||
@@ -203,4 +224,14 @@ export function createGitHubAuthoritySource({ token, fetchImpl = globalThis.fetc
     if (performance.now() > deadline) fail();
     return { repository, resolvedCommit, path, type: 'file', content };
   };
+}
+
+/** Create the existing credential-confined adapter for immutable GitHub.com Git objects. */
+export function createGitHubAuthoritySource({ token, fetchImpl = globalThis.fetch, timeoutMs = 10_000, memberTimeoutMs = 30_000 }: GitHubAuthoritySourceOptions = {}): GitHubAuthoritySource {
+  return createGitHubSource({ token: token as string | undefined, fetchImpl: fetchImpl as unknown as GitHubPublicAuthorityFetch, timeoutMs, memberTimeoutMs }, false);
+}
+
+/** Create an anonymous reader restricted to public immutable GitHub.com objects. */
+export function createGitHubPublicAuthoritySource({ fetchImpl = globalThis.fetch, timeoutMs = 10_000, memberTimeoutMs = 30_000 }: GitHubPublicAuthoritySourceOptions = {}): GitHubAuthoritySource {
+  return createGitHubSource({ token: undefined, fetchImpl: fetchImpl as unknown as GitHubPublicAuthorityFetch, timeoutMs, memberTimeoutMs }, true);
 }
