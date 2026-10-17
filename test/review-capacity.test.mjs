@@ -7,8 +7,6 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { capacityState, checkReviewCapacity } from '../scripts/review-capacity.mjs';
-import { prepareAuthoritySet } from '../dist/prepare-authority-set.mjs';
-import { prepareReviewContext } from '../dist/prepare-review-context.mjs';
 
 const toolRoot = fileURLToPath(new URL('../', import.meta.url));
 const cli = join(toolRoot, 'scripts/review-capacity.mjs');
@@ -72,28 +70,30 @@ function candidate(f, changes = { 'subject.md': 'after 雪 " \\\n' }) {
 async function production(t, f, input) {
   const temp = mkdtempSync(join(tmpdir(), 'agk-capacity-production-'));
   t.after(() => rmSync(temp, { recursive: true, force: true }));
-  const outputDir = join(temp, 'authority');
+  const outputDir = join(temp, 'architecture-gate-authority-set');
   const limits = f.policy.branches.main.authorityLimits;
-  await prepareAuthoritySet({ manifestBytes: JSON.stringify(f.manifest), limits,
-    selfRepository: 'flair-agency/architecture-gatekeeper', selfRoot: f.root,
-    authorityRevision: f.base, outputDir });
-  const promptPath = join(temp, 'prompt.md');
+  const env = { ...process.env, RUNNER_TEMP: temp, GITHUB_WORKSPACE: f.root,
+    GITHUB_REPOSITORY: 'flair-agency/architecture-gatekeeper', BASE_SHA: input.base,
+    HEAD_SHA: input.head, REVIEWED_SHA: input.reviewed, AUTHORITY_ROUTE_SELECTED: 'true',
+    AUTHORITY_LIMITS_BASE64: Buffer.from(JSON.stringify(limits)).toString('base64'),
+    AUTHORITY_PROFILE: 'v1', POLICY_VERSION: '' };
+  const run = (name, args = []) => execFileSync(process.execPath, [join(toolRoot, 'dist', name), ...args], {
+    cwd: f.root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 30_000,
+  });
+  const manifestPath = join(temp, 'architecture-gate-authorities.json');
+  writeFileSync(manifestPath, JSON.stringify(f.manifest), { flag: 'wx', mode: 0o600 });
+  // Exercise the same CLI's decoded/validated selection as protected CI, rather
+  // than supplying a raw test-policy object directly to the preparer API.
+  run('prepare-authority-set.mjs', ['--manifest', manifestPath, '--limits-base64', env.AUTHORITY_LIMITS_BASE64,
+    '--self-repository', env.GITHUB_REPOSITORY, '--self-root', f.root, '--authority-sha', input.base,
+    '--output-dir', outputDir]);
+  const promptPath = join(temp, 'architecture-gate-complete-prompt.md');
   writeFileSync(promptPath, Buffer.concat([
     execFileSync('git', ['--no-replace-objects', '-C', f.root, 'show', `${f.base}:.codex/gatekeeper/ci-prompt.md`]),
     readFileSync(join(outputDir, 'authority-prompt.md')),
-  ]));
-  const outputPath = join(temp, 'final.md');
-  const saved = process.env.RUNNER_TEMP;
-  process.env.RUNNER_TEMP = temp;
-  try {
-    const result = prepareReviewContext({ root: f.root, baseSha: input.base, headSha: input.head,
-      reviewedSha: input.reviewed, repository: 'flair-agency/architecture-gatekeeper', promptPath, outputPath,
-      authorityRouteSelected: 'true', authorityLimitsBase64: Buffer.from(JSON.stringify(limits)).toString('base64'),
-      authorityProfile: 'v1' });
-    return { result, bytes: readFileSync(outputPath) };
-  } finally {
-    if (saved === undefined) delete process.env.RUNNER_TEMP; else process.env.RUNNER_TEMP = saved;
-  }
+  ]), { flag: 'wx', mode: 0o600 });
+  const result = JSON.parse(run('prepare-review-context.mjs'));
+  return { result, bytes: readFileSync(join(temp, 'architecture-gate-review-prompt.md')) };
 }
 
 test('measures actual production-prepared UTF-8/escaped input and redacts private payloads', async t => {
