@@ -184,7 +184,7 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
   }
   const diffSinkResults = results.true.filter(result => result.locations.some(location =>
     location.physicalLocation.artifactLocation.uri === 'src/ci-review/legacy-ci-authority-preparer.mts' &&
-    location.physicalLocation.region.startLine === 46));
+    location.physicalLocation.region.startLine === 47));
   assert.ok(threads(diffSinkResults).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli'))),
     'Generic preparer CLI root must remain at the actual git diff cwd sink');
   const workspaceAlerts = list => alerts(list).filter(alert => alert.file === 'workspace-probe.mjs');
