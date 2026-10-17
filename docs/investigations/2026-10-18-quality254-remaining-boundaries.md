@@ -10,6 +10,11 @@ migration #419 do not close the broader lifecycle or test-rationalization scope.
 
 ## Existing production composition
 
+The later [BLOCK child-main increment](2026-10-18-block-main-composition.md)
+extends the same child trace to both already-implemented profiles. The table
+below retains the original named-baseline inventory; the increment records
+which former component-only boundary gains process/output coverage.
+
 The actual child call is in
 [`owner-amendment-merge-group-route-composition.test.mjs`](../../test/owner-amendment-merge-group-route-composition.test.mjs),
 subtest `executes production main with tagged G0 evidence and rejects runtime
