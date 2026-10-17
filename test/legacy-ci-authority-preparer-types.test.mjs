@@ -67,6 +67,13 @@ function operationNodes(body) {
 
 const hash = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
 
+// Owner-authorized #591 baseline: commit 821c3eade2d4a48c28e75393bb80ec8ff0184719,
+// blob b2890ae8195db3dcff47010125f7f15b7c27f716. The digest covers the full
+// operation AST: SHA-256(JSON.stringify(canonical(operationNodes(runtimeAst(
+// `git show 821c3ea:src/prepare-legacy-ci-authority.mjs`))))) after extracting
+// the direct CLI guard body into the same operation list used for the typed leaf.
+const authorized821c3eaOperationAst = '91192065e743f701f8056c00874d7e621ad04202cb1b744e66365ad89829b3fa';
+
 test('complete legacy preparer implementation and flat guard retain their pinned runtime AST', async () => {
   const facadePath = join(root, 'src/prepare-legacy-ci-authority.mjs');
   const leafPath = join(root, 'src/ci-review/legacy-ci-authority-preparer.mts');
@@ -90,18 +97,19 @@ test('complete legacy preparer implementation and flat guard retain their pinned
   assert.equal(facadeGuard.consequent.type, 'ExpressionStatement');
   assert.equal(facadeGuard.consequent.expression.type, 'CallExpression');
   assert.equal(facadeGuard.consequent.expression.callee.name, 'runLegacyCiAuthorityCli');
-  assert.equal(hash(operationNodes(leafBody)), 'a905aaec3e58ac74cc4f90abe58b43d0c21206c9d3ac6cc076875d6da2b5f126');
+  assert.equal(hash(operationNodes(leafBody)), authorized821c3eaOperationAst,
+    'typed runtime operations must match the owner-authorized 821c3ea baseline');
   const typedLeaf = ts.createSourceFile(leafPath, leafSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const sourceImports = typedLeaf.statements.filter(ts.isImportDeclaration)
     .map(node => node.moduleSpecifier.text);
   const emittedImports = parse(emittedLeafSource, { ecmaVersion: 'latest', sourceType: 'module' }).body
     .filter(node => node.type === 'ImportDeclaration').map(node => node.source.value);
   assert.deepEqual(sourceImports, [
-    'node:child_process', 'node:fs', 'node:util', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
+    'node:child_process', 'node:path', 'node:util', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
     '../legacy-git-snapshot.mjs', '../github-runner-workspace.mjs', './legacy-authority-decision.mts',
   ]);
   assert.deepEqual(emittedImports, [
-    'node:child_process', 'node:fs', 'node:util', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
+    'node:child_process', 'node:path', 'node:util', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
     '../legacy-git-snapshot.mjs', '../github-runner-workspace.mjs', './legacy-authority-decision.mjs',
   ]);
 

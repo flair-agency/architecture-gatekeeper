@@ -327,12 +327,15 @@ selection. External JSON remains unknown; erased property-read views add no
 validation. All three original native accessor flows and explicitly injected
 negative flows remain checked at the actual grouped production sinks. The
 adopted model packs are unchanged. This migration adopts no stream protocol,
-persistence transfer or new transport ceiling from Issue #566. The materializer retains
-two narrow `@ts-expect-error` boundaries where it composes the existing Git
-reader and filesystem writer. They preserve those operations without claiming
-that `outputPath` is a string: the original truthy guard permits native path-like
-and file-descriptor inputs. In the adopted 86/96 baseline, four originals have
-partial helper migrations.
+persistence transfer or new transport ceiling from Issue #566. The materializer now
+uses fixed runner-temporary output selectors with the existing filesystem writer. These CI
+operations accept only fixed string names or the exact absolute path resolved
+from the runner-temporary working directory; native Buffer, URL, descriptor and
+other caller-selected destinations are outside this interface. The workflows
+set `working-directory: ${{ runner.temp }}` for the legacy and owner-addition
+prepare/validate steps in the self, consumer and provider workflows. This is the
+owner-approved design recorded in [PR #591](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
+In the adopted 86/96 baseline, four originals have partial helper migrations.
 The CI report keeps its flat CLI and filesystem operations; multi-authority
 orchestration keeps its adapter while delegating selected eligibility helpers.
 Owner-addition CI delegates only the post-parse single-member selection while
@@ -407,7 +410,7 @@ Migration is partial and does not change consumer architecture or assurance poli
 
 The fixed denominator is the original 96-module [source map](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-08-source-layout-typescript-map.md); new ordinary-Gemini and measurement modules are outside it. The earlier checkpoint section records historical slice statuses and counts. The [exhaustive current inventory](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-14-original96-typescript-inventory.md) supersedes those partial-implementation descriptions.
 
-The reviewed post-#589 baseline `2769e3f10833d17197049750958db1b24e6b4539` contains **93/96** adopted original migrations. The final-three #587 candidate implements **96/96**. Normal adoption of #587 completes **96/96**; its reviewed adopted baseline is 93. Implementation or a completed review status alone establishes no adoption or clean review.
+The reviewed post-#589 main baseline `2769e3f10833d17197049750958db1b24e6b4539` contains **93/96** adopted original migrations. The final-three #587 implementation candidate, including the owner-approved fixed runner-temp follow-up `821c3ea`, covers **96/96** originals; it is not adopted. The candidate does not change the adopted main count. Implementation or a completed review status alone establishes no adoption or clean review. The fixed runner-temp scope follows [the owner decision in PR #591](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
 
 | Original | Complete #587 implementation |
 |---|---|
@@ -415,13 +418,13 @@ The reviewed post-#589 baseline `2769e3f10833d17197049750958db1b24e6b4539` conta
 | owner-addition-ci | `src/owner-addition/owner-addition-ci-operations.mts` |
 | owner-addition-multiauthority | `src/owner-addition/owner-addition-multiauthority.mts` |
 
-These leaves retain the existing preparation, Git reads, selected-authority checks, adapter invocation, output publication and synchronous/asynchronous CLI dispatch. Public API environment injection and generic caller-selected paths retain their runtime meaning. Multi-authority `policyBytes` accepts Node `BinaryLike` inputs, matching its original native digest operation; Buffer, Uint8Array, string and DataView caller fixtures describe that boundary. Erased contracts add no guards or trust, and external JSON and changing observations remain unknown.
+These leaves retain the existing preparation, Git reads, selected-authority checks, adapter invocation, output publication and synchronous/asynchronous CLI dispatch. Internal CI artifact operations now use fixed runner-temp names and accept only the corresponding fixed string selector or its exact absolute path resolved from the runner-temp working directory; arbitrary raw artifact paths and injected `GITHUB_OUTPUT` destinations are outside this interface. The three production workflows set that working directory for legacy and owner-addition prepare/validate steps. Multi-authority `policyBytes` still accepts Node `BinaryLike` inputs for its native digest operation; Buffer, Uint8Array, string and DataView support applies to policy bytes, not artifact paths. The environment and optional external-fetch callback inputs remain operation inputs; parsed JSON and external callback observations remain unknown until existing runtime checks, and erased contracts add no authentication or trust.
 
 Four original flat files retain top-level function declarations: `ci-procedural-authority-change.mjs` (thin CLI), `github-runner-env.mjs` (distinct native source barrier), `prepare-review-context.mjs` (thin CLI), and `validate-decision.mjs` (thin CLI). Other wrappers also retain top-level native I/O and direct-run guards; the four-function count is not an all-native-I/O count. Flat identities, provider/protected-policy checks and native operations remain controlling.
 
-Source-only analysis of candidate `6eedd95c00799d8958537114aea6f1fde8cf33f5` reports 733 JavaScript/TypeScript files, 12 workflows, 40 JavaScript results and no Actions results, with zero normalized changes against `5835fb7d1b6d6505390a9ca38fd1aad43ee2dda9` and 24 generic CLI result relocations against the actual preceding provider scan at `7e008eadcbf764ef7635541ef7de154c3cee4d26`. Those moved HIGH identities do not establish identical fingerprints or removed risk. The existing development guidance states: “local runtime equivalence does not override a failing hosted check.” Retaining the public API with these failed hosted identities requires an explicit compatibility/risk disposition; this candidate supplies none. there is no model expansion, dismissal, bypass or new trust boundary. The 100-path fixture cap preserves official query/model semantics and all positive/negative assertions.
+Historical evidence for the earlier `6eedd95c00799d8958537114aea6f1fde8cf33f5` snapshot includes source-only CodeQL results of 40 JavaScript findings, no Actions findings, zero normalized changes against `5835fb7d1b6d6505390a9ca38fd1aad43ee2dda9`, and 24 generic CLI result relocations against the preceding scan at `7e008eadcbf764ef7635541ef7de154c3cee4d26`. These counts and its prior review describe that earlier snapshot only; they do not establish the current fixed runner-temp candidate's CodeQL status, zero findings, risk disposition, or hosted result. The 24 relocated identities do not establish identical fingerprints or removed risk. The 100-path fixture cap preserves query/model semantics and positive/negative assertions; no model expansion, dismissal, or bypass is implied.
 
-Actual candidate `6eedd95` passed strict/build/cycles and 104 focused compiler/runtime/identity checks. All 230 emitted runtime files are byte-identical to the actual all-nine archive `290ce96d1ebb6c8cc9ee3d3b37d12f90bb7ad94aceabcadbd51a74dfc1f1dd47`. The 2052-test full run at `6ab7076` remains its original execution and covers unchanged runtime bytes; it is not a fresh current-head execution. Fresh final-candidate build, package, Native and hosted/protected verification remain distinct. Six normative members and the three selected model packs are unchanged; #566's native stream/persistence proposal remains unapproved. No count advances from a private candidate or local review.
+Historical verification for `6eedd95` includes strict/build/cycles, 104 focused compiler/runtime/identity checks, byte identity of 230 emitted files to archive `290ce96d1ebb6c8cc9ee3d3b37d12f90bb7ad94aceabcadbd51a74dfc1f1dd47`, and the 2052-test full run at `6ab7076`. Those results are tied to their original revisions and are not fresh current-candidate verification. The coordinator reports strict typecheck/build and 55 focused checks passing for the integrated fixed runner-temp changes, with the commit/revision binding still pending. Current-candidate full tests, CodeQL, package verification, Native checks, and hosted/protected verification remain **PENDING**. No claim of zero findings, adoption, or acceptance follows. Six normative members and the three selected model packs remain unchanged; #566's native stream/persistence proposal remains unapproved.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, `checkJs: false`, and
@@ -541,6 +544,35 @@ locations as corresponding evidence, not independent coverage; retain hosted
 extraction/query results before claiming analysis of the final candidate.
 Installed consumers receive the `dist/` JavaScript and need no TypeScript compiler; verify archive contents
 and clean/offline installation.
+
+## Artifact file I/O checks
+
+Legacy authority and owner-addition CI artifact operations use the existing
+`src/runner-paths/runner-temp-path.mts` helper. The three production workflows
+(`architecture-gate.yml`, `architecture-gate-consumer.yml`, and
+`architecture-gate-providers.yml`) run the legacy and owner-addition prepare and
+validate steps with `working-directory: ${{ runner.temp }}`. The helper confirms
+that `RUNNER_TEMP` equals the process working directory and derives its storage
+root from the real process working directory.
+
+Output selectors are fixed strings. Legacy authority accepts only each known
+relative output name or the exact absolute path resolved from the current
+working directory. Owner-addition accepts its fixed child name or that child's
+exact resolved absolute path. Files beneath those selections are fixed by closed
+path tables; arbitrary caller-selected Buffer, file URL, descriptor or external
+destination forms are not part of these CI interfaces. GitHub workflow output is
+written through the existing `appendGitHubOutput` function, which obtains the
+runner-created `GITHUB_OUTPUT` path through the trusted runner environment
+accessor. It does not accept an injected output path as an operation argument.
+
+The helper retains checks for direct regular files, single-link identity and
+symbolic-link substitution at the operations it performs. These checks support
+the fixed runner-temporary interface; they do not establish complete race
+freedom. Portable Node filesystem calls do not provide a directory-relative
+atomic open transaction, so a same-user actor able to change the runner
+filesystem concurrently may still race between checks and filesystem operations.
+The design does not claim isolation from hostile same-user concurrency or
+artifact custody. See the owner-approved [PR #591 decision](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
 
 ## Static source import cycles
 

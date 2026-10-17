@@ -13,6 +13,30 @@ import { parseWorkflow } from './helpers/workflow-structure.mjs';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authorityFiles: ['docs/architecture.md'], promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json', validationPath: null } } };
 test('resolves exact base-branch policy', () => assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', policyVersion: 1, legacyAuthorityFilesBase64: Buffer.from('["docs/architecture.md"]').toString('base64'), legacyPromptPath: '.codex/gatekeeper/ci-prompt.md', legacySchemaPath: '.codex/gatekeeper/decision.schema.json', legacyValidationPath: '' }));
+test('artifact CLI workflows run from runner.temp with anchored runtime paths', () => {
+  for (const name of ['architecture-gate.yml', 'architecture-gate-consumer.yml', 'architecture-gate-providers.yml']) {
+    const parsed = parseWorkflow(readFileSync(join(root, '.github/workflows', name), 'utf8'), name);
+    const review = parsed.jobs.review;
+    for (const [stepName, command] of [
+      ['Materialize recorded-base legacy authority before review', 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" prepare'],
+      ['Require exact reported legacy authority files', 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" validate'],
+    ]) {
+      const step = review.steps.find(candidate => candidate.name === stepName);
+      assert.equal(step['working-directory'], '${{ runner.temp }}', `${name}: ${stepName} cwd`);
+      assert.equal(step.run, command, `${name}: ${stepName} runtime`);
+    }
+    const addition = parsed.jobs['owner-addition'];
+    for (const [stepName, command] of [
+      ['Verify the exact G0 procedure and prepare protected eligibility input', 'node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" prepare'],
+      ['Require completed B-specific eligibility review', 'node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" validate'],
+    ]) {
+      const step = addition.steps.find(candidate => candidate.name === stepName);
+      assert.equal(step['working-directory'], '${{ runner.temp }}', `${name}: ${stepName} cwd`);
+      assert.equal(step.run, command, `${name}: ${stepName} runtime`);
+    }
+  }
+});
+
 test('legacy v1 enforced policy requires canonical paths and an explicit validation selection', () => {
   const { validationPath: _validationPath, ...missingValidation } = policy.branches.main;
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: missingValidation } }, 'main'), /explicit base-selected validationPath or null/);
@@ -36,9 +60,11 @@ test('legacy v1 workflow binds protected instructions, authority, and exact repo
   assert.match(workflow, /if: steps\.resolve\.outputs\.authorityManifestPath != '' \|\| steps\.resolve\.outputs\.policyVersion == '1'/);
   assert.match(workflow, /name: Materialize recorded-base legacy authority before review/);
   const prepareLegacy = parsed.jobs.review.steps.find(step => step.name === 'Materialize recorded-base legacy authority before review');
+  assert.equal(prepareLegacy['working-directory'], '${{ runner.temp }}');
   assert.equal(prepareLegacy.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" prepare');
   assert.match(workflow, /name: Require exact reported legacy authority files/);
   const validateLegacy = parsed.jobs.review.steps.find(step => step.name === 'Require exact reported legacy authority files');
+  assert.equal(validateLegacy['working-directory'], '${{ runner.temp }}');
   assert.equal(validateLegacy.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" validate');
   assert.match(workflow, /LEGACY_AUTHORITY_PROVENANCE_BASE64: \$\{\{ needs\.review\.outputs\.legacy_authority_provenance \}\}/);
   assert.match(workflow, /test "\$POLICY_PATH" = \.codex\/gatekeeper\/ci-policy\.json/);
@@ -346,10 +372,14 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(additionJob, /test "\$\(git rev-parse FETCH_HEAD\)" = "\$REVIEWED_SHA"/);
   assert.match(additionJob, /test "\$MERGE_PARENT_HEAD" = "\$HEAD_SHA"/);
   assert.match(additionJob, /git -c "http\.extraheader=.*" fetch --no-tags/);
-  assert.match(additionJob, /dist\/owner-addition-ci\.mjs prepare/);
+  const prepareAddition = parsed.jobs['owner-addition'].steps.find(step => step.name === 'Verify the exact G0 procedure and prepare protected eligibility input');
+  assert.equal(prepareAddition['working-directory'], '${{ runner.temp }}');
+  assert.equal(prepareAddition.run, 'node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" prepare');
   assert.match(additionJob, /ORDINARY_DECISION: \$\{\{ needs\.review\.outputs\.final_message \}\}/);
   assert.match(additionJob, /PR_NUMBER: \$\{\{ github\.event\.pull_request\.number \}\}/);
-  assert.match(additionJob, /dist\/owner-addition-ci\.mjs validate/);
+  const validateAddition = parsed.jobs['owner-addition'].steps.find(step => step.name === 'Require completed B-specific eligibility review');
+  assert.equal(validateAddition['working-directory'], '${{ runner.temp }}');
+  assert.equal(validateAddition.run, 'node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" validate');
   assert.match(additionJob, /POLICY_VERSION: \$\{\{ needs\.policy\.outputs\.policy_version \}\}/);
   assert.match(additionJob, /prompt-file: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-addition\/eligibility-prompt\.md/);
   assert.match(additionJob, /name: Preserve exact v5 pre-merge eligibility evidence\n        id: eligibility-evidence\n        if: needs\.policy\.outputs\.policy_version == '5'/);

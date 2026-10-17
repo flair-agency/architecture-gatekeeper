@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { linkSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { linkSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ownerAmendmentTagApiRoute, readRunnerTempFile,
@@ -41,6 +41,30 @@ test('uses no-follow bounded regular-file I/O beneath the fixed runner directory
   assert.throws(() => resolveRunnerTempDirectory('not-allowlisted'), /fixed runner temp child name/);
   process.chdir(root);
   assert.throws(() => resolveRunnerTempDirectory('owner-amendment-eligibility'), /runner temp directory/);
+}));
+
+test('legacy and owner-addition artifacts use only their approved fixed names', () => fixture((root, runnerTemp) => {
+  const owner = resolveRunnerTempDirectory('architecture-gate-owner-addition');
+  for (const [directory, names] of [[runnerTemp, ['architecture-gate-prompt.md',
+    'architecture-gate-decision.schema.json', 'architecture-gate-decision.validation.json',
+    'architecture-gate-legacy-prompt.md', 'architecture-gate-legacy-provenance.json']],
+  [owner, ['eligibility-prompt.md', 'eligibility.schema.json', 'procedure.json',
+    'evidence-context.json', 'eligibility-evidence.json']]]) {
+    for (const name of names) {
+      const target = writeRunnerTempFile(directory, name, 'initial long contents');
+      assert.equal(target, directory === runnerTemp ? name : `architecture-gate-owner-addition/${name}`);
+      assert.equal(statSync(target).mode & 0o777, 0o600);
+      assert.throws(() => writeRunnerTempFile(directory, name, 'exclusive'), /EEXIST/);
+      writeRunnerTempFile(directory, name, Buffer.from('retry'), { overwrite: true });
+      assert.equal(readRunnerTempFile(directory, name).toString('utf8'), 'retry');
+    }
+  }
+  for (const name of ['procedure.json', '../architecture-gate-prompt.md', Buffer.from('architecture-gate-prompt.md'),
+    new URL(`file://${runnerTemp}/architecture-gate-prompt.md`), 1]) {
+    assert.throws(() => resolveRunnerTempFile(runnerTemp, name), /fixed runner temp path/);
+  }
+  assert.throws(() => resolveRunnerTempFile(owner, 'architecture-gate-prompt.md'), /fixed runner temp path/);
+  assert.throws(() => resolveRunnerTempFile(join(root, 'architecture-gate-owner-addition'), 'procedure.json'), /fixed runner temp child/);
 }));
 
 test('appends to trusted GITHUB_OUTPUT independently of RUNNER_TEMP and cwd', () => fixture((root, runnerTemp) => {

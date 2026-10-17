@@ -46,13 +46,14 @@ function declaration(body, name) {
 }
 function guard(body) { return body.find(node => node.type === 'IfStatement' && node.test?.type === 'LogicalExpression'); }
 
-// These operation pins were calculated from the complete b95dade baseline.
+// Complete operation pins from owner-approved fixed-boundary baseline 821c3ea.
+// See #591 comment6235948030; these pins include the approved runtime changes.
 const expected = {
   directRunTest: '37898c466f4c3a32fc0d2e4cc9284078762934545bb846b52fd75a2d8bb97049',
-  prepare: '16f0f7217dacee58917e4d5f765d4735390f10eb8142f9f61502d0ac70b8e7b4',
+  prepare: '9c8b94713afc4a620d31c64a1850d7f24c7f81135d17e8b39539ff5545ff5be5',
   resolver: '76a4f0ff851fc6301213eee8735b5db34138e44c72b0ff6319aea1fc01831af6',
-  validate: '38247264e5c16635081bf7cfa35412fe53cc2d72707b60eeba62c6b4e05abe7c',
-  multiPrepare: 'a44e76a901b367468f3daaef1b64c6cff0c306e971b96199ed57cee2a434a9ea',
+  validate: 'ba8a8cbc0b567444ea477b58f9ebf4c4e856e1313e320c0ca853cd014793a8c7',
+  multiPrepare: 'eee576e39c0961082e546148857eb88f24794b75e18bfb78b87546cbd3a6ebf9',
 };
 
 test('owner-addition CI retains the original direct-run condition and complete operation AST', async () => {
@@ -65,6 +66,10 @@ test('owner-addition CI retains the original direct-run condition and complete o
   const dispatch = guard(sourceFacade).consequent.body[0];
   assert.equal(dispatch.test.right.value, 'prepare');
   assert.equal(dispatch.consequent.expression.argument.callee.name, 'prepare');
+  const cliEnvironment = dispatch.consequent.expression.argument.arguments[0];
+  assert.equal(cliEnvironment.type, 'ObjectExpression');
+  assert.equal(cliEnvironment.properties[1].key.name, 'GITHUB_WORKSPACE');
+  assert.equal(cliEnvironment.properties[1].value.callee.name, 'trustedGitHubWorkspaceRoot');
   assert.equal(dispatch.alternate.test.right.value, 'validate');
   assert.equal(dispatch.alternate.consequent.expression.callee.name, 'validateOwnerAdditionCiCli');
   assert.equal(dispatch.alternate.alternate.argument.callee.name, 'Error');
@@ -74,7 +79,7 @@ test('owner-addition CI retains the original direct-run condition and complete o
   for (const [name, pin] of [['prepare', expected.prepare],
     ['resolveSingleOwnerAdditionAuthorityId', expected.resolver]]) {
     assert.deepEqual(canonical(declaration(source, name).body), canonical(declaration(emitted, name).body), `${name} source/emitted AST`);
-    assert.equal(digest(declaration(source, name).body), pin, `${name} retains b95dade operations`);
+    assert.equal(digest(declaration(source, name).body), pin, `${name} retains 821c3ea operations`);
   }
   const sourceValidate = declaration(source, 'validateOwnerAdditionCiCli');
   const emittedValidate = declaration(emitted, 'validateOwnerAdditionCiCli');

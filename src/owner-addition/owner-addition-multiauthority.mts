@@ -1,7 +1,5 @@
 import { createHash, type BinaryLike } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest,
   readCommittedAuthorityFile, rejectDuplicateJsonKeys } from '../authority-set.mjs';
 import { createGitHubAuthoritySource } from '../github-authority-source.mjs';
@@ -12,6 +10,7 @@ import { validateMultiAuthorityAdditionG0Procedure } from '../owner-decision-add
 import { assertSameMultiAuthorityProvenance, multiAuthorityProvenance,
   validateMultiAuthorityDecision } from '../multi-authority-provenance.mjs';
 import { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema } from './multi-authority-eligibility.mts';
+import { appendGitHubOutput, resolveRunnerTempDirectory, writeRunnerTempFile } from '../runner-temp-path.mjs';
 export { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema };
 
 const digest = (bytes: BinaryLike): string => createHash('sha256').update(bytes).digest('hex');
@@ -93,10 +92,13 @@ export async function prepareMultiAuthorityAddition(env: NodeJS.ProcessEnv, sele
     `\nExact B diff (base ${baseSha}, head ${headSha}):\n${decode(diff)}\n`,
   ].join('');
   if (Buffer.byteLength(completePrompt) > limits.maxPromptBytes) throw new Error('Owner-addition complete prompt exceeds the review limit.');
-  mkdirSync(outputDir as string, { recursive: true, mode: 0o700 });
-  writeFileSync(join(outputDir as string, 'eligibility-prompt.md'), completePrompt, { mode: 0o600 });
-  writeFileSync(join(outputDir as string, 'eligibility.schema.json'), schemaBytes, { mode: 0o600 });
-  writeFileSync(join(outputDir as string, 'procedure.json'), JSON.stringify(procedure), { mode: 0o600 });
-  if (env.GITHUB_OUTPUT) writeFileSync(env.GITHUB_OUTPUT as string, `procedure_base64=${Buffer.from(JSON.stringify(procedure)).toString('base64')}\n`, { flag: 'a' });
+  const artifactDirectory = resolveRunnerTempDirectory('architecture-gate-owner-addition');
+  if (outputDir !== artifactDirectory && outputDir !== 'architecture-gate-owner-addition') {
+    throw new Error('Multi-authority artifacts require the fixed runner temp directory.');
+  }
+  writeRunnerTempFile(artifactDirectory, 'eligibility-prompt.md', completePrompt, { overwrite: true });
+  writeRunnerTempFile(artifactDirectory, 'eligibility.schema.json', schemaBytes, { overwrite: true });
+  writeRunnerTempFile(artifactDirectory, 'procedure.json', JSON.stringify(procedure), { overwrite: true });
+  if (process.env.GITHUB_OUTPUT) appendGitHubOutput(`procedure_base64=${Buffer.from(JSON.stringify(procedure)).toString('base64')}\n`);
   return procedure;
 }

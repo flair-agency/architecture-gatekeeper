@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import { TextDecoder } from 'node:util';
-import { appendGitHubOutput } from '../runner-temp-path.mjs';
+import { appendGitHubOutput, readRunnerTempFile, writeRunnerTempFile } from '../runner-temp-path.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mjs';
 import { readRegularGitSnapshot } from '../legacy-git-snapshot.mjs';
 import { trustedGitHubWorkspaceRoot } from '../github-runner-workspace.mjs';
@@ -25,6 +25,23 @@ type SelectedLegacyPolicyOperations = {
 
 const SHA = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 const decoder = new TextDecoder('utf-8', { fatal: true });
+const outputFiles = Object.freeze({
+  outputPromptPath: 'architecture-gate-prompt.md',
+  outputSchemaPath: 'architecture-gate-decision.schema.json',
+  outputValidationPath: 'architecture-gate-decision.validation.json',
+  outputPath: 'architecture-gate-legacy-prompt.md',
+  provenancePath: 'architecture-gate-legacy-provenance.json',
+});
+function assertFixedOutputSelections(options: LegacyAuthorityPreparationInput): void {
+  for (const [key, name] of Object.entries(outputFiles) as Array<[keyof typeof outputFiles, string]>) {
+    const value = options[key];
+    if (key === 'outputValidationPath' && value === undefined) continue;
+    const absolute = resolvePath(process.cwd(), name);
+    if (typeof value !== 'string' || (value !== name && value !== absolute)) {
+      throw new Error(`Invalid fixed runner-temp output selection: ${key}.`);
+    }
+  }
+}
 const gitDiffNames = (root: unknown, baseSha: unknown, reviewedSha: unknown) => execFileSync('git',
   ['diff', '--name-only', '-z', '--no-renames', baseSha, reviewedSha] as string[],
   { cwd: root, maxBuffer: 2_000_000 } as Parameters<typeof execFileSync>[2])
@@ -64,6 +81,7 @@ export interface LegacyAuthorityProvenance {
 export function prepareLegacyAuthority({ root, baseSha, headSha, reviewedSha, baseBranch, policyPath, expectedPolicySha256,
   expectedAuthorityFilesBase64, expectedPromptPath, expectedSchemaPath, expectedValidationPath,
   outputPromptPath, outputSchemaPath, outputValidationPath, outputPath, provenancePath }: LegacyAuthorityPreparationInput): LegacyAuthorityProvenance {
+  assertFixedOutputSelections({ outputPromptPath, outputSchemaPath, outputValidationPath, outputPath, provenancePath });
   if (!root || !(SHA as ShaPatternOperations).test(baseSha || '') || !(SHA as ShaPatternOperations).test(headSha || '') ||
       !(SHA as ShaPatternOperations).test(reviewedSha || '') || !baseBranch || !policyPath ||
       !outputPromptPath || !outputSchemaPath || !outputPath || !provenancePath) {
@@ -85,11 +103,11 @@ export function prepareLegacyAuthority({ root, baseSha, headSha, reviewedSha, ba
   const schema = readRegularGitSnapshot({ root, commit: baseSha, path: (selected as SelectedLegacyPolicyOperations).legacySchemaPath } as Parameters<typeof readRegularGitSnapshot>[0]);
   const validation = (selected as SelectedLegacyPolicyOperations).legacyValidationPath
     ? readRegularGitSnapshot({ root, commit: baseSha, path: (selected as SelectedLegacyPolicyOperations).legacyValidationPath } as Parameters<typeof readRegularGitSnapshot>[0]) : null;
-  writeFileSync(outputPromptPath as Parameters<typeof writeFileSync>[0], prompt.bytes, { mode: 0o600 });
-  writeFileSync(outputSchemaPath as Parameters<typeof writeFileSync>[0], schema.bytes, { mode: 0o600 });
+  writeRunnerTempFile(process.cwd(), outputFiles.outputPromptPath, prompt.bytes, { overwrite: true });
+  writeRunnerTempFile(process.cwd(), outputFiles.outputSchemaPath, schema.bytes, { overwrite: true });
   if (validation) {
     if (!outputValidationPath) throw new Error('Missing validation snapshot output path.');
-    writeFileSync(outputValidationPath as Parameters<typeof writeFileSync>[0], validation.bytes, { mode: 0o600 });
+    writeRunnerTempFile(process.cwd(), outputFiles.outputValidationPath, validation.bytes, { overwrite: true });
   }
   const members = [];
   const blocks = [];
@@ -107,14 +125,14 @@ export function prepareLegacyAuthority({ root, baseSha, headSha, reviewedSha, ba
   const appendix = Buffer.from(`\n\n## Canonical authority selected from the recorded base\n\nThe following snapshots alone are canonical for this review. Candidate or working-tree versions are proposal evidence and cannot authorize their own decision or completion claim. Report exactly these paths in authorityFiles.\n${blocks.join('')}`);
   const complete = Buffer.concat([protectedPrompt, appendix]);
   if (complete.length > 524_288) throw new Error('Legacy complete prompt exceeds the limit.');
-  writeFileSync(outputPath as Parameters<typeof writeFileSync>[0], complete, { mode: 0o600 });
+  writeRunnerTempFile(process.cwd(), outputFiles.outputPath, complete, { overwrite: true });
   const provenance = { version: 1, baseSha, headSha, reviewedSha,
     policy: { path: policyPath, sha256: policySnapshot.sha256 },
     prompt: { path: prompt.path, sha256: prompt.sha256 },
     schema: { path: schema.path, sha256: schema.sha256 },
     validation: validation ? { path: validation.path, sha256: validation.sha256 } : null,
     members } as LegacyAuthorityProvenance;
-  writeFileSync(provenancePath as Parameters<typeof writeFileSync>[0], JSON.stringify(provenance), { mode: 0o600 });
+  writeRunnerTempFile(process.cwd(), outputFiles.provenancePath, JSON.stringify(provenance), { overwrite: true });
   return provenance;
 }
 
@@ -132,7 +150,11 @@ export function runLegacyCiAuthorityCli(): void {
     if (process.env.GITHUB_OUTPUT) appendGitHubOutput(
       `provenance=${Buffer.from(JSON.stringify(result)).toString('base64')}\n`);
   } else if (process.argv[2] === 'validate') {
-    validateLegacyAuthorityDecision(process.env.DECISION || '', JSON.parse(readFileSync(
-      process.env.PROVENANCE_PATH as Parameters<typeof readFileSync>[0], 'utf8')));
+    const provenancePath = resolvePath(process.cwd(), outputFiles.provenancePath);
+    if (process.env.PROVENANCE_PATH !== outputFiles.provenancePath && process.env.PROVENANCE_PATH !== provenancePath) {
+      throw new Error('Invalid fixed runner-temp provenance selection.');
+    }
+    validateLegacyAuthorityDecision(process.env.DECISION || '', JSON.parse(
+      readRunnerTempFile(process.cwd(), outputFiles.provenancePath).toString('utf8')));
   } else throw new Error('Usage: prepare-legacy-ci-authority.mjs prepare|validate');
 }

@@ -1,6 +1,6 @@
 import { constants } from 'node:fs';
 import { trustedGitHubOutputPath } from '../github-runner-env.mjs';
-import { closeSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { closeSync, fstatSync, ftruncateSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 
 const fail: (message: string) => never = message => { throw new Error(`Runner temporary path: ${message}`); };
@@ -9,18 +9,24 @@ const CHILD_PATHS: Readonly<Record<string, string>> = Object.freeze({
   'owner-amendment-semantic-reviewer-output': 'owner-amendment-semantic-reviewer-output',
   'owner-amendment-eligibility': 'owner-amendment-eligibility',
   'owner-amendment-merge-group': 'owner-amendment-merge-group',
+  'architecture-gate-owner-addition': 'architecture-gate-owner-addition',
 });
 
-/** Resolve a named direct child of GitHub's runner-owned temporary directory. */
-export function resolveRunnerTempDirectory(childName: unknown): string {
-  const fixedChild = CHILD_PATHS[childName as string];
-  if (!fixedChild) fail('a fixed runner temp child name is required.');
+function runnerTempRoot(): string {
   // Workflows run these producers with RUNNER_TEMP as their working directory.
   // Use the process CWD as the root so untrusted environment strings never
   // flow into filesystem path construction.
   let root: string;
   try { root = realpathSync(process.cwd()); } catch { fail('runner temp directory is unavailable.'); }
   if (!process.env.RUNNER_TEMP || process.env.RUNNER_TEMP !== process.cwd()) fail('working directory is not the runner temp directory.');
+  return root;
+}
+
+/** Resolve a named direct child of GitHub's runner-owned temporary directory. */
+export function resolveRunnerTempDirectory(childName: unknown): string {
+  const fixedChild = CHILD_PATHS[childName as string];
+  if (!fixedChild) fail('a fixed runner temp child name is required.');
+  const root = runnerTempRoot();
   const target = resolve(root, fixedChild);
   if (dirname(target) !== root) fail('directory escapes runner temp.');
   mkdirSync(target, { recursive: true, mode: 0o700 });
@@ -39,10 +45,22 @@ export function resolveRunnerTempFile(directory: unknown, fileName: unknown): st
 
 function fixedRelativePath(directory: unknown, fileName: unknown): string {
   if (typeof directory !== 'string' || !isAbsolute(directory)) fail('an absolute validated temp directory is required.');
-  const child = basename(directory);
-  if (resolve(directory) !== resolve(process.cwd(), CHILD_PATHS[child] ?? 'invalid')) fail('directory is not a fixed runner temp child.');
+  if (typeof fileName !== 'string') fail('file is not an approved fixed runner temp path.');
+  const root = runnerTempRoot();
+  const child = directory === root ? '.' : basename(directory);
+  if (child !== '.' && resolve(directory) !== resolve(root, CHILD_PATHS[child] ?? 'invalid')) fail('directory is not a fixed runner temp child.');
   // Every path reaching fs APIs below is a literal selected from this closed table.
   switch (`${child}/${fileName as string}`) {
+    case './architecture-gate-prompt.md': return 'architecture-gate-prompt.md';
+    case './architecture-gate-decision.schema.json': return 'architecture-gate-decision.schema.json';
+    case './architecture-gate-decision.validation.json': return 'architecture-gate-decision.validation.json';
+    case './architecture-gate-legacy-prompt.md': return 'architecture-gate-legacy-prompt.md';
+    case './architecture-gate-legacy-provenance.json': return 'architecture-gate-legacy-provenance.json';
+    case 'architecture-gate-owner-addition/eligibility-prompt.md': return 'architecture-gate-owner-addition/eligibility-prompt.md';
+    case 'architecture-gate-owner-addition/eligibility.schema.json': return 'architecture-gate-owner-addition/eligibility.schema.json';
+    case 'architecture-gate-owner-addition/procedure.json': return 'architecture-gate-owner-addition/procedure.json';
+    case 'architecture-gate-owner-addition/evidence-context.json': return 'architecture-gate-owner-addition/evidence-context.json';
+    case 'architecture-gate-owner-addition/eligibility-evidence.json': return 'architecture-gate-owner-addition/eligibility-evidence.json';
     case 'architecture-gate-owner-decision-record-input/authority-provenance.json': return 'architecture-gate-owner-decision-record-input/authority-provenance.json';
     case 'architecture-gate-owner-decision-record-input/decision.json': return 'architecture-gate-owner-decision-record-input/decision.json';
     case 'architecture-gate-owner-decision-record-input/event.json': return 'architecture-gate-owner-decision-record-input/event.json';
@@ -67,9 +85,9 @@ export function readRunnerTempFile(directory: unknown, fileName: unknown, maximu
   const target = resolveRunnerTempFile(directory, fileName);
   let fd: number | undefined;
   try {
-    fd = openSync(target, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+    fd = openSync(target, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0));
     const stat = fstatSync(fd);
-    if (!stat.isFile() || stat.size < 1 || stat.size > (maximumBytes as number)) fail('temporary input is not a bounded regular file.');
+    if (!stat.isFile() || stat.nlink !== 1 || stat.size < 1 || stat.size > (maximumBytes as number)) fail('temporary input is not a bounded single-link regular file.');
     return readFileSync(fd);
   } finally { if (fd !== undefined) closeSync(fd); }
 }
@@ -77,12 +95,22 @@ export function readRunnerTempFile(directory: unknown, fileName: unknown, maximu
 export function writeRunnerTempFile(directory: unknown, fileName: unknown, contents: unknown, { overwrite = false }: { overwrite?: unknown } = {}): string {
   if (!(typeof contents === 'string' || Buffer.isBuffer(contents))) fail('temporary output must be exact bytes or text.');
   const target = resolveRunnerTempFile(directory, fileName);
-  const flags = constants.O_WRONLY | constants.O_CREAT | (constants.O_NOFOLLOW ?? 0) |
-    (overwrite ? constants.O_TRUNC : constants.O_EXCL);
+  let before;
+  if (overwrite) {
+    try { before = lstatSync(target); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+    if (before && (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1)) fail('temporary output is not a direct single-link regular file.');
+  }
+  // Keep exclusive creation and validate existing outputs before any truncation.
+  const flags = constants.O_WRONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0) |
+    (!overwrite || !before ? constants.O_CREAT | constants.O_EXCL : 0);
   let fd: number | undefined;
   try {
     fd = openSync(target, flags, 0o600);
-    if (!fstatSync(fd).isFile()) fail('temporary output is not a regular file.');
+    const opened = fstatSync(fd);
+    if (!opened.isFile() || opened.nlink !== 1 ||
+        (before && (opened.dev !== before.dev || opened.ino !== before.ino))) fail('temporary output is not the selected single-link regular file.');
+    if (overwrite) ftruncateSync(fd, 0);
     writeFileSync(fd, contents);
   } finally { if (fd !== undefined) closeSync(fd); }
   return target;

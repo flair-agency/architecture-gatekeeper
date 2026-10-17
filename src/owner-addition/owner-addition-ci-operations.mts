@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { appendGitHubOutput } from '../runner-temp-path.mjs';
+import { appendGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory,
+  writeRunnerTempFile } from '../runner-temp-path.mjs';
 import { TextDecoder } from 'node:util';
 import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mjs';
 import { parseAuthorityManifest } from '../authority-set.mjs';
@@ -18,6 +17,17 @@ type OwnerAdditionAuthorityLimits = { maxFileBytes: number; maxTotalBytes: numbe
 type CliSchemaView = { properties?: { version?: { type?: unknown } } | null };
 type CliProcedureView = { version?: unknown; authoritySet?: unknown };
 type CliEvidenceContextView = { policyVersion?: unknown; version?: unknown; ordinaryDecisionBase64?: unknown; authoritySetProvenanceBase64?: unknown; repository?: unknown; targetBranch?: unknown; prNumber?: unknown; baseSha?: unknown; headSha?: unknown };
+
+const OUTPUT_CHILD = 'architecture-gate-owner-addition';
+const OUTPUT_FILES = Object.freeze({ prompt: 'eligibility-prompt.md', schema: 'eligibility.schema.json',
+  procedure: 'procedure.json', context: 'evidence-context.json', evidence: 'eligibility-evidence.json' });
+function outputDirectory(value: unknown): string {
+  const directory = resolveRunnerTempDirectory(OUTPUT_CHILD);
+  if (typeof value !== 'string' || (value !== directory && value !== OUTPUT_CHILD)) {
+    throw new Error('Invalid fixed runner-temp owner-addition output selection.');
+  }
+  return directory;
+}
 
 const SHA = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
@@ -65,6 +75,7 @@ export async function prepare(env: NodeJS.ProcessEnv) {
     ORDINARY_DECISION: ordinaryDecisionRaw, OUTPUT_DIR: outputDir, GITHUB_OUTPUT: githubOutput } = env;
   if (!root || !repository || !baseBranch || !policyPath || !outputDir ||
       !ordinarySchemaPath || !SHA.test(baseSha || '') || !SHA.test(headSha || '')) throw new Error('Missing or invalid owner-addition CI context.');
+  const fixedOutputDirectory = outputDirectory(outputDir);
   const policyBytes = committedFile(root, baseSha, policyPath, 65_536);
   const selected = resolveCiPolicy(parseCiPolicyJson(utf8(policyBytes, 'Previous protected policy')), baseBranch);
   if (!((selected.policyVersion === 5 && selected.mode === 'procedural') ||
@@ -77,15 +88,14 @@ export async function prepare(env: NodeJS.ProcessEnv) {
   if (selected.policyVersion === 5) {
     const prNumber = Number(env.PR_NUMBER);
     if (!Number.isSafeInteger(prNumber) || prNumber < 1) throw new Error('Missing exact PR identity for procedural evidence.');
-    mkdirSync(outputDir, { recursive: true, mode: 0o700 });
-    writeFileSync(join(outputDir, 'evidence-context.json'), JSON.stringify({
+    writeRunnerTempFile(fixedOutputDirectory, OUTPUT_FILES.context, JSON.stringify({
       version: 1, policyVersion: 5, repository, targetBranch: baseBranch, prNumber, baseSha, headSha,
       ordinaryDecisionBase64: Buffer.from(ordinaryDecisionRaw || '', 'utf8').toString('base64'),
       authoritySetProvenanceBase64: env.ORDINARY_AUTHORITY_PROVENANCE_BASE64 || '',
-    }), { mode: 0o600 });
+    }), { overwrite: true });
   }
   if (selected.ownerAdditionVersion === 2) {
-    return prepareMultiAuthorityAddition(env, selected, policyBytes);
+    return prepareMultiAuthorityAddition({ ...env, OUTPUT_DIR: fixedOutputDirectory }, selected, policyBytes);
   }
   const prompt = committedFile(root, baseSha, promptPath, 65_536);
   const schemaBytes = committedFile(root, baseSha, schemaPath, 65_536);
@@ -131,28 +141,26 @@ export async function prepare(env: NodeJS.ProcessEnv) {
   if (Buffer.byteLength(completePrompt) > Math.min(524_288, authorityLimits.maxPromptBytes)) {
     throw new Error('Owner-addition complete prompt exceeds the review limit.');
   }
-  mkdirSync(outputDir, { recursive: true, mode: 0o700 });
-  writeFileSync(join(outputDir, 'eligibility-prompt.md'), completePrompt, { mode: 0o600 });
-  writeFileSync(join(outputDir, 'eligibility.schema.json'), schemaBytes, { mode: 0o600 });
-  writeFileSync(join(outputDir, 'procedure.json'), JSON.stringify(procedure), { mode: 0o600 });
+  writeRunnerTempFile(fixedOutputDirectory, OUTPUT_FILES.prompt, completePrompt, { overwrite: true });
+  writeRunnerTempFile(fixedOutputDirectory, OUTPUT_FILES.schema, schemaBytes, { overwrite: true });
+  writeRunnerTempFile(fixedOutputDirectory, OUTPUT_FILES.procedure, JSON.stringify(procedure), { overwrite: true });
   if (githubOutput) appendGitHubOutput(`procedure_base64=${Buffer.from(JSON.stringify(procedure)).toString('base64')}\n`);
   return procedure;
 }
 
 
 export function validateOwnerAdditionCiCli(): void {
-    const schemaPath = join(process.env.OUTPUT_DIR || '', 'eligibility.schema.json');
-    const schema = JSON.parse(readFileSync(schemaPath, 'utf8')) as unknown as CliSchemaView;
+    const directory = outputDirectory(process.env.OUTPUT_DIR);
+    const schema = JSON.parse(readRunnerTempFile(directory, OUTPUT_FILES.schema).toString('utf8')) as unknown as CliSchemaView;
     if (schema.properties?.version?.type === 'integer') {
-      const procedure = JSON.parse(readFileSync(join(process.env.OUTPUT_DIR || '', 'procedure.json'), 'utf8')) as unknown as CliProcedureView;
+      const procedure = JSON.parse(readRunnerTempFile(directory, OUTPUT_FILES.procedure).toString('utf8')) as unknown as CliProcedureView;
       if (procedure.version !== 2) throw new Error('Multi-document eligibility requires a version 2 procedure.');
       validateMultiAuthorityEligibility(process.env.DECISION || '', schema, procedure.authoritySet);
     } else validateOwnerAdditionEligibility(process.env.DECISION || '', schema);
-    const contextPath = join(process.env.OUTPUT_DIR || '', 'evidence-context.json');
     if (process.env.POLICY_VERSION === '5') {
-      const context = JSON.parse(readFileSync(contextPath, 'utf8')) as unknown as CliEvidenceContextView;
+      const context = JSON.parse(readRunnerTempFile(directory, OUTPUT_FILES.context).toString('utf8')) as unknown as CliEvidenceContextView;
       if (context.policyVersion !== 5 || context.version !== 1) throw new Error('Procedural evidence context version differs.');
-      const procedure = readFileSync(join(process.env.OUTPUT_DIR || '', 'procedure.json'));
+      const procedure = readRunnerTempFile(directory, OUTPUT_FILES.procedure);
       const ordinaryDecision = Buffer.from(context.ordinaryDecisionBase64 as string, 'base64');
       const eligibilityDecision = Buffer.from(process.env.DECISION || '', 'utf8');
       const authoritySetProvenance = Buffer.from(context.authoritySetProvenanceBase64 as string, 'base64');
@@ -162,7 +170,7 @@ export function validateOwnerAdditionCiCli(): void {
           !ordinaryDecision.length || !eligibilityDecision.length || !authoritySetProvenance.length) {
         throw new Error('Procedural eligibility evidence is incomplete.');
       }
-      writeFileSync(join(process.env.OUTPUT_DIR as string, 'eligibility-evidence.json'), JSON.stringify({
+      writeRunnerTempFile(directory, OUTPUT_FILES.evidence, JSON.stringify({
         version: 1, repository: context.repository, targetBranch: context.targetBranch,
         prNumber: context.prNumber, baseSha: context.baseSha, headSha: context.headSha,
         runId, runAttempt,
@@ -172,7 +180,7 @@ export function validateOwnerAdditionCiCli(): void {
         authoritySetProvenanceBase64: authoritySetProvenance.toString('base64'),
         digests: { procedure: sha256(procedure), ordinaryDecision: sha256(ordinaryDecision),
           eligibilityDecision: sha256(eligibilityDecision), authoritySetProvenance: sha256(authoritySetProvenance) },
-      }), { mode: 0o600 });
+      }), { overwrite: true });
     }
     if (process.env.GITHUB_OUTPUT) appendGitHubOutput('eligibility=ELIGIBLE\n');
 }

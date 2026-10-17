@@ -114,6 +114,14 @@ files. Its optional local `REPORT_PATH` must name
 `architecture-gate-report.md` in the current directory; it creates that file
 exclusively and never overwrites an existing destination. See the
 [report filesystem boundary](docs/integration-reference.md#report-filesystem-boundary).
+
+Legacy authority and owner-addition CI artifact steps run with the GitHub
+runner's `RUNNER_TEMP` as their working directory. Their CLIs accept only fixed
+output names (or the exact absolute path resolved from that working directory),
+and workflow output is appended through the runner-provided `GITHUB_OUTPUT`.
+The [artifact I/O checks](docs/development.md#artifact-file-io-checks) describe
+the remaining filesystem concurrency limits. This design was approved in
+[PR #591](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
 For a complete consumer-owned local v2 configuration and CI policy v4 example,
 including the separate optional G0 selection, see
 [examples/consumer-v4](examples/consumer-v4/README.md).
