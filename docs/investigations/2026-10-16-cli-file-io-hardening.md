@@ -21,6 +21,13 @@ The legacy v1 preparer uses these five closed root-level runner-temp names:
 | `architecture-gate-legacy-prompt.md` | Composed legacy review prompt |
 | `architecture-gate-legacy-provenance.json` | Legacy provenance record |
 
+The owner-addition routes use the fixed child
+`architecture-gate-owner-addition` with only `eligibility-prompt.md`,
+`eligibility.schema.json`, `procedure.json`, `evidence-context.json`, and
+`eligibility-evidence.json`. All three shipped workflows run the four affected
+prepare/validate steps with `working-directory: ${{ runner.temp }}` and invoke
+the pinned runtime by absolute path.
+
 The helper validates `RUNNER_TEMP === process.cwd()` and uses closed relative
 filename literals for filesystem operations. The other mapped CI operations
 continue to use their existing fixed runner-temp child and file table. Where an
@@ -62,9 +69,9 @@ implementations. The line numbers identify the original reviewed #587 source.
 | 587-05 | L:117 provenance output | Fixed runner-temp file operation |
 | 587-06 | L:136 provenance input | Fixed runner-temp file operation |
 | 587-07 | S:25 Git cwd | CLI uses `trustedGitHubWorkspaceRoot`; public root remains caller capability |
-| 587-08 | S:80 v5 output directory | Fixed runner-temp file operation |
+| 587-08 | S:80 v5 output directory | Fixed runner-temp child creation |
 | 587-09 | S:81 v5 evidence context output | Fixed runner-temp file operation |
-| 587-10 | S:134 output directory | Fixed runner-temp file operation |
+| 587-10 | S:134 output directory | Fixed runner-temp child creation |
 | 587-11 | S:135 eligibility prompt output | Fixed runner-temp file operation |
 | 587-12 | S:136 eligibility schema output | Fixed runner-temp file operation |
 | 587-13 | S:137 procedure output | Fixed runner-temp file operation |
@@ -74,7 +81,7 @@ implementations. The line numbers identify the original reviewed #587 source.
 | 587-17 | S:155 v5 procedure input | Fixed runner-temp file operation |
 | 587-18 | S:165 v5 eligibility evidence output | Fixed runner-temp file operation |
 | 587-19 | M:21 Git cwd | CLI uses `trustedGitHubWorkspaceRoot`; public root remains caller capability |
-| 587-20 | M:96 output directory | Fixed runner-temp file operation |
+| 587-20 | M:96 output directory | Fixed runner-temp child creation |
 | 587-21 | M:97 eligibility prompt output | Fixed runner-temp file operation |
 | 587-22 | M:98 eligibility schema output | Fixed runner-temp file operation |
 | 587-23 | M:99 procedure output | Fixed runner-temp file operation |
@@ -82,8 +89,8 @@ implementations. The line numbers identify the original reviewed #587 source.
 
 The revised disposition groups 21 file/directory operations under the closed
 runner-temp table, two Git cwd operations at the CLI workspace boundary, and one
-actual runner-output append. This mapping describes intended source behavior;
-current integrated verification is pending.
+actual runner-output append. This mapping describes the implemented boundary; the revision-specific
+verification below does not claim hostile same-user isolation or adoption.
 
 ## Risk / production boundary / ordinary regression map
 
@@ -107,7 +114,53 @@ findings, and nine new HIGH findings. Those results describe the superseded
 generic helper approach and are retained as history only. They do not establish
 the status of the owner-approved fixed runner-temp implementation.
 
-Current integrated verification is **PENDING**. The coordinator will record the
-actual source revision, focused and full checks, CodeQL results, and any
-remaining hosted or protected evidence after integration. Prior evidence does
-not waive a current failing check or authorize an acceptance route.
+The fixed-boundary JavaScript candidate `821c3eade2d4a48c28e75393bb80ec8ff0184719`
+passed strict typecheck, build, source cycles, and 54 focused CLI/runtime identity
+checks. Its fresh full suite passed **2048/2048**, no failures, skips or
+cancellations, exit 0 in 623.3 seconds (Node 22.23.3, concurrency 2).
+Unsupported generic artifact path/fd scenarios were removed following the owner
+direction, while policy, provenance, selected snapshot, malformed decision and
+runtime identity checks remain. Counts are not a coverage or security guarantee.
+
+Its source-only official CodeQL 2.27.2 run extracted 723 JavaScript/TypeScript
+files and 12 workflows. The unchanged three model regressions passed, including
+generic caller-root negative flows. Results: **16 JavaScript findings, zero
+Actions findings**. Comparison to `e47e6ea` retained all 16 unrelated results,
+removed the nine generic-helper findings (296–301 arbitrary paths; 302–304
+numeric descriptor branches) and the two owner Git-cwd results, and added none.
+No query, model, threshold, alert dismissal or suppression was changed. This is
+local scan evidence; a successful hosted PR check is still required.
+
+The actual archive SHA-256 is
+`fa62653f808b90879cd8ee5269aa0e5033afd55048cf9d3246d04eb64014b2ad`.
+All 227 emitted modules match the archive and clean offline installation; it has
+249 entries, eight bins, nine exports and no runtime dependencies/authored MTS.
+Installed smoke passed in 124.2 seconds with unchanged 120-second group limits.
+All 26 checked normative/model/configuration files match the adopted base.
+
+The separate final-three TypeScript candidate `7db3b05` passed strict/build,
+source cycles and 55 focused compiler/CLI/runtime identity checks. Full operation
+AST pins use the fixed-boundary JavaScript baseline; policy-byte BinaryLike
+inputs and external transport callback contracts remain supported. A subsequent
+regression-coordinate correction `49873f5` changes the pinned sink location to
+the actual SARIF line, preserving the assertion that generic roots are detected.
+Its official CodeQL rerun is pending; earlier evidence is not relabeled.
+
+## Open compatibility decision and adoption hold
+
+Independent static integrated review identified a normal-input compatibility
+issue: existing `appendGitHubOutput` bounds each append to 16,384 bytes, while
+the supported v2 procedure embeds up to 32 provenance members with long paths.
+Its base64 line can exceed that per-call bound. The existing downstream v2 parser
+allows 65,536 base64 characters; this must not silently become a smaller accepted
+input range. The owner has been asked to choose a finite procedure-specific
+publication approach preserving capacity, or explicitly accept the smaller
+range. No larger bound, chunked publication or smaller supported range is treated
+as approved by silence, and no change for this decision has been implemented.
+
+The current JavaScript and TypeScript proposals are **not ready for adoption**.
+The compatibility decision and implementation remain open, followed by fresh
+final-candidate full/package/CodeQL, Native and hosted Code/Security Review and
+non-skipped protected acceptance as applicable. Earlier reviews and successful
+checks do not transfer to a new source tuple. Both #591 and #587 remain on merge
+hold; main remains 93/96 adopted. A local 96/96 implementation is not adoption.
