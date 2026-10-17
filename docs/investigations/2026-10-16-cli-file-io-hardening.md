@@ -181,9 +181,13 @@ the existing consumer's 65,536-character boundary. It adds no attack/race
 reproduction. This publication change has its own current-candidate verification;
 the earlier results above remain bound to their original revisions.
 
-Both #591 and #587 remain on merge hold; main remains 93/96 adopted. A local
-96/96 implementation is not adoption. Fresh final-candidate checks, Native and
-hosted Code/Security Review, and non-skipped protected review/accept are required.
-The existing exact event base/head merge-parent guard must succeed; its previous
-failure is not waived or worked around. Filesystem concurrency limits above
-remain; no hostile same-user isolation or complete race freedom is claimed.
+The owner subsequently approved normal merging after the final checks. #591
+was adopted at `525eed1344b8ec994cd7def53e92927d0a14697c`, followed by #587 at
+`512d8329de077c81e87a44a856e9e76448106181` (**96/96 adopted**). The latter tree
+exactly matches reviewed head `53bd4c9`; fresh Native and hosted Code/Security
+Review, CI and non-skipped protected accept succeeded at that head. The exact
+event base/head merge-parent guard succeeded without modification. The
+[final integration index](2026-10-18-quality-program-final-integration.md)
+separates current content verification, revision-bound review and merge readback
+from the historical results above. Filesystem concurrency limits remain;
+no hostile same-user isolation or complete race freedom is claimed.
