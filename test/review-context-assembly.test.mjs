@@ -34,4 +34,3 @@ test('assembles the fixed review-context serialization with UTF-8 and JSON escap
   assert.equal(result.contextBytes, Buffer.byteLength(expectedContext, 'utf8'));
   assert.equal(result.bytes.length, promptBytes.length + result.contextBytes);
 });
-
