@@ -80,6 +80,111 @@ The [initial Git/filesystem inventory](https://github.com/flair-agency/architect
 maps existing I/O owners and differing caller contracts for #573. It selects no
 shared API or library and does not complete that refactor.
 
+## Early review-input capacity feedback
+
+Before requesting a model review or starting the full test/CodeQL/package path,
+check capacity for a committed change using Node 22.18 or newer and the locked
+development dependencies (`npm ci --ignore-scripts` once). No build, reviewer,
+provider credential, network acquisition or heavy verification is needed for
+this development command:
+
+```bash
+npm run review:capacity -- --base <base-commit> --head <candidate-commit>
+```
+
+The invoking checkout must already be the exact two-parent reviewed merge,
+with ordered parents `[base, candidate]`. `--reviewed <ref>` defaults to `HEAD`;
+references resolve once to full immutable commits. Uncommitted/untracked edits
+are excluded. For feedback before push, make a local preview in an isolated
+worktree, leaving the development branch unchanged:
+
+```bash
+capacity_tool="$(git rev-parse --show-toplevel)"
+capacity_base="$(git rev-parse origin/main)"
+capacity_head="$(git rev-parse HEAD)"
+git worktree add --detach ../agk-capacity-preview "$capacity_base"
+cd ../agk-capacity-preview
+git merge --no-ff --no-edit "$capacity_head"
+node "$capacity_tool/scripts/review-capacity.mjs" --base "$capacity_base" --head "$capacity_head"
+```
+
+Use an up-to-date fetched base and a distinct committed candidate with actual
+changes. Resolve conflicts normally before checking; an absent or non-merge
+snapshot is undetermined. The command itself writes no worktree, refs, prompt
+files or retained diagnostic records. Remove the preview worktree when finished.
+This is a source-development command, not an installed package executable.
+
+Initial coverage is AGK's ordinary Codex self-CI input format, targeting `main`
+and using a self-only version-1 Authority Set under an enforced v2 policy. The
+local repository name is a label, not authenticated GitHub origin or same-repo
+admission. The report binds base, candidate and reviewed merge, policy revision,
+path/digest and selected limit. It reads literal inputs/defaults from the base's
+self caller and reusable workflow, resolves protected policy with the production
+resolver, and materializes the complete selected base authority with the
+production materializer. It shares the exact context assembler with production.
+Neither working-tree policy nor an injected limit can replace these inputs.
+
+The initial tool conservatively recognizes the fingerprinted preparation files
+and workflow format delivered with it, plus the byte-equivalent predecessor
+context implementation. Any other format, an altered local tool dependency,
+legacy/procedural/Gemini policy or external authority is undetermined until
+separately supported. A fresh base/candidate/policy always gets a new result;
+there is no result cache. A later GitHub merge revision, base or selected runtime
+can differ from the local preview: rerun for that snapshot. Feedback supplies no
+host protection, review completion or merge evidence. Local Git, object store,
+configuration and tool execution retain the existing same-user trust boundary.
+
+JSON output distinguishes these states and exit statuses:
+
+| State | Meaning and next action | Exit |
+| --- | --- | --- |
+| `fit` | Exact prompt is below 90% of the selected limit. Continue normal review and verification. | 0 |
+| `approaching-limit` | Exact prompt is at least 90%, and no larger than the hard limit. Consider a coherent smaller scope before adding input. | 0 |
+| `exceeded` | Complete bounded assembly was measured above the hard limit. Reshape the change and check again; production still refuses it. | 1 |
+| `undetermined` | A selection, revision, source, encoding, supported format or bounded preparation could not be completed. Resolve the cause; never interpret this as fitting. | 2 |
+
+The 90% rule is optional development guidance, not a policy limit or required
+check. Exactly-at-limit is approaching and production remains permitted at that
+size. No state is semantic PASS/BLOCK/OWNER_DECISION or authorization to merge.
+Do not raise limits, trim required input or bypass checks in response.
+
+For exact results, `totalBytes` measures final UTF-8 prompt bytes after JSON
+escaping and context attachment. Instructions, rendered complete authority and
+task context components sum to that same total. Remaining capacity may be
+negative. The selected hard limit applies to that prompt; the separately passed
+output schema's bytes/digest are reported separately and are not added to it.
+No token/cost estimate or provider transport-payload limit is inferred.
+
+Summaries omit prompt, diff, authority and schema contents, provider settings,
+credentials and local paths. Changed filenames are hidden by default. Add
+`--public-paths` only when the candidate names are suitable for disclosure; this
+shows up to five unambiguously matched simple public paths ranked by their
+JSON-escaped patch payload bytes, a subset of task context rather than extra
+prompt components. Quoted/ambiguous paths may have no per-file attribution;
+the complete prompt and total are still measured. This does not authorize
+publication of private changes or authority.
+
+Preparation retains the selected manifest/member/file/authority/prompt bounds.
+Git commands have finite output bounds and a 10-second per-command maximum;
+there is no claim of a global process deadline. Initial diagnostic reads of
+workflow/runtime-format files are bounded at 262144 bytes each and policy,
+schema and validation at 65536 bytes each. These are local preparation bounds,
+not new protected schema or policy limits. Failure, including a diff beyond its
+read bound, reports undetermined with no exact partial total; this initial tool
+does not calculate overrun lower bounds. No unavailable input is omitted.
+
+The retained capacity tests model #541's scope-growth problem: growing
+investigation text overtakes implementation as the largest patch contributor
+and exceeds the same selected limit; separately scoped implementation and
+bounded investigation changes each agree with real production-prepared sizes
+and fit. This is a synthetic feature checkpoint, not a replay of #541's hosted
+review, automatic splitting, review-quality score or completion of #537's pilot.
+The tests also instrument the actual CLI to forbid non-Git subprocesses and
+network/model calls, exercise exact/advisory boundaries, private sentinels,
+unsupported preparation and retained production rejection. Other local, Hook,
+native and provider routes, automation and broader I/O extraction remain outside
+this initial #576 delivery; #573 is independent.
+
 ## Keeping the Gemini branch synchronized
 
 At Gemini development milestones, compare `feature/gemini-ci` with the current
