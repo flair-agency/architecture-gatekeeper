@@ -514,8 +514,10 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     // Exercise failures through the production child CLI. Each case starts
     // from the same controlled response snapshot and a clean output file.
     const artifactListPath = `${prefix}/actions/runs/202/artifacts`;
+    const artifactDetailPath = `${prefix}/actions/artifacts/555`;
     const runAttemptPath = `${prefix}/actions/runs/202/attempts/1`;
     const validArtifactList = structuredClone(responses[artifactListPath]);
+    const validArtifactDetail = structuredClone(responses[artifactDetailPath]);
     const validRunAttempt = structuredClone(responses[runAttemptPath]);
     const runCliFailure = (diagnostic) => {
       writeFileSync(dataPath, JSON.stringify(responses));
@@ -531,14 +533,26 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
 
     responses[artifactListPath].json = { total_count: 0, artifacts: [] };
     runCliFailure(/expected exactly one matching BLOCK artifact; found 0/);
-    responses[artifactListPath] = validArtifactList;
+    responses[artifactListPath] = structuredClone(validArtifactList);
+
+    // Expired eligibility bytes are stale evidence even when every identity
+    // binding remains exact. Keep listing and detail metadata consistent.
+    responses[artifactListPath].json.artifacts[0].expired = true;
+    responses[artifactListPath].json.artifacts[0].expires_at = '2020-01-01T00:00:00Z';
+    responses[artifactDetailPath].json.expired = true;
+    responses[artifactDetailPath].json.expires_at = '2020-01-01T00:00:00Z';
+    runCliFailure(/matching artifact has invalid identity, run association, or expiry metadata/);
+    responses[artifactListPath] = structuredClone(validArtifactList);
+    responses[artifactDetailPath] = structuredClone(validArtifactDetail);
 
     // The selected workflow listing reports attempt 1, but its detailed
     // attempt readback reports attempt 2. Discovery must reject that conflict.
     responses[runAttemptPath].json.run_attempt = 2;
     runCliFailure(/workflow run event, repository, head, attempt, or run ID differs from trusted expectation/);
-    responses[runAttemptPath] = validRunAttempt;
+    responses[runAttemptPath] = structuredClone(validRunAttempt);
     writeFileSync(dataPath, JSON.stringify(responses));
+    assert.match(run(), /OWNER_AMENDMENT \/ G0 pre-transition eligibility verified; adoption and canonical placement remain pending/);
+    assert.equal(readFileSync(outputPath, 'utf8'), `route=amendment\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
 
     writeFileSync(outputPath, '');
     fixture.runGit(['checkout', '--detach', fixture.bSha]);
