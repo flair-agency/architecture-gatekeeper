@@ -76,7 +76,7 @@ The [#418/#412 final integration index](investigations/2026-10-18-quality-progra
 maps these practices to existing checks and revision-bound evidence, including
 their local, hosted and protected limits.
 
-The [initial Git/filesystem inventory](investigations/2026-10-18-git-filesystem-responsibility-inventory.md)
+The [initial Git/filesystem inventory](https://github.com/flair-agency/architecture-gatekeeper/blob/d80e44683e356c1d91b9639d1e4df96aa337125a/docs/investigations/2026-10-18-git-filesystem-responsibility-inventory.md)
 maps existing I/O owners and differing caller contracts for #573. It selects no
 shared API or library and does not complete that refactor.
 
