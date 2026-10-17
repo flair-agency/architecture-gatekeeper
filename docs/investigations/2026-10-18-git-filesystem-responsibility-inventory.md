@@ -183,6 +183,11 @@ This initial map does not prove an exhaustive transitive call graph.
 
 ## Staged remaining work
 
+The bounded merge-group process-wrapper extraction is recorded in
+[`2026-10-18-merge-group-git-wrapper-extraction.md`](2026-10-18-merge-group-git-wrapper-extraction.md).
+It consolidates two identical script-local `execFileSync` wrappers only; it
+does not select a broader API/library or complete the remaining inventory.
+
 1. Complete the per-call input/budget/decode/open/cleanup contract matrix for
    selected equivalent candidates, including inline workflow steps and mediated
    callers. Import presence alone does not establish those contracts.
