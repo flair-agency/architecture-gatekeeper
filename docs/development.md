@@ -327,12 +327,15 @@ selection. External JSON remains unknown; erased property-read views add no
 validation. All three original native accessor flows and explicitly injected
 negative flows remain checked at the actual grouped production sinks. The
 adopted model packs are unchanged. This migration adopts no stream protocol,
-persistence transfer or new transport ceiling from Issue #566. The materializer retains
-two narrow `@ts-expect-error` boundaries where it composes the existing Git
-reader and filesystem writer. They preserve those operations without claiming
-that `outputPath` is a string: the original truthy guard permits native path-like
-and file-descriptor inputs. In the adopted 86/96 baseline, four originals have
-partial helper migrations.
+persistence transfer or new transport ceiling from Issue #566. The materializer now
+uses fixed runner-temporary output selectors with the existing filesystem writer. These CI
+operations accept only fixed string names or the exact absolute path resolved
+from the runner-temporary working directory; native Buffer, URL, descriptor and
+other caller-selected destinations are outside this interface. The workflows
+set `working-directory: ${{ runner.temp }}` for the legacy and owner-addition
+prepare/validate steps in the self, consumer and provider workflows. This is the
+owner-approved design recorded in [PR #591](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
+In the adopted 86/96 baseline, four originals have partial helper migrations.
 The CI report keeps its flat CLI and filesystem operations; multi-authority
 orchestration keeps its adapter while delegating selected eligibility helpers.
 Owner-addition CI delegates only the post-parse single-member selection while
@@ -544,43 +547,32 @@ and clean/offline installation.
 
 ## Artifact file I/O checks
 
-Legacy authority preparation and owner-addition artifact operations share
-`src/runner-paths/artifact-file-io.mts`. Existing runner-output and fixed-temp
-helpers are not interchangeable with this helper: they select process environment
-values or fixed storage paths, whereas these APIs retain caller-selected native
-destinations and injected environments. Their existing descriptor checks inform
-the new helper without extending any trusted accessor or CodeQL model.
+Legacy authority and owner-addition CI artifact operations use the existing
+`src/runner-paths/runner-temp-path.mts` helper. The three production workflows
+(`architecture-gate.yml`, `architecture-gate-consumer.yml`, and
+`architecture-gate-providers.yml`) run the legacy and owner-addition prepare and
+validate steps with `working-directory: ${{ runner.temp }}`. The helper confirms
+that `RUNNER_TEMP` equals the process working directory and derives its storage
+root from the real process working directory.
 
-String, Buffer (including native non-UTF-8 POSIX names), file URL and numeric
-descriptor forms remain usable for ordinary files. Existing regular-file
-overwrite, modes, append creation and caller-owned descriptor offsets/lifetimes
-are retained. Linked files, multiply linked files, nonregular files and linked
-parent directories are rejected. This includes directory aliases with trailing
-or repeated separators; lexical normalization must not hide an alias before a
-`..` component. On platforms with conventional temporary-directory symlinks,
-callers must use the physical directory path. No checkout/temp confinement or
-new filename allowlist is imposed.
+Output selectors are fixed strings. Legacy authority accepts only each known
+relative output name or the exact absolute path resolved from the current
+working directory. Owner-addition accepts its fixed child name or that child's
+exact resolved absolute path. Files beneath those selections are fixed by closed
+path tables; arbitrary caller-selected Buffer, file URL, descriptor or external
+destination forms are not part of these CI interfaces. GitHub workflow output is
+written through the existing `appendGitHubOutput` function, which obtains the
+runner-created `GITHUB_OUTPUT` path through the trusted runner environment
+accessor. It does not accept an injected output path as an operation argument.
 
-File opening uses no-follow/nonblocking flags where available and never truncates
-as part of open. The helper checks the opened file's type, link count and identity,
-then rechecks its path and parent identities before reading, truncating or writing.
-Creation uses exclusive open after an absent-file observation. Caller-supplied
-descriptors are checked without closing, seeking or truncating them; an explicitly
-supplied regular descriptor remains valid after its pathname is unlinked. This guards
-the tested substitutions; it does not authenticate caller-selected paths, grant
-artifact custody or isolate concurrent hostile same-user activity.
-
-Portable Node filesystem calls do not supply a directory-relative atomic open
-transaction. A parent replacement during missing-file/directory creation can
-leave an empty file or directory before a subsequent identity check rejects the
-operation. Replacement or hardlink creation after the final check also remains
-possible for an actor with sufficient filesystem access. These limits must remain
-visible; prechecks and successful tests are not a claim of complete race freedom.
-
-Retain production CLI/API sentinel tests, native-form compatibility cases and
-deterministic open-time substitution fixtures alongside the helper tests. CodeQL
-still evaluates caller-selected paths; file safety checks do not authorize a
-sanitizer model, alert dismissal, weaker query or protected acceptance.
+The helper retains checks for direct regular files, single-link identity and
+symbolic-link substitution at the operations it performs. These checks support
+the fixed runner-temporary interface; they do not establish complete race
+freedom. Portable Node filesystem calls do not provide a directory-relative
+atomic open transaction, so a same-user actor able to change the runner
+filesystem concurrently may still race between checks and filesystem operations.
+The design does not claim isolation from hostile same-user concurrency or
+artifact custody. See the owner-approved [PR #591 decision](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
 
 ## Static source import cycles
 

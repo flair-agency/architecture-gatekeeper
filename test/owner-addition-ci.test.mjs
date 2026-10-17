@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { linkSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,6 +39,8 @@ function sha256(text) { return createHash('sha256').update(text).digest('hex'); 
 test('protected adapter verifies exact B and reports G0 separately from ordinary OWNER_DECISION', t => {
   const root = mkdtempSync(join(tmpdir(), 'owner-addition-ci-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
+  const runnerTemp = mkdtempSync(join(tmpdir(), 'owner-addition-runner-temp-'));
+  t.after(() => rmSync(runnerTemp, { recursive: true, force: true }));
   run(root, 'git', 'init', '-q');
   const oldAuthority = '# Architecture\n\nThe reporting owner is unselected.\n';
   const newAuthority = `${oldAuthority}\n## Reporting choice\n\nThe product owner owns reporting.\n`;
@@ -72,8 +74,8 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
   writeFileSync(recordPath, `${JSON.stringify(canonical(record))}\n`);
   run(root, 'git', 'tag', '-a', `architecture-owner-addition/${head}`, '-F', recordPath, head);
   run(root, 'git', 'checkout', '-q', '--detach', base);
-  const outputDir = join(root, 'output');
-  const outputFile = join(root, 'output.txt');
+  const outputDir = join(runnerTemp, 'architecture-gate-owner-addition');
+  const outputFile = join(runnerTemp, 'output.txt');
   writeFileSync(outputFile, '', { mode: 0o600 });
   const env = { ...process.env, GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: 'example/project', BASE_SHA: base,
     HEAD_SHA: head, BASE_BRANCH: 'main', POLICY_PATH: '.codex/gatekeeper/ci-policy.json',
@@ -81,16 +83,16 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
     OWNER_SCHEMA_PATH: '.codex/gatekeeper/owner-addition.schema.json',
     ORDINARY_SCHEMA_PATH: '.codex/gatekeeper/ordinary.schema.json',
     ORDINARY_DECISION: '{"decision":"OWNER_DECISION","ownerDecisionId":"reporting-owner","summary":"reporting owner is not selected"}',
-    OUTPUT_DIR: outputDir, GITHUB_OUTPUT: outputFile };
-  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: root, env });
+    RUNNER_TEMP: runnerTemp, OUTPUT_DIR: 'architecture-gate-owner-addition', GITHUB_OUTPUT: outputFile };
+  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: runnerTemp, env });
   assert.ok(Buffer.byteLength(readFileSync(join(outputDir, 'eligibility-prompt.md'))) <= 524288);
   const output = readFileSync(outputFile, 'utf8');
-  assertGitHubOutputCliBoundary({ root, args: [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], env,
+  assertGitHubOutputCliBoundary({ root: runnerTemp, args: [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], env,
     label: 'single-owner-prepare' });
   execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'],
-    { cwd: root, env: { ...env, DECISION: JSON.stringify(eligible) } });
+    { cwd: runnerTemp, env: { ...env, DECISION: JSON.stringify(eligible) } });
   assert.match(readFileSync(outputFile, 'utf8'), /eligibility=ELIGIBLE\n$/);
-  assertGitHubOutputCliBoundary({ root, args: [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'],
+  assertGitHubOutputCliBoundary({ root: runnerTemp, args: [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'],
     env: { ...env, DECISION: JSON.stringify(eligible) }, label: 'single-owner-validate' });
   const procedure = parseOwnerAdditionProcedure(output.match(/^procedure_base64=(.+)$/m)[1], true);
   assert.equal(procedure.headSha, head);
@@ -139,55 +141,24 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
   assert.throws(() => validateOrdinaryOwnerDecision('{"decision":"OWNER_DECISION","ownerDecisionId":"unrelated-owner","summary":"other"}', 'reporting-owner'), /exact missing decision/);
   assert.throws(() => validateOrdinaryOwnerDecision('{"decision":"OWNER_DECISION","summary":"other"}', 'reporting-owner'), /exact missing decision/);
 
-  // The actual validate command rejects linked schema/procedure inputs before parsing their targets.
+  // Both commands accept only the fixed runner-temp output child.
   const cli = join(sourceRoot, 'dist/owner-addition-ci.mjs');
   const validateEnv = { ...env, DECISION: JSON.stringify(eligible) };
-  const sentinel = join(root, 'artifact-sentinel');
-  const schemaPath = join(outputDir, 'eligibility.schema.json');
-  for (const [name, artifactPath, kind] of [
-    ['schema symlink', schemaPath, 'symlink'],
-  ]) {
-    writeFileSync(sentinel, 'validation sentinel');
-    unlinkSync(artifactPath);
-    if (kind === 'symlink') symlinkSync(sentinel, artifactPath);
-    else linkSync(sentinel, artifactPath);
-    const result = spawnSync(process.execPath, [cli, 'validate'], { cwd: root, env: validateEnv, encoding: 'utf8' });
-    assert.notEqual(result.status, 0, `${name} must fail validation`);
-    assert.match(result.stderr, /Artifact file:/);
-    assert.doesNotMatch(result.stderr, /invalid JSON|unexpected token/i);
-    assert.equal(readFileSync(sentinel, 'utf8'), 'validation sentinel');
-    unlinkSync(artifactPath);
-    writeFileSync(artifactPath, JSON.stringify(schema));
+  for (const [command, commandEnv] of [['prepare', env], ['validate', validateEnv]]) {
+    for (const invalidOutput of [join(root, 'outside-output'), '../outside-output']) {
+      const result = spawnSync(process.execPath, [cli, command], {
+        cwd: runnerTemp, env: { ...commandEnv, OUTPUT_DIR: invalidOutput }, encoding: 'utf8' });
+      assert.notEqual(result.status, 0, `${command} must reject ${invalidOutput}`);
+      assert.match(result.stderr, /Invalid fixed runner-temp owner-addition output selection/);
+    }
   }
-
-  // A prepare output leaf and an OUTPUT_DIR parent symlink are rejected by the CLI writer.
-  for (const kind of ['symlink', 'hardlink']) {
-    writeFileSync(sentinel, 'prepare sentinel');
-    const promptPath = join(outputDir, 'eligibility-prompt.md');
-    unlinkSync(promptPath);
-    if (kind === 'symlink') symlinkSync(sentinel, promptPath);
-    else linkSync(sentinel, promptPath);
-    const result = spawnSync(process.execPath, [cli, 'prepare'], { cwd: root, env, encoding: 'utf8' });
-    assert.notEqual(result.status, 0, `${kind} prepare output must fail`);
-    assert.match(result.stderr, /Artifact file:/);
-    assert.equal(readFileSync(sentinel, 'utf8'), 'prepare sentinel');
-    unlinkSync(promptPath);
-    writeFileSync(promptPath, prompt);
-  }
-  rmSync(outputDir, { recursive: true, force: true });
-  const outside = join(root, 'outside-output');
-  mkdirSync(outside);
-  const linkedOutputDir = join(root, 'linked-output-dir');
-  symlinkSync(outside, linkedOutputDir);
-  const parentResult = spawnSync(process.execPath, [cli, 'prepare'],
-    { cwd: root, env: { ...env, OUTPUT_DIR: linkedOutputDir }, encoding: 'utf8' });
-  assert.notEqual(parentResult.status, 0, 'OUTPUT_DIR symlink must fail');
-  assert.match(parentResult.stderr, /Artifact file:/);
 });
 
 test('G0 applies protected file and total limits to both authority snapshots', t => {
   const root = mkdtempSync(join(tmpdir(), 'owner-addition-limits-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
+  const runnerTemp = mkdtempSync(join(tmpdir(), 'owner-addition-runner-temp-'));
+  t.after(() => rmSync(runnerTemp, { recursive: true, force: true }));
   run(root, 'git', 'init', '-q');
   const maxFileBytes = 256;
   const maxTotalBytes = 192;
@@ -217,19 +188,18 @@ test('G0 applies protected file and total limits to both authority snapshots', t
   write(root, 'docs/architecture.md', newAuthority);
   run(root, 'git', 'add', 'docs/architecture.md'); run(root, 'git', 'commit', '-qm', 'oversized decision');
   const head = run(root, 'git', 'rev-parse', 'HEAD');
-  const outputDir = join(root, 'output');
   const env = { ...process.env, GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: 'example/project', BASE_SHA: base,
     HEAD_SHA: head, BASE_BRANCH: 'main', POLICY_PATH: '.codex/gatekeeper/ci-policy.json',
     OWNER_AUTHORITY_PATH: 'docs/architecture.md', OWNER_PROMPT_PATH: '.codex/gatekeeper/owner-addition.md',
     OWNER_SCHEMA_PATH: '.codex/gatekeeper/owner-addition.schema.json',
     ORDINARY_SCHEMA_PATH: '.codex/gatekeeper/ordinary.schema.json',
     ORDINARY_DECISION: '{"decision":"OWNER_DECISION","ownerDecisionId":"missing-choice","summary":"missing"}',
-    OUTPUT_DIR: outputDir, GITHUB_OUTPUT: join(root, 'output.txt') };
+    RUNNER_TEMP: runnerTemp, OUTPUT_DIR: 'architecture-gate-owner-addition', GITHUB_OUTPUT: join(runnerTemp, 'output.txt') };
   assert.ok(Buffer.byteLength(oldAuthority) <= maxFileBytes);
   assert.ok(Buffer.byteLength(oldAuthority) + Buffer.byteLength(newAuthority) > maxTotalBytes);
   assert.ok(Buffer.byteLength(newAuthority) > maxFileBytes);
   assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'],
-    { cwd: root, env }), /Protected file has invalid size: docs\/architecture\.md/);
+    { cwd: runnerTemp, env }), /Protected file has invalid size: docs\/architecture\.md/);
 
   // A protected limit must apply to the base snapshot too, even when B makes it smaller.
   const oversizedBase = `# Architecture\n\n${'c'.repeat(270)}\n`;
@@ -240,13 +210,15 @@ test('G0 applies protected file and total limits to both authority snapshots', t
   run(root, 'git', 'add', 'docs/architecture.md'); run(root, 'git', 'commit', '-qm', 'smaller proposed authority');
   const smallerHeadSha = run(root, 'git', 'rev-parse', 'HEAD');
   assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'],
-    { cwd: root, env: { ...env, BASE_SHA: oversizedBaseSha, HEAD_SHA: smallerHeadSha } }),
+    { cwd: runnerTemp, env: { ...env, BASE_SHA: oversizedBaseSha, HEAD_SHA: smallerHeadSha } }),
   /Protected file has invalid size: docs\/architecture\.md/);
 });
 
 test('G0 applies the protected maxPromptBytes to the complete eligibility prompt', t => {
   const root = mkdtempSync(join(tmpdir(), 'owner-addition-prompt-limit-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
+  const runnerTemp = mkdtempSync(join(tmpdir(), 'owner-addition-runner-temp-'));
+  t.after(() => rmSync(runnerTemp, { recursive: true, force: true }));
   run(root, 'git', 'init', '-q');
   const maxPromptBytes = 128;
   const authority = '# Architecture\n\nThe reporting owner is unselected.\n';
@@ -288,9 +260,9 @@ test('G0 applies the protected maxPromptBytes to the complete eligibility prompt
     OWNER_SCHEMA_PATH: '.codex/gatekeeper/owner-addition.schema.json',
     ORDINARY_SCHEMA_PATH: '.codex/gatekeeper/ordinary.schema.json',
     ORDINARY_DECISION: '{"decision":"OWNER_DECISION","ownerDecisionId":"reporting-owner","summary":"missing"}',
-    OUTPUT_DIR: join(root, 'output'), GITHUB_OUTPUT: join(root, 'output.txt') };
+    RUNNER_TEMP: runnerTemp, OUTPUT_DIR: 'architecture-gate-owner-addition', GITHUB_OUTPUT: join(runnerTemp, 'output.txt') };
   assert.throws(() => execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'],
-    { cwd: root, env }), /Owner-addition complete prompt exceeds the review limit/);
+    { cwd: runnerTemp, env }), /Owner-addition complete prompt exceeds the review limit/);
 });
 
 test('G0 rejects a protected Authority Set with another member', t => {

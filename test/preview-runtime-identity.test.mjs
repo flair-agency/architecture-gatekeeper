@@ -67,7 +67,6 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'reviewer-transports/codex-transport.mjs',
     'reviewer-transports/local-reviewer-execution.mjs',
     'runner-paths/runner-temp-path.mjs',
-    'runner-paths/artifact-file-io.mjs',
     'local-review/local-gate.mjs',
     'local-review/native-review.mjs',
     'local-review/local-post-tool-screen.mjs',
@@ -400,16 +399,6 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   writeFileSync(join(flatRoot, 'dist/runner-temp-path.mjs'),
     readFileSync(join(flatRoot, 'dist/runner-paths/runner-temp-path.mjs'), 'utf8')
       .replace(/from '\.\.\//g, "from './"));
-  // Preserve the new file-I/O dependency in the synthetic all-flat copy too.
-  writeFileSync(join(flatRoot, 'dist/artifact-file-io.mjs'),
-    readFileSync(join(flatRoot, 'dist/runner-paths/artifact-file-io.mjs')));
-  for (const file of ['prepare-legacy-ci-authority.mjs', 'owner-addition-ci.mjs', 'owner-addition-multiauthority.mjs']) {
-    const path = join(flatRoot, 'dist', file);
-    const body = readFileSync(path, 'utf8');
-    assert.match(body, /from (["'])\.\/runner-paths\/artifact-file-io\.mjs\1/);
-    writeFileSync(path, body.replace(/from (["'])\.\/runner-paths\/artifact-file-io\.mjs\1/g,
-      "from './artifact-file-io.mjs'"));
-  }
   for (const file of ['local-gate.mjs', 'local-post-tool-screen.mjs', 'manual-review.mjs']) {
     writeFileSync(join(flatRoot, 'dist', file),
       readFileSync(join(flatRoot, 'dist/local-review', file), 'utf8')

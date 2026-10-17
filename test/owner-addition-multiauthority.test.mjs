@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +32,8 @@ function policy() { return { version: 4, default: { mode: 'local-only' }, branch
 
 async function fixture(t, options = {}) {
   const root = mkdtempSync(join(tmpdir(), 'multi-addition-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const runnerTemp = mkdtempSync(join(tmpdir(), 'multi-addition-runner-'));
+  t.after(() => { rmSync(root, { recursive: true, force: true }); rmSync(runnerTemp, { recursive: true, force: true }); });
   git(root, 'init', '-q');
   const selectedPolicy = policy();
   Object.assign(selectedPolicy.branches.main.authorityLimits, options.limits);
@@ -86,10 +87,23 @@ async function fixture(t, options = {}) {
     BASE_BRANCH: 'main', POLICY_PATH: '.gate/policy.json', OWNER_AUTHORITY_PATH: 'docs/architecture.md',
     OWNER_PROMPT_PATH: '.gate/eligibility.md', OWNER_SCHEMA_PATH: '.gate/eligibility.json', ORDINARY_SCHEMA_PATH: '.gate/ordinary.json',
     ORDINARY_DECISION: JSON.stringify(ordinary), ORDINARY_AUTHORITY_PROVENANCE_BASE64: encode(provenance),
-    OUTPUT_DIR: join(root, 'addition-inputs'), GITHUB_OUTPUT: join(root, 'outputs') };
+    RUNNER_TEMP: runnerTemp, OUTPUT_DIR: join(runnerTemp, 'architecture-gate-owner-addition'), GITHUB_OUTPUT: join(runnerTemp, 'outputs') };
   writeFileSync(env.GITHUB_OUTPUT, '', { mode: 0o600 });
-  return { root, base, head, env, policyBytes, selected, provenance, ordinary, record, fetchExternal,
-    prepare: overrides => prepareMultiAuthorityAddition({ ...env, ...overrides }, selected, policyBytes, { fetchExternal }) };
+  const prepare = async overrides => {
+    const cwd = process.cwd();
+    const previousOutput = process.env.GITHUB_OUTPUT;
+    const previousRunnerTemp = process.env.RUNNER_TEMP;
+    process.chdir(runnerTemp);
+    process.env.RUNNER_TEMP = runnerTemp;
+    process.env.GITHUB_OUTPUT = env.GITHUB_OUTPUT;
+    try { return await prepareMultiAuthorityAddition({ ...env, ...overrides }, selected, policyBytes, { fetchExternal }); }
+    finally {
+      process.chdir(cwd);
+      if (previousOutput === undefined) delete process.env.GITHUB_OUTPUT; else process.env.GITHUB_OUTPUT = previousOutput;
+      if (previousRunnerTemp === undefined) delete process.env.RUNNER_TEMP; else process.env.RUNNER_TEMP = previousRunnerTemp;
+    }
+  };
+  return { root, runnerTemp, base, head, env, policyBytes, selected, provenance, ordinary, record, fetchExternal, prepare };
 }
 function eligible(f) { return { ...Object.fromEntries(Object.entries(schema.properties).filter(([, value]) => value.type === 'boolean').map(([key]) => [key, true])),
   version: 2, authorityIds: f.provenance.members.map(member => member.id), authoritySetDigest: f.provenance.setDigest, summary: 'Only the missing reporting decision is added.' }; }
@@ -110,7 +124,7 @@ test('v4 selects new limits and record version without expanding existing policy
 
 test('real Git CLI path includes the complete base set and reports bound v2 procedure', async t => {
   const f = await fixture(t, { other: `# Migration\n${'x'.repeat(153_920)}\n` });
-  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.root, env: f.env });
+  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.runnerTemp, env: f.env });
   const prompt = readFileSync(join(f.env.OUTPUT_DIR, 'eligibility-prompt.md'), 'utf8');
   assert.ok(prompt.includes('x'.repeat(153_920)));
   assert.match(prompt, /every unchanged authority/);
@@ -120,7 +134,7 @@ test('real Git CLI path includes the complete base set and reports bound v2 proc
   assert.deepEqual(procedure.authoritySet, f.provenance);
   const cli = join(sourceRoot, 'dist/owner-addition-ci.mjs');
   const validateEnv = { ...f.env, DECISION: JSON.stringify(eligible(f)) };
-  execFileSync(process.execPath, [cli, 'validate'], { cwd: f.root, env: validateEnv });
+  execFileSync(process.execPath, [cli, 'validate'], { cwd: f.runnerTemp, env: validateEnv });
   const sentinel = join(f.root, 'validate-sentinel');
   for (const [artifactName, kind] of [['eligibility.schema.json', 'symlink'], ['procedure.json', 'hardlink']]) {
     const artifactPath = join(f.env.OUTPUT_DIR, artifactName);
@@ -129,9 +143,9 @@ test('real Git CLI path includes the complete base set and reports bound v2 proc
     unlinkSync(artifactPath);
     if (kind === 'symlink') symlinkSync(sentinel, artifactPath);
     else linkSync(sentinel, artifactPath);
-    const result = spawnSync(process.execPath, [cli, 'validate'], { cwd: f.root, env: validateEnv, encoding: 'utf8' });
+    const result = spawnSync(process.execPath, [cli, 'validate'], { cwd: f.runnerTemp, env: validateEnv, encoding: 'utf8' });
     assert.notEqual(result.status, 0, `${kind} exposed ${artifactName} must fail validate`);
-    assert.match(result.stderr, /Artifact file:/);
+    assert.match(result.stderr, /Runner temporary path:|ELOOP/);
     assert.doesNotMatch(result.stderr, /invalid JSON|unexpected token/i);
     assert.equal(readFileSync(sentinel, 'utf8'), 'validation sentinel');
     unlinkSync(artifactPath);
@@ -150,88 +164,15 @@ test('real Git CLI path includes the complete base set and reports bound v2 proc
   assert.match(report, /not semantic PASS/);
 });
 
-test('multi-authority CLI rejects linked artifacts, keeps injected GitHub output isolated, and creates a missing append sink', async t => {
-  const cli = join(sourceRoot, 'dist/owner-addition-ci.mjs');
+test('multi-authority preparation appends only to the runner-provided output sink', async t => {
   const f = await fixture(t);
-  const run = (root, env, command = 'prepare') => spawnSync(process.execPath, [cli, command], { cwd: root, env, encoding: 'utf8' });
-  const helperError = result => {
-    assert.notEqual(result.status, 0, 'linked artifact must be rejected');
-    assert.match(result.stderr, /Artifact file:/);
-    assert.doesNotMatch(result.stderr, /not a valid git|unknown revision|bad revision/i);
-  };
-
-  // The multi-authority API must honor its injected sink and leave process.env's sink untouched.
-  const processOutput = join(f.root, 'process-output');
   const injectedOutput = join(f.root, 'injected-output');
-  writeFileSync(processOutput, 'process-owned\n');
-  const previous = process.env.GITHUB_OUTPUT;
-  try {
-    process.env.GITHUB_OUTPUT = processOutput;
-    await f.prepare({ GITHUB_OUTPUT: injectedOutput });
-    assert.equal(readFileSync(processOutput, 'utf8'), 'process-owned\n');
-    assert.match(readFileSync(injectedOutput, 'utf8'), /^procedure_base64=/);
-    assert.equal(process.env.GITHUB_OUTPUT, processOutput);
-  } finally {
-    if (previous === undefined) delete process.env.GITHUB_OUTPUT;
-    else process.env.GITHUB_OUTPUT = previous;
-  }
-
-  // Missing sinks retain the normal create-and-append behavior and mode.
-  const missingOutput = join(f.root, 'missing-output');
-  await f.prepare({ GITHUB_OUTPUT: missingOutput });
-  assert.match(readFileSync(missingOutput, 'utf8'), /^procedure_base64=/);
-  assert.equal(statSync(missingOutput).mode & 0o777, 0o666 & ~process.umask());
-
-  // A regular existing sink appends; symlink, hardlink, and linked-parent sinks fail without touching targets.
-  const regularOutput = join(f.root, 'regular-output');
-  writeFileSync(regularOutput, 'preserved=value\n');
-  await f.prepare({ GITHUB_OUTPUT: regularOutput });
-  assert.match(readFileSync(regularOutput, 'utf8'), /^preserved=value\nprocedure_base64=/);
-
-  for (const kind of ['symlink', 'hardlink', 'parent-link']) {
-    const child = await fixture(t);
-    const sentinel = join(child.root, 'sentinel');
-    writeFileSync(sentinel, 'sentinel remains unchanged');
-    let githubOutput;
-    if (kind === 'symlink') {
-      githubOutput = join(child.root, 'github-output-link');
-      symlinkSync(sentinel, githubOutput);
-    } else if (kind === 'hardlink') {
-      githubOutput = join(child.root, 'github-output-hardlink');
-      linkSync(sentinel, githubOutput);
-    } else {
-      const parent = join(child.root, 'actual-parent');
-      mkdirSync(parent);
-      const alias = join(child.root, 'parent-alias');
-      symlinkSync(parent, alias);
-      githubOutput = join(alias, 'github-output');
-    }
-    helperError(run(child.root, { ...child.env, GITHUB_OUTPUT: githubOutput }));
-    assert.equal(readFileSync(sentinel, 'utf8'), 'sentinel remains unchanged');
-  }
-
-  // Output directory ancestry and pre-existing artifact leaves are checked at the production CLI boundary.
-  for (const kind of ['parent-link', 'symlink-leaf', 'hardlink-leaf']) {
-    const child = await fixture(t);
-    const target = join(child.root, 'sentinel');
-    writeFileSync(target, 'output sentinel');
-    let env = { ...child.env, GITHUB_OUTPUT: '' };
-    if (kind === 'parent-link') {
-      const actual = join(child.root, 'actual-output');
-      mkdirSync(actual);
-      const alias = join(child.root, 'output-alias');
-      symlinkSync(actual, alias);
-      env = { ...env, OUTPUT_DIR: alias };
-    } else {
-      rmSync(child.env.OUTPUT_DIR, { recursive: true, force: true });
-      mkdirSync(child.env.OUTPUT_DIR);
-      const leaf = join(child.env.OUTPUT_DIR, 'eligibility-prompt.md');
-      if (kind === 'symlink-leaf') symlinkSync(target, leaf);
-      else linkSync(target, leaf);
-    }
-    helperError(run(child.root, env));
-    assert.equal(readFileSync(target, 'utf8'), 'output sentinel');
-  }
+  await f.prepare({ GITHUB_OUTPUT: injectedOutput });
+  assert.equal(existsSync(injectedOutput), false);
+  assert.match(readFileSync(f.env.GITHUB_OUTPUT, 'utf8'), /^procedure_base64=/);
+  assert.ok(existsSync(join(f.env.OUTPUT_DIR, 'eligibility-prompt.md')));
+  assert.ok(existsSync(join(f.env.OUTPUT_DIR, 'eligibility.schema.json')));
+  assert.ok(existsSync(join(f.env.OUTPUT_DIR, 'procedure.json')));
 });
 
 test('report truncation preserves complete G0 and Authority Set evidence ahead of long schema-valid review detail', async t => {
@@ -280,10 +221,10 @@ test('procedural v5 emits exact raw pre-merge evidence for the selected producer
       workflowPath: '.github/workflows/architecture-gate.yml', jobName: 'Architecture Gate / owner-addition' };
   } });
   const env = { ...f.env, PR_NUMBER: '42', POLICY_VERSION: '5', GITHUB_RUN_ID: '1234', GITHUB_RUN_ATTEMPT: '2' };
-  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.root, env });
+  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.runnerTemp, env });
   const decision = JSON.stringify(eligible(f));
   execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'],
-    { cwd: f.root, env: { ...env, DECISION: decision } });
+    { cwd: f.runnerTemp, env: { ...env, DECISION: decision } });
   const evidence = JSON.parse(readFileSync(join(env.OUTPUT_DIR, 'eligibility-evidence.json'), 'utf8'));
   assert.deepEqual([evidence.version, evidence.repository, evidence.targetBranch, evidence.prNumber,
     evidence.baseSha, evidence.headSha, evidence.runId, evidence.runAttempt],
@@ -306,9 +247,9 @@ test('procedural v5 emits exact raw pre-merge evidence for the selected producer
   unlinkSync(contextPath);
   symlinkSync(sentinel, contextPath);
   const linkedContext = spawnSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'],
-    { cwd: f.root, env: { ...env, DECISION: decision }, encoding: 'utf8' });
+    { cwd: f.runnerTemp, env: { ...env, DECISION: decision }, encoding: 'utf8' });
   assert.notEqual(linkedContext.status, 0, 'v5 exposed context symlink must fail validate');
-  assert.match(linkedContext.stderr, /Artifact file:/);
+  assert.match(linkedContext.stderr, /Runner temporary path:|ELOOP/);
   assert.doesNotMatch(linkedContext.stderr, /invalid JSON|unexpected token/i);
   assert.equal(readFileSync(sentinel, 'utf8'), 'procedural context sentinel');
   unlinkSync(contextPath);

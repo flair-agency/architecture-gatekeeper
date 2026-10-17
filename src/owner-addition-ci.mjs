@@ -2,8 +2,8 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
-import { join } from 'node:path';
-import { appendGitHubOutput } from './runner-temp-path.mjs';
+import { appendGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory,
+  writeRunnerTempFile } from './runner-temp-path.mjs';
 import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
 import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
@@ -11,7 +11,7 @@ import { parseAuthorityManifest } from './authority-set.mjs';
 import { selectSingleOwnerAdditionMember } from './owner-addition/single-authority-member.mts';
 import { validateOwnerDecisionAdditionG0Procedure } from './owner-decision-addition.mjs';
 import { prepareMultiAuthorityAddition, validateMultiAuthorityEligibility } from './owner-addition-multiauthority.mjs';
-import { ensureArtifactDirectory, readArtifactFile, writeArtifactFile } from './runner-paths/artifact-file-io.mts';
+import { trustedGitHubWorkspaceRoot } from './github-runner-workspace.mjs';
 import { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema,
   validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema } from './owner-addition-validation.mjs';
 export { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema,
@@ -19,6 +19,16 @@ export { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchem
 
 const SHA = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+const OUTPUT_CHILD = 'architecture-gate-owner-addition';
+const OUTPUT_FILES = Object.freeze({ prompt: 'eligibility-prompt.md', schema: 'eligibility.schema.json',
+  procedure: 'procedure.json', context: 'evidence-context.json', evidence: 'eligibility-evidence.json' });
+function outputDirectory(value) {
+  const directory = resolveRunnerTempDirectory(OUTPUT_CHILD);
+  if (typeof value !== 'string' || (value !== directory && value !== OUTPUT_CHILD)) {
+    throw new Error('Invalid fixed runner-temp owner-addition output selection.');
+  }
+  return directory;
+}
 function git(root, ...args) {
   return execFileSync('git', args, { cwd: root, encoding: 'buffer', maxBuffer: 2_000_000 });
 }
@@ -63,6 +73,7 @@ async function prepare(env) {
     ORDINARY_DECISION: ordinaryDecisionRaw, OUTPUT_DIR: outputDir, GITHUB_OUTPUT: githubOutput } = env;
   if (!root || !repository || !baseBranch || !policyPath || !outputDir ||
       !ordinarySchemaPath || !SHA.test(baseSha || '') || !SHA.test(headSha || '')) throw new Error('Missing or invalid owner-addition CI context.');
+  const fixedOutputDirectory = outputDirectory(outputDir);
   const policyBytes = committedFile(root, baseSha, policyPath, 65_536);
   const selected = resolveCiPolicy(parseCiPolicyJson(utf8(policyBytes, 'Previous protected policy')), baseBranch);
   if (!((selected.policyVersion === 5 && selected.mode === 'procedural') ||
@@ -75,15 +86,14 @@ async function prepare(env) {
   if (selected.policyVersion === 5) {
     const prNumber = Number(env.PR_NUMBER);
     if (!Number.isSafeInteger(prNumber) || prNumber < 1) throw new Error('Missing exact PR identity for procedural evidence.');
-    ensureArtifactDirectory(outputDir);
-    writeArtifactFile(join(outputDir, 'evidence-context.json'), JSON.stringify({
+    writeRunnerTempFile(fixedOutputDirectory, OUTPUT_FILES.context, JSON.stringify({
       version: 1, policyVersion: 5, repository, targetBranch: baseBranch, prNumber, baseSha, headSha,
       ordinaryDecisionBase64: Buffer.from(ordinaryDecisionRaw || '', 'utf8').toString('base64'),
       authoritySetProvenanceBase64: env.ORDINARY_AUTHORITY_PROVENANCE_BASE64 || '',
-    }));
+    }), { overwrite: true });
   }
   if (selected.ownerAdditionVersion === 2) {
-    return prepareMultiAuthorityAddition(env, selected, policyBytes);
+    return prepareMultiAuthorityAddition({ ...env, OUTPUT_DIR: fixedOutputDirectory }, selected, policyBytes);
   }
   const prompt = committedFile(root, baseSha, promptPath, 65_536);
   const schemaBytes = committedFile(root, baseSha, schemaPath, 65_536);
@@ -129,29 +139,27 @@ async function prepare(env) {
   if (Buffer.byteLength(completePrompt) > Math.min(524_288, authorityLimits.maxPromptBytes)) {
     throw new Error('Owner-addition complete prompt exceeds the review limit.');
   }
-  ensureArtifactDirectory(outputDir);
-  writeArtifactFile(join(outputDir, 'eligibility-prompt.md'), completePrompt);
-  writeArtifactFile(join(outputDir, 'eligibility.schema.json'), schemaBytes);
-  writeArtifactFile(join(outputDir, 'procedure.json'), JSON.stringify(procedure));
+  writeRunnerTempFile(fixedOutputDirectory, OUTPUT_FILES.prompt, completePrompt, { overwrite: true });
+  writeRunnerTempFile(fixedOutputDirectory, OUTPUT_FILES.schema, schemaBytes, { overwrite: true });
+  writeRunnerTempFile(fixedOutputDirectory, OUTPUT_FILES.procedure, JSON.stringify(procedure), { overwrite: true });
   if (githubOutput) appendGitHubOutput(`procedure_base64=${Buffer.from(JSON.stringify(procedure)).toString('base64')}\n`);
   return procedure;
 }
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv[2] === 'prepare') await prepare(process.env);
+  if (process.argv[2] === 'prepare') await prepare({ ...process.env, GITHUB_WORKSPACE: trustedGitHubWorkspaceRoot() });
   else if (process.argv[2] === 'validate') {
-    const schemaPath = join(process.env.OUTPUT_DIR || '', 'eligibility.schema.json');
-    const schema = JSON.parse(readArtifactFile(schemaPath, 'utf8'));
+    const directory = outputDirectory(process.env.OUTPUT_DIR);
+    const schema = JSON.parse(readRunnerTempFile(directory, OUTPUT_FILES.schema).toString('utf8'));
     if (schema.properties?.version?.type === 'integer') {
-      const procedure = JSON.parse(readArtifactFile(join(process.env.OUTPUT_DIR || '', 'procedure.json'), 'utf8'));
+      const procedure = JSON.parse(readRunnerTempFile(directory, OUTPUT_FILES.procedure).toString('utf8'));
       if (procedure.version !== 2) throw new Error('Multi-document eligibility requires a version 2 procedure.');
       validateMultiAuthorityEligibility(process.env.DECISION || '', schema, procedure.authoritySet);
     } else validateOwnerAdditionEligibility(process.env.DECISION || '', schema);
-    const contextPath = join(process.env.OUTPUT_DIR || '', 'evidence-context.json');
     if (process.env.POLICY_VERSION === '5') {
-      const context = JSON.parse(readArtifactFile(contextPath, 'utf8'));
+      const context = JSON.parse(readRunnerTempFile(directory, OUTPUT_FILES.context).toString('utf8'));
       if (context.policyVersion !== 5 || context.version !== 1) throw new Error('Procedural evidence context version differs.');
-      const procedure = readArtifactFile(join(process.env.OUTPUT_DIR || '', 'procedure.json'));
+      const procedure = readRunnerTempFile(directory, OUTPUT_FILES.procedure);
       const ordinaryDecision = Buffer.from(context.ordinaryDecisionBase64, 'base64');
       const eligibilityDecision = Buffer.from(process.env.DECISION || '', 'utf8');
       const authoritySetProvenance = Buffer.from(context.authoritySetProvenanceBase64, 'base64');
@@ -161,7 +169,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
           !ordinaryDecision.length || !eligibilityDecision.length || !authoritySetProvenance.length) {
         throw new Error('Procedural eligibility evidence is incomplete.');
       }
-      writeArtifactFile(join(process.env.OUTPUT_DIR, 'eligibility-evidence.json'), JSON.stringify({
+      writeRunnerTempFile(directory, OUTPUT_FILES.evidence, JSON.stringify({
         version: 1, repository: context.repository, targetBranch: context.targetBranch,
         prNumber: context.prNumber, baseSha: context.baseSha, headSha: context.headSha,
         runId, runAttempt,
@@ -171,7 +179,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
         authoritySetProvenanceBase64: authoritySetProvenance.toString('base64'),
         digests: { procedure: sha256(procedure), ordinaryDecision: sha256(ordinaryDecision),
           eligibilityDecision: sha256(eligibilityDecision), authoritySetProvenance: sha256(authoritySetProvenance) },
-      }));
+      }), { overwrite: true });
     }
     if (process.env.GITHUB_OUTPUT) appendGitHubOutput('eligibility=ELIGIBLE\n');
   } else throw new Error('Usage: owner-addition-ci.mjs prepare|validate');

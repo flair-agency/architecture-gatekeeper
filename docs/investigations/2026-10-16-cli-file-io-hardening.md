@@ -1,139 +1,113 @@
-# CLI artifact I/O hardening under #419 / #412
+# CLI file I/O scope under #419 / #412
 
-The owner approved rejecting dangerous linked/nonregular artifact inputs and
-outputs on 2026-10-16 (Asia/Tokyo), while retaining caller-selected locations,
-native input forms and injected `env.GITHUB_OUTPUT`. This is a separate risk
-correction before the final-three TypeScript migration in #587. It changes no
-original96 migration count, selected authority, CodeQL model/query, provider,
-permission, input limit, reviewer setting or protected acceptance requirement.
+The earlier generic artifact-file hardening proposal is superseded by the
+consumer owner's direction in
+[#591, comment 6235948030](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
+The current change is limited to the internal CI artifact boundary: fixed
+runner-temp files, the existing `appendGitHubOutput`, and the existing trusted
+workspace accessor at the CLI boundary. It does not change canonical authority,
+CodeQL settings or models, alert thresholds, native code, or protected
+acceptance requirements.
 
-## Implementation and compatibility
+## Current boundary and compatibility
 
-The three existing flat implementations use `runner-paths/artifact-file-io.mts`
-for artifact files and output directories. Existing fixed-temp and GitHub output
-helpers cannot directly replace these operations: their closed path tables or
-actual-process environment selection would change the caller-selected APIs.
-The new helper follows their descriptor-checking approach without adding a new
-storage selection, trusted accessor, sanitizer model or custody claim.
+The legacy v1 preparer uses these five closed root-level runner-temp names:
 
-The helper rejects leaf symlinks, hardlinks, linked parents (including repeated
-or trailing separators), and nonregular files. It opens without truncation,
-checks the opened file's type/link count/inode, and rechecks path/parent identity
-before data access. Missing writes use exclusive creation; file operations use
-no-follow/nonblocking flags where supported. Directory creation checks existing
-ancestors before mkdir and the resulting chain afterward. Caller-owned numeric
-descriptors remain open at their original offset and are not truncated.
-An open-then-unlinked regular descriptor remains usable; pathname-based opens
-still require one link and multiply linked descriptors are rejected.
+| File | Use |
+| --- | --- |
+| `architecture-gate-prompt.md` | Legacy prompt snapshot |
+| `architecture-gate-decision.schema.json` | Legacy decision schema snapshot |
+| `architecture-gate-decision.validation.json` | Optional legacy validation snapshot |
+| `architecture-gate-legacy-prompt.md` | Composed legacy review prompt |
+| `architecture-gate-legacy-provenance.json` | Legacy provenance record |
 
-Valid string, Buffer, URL, relative and caller-selected external paths remain
-usable. Buffer paths retain native non-UTF-8 POSIX filename bytes. Ordinary
-existing-file modes and overwrite/retry semantics remain, as does missing-file
-creation for multi-authority `env.GITHUB_OUTPUT` with the original 0666/umask
-mode. That injected sink can differ from actual `process.env.GITHUB_OUTPUT`;
-the latter is not substituted. Git root selection and all preceding policy,
-snapshot, tag, decision and provenance checks retain their meaning.
+The helper validates `RUNNER_TEMP === process.cwd()` and uses closed relative
+filename literals for filesystem operations. The other mapped CI operations
+continue to use their existing fixed runner-temp child and file table. Where an
+output selection is exposed, callers may pass its fixed filename or that
+filename's absolute path under the current directory; the selection is checked
+before I/O and never becomes the filesystem path. Ordinary retries overwrite
+these fixed files. Buffer, URL, numeric descriptor, and arbitrary external
+artifact destinations are outside these internal interfaces.
 
-The approved compatibility break includes intentionally linked/special-file
-paths and linked parents. On hosts whose conventional temporary path is an
-alias, callers must select its physical directory. This imposes no new
-checkout/temp containment rule or filename allowlist.
+The two Git `cwd` annotations are separated from artifact destinations. The
+CLI obtains its workspace through the existing `trustedGitHubWorkspaceRoot`
+accessor. The public preparation function still accepts a generic `root`
+capability from its caller; the CLI accessor does not authenticate arbitrary
+callers or establish a general repository trust model. Existing Git arguments,
+policy checks, snapshots, decision checks, and provenance semantics remain in
+place.
+
+The GitHub output operation continues through the existing
+`appendGitHubOutput`, which selects the actual runner-provided output sink. It
+does not preserve an injected arbitrary `env.GITHUB_OUTPUT` destination.
+
+No claim is made about hostile same-user concurrency or race freedom. The fixed
+name table narrows the artifact selection contract; it is not an isolation
+boundary between processes with the same filesystem access.
 
 ## All 24 original annotations
 
-IDs are the hosted annotation order from CodeQL check `115914629156` on
-`ef10890135c5250393a6c4138731e8144726aae3`, not GitHub alert numbers. L/S/M refer
-to the legacy, single-owner and multi-authority implementations respectively.
-The line numbers identify the original reviewed #587 source, not this patch.
+IDs retain the original hosted annotation order from CodeQL check
+`115914629156` on `ef10890135c5250393a6c4138731e8144726aae3`, not GitHub alert
+numbers. L/S/M identify the legacy, single-owner, and multi-authority
+implementations. The line numbers identify the original reviewed #587 source.
 
 | ID | Original operation | Current disposition |
 | --- | --- | --- |
-| 587-01 | L:88 prompt output | Checked artifact write |
-| 587-02 | L:89 schema output | Checked artifact write |
-| 587-03 | L:92 validation output | Checked artifact write |
-| 587-04 | L:110 complete prompt output | Checked artifact write |
-| 587-05 | L:117 provenance output | Checked artifact write |
-| 587-06 | L:136 provenance input | Checked artifact read |
-| 587-07 | S:25 Git cwd | Caller-selected root retained; existing snapshot checks retained |
-| 587-08 | S:80 v5 output directory | Checked directory creation |
-| 587-09 | S:81 v5 evidence context output | Checked artifact write |
-| 587-10 | S:134 output directory | Checked directory creation |
-| 587-11 | S:135 eligibility prompt output | Checked artifact write |
-| 587-12 | S:136 eligibility schema output | Checked artifact write |
-| 587-13 | S:137 procedure output | Checked artifact write |
-| 587-14 | S:145 schema input | Checked artifact read |
-| 587-15 | S:147 v2 procedure input | Checked artifact read |
-| 587-16 | S:153 v5 context input | Checked artifact read |
-| 587-17 | S:155 v5 procedure input | Checked artifact read |
-| 587-18 | S:165 v5 eligibility evidence output | Checked artifact write |
-| 587-19 | M:21 Git cwd | Caller-selected root retained; existing snapshot checks retained |
-| 587-20 | M:96 output directory | Checked directory creation |
-| 587-21 | M:97 eligibility prompt output | Checked artifact write |
-| 587-22 | M:98 eligibility schema output | Checked artifact write |
-| 587-23 | M:99 procedure output | Checked artifact write |
-| 587-24 | M:100 injected GITHUB_OUTPUT | Checked append to the original injected sink |
+| 587-01 | L:88 prompt output | Fixed runner-temp file operation |
+| 587-02 | L:89 schema output | Fixed runner-temp file operation |
+| 587-03 | L:92 validation output | Fixed runner-temp file operation |
+| 587-04 | L:110 complete prompt output | Fixed runner-temp file operation |
+| 587-05 | L:117 provenance output | Fixed runner-temp file operation |
+| 587-06 | L:136 provenance input | Fixed runner-temp file operation |
+| 587-07 | S:25 Git cwd | CLI uses `trustedGitHubWorkspaceRoot`; public root remains caller capability |
+| 587-08 | S:80 v5 output directory | Fixed runner-temp file operation |
+| 587-09 | S:81 v5 evidence context output | Fixed runner-temp file operation |
+| 587-10 | S:134 output directory | Fixed runner-temp file operation |
+| 587-11 | S:135 eligibility prompt output | Fixed runner-temp file operation |
+| 587-12 | S:136 eligibility schema output | Fixed runner-temp file operation |
+| 587-13 | S:137 procedure output | Fixed runner-temp file operation |
+| 587-14 | S:145 schema input | Fixed runner-temp file operation |
+| 587-15 | S:147 v2 procedure input | Fixed runner-temp file operation |
+| 587-16 | S:153 v5 context input | Fixed runner-temp file operation |
+| 587-17 | S:155 v5 procedure input | Fixed runner-temp file operation |
+| 587-18 | S:165 v5 eligibility evidence output | Fixed runner-temp file operation |
+| 587-19 | M:21 Git cwd | CLI uses `trustedGitHubWorkspaceRoot`; public root remains caller capability |
+| 587-20 | M:96 output directory | Fixed runner-temp file operation |
+| 587-21 | M:97 eligibility prompt output | Fixed runner-temp file operation |
+| 587-22 | M:98 eligibility schema output | Fixed runner-temp file operation |
+| 587-23 | M:99 procedure output | Fixed runner-temp file operation |
+| 587-24 | M:100 injected GITHUB_OUTPUT | Existing `appendGitHubOutput` uses the actual runner sink |
 
-The 21 artifact operations and one injected append now reject the reproduced
-static aliases/special files and the tested open-time substitutions. This does
-not mean that 22 CodeQL result identities disappear: taint can remain at shared
-helper sinks because destination selection is intentionally preserved.
+The revised disposition groups 21 file/directory operations under the closed
+runner-temp table, two Git cwd operations at the CLI workspace boundary, and one
+actual runner-output append. This mapping describes intended source behavior;
+current integrated verification is pending.
 
-The two Git cwd annotations represent an existing caller capability. Arguments
-are passed separately to Git; canonical policy paths, exact regular Git tree
-entries, SHAs and tag/provenance bindings are checked by existing code. Inspected
-protected workflows choose the checkout and fixed runner-temp output paths;
-candidate/reviewer content does not choose these locations there. This does not
-authenticate an arbitrary environment, repository or Git executable/object store.
-No new workspace model is used to mark these roots trusted.
+## Risk / production boundary / ordinary regression map
 
-## Risk / production boundary / regression map
-
-| Risk or compatibility invariant | Production boundary | Verification |
+| Risk or invariant | Production boundary | Retained ordinary coverage |
 | --- | --- | --- |
-| Aliased snapshot/provenance outputs | Legacy public prepare and validate CLI | Sentinel files stay unchanged on link rejection; normal native destinations remain usable |
-| Aliased eligibility files and directory | Single-owner prepare/validate CLI, multi-authority public prepare | Real Git/tag fixtures exercise output rejection and schema/procedure/context input rejection |
-| Injected sink must remain selected | Multi-authority public prepare | Process output A stays unchanged while injected B receives append; missing ordinary B is created |
-| Truncation/open-time substitution | Artifact helper | Deterministic leaf replacement, new hardlink and parent replacement fail before data access |
-| Repeated separators must not hide a link | Artifact helper | Raw string/Buffer repeated-separator file paths and trailing-separator directory paths reject |
-| Native path/fd compatibility | Artifact helper and legacy API | Relative, string, Buffer, URL, non-UTF-8 POSIX names, fd offsets/lifetime, modes and append/overwrite controls |
-| Special file must not block | Artifact helper | FIFO/device/directory rejection with bounded child execution |
+| Artifact destinations stay within the fixed runner-temp names | Legacy, single-owner, and multi-authority CI preparation/validation paths | Normal fixed-name reads and writes; exact fixed selection accepted; arbitrary output selection rejected |
+| Retry behavior remains usable | Fixed runner-temp writer | Repeated preparation overwrites the same fixed files |
+| Legacy policy and provenance semantics remain bound to recorded inputs | Legacy preparation and decision validation | Base-policy selection, authority-change rejection, provenance contents, valid and invalid decision authority selection |
+| Selected Git snapshots retain regular-file checks | Legacy preparation | Selected input symlink cases remain covered |
+| GitHub output stays on the runner-owned sink | Existing `appendGitHubOutput` boundary | Existing output append behavior and CLI boundary fixture |
+| CLI repository root uses the established accessor | Legacy and owner-addition CLIs | Existing CLI/workflow structure coverage |
 
-The initial independent review found a real repeated-separator parent-link
-bypass. The added regressions failed against the initial emitted helper and
-passed after trailing separators were removed from each checked ancestor,
-preserving roots and unnormalized `..` components. Keep this failure as history;
-the initial helper is not treated as a successful security correction.
+The former tests for arbitrary output directories, Buffer/URL/fd compatibility,
+and ad hoc alias/race scenarios are not part of this owner-approved boundary.
+No new exploit reproduction or same-user concurrency claim is included.
 
-## Remaining limits and acceptance
+## Historical evidence and current verification
 
-There is no atomic directory-relative open transaction in the portable Node
-calls used here. Parent replacement during creation can leave empty files or
-directories before a subsequent check rejects the operation. Filesystem changes
-after the final check, including a newly added hardlink, remain possible for an
-actor with sufficient access. No hostile same-user isolation, general Git-store
-defense, authenticated artifact custody or complete race freedom is claimed.
-Caller-selected ordinary file destinations remain capabilities; untrusted
-callers must not be mistaken for authenticated invocation.
+The earlier proposal at `e47e6ea` reported 27 JavaScript findings, zero Actions
+findings, and nine new HIGH findings. Those results describe the superseded
+generic helper approach and are retained as history only. They do not establish
+the status of the owner-approved fixed runner-temp implementation.
 
-Source candidate `bc7274a` passed strict/build/source cycles and focused helper
-and production suites: 63/63, zero failures/skips, 12.68 seconds (Node 22.23.3,
-concurrency 2). Its source-only official CodeQL run completed with unchanged
-models/queries: 27 JavaScript findings (24 path-injection, two command-line
-injection, one bad-tag-filter), zero Actions findings. Nine findings are at
-shared artifact helper operations. Their caller-selected path taint remains;
-the lower aggregate count is not proof that risk disappeared. Default SARIF
-explanations are sampled and do not enumerate every incoming caller route.
-
-The actual `bc7274a` archive/offline install verified all 228 emitted modules,
-six normative members, eight bins and nine exports. Actual separate installed
-Native review returned PASS and runtime validation exited zero. Its full test
-attempt was stopped for the following fixture correction; it is not a full-pass
-result. The installed smoke failed because its synthetic all-flat runtime copy
-deleted the new dependency. The corrected fixture retains that dependency in
-flat form and adds the new emitted helper to stale-request/receipt identity
-invalidation coverage; no identity assertion is removed. The focused corrected
-identity case passed against the real installed runtime composition.
-
-Final full-suite, CodeQL, distribution, fresh reviews and hosted/protected results
-must retain their actual revision identities. No local result waives a failing
-hosted check or authorizes #587 adoption.
+Current integrated verification is **PENDING**. The coordinator will record the
+actual source revision, focused and full checks, CodeQL results, and any
+remaining hosted or protected evidence after integration. Prior evidence does
+not waive a current failing check or authorize an acceptance route.
