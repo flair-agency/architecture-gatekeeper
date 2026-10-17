@@ -244,9 +244,13 @@ G0 procedure validation and tag-envelope checks. Flat exports and original
 runtime operations remain unchanged. External readbacks stay unknown; owned
 parsed records and computed digests have explicit contracts. Types confer no
 owner authorization or new accepting route. The owner-addition CI and GitHub
-owner-addition provenance relocations remain deferred in Draft #520 after
-hosted CodeQL registered alerts #224–#234. No model expansion or dismissal is
-made; local runtime equivalence does not override a failing hosted check.
+owner-addition provenance relocations were deferred in historical Draft #520
+after hosted CodeQL failures. That combined candidate is now closed as
+superseded: #521 adopted the amendment core, #578 the complete provenance
+verifier, and #587 the complete owner-addition CLI operations with #591's
+owner-approved fixed runner-temp boundary. Closing #520 adopts no code and
+dismisses no alert. The final integration index records 96/96 adoption and
+remaining limits; the old failed checks remain historical failures.
 
 The Gemini CLI slice types response extraction, process supervision and parent
 proxy-session composition. Flat exports, original error paths and defaults remain
