@@ -191,7 +191,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     remap: text => text.replace(/from (["'])\.\/multi-authority-eligibility\.mjs\1/g, "from './multi-authority-eligibility-helper.mjs'"),
   });
   restoreFlatImplementation('owner-addition-ci.mjs', 'owner-addition/owner-addition-ci-operations.mjs', {
-    imports: "import { realpathSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\n",
+    imports: "import { realpathSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\nimport { trustedGitHubWorkspaceRoot } from './github-runner-workspace.mjs';\n",
     remap: text => text.replace(/export (async )?function (prepare|validateOwnerAdditionCiCli)\(/g, '$1function $2(')
       .replace(/from (["'])\.\/single-authority-member\.mjs\1/g, "from './single-authority-member-helper.mjs'")
       + '\nexport { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema, validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema };\n',
