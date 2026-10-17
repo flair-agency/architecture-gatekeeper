@@ -144,7 +144,24 @@ AST pins use the fixed-boundary JavaScript baseline; policy-byte BinaryLike
 inputs and external transport callback contracts remain supported. A subsequent
 regression-coordinate correction `49873f5` changes the pinned sink location to
 the actual SARIF line, preserving the assertion that generic roots are detected.
-Its official CodeQL rerun is pending; earlier evidence is not relabeled.
+Its official CodeQL rerun passed with 733 JavaScript/TypeScript files and 12
+workflows: 16 unchanged JavaScript findings, zero Actions findings, no additions
+or removals against the JavaScript candidate; all three-model regressions passed.
+Earlier evidence is not relabeled. The combined documentation/integration head
+`014085e0696f97e645a11cd0bdff6688265c9a3f` retains identical source/test/script/
+workflow bytes and passed a fresh full suite: **2056/2056**, no failures, skips or
+cancellations, exit 0 in 483.9 seconds. Its 230 emitted runtime files match the
+252-entry archive and offline installation; archive SHA-256
+`ba2e7d0200ca92e06c03af2fbdb553bbd512df9dfe3b133750ec1dabc2347f19`.
+Installed smoke passed in 109.2 seconds with unchanged 120-second group limits.
+These archive hashes identify the actual pre-documentation-update artifacts.
+
+Hosted CodeQL and model checks succeeded on #591 head `6d2600f` and #587 head
+`014085e`. Delivery completeness passed after restoring the required PR template.
+Protected architecture review on both heads stopped at the exact event
+base/head merge-parent guard before semantic review, so accept failed. No guard
+was weakened and no failed check is waived; fresh correct-revision review and
+acceptance remain required.
 
 ## Open compatibility decision and adoption hold
 
