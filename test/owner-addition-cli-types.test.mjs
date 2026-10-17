@@ -53,7 +53,8 @@ const expected = {
   prepare: '9c8b94713afc4a620d31c64a1850d7f24c7f81135d17e8b39539ff5545ff5be5',
   resolver: '76a4f0ff851fc6301213eee8735b5db34138e44c72b0ff6319aea1fc01831af6',
   validate: 'ba8a8cbc0b567444ea477b58f9ebf4c4e856e1313e320c0ca853cd014793a8c7',
-  multiPrepare: 'eee576e39c0961082e546148857eb88f24794b75e18bfb78b87546cbd3a6ebf9',
+  // Includes the approved bounded publication follow-up from JS91c4e24.
+  multiPrepare: '4baa9b9e89623e4155372af40272c70cb5c8cef0ca789b4772345a7b431a17ed',
 };
 
 test('owner-addition CI retains the original direct-run condition and complete operation AST', async () => {

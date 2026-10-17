@@ -47,6 +47,13 @@ async function fixture(t, options = {}) {
     { id: 'architecture', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' },
     { id: 'privacy', repository: 'self', revision: 'authority-revision', path: 'docs/privacy.md' },
   ] };
+  const extraMemberCount = (options.memberCount ?? 2) - manifest.authorities.length;
+  for (let index = 0; index < extraMemberCount; index++) {
+    const path = `docs/r${String(index).padStart(2, '0')}-${'x'.repeat(227)}.md`;
+    manifest.authorities.push({ id: `long-rule-${String(index).padStart(2, '0')}`, repository: 'self',
+      revision: 'authority-revision', path });
+    write(root, path, `# Long path rule ${index}\nRetain this protected requirement.\n`);
+  }
   if (options.external) manifest.authorities.push({ id: 'external-rule', repository: 'other/authority', revision: 'c'.repeat(40), path: 'docs/rule.md' });
   options.manifest?.(manifest);
   const manifestBytes = Buffer.from(JSON.stringify(manifest));
@@ -173,6 +180,47 @@ test('multi-authority preparation appends only to the runner-provided output sin
   assert.ok(existsSync(join(f.env.OUTPUT_DIR, 'eligibility-prompt.md')));
   assert.ok(existsSync(join(f.env.OUTPUT_DIR, 'eligibility.schema.json')));
   assert.ok(existsSync(join(f.env.OUTPUT_DIR, 'procedure.json')));
+});
+
+test('32-member long-path procedure stays one complete output line across retries', async t => {
+  const f = await fixture(t, { memberCount: 32, limits: { maxMembers: 32, maxManifestBytes: 65_536 } });
+  const cli = join(sourceRoot, 'dist/owner-addition-ci.mjs');
+  writeFileSync(f.env.GITHUB_OUTPUT, 'preserved=value\n');
+
+  for (let invocation = 1; invocation <= 2; invocation++) {
+    execFileSync(process.execPath, [cli, 'prepare'], { cwd: f.runnerTemp, env: f.env });
+    const output = readFileSync(f.env.GITHUB_OUTPUT, 'utf8');
+    const lines = output.split('\n');
+    assert.equal(lines.pop(), '', 'runner output ends with a newline');
+    assert.equal(lines[0], 'preserved=value');
+    assert.equal(lines.length, invocation + 1, 'each invocation appends exactly one complete output line');
+    const outputLine = lines[invocation];
+    assert.match(outputLine, /^procedure_base64=/);
+    const encoded = outputLine.slice('procedure_base64='.length);
+    assert.ok(encoded.length > 16_384);
+    const parsed = parseOwnerAdditionProcedure(encoded, true);
+    const artifact = JSON.parse(readFileSync(join(f.env.OUTPUT_DIR, 'procedure.json'), 'utf8'));
+    assert.deepEqual(parsed, artifact);
+    assert.equal(encoded, Buffer.from(JSON.stringify(artifact)).toString('base64'));
+    assert.equal(parsed.authoritySet.members.length, 32);
+    assert.ok(parsed.authoritySet.members.slice(2).every(member => member.path.length === 239));
+    assert.equal(Buffer.from(encoded, 'base64').toString('utf8'), JSON.stringify(artifact));
+  }
+});
+
+test('owner-addition consumer accepts exactly 65,536 encoded base64 characters', async t => {
+  const f = await fixture(t);
+  const procedure = await f.prepare();
+  const compact = JSON.stringify(procedure);
+  const padded = compact + ' '.repeat(49_152 - Buffer.byteLength(compact));
+  assert.equal(Buffer.byteLength(padded), 49_152);
+  const encoded = Buffer.from(padded).toString('base64');
+  assert.equal(encoded.length, 65_536);
+  assert.deepEqual(parseOwnerAdditionProcedure(encoded, true), procedure);
+
+  const nextQuantum = Buffer.from(`${padded} `).toString('base64');
+  assert.equal(nextQuantum.length, 65_540);
+  assert.throws(() => parseOwnerAdditionProcedure(nextQuantum, true), /Invalid G0 owner-addition procedure output/);
 });
 
 test('report truncation preserves complete G0 and Authority Set evidence ahead of long schema-valid review detail', async t => {
