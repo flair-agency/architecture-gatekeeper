@@ -511,6 +511,35 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     assert.ok(trace.filter(item => item.gh?.[0] === 'attestation').length >= 3, 'trigger, nested prepare and eligibility provenance ran');
     assert.ok(trace.some(item => item.fetch === `${prefix}/actions/artifacts/555/zip`), 'eligibility artifact downloaded');
 
+    // Exercise failures through the production child CLI. Each case starts
+    // from the same controlled response snapshot and a clean output file.
+    const artifactListPath = `${prefix}/actions/runs/202/artifacts`;
+    const runAttemptPath = `${prefix}/actions/runs/202/attempts/1`;
+    const validArtifactList = structuredClone(responses[artifactListPath]);
+    const validRunAttempt = structuredClone(responses[runAttemptPath]);
+    const runCliFailure = (diagnostic) => {
+      writeFileSync(dataPath, JSON.stringify(responses));
+      writeFileSync(outputPath, '');
+      rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
+      assert.throws(run, error => {
+        assert.match(error.stderr.toString(), diagnostic);
+        assert.equal(error.stdout.toString(), '', 'failed CLI must not emit success-shaped stdout');
+        assert.equal(readFileSync(outputPath, 'utf8'), '', 'failed CLI must not select a workflow route');
+        return true;
+      });
+    };
+
+    responses[artifactListPath].json = { total_count: 0, artifacts: [] };
+    runCliFailure(/expected exactly one matching BLOCK artifact; found 0/);
+    responses[artifactListPath] = validArtifactList;
+
+    // The selected workflow listing reports attempt 1, but its detailed
+    // attempt readback reports attempt 2. Discovery must reject that conflict.
+    responses[runAttemptPath].json.run_attempt = 2;
+    runCliFailure(/workflow run event, repository, head, attempt, or run ID differs from trusted expectation/);
+    responses[runAttemptPath] = validRunAttempt;
+    writeFileSync(dataPath, JSON.stringify(responses));
+
     writeFileSync(outputPath, '');
     fixture.runGit(['checkout', '--detach', fixture.bSha]);
     assert.throws(run, error => {
