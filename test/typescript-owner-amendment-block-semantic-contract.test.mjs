@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-amendment-block-semantic-contract');
@@ -12,20 +13,17 @@ assert.equal(configRead.error, undefined);
 const parsed = ts.parseJsonConfigFileContent(configRead.config, ts.sys, root, undefined, configPath);
 assert.deepEqual(parsed.errors, []);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
-
-function fixtureDiagnostics(name) {
-  const file = join(fixtureRoot, name);
-  const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([file], options));
-  assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file), [], 'BLOCK semantic source imports must remain error-free');
-  return diagnostics.filter(item => item.file?.fileName === file);
-}
+const diagnosticsFor = compileFixtureDiagnostics(
+  ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name)),
+  options, 'BLOCK semantic source imports must remain error-free',
+);
 
 test('BLOCK semantic contract resolves both the flat facade and physical .mts implementation', () => {
-  assert.deepEqual(fixtureDiagnostics('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor(join(fixtureRoot, 'positive.mts'))), []);
 });
 
 test('BLOCK semantic results do not assert authentication or validated external binding values', () => {
-  const diagnostics = fixtureDiagnostics('negative.mts');
+  const diagnostics = diagnosticsFor(join(fixtureRoot, 'negative.mts'));
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]),
     [[2741, 5], [2322, 6], [2322, 7]]);
 });
