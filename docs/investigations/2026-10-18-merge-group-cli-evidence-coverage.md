@@ -43,3 +43,7 @@ establish host protection, prove adoption, or exercise a protected queue
 transition and canonical readback. These cases provide no global completion
 claim for Issue #254; existing live and protected evidence owners remain
 responsible for those claims.
+
+The [remaining-boundary inventory](2026-10-18-quality254-remaining-boundaries.md)
+maps the broader production chain, six lifecycle areas and duplicate-test
+disposition without claiming whole-issue completion.
