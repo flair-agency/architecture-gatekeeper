@@ -33,7 +33,7 @@ counted as execution of the complete CLI.
 | Canonical records and tag bindings | `owner-amendment-merge-group-evidence.test.mjs`, `rejects malformed canonical envelope bytes and evidence digest mismatch before verification`; semantic test `production BLOCK adapter rejects non-profile AmendmentRecord bytes before semantic preparation` | Malformed closed records have component coverage, not every child-main output rejection. |
 | Complete trigger/Authority Set bindings | `owner-amendment-semantic-eligibility.test.mjs`, `OWNER_DECISION prompt, AmendmentRecord, and receipt bind every changed authority member`; acceptance test `OWNER_DECISION requires complete ordered multi-path hashes and Authority Set digests through acceptance` | This is semantic preparation/acceptance composition, not live producer execution or all supported topology traces. |
 | Producer run/attempt and artifact identity | Child CLI rejects missing exact artifact, consistently expired metadata, and selected/detail run-attempt disagreement. `owner-amendment-artifact-discovery.test.mjs` separately covers pagination, duplicate/mismatched artifacts and run association | Additional function-level identity and pagination cases are not all executed through main. Controlled artifact/attestation bytes do not establish producer provenance. |
-| Missing tag cannot hide a successful signer | Child CLI supplies the exact expected tag404 with successful pre-queue signer history and observes the existing missing-tag diagnostic, empty stdout and empty `GITHUB_OUTPUT` | No-signer ordinary eligibility is covered by `owner-amendment-semantic-producer-attempts.test.mjs`, `ordinary exact-B run without a successful semantic signer remains eligible for NOT_APPLICABLE`; its main-dispatch path is not exercised here. |
+| Missing tag cannot hide a successful signer | Child CLI supplies the exact expected tag404 with successful pre-queue signer history and observes the existing missing-tag diagnostic, empty stdout and empty `GITHUB_OUTPUT`. The [test-rationalization increment](2026-10-18-quality254-test-rationalization.md) adds no-signer ordinary main dispatch with exact outputs and absence of amendment preparation | The producer-inspection component case remains independent coverage. Synthetic ordinary dispatch does not establish completed ordinary review, protected adoption or live host enforcement. |
 | Receipt and prepared-input binding | Child CLI rejects a receipt for another B. `owner-amendment-merge-group-acceptance.test.mjs` separately rejects model/effort/digest mismatch and absent or invalid exact prepared inputs | Main does not execute every acceptance negative. No synthetic receipt establishes authenticated execution. |
 | Observable failure and valid fixture restoration | All six retained child failures assert empty stdout and workflow output. The discovery/tag mutations restore cloned responses before one valid replay, whose output remains pre-transition with adoption/canonical placement pending | Restoration verifies this fixture, not a production retry guarantee. Success does not mean adoption. |
 
@@ -68,16 +68,19 @@ Before proposing a removal, identify the exact invariant and assertion,
 retained production boundary and test, distinct negative/compatibility behavior,
 and any uncovered scope. Demonstrate equivalent defect detection where needed;
 do not delete cases to meet a count or speed quota. This inventory identifies
-no complete equivalent mapping that justifies removal now.
+no complete equivalent mapping that justifies removing those suites. The
+[bounded rationalization](2026-10-18-quality254-test-rationalization.md) later
+maps fourteen duplicate assertion executions to retained oracles and reuses
+compiler work without removing type fixtures or test cases.
 
 ## Next bounded work and decision boundaries
 
 Owner-independent follow-up can finish the supported-tuple inventory and
-compare concrete duplicate candidates against retained assertions. A separate
-small test proposal could exercise the existing no-signer ordinary dispatch
-through main, or a distinct malformed-record output rejection, after confirming
-its added boundary value. Those are possible test tasks, not implemented or
-newly required routes, and are not all blocked by #210.
+compare further concrete duplicate candidates against retained assertions. The
+bounded rationalization exercises the existing no-signer ordinary dispatch
+through main. A distinct malformed-record output rejection remains a possible
+test task after confirming its added boundary value. These are not newly
+required routes and are not all blocked by #210.
 
 Live host/consumer proofs need the exact selected inputs and operational
 prerequisites from their owning issues. #210 explicitly retains the canonical

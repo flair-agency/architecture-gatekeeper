@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -557,12 +557,33 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     // through to the ordinary route. Model the exact expected tag lookup 404.
     responses[tagRefPath] = { ...structuredClone(validTagRef), status: 404, json: {} };
     runCliFailure(/exact B has a successful pre-queue semantic eligibility signer result but no protected amendment tag/);
+
+    // The same exact-B run without a semantic signer must retain the ordinary
+    // dispatch. Assert the child CLI's observable outputs and early return,
+    // beyond the producer-inspection component's NOT_APPLICABLE eligibility.
+    const jobsPath = `${prefix}/actions/runs/202/attempts/1/jobs`;
+    const validJobs = structuredClone(responses[jobsPath]);
+    responses[jobsPath] = { json: { total_count: 0, jobs: [] } };
+    writeFileSync(dataPath, JSON.stringify(responses));
+    writeFileSync(outputPath, '');
+    writeFileSync(tracePath, '');
+    assert.equal(run(), 'No protected amendment tag selects a fresh ordinary review of the exact current base/B tuple.\n');
+    assert.equal(readFileSync(outputPath, 'utf8'), `route=ordinary\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+    assert.equal(existsSync(join(runner, 'owner-amendment-eligibility')), false,
+      'ordinary dispatch must not prepare amendment eligibility');
+    const ordinaryTrace = readFileSync(tracePath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    assert.ok(ordinaryTrace.some(item => item.fetch === jobsPath), 'production main inspected the exact run attempt');
+    assert.ok(ordinaryTrace.some(item => item.fetch === tagRefPath), 'production main observed the missing exact-B tag');
+    assert.ok(ordinaryTrace.every(item => !item.gh && !item.fetch?.includes('/artifacts')),
+      'ordinary dispatch must not verify attestations or download amendment artifacts');
+    responses[jobsPath] = validJobs;
     responses[tagRefPath] = structuredClone(validTagRef);
     writeFileSync(dataPath, JSON.stringify(responses));
 
-    // Replay the valid child CLI after all four fixture mutations to prove
+    // Replay the valid child CLI after the failure and ordinary cases to prove
     // response restoration before the retained wrong-base/receipt cases.
     rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
+    writeFileSync(outputPath, '');
     assert.match(run(), /OWNER_AMENDMENT \/ G0 pre-transition eligibility verified; adoption and canonical placement remain pending/);
     assert.equal(readFileSync(outputPath, 'utf8'), `route=amendment\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
 
