@@ -426,6 +426,7 @@ function makeSemanticPipeline(fixture, resolved, trigger, evidence, api, gitChan
 // Only external GitHub/gh responses are synthetic; no model or cryptographic
 // verification runs, and this does not prove live host enforcement or adoption.
 async function exerciseProductionGate(fixture, api, event, receiptBytes) {
+  const expectedTriggerDecision = fixture.profile === 'completed-block-v1' ? 'BLOCK' : 'OWNER_DECISION';
   const temporary = mkdtempSync(join(tmpdir(), 'agk-production-gate-'));
   try {
     const tag = api.selectedTag();
@@ -499,7 +500,7 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     assert.match(output, /OWNER_AMENDMENT \/ G0 pre-transition eligibility verified; adoption and canonical placement remain pending/);
     const result = JSON.parse(output.slice(output.indexOf(': ') + 2));
     assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION');
-    assert.equal(result.triggerDecision, 'OWNER_DECISION');
+    assert.equal(result.triggerDecision, expectedTriggerDecision);
     assert.equal(result.adoption, 'pending');
     assert.equal(result.canonical, 'pending');
     assert.equal(result.bSha, fixture.bSha);
@@ -620,7 +621,7 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
 
 for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
   test(`exercises production route components with test adapter projections for ${profile}`, async t => {
-    const fixture = makeRepo(profile, { includeRuntime: profile === 'completed-owner-decision-self-v1' });
+    const fixture = makeRepo(profile, { includeRuntime: true });
     t.after(fixture.cleanup);
     const resolved = resolveOwnerAmendmentHandoffGitContext({ repository, baseSha: fixture.baseSha,
       headSha: fixture.bSha, runGit: fixture.runGit });
@@ -680,11 +681,9 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
       expires_at: '2099-09-30T10:00:00Z', workflow_run: { id: 202, repository_id: api.repositoryId,
         head_repository_id: api.repositoryId, head_sha: fixture.baseSha } };
     api.setEligibilityZip(eligibilityZip, eligibilityArtifact);
-    if (profile === 'completed-owner-decision-self-v1') {
-      await t.test('executes production main with tagged G0 evidence and rejects runtime and receipt binding mismatches', async () => {
-        await exerciseProductionGate(fixture, api, event, receiptBytes);
-      });
-    }
+    await t.test('executes production main with tagged G0 evidence and rejects runtime and receipt binding mismatches', async () => {
+      await exerciseProductionGate(fixture, api, event, receiptBytes);
+    });
     const attempts = await inspectOwnerAmendmentSemanticProducerAttempts({ repository,
       bBaseSha: fixture.baseSha, bHeadSha: fixture.bSha, bPullRequestCreatedAt: selected.bPullRequestCreatedAt,
       queueEnteredAt: selected.queueEnteredAt,
@@ -717,8 +716,8 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
       authorityRevision: fixture.baseSha, fetchExternal: async () => { throw new Error('no external authority expected'); },
       profile: priorPolicy.authorityProfile ?? 'v1' });
     // These component-level projections cover the verifier with modeled
-    // adapters. The separate OWNER_DECISION subtest above executes production
-    // main() with controlled external fixtures; neither establishes a live
+    // adapters. The production child-main subtest executes the selected
+    // profile with controlled external fixtures; neither establishes a live
     // protected route.
     const triggerAdapter = { status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER', repository, baseSha: fixture.baseSha,
       triggerProfile: profile, decision: evidence.triggerDecision, reviewRecordSha256: evidence.reviewRecordSha256,
