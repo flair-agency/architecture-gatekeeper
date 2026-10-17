@@ -341,6 +341,7 @@ jobs:
           OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-legacy-prompt.md
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        working-directory: ${{ runner.temp }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" prepare
       - name: Materialize protected Authority Set before review
         if: needs.policy.outputs.authority_manifest_path != ''
@@ -477,6 +478,7 @@ jobs:
           DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        working-directory: ${{ runner.temp }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" validate
       - name: Require exact reported Authority IDs
         if: needs.policy.outputs.authority_manifest_path != ''
@@ -754,7 +756,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GATEKEEPER_SOURCE_TOKEN: ${{ needs.policy.outputs.owner_addition_version == '2' && (secrets.CI_SOURCE_READ_TOKEN || github.token) || '' }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
-        run: node .architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs prepare
+        working-directory: ${{ runner.temp }}
+        run: node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" prepare
       - name: Review B-specific missing-decision eligibility
         id: codex-addition
         timeout-minutes: 5
@@ -775,7 +778,8 @@ jobs:
           DECISION: ${{ steps.codex-addition.outputs.final-message }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
-        run: node .architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs validate
+        working-directory: ${{ runner.temp }}
+        run: node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" validate
       - name: Preserve exact v5 pre-merge eligibility evidence
         id: eligibility-evidence
         if: needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'

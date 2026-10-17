@@ -1,7 +1,5 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest,
   readCommittedAuthorityFile, rejectDuplicateJsonKeys } from './authority-set.mjs';
 import { createGitHubAuthoritySource } from './github-authority-source.mjs';
@@ -12,6 +10,7 @@ import { validateMultiAuthorityAdditionG0Procedure } from './owner-decision-addi
 import { assertSameMultiAuthorityProvenance, multiAuthorityProvenance,
   validateMultiAuthorityDecision } from './multi-authority-provenance.mjs';
 import { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema } from './owner-addition/multi-authority-eligibility.mts';
+import { resolveRunnerTempDirectory, writeRunnerTempFile, appendGitHubOutput } from './runner-temp-path.mjs';
 export { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema };
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -88,10 +87,21 @@ export async function prepareMultiAuthorityAddition(env, selected, policyBytes, 
     `\nExact B diff (base ${baseSha}, head ${headSha}):\n${decode(diff)}\n`,
   ].join('');
   if (Buffer.byteLength(completePrompt) > limits.maxPromptBytes) throw new Error('Owner-addition complete prompt exceeds the review limit.');
-  mkdirSync(outputDir, { recursive: true, mode: 0o700 });
-  writeFileSync(join(outputDir, 'eligibility-prompt.md'), completePrompt, { mode: 0o600 });
-  writeFileSync(join(outputDir, 'eligibility.schema.json'), schemaBytes, { mode: 0o600 });
-  writeFileSync(join(outputDir, 'procedure.json'), JSON.stringify(procedure), { mode: 0o600 });
-  if (env.GITHUB_OUTPUT) writeFileSync(env.GITHUB_OUTPUT, `procedure_base64=${Buffer.from(JSON.stringify(procedure)).toString('base64')}\n`, { flag: 'a' });
+  const artifactDirectory = resolveRunnerTempDirectory('architecture-gate-owner-addition');
+  if (outputDir !== artifactDirectory && outputDir !== 'architecture-gate-owner-addition') {
+    throw new Error('Multi-authority artifacts require the fixed runner temp directory.');
+  }
+  writeRunnerTempFile(artifactDirectory, 'eligibility-prompt.md', completePrompt, { overwrite: true });
+  writeRunnerTempFile(artifactDirectory, 'eligibility.schema.json', schemaBytes, { overwrite: true });
+  writeRunnerTempFile(artifactDirectory, 'procedure.json', JSON.stringify(procedure), { overwrite: true });
+  if (process.env.GITHUB_OUTPUT) {
+    const encoded = Buffer.from(JSON.stringify(procedure)).toString('base64');
+    // Match the existing v2 consumer limit; keep the helper's per-call bound.
+    if (encoded.length > 65_536) throw new Error('Owner-addition procedure output exceeds the v2 limit.');
+    const line = `procedure_base64=${encoded}\n`;
+    for (let offset = 0; offset < line.length; offset += 16_384) {
+      appendGitHubOutput(line.slice(offset, offset + 16_384));
+    }
+  }
   return procedure;
 }

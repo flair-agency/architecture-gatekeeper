@@ -327,12 +327,15 @@ selection. External JSON remains unknown; erased property-read views add no
 validation. All three original native accessor flows and explicitly injected
 negative flows remain checked at the actual grouped production sinks. The
 adopted model packs are unchanged. This migration adopts no stream protocol,
-persistence transfer or new transport ceiling from Issue #566. The materializer retains
-two narrow `@ts-expect-error` boundaries where it composes the existing Git
-reader and filesystem writer. They preserve those operations without claiming
-that `outputPath` is a string: the original truthy guard permits native path-like
-and file-descriptor inputs. In the adopted 86/96 baseline, four originals have
-partial helper migrations.
+persistence transfer or new transport ceiling from Issue #566. The materializer now
+uses fixed runner-temporary output selectors with the existing filesystem writer. These CI
+operations accept only fixed string names or the exact absolute path resolved
+from the runner-temporary working directory; native Buffer, URL, descriptor and
+other caller-selected destinations are outside this interface. The workflows
+set `working-directory: ${{ runner.temp }}` for the legacy and owner-addition
+prepare/validate steps in the self, consumer and provider workflows. This is the
+owner-approved design recorded in [PR #591](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
+In the adopted 86/96 baseline, four originals have partial helper migrations.
 The CI report keeps its flat CLI and filesystem operations; multi-authority
 orchestration keeps its adapter while delegating selected eligibility helpers.
 Owner-addition CI delegates only the post-parse single-member selection while
@@ -541,6 +544,35 @@ locations as corresponding evidence, not independent coverage; retain hosted
 extraction/query results before claiming analysis of the final candidate.
 Installed consumers receive the `dist/` JavaScript and need no TypeScript compiler; verify archive contents
 and clean/offline installation.
+
+## Artifact file I/O checks
+
+Legacy authority and owner-addition CI artifact operations use the existing
+`src/runner-paths/runner-temp-path.mts` helper. The three production workflows
+(`architecture-gate.yml`, `architecture-gate-consumer.yml`, and
+`architecture-gate-providers.yml`) run the legacy and owner-addition prepare and
+validate steps with `working-directory: ${{ runner.temp }}`. The helper confirms
+that `RUNNER_TEMP` equals the process working directory and derives its storage
+root from the real process working directory.
+
+Output selectors are fixed strings. Legacy authority accepts only each known
+relative output name or the exact absolute path resolved from the current
+working directory. Owner-addition accepts its fixed child name or that child's
+exact resolved absolute path. Files beneath those selections are fixed by closed
+path tables; arbitrary caller-selected Buffer, file URL, descriptor or external
+destination forms are not part of these CI interfaces. GitHub workflow output is
+written through the existing `appendGitHubOutput` function, which obtains the
+runner-created `GITHUB_OUTPUT` path through the trusted runner environment
+accessor. It does not accept an injected output path as an operation argument.
+
+The helper retains checks for direct regular files, single-link identity and
+symbolic-link substitution at the operations it performs. These checks support
+the fixed runner-temporary interface; they do not establish complete race
+freedom. Portable Node filesystem calls do not provide a directory-relative
+atomic open transaction, so a same-user actor able to change the runner
+filesystem concurrently may still race between checks and filesystem operations.
+The design does not claim isolation from hostile same-user concurrency or
+artifact custody. See the owner-approved [PR #591 decision](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
 
 ## Static source import cycles
 

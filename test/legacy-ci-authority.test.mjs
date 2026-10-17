@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,6 +37,19 @@ const git = (root, ...args) => execFileSync('git', args, { cwd: root, encoding: 
   GIT_COMMITTER_NAME: 'Test', GIT_COMMITTER_EMAIL: 'test@example.com',
 } }).trim();
 function write(root, path, content) { mkdirSync(dirname(join(root, path)), { recursive: true }); writeFileSync(join(root, path), content); }
+function prepareAt(root, options) {
+  const oldCwd = process.cwd();
+  const oldRunnerTemp = process.env.RUNNER_TEMP;
+  try {
+    process.chdir(root);
+    process.env.RUNNER_TEMP = root;
+    return prepareLegacyAuthority(options);
+  } finally {
+    process.chdir(oldCwd);
+    if (oldRunnerTemp === undefined) delete process.env.RUNNER_TEMP;
+    else process.env.RUNNER_TEMP = oldRunnerTemp;
+  }
+}
 
 test('legacy v1 uses recorded-base arbitrary authority paths and binds every review input', t => {
   const root = mkdtempSync(join(tmpdir(), 'legacy-authority-'));
@@ -60,22 +73,22 @@ test('legacy v1 uses recorded-base arbitrary authority paths and binds every rev
   git(root, 'add', '.'); git(root, 'commit', '-qm', 'base');
   const baseSha = git(root, 'rev-parse', 'HEAD');
   const args = { root, baseSha, baseBranch: 'main', policyPath,
-    outputPromptPath: join(root, 'base-prompt.md'), outputSchemaPath: join(root, 'base-schema.json'),
-    outputValidationPath: join(root, 'base-validation.json'),
-    outputPath: join(root, 'complete-prompt.md'), provenancePath: join(root, 'provenance.json') };
+    outputPromptPath: 'architecture-gate-prompt.md', outputSchemaPath: 'architecture-gate-decision.schema.json',
+    outputValidationPath: 'architecture-gate-decision.validation.json',
+    outputPath: 'architecture-gate-legacy-prompt.md', provenancePath: 'architecture-gate-legacy-provenance.json' };
 
   write(root, 'src/app.mjs', 'export const value = 2;\n');
   git(root, 'add', '.'); git(root, 'commit', '-qm', 'authorized implementation');
   const ordinaryHead = git(root, 'rev-parse', 'HEAD');
-  const provenance = prepareLegacyAuthority({ ...args, headSha: ordinaryHead, reviewedSha: ordinaryHead });
+  const provenance = prepareAt(root, { ...args, headSha: ordinaryHead, reviewedSha: ordinaryHead });
   assert.deepEqual(provenance.members.map(member => member.path), [authorityPath]);
-  assert.match(readFileSync(args.outputPath, 'utf8'), /Migration completion is unverified/);
+  assert.match(readFileSync(join(root, args.outputPath), 'utf8'), /Migration completion is unverified/);
   assert.equal(provenance.policy.path, policyPath);
   assert.equal(provenance.prompt.path, promptPath);
   assert.equal(provenance.schema.path, schemaPath);
   assert.equal(provenance.validation.path, validationPath);
-  assert.equal(readFileSync(args.outputSchemaPath, 'utf8'), '{"type":"object"}');
-  assert.equal(readFileSync(args.outputValidationPath, 'utf8'), '{"rules":[]}');
+  assert.equal(readFileSync(join(root, args.outputSchemaPath), 'utf8'), '{"type":"object"}');
+  assert.equal(readFileSync(join(root, args.outputValidationPath), 'utf8'), '{"rules":[]}');
   assert.deepEqual(validateLegacyAuthorityDecision(JSON.stringify({ decision: 'PASS', authorityFiles: [authorityPath] }), provenance).authorityFiles, [authorityPath]);
   assert.throws(() => validateLegacyAuthorityDecision(JSON.stringify({ decision: 'PASS', authorityFiles: [] }), provenance), /exact base-selected/);
   const output = join(root, 'runner-output');
@@ -83,24 +96,24 @@ test('legacy v1 uses recorded-base arbitrary authority paths and binds every rev
   const cli = [fileURLToPath(new URL('../dist/prepare-legacy-ci-authority.mjs', import.meta.url)), 'prepare'];
   const env = { ...process.env, GITHUB_WORKSPACE: root, BASE_SHA: baseSha, HEAD_SHA: ordinaryHead,
     REVIEWED_SHA: ordinaryHead, BASE_BRANCH: args.baseBranch, POLICY_PATH: policyPath,
-    PROMPT_OUTPUT_PATH: args.outputPromptPath, SCHEMA_OUTPUT_PATH: args.outputSchemaPath,
+    RUNNER_TEMP: root, PROMPT_OUTPUT_PATH: args.outputPromptPath, SCHEMA_OUTPUT_PATH: args.outputSchemaPath,
     VALIDATION_OUTPUT_PATH: args.outputValidationPath, OUTPUT_PATH: args.outputPath,
     PROVENANCE_PATH: args.provenancePath, GITHUB_OUTPUT: output };
   execFileSync(process.execPath, cli, { cwd: root, env });
   assert.equal(readFileSync(output, 'utf8'), `previous=value\nprovenance=${Buffer.from(JSON.stringify(provenance)).toString('base64')}\n`);
   assertGitHubOutputCliBoundary({ root, args: cli, env, label: 'legacy-prepare' });
-  assert.deepEqual(JSON.parse(readFileSync(args.provenancePath, 'utf8')), provenance);
+  assert.deepEqual(JSON.parse(readFileSync(join(root, args.provenancePath), 'utf8')), provenance);
 
   write(root, policyPath, JSON.stringify({ ...policy, branches: { main: { ...policy.branches.main, authorityFiles: ['docs/other'] } } }));
   git(root, 'add', '.'); git(root, 'commit', '-qm', 'candidate policy self-selection');
   const policyHead = git(root, 'rev-parse', 'HEAD');
-  assert.deepEqual(prepareLegacyAuthority({ ...args, headSha: policyHead, reviewedSha: policyHead }).members.map(member => member.path), [authorityPath]);
+  assert.deepEqual(prepareAt(root, { ...args, headSha: policyHead, reviewedSha: policyHead }).members.map(member => member.path), [authorityPath]);
 
   write(root, authorityPath, 'Migration completed; missing decision adopted.');
   write(root, 'src/app.mjs', 'export const value = 3;\n');
   git(root, 'add', '.'); git(root, 'commit', '-qm', 'candidate self-authorization');
   const changedHead = git(root, 'rev-parse', 'HEAD');
-  assert.throws(() => prepareLegacyAuthority({ ...args, headSha: changedHead, reviewedSha: changedHead }), /Candidate changes canonical authority/);
+  assert.throws(() => prepareAt(root, { ...args, headSha: changedHead, reviewedSha: changedHead }), /Candidate changes canonical authority/);
 });
 
 test('legacy v1 does not attribute a base-only authority update to the candidate merge', t => {
@@ -130,11 +143,49 @@ test('legacy v1 does not attribute a base-only authority update to the candidate
   const baseSha = git(root, 'rev-parse', 'HEAD');
   git(root, 'merge', '--no-ff', '-qm', 'reviewed merge', 'candidate');
   const reviewedSha = git(root, 'rev-parse', 'HEAD');
-  const provenance = prepareLegacyAuthority({ root, baseSha, headSha, reviewedSha, baseBranch: 'main', policyPath,
-    outputPromptPath: join(root, 'prompt.out'), outputSchemaPath: join(root, 'schema.out'),
-    outputPath: join(root, 'complete.out'), provenancePath: join(root, 'provenance.json') });
+  const provenance = prepareAt(root, { root, baseSha, headSha, reviewedSha, baseBranch: 'main', policyPath,
+    outputPromptPath: 'architecture-gate-prompt.md', outputSchemaPath: 'architecture-gate-decision.schema.json',
+    outputPath: 'architecture-gate-legacy-prompt.md', provenancePath: 'architecture-gate-legacy-provenance.json' });
   assert.equal(provenance.reviewedSha, reviewedSha);
-  assert.match(readFileSync(join(root, 'complete.out'), 'utf8'), /Updated base authority/);
+  assert.match(readFileSync(join(root, 'architecture-gate-legacy-prompt.md'), 'utf8'), /Updated base authority/);
+});
+
+test('legacy preparation accepts only the five fixed runner-temp output selections', t => {
+  const root = mkdtempSync(join(tmpdir(), 'legacy-artifact-boundary-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  git(root, 'init', '-q');
+  const policyPath = '.codex/gatekeeper/ci-policy.json';
+  const authorityPath = 'docs/architecture.md';
+  const promptPath = '.codex/gatekeeper/ci-prompt.md';
+  const schemaPath = '.codex/gatekeeper/decision.schema.json';
+  write(root, policyPath, JSON.stringify({ version: 1, default: { mode: 'local-only' }, branches: { main: {
+    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'low', authorityFiles: [authorityPath],
+    promptPath, schemaPath, validationPath: null,
+  } } }));
+  write(root, promptPath, 'Review the selected authority.');
+  write(root, schemaPath, '{"type":"object"}');
+  write(root, authorityPath, 'Canonical rule.');
+  git(root, 'add', '.'); git(root, 'commit', '-qm', 'base');
+  const baseSha = git(root, 'rev-parse', 'HEAD');
+  const cli = [fileURLToPath(new URL('../dist/prepare-legacy-ci-authority.mjs', import.meta.url)), 'prepare'];
+  const setup = () => ({ ...process.env, GITHUB_WORKSPACE: root, RUNNER_TEMP: root, BASE_SHA: baseSha, HEAD_SHA: baseSha,
+    REVIEWED_SHA: baseSha, BASE_BRANCH: 'main', POLICY_PATH: policyPath,
+    PROMPT_OUTPUT_PATH: join(root, 'architecture-gate-prompt.md'), SCHEMA_OUTPUT_PATH: 'architecture-gate-decision.schema.json',
+    OUTPUT_PATH: 'architecture-gate-legacy-prompt.md', PROVENANCE_PATH: 'architecture-gate-legacy-provenance.json',
+    GITHUB_OUTPUT: join(root, 'github-output') });
+
+  const normalEnv = setup();
+  writeFileSync(normalEnv.GITHUB_OUTPUT, 'old=value\n');
+  execFileSync(process.execPath, cli, { cwd: root, env: normalEnv });
+  assert.equal(readFileSync(join(root, 'architecture-gate-prompt.md'), 'utf8'), 'Review the selected authority.');
+  assert.match(readFileSync(join(root, normalEnv.OUTPUT_PATH), 'utf8'), /Canonical rule/);
+  assert.match(readFileSync(join(root, normalEnv.PROVENANCE_PATH), 'utf8'), /"version":1/);
+  assert.match(readFileSync(normalEnv.GITHUB_OUTPUT, 'utf8'), /^old=value\nprovenance=/);
+
+  const rejected = spawnSync(process.execPath, cli, { cwd: root,
+    env: { ...setup(), PROMPT_OUTPUT_PATH: join(root, 'outside.md') }, encoding: 'utf8' });
+  assert.notEqual(rejected.status, 0);
+  assert.match(rejected.stderr, /fixed runner-temp output selection/);
 });
 
 const selectedPaths = {
@@ -163,10 +214,10 @@ for (const [kind, badPath] of Object.entries(selectedPaths)) {
     symlinkSync('snapshot-target', join(root, badPath));
     git(root, 'add', '.'); git(root, 'commit', '-qm', 'base with non-regular selected input');
     const baseSha = git(root, 'rev-parse', 'HEAD');
-    assert.throws(() => prepareLegacyAuthority({ root, baseSha, headSha: baseSha, reviewedSha: baseSha, baseBranch: 'main',
-      policyPath: selectedPaths.policy, outputPromptPath: join(root, 'prompt.out'),
-      outputSchemaPath: join(root, 'schema.out'), outputValidationPath: join(root, 'validation.out'),
-      outputPath: join(root, 'complete.out'), provenancePath: join(root, 'provenance.json'),
+    assert.throws(() => prepareAt(root, { root, baseSha, headSha: baseSha, reviewedSha: baseSha, baseBranch: 'main',
+      policyPath: selectedPaths.policy, outputPromptPath: 'architecture-gate-prompt.md',
+      outputSchemaPath: 'architecture-gate-decision.schema.json', outputValidationPath: 'architecture-gate-decision.validation.json',
+      outputPath: 'architecture-gate-legacy-prompt.md', provenancePath: 'architecture-gate-legacy-provenance.json',
     }), /not a regular file/);
   });
 }
