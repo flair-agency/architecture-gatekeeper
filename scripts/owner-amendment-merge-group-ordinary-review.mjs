@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runOwnerAmendmentMergeGroupGit } from './owner-amendment-merge-group-git.mjs';
 import { appendGitHubOutput, resolveRunnerTempDirectory, readRunnerTempFile, writeRunnerTempFile } from '../dist/runner-temp-path.mjs';
 import { createGitHubAuthoritySource } from '../dist/github-authority-source.mjs';
 import { prepareOwnerAmendmentMergeGroupOrdinaryReview,
@@ -10,10 +10,7 @@ import { prepareOwnerAmendmentMergeGroupOrdinaryReview,
 
 const fail = message => { throw new Error(`Owner amendment merge-group ordinary review: ${message}`); };
 const tempDir = () => resolveRunnerTempDirectory('owner-amendment-merge-group');
-const git = args => execFileSync('git', ['-C', process.env.GITHUB_WORKSPACE, ...args], {
-  encoding: 'buffer', maxBuffer: 2 * 1024 * 1024, timeout: 30_000,
-  stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' },
-});
+const git = runOwnerAmendmentMergeGroupGit;
 
 async function prepare() {
   if (process.env.GITHUB_REPOSITORY !== 'flair-agency/architecture-gatekeeper' ||
