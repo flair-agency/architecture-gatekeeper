@@ -460,7 +460,7 @@ globalThis.fetch = async (raw, options = {}) => {
   appendFileSync(${JSON.stringify(tracePath)}, JSON.stringify({ fetch: url.pathname }) + '\\n');
   const response = JSON.parse(readFileSync(${JSON.stringify(dataPath)}, 'utf8'))[url.pathname];
   if (!response) throw new Error('Unexpected fixture API path: ' + url.pathname);
-  return new Response(response.bytes ? Buffer.from(response.bytes, 'base64') : JSON.stringify(response.json), { status: 200 });
+  return new Response(response.bytes ? Buffer.from(response.bytes, 'base64') : JSON.stringify(response.json), { status: response.status ?? 200 });
 };\n`);
     const ghPath = join(bin, 'gh');
     writeFileSync(ghPath, `#!${process.execPath}
@@ -516,9 +516,11 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     const artifactListPath = `${prefix}/actions/runs/202/artifacts`;
     const artifactDetailPath = `${prefix}/actions/artifacts/555`;
     const runAttemptPath = `${prefix}/actions/runs/202/attempts/1`;
+    const tagRefPath = `${prefix}/git/ref/tags/${tag.tagName}`;
     const validArtifactList = structuredClone(responses[artifactListPath]);
     const validArtifactDetail = structuredClone(responses[artifactDetailPath]);
     const validRunAttempt = structuredClone(responses[runAttemptPath]);
+    const validTagRef = structuredClone(responses[tagRefPath]);
     const runCliFailure = (diagnostic) => {
       writeFileSync(dataPath, JSON.stringify(responses));
       writeFileSync(outputPath, '');
@@ -550,7 +552,16 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     responses[runAttemptPath].json.run_attempt = 2;
     runCliFailure(/workflow run event, repository, head, attempt, or run ID differs from trusted expectation/);
     responses[runAttemptPath] = structuredClone(validRunAttempt);
+
+    // A successful exact-B signer without its protected tag cannot fall
+    // through to the ordinary route. Model the exact expected tag lookup 404.
+    responses[tagRefPath] = { ...structuredClone(validTagRef), status: 404, json: {} };
+    runCliFailure(/exact B has a successful pre-queue semantic eligibility signer result but no protected amendment tag/);
+    responses[tagRefPath] = structuredClone(validTagRef);
     writeFileSync(dataPath, JSON.stringify(responses));
+
+    // Replay the valid child CLI after all four fixture mutations to prove
+    // response restoration before the retained wrong-base/receipt cases.
     rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
     assert.match(run(), /OWNER_AMENDMENT \/ G0 pre-transition eligibility verified; adoption and canonical placement remain pending/);
     assert.equal(readFileSync(outputPath, 'utf8'), `route=amendment\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
@@ -559,6 +570,7 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     fixture.runGit(['checkout', '--detach', fixture.bSha]);
     assert.throws(run, error => {
       assert.match(error.stderr.toString(), /checked-out protected verifier revision differs from the exact merge-group base/);
+      assert.equal(error.stdout.toString(), '', 'base mismatch must not emit success-shaped stdout');
       assert.equal(readFileSync(outputPath, 'utf8'), '');
       return true;
     });
@@ -578,6 +590,7 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
     assert.throws(run, error => {
       assert.match(error.stderr.toString(), /receipt tag ref does not target exact B/);
+      assert.equal(error.stdout.toString(), '', 'receipt mismatch must not emit success-shaped stdout');
       assert.equal(readFileSync(outputPath, 'utf8'), '');
       return true;
     });
