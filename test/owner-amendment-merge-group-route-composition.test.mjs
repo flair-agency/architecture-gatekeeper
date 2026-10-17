@@ -551,6 +551,7 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     runCliFailure(/workflow run event, repository, head, attempt, or run ID differs from trusted expectation/);
     responses[runAttemptPath] = structuredClone(validRunAttempt);
     writeFileSync(dataPath, JSON.stringify(responses));
+    rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
     assert.match(run(), /OWNER_AMENDMENT \/ G0 pre-transition eligibility verified; adoption and canonical placement remain pending/);
     assert.equal(readFileSync(outputPath, 'utf8'), `route=amendment\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
 
