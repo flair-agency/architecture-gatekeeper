@@ -55,7 +55,8 @@
     "codeql": "node scripts/codeql-local.mjs",
     "codeql:model": "node scripts/codeql-local.mjs --model-only",
     "prepare": "npm run build",
-    "build": "node scripts/clean-dist.mjs && tsc --project tsconfig.json"
+    "build": "node scripts/clean-dist.mjs && tsc --project tsconfig.json",
+    "review:capacity": "node scripts/review-capacity.mjs"
   },
   "engines": {
     "node": ">=22"
