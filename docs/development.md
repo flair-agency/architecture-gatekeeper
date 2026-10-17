@@ -140,7 +140,7 @@ JSON output distinguishes these states and exit statuses:
 | --- | --- | --- |
 | `fit` | Exact prompt is below 90% of the selected limit. Continue normal review and verification. | 0 |
 | `approaching-limit` | Exact prompt is at least 90%, and no larger than the hard limit. Consider a coherent smaller scope before adding input. | 0 |
-| `exceeded` | Complete bounded assembly was measured above the hard limit. Reshape the change and check again; production still refuses it. | 1 |
+| `exceeded` | Either complete bounded assembly was measured above the hard limit, or a conservative lower bound already proves the final prompt must exceed it. Reshape the change and check again; production still refuses it. | 1 |
 | `undetermined` | A selection, revision, source, encoding, supported format or bounded preparation could not be completed. Resolve the cause; never interpret this as fitting. | 2 |
 
 The 90% rule is optional development guidance, not a policy limit or required
@@ -154,6 +154,19 @@ task context components sum to that same total. Remaining capacity may be
 negative. The selected hard limit applies to that prompt; the separately passed
 output schema's bytes/digest are reported separately and are not added to it.
 No token/cost estimate or provider transport-payload limit is inferred.
+
+When a validated instructions-plus-authority prefix alone exceeds the selected
+limit, or captured complete paths / valid diff text prove a lower bound above
+the limit after a bounded Git output overflow, the result remains
+`exact: false`, with `totalBytes` and `remainingBytes` null and a numeric
+`lowerBoundBytes` plus a bounded `stage` label. No partial prompt, diff, or path
+payload is returned. A lower bound uses only already captured complete path
+records or valid diff text; an incomplete final path or UTF-8 character is
+excluded. NUL-containing diff data, malformed UTF-8, stderr-only overflow,
+other process errors, or captures without a sufficient usable lower bound
+remain `undetermined`. The result describes only a capacity fact;
+it does not claim full prompt validity or that other unsupported or unavailable
+inputs would succeed.
 
 Summaries omit prompt, diff, authority and schema contents, provider settings,
 credentials and local paths. Changed filenames are hidden by default. Add
@@ -169,9 +182,8 @@ Git commands have finite output bounds and a 10-second per-command maximum;
 there is no claim of a global process deadline. Initial diagnostic reads of
 workflow/runtime-format files are bounded at 262144 bytes each and policy,
 schema and validation at 65536 bytes each. These are local preparation bounds,
-not new protected schema or policy limits. Failure, including a diff beyond its
-read bound, reports undetermined with no exact partial total; this initial tool
-does not calculate overrun lower bounds. No unavailable input is omitted.
+not new protected schema or policy limits. Failures without a provable complete
+prompt lower bound remain undetermined; no unavailable input is omitted.
 
 The retained capacity tests model #541's scope-growth problem: growing
 investigation text overtakes implementation as the largest patch contributor
