@@ -21,9 +21,16 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const text = bytes => decoder.decode(bytes);
 const reject = reason => { throw new CapacityUnavailable(reason); };
 class CapacityUnavailable extends Error {}
+class CapacityExceeded extends Error {
+  constructor(reason, stage, lowerBoundBytes) {
+    super(reason);
+    this.stage = stage;
+    this.lowerBoundBytes = lowerBoundBytes;
+  }
+}
 
 // These are preparation-format checks, not a new consumer policy selector.
-// Only the context assembler changed in this delivery, with byte-equivalence
+// Only the context assembler changed in the initial delivery, with byte-equivalence
 // verified against this predecessor implementation. Other base/runtime drift
 // must be explicitly reviewed before this initial diagnostic can measure it.
 const PREVIOUS_CONTEXT_SHA256 = '510b197070f8f12a15567409cf8e92e6da365bbd96e17ef4917cd8c21b38acf0';
@@ -111,6 +118,48 @@ export function capacityState(totalBytes, limitBytes) {
   return totalBytes * 10 >= limitBytes * 9 ? 'approaching-limit' : 'fit';
 }
 
+function changedPathLowerBound(stdout, promptBytes) {
+  // Only complete records contribute. Their compact JSON array is no larger
+  // than the complete, indented changedPaths value in the final context.
+  const lastNul = stdout.lastIndexOf(0);
+  if (lastNul < 0) return promptBytes.length;
+  const paths = [];
+  let start = 0;
+  try {
+    for (let index = 0; index <= lastNul; index += 1) {
+      if (stdout[index] === 0) {
+        paths.push(new TextDecoder('utf-8', { fatal: true }).decode(stdout.subarray(start, index)));
+        start = index + 1;
+      }
+    }
+  } catch { return null; }
+  return promptBytes.length + Buffer.byteLength(JSON.stringify(paths), 'utf8');
+}
+
+function diffLowerBound(stdout, promptBytes) {
+  if (stdout.includes(0)) return null;
+  let completeText;
+  // Hold back an incomplete final code point without accepting invalid UTF-8.
+  try { completeText = new TextDecoder('utf-8', { fatal: true }).decode(stdout, { stream: true }); }
+  catch { return null; }
+  const escapedPayload = JSON.stringify(completeText).slice(1, -1);
+  return promptBytes.length + Buffer.byteLength(escapedPayload, 'utf8');
+}
+
+function readBoundedContextGit(root, args, maxBuffer, promptBytes, stage, lowerBoundFor) {
+  try { return git(root, args, maxBuffer); }
+  catch (error) {
+    if (error?.code === 'ENOBUFS' && Buffer.isBuffer(error.stdout) && error.stdout.length > maxBuffer) {
+      const lowerBoundBytes = lowerBoundFor(error.stdout, promptBytes);
+      if (Number.isSafeInteger(lowerBoundBytes) && lowerBoundBytes > maxBuffer) {
+        const reason = stage === 'changed-path-list' ? 'changed-path-list-lower-bound-exceeds-limit' : 'diff-lower-bound-exceeds-limit';
+        throw new CapacityExceeded(reason, stage, lowerBoundBytes);
+      }
+    }
+    throw error;
+  }
+}
+
 // Subsets of JSON-escaped patch payload bytes, not additional prompt components.
 // Report only unambiguous simple public paths explicitly opted in by the caller.
 function fileContributors(diff, paths) {
@@ -164,9 +213,12 @@ export async function checkReviewCapacity({ root = process.cwd(), base, head, re
       selfRoot: checkout, authorityRevision: baseSha, profile: 'v1' });
     const authorityBytes = Buffer.from(authority.prompt, 'utf8');
     const promptBytes = Buffer.concat([instructions, authorityBytes]);
-    if (promptBytes.length > limits.maxPromptBytes) reject('bounded-preparation-incomplete');
-    const pathBytes = git(checkout, ['diff', '--name-only', '-z', '--no-renames', '--no-ext-diff',
-      '--no-textconv', '--ignore-submodules=none', baseSha, reviewedSha, '--'], limits.maxPromptBytes);
+    if (promptBytes.length > limits.maxPromptBytes) {
+      throw new CapacityExceeded('prepared-prefix-exceeds-limit', 'prepared-prefix', promptBytes.length);
+    }
+    const pathBytes = readBoundedContextGit(checkout, ['diff', '--name-only', '-z', '--no-renames', '--no-ext-diff',
+      '--no-textconv', '--ignore-submodules=none', baseSha, reviewedSha, '--'], limits.maxPromptBytes,
+    promptBytes, 'changed-path-list', changedPathLowerBound);
     if (pathBytes.length && pathBytes.at(-1) !== 0) reject('invalid-changed-paths');
     const changedPathList = [];
     let start = 0;
@@ -176,8 +228,9 @@ export async function checkReviewCapacity({ root = process.cwd(), base, head, re
         start = index + 1;
       }
     }
-    const diffBytes = git(checkout, ['diff', '--text', '--full-index', '--unified=3', '--no-renames',
-      '--no-ext-diff', '--no-textconv', '--ignore-submodules=none', baseSha, reviewedSha, '--'], limits.maxPromptBytes);
+    const diffBytes = readBoundedContextGit(checkout, ['diff', '--text', '--full-index', '--unified=3', '--no-renames',
+      '--no-ext-diff', '--no-textconv', '--ignore-submodules=none', baseSha, reviewedSha, '--'], limits.maxPromptBytes,
+    promptBytes, 'diff', diffLowerBound);
     if (diffBytes.includes(0)) reject('unsupported-binary-diff');
     const diff = text(diffBytes);
     const assembled = assembleReviewContext({ promptBytes, repository: REPOSITORY, baseSha, headSha,
@@ -194,6 +247,13 @@ export async function checkReviewCapacity({ root = process.cwd(), base, head, re
       schema: { bytes: schemaBytes.length, sha256: hash(schemaBytes), countedInPromptLimit: false } };
     return result;
   } catch (error) {
+    if (error instanceof CapacityExceeded) {
+      result.state = 'exceeded';
+      result.reason = error.message;
+      result.measurement = { exact: false, totalBytes: null, remainingBytes: null,
+        lowerBoundBytes: error.lowerBoundBytes, stage: error.stage };
+      return result;
+    }
     result.reason = error instanceof CapacityUnavailable ? error.message : 'bounded-preparation-incomplete';
     return result;
   }

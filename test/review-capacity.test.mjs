@@ -173,9 +173,65 @@ test('unresolved or unsupported preparation never reports fit or an exact partia
     assert.doesNotMatch(JSON.stringify(report), new RegExp(`${sentinel}|${f.root}`));
   }
   const f = fixture(t, { limit: 4096 });
-  const overReadBound = await checkReviewCapacity(candidate(f, { 'subject.md': 'long documentation\n'.repeat(1000) }));
-  assert.equal(overReadBound.state, 'undetermined');
-  assert.equal(overReadBound.measurement.totalBytes, null);
+  const oversizedInput = candidate(f, { 'subject.md': 'long documentation 雪\n'.repeat(1000) });
+  const overReadBound = await checkReviewCapacity(oversizedInput);
+  assert.equal(overReadBound.state, 'exceeded');
+  assert.equal(overReadBound.reason, 'diff-lower-bound-exceeds-limit');
+  assert.deepEqual(overReadBound.measurement, { exact: false, totalBytes: null, remainingBytes: null,
+    lowerBoundBytes: overReadBound.measurement.lowerBoundBytes, stage: 'diff' });
+  assert.ok(overReadBound.measurement.lowerBoundBytes > f.policy.branches.main.authorityLimits.maxPromptBytes);
+  assert.doesNotMatch(JSON.stringify(overReadBound), new RegExp(`${sentinel}|long documentation|${f.root}`));
+  await assert.rejects(() => production(t, f, oversizedInput),
+    /exact committed base-to-reviewed-merge paths or diff are unavailable or exceed the output bound|final review prompt including task context exceeds/);
+  const larger = fixture(t, { limit: 100_000 });
+  const largerInput = candidate(larger, { 'subject.md': 'long documentation 雪\n'.repeat(1000) });
+  const completeReport = await checkReviewCapacity(largerInput);
+  const prepared = await production(t, larger, largerInput);
+  assert.equal(completeReport.measurement.exact, true);
+  assert.ok(overReadBound.measurement.lowerBoundBytes <= prepared.bytes.length);
+  assert.ok(prepared.bytes.length, 'larger selected policy permits full production preparation');
+
+  const prefixSource = fixture(t);
+  const prefixReport = await checkReviewCapacity(candidate(prefixSource));
+  const prefixComponents = prefixReport.measurement.components;
+  const prefixLimit = Math.max(prefixComponents.instructionsBytes, prefixComponents.authorityPromptBytes);
+  assert.ok(prefixComponents.instructionsBytes + prefixComponents.authorityPromptBytes > prefixLimit);
+  const prefixFixture = fixture(t, { limit: prefixLimit });
+  const prefix = await checkReviewCapacity(candidate(prefixFixture));
+  assert.equal(prefix.state, 'exceeded');
+  assert.equal(prefix.reason, 'prepared-prefix-exceeds-limit');
+  assert.equal(prefix.measurement.stage, 'prepared-prefix');
+  assert.equal(prefix.measurement.lowerBoundBytes, prefixComponents.instructionsBytes + prefixComponents.authorityPromptBytes);
+  assert.equal(prefix.measurement.totalBytes, null);
+  await assert.rejects(() => production(t, prefixFixture, candidate(prefixFixture)),
+    /selected prompt must be a bounded regular file/);
+
+  const manyPaths = Object.fromEntries(Array.from({ length: 60 }, (_, index) =>
+    [`path-${String(index).padStart(2, '0')}-${'x'.repeat(80)}.md`, 'content\n']));
+  const pathLow = fixture(t, { limit: 4096 });
+  const pathInput = candidate(pathLow, manyPaths);
+  const pathReport = await checkReviewCapacity(pathInput);
+  assert.equal(pathReport.state, 'exceeded');
+  assert.equal(pathReport.reason, 'changed-path-list-lower-bound-exceeds-limit');
+  assert.equal(pathReport.measurement.stage, 'changed-path-list');
+  assert.ok(pathReport.measurement.lowerBoundBytes > pathLow.policy.branches.main.authorityLimits.maxPromptBytes);
+  const pathHigh = fixture(t, { limit: 100_000 });
+  const pathHighInput = candidate(pathHigh, manyPaths);
+  const pathPrepared = await production(t, pathHigh, pathHighInput);
+  assert.ok(pathReport.measurement.lowerBoundBytes <= pathPrepared.bytes.length);
+
+  for (const [label, content] of [
+    ['invalid UTF-8', Buffer.concat([Buffer.from('start\n'), Buffer.from([0xff]), Buffer.from('x'.repeat(12_000))])],
+    ['NUL', Buffer.concat([Buffer.from('start\n\0'), Buffer.from('x'.repeat(12_000))])],
+  ]) {
+    const malformed = fixture(t, { limit: 4096 });
+    const malformedReport = await checkReviewCapacity(candidate(malformed, { 'subject.md': content }));
+    assert.equal(malformedReport.state, 'undetermined', label);
+    assert.equal(malformedReport.measurement.exact, false, label);
+    assert.equal(malformedReport.measurement.totalBytes, null, label);
+    assert.equal(malformedReport.measurement.remainingBytes, null, label);
+    assert.equal(malformedReport.measurement.lowerBoundBytes, undefined, label);
+  }
   const input = candidate(f);
   assert.equal((await checkReviewCapacity({ ...input, base: 'missing-revision' })).state, 'undetermined');
   assert.equal((await checkReviewCapacity({ ...input, reviewed: input.head })).reason, 'invalid-merge-binding');
@@ -212,6 +268,65 @@ test('capacity-risk documentation can be independently scoped before expensive v
   t.diagnostic(JSON.stringify({ modelledDevelopmentCheckpoint: examples, policyLimitBytes: 6500 }));
 });
 
+test('native overflow captures distinguish usable prefixes from incomplete or unrelated failures', async t => {
+  const limit = 4096;
+  const f = fixture(t, { limit });
+  const input = candidate(f);
+  const exact = await checkReviewCapacity(input);
+  assert.equal(exact.state, 'fit');
+  const prefixBytes = exact.measurement.components.instructionsBytes + exact.measurement.components.authorityPromptBytes;
+  const asciiBytes = limit + 20;
+  const path = 'p'.repeat(150);
+  const completePaths = Buffer.from(`${path}\0`.repeat(40));
+  const cases = [
+    { name: 'partial trailing UTF-8 character', stage: 'diff',
+      stdout: Buffer.concat([Buffer.alloc(asciiBytes, 0x61), Buffer.from([0xf0, 0x9f])]),
+      lowerBound: prefixBytes + asciiBytes },
+    { name: 'complete paths before a truncated record', stage: 'changed-path-list',
+      stdout: Buffer.concat([completePaths, Buffer.from('unmeasured tail')]),
+      lowerBound: prefixBytes + 40 * (150 + 2) + 39 + 2 },
+    { name: 'stderr-only overflow', stage: 'diff', stdout: Buffer.from('small stdout'),
+      stderr: Buffer.alloc(asciiBytes, 0x61) },
+    { name: 'different native error', stage: 'diff', stdout: Buffer.alloc(asciiBytes, 0x61), code: 'ETIMEDOUT' },
+    { name: 'non-Buffer capture', stage: 'diff', stdout: 'a'.repeat(asciiBytes) },
+    { name: 'no complete path record', stage: 'changed-path-list', stdout: Buffer.alloc(asciiBytes, 0x61) },
+    { name: 'malformed complete path', stage: 'changed-path-list',
+      stdout: Buffer.concat([Buffer.alloc(asciiBytes, 0x61), Buffer.from([0xff, 0])]) },
+  ];
+  for (const [index, value] of cases.entries()) {
+    const marker = join(f.root, `capture-${index}`);
+    const capture = { ...value, stdout: Buffer.isBuffer(value.stdout) ? value.stdout.toString('base64') : value.stdout,
+      buffer: Buffer.isBuffer(value.stdout), stderr: value.stderr?.toString('base64') };
+    // Fault-inject only the selected native Git capture; all revision, policy,
+    // authority and schema acquisition still executes the real Git commands.
+    const hook = `import cp from 'node:child_process';
+import {syncBuiltinESMExports} from 'node:module'; import {writeFileSync} from 'node:fs';
+const capture=${JSON.stringify(capture)}, original=cp.execFileSync;
+cp.execFileSync=(command,args,options)=>{
+  const selected=capture.stage==='diff'?'--text':'--name-only';
+  if(command==='git'&&args.includes('diff')&&args.includes(selected)){
+    writeFileSync(${JSON.stringify(marker)},capture.stage);
+    throw Object.assign(new Error(${JSON.stringify(sentinel)}),{code:capture.code??'ENOBUFS',
+      stdout:capture.buffer?Buffer.from(capture.stdout,'base64'):capture.stdout,
+      stderr:Buffer.from(capture.stderr??'','base64')});
+  }
+  return original(command,args,options);
+};syncBuiltinESMExports();`;
+    const observed = spawnSync(process.execPath, ['--import', `data:text/javascript,${encodeURIComponent(hook)}`,
+      cli, '--base', input.base, '--head', input.head], { cwd: f.root, encoding: 'utf8', timeout: 30_000 });
+    assert.equal(readFileSync(marker, 'utf8'), value.stage, value.name);
+    assert.equal(observed.stderr, '', value.name);
+    const report = JSON.parse(observed.stdout);
+    assert.equal(observed.status, value.lowerBound ? 1 : 2, value.name);
+    assert.equal(report.state, value.lowerBound ? 'exceeded' : 'undetermined', value.name);
+    assert.equal(report.measurement.exact, false, value.name);
+    assert.equal(report.measurement.totalBytes, null, value.name);
+    assert.equal(report.measurement.remainingBytes, null, value.name);
+    assert.equal(report.measurement.lowerBoundBytes, value.lowerBound, value.name);
+    assert.doesNotMatch(observed.stdout, new RegExp(`${sentinel}|${f.root}|unmeasured tail`), value.name);
+  }
+});
+
 test('actual early CLI allows only Git subprocesses, no network/model dispatch, and has explicit exit states', t => {
   const f = fixture(t);
   const input = candidate(f);
@@ -235,6 +350,16 @@ globalThis.fetch=deny;syncBuiltinESMExports();`;
   const unknown = run(['--base', 'missing', '--head', input.head]);
   assert.equal(unknown.status, 2);
   assert.equal(JSON.parse(unknown.stdout).state, 'undetermined');
+  const oversized = candidate(f, { 'subject.md': 'private oversized context\n'.repeat(1000) });
+  const exceeded = run(['--base', oversized.base, '--head', oversized.head]);
+  assert.equal(exceeded.status, 1);
+  const exceededReport = JSON.parse(exceeded.stdout);
+  assert.equal(exceededReport.state, 'exceeded');
+  assert.equal(exceededReport.measurement.exact, false);
+  assert.equal(exceededReport.measurement.totalBytes, null);
+  assert.equal(exceededReport.measurement.remainingBytes, null);
+  assert.ok(Number.isSafeInteger(exceededReport.measurement.lowerBoundBytes));
+  assert.doesNotMatch(exceeded.stdout, new RegExp(`${sentinel}|private oversized context|${f.root}`));
   const invalid = run(['--limit', '999999999']);
   assert.equal(invalid.status, 2);
   assert.equal(JSON.parse(invalid.stdout).reason, 'invalid-arguments');
