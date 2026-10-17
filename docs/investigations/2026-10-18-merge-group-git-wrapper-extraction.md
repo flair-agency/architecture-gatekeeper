@@ -40,6 +40,11 @@ focused contract assertion detects it. The existing production CLI suites
 remain in place: `test/owner-amendment-merge-group-route-composition.test.mjs`
 retains gate route and failure behavior; `test/owner-amendment-merge-group-ordinary-review.test.mjs`
 retains prepare, validate, and exact-tuple mismatch coverage. The helper test
-does not wait 30 seconds to re-test the timeout; the exact unchanged timeout
+and `policy.test.mjs` retain the argv-only Git boundary: the static positive
+check follows the moved implementation into the helper, and the no-workspace-`cwd`
+assertions cover the helper and both CLI callers. The unextracted
+semantic and owner-decision producer assertions remain unchanged.
+
+The helper test does not wait 30 seconds to re-test the timeout; the exact unchanged timeout
 option is preserved in the one implementation. No claim is made about active
 workflow use or live protected-host behavior.

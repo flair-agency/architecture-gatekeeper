@@ -513,11 +513,18 @@ test('OWNER_AMENDMENT semantic producer never checks out or executes pull-reques
 
 test('protected amendment Git commands pass the checkout through argv instead of child-process cwd', () => {
   for (const path of [
-    '../scripts/owner-amendment-merge-group-gate.mjs',
+    '../scripts/owner-amendment-merge-group-git.mjs',
     '../scripts/owner-amendment-semantic-eligibility-producer.mjs',
   ]) {
     const source = readFileSync(new URL(path, import.meta.url), 'utf8');
-    assert.match(source, /execFileSync\('git', \['-C', process\.env\.GITHUB_WORKSPACE, \.\.\.args\]/);
+    assert.match(source, /execFileSync\('git',\s*\['-C', process\.env\.GITHUB_WORKSPACE, \.\.\.args\]/);
+    assert.doesNotMatch(source, /cwd:\s*process\.env\.GITHUB_WORKSPACE/);
+  }
+  for (const path of [
+    '../scripts/owner-amendment-merge-group-gate.mjs',
+    '../scripts/owner-amendment-merge-group-ordinary-review.mjs',
+  ]) {
+    const source = readFileSync(new URL(path, import.meta.url), 'utf8');
     assert.doesNotMatch(source, /cwd:\s*process\.env\.GITHUB_WORKSPACE/);
   }
   const ownerDecision = readFileSync(new URL('../scripts/owner-amendment-owner-decision-producer.mjs', import.meta.url), 'utf8');
