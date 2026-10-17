@@ -94,6 +94,14 @@ export async function prepareMultiAuthorityAddition(env, selected, policyBytes, 
   writeRunnerTempFile(artifactDirectory, 'eligibility-prompt.md', completePrompt, { overwrite: true });
   writeRunnerTempFile(artifactDirectory, 'eligibility.schema.json', schemaBytes, { overwrite: true });
   writeRunnerTempFile(artifactDirectory, 'procedure.json', JSON.stringify(procedure), { overwrite: true });
-  if (process.env.GITHUB_OUTPUT) appendGitHubOutput(`procedure_base64=${Buffer.from(JSON.stringify(procedure)).toString('base64')}\n`);
+  if (process.env.GITHUB_OUTPUT) {
+    const encoded = Buffer.from(JSON.stringify(procedure)).toString('base64');
+    // Match the existing v2 consumer limit; keep the helper's per-call bound.
+    if (encoded.length > 65_536) throw new Error('Owner-addition procedure output exceeds the v2 limit.');
+    const line = `procedure_base64=${encoded}\n`;
+    for (let offset = 0; offset < line.length; offset += 16_384) {
+      appendGitHubOutput(line.slice(offset, offset + 16_384));
+    }
+  }
   return procedure;
 }

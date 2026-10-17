@@ -146,21 +146,27 @@ regression-coordinate correction `49873f5` changes the pinned sink location to
 the actual SARIF line, preserving the assertion that generic roots are detected.
 Its official CodeQL rerun is pending; earlier evidence is not relabeled.
 
-## Open compatibility decision and adoption hold
+## Approved v2 publication and adoption hold
 
-Independent static integrated review identified a normal-input compatibility
-issue: existing `appendGitHubOutput` bounds each append to 16,384 bytes, while
-the supported v2 procedure embeds up to 32 provenance members with long paths.
-Its base64 line can exceed that per-call bound. The existing downstream v2 parser
-allows 65,536 base64 characters; this must not silently become a smaller accepted
-input range. The owner has been asked to choose a finite procedure-specific
-publication approach preserving capacity, or explicitly accept the smaller
-range. No larger bound, chunked publication or smaller supported range is treated
-as approved by silence, and no change for this decision has been implemented.
+The owner approved bounded chunked publication in the follow-up conversation.
+The v2 procedure still selects the actual runner-created output sink through
+`appendGitHubOutput`; its encoded value must fit the existing consumer limit of
+65,536 base64 characters. One complete ASCII `procedure_base64=...\n` line is
+appended in consecutive fragments of at most 16,384 bytes, with no newline
+between fragments. The helper's per-call bound and all other callers remain
+unchanged. This preserves supported large v2 metadata without introducing a
+larger helper limit or accepting an injected destination. An append failure
+fails preparation; a partial command-file line is not acceptance evidence.
 
-The current JavaScript and TypeScript proposals are **not ready for adoption**.
-The compatibility decision and implementation remain open, followed by fresh
-final-candidate full/package/CodeQL, Native and hosted Code/Security Review and
-non-skipped protected acceptance as applicable. Earlier reviews and successful
-checks do not transfer to a new source tuple. Both #591 and #587 remain on merge
-hold; main remains 93/96 adopted. A local 96/96 implementation is not adoption.
+Normal regression coverage uses 32 committed authority members with long paths,
+checks complete output/consumer roundtrip and append retry behavior, and retains
+the existing consumer's 65,536-character boundary. It adds no attack/race
+reproduction. This publication change has its own current-candidate verification;
+the earlier results above remain bound to their original revisions.
+
+Both #591 and #587 remain on merge hold; main remains 93/96 adopted. A local
+96/96 implementation is not adoption. Fresh final-candidate checks, Native and
+hosted Code/Security Review, and non-skipped protected review/accept are required.
+The existing exact event base/head merge-parent guard must succeed; its previous
+failure is not waived or worked around. Filesystem concurrency limits above
+remain; no hostile same-user isolation or complete race freedom is claimed.
