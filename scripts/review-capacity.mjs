@@ -37,6 +37,9 @@ class CapacityExceeded extends Error {
 // path from the older protected base. Other base/runtime drift must be
 // explicitly reviewed before this diagnostic can measure it.
 const PREVIOUS_CONTEXT_SHA256 = '510b197070f8f12a15567409cf8e92e6da365bbd96e17ef4917cd8c21b38acf0';
+const PREVIOUS_PREPARER_SHA256 = '9bce34d75aa8b4d414a089f042616cabb2dd1ac331fcfbe70a43afff304e9dae';
+const PREPARER = 'src/authority-validation/prepare-authority-set.mts';
+const DESCRIPTOR_READER = 'src/io/read-descriptor.mts';
 const PREVIOUS_CALLED_WORKFLOW_SHA256 = '237e6a6ba0baebc4a70e8190911bac60044636c2c9d5cf675aa253b5e5095b45';
 const EARLIER_CALLED_WORKFLOW_SHA256 = 'ecf6a70d7bffb73f152143dacd5d44a09a57a54c616fa4e3ed94117c89abb046';
 const OLDER_CALLED_WORKFLOW_SHA256 = '3bd669043e677fed4f79d43f8fbe40778aa5b82a4ebd95e50e31d949f00076f2';
@@ -46,7 +49,8 @@ const FORMAT_FILES = [SELF_WORKFLOW, CALLED_WORKFLOW,
   'src/preflight-authority-set-review.mjs', 'src/prepare-review-context.mjs',
   'src/authority-validation/authority-set.mts',
   'src/authority-validation/resolve-ci-policy.mts',
-  'src/authority-validation/prepare-authority-set.mts',
+  PREPARER,
+  DESCRIPTOR_READER,
   'src/authority-validation/preflight-authority-set-review.mts',
   'src/review-inputs/prepare-review-context.mts'];
 
@@ -60,7 +64,8 @@ const CURRENT_FORMAT_SHA256 = {
   "src/prepare-review-context.mjs": "6b5af63dc0fb077482c843ee0937e9c1a26633b593fad9f435f182b97e7051a8",
   "src/authority-validation/authority-set.mts": "4463bace8ba83303a83257acbd36dc05e19cfe3a834b2d4b56eb7206a3c20341",
   "src/authority-validation/resolve-ci-policy.mts": "cdaae106b4ff0e10b39cb5831b32a590ff5c94f32dcccd9c1ccf96064a652ae2",
-  "src/authority-validation/prepare-authority-set.mts": "9bce34d75aa8b4d414a089f042616cabb2dd1ac331fcfbe70a43afff304e9dae",
+  [PREPARER]: "cc4e499e2226cde84f2e5588078706a4ac62443ca78a06f0bfbad0c099eebb74",
+  [DESCRIPTOR_READER]: "1be7f9c9f48dbe576b76bc2e69de815b3f30e928ea63c715163a1e54114d772c",
   "src/authority-validation/preflight-authority-set-review.mts": "0d63bd79613598af3d8e4d75bc9bdbbaf7ada600e41ba0b65625c0e1014bc495",
   "src/review-inputs/prepare-review-context.mts": "581b80bf5a5b3c6bce4e0369e5620605a92cef7080f0b82c1e6ae3d76f17ba02"
 };
@@ -69,7 +74,8 @@ export function supportsPreparationFormatDigest(path, baseDigest, toolDigest) {
   if (toolDigest !== CURRENT_FORMAT_SHA256[path]) return false;
   return baseDigest === toolDigest ||
     (path === CALLED_WORKFLOW && [PREVIOUS_CALLED_WORKFLOW_SHA256, EARLIER_CALLED_WORKFLOW_SHA256, OLDER_CALLED_WORKFLOW_SHA256, OLDEST_CALLED_WORKFLOW_SHA256].includes(baseDigest)) ||
-    (path === 'src/review-inputs/prepare-review-context.mts' && baseDigest === PREVIOUS_CONTEXT_SHA256);
+    (path === 'src/review-inputs/prepare-review-context.mts' && baseDigest === PREVIOUS_CONTEXT_SHA256) ||
+    (path === PREPARER && baseDigest === PREVIOUS_PREPARER_SHA256);
 }
 
 function git(root, args, maxBuffer = 256) {
@@ -98,13 +104,22 @@ function yaml(bytes) {
 function pathsForSelfRoute(root, baseSha) {
   const formatDigests = {};
   const contents = {};
+  let basePreparerDigest;
   for (const path of FORMAT_FILES) {
+    if (path === DESCRIPTOR_READER && basePreparerDigest === PREVIOUS_PREPARER_SHA256) {
+      // That exact predecessor did not import this helper; its presence in
+      // such a base is unused and was not part of the former preparation set.
+      const toolDigest = hash(readFileSync(new URL(`../${path}`, import.meta.url)));
+      if (toolDigest !== CURRENT_FORMAT_SHA256[path]) reject('unsupported-preparation-format');
+      continue;
+    }
     const bytes = read(root, baseSha, path, 262_144);
     const digest = hash(bytes);
     const toolDigest = hash(readFileSync(new URL(`../${path}`, import.meta.url)));
     if (!supportsPreparationFormatDigest(path, digest, toolDigest)) reject('unsupported-preparation-format');
     formatDigests[path] = digest;
     contents[path] = bytes;
+    if (path === PREPARER) basePreparerDigest = digest;
   }
   const caller = yaml(contents[SELF_WORKFLOW]);
   const called = yaml(contents[CALLED_WORKFLOW]);
