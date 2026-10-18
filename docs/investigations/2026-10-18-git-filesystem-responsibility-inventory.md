@@ -188,6 +188,11 @@ The bounded merge-group process-wrapper extraction is recorded in
 It consolidates two identical script-local `execFileSync` wrappers only; it
 does not select a broader API/library or complete the remaining inventory.
 
+The later [buffered Git process boundary](2026-10-18-buffered-git-process-boundary.md)
+migrates four equivalent invocation expressions in three typed modules while
+retaining their different reader policies. The tables above retain the named
+initial baseline; this increment records its selected caller disposition.
+
 1. Complete the per-call input/budget/decode/open/cleanup contract matrix for
    selected equivalent candidates, including inline workflow steps and mediated
    callers. Import presence alone does not establish those contracts.
