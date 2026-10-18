@@ -185,6 +185,9 @@ test('local helper pin is enforced even when the base uses the exact pre-helper 
   const copy = mkdtempSync(join(tmpdir(), 'agk-capacity-tool-copy-'));
   t.after(() => rmSync(copy, { recursive: true, force: true }));
   cpSync(join(toolRoot, 'src'), join(copy, 'src'), { recursive: true });
+  for (const path of runtimeFiles.filter(path => path.startsWith('.github/'))) {
+    put(copy, path, readFileSync(join(toolRoot, path)));
+  }
   mkdirSync(join(copy, 'scripts'));
   cpSync(cli, join(copy, 'scripts/review-capacity.mjs'));
   symlinkSync(join(toolRoot, 'node_modules'), join(copy, 'node_modules'), 'dir');
