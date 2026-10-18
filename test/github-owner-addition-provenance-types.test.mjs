@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 import { parse } from 'acorn';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -18,13 +19,14 @@ assert.equal(tsconfig.options.strict, true);
 assert.equal(tsconfig.options.noImplicitAny, true);
 assert.equal(tsconfig.options.noEmitOnError, true);
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'), join(fixtureRoot, 'negative.mts'),
+], { ...tsconfig.options, rootDir: root, noEmit: true },
+  'all imported implementations must be error-free');
+
 function diagnosticsFor(fixture) {
   const file = join(fixtureRoot, fixture);
-  const program = ts.createProgram([file], { ...tsconfig.options, rootDir: root, noEmit: true });
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  assert.deepEqual(diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file), [],
-    'all imported implementations must be error-free');
-  return diagnostics.filter(diagnostic => diagnostic.file?.fileName === file).map(diagnostic => ({
+  return diagnosticsForFixture(file).map(diagnostic => ({
     code: diagnostic.code,
     line: diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line + 1,
     message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),

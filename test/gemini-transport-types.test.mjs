@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'acorn';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 import * as flat from '../dist/gemini-transport.mjs';
 import * as grouped from '../dist/reviewer-transports/gemini-transport.mjs';
 
@@ -18,13 +19,13 @@ const tsconfig = ts.parseJsonConfigFileContent(tsconfigRead.config, ts.sys, root
 assert.deepEqual(tsconfig.errors, []);
 const compilerOptions = { ...tsconfig.options, rootDir: root, noEmit: true };
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'), join(fixtureRoot, 'negative.mts'),
+], compilerOptions, 'the transport and all imported source modules must remain strict-error-free');
+
 function diagnosticsFor(name) {
   const file = join(fixtureRoot, name);
-  const program = ts.createProgram([file], compilerOptions);
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file), [],
-    'the transport and all imported source modules must remain strict-error-free');
-  return diagnostics.filter(item => item.file?.fileName === file).map(item => ({ code: item.code, message: ts.flattenDiagnosticMessageText(item.messageText, '\n'), line: item.file.getLineAndCharacterOfPosition(item.start).line + 1 }));
+  return diagnosticsForFixture(file).map(item => ({ code: item.code, message: ts.flattenDiagnosticMessageText(item.messageText, '\n'), line: item.file.getLineAndCharacterOfPosition(item.start).line + 1 }));
 }
 
 function astDigest(source) {
