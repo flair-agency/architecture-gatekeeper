@@ -4,9 +4,10 @@ import { isCanonicalRepositoryPath } from './legacy-git-snapshot.mjs';
 import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { createHash, randomUUID } from 'node:crypto';
-import { closeSync, constants, fstatSync, lstatSync, openSync, opendirSync, readFileSync, readSync, realpathSync, writeFileSync, writeSync } from 'node:fs';
+import { closeSync, constants, fstatSync, lstatSync, openSync, opendirSync, readFileSync, realpathSync, writeFileSync, writeSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { readDiagnosticText, resolveDiagnosticPath } from './diagnostic-path.mts';
+import { readDescriptorBytes } from './io/read-descriptor.mts';
 
 export type MeasurementFields = Record<string, unknown>;
 // External payloads remain unknown; these views describe property access and
@@ -159,11 +160,11 @@ function runtime() {
     try {
       const stat = fstatSync(fd);
       if (!stat.isFile() || stat.dev !== leaf.dev || stat.ino !== leaf.ino || stat.size > MAX_BYTES) throw new Error('Invalid collector runtime file.');
-      const bytes = Buffer.alloc(Math.min(MAX_BYTES + 1, stat.size + 1)); let length = 0;
-      while (length < bytes.length) { const count = readSync(fd, bytes, length, bytes.length - length, null); if (!count) break; length += count; }
-      totalBytes += length;
-      if (length > stat.size || length > MAX_BYTES || totalBytes > 8 * 1024 * 1024) throw new Error('Collector runtime byte limit exceeded.');
-      return bytes.subarray(0, length);
+      const capacity = Math.min(MAX_BYTES + 1, stat.size + 1);
+      const bytes = readDescriptorBytes(fd, Buffer.alloc(capacity));
+      totalBytes += bytes.length;
+      if (bytes.length > stat.size || bytes.length > MAX_BYTES || totalBytes > 8 * 1024 * 1024) throw new Error('Collector runtime byte limit exceeded.');
+      return bytes;
     } finally { closeSync(fd); }
   };
   const include = (name: string, bytes: Buffer) => hash.update(JSON.stringify([name, createHash('sha256').update(bytes).digest('hex')]) + '\n');
