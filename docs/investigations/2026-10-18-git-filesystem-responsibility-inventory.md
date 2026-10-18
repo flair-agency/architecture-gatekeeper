@@ -40,8 +40,7 @@ flowchart LR
   G --> R[Required review materialization and validation]
   R --> P[Selected reviewer execution]
   P --> O[Decision/report publication]
-  H[Trusted Skill host allocates session paths] --> N[Native request persistence and validation]
-  N --> HC[Host records and cleans session]
+  H[Trusted Skill allocates private paths; records exact request/decision bytes; cleans session] --> N[Native adapter constructs/persists request and validates decision]
   T[Invoking runner supplies workspace/temp/output] --> C[CI readers and fixed temporary artifacts]
   C --> R
   O --> S[Runner-provided workflow output sink]
@@ -56,7 +55,7 @@ edge; publication does not authenticate the host or authorize a merge.
 | --- | --- | --- | --- |
 | G: committed Git inputs | Recorded revision/path and selected policy/authority → materialization, review context and governance consumers. Readers verify different object/mode/path properties. | Caller selects root and exact revisions; readers own command execution and byte acquisition. Returned bytes belong to the caller; materialization lifetime is separate. | Required input failure rejects preparation. Shared Git syntax alone is insufficient equivalence: mode acceptance, replacement/config handling, size checks, deadlines and errors differ. |
 | R: required prepared files/workspaces | Selected authority, prompt/schema/provenance and exact base/head/reviewed tuple → reviewer and validators. | Preparation owns its documented outputs; workspace creation and returned cleanup/caller cleanup follow each API. Do not infer cleanup of every output from a temporary path. | Required malformed/missing/over-limit data fails closed. Preserve exact bytes, decode order, aggregate limits, output protocol and identities; do not import optional diagnostic allowlists. |
-| N: native sessions | Original host-supplied session request/decision paths → native adapter and shared validator. | Skill host allocates private directory, records exact bytes and cleans all session paths. Native adapter constructs/persists request and validates decision. | Failure leaves review incomplete. Exclusive creation/modes do not attest parent privacy or same-user isolation. #566's stream/persistence transfer is not selected. |
+| N: native sessions | Original host-supplied session request/decision paths → native adapter and shared validator. | Trusted Skill execution side allocates the private directory, records exact request/decision bytes and cleans session paths. The native adapter constructs and persists the request and validates the decision. | Failure leaves review incomplete. Exclusive creation/modes do not attest parent privacy or same-user isolation. #566's stream/persistence transfer is not selected. |
 | C/O: CI temporary artifacts and publication | Invoker's original workspace/temp/sink and selected producer inputs → CI preparation/reporting. | Fixed runner-temp table owns internal artifact locations. `appendGitHubOutput` reads the runner's actual sink; it is not required below `RUNNER_TEMP`. Other native appenders remain inventoried separately. | Required publication errors remain errors. Internal filenames, actual output sink and general caller paths are distinct contracts; do not restore arbitrary internal artifact destinations or treat all appenders as equivalent. |
 | P/L: provider execution and local Hook state | Revision-bound request/workspace and selected settings → execution adapter; local snapshots/state → local feedback. | Adapter owns its child transport/temp data according to the current API; Hook state/locking and host lifecycle differ from native session ownership. | Execution failure is incomplete, not semantic PASS/BLOCK. Keep existing deadline, cancellation, credential and state behavior; similar subprocess APIs do not establish identical lifecycle guarantees. |
 | D: diagnostics | Opt-in captured metadata/private observations → local/job storage, reconciliation and whitelisted export. | Consumer owns private location/access/retention/export. `diagnostic-path` enforces its own host-root, parent/descriptor, bounded-read and decoding rules. | Optional integration failures remain gaps and cannot fail/satisfy required review. An explicitly invoked diagnostic CLI can fail its own command. Do not spread these storage rules to required/native paths or silently expose captured metadata. |
@@ -182,6 +181,13 @@ composition must be considered before extracting a shared source reader.
 This initial map does not prove an exhaustive transitive call graph.
 
 ## Staged remaining work
+
+The later [per-caller disposition checkpoint](2026-10-18-io-migration-dispositions.md)
+uses adopted #616 as its implementation baseline. It indexes the defined native
+import census, supplemental workflow/callback/host-lifetime contracts, the
+#599/#604/#615/#616 selected mechanisms and separately tracked follow-up. The
+initial tables and staged list below retain their historical scope; the later
+index does not claim exhaustive I/O, host verification or whole #573 completion.
 
 The bounded merge-group process-wrapper extraction is recorded in
 [`2026-10-18-merge-group-git-wrapper-extraction.md`](2026-10-18-merge-group-git-wrapper-extraction.md).
