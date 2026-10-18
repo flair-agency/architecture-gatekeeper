@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { decodeLimits, prepareAuthoritySet } from '../dist/prepare-authority-set.mjs';
 
@@ -148,7 +149,7 @@ fs.closeSync=(fd)=>{paths.delete(fd);return close(fd);};
 process.on('exit',()=>fs.writeFileSync(${JSON.stringify(trace)},JSON.stringify(reads)));
 syncBuiltinESMExports();`;
   const result = spawnSync(process.execPath, ['--import', `data:text/javascript,${encodeURIComponent(hook)}`,
-    new URL('../dist/prepare-authority-set.mjs', import.meta.url).pathname,
+    fileURLToPath(new URL('../dist/prepare-authority-set.mjs', import.meta.url)),
     '--manifest', f.manifestPath, '--self-repository', 'flair-agency/example', '--self-root', f.selfRoot,
     '--authority-sha', f.authorityRevision, '--limits', f.limitsPath, '--output-dir', outputDir],
   { encoding: 'utf8', env: { ...process.env, GATEKEEPER_SOURCE_TOKEN: '' } });

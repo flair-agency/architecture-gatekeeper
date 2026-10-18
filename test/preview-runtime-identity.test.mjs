@@ -340,8 +340,12 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/review-contract/review-contract.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/resolve-ci-policy.mjs'),
     readFileSync(join(flatRoot, 'dist/authority-validation/resolve-ci-policy.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
-  writeFileSync(join(flatRoot, 'dist/prepare-authority-set.mjs'),
-    readFileSync(join(flatRoot, 'dist/authority-validation/prepare-authority-set.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+  const flatPreparerSource = readFileSync(join(flatRoot, 'dist/authority-validation/prepare-authority-set.mjs'), 'utf8');
+  assert.equal((flatPreparerSource.match(/from (["'])\.\.\/io\/read-descriptor\.mjs\1/g) ?? []).length, 1,
+    'the reconstructed flat preparer has one import of the shared descriptor helper');
+  writeFileSync(join(flatRoot, 'dist/prepare-authority-set.mjs'), flatPreparerSource
+    .replace(/from (["'])\.\.\/io\/read-descriptor\.mjs\1/, "from './read-descriptor.mjs'")
+    .replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/owner-addition-adoption.mjs'),
     readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-adoption.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/owner-decision-addition.mjs'),
