@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "kind": "issue-537-case-linkage-inventory-only",
+  "status": "correlation-candidate-unadjudicated",
+  "scope": {
+    "pullRequestNumber": 579,
+    "selectedRecordCount": 2,
+    "caseDisposition": "unresolved"
+  },
+  "records": [
+    {
+      "recordLabel": "initial-record-correlation-candidate",
+      "artifact": {
+        "artifactId": 11844700321,
+        "phase": "review",
+        "attemptId": "f40bfb3b-dc81-406d-a444-9538b5b3d241",
+        "createdAt": "2026-10-13T19:46:34Z",
+        "sourceSha256": "19eae6bfc7fd4594625bb551fc3b973b36990029d799a842de7293df14689b75",
+        "reportedCaptureValidationStatus": "passed",
+        "pairedOutcomeArtifactId": 11844535349
+      },
+      "run": {
+        "runId": 38456913319,
+        "attempt": 1,
+        "route": "ci-review",
+        "phase": "terminal",
+        "workflowAttemptStatus": "completed",
+        "workflowAttemptConclusion": "failure",
+        "recordedAt": "2026-10-13T19:46:33.904Z"
+      },
+      "revisionHashes": {
+        "headSha": "56080936bdae92f38e433bbdd84e6fd9ad58dbcc",
+        "baseSha": "18dddeefb97e505a58fd3c84d08cc15e94cac6fe",
+        "workflowSha": "18dddeefb97e505a58fd3c84d08cc15e94cac6fe",
+        "reviewedSha": "7b68c69fa5bd6d2f05ffdb3e6f1612aa5f882958"
+      },
+      "recordedPullRequestNumber": 579,
+      "apiPullRequestBinding": "unresolved"
+    },
+    {
+      "recordLabel": "later-record-correlation-candidate",
+      "artifact": {
+        "artifactId": 11847612960,
+        "phase": "review",
+        "attemptId": "0fc77f6d-f654-4c58-a2d5-ccd3ff044dbe",
+        "createdAt": "2026-10-13T20:40:00Z",
+        "sourceSha256": "bd3cbaf17d4c6db16efad4ad63f67371ed9b81443558ee5884ec37885f933d5c",
+        "reportedCaptureValidationStatus": "passed",
+        "pairedOutcomeArtifactId": 11847743018
+      },
+      "run": {
+        "runId": 38464128628,
+        "attempt": 1,
+        "route": "ci-review",
+        "phase": "terminal",
+        "workflowAttemptStatus": "completed",
+        "workflowAttemptConclusion": "success",
+        "recordedAt": null
+      },
+      "revisionHashes": {
+        "headSha": "cbf26d20a694b98696f11e38a9ad702039edc344",
+        "baseSha": "18dddeefb97e505a58fd3c84d08cc15e94cac6fe",
+        "workflowSha": "18dddeefb97e505a58fd3c84d08cc15e94cac6fe",
+        "reviewedSha": "2da4f3fef1c32a1299e619c3db617062ece46583"
+      },
+      "recordedPullRequestNumber": 579,
+      "apiPullRequestBinding": "unresolved"
+    }
+  ],
+  "externalArtifactReference": {
+    "artifactId": 11844036774,
+    "runId": 38456913319,
+    "attempt": 1,
+    "sizeBytes": 12420,
+    "sha256": "b509c9daa84d1d53c07d061dd1b710b0b6cbb6024fb43e98ede3c006a4920522",
+    "createdAt": "2026-10-13T19:45:33Z",
+    "expiresAt": "2027-01-11T19:42:03Z",
+    "expired": false,
+    "relation": "existing BLOCK artifact metadata associated with the initial record candidate; content remains private"
+  },
+  "pullRequest": {
+    "number": 579,
+    "state": "closed",
+    "merged": true,
+    "createdAt": "2026-10-13T19:12:09Z",
+    "mergedAt": "2026-10-13T20:45:21Z",
+    "baseSha": "18dddeefb97e505a58fd3c84d08cc15e94cac6fe",
+    "finalHeadSha": "cbf26d20a694b98696f11e38a9ad702039edc344",
+    "mergeCommitSha": "b5f6f99309c4ad909c706f80d8175fcedda67487",
+    "commitSequence": [
+      {
+        "sha": "56080936bdae92f38e433bbdd84e6fd9ad58dbcc",
+        "parentSha": "18dddeefb97e505a58fd3c84d08cc15e94cac6fe",
+        "committedAt": "2026-10-13T19:10:31Z"
+      },
+      {
+        "sha": "cbf26d20a694b98696f11e38a9ad702039edc344",
+        "parentSha": "56080936bdae92f38e433bbdd84e6fd9ad58dbcc",
+        "committedAt": "2026-10-13T20:07:46Z"
+      }
+    ],
+    "headAndMergeRoles": "final head SHA and merge commit SHA are distinct revision roles; their difference is not treated as mismatch evidence"
+  },
+  "publicDiscussionReferences": [
+    {
+      "commentId": 4263243679,
+      "reviewId": 5509057859,
+      "createdAt": "2026-10-13T19:45:36Z",
+      "updatedAt": "2026-10-13T19:45:36Z"
+    },
+    {
+      "commentId": 6153786061,
+      "reviewId": null,
+      "createdAt": "2026-10-13T19:45:37Z",
+      "updatedAt": "2026-10-13T20:39:18Z"
+    },
+    {
+      "commentId": 6153726543,
+      "reviewId": null,
+      "createdAt": "2026-10-13T19:42:14Z",
+      "updatedAt": "2026-10-13T20:41:52Z"
+    }
+  ],
+  "declaredMetadataCorrelation": {
+    "status": "reported-identity-and-digest-consistency-correlation-only",
+    "identityFields": "reported to correlate with the existing initial measurement/run/PR metadata",
+    "inputDigestFields": "reported recovered and internally consistent; raw values withheld",
+    "decisionDigest": "local declared-vs-computed digest consistency reported; not signature or attestation verification",
+    "telemetry": "existing null telemetry fields were not overwritten or filled",
+    "sourceArtifactId": 11844036774,
+    "localDigestConsistency": "declared and locally computed digest metadata reported consistent; not signature, attestation, or protected-record verification"
+  },
+  "validationLimits": {
+    "measurementPayloadValidation": "no replacement or new measurement record produced",
+    "protectedRecordProtocol": "not validated",
+    "signatureOrAttestation": "not verified",
+    "producerProvenance": "not established",
+    "protectedAcceptance": "not evaluated",
+    "findingValidity": "unadjudicated",
+    "blockToPassCausality": "not established",
+    "adoptionOrActivation": "not claimed"
+  },
+  "gapCodes": [
+    "api-pr-binding-unresolved-for-both-records",
+    "historical-reviewed-merge-ancestry-not-independently-verified",
+    "effective-review-authority-and-reviewer-conditions-unavailable",
+    "initial-finding-not-independently-adjudicated",
+    "later-pass-does-not-dispose-initial-block-by-itself",
+    "historical-mutable-comment-body-unavailable",
+    "protected-record-signature-attestation-producer-and-acceptance-unverified"
+  ],
+  "privacyAndStatus": "inventory contains public metadata references only; private record, finding, authority, attestation, host feasibility, and payload contents are excluded. This is not a finding disposition.",
+  "revisionRoleLimits": {
+    "measurementHeadSha": "The records separately report the run measurement head SHA and reviewed SHA.",
+    "initialReviewedSha": "The private declared metadata names the initial record reviewed SHA as its merge SHA; this is a reported role declaration, not authenticated evidence.",
+    "laterReviewedSha": "The later record follows a ci-merge-revision declaration for its reviewed SHA; that role is not authenticated here.",
+    "ancestry": "The historical reviewed-to-merge ancestry has not been independently verified. These distinct revision roles are not treated as a mismatch finding."
+  }
+}

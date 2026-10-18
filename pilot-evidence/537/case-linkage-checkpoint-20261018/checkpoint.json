@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "kind": "public-inventory-checkpoint-manifest",
+  "status": "staged-pending-independent-review",
+  "destination": "pilot-evidence/537/case-linkage-checkpoint-20261018/",
+  "files": [
+    {
+      "path": "case-linkage-inventory.json",
+      "bytes": 6761,
+      "sha256": "1a3361540fcbc564e2b8545e02bc11ae903880e99e0da15bad4186f90180bb2d"
+    }
+  ],
+  "sourceReferences": [
+    {
+      "artifactId": 11844036774,
+      "runId": 38456913319,
+      "attempt": 1,
+      "sha256": "b509c9daa84d1d53c07d061dd1b710b0b6cbb6024fb43e98ede3c006a4920522"
+    },
+    {
+      "artifactId": 11844700321,
+      "runId": 38456913319,
+      "attempt": 1,
+      "sha256": "19eae6bfc7fd4594625bb551fc3b973b36990029d799a842de7293df14689b75"
+    },
+    {
+      "artifactId": 11847612960,
+      "runId": 38464128628,
+      "attempt": 1,
+      "sha256": "bd3cbaf17d4c6db16efad4ad63f67371ed9b81443558ee5884ec37885f933d5c"
+    }
+  ],
+  "limits": "Public inventory metadata only; no raw record, finding, authority, attestation, private path, or host-feasibility material. Linkage remains unadjudicated and does not establish validity, causality, acceptance, adoption, or activation."
+}
