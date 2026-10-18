@@ -239,7 +239,7 @@ function apiFixture({ repoPath, baseSha, bSha, groupSha, triggerHeadSha, profile
     repositoryId, triggerPr, bPr, triggerArtifactName };
 }
 
-function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false } = {}) {
+function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false, previousPolicyLocalOnly = false } = {}) {
   const repoPath = mkdtempSync(join(tmpdir(), 'agk-merge-group-route-'));
   git(repoPath, ['init', '-q']);
   // These short-lived fixtures need no detached Git housekeeping after a
@@ -262,7 +262,8 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false 
   if (profile === 'completed-owner-decision-self-v1') members.push({ id: 'ownership-charter', repository: 'self',
     revision: 'authority-revision', path: 'docs/ownership.md' });
   const basePolicy = structuredClone(policy);
-  if (candidateOnlyOptIn) delete basePolicy.branches.main.ownerAmendment;
+  if (previousPolicyLocalOnly) basePolicy.branches.main = { mode: 'local-only' };
+  else if (candidateOnlyOptIn) delete basePolicy.branches.main.ownerAmendment;
   put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(basePolicy)}\n`));
   put(repoPath, '.codex/gatekeeper/authorities.json', Buffer.from(`${JSON.stringify({ version: 1, authorities: members })}\n`));
   const oldArchitecture = Buffer.from('# Architecture\nExisting rule needs an owner decision.\n');
@@ -275,10 +276,10 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false 
     put(repoPath, 'docs/ownership.md', oldOwnership);
   }
   const baseSha = commit(repoPath, 'protected base');
-  if (candidateOnlyOptIn) put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(policy)}\n`));
+  if (candidateOnlyOptIn || previousPolicyLocalOnly) put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(policy)}\n`));
   put(repoPath, 'docs/architecture.md', newArchitecture);
   if (oldOwnership) put(repoPath, 'docs/ownership.md', newOwnership);
-  const bSha = commit(repoPath, candidateOnlyOptIn ? 'candidate policy opt-in B' : 'authority-only B');
+  const bSha = commit(repoPath, candidateOnlyOptIn || previousPolicyLocalOnly ? 'candidate policy opt-in B' : 'authority-only B');
   const groupCommit = git(repoPath, ['commit-tree', `${bSha}^{tree}`, '-p', baseSha, '-p', bSha, '-m', 'merge group']);
   const groupSha = groupCommit.toString('ascii').trim();
   const runGit = args => git(repoPath, args);
@@ -694,7 +695,7 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
   } finally { rmSync(temporary, { recursive: true, force: true }); }
 }
 
-async function exerciseCandidateOnlyOptInGate(fixture, api, event) {
+async function exerciseCandidateOnlyOptInGate(fixture, api, event, expectedBaseMode = 'enforced') {
   const temporary = mkdtempSync(join(tmpdir(), 'agk-candidate-opt-in-'));
   try {
     fixture.runGit(['remote', 'add', 'origin', fixture.repoPath]);
@@ -706,7 +707,7 @@ async function exerciseCandidateOnlyOptInGate(fixture, api, event) {
     const basePolicy = resolveCiPolicy(parseCiPolicyJson(basePolicyBytes.toString('utf8')), 'main');
     const candidatePolicy = resolveCiPolicy(parseCiPolicyJson(candidatePolicyBytes.toString('utf8')), 'main');
     assert.equal(JSON.parse(basePolicyBytes.toString('utf8')).branches.main.ownerAmendment, undefined);
-    assert.equal(basePolicy.mode, 'enforced');
+    assert.equal(basePolicy.mode, expectedBaseMode);
     assert.equal(basePolicy.ownerAmendmentGrade, undefined);
     assert.equal(candidatePolicy.mode, 'enforced');
     assert.equal(candidatePolicy.ownerAmendmentGrade, 'G0');
@@ -757,8 +758,13 @@ throw new Error('Unexpected gh work in candidate-only opt-in case');\n`);
     const stdout = execFileSync(process.execPath, [join(fixture.repoPath, 'scripts/owner-amendment-merge-group-gate.mjs')],
       { env, cwd: runner, encoding: 'utf8', timeout: 30_000, maxBuffer: 2 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
 
-    assert.equal(stdout, 'No protected amendment tag selects a fresh ordinary review of the exact current base/B tuple.\n');
-    assert.equal(readFileSync(outputPath, 'utf8'), `route=ordinary\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+    if (expectedBaseMode === 'local-only') {
+      assert.equal(stdout, 'Protected current-base policy explicitly selects local-only review.\n');
+      assert.equal(readFileSync(outputPath, 'utf8'), `route=not-applicable\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+    } else {
+      assert.equal(stdout, 'No protected amendment tag selects a fresh ordinary review of the exact current base/B tuple.\n');
+      assert.equal(readFileSync(outputPath, 'utf8'), `route=ordinary\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+    }
     assert.equal(existsSync(join(runner, 'owner-amendment-eligibility')), false);
     const trace = readFileSync(tracePath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
     assert.deepEqual(trace.filter(item => item.fetch).map(item => item.fetch).sort(), [...paths].sort());
@@ -950,6 +956,18 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
     }
   });
 }
+
+test('production main selects not-applicable from protected local-only base policy despite candidate G0 opt-in', async t => {
+  const profile = 'completed-owner-decision-self-v1';
+  const fixture = makeRepo(profile, { includeRuntime: true, previousPolicyLocalOnly: true });
+  t.after(fixture.cleanup);
+  const api = apiFixture({ repoPath: fixture.repoPath, baseSha: fixture.baseSha, bSha: fixture.bSha,
+    groupSha: fixture.groupSha, triggerHeadSha: fixture.triggerHeadSha, profile,
+    triggerRecordBytes: Buffer.from('{}'), bundleBytes: Buffer.from('{}') });
+  const event = { action: 'checks_requested', repository: { full_name: repository }, merge_group: {
+    base_ref: 'refs/heads/main', base_sha: fixture.baseSha, head_sha: fixture.groupSha } };
+  await exerciseCandidateOnlyOptInGate(fixture, api, event, 'local-only');
+});
 
 for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
   test(`production main ignores candidate-only ${profile} opt-in`, async t => {
