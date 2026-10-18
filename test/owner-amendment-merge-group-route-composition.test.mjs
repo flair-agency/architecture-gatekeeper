@@ -521,6 +521,8 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     const validArtifactList = structuredClone(responses[artifactListPath]);
     const validArtifactDetail = structuredClone(responses[artifactDetailPath]);
     const validRunAttempt = structuredClone(responses[runAttemptPath]);
+    const eligibilityZipPath = `${prefix}/actions/artifacts/555/zip`;
+    const validEligibilityZip = structuredClone(responses[eligibilityZipPath]);
     const validTagRef = structuredClone(responses[tagRefPath]);
     const runCliFailure = (diagnostic) => {
       writeFileSync(dataPath, JSON.stringify(responses));
@@ -616,6 +618,31 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
       assert.equal(readFileSync(outputPath, 'utf8'), '');
       return true;
     });
+
+    // Keep the receipt valid JSON and transport metadata internally consistent,
+    // so production acceptance reaches the closed receipt-shape validator.
+    const closedShapeReceipt = JSON.parse(receiptBytes);
+    closedShapeReceipt.extra = true;
+    const closedShapeBytes = canonicalBytes(closedShapeReceipt);
+    const closedShapeZip = makeZip([{ name: 'eligibility-receipt.json', bytes: closedShapeBytes },
+      { name: 'attestation-bundle.json', bytes: Buffer.from('{"synthetic":true}\n') }]);
+    responses[eligibilityZipPath] = { bytes: closedShapeZip.toString('base64') };
+    const closedShapeArtifact = { ...structuredClone(validArtifactDetail.json),
+      digest: `sha256:${hash(closedShapeZip)}`, size_in_bytes: closedShapeZip.length };
+    responses[artifactDetailPath] = { json: closedShapeArtifact };
+    responses[artifactListPath].json.artifacts = [structuredClone(closedShapeArtifact)];
+    runCliFailure(/semantic eligibility receipt has missing or unknown fields/);
+
+    // Restore the complete valid artifact after the new negative case and
+    // replay production main to show the mutation did not poison later flow.
+    responses[eligibilityZipPath] = validEligibilityZip;
+    responses[artifactDetailPath] = structuredClone(validArtifactDetail);
+    responses[artifactListPath] = structuredClone(validArtifactList);
+    writeFileSync(dataPath, JSON.stringify(responses));
+    writeFileSync(outputPath, '');
+    rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
+    assert.match(run(), /OWNER_AMENDMENT \/ G0 pre-transition eligibility verified; adoption and canonical placement remain pending/);
+    assert.equal(readFileSync(outputPath, 'utf8'), `route=amendment\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
   } finally { rmSync(temporary, { recursive: true, force: true }); }
 }
 

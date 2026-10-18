@@ -8,6 +8,8 @@ It records source/test relationships, not a new test execution or an authority
 decision. #254 remains partial. Completed quality parent #412 and original96
 migration #419 do not close the broader lifecycle or test-rationalization scope.
 
+The revision-bound [lifecycle and migration test matrix](2026-10-18-quality254-lifecycle-migration-test-matrix.md) records concrete supported fixture tuples and migration boundaries at adopted #606 (`917ce8b5bcb159afd769976e10a2e84e45b92fad`). Preceding #605 was reviewed at `91e01b330007a01ee82d0f73631923a746f02cd3` and adopted as `fc79d018cedccb29e147935d79ce84dace5c0f7a`. The matrix uses #606 source/test anchors throughout. #606 adds closed receipt-shape rejection and restored-valid replay inside the existing production child-main trace for both amendment profiles; production source, policy, profiles, and authority did not change from adopted #605 through #606. Neither increment closes #254.
+
 ## Existing production composition
 
 The later [BLOCK child-main increment](2026-10-18-block-main-composition.md)
@@ -15,14 +17,14 @@ extends the same child trace to both already-implemented profiles. The table
 below retains the original named-baseline inventory; the increment records
 which former component-only boundary gains process/output coverage.
 
-The actual child call is in
+At this inventory's named baseline, the actual child call is in
 [`owner-amendment-merge-group-route-composition.test.mjs`](../../test/owner-amendment-merge-group-route-composition.test.mjs),
 subtest `executes production main with tagged G0 evidence and rejects runtime
 and receipt binding mismatches`. It executes
 [`scripts/owner-amendment-merge-group-gate.mjs`](../../scripts/owner-amendment-merge-group-gate.mjs)
-and nested semantic input preparation with real temporary Git objects. It runs
-for `completed-owner-decision-self-v1`; the surrounding
-`completed-block-v1` case composes components rather than invoking main.
+and nested semantic input preparation with real temporary Git objects. It ran
+for `completed-owner-decision-self-v1`; the then-current surrounding
+`completed-block-v1` case composed components rather than invoking main. Later adopted #601 added BLOCK child-main composition, and #606 added a closed-shape receipt rejection with valid-fixture replay to both profile child-main traces. The exact current source/test tuple and limits are recorded in the linked matrix.
 
 GitHub API/GraphQL, `gh`, artifact transport and attestation observations are
 controlled fixtures. Production functions construct and consume semantic
@@ -80,12 +82,18 @@ compiler work without removing type fixtures or test cases.
 
 ## Next bounded work and decision boundaries
 
-Owner-independent follow-up can finish the supported-tuple inventory and
-compare further concrete duplicate candidates against retained assertions. The
-bounded rationalization exercises the existing no-signer ordinary dispatch
-through main. A distinct malformed-record output rejection remains a possible
-test task after confirming its added boundary value. These are not newly
-required routes and are not all blocked by #210.
+The supported-family inventory is now recorded in the linked matrix at its
+fixed baseline; it is not a closure claim. Remaining work includes the exact
+consumer/predecessor tuple and owner-authorized route where a cross-version
+bridge is requested; any selected bootstrap lineage and second normal adoption;
+positive oversized-predecessor recovery under an owner-selected profile; live
+producer/model/attestation evidence; protected host configuration and required
+checks; queue transition and canonical readback; self commissioning cycles;
+and fresh successor review where required. These are live, consumer, or profile
+prerequisites and cannot be supplied by broader synthetic fixtures. Further
+test-cost or redundancy work needs concrete measured evidence and invariant-to-
+retained-oracle mapping. The #606 closed-receipt child assertion is now covered;
+it is not a new route and does not close #254.
 
 Live host/consumer proofs need the exact selected inputs and operational
 prerequisites from their owning issues. #210 explicitly retains the canonical
