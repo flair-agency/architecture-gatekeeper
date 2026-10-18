@@ -3,6 +3,7 @@ import test from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/ci-decision-kind-contract');
@@ -13,16 +14,14 @@ const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root, undefi
 assert.deepEqual(parsed.errors, []);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
 
-function diagnosticsFor(name) {
-  const file = join(fixtureRoot, name);
-  const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([file], options));
-  assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file), [], 'module contracts must remain error-free');
-  return diagnostics.filter(item => item.file?.fileName === file);
-}
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsFor = compileFixtureDiagnostics(fixtureFiles, options, 'module contracts must remain error-free');
 
 test('decision routing output remains unknown in the typed source contract', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
-  const diagnostics = diagnosticsFor('negative.mts');
+  const positive = fixtureFiles[0];
+  const negative = fixtureFiles[1];
+  assert.deepEqual(diagnosticsFor(positive), []);
+  const diagnostics = diagnosticsFor(negative);
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [[2322, 3]]);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /unknown.*not assignable/i);
 });
