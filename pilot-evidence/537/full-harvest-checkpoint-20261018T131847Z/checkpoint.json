@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "537-full-harvest-checkpoint-20261018T131847Z",
+  "destination": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "frozenReadCutoffUtc": "2026-10-18T13:18:47Z",
+  "sourceInventorySha256": "888902f6bd820de0f6ceb9b81c5c03c964a5cc29c94c46a5a500319a41a0f935",
+  "selectionFileSha256": "86950b51f4971ee284be212a20777ac75804f1dd6f6532f56b946d2ba85ef110",
+  "normalizationReceiptSha256": "42fb1ad85c10daea8cdf76f256df329b9f4322bb6a9043109b97e27fd33588e2",
+  "publicationStatus": "staged-for-independent-review",
+  "files": [
+    {
+      "path": "artifact-inventory-001.json",
+      "bytes": 152809,
+      "sha256": "84e93716bc0143ccb51a858d9fbbb758c16503955d0c035f5d2ebd23ff8492d8"
+    },
+    {
+      "path": "artifact-inventory-002.json",
+      "bytes": 149965,
+      "sha256": "3b65ed44a9ad250e384a1e3220066cc2683ddfeededd396b70b8feb3608fe8c7"
+    },
+    {
+      "path": "artifact-inventory-manifest.json",
+      "bytes": 827,
+      "sha256": "4c9458424a7a890ac13f0bd3dde786223a8c85564353883a3a506be543166ed2"
+    },
+    {
+      "path": "chunks/chunk-001.json",
+      "bytes": 197015,
+      "sha256": "88cd6be8b506c1967bcd164a1fbd0122723a3d3b5247f8ab9d2972d780006ce3"
+    },
+    {
+      "path": "chunks/chunk-002.json",
+      "bytes": 204430,
+      "sha256": "d30896c9325597183641649d1161c03795d4120399592bd0ad7e2c34e7f337ef"
+    },
+    {
+      "path": "chunks/chunk-003.json",
+      "bytes": 203192,
+      "sha256": "4f4b9923225f4fd1e5c8f3592b06d61ebfcdb9c79eda71e3464a9b1366c20a5c"
+    },
+    {
+      "path": "chunks/chunk-004.json",
+      "bytes": 201954,
+      "sha256": "be9074462ad06ea979add3e2af2701c6e9f1624d5ac110dd412aa5c504328c0f"
+    },
+    {
+      "path": "chunks/chunk-005.json",
+      "bytes": 100795,
+      "sha256": "fe91e4673f1a73d202cf540794da3cd9b699130f144e21011a1482d3db72bf55"
+    },
+    {
+      "path": "collection-coverage.json",
+      "bytes": 27464,
+      "sha256": "de1b5862eaa57bce90bffa5285c558332fb1d64848b16f5094c6900c081d8d4e"
+    },
+    {
+      "path": "pr-association-candidates.json",
+      "bytes": 73306,
+      "sha256": "dbe1f4ed8a513feba4a466ea5453b42b97f55c42559221414b4918d0b96416e5"
+    },
+    {
+      "path": "pr-association-projection.json",
+      "bytes": 38441,
+      "sha256": "65e2109e2e1ff666355234f45824203468547e6773257a21e0520c09a1fcdd4f"
+    },
+    {
+      "path": "validation-report.json",
+      "bytes": 6311,
+      "sha256": "d54f47a33a65a2f01604a90369e8cb6a27f1b0d590e0192426eb6fbb8aae5d5f"
+    }
+  ],
+  "scope": {
+    "artifacts": 214,
+    "attemptPairs": 107,
+    "records": 535,
+    "chunks": 5,
+    "sourceEnvelopeGaps": 0,
+    "itemValidationGaps": 0,
+    "globalDuplicateAttemptPhaseIdentities": 0,
+    "observationsDroppedOrDeduplicated": 0
+  },
+  "chunking": "Whole (runId, runAttempt) groups; each JSON dataset chunk is <=200 KiB and separately production-validated. No combined dataset file is emitted.",
+  "contentAllowlist": "Only already-production-redacted record chunks, public API artifact/run metadata, hashes, validation counts, and explicit limitations. No scripts, local paths, private ZIPs, extracted private copies, credentials, or signed URLs.",
+  "artifactInventoryParts": 2,
+  "coverageInventorySha256": "de1b5862eaa57bce90bffa5285c558332fb1d64848b16f5094c6900c081d8d4e",
+  "publicAssociationFiles": [
+    "pr-association-candidates.json",
+    "pr-association-projection.json"
+  ],
+  "coverageLimitationsFile": "collection-coverage.json"
+}

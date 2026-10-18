@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "validation": "passed",
+  "validatedScope": {
+    "selectedArtifacts": 214,
+    "collectorAReceiptListedArtifacts": 104,
+    "collectorBReceiptListedArtifacts": 102,
+    "priorVerifiedArtifacts": 8,
+    "workflowAttemptPairs": 107,
+    "records": 535,
+    "chunks": 5,
+    "itemValidationGaps": 0,
+    "sourceEnvelopeGaps": 0,
+    "globalDuplicateAttemptPhaseIdentities": 0,
+    "observationsDroppedOrDeduplicated": 0
+  },
+  "terminalDiagnostics": {
+    "artifactRoutes": {
+      "ci-outcome": 107,
+      "ci-review": 107
+    },
+    "stateCounts": {
+      "completed": 177,
+      "incomplete": 36,
+      "cancelled": 1
+    },
+    "decisionCounts": {
+      "PASS": 69,
+      "BLOCK": 1,
+      "null": 144
+    },
+    "missingTerminalByCollectorRoute": {},
+    "interpretation": "These are preserved record values and structural diagnostics only. No semantic finding, acceptance, or case classification is inferred."
+  },
+  "bindingConsistency": {
+    "recordsWithCi": 535,
+    "recordsWithoutCi": 0,
+    "repositoryIdsCompared": 535,
+    "runIdsCompared": 535,
+    "runAttemptsCompared": 535,
+    "knownPrNumbersCompared": 10,
+    "knownPrShaPairsCompared": 10,
+    "recordsOnUnboundRunsWithCi": 525,
+    "note": "Only non-null redacted CI values are compared. API-unbound attempts remain unlinked; no PR is inferred or asserted."
+  },
+  "chunkValidation": [
+    {
+      "file": "chunk-001.json",
+      "bytes": 197015,
+      "sha256": "88cd6be8b506c1967bcd164a1fbd0122723a3d3b5247f8ab9d2972d780006ce3",
+      "runAttempts": 23,
+      "firstRunAttempt": "39130703163/1",
+      "lastRunAttempt": "39095990299/1",
+      "recordCount": 115,
+      "collectionGaps": 0
+    },
+    {
+      "file": "chunk-002.json",
+      "bytes": 204430,
+      "sha256": "d30896c9325597183641649d1161c03795d4120399592bd0ad7e2c34e7f337ef",
+      "runAttempts": 24,
+      "firstRunAttempt": "39095349036/1",
+      "lastRunAttempt": "39068170806/1",
+      "recordCount": 120,
+      "collectionGaps": 0
+    },
+    {
+      "file": "chunk-003.json",
+      "bytes": 203192,
+      "sha256": "4f4b9923225f4fd1e5c8f3592b06d61ebfcdb9c79eda71e3464a9b1366c20a5c",
+      "runAttempts": 24,
+      "firstRunAttempt": "39062602638/1",
+      "lastRunAttempt": "38549250870/1",
+      "recordCount": 120,
+      "collectionGaps": 0
+    },
+    {
+      "file": "chunk-004.json",
+      "bytes": 201954,
+      "sha256": "be9074462ad06ea979add3e2af2701c6e9f1624d5ac110dd412aa5c504328c0f",
+      "runAttempts": 24,
+      "firstRunAttempt": "38548518355/1",
+      "lastRunAttempt": "38485033547/1",
+      "recordCount": 120,
+      "collectionGaps": 0
+    },
+    {
+      "file": "chunk-005.json",
+      "bytes": 100795,
+      "sha256": "fe91e4673f1a73d202cf540794da3cd9b699130f144e21011a1482d3db72bf55",
+      "runAttempts": 12,
+      "firstRunAttempt": "38481701746/1",
+      "lastRunAttempt": "38417263808/1",
+      "recordCount": 60,
+      "collectionGaps": 0
+    }
+  ],
+  "priorCaptureComparison": {
+    "priorArtifactsCompared": 8,
+    "recordValuesAndPhaseOrderUnchanged": true
+  },
+  "limitations": [
+    "The complete original inventory described 174 runs and 179 enumerated workflow attempts. This package contains 214 selected pre-cutoff artifact metadata rows paired into 107 attempts; two post-cutoff artifacts were excluded separately.",
+    "72 enumerated attempts had no pre-cutoff measurement artifact; later observed attempt conclusions were 69 success and 3 failure. These are separate collection gaps, not selected-export/source-envelope/item validation gaps or semantic outcomes.",
+    "68 runs were observed later as having no measurement artifact. The run-created-at query cannot discover in-window reruns whose original run predates the window; whole-pilot coverage remains incomplete.",
+    "48 known-eligible and 2 unknown rows in the previous supplement are unchanged. The 170 originally API-unbound run bindings remain empty in the original inventory; later public commit/PR queries only produce diagnostic association candidates.",
+    "A complete capture of these 214 listed artifacts is not a full-pilot population, coverage, audit, eligibility, or efficacy claim.",
+    "Five chunks were separately checked with the production parser and dataset validator. The combined 535-record serialization exceeds the production 256 KiB whole-dataset limit; no whole-aggregate parse/API acceptance is claimed.",
+    "Terminal state and decision counts are preserved structural diagnostics only. The recorded BLOCK value is not interpreted as a semantic architecture finding.",
+    "No model invocation, workflow rerun, fixture, schedule/opt-in change, security probe, or publication occurred. Publication and readback remain separate coordinator steps.",
+    "Earlier archives retained as review history overlap this full snapshot; do not concatenate or sum them as additional observations. The 535-record total includes the 20 records from the earlier eight artifact captures."
+  ],
+  "collectionCoverage": {
+    "inventoryRuns": 174,
+    "enumeratedWorkflowAttempts": 179,
+    "selectedPreCutoffArtifacts": 214,
+    "selectedCompleteArtifactPairs": 107,
+    "attemptsWithoutPreCutoffMeasurementArtifacts": 72,
+    "runsWithoutAnyMeasurementArtifactAsObservedLater": 68,
+    "postCutoffExcludedArtifacts": 2,
+    "absentAttemptConclusionsAsObservedLater": {
+      "success": 69,
+      "failure": 3
+    }
+  },
+  "laterAssociationProjection": {
+    "originallyUnboundRuns": 170,
+    "publicHeadQueries": 100,
+    "exactCurrentHeadAssociationCandidates": 80,
+    "historicalCommitAssociationCandidates": 69,
+    "unresolvedNoAssociation": 21,
+    "originalBindingsOverwritten": 0,
+    "protectedEventOrProducerProvenanceAuthenticated": false,
+    "queryObservation": {
+      "endpoint": "GET /repos/flair-agency/architecture-gatekeeper/commits/{headSha}/pulls?per_page=100",
+      "concurrency": 4,
+      "firstPageOnly": true,
+      "observedStartedUtc": "2026-10-18 14:44:59 UTC",
+      "observedCompletedUtc": "2026-10-18 14:45:19 UTC",
+      "exactPerRequestTimesCaptured": false
+    },
+    "interpretation": "Later public commit/PR associations are diagnostic proposals only. They do not rewrite original empty API bindings, establish frozen-cutoff state, or authenticate protected event/producer provenance."
+  }
+}

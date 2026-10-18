@@ -1,0 +1,696 @@
+{
+  "schemaVersion": 1,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "frozenSourceCutoffUtc": "2026-10-18T13:18:47Z",
+  "sourceInventorySha256": "888902f6bd820de0f6ceb9b81c5c03c964a5cc29c94c46a5a500319a41a0f935",
+  "sourceSelectionSha256": "86950b51f4971ee284be212a20777ac75804f1dd6f6532f56b946d2ba85ef110",
+  "counts": {
+    "inventoryRuns": 174,
+    "enumeratedWorkflowAttempts": 179,
+    "selectedPreCutoffArtifacts": 214,
+    "selectedCompleteArtifactPairs": 107,
+    "attemptsWithoutPreCutoffMeasurementArtifacts": 72,
+    "runsWithoutAnyMeasurementArtifactAsObservedLater": 68,
+    "postCutoffExcludedArtifacts": 2,
+    "absentAttemptConclusionsAsObservedLater": {
+      "success": 69,
+      "failure": 3
+    }
+  },
+  "excludedPostCutoffArtifacts": [
+    {
+      "artifactId": "12136969723",
+      "runId": "39130941543",
+      "runAttempt": "1",
+      "phase": "outcome",
+      "createdAt": "2026-10-18T13:20:56Z"
+    },
+    {
+      "artifactId": "12138031618",
+      "runId": "39130941543",
+      "runAttempt": "1",
+      "phase": "review",
+      "createdAt": "2026-10-18T13:20:54Z"
+    }
+  ],
+  "absentAttemptRows": [
+    {
+      "runId": "39130941543",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": false,
+      "postCutoffArtifactIds": [
+        "12136969723",
+        "12138031618"
+      ],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39125433848",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39123624684",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39121280816",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39118888525",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39107056354",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39105995728",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39104237746",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39100653197",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39100373156",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39099966723",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39099606817",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39099341952",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39098876491",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39098467462",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39098136263",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39097648726",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39097306490",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39096145113",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39095890189",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39095327199",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39094155045",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39094063686",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39093253267",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39093036209",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39090185887",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39088320658",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39085288224",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39078339831",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39077413971",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39075902284",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39075147704",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39074016302",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39071296913",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39071007214",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39069180283",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39068116841",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39062561404",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39061665462",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39058737131",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39057743487",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39054302935",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "39054247651",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38786551302",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38582079654",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38577884113",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38571264233",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38565358439",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38562613662",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38560605985",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38558852428",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38554907849",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38551134485",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38546363012",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38545487639",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38537459625",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38537440630",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38536708335",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38536691544",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38536201084",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38531639275",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38529301028",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38522543822",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38473334693",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "failure",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38473334693",
+      "runAttempt": "2",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "failure",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38473334693",
+      "runAttempt": "3",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "failure",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38466757198",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38460381995",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38452967283",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38448483439",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38440796070",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": true,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    },
+    {
+      "runId": "38413732177",
+      "runAttempt": "1",
+      "statusAsObserved": "completed",
+      "conclusionAsObserved": "success",
+      "originalApiPrBindingUnresolved": false,
+      "postCutoffArtifactIds": [],
+      "interpretation": "no pre-cutoff measurement artifact in retained metadata; cause and terminal observations unknown"
+    }
+  ],
+  "limitations": [
+    "Selection covers artifacts created by the frozen cutoff on originally in-window self-gate runs; no new runs, scope or window were added.",
+    "Statuses were observed after the cutoff in the original inventory; this is not an atomic as-of-cutoff reconstruction. A post-cutoff export is excluded even if the run was created before cutoff.",
+    "The 72 artifact-absent workflow attempts are separate coverage limitations, not zero-error or successful semantic reviews, and not the selected exports source-envelope/item validation gaps. Reasons, measurement opt-in state and missing terminal contents are not inferred.",
+    "The run-created-at query cannot discover in-window reruns whose original run predates the window; whole-pilot coverage remains incomplete.",
+    "No population, audit sample, natural case adjudication, rates, efficacy, protected provenance or acceptance is inferred."
+  ]
+}

@@ -1,0 +1,2250 @@
+{
+  "schemaVersion": 1,
+  "kind": "public-commit-pr-association-candidates",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "frozenSourceCutoffUtc": "2026-10-18T13:18:47Z",
+  "sourceInventorySha256": "888902f6bd820de0f6ceb9b81c5c03c964a5cc29c94c46a5a500319a41a0f935",
+  "query": {
+    "endpoint": "GET /repos/flair-agency/architecture-gatekeeper/commits/{headSha}/pulls?per_page=100",
+    "concurrency": 4,
+    "firstPageOnly": true,
+    "observedStartedUtc": "2026-10-18 14:44:59 UTC",
+    "observedCompletedUtc": "2026-10-18 14:45:19 UTC",
+    "exactPerRequestTimesCaptured": false
+  },
+  "unboundRunHeads": [
+    {
+      "runId": "39125461473",
+      "headSha": "7266dfd5ecf2ef6430449c67bd98c793a4874dfc"
+    },
+    {
+      "runId": "39125433848",
+      "headSha": "7266dfd5ecf2ef6430449c67bd98c793a4874dfc"
+    },
+    {
+      "runId": "39124413435",
+      "headSha": "98156e8a977c16e5fc27b1bb191af9ffa1892ba6"
+    },
+    {
+      "runId": "39123700551",
+      "headSha": "b84b7593f360dfdb59c1a7f4272717ba986eb1bc"
+    },
+    {
+      "runId": "39123624684",
+      "headSha": "b84b7593f360dfdb59c1a7f4272717ba986eb1bc"
+    },
+    {
+      "runId": "39121344313",
+      "headSha": "2aed63cfffa4802b7397abdff12df035fb74a505"
+    },
+    {
+      "runId": "39121280816",
+      "headSha": "2aed63cfffa4802b7397abdff12df035fb74a505"
+    },
+    {
+      "runId": "39118941185",
+      "headSha": "dd1f5d04f6f56439bdb5e8547787acf9cf2cc4a7"
+    },
+    {
+      "runId": "39118888525",
+      "headSha": "dd1f5d04f6f56439bdb5e8547787acf9cf2cc4a7"
+    },
+    {
+      "runId": "39107349903",
+      "headSha": "6a89584cc8c0853fbef85bd3078b01c9ded617f7"
+    },
+    {
+      "runId": "39107056354",
+      "headSha": "6a89584cc8c0853fbef85bd3078b01c9ded617f7"
+    },
+    {
+      "runId": "39106147448",
+      "headSha": "31f762435a30cf36d6386595bf4ef13f6f09d9c5"
+    },
+    {
+      "runId": "39105995728",
+      "headSha": "31f762435a30cf36d6386595bf4ef13f6f09d9c5"
+    },
+    {
+      "runId": "39104273631",
+      "headSha": "61699faef606ace81d53385816cb07827880f4e6"
+    },
+    {
+      "runId": "39104237746",
+      "headSha": "61699faef606ace81d53385816cb07827880f4e6"
+    },
+    {
+      "runId": "39103710724",
+      "headSha": "43db482315708bf92abb09d11ae6a81df91ccb15"
+    },
+    {
+      "runId": "39103568198",
+      "headSha": "43db482315708bf92abb09d11ae6a81df91ccb15"
+    },
+    {
+      "runId": "39100683000",
+      "headSha": "d90908f609537d82f4867bd628a9a177e57b941d"
+    },
+    {
+      "runId": "39100653197",
+      "headSha": "d90908f609537d82f4867bd628a9a177e57b941d"
+    },
+    {
+      "runId": "39100373156",
+      "headSha": "a9756056cf059cebf23b6ac94797c6a57099eafb"
+    },
+    {
+      "runId": "39099993342",
+      "headSha": "ae3c1265430a72dc48296523cab5ad0263ee55a5"
+    },
+    {
+      "runId": "39099966723",
+      "headSha": "ae3c1265430a72dc48296523cab5ad0263ee55a5"
+    },
+    {
+      "runId": "39099817300",
+      "headSha": "a3703be8f6661164d2335ebbf2e5f95c8c9da6d3"
+    },
+    {
+      "runId": "39099606817",
+      "headSha": "a3703be8f6661164d2335ebbf2e5f95c8c9da6d3"
+    },
+    {
+      "runId": "39099361811",
+      "headSha": "856d5fc71f4fa27916dc4eff39a1cee79f9311fa"
+    },
+    {
+      "runId": "39099341952",
+      "headSha": "856d5fc71f4fa27916dc4eff39a1cee79f9311fa"
+    },
+    {
+      "runId": "39098899351",
+      "headSha": "1d1fb92cc18faace7aa5583adcbb40db15116032"
+    },
+    {
+      "runId": "39098876491",
+      "headSha": "1d1fb92cc18faace7aa5583adcbb40db15116032"
+    },
+    {
+      "runId": "39098487025",
+      "headSha": "2bbe60607baa36e85a5c89b8d6b9969fe7506eea"
+    },
+    {
+      "runId": "39098467462",
+      "headSha": "2bbe60607baa36e85a5c89b8d6b9969fe7506eea"
+    },
+    {
+      "runId": "39098184701",
+      "headSha": "e56a551a7d98184c8fd81d0ee4d30fc501552edc"
+    },
+    {
+      "runId": "39098136263",
+      "headSha": "e56a551a7d98184c8fd81d0ee4d30fc501552edc"
+    },
+    {
+      "runId": "39097673506",
+      "headSha": "a008348eb1390c72fb321f60b0ce01950a55dfcd"
+    },
+    {
+      "runId": "39097648726",
+      "headSha": "a008348eb1390c72fb321f60b0ce01950a55dfcd"
+    },
+    {
+      "runId": "39097444478",
+      "headSha": "1d07bb257c4534e602ef75ac65b40487d903d8d4"
+    },
+    {
+      "runId": "39097306490",
+      "headSha": "1d07bb257c4534e602ef75ac65b40487d903d8d4"
+    },
+    {
+      "runId": "39096176636",
+      "headSha": "452450df73007f24488500df73b569749f707831"
+    },
+    {
+      "runId": "39096145113",
+      "headSha": "452450df73007f24488500df73b569749f707831"
+    },
+    {
+      "runId": "39095990299",
+      "headSha": "56bf19e1ca2357d24b3848a0d61210dd78eb73dc"
+    },
+    {
+      "runId": "39095890189",
+      "headSha": "56bf19e1ca2357d24b3848a0d61210dd78eb73dc"
+    },
+    {
+      "runId": "39095349036",
+      "headSha": "a5a0adeefc3f72365b05400ff7a81d89a6d2e2dd"
+    },
+    {
+      "runId": "39095327199",
+      "headSha": "a5a0adeefc3f72365b05400ff7a81d89a6d2e2dd"
+    },
+    {
+      "runId": "39094216145",
+      "headSha": "5e62a8657b36e9f242eccf1ab88c393762e53c35"
+    },
+    {
+      "runId": "39094155045",
+      "headSha": "5e62a8657b36e9f242eccf1ab88c393762e53c35"
+    },
+    {
+      "runId": "39094123286",
+      "headSha": "976566dcdb05f3de6400f1908a22aca2f29688aa"
+    },
+    {
+      "runId": "39094063686",
+      "headSha": "976566dcdb05f3de6400f1908a22aca2f29688aa"
+    },
+    {
+      "runId": "39093345407",
+      "headSha": "adae66930ef46848fd9b7882f15ce413e82a1164"
+    },
+    {
+      "runId": "39093253267",
+      "headSha": "adae66930ef46848fd9b7882f15ce413e82a1164"
+    },
+    {
+      "runId": "39093133614",
+      "headSha": "91e01b330007a01ee82d0f73631923a746f02cd3"
+    },
+    {
+      "runId": "39093036209",
+      "headSha": "91e01b330007a01ee82d0f73631923a746f02cd3"
+    },
+    {
+      "runId": "39092989242",
+      "headSha": "2f0e0600f64d9088a252497e6f8dea31eee16975"
+    },
+    {
+      "runId": "39090189555",
+      "headSha": "d7f246b0ccdae9f7675fc8048fb0da0676f9ed82"
+    },
+    {
+      "runId": "39090185887",
+      "headSha": "d7f246b0ccdae9f7675fc8048fb0da0676f9ed82"
+    },
+    {
+      "runId": "39089149082",
+      "headSha": "db247abe54551dd51d4178e3245913039e8729ec"
+    },
+    {
+      "runId": "39088933712",
+      "headSha": "5de800d0edcf1b4d171d25e190208a81f275388b"
+    },
+    {
+      "runId": "39088836215",
+      "headSha": "5de800d0edcf1b4d171d25e190208a81f275388b"
+    },
+    {
+      "runId": "39088380098",
+      "headSha": "e3a22ca2d6c160b72b9f1563c389c81e6964c7cf"
+    },
+    {
+      "runId": "39088320658",
+      "headSha": "e3a22ca2d6c160b72b9f1563c389c81e6964c7cf"
+    },
+    {
+      "runId": "39087514909",
+      "headSha": "8e793c78c9dfaa92e59a7389b4446e4a296ddd38"
+    },
+    {
+      "runId": "39085339955",
+      "headSha": "20b46ece0789efed7b132f16b308bc31718482b8"
+    },
+    {
+      "runId": "39085288224",
+      "headSha": "20b46ece0789efed7b132f16b308bc31718482b8"
+    },
+    {
+      "runId": "39078421657",
+      "headSha": "be983ba73f7ef6898650bf27e03d831bf2235f65"
+    },
+    {
+      "runId": "39078339831",
+      "headSha": "be983ba73f7ef6898650bf27e03d831bf2235f65"
+    },
+    {
+      "runId": "39077453149",
+      "headSha": "1c46540c16b924d2a74a1d2c90c6ff3fac24d3fc"
+    },
+    {
+      "runId": "39077413971",
+      "headSha": "1c46540c16b924d2a74a1d2c90c6ff3fac24d3fc"
+    },
+    {
+      "runId": "39075955285",
+      "headSha": "1388d6e68c092e29906abff134aec1289c8489c8"
+    },
+    {
+      "runId": "39075902284",
+      "headSha": "1388d6e68c092e29906abff134aec1289c8489c8"
+    },
+    {
+      "runId": "39075196315",
+      "headSha": "7649fddcfa2c5464d39e6f773528a0cf7c9950d8"
+    },
+    {
+      "runId": "39075147704",
+      "headSha": "7649fddcfa2c5464d39e6f773528a0cf7c9950d8"
+    },
+    {
+      "runId": "39074047702",
+      "headSha": "78cef811c9cf7b558dd259c0bdb5fcc8341e1c7a"
+    },
+    {
+      "runId": "39074016302",
+      "headSha": "78cef811c9cf7b558dd259c0bdb5fcc8341e1c7a"
+    },
+    {
+      "runId": "39071595345",
+      "headSha": "cdd76ec174cdcd09bf73da84f81e2e2fe017824c"
+    },
+    {
+      "runId": "39071296913",
+      "headSha": "cdd76ec174cdcd09bf73da84f81e2e2fe017824c"
+    },
+    {
+      "runId": "39071056651",
+      "headSha": "1713bffe9cd5125b44331a382efad6c1dea3b595"
+    },
+    {
+      "runId": "39071007214",
+      "headSha": "1713bffe9cd5125b44331a382efad6c1dea3b595"
+    },
+    {
+      "runId": "39070048571",
+      "headSha": "037f7abe12e67bd3e8a8d41b7f2a2a8fd90f4b93"
+    },
+    {
+      "runId": "39069729094",
+      "headSha": "037f7abe12e67bd3e8a8d41b7f2a2a8fd90f4b93"
+    },
+    {
+      "runId": "39069381120",
+      "headSha": "d80e44683e356c1d91b9639d1e4df96aa337125a"
+    },
+    {
+      "runId": "39069180283",
+      "headSha": "d80e44683e356c1d91b9639d1e4df96aa337125a"
+    },
+    {
+      "runId": "39068170806",
+      "headSha": "217d437768645816f54ef80c8e5de05c23209239"
+    },
+    {
+      "runId": "39068116841",
+      "headSha": "217d437768645816f54ef80c8e5de05c23209239"
+    },
+    {
+      "runId": "39062602638",
+      "headSha": "21ec6a9ce61dc92ab2ec0a2bb62f8dd85f54eacb"
+    },
+    {
+      "runId": "39062561404",
+      "headSha": "21ec6a9ce61dc92ab2ec0a2bb62f8dd85f54eacb"
+    },
+    {
+      "runId": "39061861855",
+      "headSha": "7d7ab2a9d076ca0487ac6ec8aeabb0934615b755"
+    },
+    {
+      "runId": "39061665462",
+      "headSha": "7d7ab2a9d076ca0487ac6ec8aeabb0934615b755"
+    },
+    {
+      "runId": "39058818720",
+      "headSha": "73e76a79e4eaabfdecef2c3506469d925521629e"
+    },
+    {
+      "runId": "39058737131",
+      "headSha": "73e76a79e4eaabfdecef2c3506469d925521629e"
+    },
+    {
+      "runId": "39057844290",
+      "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a"
+    },
+    {
+      "runId": "39057743487",
+      "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a"
+    },
+    {
+      "runId": "39054925290",
+      "headSha": "59070172f4be25340e3f762c857e7ef5d1020349"
+    },
+    {
+      "runId": "39054918444",
+      "headSha": "91c4e24e36d2fceb83e033fc8968c8e387db4653"
+    },
+    {
+      "runId": "39054302935",
+      "headSha": "59070172f4be25340e3f762c857e7ef5d1020349"
+    },
+    {
+      "runId": "39054247651",
+      "headSha": "91c4e24e36d2fceb83e033fc8968c8e387db4653"
+    },
+    {
+      "runId": "39052066367",
+      "headSha": "aaeec75ddfd437931de3db5494b46e90898af254"
+    },
+    {
+      "runId": "39051458557",
+      "headSha": "014085e0696f97e645a11cd0bdff6688265c9a3f"
+    },
+    {
+      "runId": "39051305823",
+      "headSha": "6d2600f76b92bbe156e97e8044aabe8c6e9c6cd3"
+    },
+    {
+      "runId": "38787251799",
+      "headSha": "e47e6ea6bb2fb44e3db3620f6ded16fdce7bc124"
+    },
+    {
+      "runId": "38786551302",
+      "headSha": "e47e6ea6bb2fb44e3db3620f6ded16fdce7bc124"
+    },
+    {
+      "runId": "38586465762",
+      "headSha": "ef10890135c5250393a6c4138731e8144726aae3"
+    },
+    {
+      "runId": "38583775189",
+      "headSha": "ef10890135c5250393a6c4138731e8144726aae3"
+    },
+    {
+      "runId": "38582079654",
+      "headSha": "ef10890135c5250393a6c4138731e8144726aae3"
+    },
+    {
+      "runId": "38579843884",
+      "headSha": "cfcf17ca0a75012700e77755e0c2e6627a3ef078"
+    },
+    {
+      "runId": "38577884113",
+      "headSha": "cfcf17ca0a75012700e77755e0c2e6627a3ef078"
+    },
+    {
+      "runId": "38573175302",
+      "headSha": "7e008eadcbf764ef7635541ef7de154c3cee4d26"
+    },
+    {
+      "runId": "38571264233",
+      "headSha": "7e008eadcbf764ef7635541ef7de154c3cee4d26"
+    },
+    {
+      "runId": "38566333801",
+      "headSha": "9d3265355cc3d7b4b7884a5ae487865ef66c317d"
+    },
+    {
+      "runId": "38565358439",
+      "headSha": "9d3265355cc3d7b4b7884a5ae487865ef66c317d"
+    },
+    {
+      "runId": "38563894536",
+      "headSha": "d9274494d8f9d834765186faaf63c91644ac8896"
+    },
+    {
+      "runId": "38562613662",
+      "headSha": "d9274494d8f9d834765186faaf63c91644ac8896"
+    },
+    {
+      "runId": "38561861953",
+      "headSha": "a02e8e6d1ccdd2742a193f0c4323f40e959c64bc"
+    },
+    {
+      "runId": "38560605985",
+      "headSha": "a02e8e6d1ccdd2742a193f0c4323f40e959c64bc"
+    },
+    {
+      "runId": "38558852428",
+      "headSha": "bbbb59131559c1c98456799be3dcb0ad46494bcb"
+    },
+    {
+      "runId": "38558204149",
+      "headSha": "0de41da6748e042e8a535e7a8b3f45e897476083"
+    },
+    {
+      "runId": "38557177707",
+      "headSha": "0de41da6748e042e8a535e7a8b3f45e897476083"
+    },
+    {
+      "runId": "38554907849",
+      "headSha": "9db531079ce643e7a87f06e5b9806c9559320774"
+    },
+    {
+      "runId": "38554161976",
+      "headSha": "2f860a8ec5c62061aa0ff1b67c5275d01243b3d7"
+    },
+    {
+      "runId": "38553873603",
+      "headSha": "2f860a8ec5c62061aa0ff1b67c5275d01243b3d7"
+    },
+    {
+      "runId": "38553362220",
+      "headSha": "c350f45550a448d4149b0d86cff79de86ef25b0c"
+    },
+    {
+      "runId": "38551134485",
+      "headSha": "56157dbca9e9a5174687cfdd022bdbd2e78588e6"
+    },
+    {
+      "runId": "38549250870",
+      "headSha": "b5e5c2a84b428864c2250f12c248241f196c8b37"
+    },
+    {
+      "runId": "38548518355",
+      "headSha": "c350f45550a448d4149b0d86cff79de86ef25b0c"
+    },
+    {
+      "runId": "38546363012",
+      "headSha": "b5e5c2a84b428864c2250f12c248241f196c8b37"
+    },
+    {
+      "runId": "38545487639",
+      "headSha": "b95dade5ed03d5b9127b73d85362e8d0b00114ef"
+    },
+    {
+      "runId": "38542434431",
+      "headSha": "f914b4f08d90b0c0cab4e87b0f10106e07426fc3"
+    },
+    {
+      "runId": "38541712071",
+      "headSha": "f914b4f08d90b0c0cab4e87b0f10106e07426fc3"
+    },
+    {
+      "runId": "38541557842",
+      "headSha": "3ac9878c538bc11e4fe88529d252534c306489ff"
+    },
+    {
+      "runId": "38539647581",
+      "headSha": "5279477c734500f28bf6477a39ef645b82715fc4"
+    },
+    {
+      "runId": "38538030042",
+      "headSha": "17653c0489083f1c482ac38fa44f2a3a21780d9a"
+    },
+    {
+      "runId": "38537459625",
+      "headSha": "17653c0489083f1c482ac38fa44f2a3a21780d9a"
+    },
+    {
+      "runId": "38537440630",
+      "headSha": "17653c0489083f1c482ac38fa44f2a3a21780d9a"
+    },
+    {
+      "runId": "38536708335",
+      "headSha": "a2763fe06379d3d691f14d238cbfdf1b058e0bd7"
+    },
+    {
+      "runId": "38536691544",
+      "headSha": "a2763fe06379d3d691f14d238cbfdf1b058e0bd7"
+    },
+    {
+      "runId": "38536201084",
+      "headSha": "a6bcbebea3cdb72ccb32a940050b73ebe93a2da0"
+    },
+    {
+      "runId": "38535763056",
+      "headSha": "a6bcbebea3cdb72ccb32a940050b73ebe93a2da0"
+    },
+    {
+      "runId": "38534702539",
+      "headSha": "2080610db11376a54814059fd3c00bff29262442"
+    },
+    {
+      "runId": "38534631314",
+      "headSha": "2080610db11376a54814059fd3c00bff29262442"
+    },
+    {
+      "runId": "38533743447",
+      "headSha": "73167a5087dedc12db7f005509d2ab9116e9c761"
+    },
+    {
+      "runId": "38533118049",
+      "headSha": "1469df49f9efbf3c6b4dd7df35100a742002abd0"
+    },
+    {
+      "runId": "38532481146",
+      "headSha": "25c59f732b0812d2eb1269a46d690c0c45087cd3"
+    },
+    {
+      "runId": "38531709961",
+      "headSha": "7e1684cd49e4e1784e699ce8f635fcc1c5f8c69e"
+    },
+    {
+      "runId": "38531639275",
+      "headSha": "3ac9878c538bc11e4fe88529d252534c306489ff"
+    },
+    {
+      "runId": "38530874623",
+      "headSha": "90482ee5777d30d497fcdc087d8b079e59c28516"
+    },
+    {
+      "runId": "38529847372",
+      "headSha": "f3688e7087e12ed64dffc95ce93a72829b958bfd"
+    },
+    {
+      "runId": "38529301028",
+      "headSha": "704e863c1819212f90364440f009768af39f650b"
+    },
+    {
+      "runId": "38526972228",
+      "headSha": "51f1748d5849f84e3a6d06422e1d1d333e07859d"
+    },
+    {
+      "runId": "38526230763",
+      "headSha": "f27e37526b4641906b1b3fcc1be4b9f12a67d28d"
+    },
+    {
+      "runId": "38522543822",
+      "headSha": "51f1748d5849f84e3a6d06422e1d1d333e07859d"
+    },
+    {
+      "runId": "38493761906",
+      "headSha": "7481f71c8c65644750585aef271dc00aa75003e8"
+    },
+    {
+      "runId": "38491525026",
+      "headSha": "9ba8f2ef5c2210d05b114e32d6c47e2296367930"
+    },
+    {
+      "runId": "38490156517",
+      "headSha": "6528ba22ea7a9f7fbddcb9b437ec2bcb04f3ee05"
+    },
+    {
+      "runId": "38488208886",
+      "headSha": "743ff1535de553e735fe76722f6a039d65b5de9a"
+    },
+    {
+      "runId": "38487352807",
+      "headSha": "8b577e30afde3e558ff1781a787759d2ec29b256"
+    },
+    {
+      "runId": "38485994196",
+      "headSha": "2cb776dd04707636d2c1c95717c968c6dbc94a56"
+    },
+    {
+      "runId": "38485033547",
+      "headSha": "706973a7d740705acbcc59d2363dc5f826b43281"
+    },
+    {
+      "runId": "38481701746",
+      "headSha": "0713b959a4e45b8a1948439abfbc0f6ad583da94"
+    },
+    {
+      "runId": "38473334693",
+      "headSha": "edddc42997c10c7ba2a2980a2fbc9bc217225a96"
+    },
+    {
+      "runId": "38469460993",
+      "headSha": "cef0d322f22d12b7813aa80851ceb2b318f05d6a"
+    },
+    {
+      "runId": "38467902105",
+      "headSha": "1e1593ea70d2d380c55a16e50d4fbe742ff6a6f3"
+    },
+    {
+      "runId": "38467228044",
+      "headSha": "1e1593ea70d2d380c55a16e50d4fbe742ff6a6f3"
+    },
+    {
+      "runId": "38466757198",
+      "headSha": "cef0d322f22d12b7813aa80851ceb2b318f05d6a"
+    },
+    {
+      "runId": "38466465407",
+      "headSha": "9cc6531b6b2ca14fa3469cd657d00d6e58498193"
+    },
+    {
+      "runId": "38464984630",
+      "headSha": "7392d558d704bc35ae19e4d34f3419401157f206"
+    },
+    {
+      "runId": "38464128628",
+      "headSha": "cbf26d20a694b98696f11e38a9ad702039edc344"
+    },
+    {
+      "runId": "38460381995",
+      "headSha": "cbf26d20a694b98696f11e38a9ad702039edc344"
+    },
+    {
+      "runId": "38456913319",
+      "headSha": "56080936bdae92f38e433bbdd84e6fd9ad58dbcc"
+    },
+    {
+      "runId": "38452967283",
+      "headSha": "56080936bdae92f38e433bbdd84e6fd9ad58dbcc"
+    },
+    {
+      "runId": "38450287501",
+      "headSha": "193e52194ceec8163a17b9db202e740ed2b7015d"
+    },
+    {
+      "runId": "38448483439",
+      "headSha": "193e52194ceec8163a17b9db202e740ed2b7015d"
+    },
+    {
+      "runId": "38442355115",
+      "headSha": "0ba5aeef533dac2c49fb118dd216ae9767beed88"
+    },
+    {
+      "runId": "38440796070",
+      "headSha": "0ba5aeef533dac2c49fb118dd216ae9767beed88"
+    }
+  ],
+  "headObservations": [
+    {
+      "headSha": "7266dfd5ecf2ef6430449c67bd98c793a4874dfc",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 618,
+          "createdAt": "2026-10-18T11:59:25Z",
+          "headSha": "7266dfd5ecf2ef6430449c67bd98c793a4874dfc",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "8743549e309b6516328bedd30975ae0f44f89b08",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T12:09:56Z",
+          "closedAt": "2026-10-18T12:09:56Z"
+        }
+      ]
+    },
+    {
+      "headSha": "98156e8a977c16e5fc27b1bb191af9ffa1892ba6",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 617,
+          "createdAt": "2026-10-18T11:32:02Z",
+          "headSha": "98156e8a977c16e5fc27b1bb191af9ffa1892ba6",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "03da5c0f0da2c3f84427d084572aa14151ac6d09",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T11:54:34Z",
+          "closedAt": "2026-10-18T11:54:34Z"
+        }
+      ]
+    },
+    {
+      "headSha": "b84b7593f360dfdb59c1a7f4272717ba986eb1bc",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 617,
+          "createdAt": "2026-10-18T11:32:02Z",
+          "headSha": "98156e8a977c16e5fc27b1bb191af9ffa1892ba6",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "03da5c0f0da2c3f84427d084572aa14151ac6d09",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T11:54:34Z",
+          "closedAt": "2026-10-18T11:54:34Z"
+        }
+      ]
+    },
+    {
+      "headSha": "2aed63cfffa4802b7397abdff12df035fb74a505",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 616,
+          "createdAt": "2026-10-18T10:57:18Z",
+          "headSha": "2aed63cfffa4802b7397abdff12df035fb74a505",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "57fbce0e9945f3057b96e6210870b7761659790a",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T11:11:03Z",
+          "closedAt": "2026-10-18T11:11:03Z"
+        }
+      ]
+    },
+    {
+      "headSha": "dd1f5d04f6f56439bdb5e8547787acf9cf2cc4a7",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 615,
+          "createdAt": "2026-10-18T10:20:49Z",
+          "headSha": "dd1f5d04f6f56439bdb5e8547787acf9cf2cc4a7",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "440b4da5ac1909346721d9031192c5be53a1dc84",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T10:43:26Z",
+          "closedAt": "2026-10-18T10:43:26Z"
+        }
+      ]
+    },
+    {
+      "headSha": "6a89584cc8c0853fbef85bd3078b01c9ded617f7",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 614,
+          "createdAt": "2026-10-18T07:16:33Z",
+          "headSha": "6a89584cc8c0853fbef85bd3078b01c9ded617f7",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "0e839b5bd1959c682314fe57753ccd094d1ba4ba",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T07:39:24Z",
+          "closedAt": "2026-10-18T07:39:24Z"
+        }
+      ]
+    },
+    {
+      "headSha": "31f762435a30cf36d6386595bf4ef13f6f09d9c5",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 613,
+          "createdAt": "2026-10-18T06:59:27Z",
+          "headSha": "31f762435a30cf36d6386595bf4ef13f6f09d9c5",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "dd8f8d9e9655c2303b234dd6e7e1093a32362349",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T07:11:50Z",
+          "closedAt": "2026-10-18T07:11:50Z"
+        }
+      ]
+    },
+    {
+      "headSha": "61699faef606ace81d53385816cb07827880f4e6",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 612,
+          "createdAt": "2026-10-18T06:29:57Z",
+          "headSha": "61699faef606ace81d53385816cb07827880f4e6",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "6e328f6cba3f5d2808beef4b217f8739676dca30",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T06:38:58Z",
+          "closedAt": "2026-10-18T06:38:58Z"
+        }
+      ]
+    },
+    {
+      "headSha": "43db482315708bf92abb09d11ae6a81df91ccb15",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 611,
+          "createdAt": "2026-10-18T06:18:22Z",
+          "headSha": "43db482315708bf92abb09d11ae6a81df91ccb15",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "fc9014c28af9498e1191f75fe7d8008bafea9dc4",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T06:27:52Z",
+          "closedAt": "2026-10-18T06:27:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "a9756056cf059cebf23b6ac94797c6a57099eafb",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "ae3c1265430a72dc48296523cab5ad0263ee55a5",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "a3703be8f6661164d2335ebbf2e5f95c8c9da6d3",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 610,
+          "createdAt": "2026-10-18T04:57:22Z",
+          "headSha": "a3703be8f6661164d2335ebbf2e5f95c8c9da6d3",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "83549de931e735105a4e575d283dd95a2ce49b62",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:23:35Z",
+          "closedAt": "2026-10-18T05:23:35Z"
+        }
+      ]
+    },
+    {
+      "headSha": "856d5fc71f4fa27916dc4eff39a1cee79f9311fa",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "1d1fb92cc18faace7aa5583adcbb40db15116032",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 610,
+          "createdAt": "2026-10-18T04:57:22Z",
+          "headSha": "a3703be8f6661164d2335ebbf2e5f95c8c9da6d3",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "83549de931e735105a4e575d283dd95a2ce49b62",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:23:35Z",
+          "closedAt": "2026-10-18T05:23:35Z"
+        }
+      ]
+    },
+    {
+      "headSha": "2bbe60607baa36e85a5c89b8d6b9969fe7506eea",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "e56a551a7d98184c8fd81d0ee4d30fc501552edc",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 609,
+          "createdAt": "2026-10-18T04:44:25Z",
+          "headSha": "e56a551a7d98184c8fd81d0ee4d30fc501552edc",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "0bc0430700a85fbd37799e72e77cb81d68b0ea1e",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T04:54:28Z",
+          "closedAt": "2026-10-18T04:54:28Z"
+        }
+      ]
+    },
+    {
+      "headSha": "a008348eb1390c72fb321f60b0ce01950a55dfcd",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "1d07bb257c4534e602ef75ac65b40487d903d8d4",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 608,
+          "createdAt": "2026-10-18T04:30:03Z",
+          "headSha": "1d07bb257c4534e602ef75ac65b40487d903d8d4",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "92b95f37a6ab2fe3541b227f76c2bc45bffd67b6",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T04:41:05Z",
+          "closedAt": "2026-10-18T04:41:05Z"
+        }
+      ]
+    },
+    {
+      "headSha": "452450df73007f24488500df73b569749f707831",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 607,
+          "createdAt": "2026-10-18T03:55:43Z",
+          "headSha": "452450df73007f24488500df73b569749f707831",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "917ce8b5bcb159afd769976e10a2e84e45b92fad",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T04:24:31Z",
+          "closedAt": "2026-10-18T04:24:31Z"
+        }
+      ]
+    },
+    {
+      "headSha": "56bf19e1ca2357d24b3848a0d61210dd78eb73dc",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 607,
+          "createdAt": "2026-10-18T03:55:43Z",
+          "headSha": "452450df73007f24488500df73b569749f707831",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "917ce8b5bcb159afd769976e10a2e84e45b92fad",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T04:24:31Z",
+          "closedAt": "2026-10-18T04:24:31Z"
+        }
+      ]
+    },
+    {
+      "headSha": "a5a0adeefc3f72365b05400ff7a81d89a6d2e2dd",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 607,
+          "createdAt": "2026-10-18T03:55:43Z",
+          "headSha": "452450df73007f24488500df73b569749f707831",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "917ce8b5bcb159afd769976e10a2e84e45b92fad",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T04:24:31Z",
+          "closedAt": "2026-10-18T04:24:31Z"
+        }
+      ]
+    },
+    {
+      "headSha": "5e62a8657b36e9f242eccf1ab88c393762e53c35",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "976566dcdb05f3de6400f1908a22aca2f29688aa",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 606,
+          "createdAt": "2026-10-18T03:33:44Z",
+          "headSha": "976566dcdb05f3de6400f1908a22aca2f29688aa",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "fc79d018cedccb29e147935d79ce84dace5c0f7a",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T03:48:35Z",
+          "closedAt": "2026-10-18T03:48:35Z"
+        }
+      ]
+    },
+    {
+      "headSha": "adae66930ef46848fd9b7882f15ce413e82a1164",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "91e01b330007a01ee82d0f73631923a746f02cd3",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 605,
+          "createdAt": "2026-10-18T03:16:23Z",
+          "headSha": "91e01b330007a01ee82d0f73631923a746f02cd3",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "b2633798c208548c7112398cbf2c54493b6982ea",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T03:30:31Z",
+          "closedAt": "2026-10-18T03:30:31Z"
+        }
+      ]
+    },
+    {
+      "headSha": "2f0e0600f64d9088a252497e6f8dea31eee16975",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "d7f246b0ccdae9f7675fc8048fb0da0676f9ed82",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "db247abe54551dd51d4178e3245913039e8729ec",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "5de800d0edcf1b4d171d25e190208a81f275388b",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 604,
+          "createdAt": "2026-10-18T01:57:08Z",
+          "headSha": "5de800d0edcf1b4d171d25e190208a81f275388b",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "52cdf7d2c527bd0f1c065b5a85f770c8f8a46a07",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T02:19:13Z",
+          "closedAt": "2026-10-18T02:19:14Z"
+        }
+      ]
+    },
+    {
+      "headSha": "e3a22ca2d6c160b72b9f1563c389c81e6964c7cf",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 604,
+          "createdAt": "2026-10-18T01:57:08Z",
+          "headSha": "5de800d0edcf1b4d171d25e190208a81f275388b",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "52cdf7d2c527bd0f1c065b5a85f770c8f8a46a07",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T02:19:13Z",
+          "closedAt": "2026-10-18T02:19:14Z"
+        }
+      ]
+    },
+    {
+      "headSha": "8e793c78c9dfaa92e59a7389b4446e4a296ddd38",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 603,
+          "createdAt": "2026-10-18T01:43:22Z",
+          "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T05:38:51Z",
+          "closedAt": "2026-10-18T05:38:52Z"
+        }
+      ]
+    },
+    {
+      "headSha": "20b46ece0789efed7b132f16b308bc31718482b8",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 602,
+          "createdAt": "2026-10-18T01:06:55Z",
+          "headSha": "20b46ece0789efed7b132f16b308bc31718482b8",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "89046bd30a501f7a3c1a643ab75d3bd54d0a165d",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-18T01:24:33Z",
+          "closedAt": "2026-10-18T01:24:33Z"
+        }
+      ]
+    },
+    {
+      "headSha": "be983ba73f7ef6898650bf27e03d831bf2235f65",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 601,
+          "createdAt": "2026-10-17T23:15:49Z",
+          "headSha": "be983ba73f7ef6898650bf27e03d831bf2235f65",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "aa7366d7f7e7db3f82329a5dee2c7eab19517be6",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T23:28:53Z",
+          "closedAt": "2026-10-17T23:28:53Z"
+        }
+      ]
+    },
+    {
+      "headSha": "1c46540c16b924d2a74a1d2c90c6ff3fac24d3fc",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 600,
+          "createdAt": "2026-10-17T23:01:46Z",
+          "headSha": "1c46540c16b924d2a74a1d2c90c6ff3fac24d3fc",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "8c23c4d041dcfd4a84c7a57ec8b2c1a8e211bd13",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T23:14:15Z",
+          "closedAt": "2026-10-17T23:14:15Z"
+        }
+      ]
+    },
+    {
+      "headSha": "1388d6e68c092e29906abff134aec1289c8489c8",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 599,
+          "createdAt": "2026-10-17T22:27:26Z",
+          "headSha": "1388d6e68c092e29906abff134aec1289c8489c8",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "f8ddec6b42bb93b4083ac46504dcc4a13c9dcc3f",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T22:59:50Z",
+          "closedAt": "2026-10-17T22:59:50Z"
+        }
+      ]
+    },
+    {
+      "headSha": "7649fddcfa2c5464d39e6f773528a0cf7c9950d8",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 599,
+          "createdAt": "2026-10-17T22:27:26Z",
+          "headSha": "1388d6e68c092e29906abff134aec1289c8489c8",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "f8ddec6b42bb93b4083ac46504dcc4a13c9dcc3f",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T22:59:50Z",
+          "closedAt": "2026-10-17T22:59:50Z"
+        }
+      ]
+    },
+    {
+      "headSha": "78cef811c9cf7b558dd259c0bdb5fcc8341e1c7a",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 598,
+          "createdAt": "2026-10-17T22:11:03Z",
+          "headSha": "78cef811c9cf7b558dd259c0bdb5fcc8341e1c7a",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "4571c046218c662c03b1467a80b83c5b30a806e1",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T22:25:05Z",
+          "closedAt": "2026-10-17T22:25:05Z"
+        }
+      ]
+    },
+    {
+      "headSha": "cdd76ec174cdcd09bf73da84f81e2e2fe017824c",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 597,
+          "createdAt": "2026-10-17T21:27:16Z",
+          "headSha": "cdd76ec174cdcd09bf73da84f81e2e2fe017824c",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "c6df9b6c69909c953e6641883c5dea2d289cbcf0",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T21:40:58Z",
+          "closedAt": "2026-10-17T21:40:58Z"
+        }
+      ]
+    },
+    {
+      "headSha": "1713bffe9cd5125b44331a382efad6c1dea3b595",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 597,
+          "createdAt": "2026-10-17T21:27:16Z",
+          "headSha": "cdd76ec174cdcd09bf73da84f81e2e2fe017824c",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "c6df9b6c69909c953e6641883c5dea2d289cbcf0",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T21:40:58Z",
+          "closedAt": "2026-10-17T21:40:58Z"
+        }
+      ]
+    },
+    {
+      "headSha": "037f7abe12e67bd3e8a8d41b7f2a2a8fd90f4b93",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 596,
+          "createdAt": "2026-10-17T21:01:32Z",
+          "headSha": "037f7abe12e67bd3e8a8d41b7f2a2a8fd90f4b93",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "f2698baff3e6d43ba696ca1fe6783ab6d25b3c49",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T21:21:08Z",
+          "closedAt": "2026-10-17T21:21:08Z"
+        }
+      ]
+    },
+    {
+      "headSha": "d80e44683e356c1d91b9639d1e4df96aa337125a",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 596,
+          "createdAt": "2026-10-17T21:01:32Z",
+          "headSha": "037f7abe12e67bd3e8a8d41b7f2a2a8fd90f4b93",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "f2698baff3e6d43ba696ca1fe6783ab6d25b3c49",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T21:21:08Z",
+          "closedAt": "2026-10-17T21:21:08Z"
+        }
+      ]
+    },
+    {
+      "headSha": "217d437768645816f54ef80c8e5de05c23209239",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 595,
+          "createdAt": "2026-10-17T20:46:09Z",
+          "headSha": "217d437768645816f54ef80c8e5de05c23209239",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "7f41f880342298d3b8e41b5034b18383dd32cbe1",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T20:57:32Z",
+          "closedAt": "2026-10-17T20:57:32Z"
+        }
+      ]
+    },
+    {
+      "headSha": "21ec6a9ce61dc92ab2ec0a2bb62f8dd85f54eacb",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 594,
+          "createdAt": "2026-10-17T19:27:39Z",
+          "headSha": "21ec6a9ce61dc92ab2ec0a2bb62f8dd85f54eacb",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "ed723fc0fe383ad860d9b5b2f9237db413d4d445",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T19:39:31Z",
+          "closedAt": "2026-10-17T19:39:31Z"
+        }
+      ]
+    },
+    {
+      "headSha": "7d7ab2a9d076ca0487ac6ec8aeabb0934615b755",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 593,
+          "createdAt": "2026-10-17T19:15:19Z",
+          "headSha": "7d7ab2a9d076ca0487ac6ec8aeabb0934615b755",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "8044b4f3fd4ed619d10e45be76811b84307aa42b",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T19:25:22Z",
+          "closedAt": "2026-10-17T19:25:23Z"
+        }
+      ]
+    },
+    {
+      "headSha": "73e76a79e4eaabfdecef2c3506469d925521629e",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 592,
+          "createdAt": "2026-10-17T18:35:00Z",
+          "headSha": "73e76a79e4eaabfdecef2c3506469d925521629e",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "512d8329de077c81e87a44a856e9e76448106181",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:53:09Z",
+          "closedAt": "2026-10-17T18:53:09Z"
+        }
+      ]
+    },
+    {
+      "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 587,
+          "createdAt": "2026-10-14T10:39:44Z",
+          "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "525eed1344b8ec994cd7def53e92927d0a14697c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:31:16Z",
+          "closedAt": "2026-10-17T18:31:16Z"
+        }
+      ]
+    },
+    {
+      "headSha": "59070172f4be25340e3f762c857e7ef5d1020349",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 587,
+          "createdAt": "2026-10-14T10:39:44Z",
+          "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "525eed1344b8ec994cd7def53e92927d0a14697c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:31:16Z",
+          "closedAt": "2026-10-17T18:31:16Z"
+        }
+      ]
+    },
+    {
+      "headSha": "91c4e24e36d2fceb83e033fc8968c8e387db4653",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 591,
+          "createdAt": "2026-10-15T18:32:59Z",
+          "headSha": "91c4e24e36d2fceb83e033fc8968c8e387db4653",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "2769e3f10833d17197049750958db1b24e6b4539",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:20:30Z",
+          "closedAt": "2026-10-17T18:20:30Z"
+        }
+      ]
+    },
+    {
+      "headSha": "aaeec75ddfd437931de3db5494b46e90898af254",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 587,
+          "createdAt": "2026-10-14T10:39:44Z",
+          "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "525eed1344b8ec994cd7def53e92927d0a14697c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:31:16Z",
+          "closedAt": "2026-10-17T18:31:16Z"
+        }
+      ]
+    },
+    {
+      "headSha": "014085e0696f97e645a11cd0bdff6688265c9a3f",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 587,
+          "createdAt": "2026-10-14T10:39:44Z",
+          "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "525eed1344b8ec994cd7def53e92927d0a14697c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:31:16Z",
+          "closedAt": "2026-10-17T18:31:16Z"
+        }
+      ]
+    },
+    {
+      "headSha": "6d2600f76b92bbe156e97e8044aabe8c6e9c6cd3",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 591,
+          "createdAt": "2026-10-15T18:32:59Z",
+          "headSha": "91c4e24e36d2fceb83e033fc8968c8e387db4653",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "2769e3f10833d17197049750958db1b24e6b4539",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:20:30Z",
+          "closedAt": "2026-10-17T18:20:30Z"
+        }
+      ]
+    },
+    {
+      "headSha": "e47e6ea6bb2fb44e3db3620f6ded16fdce7bc124",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 591,
+          "createdAt": "2026-10-15T18:32:59Z",
+          "headSha": "91c4e24e36d2fceb83e033fc8968c8e387db4653",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "2769e3f10833d17197049750958db1b24e6b4539",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:20:30Z",
+          "closedAt": "2026-10-17T18:20:30Z"
+        }
+      ]
+    },
+    {
+      "headSha": "ef10890135c5250393a6c4138731e8144726aae3",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 587,
+          "createdAt": "2026-10-14T10:39:44Z",
+          "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "525eed1344b8ec994cd7def53e92927d0a14697c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:31:16Z",
+          "closedAt": "2026-10-17T18:31:16Z"
+        }
+      ]
+    },
+    {
+      "headSha": "cfcf17ca0a75012700e77755e0c2e6627a3ef078",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 589,
+          "createdAt": "2026-10-14T12:00:20Z",
+          "headSha": "cfcf17ca0a75012700e77755e0c2e6627a3ef078",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "35b2405cc1818f66e2842d068a509f74e1a8f83c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T14:31:01Z",
+          "closedAt": "2026-10-14T14:31:01Z"
+        }
+      ]
+    },
+    {
+      "headSha": "7e008eadcbf764ef7635541ef7de154c3cee4d26",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 589,
+          "createdAt": "2026-10-14T12:00:20Z",
+          "headSha": "cfcf17ca0a75012700e77755e0c2e6627a3ef078",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "35b2405cc1818f66e2842d068a509f74e1a8f83c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T14:31:01Z",
+          "closedAt": "2026-10-14T14:31:01Z"
+        }
+      ]
+    },
+    {
+      "headSha": "9d3265355cc3d7b4b7884a5ae487865ef66c317d",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 589,
+          "createdAt": "2026-10-14T12:00:20Z",
+          "headSha": "cfcf17ca0a75012700e77755e0c2e6627a3ef078",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "35b2405cc1818f66e2842d068a509f74e1a8f83c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T14:31:01Z",
+          "closedAt": "2026-10-14T14:31:01Z"
+        }
+      ]
+    },
+    {
+      "headSha": "d9274494d8f9d834765186faaf63c91644ac8896",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 590,
+          "createdAt": "2026-10-14T12:16:44Z",
+          "headSha": "d9274494d8f9d834765186faaf63c91644ac8896",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "db2d46e60a3770385ebebab6d91a4e003a543c70",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T12:37:35Z",
+          "closedAt": "2026-10-14T12:37:35Z"
+        }
+      ]
+    },
+    {
+      "headSha": "a02e8e6d1ccdd2742a193f0c4323f40e959c64bc",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 589,
+          "createdAt": "2026-10-14T12:00:20Z",
+          "headSha": "cfcf17ca0a75012700e77755e0c2e6627a3ef078",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "35b2405cc1818f66e2842d068a509f74e1a8f83c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T14:31:01Z",
+          "closedAt": "2026-10-14T14:31:01Z"
+        }
+      ]
+    },
+    {
+      "headSha": "bbbb59131559c1c98456799be3dcb0ad46494bcb",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 587,
+          "createdAt": "2026-10-14T10:39:44Z",
+          "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "525eed1344b8ec994cd7def53e92927d0a14697c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:31:16Z",
+          "closedAt": "2026-10-17T18:31:16Z"
+        }
+      ]
+    },
+    {
+      "headSha": "0de41da6748e042e8a535e7a8b3f45e897476083",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 588,
+          "createdAt": "2026-10-14T11:31:28Z",
+          "headSha": "0de41da6748e042e8a535e7a8b3f45e897476083",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "e9dd38b070e2d7378435da79fbb8a75ea260a6c6",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T11:43:42Z",
+          "closedAt": "2026-10-14T11:43:42Z"
+        }
+      ]
+    },
+    {
+      "headSha": "9db531079ce643e7a87f06e5b9806c9559320774",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 587,
+          "createdAt": "2026-10-14T10:39:44Z",
+          "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "525eed1344b8ec994cd7def53e92927d0a14697c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:31:16Z",
+          "closedAt": "2026-10-17T18:31:16Z"
+        }
+      ]
+    },
+    {
+      "headSha": "2f860a8ec5c62061aa0ff1b67c5275d01243b3d7",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 584,
+          "createdAt": "2026-10-14T07:06:29Z",
+          "headSha": "2f860a8ec5c62061aa0ff1b67c5275d01243b3d7",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "f893fcbc393b11ec43ceb96220d508c050736fd7",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T11:13:21Z",
+          "closedAt": "2026-10-14T11:13:21Z"
+        }
+      ]
+    },
+    {
+      "headSha": "c350f45550a448d4149b0d86cff79de86ef25b0c",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "56157dbca9e9a5174687cfdd022bdbd2e78588e6",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 587,
+          "createdAt": "2026-10-14T10:39:44Z",
+          "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "525eed1344b8ec994cd7def53e92927d0a14697c",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-17T18:31:16Z",
+          "closedAt": "2026-10-17T18:31:16Z"
+        }
+      ]
+    },
+    {
+      "headSha": "b5e5c2a84b428864c2250f12c248241f196c8b37",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 586,
+          "createdAt": "2026-10-14T09:51:59Z",
+          "headSha": "b5e5c2a84b428864c2250f12c248241f196c8b37",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "f451c0cbeff799d24572d20a0d30b130375910e5",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T10:32:10Z",
+          "closedAt": "2026-10-14T10:32:10Z"
+        }
+      ]
+    },
+    {
+      "headSha": "b95dade5ed03d5b9127b73d85362e8d0b00114ef",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 586,
+          "createdAt": "2026-10-14T09:51:59Z",
+          "headSha": "b5e5c2a84b428864c2250f12c248241f196c8b37",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "f451c0cbeff799d24572d20a0d30b130375910e5",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T10:32:10Z",
+          "closedAt": "2026-10-14T10:32:10Z"
+        }
+      ]
+    },
+    {
+      "headSha": "f914b4f08d90b0c0cab4e87b0f10106e07426fc3",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "3ac9878c538bc11e4fe88529d252534c306489ff",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 585,
+          "createdAt": "2026-10-14T07:35:15Z",
+          "headSha": "3ac9878c538bc11e4fe88529d252534c306489ff",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "53fba7b09714e1b89ae1a19788487fd7e02d44b8",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T09:39:12Z",
+          "closedAt": "2026-10-14T09:39:12Z"
+        }
+      ]
+    },
+    {
+      "headSha": "5279477c734500f28bf6477a39ef645b82715fc4",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "17653c0489083f1c482ac38fa44f2a3a21780d9a",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "a2763fe06379d3d691f14d238cbfdf1b058e0bd7",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "a6bcbebea3cdb72ccb32a940050b73ebe93a2da0",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "2080610db11376a54814059fd3c00bff29262442",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "73167a5087dedc12db7f005509d2ab9116e9c761",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "1469df49f9efbf3c6b4dd7df35100a742002abd0",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "25c59f732b0812d2eb1269a46d690c0c45087cd3",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "7e1684cd49e4e1784e699ce8f635fcc1c5f8c69e",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "90482ee5777d30d497fcdc087d8b079e59c28516",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "f3688e7087e12ed64dffc95ce93a72829b958bfd",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "704e863c1819212f90364440f009768af39f650b",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 585,
+          "createdAt": "2026-10-14T07:35:15Z",
+          "headSha": "3ac9878c538bc11e4fe88529d252534c306489ff",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "53fba7b09714e1b89ae1a19788487fd7e02d44b8",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T09:39:12Z",
+          "closedAt": "2026-10-14T09:39:12Z"
+        }
+      ]
+    },
+    {
+      "headSha": "51f1748d5849f84e3a6d06422e1d1d333e07859d",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 581,
+          "createdAt": "2026-10-13T20:56:15Z",
+          "headSha": "51f1748d5849f84e3a6d06422e1d1d333e07859d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "51215db9cb168295ba246d7eed255a78714b8a27",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T07:19:58Z",
+          "closedAt": "2026-10-14T07:19:58Z"
+        }
+      ]
+    },
+    {
+      "headSha": "f27e37526b4641906b1b3fcc1be4b9f12a67d28d",
+      "status": "observed",
+      "firstPageCount": 0,
+      "associations": []
+    },
+    {
+      "headSha": "7481f71c8c65644750585aef271dc00aa75003e8",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 583,
+          "createdAt": "2026-10-13T23:43:29Z",
+          "headSha": "7481f71c8c65644750585aef271dc00aa75003e8",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "17ae9549734708b86ca81539848b67123a2e15d8",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T01:12:40Z",
+          "closedAt": "2026-10-14T01:12:40Z"
+        }
+      ]
+    },
+    {
+      "headSha": "9ba8f2ef5c2210d05b114e32d6c47e2296367930",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 583,
+          "createdAt": "2026-10-13T23:43:29Z",
+          "headSha": "7481f71c8c65644750585aef271dc00aa75003e8",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "17ae9549734708b86ca81539848b67123a2e15d8",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T01:12:40Z",
+          "closedAt": "2026-10-14T01:12:40Z"
+        }
+      ]
+    },
+    {
+      "headSha": "6528ba22ea7a9f7fbddcb9b437ec2bcb04f3ee05",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 583,
+          "createdAt": "2026-10-13T23:43:29Z",
+          "headSha": "7481f71c8c65644750585aef271dc00aa75003e8",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "17ae9549734708b86ca81539848b67123a2e15d8",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T01:12:40Z",
+          "closedAt": "2026-10-14T01:12:40Z"
+        }
+      ]
+    },
+    {
+      "headSha": "743ff1535de553e735fe76722f6a039d65b5de9a",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 583,
+          "createdAt": "2026-10-13T23:43:29Z",
+          "headSha": "7481f71c8c65644750585aef271dc00aa75003e8",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "17ae9549734708b86ca81539848b67123a2e15d8",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T01:12:40Z",
+          "closedAt": "2026-10-14T01:12:40Z"
+        }
+      ]
+    },
+    {
+      "headSha": "8b577e30afde3e558ff1781a787759d2ec29b256",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 583,
+          "createdAt": "2026-10-13T23:43:29Z",
+          "headSha": "7481f71c8c65644750585aef271dc00aa75003e8",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "17ae9549734708b86ca81539848b67123a2e15d8",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T01:12:40Z",
+          "closedAt": "2026-10-14T01:12:40Z"
+        }
+      ]
+    },
+    {
+      "headSha": "2cb776dd04707636d2c1c95717c968c6dbc94a56",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 583,
+          "createdAt": "2026-10-13T23:43:29Z",
+          "headSha": "7481f71c8c65644750585aef271dc00aa75003e8",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "17ae9549734708b86ca81539848b67123a2e15d8",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T01:12:40Z",
+          "closedAt": "2026-10-14T01:12:40Z"
+        }
+      ]
+    },
+    {
+      "headSha": "706973a7d740705acbcc59d2363dc5f826b43281",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 582,
+          "createdAt": "2026-10-13T22:59:46Z",
+          "headSha": "706973a7d740705acbcc59d2363dc5f826b43281",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "bbbf86a8d4c5d9f6b1dcd74e631e04f72f98008e",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-13T23:40:41Z",
+          "closedAt": "2026-10-13T23:40:41Z"
+        }
+      ]
+    },
+    {
+      "headSha": "0713b959a4e45b8a1948439abfbc0f6ad583da94",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 582,
+          "createdAt": "2026-10-13T22:59:46Z",
+          "headSha": "706973a7d740705acbcc59d2363dc5f826b43281",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "bbbf86a8d4c5d9f6b1dcd74e631e04f72f98008e",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-13T23:40:41Z",
+          "closedAt": "2026-10-13T23:40:41Z"
+        }
+      ]
+    },
+    {
+      "headSha": "edddc42997c10c7ba2a2980a2fbc9bc217225a96",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 580,
+          "createdAt": "2026-10-13T20:42:44Z",
+          "headSha": "edddc42997c10c7ba2a2980a2fbc9bc217225a96",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "b5f6f99309c4ad909c706f80d8175fcedda67487",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-13T22:58:34Z",
+          "closedAt": "2026-10-13T22:58:34Z"
+        }
+      ]
+    },
+    {
+      "headSha": "cef0d322f22d12b7813aa80851ceb2b318f05d6a",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 581,
+          "createdAt": "2026-10-13T20:56:15Z",
+          "headSha": "51f1748d5849f84e3a6d06422e1d1d333e07859d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "51215db9cb168295ba246d7eed255a78714b8a27",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-14T07:19:58Z",
+          "closedAt": "2026-10-14T07:19:58Z"
+        }
+      ]
+    },
+    {
+      "headSha": "1e1593ea70d2d380c55a16e50d4fbe742ff6a6f3",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 580,
+          "createdAt": "2026-10-13T20:42:44Z",
+          "headSha": "edddc42997c10c7ba2a2980a2fbc9bc217225a96",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "b5f6f99309c4ad909c706f80d8175fcedda67487",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-13T22:58:34Z",
+          "closedAt": "2026-10-13T22:58:34Z"
+        }
+      ]
+    },
+    {
+      "headSha": "9cc6531b6b2ca14fa3469cd657d00d6e58498193",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 580,
+          "createdAt": "2026-10-13T20:42:44Z",
+          "headSha": "edddc42997c10c7ba2a2980a2fbc9bc217225a96",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "b5f6f99309c4ad909c706f80d8175fcedda67487",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-13T22:58:34Z",
+          "closedAt": "2026-10-13T22:58:34Z"
+        }
+      ]
+    },
+    {
+      "headSha": "7392d558d704bc35ae19e4d34f3419401157f206",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 580,
+          "createdAt": "2026-10-13T20:42:44Z",
+          "headSha": "edddc42997c10c7ba2a2980a2fbc9bc217225a96",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "b5f6f99309c4ad909c706f80d8175fcedda67487",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-13T22:58:34Z",
+          "closedAt": "2026-10-13T22:58:34Z"
+        }
+      ]
+    },
+    {
+      "headSha": "cbf26d20a694b98696f11e38a9ad702039edc344",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 579,
+          "createdAt": "2026-10-13T19:12:09Z",
+          "headSha": "cbf26d20a694b98696f11e38a9ad702039edc344",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "18dddeefb97e505a58fd3c84d08cc15e94cac6fe",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-13T20:45:21Z",
+          "closedAt": "2026-10-13T20:45:21Z"
+        }
+      ]
+    },
+    {
+      "headSha": "56080936bdae92f38e433bbdd84e6fd9ad58dbcc",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 579,
+          "createdAt": "2026-10-13T19:12:09Z",
+          "headSha": "cbf26d20a694b98696f11e38a9ad702039edc344",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "18dddeefb97e505a58fd3c84d08cc15e94cac6fe",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-13T20:45:21Z",
+          "closedAt": "2026-10-13T20:45:21Z"
+        }
+      ]
+    },
+    {
+      "headSha": "193e52194ceec8163a17b9db202e740ed2b7015d",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 563,
+          "createdAt": "2026-10-12T07:01:44Z",
+          "headSha": "193e52194ceec8163a17b9db202e740ed2b7015d",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "6262d56351e5db556a23658e0f4e4069efd15717",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-13T18:58:42Z",
+          "closedAt": "2026-10-13T18:58:42Z"
+        }
+      ]
+    },
+    {
+      "headSha": "0ba5aeef533dac2c49fb118dd216ae9767beed88",
+      "status": "observed",
+      "firstPageCount": 1,
+      "associations": [
+        {
+          "number": 578,
+          "createdAt": "2026-10-13T17:42:13Z",
+          "headSha": "0ba5aeef533dac2c49fb118dd216ae9767beed88",
+          "headRepository": "flair-agency/architecture-gatekeeper",
+          "baseSha": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+          "baseRepository": "flair-agency/architecture-gatekeeper",
+          "mergedAt": "2026-10-13T18:08:45Z",
+          "closedAt": "2026-10-13T18:08:45Z"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "These later public associations propose diagnostic links only; they do not overwrite original empty run API bindings or authenticate protected event/producer provenance.",
+    "Current PR head/base/merge state is observed at query time, not projected backward to the frozen cutoff. Multiple, absent, non-exact-head, other-repository, missing-repository and capped results remain unresolved.",
+    "No cohort membership, case adjudication, semantic decision, acceptance or efficacy is inferred."
+  ]
+}

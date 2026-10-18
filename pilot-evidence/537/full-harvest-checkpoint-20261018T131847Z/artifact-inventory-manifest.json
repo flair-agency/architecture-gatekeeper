@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "sourceInventorySha256": "888902f6bd820de0f6ceb9b81c5c03c964a5cc29c94c46a5a500319a41a0f935",
+  "inventoryParts": [
+    {
+      "path": "artifact-inventory-001.json",
+      "bytes": 152809,
+      "sha256": "84e93716bc0143ccb51a858d9fbbb758c16503955d0c035f5d2ebd23ff8492d8",
+      "attemptPairs": 54,
+      "artifacts": 108
+    },
+    {
+      "path": "artifact-inventory-002.json",
+      "bytes": 149965,
+      "sha256": "3b65ed44a9ad250e384a1e3220066cc2683ddfeededd396b70b8feb3608fe8c7",
+      "attemptPairs": 53,
+      "artifacts": 106
+    }
+  ],
+  "attemptPairs": 107,
+  "artifacts": 214,
+  "interpretation": "Parts contain whole workflow attempt groups; they preserve selection order and can be read independently within the 256 KiB bound."
+}

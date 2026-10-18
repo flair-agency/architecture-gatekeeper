@@ -1,0 +1,4125 @@
+{
+  "schemaVersion": 1,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "frozenReadCutoffUtc": "2026-10-18T13:18:47Z",
+  "sourceInventorySha256": "888902f6bd820de0f6ceb9b81c5c03c964a5cc29c94c46a5a500319a41a0f935",
+  "selectedArtifactCount": 214,
+  "workflowAttemptPairCount": 107,
+  "limitations": [
+    "This inventory contains only the 214 selected pre-cutoff artifacts. It does not represent the full pilot population or prove coverage/effectiveness.",
+    "API-unbound runs remain unbound; no PR is inferred from redacted CI fields, branch names, or SHA values.",
+    "ZIP and member SHA256 values bind the captured bytes; no source credential, local path, signed URL, or private artifact body is included."
+  ],
+  "attempts": [
+    {
+      "runId": "39130703163",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "failure",
+      "runHeadSha": "3bb7d987dea4854cc0da70d045c678be5f5e3b5b",
+      "prBindings": [
+        {
+          "number": 619,
+          "head_sha": "3bb7d987dea4854cc0da70d045c678be5f5e3b5b",
+          "base_sha": "0bba81a4fbfd06683ab65de4685c9be305d73017"
+        }
+      ],
+      "bindingUnresolved": false,
+      "artifacts": [
+        {
+          "artifactId": "12137623714",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39130703163-1-95d3dc9f-5cf4-4cb8-a54d-e7e28f8aaff1",
+          "createdAt": "2026-10-18T13:16:52Z",
+          "expiresAt": "2026-11-17T13:16:52Z",
+          "expectedBytes": 992,
+          "expectedSha256": "9cfdd6422c62b737ef13d26fe86f28ab541337b991c47b7cc343e1afc245fd62",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 992,
+          "sourceSha256": "9cfdd6422c62b737ef13d26fe86f28ab541337b991c47b7cc343e1afc245fd62",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3271,
+          "memberSha256": "e76b5fcdf608798976c581f93a77f39c6908ca55a78c88c4b2120c9b826fd89c",
+          "entryCount": 1,
+          "uncompressedBytes": 3271,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "95d3dc9f-5cf4-4cb8-a54d-e7e28f8aaff1",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12137778176",
+          "phase": "review",
+          "name": "agk-measurement-review-39130703163-1-7ef6ec75-695c-48b1-9a56-eeeb60886d07",
+          "createdAt": "2026-10-18T13:16:51Z",
+          "expiresAt": "2026-11-17T13:16:51Z",
+          "expectedBytes": 1114,
+          "expectedSha256": "fba5f93b665cef42cca5c48c5c9d06797968096370d4c3caff81ff1fccd8016d",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1114,
+          "sourceSha256": "fba5f93b665cef42cca5c48c5c9d06797968096370d4c3caff81ff1fccd8016d",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5040,
+          "memberSha256": "5450c125f1792f4ed4415373f3d5cea20e49cd1492f6e6df98b5b840f220eda0",
+          "entryCount": 1,
+          "uncompressedBytes": 5040,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "7ef6ec75-695c-48b1-9a56-eeeb60886d07",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "incomplete",
+              "decision": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39125461473",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "7266dfd5ecf2ef6430449c67bd98c793a4874dfc",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12135334957",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39125461473-1-3b149dd4-6431-41eb-bbb5-1224f8bd6036",
+          "createdAt": "2026-10-18T12:02:37Z",
+          "expiresAt": "2026-11-17T12:02:36Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "223c5cc894d2ac07e62ff0694833574a597b91b76105666bb305e1d3b9e845ea",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "223c5cc894d2ac07e62ff0694833574a597b91b76105666bb305e1d3b9e845ea",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "94193ea0ead84bd6854e3f2953bfae0f9986aad1c805fd21a1c5578045bcd87c",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "3b149dd4-6431-41eb-bbb5-1224f8bd6036",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12136071967",
+          "phase": "review",
+          "name": "agk-measurement-review-39125461473-1-f06eb113-d2cc-41b6-95dc-10d7004b72a4",
+          "createdAt": "2026-10-18T12:02:36Z",
+          "expiresAt": "2026-11-17T12:02:35Z",
+          "expectedBytes": 1165,
+          "expectedSha256": "24836fbee36a67abb09890e356f5895936dc4e9ffb9e94c7ab5dc761bf7b8752",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1165,
+          "sourceSha256": "24836fbee36a67abb09890e356f5895936dc4e9ffb9e94c7ab5dc761bf7b8752",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "6985e35db1997b0ed5c108957ff51591320e699cc9e98314dd805dd3ebd69c34",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "f06eb113-d2cc-41b6-95dc-10d7004b72a4",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39124413435",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "98156e8a977c16e5fc27b1bb191af9ffa1892ba6",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12136105183",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39124413435-1-78a951f6-fd6b-45da-ab60-74de5c18daaf",
+          "createdAt": "2026-10-18T11:46:54Z",
+          "expiresAt": "2026-11-17T11:46:53Z",
+          "expectedBytes": 1010,
+          "expectedSha256": "3c484f0d2b66f97787cc96329b6b6249e1c1578e7d4b09c6ef8494650663af6d",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1010,
+          "sourceSha256": "3c484f0d2b66f97787cc96329b6b6249e1c1578e7d4b09c6ef8494650663af6d",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "c3670709c0415b846ec66cf02e06f03091b8fc81fc695e15d796431eb7c395e4",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "78a951f6-fd6b-45da-ab60-74de5c18daaf",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12135174515",
+          "phase": "review",
+          "name": "agk-measurement-review-39124413435-1-a7593974-ca78-44e3-8800-1674462cbd7a",
+          "createdAt": "2026-10-18T11:46:52Z",
+          "expiresAt": "2026-11-17T11:46:52Z",
+          "expectedBytes": 1162,
+          "expectedSha256": "7e5f34c8fee1e051dbfc60d836f458968437520558461573b106b2412d339531",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1162,
+          "sourceSha256": "7e5f34c8fee1e051dbfc60d836f458968437520558461573b106b2412d339531",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "a97c5957922ee017a3e9deff1cbfe22e7f2069ffba1b6540e22e25f21fd7e6ef",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "a7593974-ca78-44e3-8800-1674462cbd7a",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39123700551",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "b84b7593f360dfdb59c1a7f4272717ba986eb1bc",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12135715396",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39123700551-1-13b4f94c-a799-464b-81ee-ec3ff26b4547",
+          "createdAt": "2026-10-18T11:36:07Z",
+          "expiresAt": "2026-11-17T11:36:06Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "59b20d5519ac80a8563362e45c03e9c8b653c5f9393f99133fad46e0f3224b14",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "59b20d5519ac80a8563362e45c03e9c8b653c5f9393f99133fad46e0f3224b14",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "a437581a9f3ce85fc8be88c4162b86f35e9ff0f05436834856e80a0807af4278",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "13b4f94c-a799-464b-81ee-ec3ff26b4547",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12135815120",
+          "phase": "review",
+          "name": "agk-measurement-review-39123700551-1-2c70b834-f9a1-4397-b5a6-cddb706b9830",
+          "createdAt": "2026-10-18T11:36:06Z",
+          "expiresAt": "2026-11-17T11:36:05Z",
+          "expectedBytes": 1165,
+          "expectedSha256": "1c1d3bf017ee3f061576524e5ef0b1ce7b1da1c2695d510755652f5e02d59bdc",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1165,
+          "sourceSha256": "1c1d3bf017ee3f061576524e5ef0b1ce7b1da1c2695d510755652f5e02d59bdc",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "81de1492b844af15f0778359e1f91b6cb3a616a541e513e4ee7df04c66442076",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "2c70b834-f9a1-4397-b5a6-cddb706b9830",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39121344313",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "2aed63cfffa4802b7397abdff12df035fb74a505",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12134705574",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39121344313-1-2434c4f7-1df7-4a15-bac1-651c58cca6b7",
+          "createdAt": "2026-10-18T11:02:05Z",
+          "expiresAt": "2026-11-17T11:02:04Z",
+          "expectedBytes": 1010,
+          "expectedSha256": "c0fda019839e20f65ed5add10ce00d9abbceb175da7a1b92d23e082f6c8986ca",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1010,
+          "sourceSha256": "c0fda019839e20f65ed5add10ce00d9abbceb175da7a1b92d23e082f6c8986ca",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "f9c4eac6dbbef15563fd5eba8d200e4351cea05eecc5f86c954ed3ca5abe49e1",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "2434c4f7-1df7-4a15-bac1-651c58cca6b7",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12134222313",
+          "phase": "review",
+          "name": "agk-measurement-review-39121344313-1-460e42f2-f5bc-4740-8ad4-1a789d1077c0",
+          "createdAt": "2026-10-18T11:02:04Z",
+          "expiresAt": "2026-11-17T11:02:03Z",
+          "expectedBytes": 1168,
+          "expectedSha256": "4c4dc48df34fe0ce61417fe8322cc82da5ac5893ac3b9c322fe21554ca40a563",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1168,
+          "sourceSha256": "4c4dc48df34fe0ce61417fe8322cc82da5ac5893ac3b9c322fe21554ca40a563",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5366,
+          "memberSha256": "9108e5643bb214c4fdb47fb980eadbb55e388b2b645b73e08ea685488f8e6230",
+          "entryCount": 1,
+          "uncompressedBytes": 5366,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "460e42f2-f5bc-4740-8ad4-1a789d1077c0",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39118941185",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "dd1f5d04f6f56439bdb5e8547787acf9cf2cc4a7",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12132494794",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39118941185-1-0ef0932f-e8ee-4007-bcbc-43293e5286bd",
+          "createdAt": "2026-10-18T10:24:50Z",
+          "expiresAt": "2026-11-17T10:24:49Z",
+          "expectedBytes": 1008,
+          "expectedSha256": "6eab061a8b596dd0c12bcb1617af82908cb408efa233a335849b82a52924a017",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1008,
+          "sourceSha256": "6eab061a8b596dd0c12bcb1617af82908cb408efa233a335849b82a52924a017",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "50dab13abb07bd876da2423a641c402e7abceefd9fca2091aaabb60b94c20431",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "0ef0932f-e8ee-4007-bcbc-43293e5286bd",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12132749152",
+          "phase": "review",
+          "name": "agk-measurement-review-39118941185-1-46021c39-3531-461f-96f2-bac91f0b7123",
+          "createdAt": "2026-10-18T10:24:49Z",
+          "expiresAt": "2026-11-17T10:24:48Z",
+          "expectedBytes": 1166,
+          "expectedSha256": "958e9e143265627bff862c304f274fd4b993e161153b4c8c496134edf1d294b5",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1166,
+          "sourceSha256": "958e9e143265627bff862c304f274fd4b993e161153b4c8c496134edf1d294b5",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "beada792e5f4b31ca007cd6fa1f63af2bac2f52d83414d88765bdc54e335f41b",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "46021c39-3531-461f-96f2-bac91f0b7123",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39107349903",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "failure",
+      "runHeadSha": "6a89584cc8c0853fbef85bd3078b01c9ded617f7",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12128837472",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39107349903-1-690f7a41-9db6-4f15-b922-3638803d5ec6",
+          "createdAt": "2026-10-18T07:23:15Z",
+          "expiresAt": "2026-11-17T07:23:15Z",
+          "expectedBytes": 1014,
+          "expectedSha256": "16cb5c26b44fec37c9735def923ab9a51a13229ad7c0c62944232b30005b1c80",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1014,
+          "sourceSha256": "16cb5c26b44fec37c9735def923ab9a51a13229ad7c0c62944232b30005b1c80",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "adf8debbde129acd33252854d358ff4aab1d587b72d3341091dbbaf8cb1e9c47",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "690f7a41-9db6-4f15-b922-3638803d5ec6",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12128792624",
+          "phase": "review",
+          "name": "agk-measurement-review-39107349903-1-4be16c28-23bb-4b97-8070-e42cb1c1cd3f",
+          "createdAt": "2026-10-18T07:23:14Z",
+          "expiresAt": "2026-11-17T07:23:13Z",
+          "expectedBytes": 1163,
+          "expectedSha256": "ae6808792b4b55538afe739c2542af1595ebd7328c17c1ba2104230e21bf95e2",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1163,
+          "sourceSha256": "ae6808792b4b55538afe739c2542af1595ebd7328c17c1ba2104230e21bf95e2",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5363,
+          "memberSha256": "13ccb70c7508f1eac14300f0f40f76c718c1162398b3e5d788c31598c0f44fdb",
+          "entryCount": 1,
+          "uncompressedBytes": 5363,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "4be16c28-23bb-4b97-8070-e42cb1c1cd3f",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "incomplete",
+              "decision": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39107349903",
+      "runAttempt": "2",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "6a89584cc8c0853fbef85bd3078b01c9ded617f7",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12129113431",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39107349903-2-e57cdc84-7d23-40ed-8a76-a0945c3d3d99",
+          "createdAt": "2026-10-18T07:38:25Z",
+          "expiresAt": "2026-11-17T07:38:25Z",
+          "expectedBytes": 1008,
+          "expectedSha256": "87c7501ccd0e0a747921ba57d1a3672a47191072654163bf404be64da22cb177",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1008,
+          "sourceSha256": "87c7501ccd0e0a747921ba57d1a3672a47191072654163bf404be64da22cb177",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "c3c7405cb6aeeac05cb2e33a97e088553b6185e0ff2c8d1f9c904f3eac637d8a",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "e57cdc84-7d23-40ed-8a76-a0945c3d3d99",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12129915086",
+          "phase": "review",
+          "name": "agk-measurement-review-39107349903-2-9f741d0f-ff60-4199-a449-dc4575c9e7fa",
+          "createdAt": "2026-10-18T07:38:25Z",
+          "expiresAt": "2026-11-17T07:38:24Z",
+          "expectedBytes": 1166,
+          "expectedSha256": "97f083f6ca4225a4b225fc260f2ef12ad4a1e6d88aa2e2bb0c770eec61f23164",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1166,
+          "sourceSha256": "97f083f6ca4225a4b225fc260f2ef12ad4a1e6d88aa2e2bb0c770eec61f23164",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "258e8ba7552a4a5ccb889388e1bd81135f83848581ddd9ca00bfa58a4e283b46",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "9f741d0f-ff60-4199-a449-dc4575c9e7fa",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39106147448",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "31f762435a30cf36d6386595bf4ef13f6f09d9c5",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12128955089",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39106147448-1-40b6f81a-3e03-41b5-9569-86d3e3dfcfdd",
+          "createdAt": "2026-10-18T07:04:33Z",
+          "expiresAt": "2026-11-17T07:04:32Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "3e03d8a6dfa0210b3fc042474049a2ad9273f2497415c5b6d9952eb5b760fd5e",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "3e03d8a6dfa0210b3fc042474049a2ad9273f2497415c5b6d9952eb5b760fd5e",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "0da99f5738c658fc9592b063ce2ae5f07741bd85cf7e739b2e2c685f2ce2a9e3",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "40b6f81a-3e03-41b5-9569-86d3e3dfcfdd",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12128282399",
+          "phase": "review",
+          "name": "agk-measurement-review-39106147448-1-970d9efd-46a3-4766-b536-532b7cdf9962",
+          "createdAt": "2026-10-18T07:04:32Z",
+          "expiresAt": "2026-11-17T07:04:31Z",
+          "expectedBytes": 1164,
+          "expectedSha256": "f89da3e4c57b043f3ac5b4e1411d1f7894f49d472518da1857316e6cd81f585b",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1164,
+          "sourceSha256": "f89da3e4c57b043f3ac5b4e1411d1f7894f49d472518da1857316e6cd81f585b",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "2bc10150b0ee11a7bc8d9735860fe98499201f48d520ef30c368fa2016fb5a61",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "970d9efd-46a3-4766-b536-532b7cdf9962",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39104273631",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "61699faef606ace81d53385816cb07827880f4e6",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12128170744",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39104273631-1-83ae8dea-cd1f-4ed6-a055-5cabb90a9a0a",
+          "createdAt": "2026-10-18T06:33:15Z",
+          "expiresAt": "2026-11-17T06:33:14Z",
+          "expectedBytes": 1007,
+          "expectedSha256": "1ba7d0cf87c9fc5260a98a5c162158cd2bf2bca0cf65d634948862f420ed2012",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1007,
+          "sourceSha256": "1ba7d0cf87c9fc5260a98a5c162158cd2bf2bca0cf65d634948862f420ed2012",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "192a50efb0792546770992c239a250a10a3f88928b8ae0ae63da05fcd5e11039",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "83ae8dea-cd1f-4ed6-a055-5cabb90a9a0a",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12127713173",
+          "phase": "review",
+          "name": "agk-measurement-review-39104273631-1-e2a41ade-aa04-4de0-ac04-d1f1cd0d98f9",
+          "createdAt": "2026-10-18T06:33:14Z",
+          "expiresAt": "2026-11-17T06:33:13Z",
+          "expectedBytes": 1165,
+          "expectedSha256": "c3a9ec43892394851caedb1bd2d663a6bdbb83447417f1090a4bb06026378932",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1165,
+          "sourceSha256": "c3a9ec43892394851caedb1bd2d663a6bdbb83447417f1090a4bb06026378932",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "748c64f627dfc1d63e1e02d44ac156ae32807dc553d30a76f38fbeca0d062aa2",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "e2a41ade-aa04-4de0-ac04-d1f1cd0d98f9",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39103710724",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "43db482315708bf92abb09d11ae6a81df91ccb15",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12128010194",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39103710724-1-a5e509a4-6ef6-4219-bf09-93ad38f2e846",
+          "createdAt": "2026-10-18T06:23:44Z",
+          "expiresAt": "2026-11-17T06:23:44Z",
+          "expectedBytes": 1007,
+          "expectedSha256": "a897d067b199069fdef3577029ef02ccdd6de43aed0d743a915429279770c2c0",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1007,
+          "sourceSha256": "a897d067b199069fdef3577029ef02ccdd6de43aed0d743a915429279770c2c0",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "0fd4b0bbd421b28285f4bbf4d8e8cfc9911ad14774945a611195f464dd6fdb4f",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "a5e509a4-6ef6-4219-bf09-93ad38f2e846",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12127049854",
+          "phase": "review",
+          "name": "agk-measurement-review-39103710724-1-241f3b06-fbf9-48a1-ab24-414113b60019",
+          "createdAt": "2026-10-18T06:23:43Z",
+          "expiresAt": "2026-11-17T06:23:43Z",
+          "expectedBytes": 1163,
+          "expectedSha256": "0e703f5f6e143e5bbff0b00df28a0328be336c10bfdacb57a6efd0102d2a92be",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1163,
+          "sourceSha256": "0e703f5f6e143e5bbff0b00df28a0328be336c10bfdacb57a6efd0102d2a92be",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "570a5441262e2d1f3a32faf78f204fb72d7720d5da05faec6461561d3df18bc9",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "241f3b06-fbf9-48a1-ab24-414113b60019",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39103568198",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "failure",
+      "runHeadSha": "43db482315708bf92abb09d11ae6a81df91ccb15",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12126689305",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39103568198-1-421373a1-f35e-4af3-8749-d6e3dcf0c5e2",
+          "createdAt": "2026-10-18T06:20:27Z",
+          "expiresAt": "2026-11-17T06:20:26Z",
+          "expectedBytes": 993,
+          "expectedSha256": "e04347f8f15e6d870b0fbff6dc3f1c08014a084135b69cdd8779e0bcb7a9f44b",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 993,
+          "sourceSha256": "e04347f8f15e6d870b0fbff6dc3f1c08014a084135b69cdd8779e0bcb7a9f44b",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3271,
+          "memberSha256": "5b4f931e923556d7f581df9ae6ef19c51930f4abe1129074fc742e1cf44cdfda",
+          "entryCount": 1,
+          "uncompressedBytes": 3271,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "421373a1-f35e-4af3-8749-d6e3dcf0c5e2",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12127097785",
+          "phase": "review",
+          "name": "agk-measurement-review-39103568198-1-77d1e7ce-42df-4ff3-97a0-f6bd922fdd55",
+          "createdAt": "2026-10-18T06:20:26Z",
+          "expiresAt": "2026-11-17T06:20:25Z",
+          "expectedBytes": 1118,
+          "expectedSha256": "553cf735b854ec53daf666747f7e8e6017a725baeb51360f793796210af46763",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1118,
+          "sourceSha256": "553cf735b854ec53daf666747f7e8e6017a725baeb51360f793796210af46763",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5041,
+          "memberSha256": "8ee209a04acc4a6fb4e51db726dd119ff9deb3d619f40a9304aa5de2537cb777",
+          "entryCount": 1,
+          "uncompressedBytes": 5041,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "77d1e7ce-42df-4ff3-97a0-f6bd922fdd55",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "incomplete",
+              "decision": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39100683000",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12125994703",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39100683000-1-9a68b71c-c0a7-4e44-901b-e17711c82d4c",
+          "createdAt": "2026-10-18T05:32:13Z",
+          "expiresAt": "2026-11-17T05:32:12Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "f4bfc49b60e6deb3f867ff0d6bb7053654ce86df43824e908e657a80afc8073d",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "f4bfc49b60e6deb3f867ff0d6bb7053654ce86df43824e908e657a80afc8073d",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "a58549a9039544b2f6de39a5f5d426854e757232718057cf93a532b152c465df",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "9a68b71c-c0a7-4e44-901b-e17711c82d4c",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12126004677",
+          "phase": "review",
+          "name": "agk-measurement-review-39100683000-1-b944ed18-1a46-4b56-bf7c-6d6b2af9a360",
+          "createdAt": "2026-10-18T05:32:12Z",
+          "expiresAt": "2026-11-17T05:32:11Z",
+          "expectedBytes": 1169,
+          "expectedSha256": "a5df8bae87fb1f9a3d0dad7f56cb7013d4a95cf694dadfc704baa8668e3a083e",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1169,
+          "sourceSha256": "a5df8bae87fb1f9a3d0dad7f56cb7013d4a95cf694dadfc704baa8668e3a083e",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5366,
+          "memberSha256": "e7ae25b46e9dcccacb7f7bf61d386ea850726c4fc0ff326ce571bb11a381b6ee",
+          "entryCount": 1,
+          "uncompressedBytes": 5366,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "b944ed18-1a46-4b56-bf7c-6d6b2af9a360",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39099993342",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "ae3c1265430a72dc48296523cab5ad0263ee55a5",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12126625114",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39099993342-1-af13f588-8de6-4201-ba1e-1bcd194d91d7",
+          "createdAt": "2026-10-18T05:19:32Z",
+          "expiresAt": "2026-11-17T05:19:31Z",
+          "expectedBytes": 1007,
+          "expectedSha256": "259ceabd2dbd91ed55bdd5bf070aa59d4fb59d072d69b1abf0612662a0ea182c",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1007,
+          "sourceSha256": "259ceabd2dbd91ed55bdd5bf070aa59d4fb59d072d69b1abf0612662a0ea182c",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "ae0411bbe8c607551df3f4406ebf8190a817565ef66028c207d284b1038faffc",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "af13f588-8de6-4201-ba1e-1bcd194d91d7",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12126426437",
+          "phase": "review",
+          "name": "agk-measurement-review-39099993342-1-65ed7036-e483-48aa-a965-96502be12d81",
+          "createdAt": "2026-10-18T05:19:31Z",
+          "expiresAt": "2026-11-17T05:19:30Z",
+          "expectedBytes": 1164,
+          "expectedSha256": "9eb4a7af07a5b5fe4a0a27b8eee97d180a14643a92b42bb01fdbbbb1cc222e64",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1164,
+          "sourceSha256": "9eb4a7af07a5b5fe4a0a27b8eee97d180a14643a92b42bb01fdbbbb1cc222e64",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "ff5e4b2d4725e5ffb42c61a736c6dfb25c9a19f9b8d79a888bdda018ef115523",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "65ed7036-e483-48aa-a965-96502be12d81",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39099817300",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "a3703be8f6661164d2335ebbf2e5f95c8c9da6d3",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12125784090",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39099817300-1-7c8dd419-2290-4961-af61-1899e1de14d3",
+          "createdAt": "2026-10-18T05:16:16Z",
+          "expiresAt": "2026-11-17T05:16:15Z",
+          "expectedBytes": 1006,
+          "expectedSha256": "84c6239f5365114c01251b02101538f8bd7c1cb4ffcc9ea47f842fc90f531279",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1006,
+          "sourceSha256": "84c6239f5365114c01251b02101538f8bd7c1cb4ffcc9ea47f842fc90f531279",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "c790fcb9c1bbd7ae5b5ffe35f9d987056da41890ef646fe1f41bdd72418a7d53",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "7c8dd419-2290-4961-af61-1899e1de14d3",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12126013135",
+          "phase": "review",
+          "name": "agk-measurement-review-39099817300-1-9b664fd7-92a5-4a60-8ea3-5d3f99d5ba72",
+          "createdAt": "2026-10-18T05:16:15Z",
+          "expiresAt": "2026-11-17T05:16:15Z",
+          "expectedBytes": 1164,
+          "expectedSha256": "3da228ec36abf6903aa67935b811fa1b0481b86fec01b853711f06827667dc3a",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1164,
+          "sourceSha256": "3da228ec36abf6903aa67935b811fa1b0481b86fec01b853711f06827667dc3a",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "50ebdfd92fad324dfc61931d68e984040644e7a69bc5187dd4adba72768d330c",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "9b664fd7-92a5-4a60-8ea3-5d3f99d5ba72",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39099361811",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "856d5fc71f4fa27916dc4eff39a1cee79f9311fa",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12125149276",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39099361811-1-b7597e92-27ac-4962-9123-6becbf663821",
+          "createdAt": "2026-10-18T05:08:58Z",
+          "expiresAt": "2026-11-17T05:08:58Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "079a192bba1988f0706d875ccd1789196e67fe26572ef81625f3d06ad040da60",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "079a192bba1988f0706d875ccd1789196e67fe26572ef81625f3d06ad040da60",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "a4cd340aec28100d4a72d2a366e59ef864d4450ec7de65a85631405ddf94a82b",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "b7597e92-27ac-4962-9123-6becbf663821",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12125154121",
+          "phase": "review",
+          "name": "agk-measurement-review-39099361811-1-8fae5f85-2e77-4a21-b43e-4db9a82e5cf1",
+          "createdAt": "2026-10-18T05:08:57Z",
+          "expiresAt": "2026-11-17T05:08:57Z",
+          "expectedBytes": 1164,
+          "expectedSha256": "dd2a444c4fd34df9d34b3d92f0a71da644e38cbe3c4c7447ebcb7e0c81cff2e8",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1164,
+          "sourceSha256": "dd2a444c4fd34df9d34b3d92f0a71da644e38cbe3c4c7447ebcb7e0c81cff2e8",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "c0d6448441ef908366dbcfa885633eeeafc287d113310908062cae4f56b81a5f",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "8fae5f85-2e77-4a21-b43e-4db9a82e5cf1",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39098899351",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "1d1fb92cc18faace7aa5583adcbb40db15116032",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12125727609",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39098899351-1-3801c1d8-7f13-44dc-876d-cdb8a0a26f52",
+          "createdAt": "2026-10-18T05:00:35Z",
+          "expiresAt": "2026-11-17T05:00:35Z",
+          "expectedBytes": 1004,
+          "expectedSha256": "cb1b7e4e81bb7a13e0091920d9477fa38cd63ef9a42d09bf763c911548f4861b",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1004,
+          "sourceSha256": "cb1b7e4e81bb7a13e0091920d9477fa38cd63ef9a42d09bf763c911548f4861b",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "a0c7ff9df696d2dd6c04e664f4e89dc0d39a1c5b9f90ff4a75165a2cd0a3ca2f",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "3801c1d8-7f13-44dc-876d-cdb8a0a26f52",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12125877069",
+          "phase": "review",
+          "name": "agk-measurement-review-39098899351-1-89ed4f37-9849-488a-971b-e224c7d054ed",
+          "createdAt": "2026-10-18T05:00:34Z",
+          "expiresAt": "2026-11-17T05:00:34Z",
+          "expectedBytes": 1165,
+          "expectedSha256": "88e933e2dd9da2897ebaf4fdfa428f9cb49857207707e6877b214dbca9a043d3",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1165,
+          "sourceSha256": "88e933e2dd9da2897ebaf4fdfa428f9cb49857207707e6877b214dbca9a043d3",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "fc570811feed6cacb9be46d3787303dace12fdd03c4887cd301ac285a062b0ba",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "89ed4f37-9849-488a-971b-e224c7d054ed",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39098487025",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "2bbe60607baa36e85a5c89b8d6b9969fe7506eea",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12125691310",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39098487025-1-53e643ee-3af4-464f-bdd2-8c51cd9fb35a",
+          "createdAt": "2026-10-18T04:53:55Z",
+          "expiresAt": "2026-11-17T04:53:54Z",
+          "expectedBytes": 1010,
+          "expectedSha256": "43ac9c286aa3ad36813f98468ddce0bcabd480eed0450082d71834ca3f00425d",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1010,
+          "sourceSha256": "43ac9c286aa3ad36813f98468ddce0bcabd480eed0450082d71834ca3f00425d",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "7dfbb46863fd7e26b3d51140bcba21de044a9f95e85bec6a9528d227883cf56a",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "53e643ee-3af4-464f-bdd2-8c51cd9fb35a",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12125038327",
+          "phase": "review",
+          "name": "agk-measurement-review-39098487025-1-9f07cbf7-7d58-413b-b5b8-a6c109b0a86f",
+          "createdAt": "2026-10-18T04:53:54Z",
+          "expiresAt": "2026-11-17T04:53:53Z",
+          "expectedBytes": 1166,
+          "expectedSha256": "ca53f3e4cbba79a080d2d48e8d0ce06f0df10dacfc0afad073f026a0a3e73f6e",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1166,
+          "sourceSha256": "ca53f3e4cbba79a080d2d48e8d0ce06f0df10dacfc0afad073f026a0a3e73f6e",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5366,
+          "memberSha256": "1f145bcb1e9f22d78aaa0cf8552d2acb480cff7a7fc437dad801aa6111a916a8",
+          "entryCount": 1,
+          "uncompressedBytes": 5366,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "9f07cbf7-7d58-413b-b5b8-a6c109b0a86f",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39098184701",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "e56a551a7d98184c8fd81d0ee4d30fc501552edc",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12125418129",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39098184701-1-2f52e7d5-3c1f-494d-a802-3689b8a08493",
+          "createdAt": "2026-10-18T04:48:06Z",
+          "expiresAt": "2026-11-17T04:48:06Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "c4e3327d5f3ac775c42eb2e54f9bdf263d6c8928965a94cae19ab1974151ad67",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "c4e3327d5f3ac775c42eb2e54f9bdf263d6c8928965a94cae19ab1974151ad67",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "3f31d738181657082be5ad2296184cdae13df6d291f40b77915b6f50fd8c8724",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "2f52e7d5-3c1f-494d-a802-3689b8a08493",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12124959859",
+          "phase": "review",
+          "name": "agk-measurement-review-39098184701-1-a64f088a-db1c-4e93-963c-507d48ba1400",
+          "createdAt": "2026-10-18T04:48:06Z",
+          "expiresAt": "2026-11-17T04:48:05Z",
+          "expectedBytes": 1085,
+          "expectedSha256": "85e369c26972dcb24d4f7b9872a48216f84c3ddf14d2c5e35ebdff2a8c4d22ae",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1085,
+          "sourceSha256": "85e369c26972dcb24d4f7b9872a48216f84c3ddf14d2c5e35ebdff2a8c4d22ae",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5049,
+          "memberSha256": "8b46931873e35731584a8bdeccb68ba1f8cae3c4bd543a85bbd297638b59b130",
+          "entryCount": 1,
+          "uncompressedBytes": 5049,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "a64f088a-db1c-4e93-963c-507d48ba1400",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "incomplete",
+              "decision": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39097673506",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "a008348eb1390c72fb321f60b0ce01950a55dfcd",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12125830112",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39097673506-1-ff3d75cc-04a5-4de9-9819-556ed96d4a8f",
+          "createdAt": "2026-10-18T04:40:20Z",
+          "expiresAt": "2026-11-17T04:40:19Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "8befa6f4d8f99ee5290a3d1f5286525241d1c4bdff817b38b8d6f3b77c41c0ad",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "8befa6f4d8f99ee5290a3d1f5286525241d1c4bdff817b38b8d6f3b77c41c0ad",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "29315419ec4b62d441254c82cc55067c6789d707362fdc327f061eadeafe75f3",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "ff3d75cc-04a5-4de9-9819-556ed96d4a8f",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12125860066",
+          "phase": "review",
+          "name": "agk-measurement-review-39097673506-1-65549e8b-8450-4dbe-9bda-8d86c5090b09",
+          "createdAt": "2026-10-18T04:40:19Z",
+          "expiresAt": "2026-11-17T04:40:19Z",
+          "expectedBytes": 1170,
+          "expectedSha256": "16e64d025a1fadeca67c626ea3609362a68a59bef5c98625118fc8504c301bb3",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1170,
+          "sourceSha256": "16e64d025a1fadeca67c626ea3609362a68a59bef5c98625118fc8504c301bb3",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5366,
+          "memberSha256": "472796b679869e42a38ac53b8cd9c5b73222663e85b40b842092e1436953df57",
+          "entryCount": 1,
+          "uncompressedBytes": 5366,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "65549e8b-8450-4dbe-9bda-8d86c5090b09",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39097444478",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "1d07bb257c4534e602ef75ac65b40487d903d8d4",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12125551027",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39097444478-1-904562a8-0521-45ad-a902-975b29039a82",
+          "createdAt": "2026-10-18T04:35:36Z",
+          "expiresAt": "2026-11-17T04:35:35Z",
+          "expectedBytes": 1008,
+          "expectedSha256": "e85fc41c872adf2799d3e96b21b5ccf9ad08dc8bc070194bd3a80d5a3288d2ec",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1008,
+          "sourceSha256": "e85fc41c872adf2799d3e96b21b5ccf9ad08dc8bc070194bd3a80d5a3288d2ec",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "745368f154997ee93dfa2aad7058296f851afa5c1da431ca47cf3747bcac4e8c",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "904562a8-0521-45ad-a902-975b29039a82",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12125287580",
+          "phase": "review",
+          "name": "agk-measurement-review-39097444478-1-5a0ab901-d62f-4fc7-a45d-0b8c7006fe6b",
+          "createdAt": "2026-10-18T04:35:34Z",
+          "expiresAt": "2026-11-17T04:35:33Z",
+          "expectedBytes": 1164,
+          "expectedSha256": "8ffb5ae37c360873be76d5905f8137bad730efbf6b251613094c42a41a1de98b",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1164,
+          "sourceSha256": "8ffb5ae37c360873be76d5905f8137bad730efbf6b251613094c42a41a1de98b",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "6a0f37f872e1bb482c10566191c91112a8c9e16dca1813036f58f1d899a5e09b",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "5a0ab901-d62f-4fc7-a45d-0b8c7006fe6b",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39096176636",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "452450df73007f24488500df73b569749f707831",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12125260321",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39096176636-1-c77d9bea-66b2-42f0-8949-5a6459bcf047",
+          "createdAt": "2026-10-18T04:13:41Z",
+          "expiresAt": "2026-11-17T04:13:40Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "f0b85909cbd707203ebe60106af62d01d0fc9d87109487cb5820c8ae337211c3",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "f0b85909cbd707203ebe60106af62d01d0fc9d87109487cb5820c8ae337211c3",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "75cbef4589a8d330735fa534747d8be984fa7b3a778ed05d90469667fcd0fdbc",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "c77d9bea-66b2-42f0-8949-5a6459bcf047",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12125305178",
+          "phase": "review",
+          "name": "agk-measurement-review-39096176636-1-d755104d-b2b2-48b0-92ba-04c0c4f5e3dc",
+          "createdAt": "2026-10-18T04:13:40Z",
+          "expiresAt": "2026-11-17T04:13:39Z",
+          "expectedBytes": 1167,
+          "expectedSha256": "34afe3dc4415e703914597179205f4100a0e411fb6de0db9272da545dde44c79",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1167,
+          "sourceSha256": "34afe3dc4415e703914597179205f4100a0e411fb6de0db9272da545dde44c79",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "ad3b7dc44ad84e3bfee800c5b00fd7dfd7a3119bd70bc28ec01855bac8e3e417",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "d755104d-b2b2-48b0-92ba-04c0c4f5e3dc",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39095990299",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "56bf19e1ca2357d24b3848a0d61210dd78eb73dc",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12123649684",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39095990299-1-146391e9-9a54-41d8-8e28-7f2b51a3471b",
+          "createdAt": "2026-10-18T04:10:06Z",
+          "expiresAt": "2026-11-17T04:10:05Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "fbb1201dfe369d758921f5d13ac1c5e4a7b7fa73fbdb19595149d218c7f694ae",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "fbb1201dfe369d758921f5d13ac1c5e4a7b7fa73fbdb19595149d218c7f694ae",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "d3d0b13fcc0da3131f2b8f2d3fbbfe3c752a8f234e04d743db5cf6f2cd09ae4b",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "146391e9-9a54-41d8-8e28-7f2b51a3471b",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12124865492",
+          "phase": "review",
+          "name": "agk-measurement-review-39095990299-1-1d155bc1-9182-4bb9-99da-15326a258868",
+          "createdAt": "2026-10-18T04:10:05Z",
+          "expiresAt": "2026-11-17T04:10:04Z",
+          "expectedBytes": 1165,
+          "expectedSha256": "aa2fe0926d4198b15926f8c6c8eb31795236a8b09263ad71af5b134e3f84ccb7",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1165,
+          "sourceSha256": "aa2fe0926d4198b15926f8c6c8eb31795236a8b09263ad71af5b134e3f84ccb7",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "c6743bf6b3bb6152756f66aafeb64306c0af038dd1a52f62c1c35d205e16bfd2",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "1d155bc1-9182-4bb9-99da-15326a258868",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39095349036",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "a5a0adeefc3f72365b05400ff7a81d89a6d2e2dd",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12124054186",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39095349036-1-91049b05-f204-40c1-b2d6-a989613a8223",
+          "createdAt": "2026-10-18T03:59:05Z",
+          "expiresAt": "2026-11-17T03:59:04Z",
+          "expectedBytes": 1011,
+          "expectedSha256": "94319bb9028eaed76897e0c8baacdb7fd9e278afe13d92537a8462a9ca20f54c",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1011,
+          "sourceSha256": "94319bb9028eaed76897e0c8baacdb7fd9e278afe13d92537a8462a9ca20f54c",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "b45e673d724791207349eb390f08b25398a14abdae7ce3e4a39aff727b088508",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "91049b05-f204-40c1-b2d6-a989613a8223",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12124507729",
+          "phase": "review",
+          "name": "agk-measurement-review-39095349036-1-f31ba68e-9516-47f5-b389-75ee7e2a7ee9",
+          "createdAt": "2026-10-18T03:59:04Z",
+          "expiresAt": "2026-11-17T03:59:03Z",
+          "expectedBytes": 1165,
+          "expectedSha256": "41b19d659d675e993f2c9fbcd47724a3a16bdb4a94f3c3a9fcc779b3624a1427",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1165,
+          "sourceSha256": "41b19d659d675e993f2c9fbcd47724a3a16bdb4a94f3c3a9fcc779b3624a1427",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "1c80fed7869e30976ede95f34ff2a90066cf2d61365329ef703201f1657a9aab",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "f31ba68e-9516-47f5-b389-75ee7e2a7ee9",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39094216145",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "5e62a8657b36e9f242eccf1ab88c393762e53c35",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12123868115",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39094216145-1-b22c3e80-ba44-4dff-9863-ab39b24542db",
+          "createdAt": "2026-10-18T03:39:53Z",
+          "expiresAt": "2026-11-17T03:39:52Z",
+          "expectedBytes": 1008,
+          "expectedSha256": "5df475b1a0b0ba83636008cad9fbac2e16b4ec5f2b11ff20fb1b166e3f655093",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1008,
+          "sourceSha256": "5df475b1a0b0ba83636008cad9fbac2e16b4ec5f2b11ff20fb1b166e3f655093",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "7d79c751d2b29a4384e801c886d1fc24fff1718b601c0aa9b7981d9aa8cfe2b3",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "b22c3e80-ba44-4dff-9863-ab39b24542db",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12124346390",
+          "phase": "review",
+          "name": "agk-measurement-review-39094216145-1-1a679b05-f675-4c93-8138-66d64a031123",
+          "createdAt": "2026-10-18T03:39:52Z",
+          "expiresAt": "2026-11-17T03:39:51Z",
+          "expectedBytes": 1166,
+          "expectedSha256": "7732bac75725bba35a739663844e4664fbbd3b2f86a910b1a03b6858b1b3d42c",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1166,
+          "sourceSha256": "7732bac75725bba35a739663844e4664fbbd3b2f86a910b1a03b6858b1b3d42c",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5366,
+          "memberSha256": "8312bd7ef17c24dc61b99c944a828b570b2a6320959e09c5a398dc42dacde5e1",
+          "entryCount": 1,
+          "uncompressedBytes": 5366,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "1a679b05-f675-4c93-8138-66d64a031123",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39094123286",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "976566dcdb05f3de6400f1908a22aca2f29688aa",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12123392994",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39094123286-1-40099936-0dab-4f83-a0d0-71ff37cccf10",
+          "createdAt": "2026-10-18T03:37:48Z",
+          "expiresAt": "2026-11-17T03:37:47Z",
+          "expectedBytes": 1007,
+          "expectedSha256": "9d23af6338abfec40970ecbc69588c270d864ce68d1b9485656b87ee93f16f7a",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1007,
+          "sourceSha256": "9d23af6338abfec40970ecbc69588c270d864ce68d1b9485656b87ee93f16f7a",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "c00de267772157b3250e47bf23ac4187d638412b843f1da40337886b2b10c877",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "40099936-0dab-4f83-a0d0-71ff37cccf10",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12123697318",
+          "phase": "review",
+          "name": "agk-measurement-review-39094123286-1-398e8ecb-2216-44a7-85d9-0505779d9f79",
+          "createdAt": "2026-10-18T03:37:47Z",
+          "expiresAt": "2026-11-17T03:37:46Z",
+          "expectedBytes": 1163,
+          "expectedSha256": "fd825dd52faecf3e9971650041f5fa03c94f09a0a24443abad23a780e629fc5a",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1163,
+          "sourceSha256": "fd825dd52faecf3e9971650041f5fa03c94f09a0a24443abad23a780e629fc5a",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "466a4864743e0a373e225333aedc91845a882476033e957cf7a18e17fad5d158",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "398e8ecb-2216-44a7-85d9-0505779d9f79",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39093345407",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "adae66930ef46848fd9b7882f15ce413e82a1164",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12123861375",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39093345407-1-4cdd5c27-7e2d-4c08-98df-e82d17bbf0df",
+          "createdAt": "2026-10-18T03:24:59Z",
+          "expiresAt": "2026-11-17T03:24:59Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "5b2a5007c415695004f0a772c2867bbab5891c4f68c0028295554213aec7d3e4",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "5b2a5007c415695004f0a772c2867bbab5891c4f68c0028295554213aec7d3e4",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "13e565c0478dae8cab955d95ae0b51a26da352934e892e85c23d37d60052a6a7",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "4cdd5c27-7e2d-4c08-98df-e82d17bbf0df",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12123975926",
+          "phase": "review",
+          "name": "agk-measurement-review-39093345407-1-16644a33-f9ba-4bd6-8457-e57896de10be",
+          "createdAt": "2026-10-18T03:24:58Z",
+          "expiresAt": "2026-11-17T03:24:57Z",
+          "expectedBytes": 1163,
+          "expectedSha256": "3ab701f1fc1474af965b910a7bc44dc1387b17f7a96cd6992170cc92390ccc63",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1163,
+          "sourceSha256": "3ab701f1fc1474af965b910a7bc44dc1387b17f7a96cd6992170cc92390ccc63",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5366,
+          "memberSha256": "a49bd6435054245579e19e7c339916caf5d1e2fb01f13985417d4d889e6e0278",
+          "entryCount": 1,
+          "uncompressedBytes": 5366,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "16644a33-f9ba-4bd6-8457-e57896de10be",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39093133614",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "91e01b330007a01ee82d0f73631923a746f02cd3",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12123269034",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39093133614-1-f260ad6b-c17d-4a86-b4af-fce31b841844",
+          "createdAt": "2026-10-18T03:21:20Z",
+          "expiresAt": "2026-11-17T03:21:20Z",
+          "expectedBytes": 1008,
+          "expectedSha256": "6d86161d7ddd8cfdc11d5d8f119922e1efe6ce5a91e5bd73c645fa5af3ed1b74",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1008,
+          "sourceSha256": "6d86161d7ddd8cfdc11d5d8f119922e1efe6ce5a91e5bd73c645fa5af3ed1b74",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "5784bad7e42ac2d5c329a6fd8acfebaed259f8e64c52ba3e938cfceda4df56ee",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "f260ad6b-c17d-4a86-b4af-fce31b841844",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12123224540",
+          "phase": "review",
+          "name": "agk-measurement-review-39093133614-1-ea99bc38-1baf-45c4-9b92-8b868aac2d06",
+          "createdAt": "2026-10-18T03:21:20Z",
+          "expiresAt": "2026-11-17T03:21:19Z",
+          "expectedBytes": 1169,
+          "expectedSha256": "a9b5a3bdb3827d2e908a8e7b714fe4b62e2f93354bfb626b0efd493d957a1bf3",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1169,
+          "sourceSha256": "a9b5a3bdb3827d2e908a8e7b714fe4b62e2f93354bfb626b0efd493d957a1bf3",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "492d7bae0e892a7bfa84ac1467879a23c2e6a072c41a4c8d718d190eab4f6ef7",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "ea99bc38-1baf-45c4-9b92-8b868aac2d06",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39092989242",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "failure",
+      "runHeadSha": "2f0e0600f64d9088a252497e6f8dea31eee16975",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12123810966",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39092989242-1-4c5cc180-1d5e-41ae-b96b-9a60373ff2f6",
+          "createdAt": "2026-10-18T03:17:34Z",
+          "expiresAt": "2026-11-17T03:17:33Z",
+          "expectedBytes": 994,
+          "expectedSha256": "9031fc4e0cd9ca55baeac868fa73f03a318aa732869c965d05ce88e5ace352bb",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 994,
+          "sourceSha256": "9031fc4e0cd9ca55baeac868fa73f03a318aa732869c965d05ce88e5ace352bb",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3271,
+          "memberSha256": "d7dd40a6698a1a9a227f2bfd73a8892ffc5017a3789d49a7b871889478d78c97",
+          "entryCount": 1,
+          "uncompressedBytes": 3271,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "4c5cc180-1d5e-41ae-b96b-9a60373ff2f6",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12123029764",
+          "phase": "review",
+          "name": "agk-measurement-review-39092989242-1-c09d86aa-c6e4-4aa1-85b8-08dbd5242144",
+          "createdAt": "2026-10-18T03:17:33Z",
+          "expiresAt": "2026-11-17T03:17:32Z",
+          "expectedBytes": 1117,
+          "expectedSha256": "f2120e21374a4b1a85a5d5010801954d0af3a93f66604222289a1829efb395a6",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1117,
+          "sourceSha256": "f2120e21374a4b1a85a5d5010801954d0af3a93f66604222289a1829efb395a6",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5041,
+          "memberSha256": "24168fa1e1819b69f9f2d535f42313c980163bc5256e6386af924d10367a1a7d",
+          "entryCount": 1,
+          "uncompressedBytes": 5041,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "c09d86aa-c6e4-4aa1-85b8-08dbd5242144",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "incomplete",
+              "decision": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39090189555",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "d7f246b0ccdae9f7675fc8048fb0da0676f9ed82",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12122995453",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39090189555-1-e49aef19-feac-455e-85ec-d1315455b9f8",
+          "createdAt": "2026-10-18T02:32:17Z",
+          "expiresAt": "2026-11-17T02:32:17Z",
+          "expectedBytes": 1010,
+          "expectedSha256": "a7a82a96b676e688f0cd4e03ef4f7043e58f330676da1ffa2ed189969a054162",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1010,
+          "sourceSha256": "a7a82a96b676e688f0cd4e03ef4f7043e58f330676da1ffa2ed189969a054162",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "51e36c39268b6bbd2796f9345c84952f6d2a0d2a338dfa8f6fd851d2e1efe3d9",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "e49aef19-feac-455e-85ec-d1315455b9f8",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12122154273",
+          "phase": "review",
+          "name": "agk-measurement-review-39090189555-1-e799ef7f-5cd1-40f3-8855-2d2587ef6ae8",
+          "createdAt": "2026-10-18T02:32:16Z",
+          "expiresAt": "2026-11-17T02:32:15Z",
+          "expectedBytes": 1170,
+          "expectedSha256": "5cd2f75952fc9a08e1652f1f2296afbc2a467f3ec57f30b9eba2f21f116835cf",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1170,
+          "sourceSha256": "5cd2f75952fc9a08e1652f1f2296afbc2a467f3ec57f30b9eba2f21f116835cf",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5366,
+          "memberSha256": "c2efeba5372e184d330b65fbe93d20b84c749d7b3ce5a9adca165699facafc16",
+          "entryCount": 1,
+          "uncompressedBytes": 5366,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "e799ef7f-5cd1-40f3-8855-2d2587ef6ae8",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39089149082",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "failure",
+      "runHeadSha": "db247abe54551dd51d4178e3245913039e8729ec",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12121882892",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39089149082-1-2bd330db-0d09-4933-b16c-c1a3d95d2a00",
+          "createdAt": "2026-10-18T02:12:30Z",
+          "expiresAt": "2026-11-17T02:12:30Z",
+          "expectedBytes": 994,
+          "expectedSha256": "cdbed5eb0ded8006b1103a4e2cdd092fbcc80673b55dc9b73a6fd5c13b7383e7",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 994,
+          "sourceSha256": "cdbed5eb0ded8006b1103a4e2cdd092fbcc80673b55dc9b73a6fd5c13b7383e7",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3271,
+          "memberSha256": "84954ee12e91c65c1eb2c3b561caf4897987f2c65c7ae7a1d24ee4320740be19",
+          "entryCount": 1,
+          "uncompressedBytes": 3271,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "2bd330db-0d09-4933-b16c-c1a3d95d2a00",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12122196911",
+          "phase": "review",
+          "name": "agk-measurement-review-39089149082-1-ec57ecd5-82f3-42fe-8674-7148acc58455",
+          "createdAt": "2026-10-18T02:12:29Z",
+          "expiresAt": "2026-11-17T02:12:29Z",
+          "expectedBytes": 1115,
+          "expectedSha256": "d14d5b276f16d27055bf3df8e9d6989e0bb9a3c7660bba56c9c6e7e423932743",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1115,
+          "sourceSha256": "d14d5b276f16d27055bf3df8e9d6989e0bb9a3c7660bba56c9c6e7e423932743",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5041,
+          "memberSha256": "01bfd56993acede1e7b23879e56a3f2566ad6ff1dbc5d63ca4438e1e1effda04",
+          "entryCount": 1,
+          "uncompressedBytes": 5041,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "ec57ecd5-82f3-42fe-8674-7148acc58455",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "incomplete",
+              "decision": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39088933712",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "5de800d0edcf1b4d171d25e190208a81f275388b",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12121368607",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39088933712-1-c559bcbf-43f2-4994-86cc-1132a450c7f2",
+          "createdAt": "2026-10-18T02:10:33Z",
+          "expiresAt": "2026-11-17T02:10:33Z",
+          "expectedBytes": 1007,
+          "expectedSha256": "0e6d2424476e5705d5b0b78d141c7ba3a431d71256f2d1f3e001d898424ed4df",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1007,
+          "sourceSha256": "0e6d2424476e5705d5b0b78d141c7ba3a431d71256f2d1f3e001d898424ed4df",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "327b7b2587f2925209b8054f4a705d8ac2140bfa1750c4002424ea46547fb085",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "c559bcbf-43f2-4994-86cc-1132a450c7f2",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12122330416",
+          "phase": "review",
+          "name": "agk-measurement-review-39088933712-1-83884397-ae3c-4139-9197-b12ccc1adaec",
+          "createdAt": "2026-10-18T02:10:32Z",
+          "expiresAt": "2026-11-17T02:10:32Z",
+          "expectedBytes": 1163,
+          "expectedSha256": "f563d5347779f42a4ea424511dc90092a3908b2516dd630998ee4f1077ad7dad",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1163,
+          "sourceSha256": "f563d5347779f42a4ea424511dc90092a3908b2516dd630998ee4f1077ad7dad",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "c6438293dfb3a4aeccd49a4c0c761c98fbc632619b4f732b59620d2d8b51d39e",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "83884397-ae3c-4139-9197-b12ccc1adaec",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39088836215",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "cancelled",
+      "runHeadSha": "5de800d0edcf1b4d171d25e190208a81f275388b",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12122285398",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39088836215-1-a4221641-1d5b-429e-85a4-86659cf684ec",
+          "createdAt": "2026-10-18T02:07:31Z",
+          "expiresAt": "2026-11-17T02:07:30Z",
+          "expectedBytes": 990,
+          "expectedSha256": "887d33b3c1bd1954a9b99f42d0a7d9f02937a363b38bc31272e28126620c3e04",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 990,
+          "sourceSha256": "887d33b3c1bd1954a9b99f42d0a7d9f02937a363b38bc31272e28126620c3e04",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3271,
+          "memberSha256": "4daecd2107b3e6ec2a03dab5454aaf0ffd73a2b4d89d1e2d5c3e16fb669e7c48",
+          "entryCount": 1,
+          "uncompressedBytes": 3271,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "a4221641-1d5b-429e-85a4-86659cf684ec",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12121542659",
+          "phase": "review",
+          "name": "agk-measurement-review-39088836215-1-e5875a3f-44fe-4f21-b92e-c4b3adeae2c4",
+          "createdAt": "2026-10-18T02:07:29Z",
+          "expiresAt": "2026-11-17T02:07:28Z",
+          "expectedBytes": 1115,
+          "expectedSha256": "2f0af215cc451ca18d30f3f68343bc76477e8a5af8dbae76eb37481ef16e2697",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1115,
+          "sourceSha256": "2f0af215cc451ca18d30f3f68343bc76477e8a5af8dbae76eb37481ef16e2697",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5041,
+          "memberSha256": "c8ebb81cf9a7f05a095a2bd363e0c993fdbd8913b0b3b2574316373b7dee7500",
+          "entryCount": 1,
+          "uncompressedBytes": 5041,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "e5875a3f-44fe-4f21-b92e-c4b3adeae2c4",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "incomplete",
+              "decision": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39088380098",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "e3a22ca2d6c160b72b9f1563c389c81e6964c7cf",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12122235648",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39088380098-1-4ffb63f1-4034-4d78-a106-701f79c2e265",
+          "createdAt": "2026-10-18T02:01:32Z",
+          "expiresAt": "2026-11-17T02:01:31Z",
+          "expectedBytes": 1008,
+          "expectedSha256": "51611d042284256f91e443f6e4f4495c535ab72d7e32a05e46ac9f9d3821737c",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1008,
+          "sourceSha256": "51611d042284256f91e443f6e4f4495c535ab72d7e32a05e46ac9f9d3821737c",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "59c6058b5b2064d22378cc8d5914376322a18dde319c119eadf59cfbec7d0bdf",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "4ffb63f1-4034-4d78-a106-701f79c2e265",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12122250641",
+          "phase": "review",
+          "name": "agk-measurement-review-39088380098-1-e0616e25-aa78-473f-8e66-581582926375",
+          "createdAt": "2026-10-18T02:01:31Z",
+          "expiresAt": "2026-11-17T02:01:30Z",
+          "expectedBytes": 1168,
+          "expectedSha256": "f097414da7ee3b318672cf30c93ae553f69b81cb2fdace23fea968da68d887af",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1168,
+          "sourceSha256": "f097414da7ee3b318672cf30c93ae553f69b81cb2fdace23fea968da68d887af",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "1e9685f351f4ad96addaa642c722fbc956b53f294439b2cb89f4b52ec522e38d",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "e0616e25-aa78-473f-8e66-581582926375",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39087514909",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "failure",
+      "runHeadSha": "8e793c78c9dfaa92e59a7389b4446e4a296ddd38",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12120763725",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39087514909-1-45dc6445-6452-4135-bba6-1e3026bd1489",
+          "createdAt": "2026-10-18T01:45:29Z",
+          "expiresAt": "2026-11-17T01:45:28Z",
+          "expectedBytes": 994,
+          "expectedSha256": "0d41f9c6a2d21e2af5795e93add7666fb220fe7ac3ace6bd58ede2c4f0ad3024",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 994,
+          "sourceSha256": "0d41f9c6a2d21e2af5795e93add7666fb220fe7ac3ace6bd58ede2c4f0ad3024",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3271,
+          "memberSha256": "f7ce58df4ddbfca08226ae98bf985fda79f5b1a62388d8d058b7b143b474d02f",
+          "entryCount": 1,
+          "uncompressedBytes": 3271,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "45dc6445-6452-4135-bba6-1e3026bd1489",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12120509322",
+          "phase": "review",
+          "name": "agk-measurement-review-39087514909-1-91f8149e-6b3c-4bfe-864a-a7389a1659ab",
+          "createdAt": "2026-10-18T01:45:28Z",
+          "expiresAt": "2026-11-17T01:45:27Z",
+          "expectedBytes": 1116,
+          "expectedSha256": "7962646418d105aaec6a2674d9566260bc954b66309b55f51053cb318bc2a416",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1116,
+          "sourceSha256": "7962646418d105aaec6a2674d9566260bc954b66309b55f51053cb318bc2a416",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5040,
+          "memberSha256": "191dfbd72837741253cb74137fc1af2f6c66958dcd9076a0f439fbc9ec74ccff",
+          "entryCount": 1,
+          "uncompressedBytes": 5040,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "91f8149e-6b3c-4bfe-864a-a7389a1659ab",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "incomplete",
+              "decision": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39085339955",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "20b46ece0789efed7b132f16b308bc31718482b8",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12120397887",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39085339955-1-ff8712e0-aa3f-4971-a476-fbce062d7292",
+          "createdAt": "2026-10-18T01:10:20Z",
+          "expiresAt": "2026-11-17T01:10:20Z",
+          "expectedBytes": 1006,
+          "expectedSha256": "0eef3e24476fe7ce53c56e4e6bb809a20f05460b839b21dd30f29f78d3a3875c",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1006,
+          "sourceSha256": "0eef3e24476fe7ce53c56e4e6bb809a20f05460b839b21dd30f29f78d3a3875c",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "457d71348f7f2e20cda0e24818d31973266c42c75183cc9feb270c915c829fad",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "ff8712e0-aa3f-4971-a476-fbce062d7292",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12120178942",
+          "phase": "review",
+          "name": "agk-measurement-review-39085339955-1-a5226f6c-1849-4084-adc2-7f8bf5ad1ebb",
+          "createdAt": "2026-10-18T01:10:19Z",
+          "expiresAt": "2026-11-17T01:10:18Z",
+          "expectedBytes": 1168,
+          "expectedSha256": "b0afdba6fee826a8e2b999dd902327c74cc35cea4275c6385713a60a32ce4253",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1168,
+          "sourceSha256": "b0afdba6fee826a8e2b999dd902327c74cc35cea4275c6385713a60a32ce4253",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "65a1110f109e85fa2b6a2a71de9cbf6363ce273539079fa913cd2ced739ae9ee",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "a5226f6c-1849-4084-adc2-7f8bf5ad1ebb",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39078421657",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "be983ba73f7ef6898650bf27e03d831bf2235f65",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12117917993",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39078421657-1-a0189491-1f46-462f-ae93-5d89176924e6",
+          "createdAt": "2026-10-17T23:19:47Z",
+          "expiresAt": "2026-11-16T23:19:47Z",
+          "expectedBytes": 1011,
+          "expectedSha256": "b1a5a74fb1544bd6fd524f38d4d8488a12278d5f9a8fc8918c6a7122a273530b",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1011,
+          "sourceSha256": "b1a5a74fb1544bd6fd524f38d4d8488a12278d5f9a8fc8918c6a7122a273530b",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "17ef116437d8ea1deb0ca2f980005b36e3f412bb385269e6f9f238427095dc8a",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "a0189491-1f46-462f-ae93-5d89176924e6",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12117903121",
+          "phase": "review",
+          "name": "agk-measurement-review-39078421657-1-11053463-24a5-4087-8ba9-3f080382f5f4",
+          "createdAt": "2026-10-17T23:19:46Z",
+          "expiresAt": "2026-11-16T23:19:46Z",
+          "expectedBytes": 1161,
+          "expectedSha256": "4eef2de940a52abdc13342ea67745fc6648351ac0d3011b6f3e42fa3df3035de",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1161,
+          "sourceSha256": "4eef2de940a52abdc13342ea67745fc6648351ac0d3011b6f3e42fa3df3035de",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "2227761594aa0d0c5bff9dac8c141120cdb46ab93aee641ab688e67bbe07f972",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "11053463-24a5-4087-8ba9-3f080382f5f4",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39077453149",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "1c46540c16b924d2a74a1d2c90c6ff3fac24d3fc",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12117776700",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39077453149-1-5bd0391d-3d18-42ef-bb7d-9f49add777e7",
+          "createdAt": "2026-10-17T23:05:39Z",
+          "expiresAt": "2026-11-16T23:05:39Z",
+          "expectedBytes": 1008,
+          "expectedSha256": "0fa3e34e8214167212f3e1adb0451789a5c9770740f8af377e5735a15b4814f5",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1008,
+          "sourceSha256": "0fa3e34e8214167212f3e1adb0451789a5c9770740f8af377e5735a15b4814f5",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "702e29cd525df96d117fb7e5b55af70cafb0cfda4ebdf4ef52e440ee4e25ef0d",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "5bd0391d-3d18-42ef-bb7d-9f49add777e7",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12117537765",
+          "phase": "review",
+          "name": "agk-measurement-review-39077453149-1-72877bc9-505a-4782-9b05-993046eca89f",
+          "createdAt": "2026-10-17T23:05:38Z",
+          "expiresAt": "2026-11-16T23:05:37Z",
+          "expectedBytes": 1164,
+          "expectedSha256": "315efa2a4ccf43faed3fed9e56e29641140082f051917b8fb67b6f17e5b7885c",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1164,
+          "sourceSha256": "315efa2a4ccf43faed3fed9e56e29641140082f051917b8fb67b6f17e5b7885c",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "76c4711f26d31823f8353305e351cda7eabc11431df34971185d878389edcc56",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "72877bc9-505a-4782-9b05-993046eca89f",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39075955285",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "1388d6e68c092e29906abff134aec1289c8489c8",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12116513154",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39075955285-1-fb510424-9e97-4646-bb3b-a3eec128b1e8",
+          "createdAt": "2026-10-17T22:42:29Z",
+          "expiresAt": "2026-11-16T22:42:28Z",
+          "expectedBytes": 1006,
+          "expectedSha256": "666c5edcd3b891fe31110c1914d5bf7d79d34c1dd49c373633f3d4cc0fe4fab5",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1006,
+          "sourceSha256": "666c5edcd3b891fe31110c1914d5bf7d79d34c1dd49c373633f3d4cc0fe4fab5",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "f7186aba0c04f37b194ee5dc282e75f7e60ebf4aa88010463c42f4c3142a1677",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "fb510424-9e97-4646-bb3b-a3eec128b1e8",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12116453451",
+          "phase": "review",
+          "name": "agk-measurement-review-39075955285-1-c509e353-e670-4509-9d22-e98e47f06887",
+          "createdAt": "2026-10-17T22:42:28Z",
+          "expiresAt": "2026-11-16T22:42:27Z",
+          "expectedBytes": 1086,
+          "expectedSha256": "adc4236eaddebfa2d452dce2322e7c1d7fb3965f57c400203d273b30d9e2863f",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1086,
+          "sourceSha256": "adc4236eaddebfa2d452dce2322e7c1d7fb3965f57c400203d273b30d9e2863f",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5049,
+          "memberSha256": "d02e364320b923b4a0284f279148007ccfe5bd1f58135e6304d2f997a63dc79d",
+          "entryCount": 1,
+          "uncompressedBytes": 5049,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "c509e353-e670-4509-9d22-e98e47f06887",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "incomplete",
+              "decision": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39075196315",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "7649fddcfa2c5464d39e6f773528a0cf7c9950d8",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12116299805",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39075196315-1-f36032ce-4cb5-4c3e-8ce1-db48f5822c1c",
+          "createdAt": "2026-10-17T22:31:29Z",
+          "expiresAt": "2026-11-16T22:31:28Z",
+          "expectedBytes": 1006,
+          "expectedSha256": "db45c8ffcae45f8e32574ca004b81295307fe2a3249f6a3b4a290ba8b63583c0",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1006,
+          "sourceSha256": "db45c8ffcae45f8e32574ca004b81295307fe2a3249f6a3b4a290ba8b63583c0",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "8a760253748858ab5db87ceb1a95e2ed5b2dbf635d8491c3e2da5ec6d9494c9c",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "f36032ce-4cb5-4c3e-8ce1-db48f5822c1c",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12116803672",
+          "phase": "review",
+          "name": "agk-measurement-review-39075196315-1-f587af4a-c7b5-4bef-9082-6298386d3734",
+          "createdAt": "2026-10-17T22:31:28Z",
+          "expiresAt": "2026-11-16T22:31:27Z",
+          "expectedBytes": 1163,
+          "expectedSha256": "1d52038d65d8139d2ee600fd054d21bc9f061a89c9903aa3465afa8d46a5b9b0",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1163,
+          "sourceSha256": "1d52038d65d8139d2ee600fd054d21bc9f061a89c9903aa3465afa8d46a5b9b0",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "dfdfb5ad45bf122ebd010a2d29df6c7ba83f62563975ef749c29710d6e35305b",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "f587af4a-c7b5-4bef-9082-6298386d3734",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39074047702",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "78cef811c9cf7b558dd259c0bdb5fcc8341e1c7a",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12115769586",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39074047702-1-a34a6614-7be3-44a9-a086-dddf01f8e20c",
+          "createdAt": "2026-10-17T22:14:45Z",
+          "expiresAt": "2026-11-16T22:14:44Z",
+          "expectedBytes": 1007,
+          "expectedSha256": "f090ee7a4106956018b7c5248500479ad194de1a0aa28314a3c00d9f1bcd7705",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1007,
+          "sourceSha256": "f090ee7a4106956018b7c5248500479ad194de1a0aa28314a3c00d9f1bcd7705",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "8a02f7f2f6e62a2338a28c4ceeb944469973c72caf19fd5f609076b89802ffa2",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "a34a6614-7be3-44a9-a086-dddf01f8e20c",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12115958758",
+          "phase": "review",
+          "name": "agk-measurement-review-39074047702-1-a9bd0d7e-2c9f-454b-8bb1-e5a78608da8f",
+          "createdAt": "2026-10-17T22:14:43Z",
+          "expiresAt": "2026-11-16T22:14:42Z",
+          "expectedBytes": 1166,
+          "expectedSha256": "97d6247c2a11eac8ac474de9a84525f84b4b3fadf8c012cd0f89070c78b3371e",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1166,
+          "sourceSha256": "97d6247c2a11eac8ac474de9a84525f84b4b3fadf8c012cd0f89070c78b3371e",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "331f2d985a09623504289742d9f219e72e7e8a3718277a14f902a82eb4684b43",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "a9bd0d7e-2c9f-454b-8bb1-e5a78608da8f",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39071595345",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "cdd76ec174cdcd09bf73da84f81e2e2fe017824c",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12115318197",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39071595345-1-782c6f1c-dab1-4de0-ae92-eed696935d57",
+          "createdAt": "2026-10-17T21:38:57Z",
+          "expiresAt": "2026-11-16T21:38:56Z",
+          "expectedBytes": 1007,
+          "expectedSha256": "f973b925b985f798e656d69585af9b835c3cb62b4ff062a425082ee933e069ec",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1007,
+          "sourceSha256": "f973b925b985f798e656d69585af9b835c3cb62b4ff062a425082ee933e069ec",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "317dc1ab99d9825192274246b5ba784e39d882252fe01625ce8b724050881d70",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "782c6f1c-dab1-4de0-ae92-eed696935d57",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12115611687",
+          "phase": "review",
+          "name": "agk-measurement-review-39071595345-1-7859b832-12c9-4859-a301-beac779459b6",
+          "createdAt": "2026-10-17T21:38:56Z",
+          "expiresAt": "2026-11-16T21:38:55Z",
+          "expectedBytes": 1164,
+          "expectedSha256": "d4d6846d0210c5b5902ed483469625f2b3052707546405e55851f4453558c16e",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1164,
+          "sourceSha256": "d4d6846d0210c5b5902ed483469625f2b3052707546405e55851f4453558c16e",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "bb34c3036f3433f5c95a93ee2a01fe73664e9d6597708639822ebed7efb386c7",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "7859b832-12c9-4859-a301-beac779459b6",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39071056651",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "1713bffe9cd5125b44331a382efad6c1dea3b595",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12115491436",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39071056651-1-f8cf0fe7-3bcb-4ad8-a357-f3c01b5374ab",
+          "createdAt": "2026-10-17T21:31:06Z",
+          "expiresAt": "2026-11-16T21:31:06Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "40c89738c48f971b0fb15752bdeb4942e0ae6dfb0d87e4ff51f928767ed74d40",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "40c89738c48f971b0fb15752bdeb4942e0ae6dfb0d87e4ff51f928767ed74d40",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "e758c04719ce3d2a0a520623cf3b28dadc7d44d69865cea65426ee177d1657da",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "f8cf0fe7-3bcb-4ad8-a357-f3c01b5374ab",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12115610734",
+          "phase": "review",
+          "name": "agk-measurement-review-39071056651-1-1bae5370-3ae2-4fb1-bf85-d6d652109849",
+          "createdAt": "2026-10-17T21:31:05Z",
+          "expiresAt": "2026-11-16T21:31:05Z",
+          "expectedBytes": 1167,
+          "expectedSha256": "4e673a38f876575d2498db272d0deeb365e88d35b90376a5b393433e702653af",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1167,
+          "sourceSha256": "4e673a38f876575d2498db272d0deeb365e88d35b90376a5b393433e702653af",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "e726c7b55ac6f602701a1d346324573c3f6e137c2b06052046d06f4e5644a6c1",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "1bae5370-3ae2-4fb1-bf85-d6d652109849",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39070048571",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "037f7abe12e67bd3e8a8d41b7f2a2a8fd90f4b93",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12114613874",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39070048571-1-0640c624-bf1a-42c1-9154-f81c10bffb7d",
+          "createdAt": "2026-10-17T21:16:42Z",
+          "expiresAt": "2026-11-16T21:16:41Z",
+          "expectedBytes": 1008,
+          "expectedSha256": "ca02350fb8cb4c74c5e8ed2116b45d307c6b5f438c61b9859319511775ab99dc",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1008,
+          "sourceSha256": "ca02350fb8cb4c74c5e8ed2116b45d307c6b5f438c61b9859319511775ab99dc",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "6a900c6cbfd166583066cc512c2528251f537a8c069615173be9b206dc48cc6d",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "0640c624-bf1a-42c1-9154-f81c10bffb7d",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12114359359",
+          "phase": "review",
+          "name": "agk-measurement-review-39070048571-1-e4a78332-39ec-4a56-b4ea-c41a1e7f01dc",
+          "createdAt": "2026-10-17T21:16:41Z",
+          "expiresAt": "2026-11-16T21:16:40Z",
+          "expectedBytes": 1164,
+          "expectedSha256": "76b41b668d74a250a6f29be054fe0c1db56dc959ec688b330ccc096fe21a782e",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1164,
+          "sourceSha256": "76b41b668d74a250a6f29be054fe0c1db56dc959ec688b330ccc096fe21a782e",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "b91141425fae0825f046e3783179908c8e6e6c59dc16d0caa6ce928def8316d9",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "e4a78332-39ec-4a56-b4ea-c41a1e7f01dc",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39069729094",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "failure",
+      "runHeadSha": "037f7abe12e67bd3e8a8d41b7f2a2a8fd90f4b93",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12114264071",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39069729094-1-0d8ccca0-b22a-4419-a403-05413f2e4de8",
+          "createdAt": "2026-10-17T21:10:59Z",
+          "expiresAt": "2026-11-16T21:10:58Z",
+          "expectedBytes": 993,
+          "expectedSha256": "7f082f38ee67c1271d967723576dd105eed7054cbae9d2833946b47ab39e7c56",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 993,
+          "sourceSha256": "7f082f38ee67c1271d967723576dd105eed7054cbae9d2833946b47ab39e7c56",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3271,
+          "memberSha256": "180de38657b5b00b249fe2bc1a5aed184aea89a466f7171570fb93965d10cd17",
+          "entryCount": 1,
+          "uncompressedBytes": 3271,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "0d8ccca0-b22a-4419-a403-05413f2e4de8",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12114623083",
+          "phase": "review",
+          "name": "agk-measurement-review-39069729094-1-829948e5-4bab-46a9-965d-b7071e0f2575",
+          "createdAt": "2026-10-17T21:10:58Z",
+          "expiresAt": "2026-11-16T21:10:57Z",
+          "expectedBytes": 1117,
+          "expectedSha256": "844d5ca311a5458ea3a47bcc1a4b985fd3db81be033df27b1c863cba246d8e24",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1117,
+          "sourceSha256": "844d5ca311a5458ea3a47bcc1a4b985fd3db81be033df27b1c863cba246d8e24",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5041,
+          "memberSha256": "f6f600462ce43da2ace245baa79aa8700afa1fb079c4952b6a617435bfb05216",
+          "entryCount": 1,
+          "uncompressedBytes": 5041,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "829948e5-4bab-46a9-965d-b7071e0f2575",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "incomplete",
+              "decision": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39069381120",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "d80e44683e356c1d91b9639d1e4df96aa337125a",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12114726238",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39069381120-1-dcc3a7f0-4f54-459c-ac93-ba3d53c25900",
+          "createdAt": "2026-10-17T21:07:07Z",
+          "expiresAt": "2026-11-16T21:07:06Z",
+          "expectedBytes": 1008,
+          "expectedSha256": "5607beba670ec7e40a8ee5d673b03a4eb672775d1c09193389f1248c33fc88dd",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1008,
+          "sourceSha256": "5607beba670ec7e40a8ee5d673b03a4eb672775d1c09193389f1248c33fc88dd",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "5cb808b14426ef443506dee5378656f501afa2a11924a156eac9d19ab40d8e2e",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "dcc3a7f0-4f54-459c-ac93-ba3d53c25900",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12114426872",
+          "phase": "review",
+          "name": "agk-measurement-review-39069381120-1-77d111da-6922-4433-904c-098cfa55b92b",
+          "createdAt": "2026-10-17T21:07:06Z",
+          "expiresAt": "2026-11-16T21:07:05Z",
+          "expectedBytes": 1165,
+          "expectedSha256": "67b6a6f9319fe310a322a802c17988b0ab0962b442a561a85840dc84429987a1",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1165,
+          "sourceSha256": "67b6a6f9319fe310a322a802c17988b0ab0962b442a561a85840dc84429987a1",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "89358e8907e6fb2c1bbb2f3695ffacb16eda7ef1f7cb8ea83154fd656deb9ad0",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "77d111da-6922-4433-904c-098cfa55b92b",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39068170806",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "217d437768645816f54ef80c8e5de05c23209239",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12114645022",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39068170806-1-dc4a3d78-b495-440c-9ed1-4bed58cc244a",
+          "createdAt": "2026-10-17T20:49:40Z",
+          "expiresAt": "2026-11-16T20:49:39Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "c26dcc39ee2b7e5b2bf2634fcea4dbd9c738b69bec34b684bdffc76d1bc8db61",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "c26dcc39ee2b7e5b2bf2634fcea4dbd9c738b69bec34b684bdffc76d1bc8db61",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "4840b5a1e662c109337393d9c07d7bb0f381f239dd363c25086c0a4e73573672",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "dc4a3d78-b495-440c-9ed1-4bed58cc244a",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12113742917",
+          "phase": "review",
+          "name": "agk-measurement-review-39068170806-1-920bdb55-96e9-430d-87fb-cc7ff0dba8d5",
+          "createdAt": "2026-10-17T20:49:39Z",
+          "expiresAt": "2026-11-16T20:49:38Z",
+          "expectedBytes": 1167,
+          "expectedSha256": "cc2cfe5d3e9d04406896ec6e3ca2b63c2b98935e72ce847f7fb16bc4d6b78a19",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1167,
+          "sourceSha256": "cc2cfe5d3e9d04406896ec6e3ca2b63c2b98935e72ce847f7fb16bc4d6b78a19",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "f1225d3026f68b1fd26b7292e9446e3d4afeb265e5ec5424579518c1c398ac9a",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "920bdb55-96e9-430d-87fb-cc7ff0dba8d5",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39062602638",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "21ec6a9ce61dc92ab2ec0a2bb62f8dd85f54eacb",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12111403550",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39062602638-1-80864fe9-cbc2-444d-9709-3633bc8407a1",
+          "createdAt": "2026-10-17T19:31:03Z",
+          "expiresAt": "2026-11-16T19:31:02Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "e4ce4336aed299ffa49627b869f4bc6b50ff4a7c0b93647b1065eb990a842758",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "e4ce4336aed299ffa49627b869f4bc6b50ff4a7c0b93647b1065eb990a842758",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "484d7a0ba8adc7fac003a5f93b2b1212c21528bb1b63e630b922650cd6219aaf",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "80864fe9-cbc2-444d-9709-3633bc8407a1",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12112380627",
+          "phase": "review",
+          "name": "agk-measurement-review-39062602638-1-41a7cab4-e786-4ccb-8445-61289d1ac25c",
+          "createdAt": "2026-10-17T19:31:01Z",
+          "expiresAt": "2026-11-16T19:31:00Z",
+          "expectedBytes": 1170,
+          "expectedSha256": "61121a529868e13e2fb4d0d7e05ce67fdf66168daaf71d50e8ba16136104cfc5",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1170,
+          "sourceSha256": "61121a529868e13e2fb4d0d7e05ce67fdf66168daaf71d50e8ba16136104cfc5",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "79c6d389b6fc8ae9c0b049af3f6ba7fb377931bc02d8abeb263755d78d68bc59",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "41a7cab4-e786-4ccb-8445-61289d1ac25c",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39061861855",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "7d7ab2a9d076ca0487ac6ec8aeabb0934615b755",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12111707659",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39061861855-1-c75de12b-b4dc-4c29-ad1d-c7066148a216",
+          "createdAt": "2026-10-17T19:20:47Z",
+          "expiresAt": "2026-11-16T19:20:47Z",
+          "expectedBytes": 1007,
+          "expectedSha256": "2d61e53d021ce536a00c46dd35494d6d4650e1765984e11a61e590e2aa9a8e23",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1007,
+          "sourceSha256": "2d61e53d021ce536a00c46dd35494d6d4650e1765984e11a61e590e2aa9a8e23",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "1bbb1b07cba580bdb02d236b4015fec4380c0a1ee20c8f655aa976ba45e60680",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "c75de12b-b4dc-4c29-ad1d-c7066148a216",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12111827232",
+          "phase": "review",
+          "name": "agk-measurement-review-39061861855-1-3fac70e2-dcdb-4619-9673-d0ae8b5e4f18",
+          "createdAt": "2026-10-17T19:20:46Z",
+          "expiresAt": "2026-11-16T19:20:46Z",
+          "expectedBytes": 1164,
+          "expectedSha256": "bcae7df462611973727993192af4528f8e1cd0b2637e4f936149dfa5de30d063",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1164,
+          "sourceSha256": "bcae7df462611973727993192af4528f8e1cd0b2637e4f936149dfa5de30d063",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "74f0e513b91e0bdc6614e9ffe2cf876b059a1d6f5334a9500df4e9ca0e8501b1",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "3fac70e2-dcdb-4619-9673-d0ae8b5e4f18",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39058818720",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "73e76a79e4eaabfdecef2c3506469d925521629e",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12109978606",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39058818720-1-c7f00f6c-bc14-4518-8702-c8b2f3c0a146",
+          "createdAt": "2026-10-17T18:38:59Z",
+          "expiresAt": "2026-11-16T18:38:58Z",
+          "expectedBytes": 1008,
+          "expectedSha256": "4a98a9be5fa5a8afc470e74db09884b1449777df8d883752483aab833068792a",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1008,
+          "sourceSha256": "4a98a9be5fa5a8afc470e74db09884b1449777df8d883752483aab833068792a",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "55ed0b049c2c1a26cce86ece37d04d2ce081e5886926546c7e6ceb4cd6eb12a6",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "c7f00f6c-bc14-4518-8702-c8b2f3c0a146",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12109928730",
+          "phase": "review",
+          "name": "agk-measurement-review-39058818720-1-0190c00e-9d43-443c-aa14-b41d35d18c41",
+          "createdAt": "2026-10-17T18:38:58Z",
+          "expiresAt": "2026-11-16T18:38:57Z",
+          "expectedBytes": 1163,
+          "expectedSha256": "9a408bc16f268a22ce8188c542482e260fc7442e12c740dc9826c42e38d4f1da",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1163,
+          "sourceSha256": "9a408bc16f268a22ce8188c542482e260fc7442e12c740dc9826c42e38d4f1da",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "1688387cb4c4dfa4553e75f0003e6fb64c666b550ba8b494dfc02e61f2096d80",
+          "entryCount": 1,
+          "uncompressedBytes": 5364,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "0190c00e-9d43-443c-aa14-b41d35d18c41",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39057844290",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "53bd4c96b6ab62367de47f607e59eb000530443a",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12110885065",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39057844290-1-af9c139a-2d23-48c2-a203-e6116bc8bcd4",
+          "createdAt": "2026-10-17T18:26:30Z",
+          "expiresAt": "2026-11-16T18:26:29Z",
+          "expectedBytes": 1006,
+          "expectedSha256": "3f4e990a7eb4b39795400da9824c855f168c33a061112dc991d95c5b9a5b3a04",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1006,
+          "sourceSha256": "3f4e990a7eb4b39795400da9824c855f168c33a061112dc991d95c5b9a5b3a04",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "bdfdb7d0c4a0f506292623bbeaece14ff2277276c225b5609c01914688e6e08a",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "af9c139a-2d23-48c2-a203-e6116bc8bcd4",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12110401764",
+          "phase": "review",
+          "name": "agk-measurement-review-39057844290-1-ea275963-c85b-4917-a9b2-2dab7f03c1b0",
+          "createdAt": "2026-10-17T18:26:28Z",
+          "expiresAt": "2026-11-16T18:26:27Z",
+          "expectedBytes": 1165,
+          "expectedSha256": "c8de8d84015d830d86a81024fdf8986ba59d100d721f49d9e35e05029193d182",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1165,
+          "sourceSha256": "c8de8d84015d830d86a81024fdf8986ba59d100d721f49d9e35e05029193d182",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "49d55d9baa26fa81f9f5d918fa4343cb2e3c4b6f81ea257b644308d828b16a75",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "ea275963-c85b-4917-a9b2-2dab7f03c1b0",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39054925290",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "59070172f4be25340e3f762c857e7ef5d1020349",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12108809269",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39054925290-1-b72e6a68-c2a3-4bfa-ac08-dd160487f4ba",
+          "createdAt": "2026-10-17T17:45:56Z",
+          "expiresAt": "2026-11-16T17:45:55Z",
+          "expectedBytes": 1007,
+          "expectedSha256": "2198533f6f1d605c22af914ce78d83c303f67c5729d77c610557d4c8007562f3",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1007,
+          "sourceSha256": "2198533f6f1d605c22af914ce78d83c303f67c5729d77c610557d4c8007562f3",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "eadb32aa588127fbf1a82228747d0c6385c758f3b9f50735755b18131a330ee1",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "b72e6a68-c2a3-4bfa-ac08-dd160487f4ba",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12108804090",
+          "phase": "review",
+          "name": "agk-measurement-review-39054925290-1-3ef1e91f-81cf-44fe-a8e7-fee67621c706",
+          "createdAt": "2026-10-17T17:45:55Z",
+          "expiresAt": "2026-11-16T17:45:54Z",
+          "expectedBytes": 1164,
+          "expectedSha256": "246ae4fd357f932d798b5982fcbb73d526353fbb817076ec75941ac8229cb3b0",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1164,
+          "sourceSha256": "246ae4fd357f932d798b5982fcbb73d526353fbb817076ec75941ac8229cb3b0",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5366,
+          "memberSha256": "4567adda4d6d23ad63e111a92c8581f8b7b63f554538c3a7f675e241a476a9d6",
+          "entryCount": 1,
+          "uncompressedBytes": 5366,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "3ef1e91f-81cf-44fe-a8e7-fee67621c706",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39054918444",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "success",
+      "runHeadSha": "91c4e24e36d2fceb83e033fc8968c8e387db4653",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12108976975",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39054918444-1-5cf2be4e-eeb4-4f4c-b39c-6f4b99626123",
+          "createdAt": "2026-10-17T17:45:31Z",
+          "expiresAt": "2026-11-16T17:45:30Z",
+          "expectedBytes": 1009,
+          "expectedSha256": "9a3554fae8a01fd4df0fc8c1ff2cf7cae08e99972b5e4e9e0c0b7d67da2ef9b1",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1009,
+          "sourceSha256": "9a3554fae8a01fd4df0fc8c1ff2cf7cae08e99972b5e4e9e0c0b7d67da2ef9b1",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "bd13e8709684053d4a54858b7c29be674684e2c9c80bb9b5685d8aed099cd8cb",
+          "entryCount": 1,
+          "uncompressedBytes": 3347,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "5cf2be4e-eeb4-4f4c-b39c-6f4b99626123",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12109400975",
+          "phase": "review",
+          "name": "agk-measurement-review-39054918444-1-f2d5a30c-eed9-426c-811b-9feb557e73da",
+          "createdAt": "2026-10-17T17:45:30Z",
+          "expiresAt": "2026-11-16T17:45:29Z",
+          "expectedBytes": 1164,
+          "expectedSha256": "e60057f3a21c9396a63feb2351f9c9841f02922b5d1158e10def0dc0a757ce1c",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1164,
+          "sourceSha256": "e60057f3a21c9396a63feb2351f9c9841f02922b5d1158e10def0dc0a757ce1c",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5365,
+          "memberSha256": "8e36803d5ef2ef594fe1b1ccad592e7d393709bf97294b4479693fb691a33b65",
+          "entryCount": 1,
+          "uncompressedBytes": 5365,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "f2d5a30c-eed9-426c-811b-9feb557e73da",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": "PASS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runId": "39052066367",
+      "runAttempt": "1",
+      "attemptStatus": "completed",
+      "attemptConclusion": "failure",
+      "runHeadSha": "aaeec75ddfd437931de3db5494b46e90898af254",
+      "prBindings": [],
+      "bindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12107699605",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39052066367-1-cce17cce-8c81-4634-b1d2-d95c03c7681b",
+          "createdAt": "2026-10-17T17:05:11Z",
+          "expiresAt": "2026-11-16T17:05:11Z",
+          "expectedBytes": 993,
+          "expectedSha256": "b828dcd402a5c1cd23092dfb15d5b459f426cf25246781242a327da8d8217137",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 993,
+          "sourceSha256": "b828dcd402a5c1cd23092dfb15d5b459f426cf25246781242a327da8d8217137",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3271,
+          "memberSha256": "2aeb0d2c3d0675bdf2d99818837cd6113b7264cd7970d5c62c0be06eaa8a059e",
+          "entryCount": 1,
+          "uncompressedBytes": 3271,
+          "validationStatus": "passed",
+          "route": "ci-outcome",
+          "attemptId": "cce17cce-8c81-4634-b1d2-d95c03c7681b",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 2,
+          "terminalStateDecision": [
+            {
+              "state": "completed",
+              "decision": null
+            }
+          ]
+        },
+        {
+          "artifactId": "12108380671",
+          "phase": "review",
+          "name": "agk-measurement-review-39052066367-1-3d18c8b7-3bac-4cdc-9b07-ada437dd5e00",
+          "createdAt": "2026-10-17T17:05:10Z",
+          "expiresAt": "2026-11-16T17:05:09Z",
+          "expectedBytes": 1114,
+          "expectedSha256": "a7ff2912c724dcd39672317ae4900267ad041fa258cb39b68de42c60906033d5",
+          "expiredAtFrozenCutoff": false,
+          "sourceBytes": 1114,
+          "sourceSha256": "a7ff2912c724dcd39672317ae4900267ad041fa258cb39b68de42c60906033d5",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5041,
+          "memberSha256": "8c7b07c78c7f2f0f9a02315c622e2613bede716317e4822c81116902b99c7fc6",
+          "entryCount": 1,
+          "uncompressedBytes": 5041,
+          "validationStatus": "passed",
+          "route": "ci-review",
+          "attemptId": "3d18c8b7-3bac-4cdc-9b07-ada437dd5e00",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "sourceEnvelopeGaps": 0,
+          "recordCount": 3,
+          "terminalStateDecision": [
+            {
+              "state": "incomplete",
+              "decision": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
