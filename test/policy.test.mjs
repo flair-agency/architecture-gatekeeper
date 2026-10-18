@@ -310,20 +310,23 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /dist\/validate-authority-set-decision\.mjs/);
   assert.match(workflow, /reviewed_sha: \$\{\{ steps\.revision\.outputs\.sha \}\}/);
   const reviewSteps = parseWorkflow(workflow, 'architecture-gate.yml').jobs.review.steps;
+  const selectedRevision = reviewSteps.find(step => step.name === 'Select validated pull request merge commit');
+  assert.ok(selectedRevision, 'the selected immutable revision is validated before checkout');
+  assert.match(selectedRevision.run, /git --no-replace-objects cat-file -t "\$SELECTED_SHA"/);
+  assert.match(selectedRevision.run, /git --no-replace-objects rev-list --parents -n 1 "\$SELECTED_SHA"/);
+  assert.match(selectedRevision.run, /ACTUAL_PARENTS.*!=.*EXPECTED_PARENTS/);
   const revisionIndex = reviewSteps.findIndex((step) => step.name === 'Record reviewed merge revision');
   const revision = reviewSteps[revisionIndex];
   const runtimeBuildIndex = reviewSteps.findIndex((step) => step.name === 'Build the pinned validation runtime');
   assert.ok(revisionIndex >= 0);
   assert.ok(runtimeBuildIndex > revisionIndex, 'reviewed merge identity and parent tuple are checked before runtime build');
   assert.deepEqual(revision.env, {
-    EXPECTED_MERGE_SHA: '${{ github.event.pull_request.merge_commit_sha }}',
-    REFRESHED: '${{ steps.event_revision.outputs.refresh }}',
-    REFRESHED_SHA: '${{ steps.verified_merge_commit.outputs.sha }}',
+    SELECTED_SHA: '${{ steps.selected_merge_commit.outputs.sha }}',
     BASE_SHA: '${{ github.event.pull_request.base.sha }}',
     HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
   });
   assert.match(revision.run, /git rev-parse HEAD/);
-  assert.match(revision.run, /actual_sha.*!=.*EXPECTED_MERGE_SHA/);
+  assert.match(revision.run, /actual_sha.*!=.*SELECTED_SHA/);
   assert.match(revision.run, /git --no-replace-objects rev-list --parents -n 1 "\$actual_sha"/);
   assert.match(revision.run, /expected_parents="\$actual_sha \$BASE_SHA \$HEAD_SHA"/);
   assert.match(revision.run, /actual_parents.*!=.*expected_parents/);
