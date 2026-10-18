@@ -424,9 +424,28 @@ are excluded from that diff. The complete prompt, including task data, must fit
 the selected limit; missing revisions, mismatched merge parents or excess bytes
 leave review incomplete. These parent checks validate GitHub's synthetic review
 checkout against the recorded event tuple; they do not restrict the eventual PR
-merge strategy or prove canonical transition or host enforcement. A stale or
-mismatched checkout requires a fresh review run. Other compatibility routes are
-unchanged.
+merge strategy or prove canonical transition or host enforcement. On
+`pull_request_target`, workflow revisions with this behavior initially check
+out the event merge SHA without recursively fetching submodules. A missing or
+malformed event SHA, or a checkout whose SHA differs from that event value,
+fails immediately. If the exact event commit has the ordered event base/head
+parents, it remains selected and the workflow does no merge-ref lookup. Only a
+parent mismatch on that event commit permits one bounded lookup of the current
+PR merge ref. The returned immutable SHA must resolve to a commit with exactly
+the same ordered event parents before it can be selected. Existing compatibility
+routes that enable recursive submodules materialize them only from the
+selected tree; the workflow then verifies the checked-out SHA and parent tuple
+before preparing or running the review. The review record and provenance use
+that selected SHA in the same run. Workflow pins predating this behavior retain
+the behavior of their pinned revision.
+
+Recovery does not replace a missing or malformed event merge SHA, an initial
+checkout SHA mismatch, or the event base/head revisions. A failed or ambiguous
+lookup, unavailable or invalid commit, wrong parent tuple, failed cleanup or
+materialization, final checkout mismatch, or input-capacity failure leaves the
+review incomplete. These cases require correcting the underlying input or
+starting a new review with valid event metadata; matching event metadata never
+falls back to a moving ref. Other compatibility routes are unchanged.
 
 When the pinned Action supplies them, the reviewer job emits bounded numeric
 Codex usage and tool counts to its Actions log, including on the ordinary
