@@ -534,6 +534,8 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     const eligibilityZipPath = `${prefix}/actions/artifacts/555/zip`;
     const validEligibilityZip = structuredClone(responses[eligibilityZipPath]);
     const validTagRef = structuredClone(responses[tagRefPath]);
+    const groupCommitPath = `${prefix}/commits/${fixture.groupSha}`;
+    const graphqlPath = '/graphql';
     const runCliFailure = (diagnostic) => {
       writeFileSync(dataPath, JSON.stringify(responses));
       writeFileSync(outputPath, '');
@@ -545,6 +547,42 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
         return true;
       });
     };
+    const runSelectorCliFailure = (diagnostic, expectedPaths) => {
+      writeFileSync(dataPath, JSON.stringify(responses));
+      writeFileSync(outputPath, '');
+      writeFileSync(tracePath, '');
+      rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
+      assert.throws(run, error => {
+        assert.equal(error.status, 1, 'selector rejection must exit unsuccessfully');
+        assert.match(error.stderr.toString(), diagnostic);
+        assert.equal(error.stdout.toString(), '', 'selector rejection must not emit success-shaped stdout');
+        assert.equal(readFileSync(outputPath, 'utf8'), '', 'selector rejection must not select a workflow route');
+        assert.equal(existsSync(join(runner, 'owner-amendment-eligibility')), false,
+          'selector rejection must not prepare semantic eligibility');
+        const trace = readFileSync(tracePath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+        assert.deepEqual(trace.filter(item => item.fetch).map(item => item.fetch).sort(), [...expectedPaths].sort());
+        assert.equal(trace.some(item => item.gh), false, 'selector rejection must stop before producer attestation work');
+        assert.equal(trace.some(item => item.fetch?.includes('/actions/')), false,
+          'selector rejection must stop before producer run, job, or artifact inspection');
+        return true;
+      });
+    };
+
+    // These selector bindings already have component-level rejection tests.
+    // Exercise two representative mismatches through the production CLI so
+    // their diagnostics and pre-output/pre-producer boundary remain observable.
+    const validGroupCommit = structuredClone(responses[groupCommitPath]);
+    responses[groupCommitPath].json.commit.tree.sha = 'e'.repeat(40);
+    runSelectorCliFailure(/merge-group commit tree does not match the exact B tree/,
+      [`${prefix}`, groupCommitPath, `${prefix}/commits/${fixture.bSha}`]);
+    responses[groupCommitPath] = validGroupCommit;
+
+    const validGraphql = structuredClone(responses[graphqlPath]);
+    responses[graphqlPath].json.data.repository.pullRequest.mergeQueueEntry.headCommit.oid = 'e'.repeat(40);
+    runSelectorCliFailure(/authenticated merge queue entry does not bind this open PR to the exact event base and B head/,
+      [`${prefix}`, groupCommitPath, `${prefix}/commits/${fixture.bSha}`, `${prefix}/commits/${fixture.bSha}/pulls`, graphqlPath]);
+    responses[graphqlPath] = validGraphql;
+    writeFileSync(dataPath, JSON.stringify(responses));
 
     responses[artifactListPath].json = { total_count: 0, artifacts: [] };
     runCliFailure(/expected exactly one matching BLOCK artifact; found 0/);
