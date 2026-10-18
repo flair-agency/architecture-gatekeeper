@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/gemini-cli-session-contract');
@@ -20,12 +21,12 @@ const compact = diagnostic => ({
 assert.deepEqual(parsed.errors.map(compact), []);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'), join(fixtureRoot, 'negative.mts'),
+], options, 'Gemini CLI session implementation and imported source modules must type-check under project settings');
+
 function diagnosticsFor(name) {
-  const file = join(fixtureRoot, name);
-  const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([file], options));
-  assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file).map(compact), [],
-    'Gemini CLI session implementation and imported source modules must type-check under project settings');
-  return diagnostics.filter(item => item.file?.fileName === file).map(compact);
+  return diagnosticsForFixture(join(fixtureRoot, name)).map(compact);
 }
 
 test('Gemini CLI session accepts typed packet, materializer limits, thinking branches, and both exports', () => {

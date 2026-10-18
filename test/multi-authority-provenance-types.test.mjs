@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/multi-authority-provenance-contract');
@@ -16,16 +17,16 @@ assert.equal(config.options.noImplicitAny, true);
 assert.equal(config.options.noEmitOnError, true);
 const options = { ...config.options, rootDir: root, noEmit: true };
 
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFixture = compileFixtureDiagnostics(fixtureFiles, options,
+  'physical and facade imports must resolve cleanly');
+
 function diagnosticsFor(name) {
-  const file = join(fixtureRoot, name);
-  const program = ts.createProgram([file], options);
-  const all = ts.getPreEmitDiagnostics(program);
-  assert.deepEqual(all.filter(diagnostic => diagnostic.file?.fileName !== file), [], 'physical and facade imports must resolve cleanly');
-  return all.filter(diagnostic => diagnostic.file?.fileName === file);
+  return diagnosticsForFixture(join(fixtureRoot, name));
 }
 
 test('multi-authority provenance exposes operational types through flat and physical imports', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('multi-authority provenance rejects malformed constructor shape and unsupported claims', () => {

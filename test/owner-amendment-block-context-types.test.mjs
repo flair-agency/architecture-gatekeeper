@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-amendment-block-context-contract');
@@ -13,16 +14,16 @@ const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root, undefi
 assert.deepEqual(parsed.errors, []);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
 
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFixture = compileFixtureDiagnostics(fixtureFiles, options,
+  'block context module contract must remain error-free');
+
 function diagnosticsFor(name) {
-  const file = join(fixtureRoot, name);
-  const program = ts.createProgram([file], options);
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file), [], 'block context module contract must remain error-free');
-  return diagnostics.filter(item => item.file?.fileName === file);
+  return diagnosticsForFixture(join(fixtureRoot, name));
 }
 
 test('BLOCK context type contract retains unknown caller inputs and unknown tag object metadata', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('BLOCK context type contract rejects narrowed metadata, extra arguments, and wrong result types', () => {

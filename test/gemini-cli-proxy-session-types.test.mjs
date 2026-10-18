@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/gemini-cli-proxy-session-contract');
@@ -14,19 +15,23 @@ const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root, undefi
 assert.deepEqual(parsed.errors, []);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
 
+const summarize = item => ({
+  file: item.file?.fileName,
+  line: item.file && item.start !== undefined ? item.file.getLineAndCharacterOfPosition(item.start).line + 1 : 0,
+  code: item.code,
+  message: ts.flattenDiagnosticMessageText(item.messageText, '\n'),
+});
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'), join(fixtureRoot, 'negative.mts'),
+], options, 'the proxy-session implementation and every imported source module must remain error-free');
+
 function diagnosticsFor(name) {
-  return diagnosticsForFile(join(fixtureRoot, name));
+  return diagnosticsForFixture(join(fixtureRoot, name)).map(summarize);
 }
 
 function diagnosticsForFile(file) {
   const program = ts.createProgram([file], options);
   const diagnostics = ts.getPreEmitDiagnostics(program);
-  const summarize = item => ({
-    file: item.file?.fileName,
-    line: item.file && item.start !== undefined ? item.file.getLineAndCharacterOfPosition(item.start).line + 1 : 0,
-    code: item.code,
-    message: ts.flattenDiagnosticMessageText(item.messageText, '\n'),
-  });
   assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file).map(summarize), [],
     'the proxy-session implementation and every imported source module must remain error-free');
   return diagnostics.filter(item => item.file?.fileName === file).map(summarize);

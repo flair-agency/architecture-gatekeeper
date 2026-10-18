@@ -3,6 +3,7 @@ import test from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/review-policy-types-contract');
@@ -12,16 +13,15 @@ assert.equal(config.error, undefined);
 const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root, undefined, configPath);
 assert.deepEqual(parsed.errors, []);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFile = compileFixtureDiagnostics(fixtureFiles, options, 'module contracts must remain error-free');
 
 function diagnosticsFor(name) {
-  const file = join(fixtureRoot, name);
-  const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([file], options));
-  assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file), [], 'module contracts must remain error-free');
-  return diagnostics.filter(item => item.file?.fileName === file);
+  return diagnosticsForFile(join(fixtureRoot, name));
 }
 
 test('review contract keeps external decisions unknown and resolver output describes selected fields', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('review contract rejects treating an external decision as a trusted object', () => {
