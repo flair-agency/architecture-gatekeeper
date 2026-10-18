@@ -3,6 +3,7 @@ import test from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-addition-finalize-types');
@@ -16,18 +17,16 @@ assert.equal(config.options.noImplicitAny, true);
 assert.equal(config.options.noEmitOnError, true);
 const options = { ...config.options, rootDir: root, noEmit: true };
 
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFixture = compileFixtureDiagnostics(fixtureFiles, options,
+  'the implementation and its imported declarations must compile cleanly');
+
 function diagnostics(fixture) {
-  const file = join(fixtureRoot, fixture);
-  const program = ts.createProgram([file], options);
-  const all = ts.getPreEmitDiagnostics(program);
-  const local = all.filter(item => item.file?.fileName === file);
-  const imported = all.filter(item => item.file?.fileName !== file);
-  assert.deepEqual(imported, [], 'the implementation and its imported declarations must compile cleanly');
-  return local;
+  return diagnosticsForFixture(join(fixtureRoot, fixture));
 }
 
 test('owner addition final record accepts complete operational input and preserves lifecycle result states', () => {
-  assert.deepEqual(diagnostics('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnostics('positive.mts')), []);
 });
 
 test('owner addition final record requires operational input and leaves copied values unknown', () => {

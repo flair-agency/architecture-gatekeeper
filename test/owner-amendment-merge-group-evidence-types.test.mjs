@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-amendment-merge-group-evidence-contract');
@@ -19,12 +20,14 @@ const compact = item => ({
 assert.deepEqual(parsed.errors.map(compact), []);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'),
+  join(fixtureRoot, 'negative.mts'),
+], options, 'merge-group evidence module contract must remain error-free');
+
 function diagnosticsFor(name) {
   const file = join(fixtureRoot, name);
-  const program = ts.createProgram([file], options);
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file).map(compact), [], 'merge-group evidence module contract must remain error-free');
-  return diagnostics.filter(item => item.file?.fileName === file);
+  return diagnosticsForFixture(file);
 }
 
 test('merge-group evidence composes flat and physical exports, unknown observations, fetch and callback forms', () => {

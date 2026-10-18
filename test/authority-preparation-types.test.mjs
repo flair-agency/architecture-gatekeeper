@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/authority-preparation-types-contract');
@@ -16,16 +17,16 @@ assert.equal(config.options.noImplicitAny, true);
 assert.equal(config.options.noEmitOnError, true);
 const options = { ...config.options, rootDir: root, noEmit: true };
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'), join(fixtureRoot, 'negative.mts'),
+], options, 'facades and grouped modules must resolve');
+
 function diagnosticsFor(name) {
-  const file = join(fixtureRoot, name);
-  const program = ts.createProgram([file], options);
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  assert.deepEqual(diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file), [], 'facades and grouped modules must resolve');
-  return diagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
+  return diagnosticsForFixture(join(fixtureRoot, name));
 }
 
 test('authority preparation contracts accept existing generic inputs and returns', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('authority preparation rejects malformed inputs and narrowing unresolved generated member metadata', () => {

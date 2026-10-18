@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/gemini-cli-process-contract');
@@ -21,13 +22,17 @@ const compact = diagnostic => ({
 assert.deepEqual(parsed.errors.map(compact), []);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'), join(fixtureRoot, 'negative.mts'),
+], options, 'Gemini CLI process source graph must type-check with project settings');
+
 function diagnosticsForFile(file) {
   const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([file], options));
   assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file).map(compact), [],
     'Gemini CLI process source graph must type-check with project settings');
   return diagnostics.filter(item => item.file?.fileName === file).map(compact);
 }
-function diagnosticsFor(name) { return diagnosticsForFile(join(fixtureRoot, name)); }
+function diagnosticsFor(name) { return diagnosticsForFixture(join(fixtureRoot, name)).map(compact); }
 
 function diagnosticsForSource(name, source) {
   const directory = mkdtempSync(join(root, 'test/.gemini-cli-process-contract-'));

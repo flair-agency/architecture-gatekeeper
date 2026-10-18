@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-addition-multiauthority-eligibility-contract');
@@ -16,12 +17,13 @@ assert.equal(parsed.options.noImplicitAny, true);
 assert.equal(parsed.options.noEmitOnError, true);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
 
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFixture = compileFixtureDiagnostics(fixtureFiles, options,
+  'every implementation and transitive diagnostic must remain clean');
+
 function diagnosticsFor(name) {
   const file = join(fixtureRoot, name);
-  const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([file], options));
-  assert.deepEqual(diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file), [],
-    'every implementation and transitive diagnostic must remain clean');
-  return diagnostics.map(diagnostic => ({ file: diagnostic.file?.fileName, code: diagnostic.code,
+  return diagnosticsForFixture(file).map(diagnostic => ({ file: diagnostic.file?.fileName, code: diagnostic.code,
     line: diagnostic.file && diagnostic.start !== undefined ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line + 1 : undefined,
     message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n') }));
 }

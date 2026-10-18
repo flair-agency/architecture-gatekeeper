@@ -4,6 +4,7 @@ import test from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/ci-procedural-acceptance-contract');
@@ -17,18 +18,16 @@ assert.equal(config.options.noImplicitAny, true);
 assert.equal(config.options.noEmitOnError, true);
 const options = { ...config.options, rootDir: root, noEmit: true };
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'), join(fixtureRoot, 'negative.mts'),
+], options, 'implementation imports and declarations must compile cleanly');
+
 function diagnostics(fixture) {
-  const file = join(fixtureRoot, fixture);
-  const program = ts.createProgram([file], options);
-  const all = ts.getPreEmitDiagnostics(program);
-  const local = all.filter(item => item.file?.fileName === file);
-  const imported = all.filter(item => item.file?.fileName !== file);
-  assert.deepEqual(imported, [], 'implementation imports and declarations must compile cleanly');
-  return local;
+  return diagnosticsForFixture(join(fixtureRoot, fixture));
 }
 
 test('procedural acceptance types accept both existing routes and flat facade callers', () => {
-  assert.deepEqual(diagnostics('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnostics('positive.mts')), []);
 });
 
 test('procedural acceptance types require every core routing observation', () => {

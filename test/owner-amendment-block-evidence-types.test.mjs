@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-amendment-block-evidence-types');
@@ -16,18 +17,20 @@ assert.equal(tsconfig.options.noImplicitAny, true, 'the adopted tsconfig must ke
 assert.equal(tsconfig.options.noEmitOnError, true, 'the adopted tsconfig must prevent emission after errors');
 const compilerOptions = { ...tsconfig.options, rootDir: root, noEmit: true };
 
+const fixtureDiagnosticsForFile = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'),
+  join(fixtureRoot, 'negative-arguments.mts'),
+  join(fixtureRoot, 'negative-missing-envelope-field.mts'),
+  join(fixtureRoot, 'negative-result-state.mts'),
+  join(fixtureRoot, 'negative-unknown-values.mts'),
+], compilerOptions, 'source imports and declarations must be error-free');
+
 function fixtureDiagnostics(name) {
-  const file = join(fixtureRoot, name);
-  const program = ts.createProgram([file], { ...compilerOptions, rootDir: root });
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  const local = diagnostics.filter(item => item.file?.fileName === file);
-  const imported = diagnostics.filter(item => item.file?.fileName !== file);
-  assert.deepEqual(imported, [], 'source imports and declarations must be error-free');
-  return local;
+  return fixtureDiagnosticsForFile(join(fixtureRoot, name));
 }
 
 test('BLOCK evidence composer accepts unknown external fields and composes through the flat facade', () => {
-  assert.deepEqual(fixtureDiagnostics('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(fixtureDiagnostics('positive.mts')), []);
 });
 
 test('BLOCK evidence composer rejects an invalid gh callback', () => {
