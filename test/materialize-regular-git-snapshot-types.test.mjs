@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
-import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/materialize-regular-git-snapshot-contract');
@@ -27,7 +27,7 @@ function diagnosticsFor(fixture) {
 }
 
 test('materialized snapshot exposes only the observed path and computed digest contracts', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('materialized snapshot requires the accessed input fields and keeps observations unknown', () => {

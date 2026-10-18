@@ -29,24 +29,66 @@ function diagnosticsFor(name) {
   return diagnosticsForFixture(join(fixtureRoot, name)).map(summarize);
 }
 
-function diagnosticsForFile(file) {
-  const program = ts.createProgram([file], options);
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file).map(summarize), [],
-    'the proxy-session implementation and every imported source module must remain error-free');
-  return diagnostics.filter(item => item.file?.fileName === file).map(summarize);
-}
+const generatedSources = new Map([
+  ['union-negative.mts', `
+import { runGeminiCliProxySession } from '../../src/gemini-cli/gemini-cli-proxy-session.mts';
+import type { GeminiCliProxySessionProcessOptions } from '../../src/gemini-cli/gemini-cli-proxy-session.mts';
+import type { ReviewFileContextLimits, ReviewFileContextPacket } from '../../src/review-inputs/prepare-review-file-context.mts';
+declare const packet: ReviewFileContextPacket;
+declare const workspaceLimits: ReviewFileContextLimits;
+declare const model: 'gemini-3.8-flash' | 'gemini-2.5-flash';
+const common = { cliEntrypoint: '/opt/gemini/cli.mjs', privateParentDirectory: '/tmp/private', prompt: 'Review.', project: 'review', region: 'us', timeoutMs: 60_000, maxPromptBytes: 4096, maxStdoutBytes: 2048, maxStderrBytes: 1024 };
+const base = { packet, workspaceLimits, workspaceParentDirectory: '/tmp/workspaces', credentials: { type: 'bearer' as const, value: 'parent-token' } };
+const explicitUnion: GeminiCliProxySessionProcessOptions<typeof model> = { ...common, model, thinkingBudget: 512 };
+const inferredUnion = runGeminiCliProxySession({ ...base, processOptions: { ...common, model, thinkingBudget: 512 } });
+const inferredFlash = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: 'gemini-3.8-flash', thinkingBudget: 512 } });
+const inferredOther = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: 'gemini-2.5-flash', thinkingLevel: 'HIGH' } });
+void [explicitUnion, inferredUnion, inferredFlash, inferredOther];
+`],
+  ['union-positive.mts', `
+import { runGeminiCliProxySession } from '../../src/gemini-cli/gemini-cli-proxy-session.mts';
+import type { GeminiCliProxySessionInput, GeminiCliProxySessionProcessOptions } from '../../src/gemini-cli/gemini-cli-proxy-session.mts';
+import type { ReviewFileContextLimits, ReviewFileContextPacket } from '../../src/review-inputs/prepare-review-file-context.mts';
+declare const packet: ReviewFileContextPacket;
+declare const workspaceLimits: ReviewFileContextLimits;
+type SupportedModel = 'gemini-3.8-flash' | 'gemini-2.5-flash';
+declare const model: SupportedModel;
+declare const broadModel: string;
+const common = { cliEntrypoint: '/opt/gemini/cli.mjs', privateParentDirectory: '/tmp/private', prompt: 'Review.', project: 'review', region: 'us', timeoutMs: 60_000, maxPromptBytes: 4096, maxStdoutBytes: 2048, maxStderrBytes: 1024 };
+const base = { packet, workspaceLimits, workspaceParentDirectory: '/tmp/workspaces', credentials: { type: 'bearer' as const, value: 'parent-token' } };
+const correlatedOptions: GeminiCliProxySessionProcessOptions<SupportedModel> = model === 'gemini-3.8-flash'
+  ? { ...common, model, thinkingLevel: 'LOW' }
+  : { ...common, model, thinkingBudget: 512 };
+const correlatedInput: GeminiCliProxySessionInput<SupportedModel> = { ...base, processOptions: correlatedOptions };
+const correlatedInputResult = runGeminiCliProxySession(correlatedInput);
+const inferredCorrelated = runGeminiCliProxySession({ ...base, processOptions: model === 'gemini-3.8-flash'
+  ? { ...common, model, thinkingLevel: 'MEDIUM' }
+  : { ...common, model, thinkingBudget: 512 } });
+const inferredFlash = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: 'gemini-3.8-flash', thinkingLevel: 'HIGH' } });
+const inferredOther = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: 'gemini-2.5-flash', thinkingBudget: 256 } });
+const broadLevel = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: broadModel, thinkingLevel: 'LOW' } });
+const broadBudget = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: broadModel, thinkingBudget: 256 } });
+void [correlatedInputResult, inferredCorrelated, inferredFlash, inferredOther, broadLevel, broadBudget];
+`],
+]);
 
-function diagnosticsForSource(name, source) {
+const diagnosticsForGeneratedSource = (() => {
   const directory = mkdtempSync(join(root, 'test/.gemini-cli-proxy-contract-'));
-  const file = join(directory, name);
+  const files = new Map();
+  let diagnosticsForFile;
   try {
-    writeFileSync(file, source);
-    return diagnosticsForFile(file);
+    for (const [name, source] of generatedSources) {
+      const file = join(directory, name);
+      writeFileSync(file, source);
+      files.set(name, file);
+    }
+    diagnosticsForFile = compileFixtureDiagnostics([...files.values()], options,
+      'the proxy-session implementation and every imported source module must remain error-free');
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-}
+  return name => diagnosticsForFile(files.get(name)).map(summarize);
+})();
 
 test('Gemini proxy-session contract accepts complete mandatory input through grouped and flat exports', () => {
   assert.deepEqual(diagnosticsFor('positive.mts'), []);
@@ -71,50 +113,12 @@ test('Gemini proxy-session contract rejects missing input, unsupported credentia
 });
 
 test('Gemini proxy-session unions preserve model and thinking-control correlation', () => {
-  const diagnostics = diagnosticsForSource('union-positive.mts', `
-import { runGeminiCliProxySession } from '../../src/gemini-cli/gemini-cli-proxy-session.mts';
-import type { GeminiCliProxySessionInput, GeminiCliProxySessionProcessOptions } from '../../src/gemini-cli/gemini-cli-proxy-session.mts';
-import type { ReviewFileContextLimits, ReviewFileContextPacket } from '../../src/review-inputs/prepare-review-file-context.mts';
-declare const packet: ReviewFileContextPacket;
-declare const workspaceLimits: ReviewFileContextLimits;
-type SupportedModel = 'gemini-3.8-flash' | 'gemini-2.5-flash';
-declare const model: SupportedModel;
-declare const broadModel: string;
-const common = { cliEntrypoint: '/opt/gemini/cli.mjs', privateParentDirectory: '/tmp/private', prompt: 'Review.', project: 'review', region: 'us', timeoutMs: 60_000, maxPromptBytes: 4096, maxStdoutBytes: 2048, maxStderrBytes: 1024 };
-const base = { packet, workspaceLimits, workspaceParentDirectory: '/tmp/workspaces', credentials: { type: 'bearer' as const, value: 'parent-token' } };
-const correlatedOptions: GeminiCliProxySessionProcessOptions<SupportedModel> = model === 'gemini-3.8-flash'
-  ? { ...common, model, thinkingLevel: 'LOW' }
-  : { ...common, model, thinkingBudget: 512 };
-const correlatedInput: GeminiCliProxySessionInput<SupportedModel> = { ...base, processOptions: correlatedOptions };
-const correlatedInputResult = runGeminiCliProxySession(correlatedInput);
-const inferredCorrelated = runGeminiCliProxySession({ ...base, processOptions: model === 'gemini-3.8-flash'
-  ? { ...common, model, thinkingLevel: 'MEDIUM' }
-  : { ...common, model, thinkingBudget: 512 } });
-const inferredFlash = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: 'gemini-3.8-flash', thinkingLevel: 'HIGH' } });
-const inferredOther = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: 'gemini-2.5-flash', thinkingBudget: 256 } });
-const broadLevel = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: broadModel, thinkingLevel: 'LOW' } });
-const broadBudget = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: broadModel, thinkingBudget: 256 } });
-void [correlatedInputResult, inferredCorrelated, inferredFlash, inferredOther, broadLevel, broadBudget];
-`);
+  const diagnostics = diagnosticsForGeneratedSource('union-positive.mts');
   assert.deepEqual(diagnostics, []);
 });
 
 test('Gemini proxy-session rejects uncorrelated union and inferred model/control combinations', () => {
-  const diagnostics = diagnosticsForSource('union-negative.mts', `
-import { runGeminiCliProxySession } from '../../src/gemini-cli/gemini-cli-proxy-session.mts';
-import type { GeminiCliProxySessionProcessOptions } from '../../src/gemini-cli/gemini-cli-proxy-session.mts';
-import type { ReviewFileContextLimits, ReviewFileContextPacket } from '../../src/review-inputs/prepare-review-file-context.mts';
-declare const packet: ReviewFileContextPacket;
-declare const workspaceLimits: ReviewFileContextLimits;
-declare const model: 'gemini-3.8-flash' | 'gemini-2.5-flash';
-const common = { cliEntrypoint: '/opt/gemini/cli.mjs', privateParentDirectory: '/tmp/private', prompt: 'Review.', project: 'review', region: 'us', timeoutMs: 60_000, maxPromptBytes: 4096, maxStdoutBytes: 2048, maxStderrBytes: 1024 };
-const base = { packet, workspaceLimits, workspaceParentDirectory: '/tmp/workspaces', credentials: { type: 'bearer' as const, value: 'parent-token' } };
-const explicitUnion: GeminiCliProxySessionProcessOptions<typeof model> = { ...common, model, thinkingBudget: 512 };
-const inferredUnion = runGeminiCliProxySession({ ...base, processOptions: { ...common, model, thinkingBudget: 512 } });
-const inferredFlash = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: 'gemini-3.8-flash', thinkingBudget: 512 } });
-const inferredOther = runGeminiCliProxySession({ ...base, processOptions: { ...common, model: 'gemini-2.5-flash', thinkingLevel: 'HIGH' } });
-void [explicitUnion, inferredUnion, inferredFlash, inferredOther];
-`);
+  const diagnostics = diagnosticsForGeneratedSource('union-negative.mts');
   assert.deepEqual(diagnostics.map(({ code }) => code), [2322, 2322, 2322, 2322]);
   assert.match(diagnostics[0].message, /GeminiCliProxySessionProcessOptions/);
   assert.match(diagnostics[1].message, /GeminiCliProxySessionProcessOptions/);

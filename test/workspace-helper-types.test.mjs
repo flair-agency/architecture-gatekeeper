@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/workspace-helper-contract');
@@ -20,7 +21,7 @@ const fixturePaths = new Set(fixtureNames.map(name => join(fixtureRoot, name)));
 const program = ts.createProgram([...fixturePaths], compilerOptions);
 const allDiagnostics = ts.getPreEmitDiagnostics(program);
 const sharedDiagnostics = allDiagnostics.filter(item => !fixturePaths.has(item.file?.fileName));
-assert.deepEqual(sharedDiagnostics, [], 'typed sources and flat compatibility exports must compile');
+assert.deepEqual(summarizeDiagnostics(sharedDiagnostics), [], 'typed sources and flat compatibility exports must compile');
 
 function diagnosticsFor(name) {
   const file = join(fixtureRoot, name);
@@ -36,8 +37,8 @@ function summarize(diagnostics) {
 }
 
 test('workspace helpers accept unknown external inputs through typed leaves and flat facades', () => {
-  assert.deepEqual(diagnosticsFor('physical-positive.mts'), []);
-  assert.deepEqual(diagnosticsFor('flat-positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('physical-positive.mts')), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('flat-positive.mts')), []);
 });
 
 test('physical workspace helper outputs remain readonly and correctly typed', () => {

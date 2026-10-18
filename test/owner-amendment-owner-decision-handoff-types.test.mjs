@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
-import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-amendment-owner-decision-handoff-contract');
@@ -30,7 +30,7 @@ function diagnosticsFor(name) {
 }
 
 test('OWNER_DECISION handoff contracts accept the actual sync and awaited collaborator shapes and narrow outcomes', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('OWNER_DECISION handoff contracts reject async sync-only collaborators and mutation of readonly snapshots', () => {
