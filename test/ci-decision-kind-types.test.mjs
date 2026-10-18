@@ -3,7 +3,7 @@ import test from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
-import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/ci-decision-kind-contract');
@@ -20,7 +20,7 @@ const diagnosticsFor = compileFixtureDiagnostics(fixtureFiles, options, 'module 
 test('decision routing output remains unknown in the typed source contract', () => {
   const positive = fixtureFiles[0];
   const negative = fixtureFiles[1];
-  assert.deepEqual(diagnosticsFor(positive), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor(positive)), []);
   const diagnostics = diagnosticsFor(negative);
   assert.deepEqual(diagnostics.map(item => [item.code, item.file.getLineAndCharacterOfPosition(item.start).line + 1]), [[2322, 3]]);
   assert.match(ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n'), /unknown.*not assignable/i);

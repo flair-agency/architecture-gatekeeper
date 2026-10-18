@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/validation-helper-contract');
@@ -26,12 +27,12 @@ function diagnosticsFor(name) {
   const file = fixturePaths[name];
   const other = allDiagnostics.filter(diagnostic => diagnostic.file?.fileName !== fixturePaths.positive &&
     diagnostic.file?.fileName !== fixturePaths.negative);
-  assert.deepEqual(other, [], 'physical, facade, and shared imports must resolve cleanly');
+  assert.deepEqual(summarizeDiagnostics(other), [], 'physical, facade, and shared imports must resolve cleanly');
   return allDiagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
 }
 
 test('validation helpers expose descriptive input and identity types through both imports', () => {
-  assert.deepEqual(diagnosticsFor('positive'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive')), []);
 });
 
 test('validation helpers reject malformed typed calls and unsupported external narrowing', () => {

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const configPath = join(root, 'tsconfig.json');
@@ -16,7 +17,7 @@ const program = ts.createProgram([positive, negative], { ...config.options, root
 const diagnostics = ts.getPreEmitDiagnostics(program);
 
 test('measurement authored TypeScript composes public, CLI and local APIs with unknown external evidence', () => {
-  assert.deepEqual(diagnostics.filter(d => d.file?.fileName !== negative), []);
+  assert.deepEqual(summarizeDiagnostics(diagnostics.filter(d => d.file?.fileName !== negative)), []);
 });
 
 test('measurement contracts reject malformed selections and unsupported parsed-data narrowing', () => {
