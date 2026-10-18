@@ -183,6 +183,13 @@ This initial map does not prove an exhaustive transitive call graph.
 
 ## Staged remaining work
 
+The later [per-caller disposition checkpoint](2026-10-18-io-migration-dispositions.md)
+uses adopted #616 as its implementation baseline. It indexes the defined native
+import census, supplemental workflow/callback/host-lifetime contracts, the
+#599/#604/#615/#616 selected mechanisms and separately tracked follow-up. The
+initial tables and staged list below retain their historical scope; the later
+index does not claim exhaustive I/O, host verification or whole #573 completion.
+
 The bounded merge-group process-wrapper extraction is recorded in
 [`2026-10-18-merge-group-git-wrapper-extraction.md`](2026-10-18-merge-group-git-wrapper-extraction.md).
 It consolidates two identical script-local `execFileSync` wrappers only; it
