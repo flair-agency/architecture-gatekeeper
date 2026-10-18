@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/json-schema-contract');
@@ -16,12 +17,15 @@ assert.equal(tsconfig.options.noImplicitAny, true);
 assert.equal(tsconfig.options.noEmitOnError, true);
 const compilerOptions = { ...tsconfig.options, rootDir: root, noEmit: true };
 
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFixture = compileFixtureDiagnostics(fixtureFiles, compilerOptions,
+  'imports and authored declarations must be error-free');
+
 function diagnosticsFor(fixture) {
   const file = join(fixtureRoot, fixture);
-  const program = ts.createProgram([file], compilerOptions);
-  return ts.getPreEmitDiagnostics(program).map(diagnostic => ({
+  return diagnosticsForFixture(file).map(diagnostic => ({
     code: diagnostic.code,
-    file: diagnostic.file?.fileName === file ? fixture : diagnostic.file?.fileName ?? null,
+    file: fixture,
     line: diagnostic.file && diagnostic.start !== undefined
       ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line + 1
       : null,
@@ -35,9 +39,7 @@ test('JSON Schema validator preserves caller input types without inferring schem
 });
 
 test('JSON Schema validator rejects invalid options and schema-derived claims', () => {
-  const allDiagnostics = diagnosticsFor('negative.mts');
-  const diagnostics = allDiagnostics.filter(diagnostic => diagnostic.file === 'negative.mts');
-  assert.deepEqual(allDiagnostics, diagnostics, 'imports and authored declarations must be error-free');
+  const diagnostics = diagnosticsFor('negative.mts');
   assert.deepEqual(diagnostics.map(({ code, line }) => [code, line]), [
     [2322, 3], [2322, 4], [2322, 5], [2741, 6],
   ]);

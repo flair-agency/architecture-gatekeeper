@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 import { parse } from 'acorn';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -13,12 +14,11 @@ const config = ts.readConfigFile(configPath, ts.sys.readFile);
 assert.equal(config.error, undefined);
 const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root, undefined, configPath);
 assert.deepEqual(parsed.errors, []);
+const fixtureRoot = join(root, 'test/fixtures/preview-lifecycle-contract');
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFile = compileFixtureDiagnostics(fixtureFiles, { ...parsed.options, rootDir: root, noEmit: true }, 'imported lifecycle contracts remain error-free');
 function diagnosticsFor(name) {
-  const file = join(root, 'test/fixtures/preview-lifecycle-contract', name);
-  const program = ts.createProgram([file], { ...parsed.options, rootDir: root, noEmit: true });
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  assert.deepEqual(diagnostics.filter(item => item.file?.fileName !== file), [], 'imported lifecycle contracts remain error-free');
-  return diagnostics.filter(item => item.file?.fileName === file).map(item => ({ code: item.code,
+  return diagnosticsForFile(join(fixtureRoot, name)).map(item => ({ code: item.code,
     line: item.file.getLineAndCharacterOfPosition(item.start).line + 1,
     message: ts.flattenDiagnosticMessageText(item.messageText, '\n') }));
 }

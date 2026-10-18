@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/legacy-git-snapshot-contract');
@@ -16,15 +17,9 @@ assert.equal(tsconfig.options.noImplicitAny, true);
 assert.equal(tsconfig.options.noEmitOnError, true);
 const compilerOptions = { ...tsconfig.options, rootDir: root, noEmit: true };
 
-function diagnosticsFor(fixture) {
-  const file = join(fixtureRoot, fixture);
-  const program = ts.createProgram([file], compilerOptions);
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  const fixtureDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
-  const otherDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file);
-  assert.deepEqual(otherDiagnostics, [], 'imports and authored declarations must be error-free');
-  return fixtureDiagnostics;
-}
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFixture = compileFixtureDiagnostics(fixtureFiles, compilerOptions,
+  'imports and authored declarations must be error-free');
 
 function diagnosticEvidence(diagnostics) {
   return diagnostics.map(diagnostic => ({
@@ -35,11 +30,11 @@ function diagnosticEvidence(diagnostics) {
 }
 
 test('legacy Git snapshots preserve the facade types and ordinary observation shape', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsForFixture(join(fixtureRoot, 'positive.mts'))), []);
 });
 
 test('legacy Git snapshots reject malformed selections and inferred claims', () => {
-  const diagnostics = diagnosticEvidence(diagnosticsFor('negative.mts'));
+  const diagnostics = diagnosticEvidence(diagnosticsForFixture(join(fixtureRoot, 'negative.mts')));
   assert.deepEqual(diagnostics.map(({ code, line }) => [code, line]), [
     [2345, 3], [2322, 4], [2322, 5], [2322, 6], [2322, 7], [2741, 8], [2322, 9], [2322, 10],
   ]);

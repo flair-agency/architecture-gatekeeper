@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse } from 'acorn';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 import { fixture, spec, commitOn, ordinary, decision } from './fixtures/preview-lifecycle-runtime.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -18,23 +19,24 @@ const stripPositions = value => Array.isArray(value) ? value.map(stripPositions)
 const nodeHash = node => hash(JSON.stringify(stripPositions(node)));
 const parseModule = source => parse(source, { ecmaVersion: 'latest', sourceType: 'module' });
 
+const configPath = join(root, 'tsconfig.json');
+const configRead = ts.readConfigFile(configPath, ts.sys.readFile);
+assert.equal(configRead.error, undefined);
+const config = ts.parseJsonConfigFileContent(configRead.config, ts.sys, root, undefined, configPath);
+assert.deepEqual(config.errors, []);
+assert.equal(config.options.strict, true);
+assert.equal(config.options.noImplicitAny, true);
+assert.equal(config.options.noEmitOnError, true);
+const compilerOptions = { ...config.options, rootDir: root, noEmit: true };
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFixture = compileFixtureDiagnostics(fixtureFiles, compilerOptions,
+  'imports and authored declarations must be error-free');
+
 function diagnosticsFor(fixtureName) {
-  const file = join(fixtureRoot, fixtureName);
-  const configPath = join(root, 'tsconfig.json');
-  const configRead = ts.readConfigFile(configPath, ts.sys.readFile);
-  assert.equal(configRead.error, undefined);
-  const config = ts.parseJsonConfigFileContent(configRead.config, ts.sys, root, undefined, configPath);
-  assert.deepEqual(config.errors, []);
-  assert.equal(config.options.strict, true);
-  assert.equal(config.options.noImplicitAny, true);
-  assert.equal(config.options.noEmitOnError, true);
-  const program = ts.createProgram([file], { ...config.options, rootDir: root, noEmit: true });
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  const local = diagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
-  const other = diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file);
-  assert.deepEqual(other, [], other.map(diagnostic => `${diagnostic.file?.fileName ?? '<global>'}:${diagnostic.code}:${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')}`).join('\n'));
-  return local.map(diagnostic => ({ code: diagnostic.code, line: diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line + 1,
-    message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n') }));
+  return diagnosticsForFixture(join(fixtureRoot, fixtureName)).map(diagnostic => ({
+    code: diagnostic.code, line: diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line + 1,
+    message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+  }));
 }
 
 function exportFunction(ast, name) {
