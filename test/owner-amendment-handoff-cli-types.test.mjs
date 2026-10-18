@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-amendment-handoff-cli-contract');
@@ -22,6 +23,11 @@ function summarize(diagnostics) {
     message: ts.flattenDiagnosticMessageText(item.messageText, '\n'),
   }));
 }
+
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'), join(fixtureRoot, 'negative.mts'),
+], options, 'handoff CLI module contract must remain error-free');
+
 test('flat source facade import is inert and retains the original direct-run dispatch guard', async () => {
   const facade = join(root, 'src/owner-amendment-handoff-cli.mjs');
   const imported = await import(facade);
@@ -35,18 +41,13 @@ test('flat source facade import is inert and retains the original direct-run dis
 
 test('handoff CLI facade composes standard fetch and synchronous Git execution under the actual tsconfig', () => {
   const fixture = join(fixtureRoot, 'positive.mts');
-  const program = ts.createProgram([fixture], options);
-  const diagnostics = summarize(ts.getPreEmitDiagnostics(program));
-  assert.deepEqual(diagnostics.filter(item => item.file !== fixture), [], 'handoff CLI module contract must remain error-free');
-  assert.deepEqual(diagnostics.filter(item => item.file === fixture), []);
+  const diagnostics = summarize(diagnosticsForFixture(fixture));
+  assert.deepEqual(diagnostics, []);
 });
 
 test('handoff CLI rejects asynchronous Git, incomplete selected contexts, invalid clocks, narrowed unknown reason and result mutation', () => {
   const fixture = join(fixtureRoot, 'negative.mts');
-  const program = ts.createProgram([fixture], options);
-  const diagnostics = summarize(ts.getPreEmitDiagnostics(program));
-  assert.deepEqual(diagnostics.filter(item => item.file !== fixture), [], 'handoff CLI module contract must remain error-free');
-  const own = diagnostics.filter(item => item.file === fixture);
+  const own = summarize(diagnosticsForFixture(fixture));
   assert.deepEqual(own.map(item => [item.code, item.line]), [
     [2322, 11], [2322, 12], [2322, 13], [2322, 17], [2540, 18],
   ]);

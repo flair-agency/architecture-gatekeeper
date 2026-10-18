@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/materialize-regular-git-snapshot-contract');
@@ -16,16 +17,13 @@ assert.equal(tsconfig.options.noImplicitAny, true);
 assert.equal(tsconfig.options.noEmitOnError, true);
 const compilerOptions = { ...tsconfig.options, rootDir: root, noEmit: true };
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'), join(fixtureRoot, 'negative.mts'),
+], compilerOptions, 'materializer and imported source contracts must remain error-free');
+
 function diagnosticsFor(fixture) {
   const file = join(fixtureRoot, fixture);
-  const program = ts.createProgram([file], compilerOptions);
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  const fixtureDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
-  const otherDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file);
-  assert.equal(otherDiagnostics.length, 0, otherDiagnostics.map(diagnostic =>
-    `${diagnostic.file?.fileName ?? '<global>'}:${diagnostic.code}:${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')}`
-  ).join('\n'));
-  return fixtureDiagnostics;
+  return diagnosticsForFixture(file);
 }
 
 test('materialized snapshot exposes only the observed path and computed digest contracts', () => {
