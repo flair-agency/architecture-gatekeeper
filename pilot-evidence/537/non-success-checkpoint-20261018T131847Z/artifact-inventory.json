@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "sourceSelection": "three selected existing failed/cancelled attempts; public metadata only",
+  "attempts": [
+    {
+      "runId": "39130703163",
+      "runAttempt": "1",
+      "runCreatedAt": "2026-10-18T13:14:53Z",
+      "runUpdatedAt": "2026-10-18T13:16:55Z",
+      "runStatusAtInventoryRead": "completed",
+      "runConclusionAtInventoryRead": "failure",
+      "attemptStatus": "completed",
+      "attemptConclusion": "failure",
+      "attemptStartedAt": "2026-10-18T13:14:53Z",
+      "attemptUpdatedAt": "2026-10-18T13:16:55Z",
+      "prBindings": [
+        {
+          "number": 619,
+          "headSha": "3bb7d987dea4854cc0da70d045c678be5f5e3b5b",
+          "baseSha": "0bba81a4fbfd06683ab65de4685c9be305d73017"
+        }
+      ],
+      "prBindingUnresolved": false,
+      "artifacts": [
+        {
+          "artifactId": "12137778176",
+          "phase": "review",
+          "name": "agk-measurement-review-39130703163-1-7ef6ec75-695c-48b1-9a56-eeeb60886d07",
+          "createdAt": "2026-10-18T13:16:51Z",
+          "expiresAt": "2026-11-17T13:16:51Z",
+          "expectedBytes": 1114,
+          "expectedSha256": "fba5f93b665cef42cca5c48c5c9d06797968096370d4c3caff81ff1fccd8016d",
+          "sourceBytes": 1114,
+          "sourceSha256": "fba5f93b665cef42cca5c48c5c9d06797968096370d4c3caff81ff1fccd8016d",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5040,
+          "memberSha256": "5450c125f1792f4ed4415373f3d5cea20e49cd1492f6e6df98b5b840f220eda0",
+          "validationStatus": "passed",
+          "attemptId": "7ef6ec75-695c-48b1-9a56-eeeb60886d07",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "gaps": 0,
+          "recordCount": 3
+        },
+        {
+          "artifactId": "12137623714",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39130703163-1-95d3dc9f-5cf4-4cb8-a54d-e7e28f8aaff1",
+          "createdAt": "2026-10-18T13:16:52Z",
+          "expiresAt": "2026-11-17T13:16:52Z",
+          "expectedBytes": 992,
+          "expectedSha256": "9cfdd6422c62b737ef13d26fe86f28ab541337b991c47b7cc343e1afc245fd62",
+          "sourceBytes": 992,
+          "sourceSha256": "9cfdd6422c62b737ef13d26fe86f28ab541337b991c47b7cc343e1afc245fd62",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3271,
+          "memberSha256": "e76b5fcdf608798976c581f93a77f39c6908ca55a78c88c4b2120c9b826fd89c",
+          "validationStatus": "passed",
+          "attemptId": "95d3dc9f-5cf4-4cb8-a54d-e7e28f8aaff1",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "gaps": 0,
+          "recordCount": 2
+        }
+      ]
+    },
+    {
+      "runId": "39088836215",
+      "runAttempt": "1",
+      "runCreatedAt": "2026-10-18T02:05:33Z",
+      "runUpdatedAt": "2026-10-18T02:07:34Z",
+      "runStatusAtInventoryRead": "completed",
+      "runConclusionAtInventoryRead": "cancelled",
+      "attemptStatus": "completed",
+      "attemptConclusion": "cancelled",
+      "attemptStartedAt": "2026-10-18T02:05:33Z",
+      "attemptUpdatedAt": "2026-10-18T02:07:34Z",
+      "prBindings": [],
+      "prBindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12121542659",
+          "phase": "review",
+          "name": "agk-measurement-review-39088836215-1-e5875a3f-44fe-4f21-b92e-c4b3adeae2c4",
+          "createdAt": "2026-10-18T02:07:29Z",
+          "expiresAt": "2026-11-17T02:07:28Z",
+          "expectedBytes": 1115,
+          "expectedSha256": "2f0af215cc451ca18d30f3f68343bc76477e8a5af8dbae76eb37481ef16e2697",
+          "sourceBytes": 1115,
+          "sourceSha256": "2f0af215cc451ca18d30f3f68343bc76477e8a5af8dbae76eb37481ef16e2697",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5041,
+          "memberSha256": "c8ebb81cf9a7f05a095a2bd363e0c993fdbd8913b0b3b2574316373b7dee7500",
+          "validationStatus": "passed",
+          "attemptId": "e5875a3f-44fe-4f21-b92e-c4b3adeae2c4",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "gaps": 0,
+          "recordCount": 3
+        },
+        {
+          "artifactId": "12122285398",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39088836215-1-a4221641-1d5b-429e-85a4-86659cf684ec",
+          "createdAt": "2026-10-18T02:07:31Z",
+          "expiresAt": "2026-11-17T02:07:30Z",
+          "expectedBytes": 990,
+          "expectedSha256": "887d33b3c1bd1954a9b99f42d0a7d9f02937a363b38bc31272e28126620c3e04",
+          "sourceBytes": 990,
+          "sourceSha256": "887d33b3c1bd1954a9b99f42d0a7d9f02937a363b38bc31272e28126620c3e04",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3271,
+          "memberSha256": "4daecd2107b3e6ec2a03dab5454aaf0ffd73a2b4d89d1e2d5c3e16fb669e7c48",
+          "validationStatus": "passed",
+          "attemptId": "a4221641-1d5b-429e-85a4-86659cf684ec",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "gaps": 0,
+          "recordCount": 2
+        }
+      ]
+    },
+    {
+      "runId": "39107349903",
+      "runAttempt": "1",
+      "runCreatedAt": "2026-10-18T07:21:20Z",
+      "runUpdatedAt": "2026-10-18T07:38:28Z",
+      "runStatusAtInventoryRead": "completed",
+      "runConclusionAtInventoryRead": "success",
+      "attemptStatus": "completed",
+      "attemptConclusion": "failure",
+      "attemptStartedAt": "2026-10-18T07:21:20Z",
+      "attemptUpdatedAt": "2026-10-18T07:23:19Z",
+      "prBindings": [],
+      "prBindingUnresolved": true,
+      "artifacts": [
+        {
+          "artifactId": "12128792624",
+          "phase": "review",
+          "name": "agk-measurement-review-39107349903-1-4be16c28-23bb-4b97-8070-e42cb1c1cd3f",
+          "createdAt": "2026-10-18T07:23:14Z",
+          "expiresAt": "2026-11-17T07:23:13Z",
+          "expectedBytes": 1163,
+          "expectedSha256": "ae6808792b4b55538afe739c2542af1595ebd7328c17c1ba2104230e21bf95e2",
+          "sourceBytes": 1163,
+          "sourceSha256": "ae6808792b4b55538afe739c2542af1595ebd7328c17c1ba2104230e21bf95e2",
+          "memberName": "agk-review-measurement-export.json",
+          "memberBytes": 5363,
+          "memberSha256": "13ccb70c7508f1eac14300f0f40f76c718c1162398b3e5d788c31598c0f44fdb",
+          "validationStatus": "passed",
+          "attemptId": "4be16c28-23bb-4b97-8070-e42cb1c1cd3f",
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "gaps": 0,
+          "recordCount": 3
+        },
+        {
+          "artifactId": "12128837472",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39107349903-1-690f7a41-9db6-4f15-b922-3638803d5ec6",
+          "createdAt": "2026-10-18T07:23:15Z",
+          "expiresAt": "2026-11-17T07:23:15Z",
+          "expectedBytes": 1014,
+          "expectedSha256": "16cb5c26b44fec37c9735def923ab9a51a13229ad7c0c62944232b30005b1c80",
+          "sourceBytes": 1014,
+          "sourceSha256": "16cb5c26b44fec37c9735def923ab9a51a13229ad7c0c62944232b30005b1c80",
+          "memberName": "agk-outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "adf8debbde129acd33252854d358ff4aab1d587b72d3341091dbbaf8cb1e9c47",
+          "validationStatus": "passed",
+          "attemptId": "690f7a41-9db6-4f15-b922-3638803d5ec6",
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "gaps": 0,
+          "recordCount": 2
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Run/attempt conclusion is workflow execution metadata, not a semantic BLOCK or architecture finding.",
+    "An absent API PR binding remains unknown; no PR is inferred from titles, branches or SHAs.",
+    "The first selected PR binding is recorded from public API metadata; unresolved candidates remain unbound.",
+    "These six artifacts are a bounded non-success sample, not a population harvest, denominator, coverage claim, or effectiveness estimate."
+  ]
+}

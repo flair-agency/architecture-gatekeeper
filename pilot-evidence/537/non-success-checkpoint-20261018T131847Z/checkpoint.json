@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "537-non-success-checkpoint-20261018T131847Z",
+  "destination": "pilot-evidence/537/non-success-checkpoint-20261018T131847Z/",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "frozenReadCutoffUtc": "2026-10-18T13:18:47Z",
+  "sourceSelectionSha256": "ea79c4b57cc1b95a0c74f29c0d645675dc4ce57aff56069a3815a7812be25c14",
+  "selectedInventorySha256": "145863cd48c95e089450e5f8c45b12848c3f3b610f18ea6d4977e5811c6d4ee0",
+  "files": [
+    {
+      "path": "public-candidate.json",
+      "bytes": 25139,
+      "sha256": "407e52d55e6029175eeee4ca43423cc3b43e729de23cabaaea8bab6b8cea43c7"
+    },
+    {
+      "path": "artifact-inventory.json",
+      "bytes": 8190,
+      "sha256": "397d50fa1e1d37cc3619b429456fa40a2b66d7aee51c781404ad8377086b2413"
+    },
+    {
+      "path": "selected-inventory.json",
+      "bytes": 9468,
+      "sha256": "bface03227afc0ae81000d9fd5a9175009ca43eba53e316bfb7c589e0d2b0bdd"
+    },
+    {
+      "path": "validation-metadata.json",
+      "bytes": 6186,
+      "sha256": "15a7170c6f3c8b2666ac1430255c81cce6ad6f04f737c0615b4aa059576858f8"
+    }
+  ],
+  "selectedArtifactScope": {
+    "attempts": 3,
+    "artifacts": 6,
+    "validatedRecords": 15,
+    "reviewPhasesPerAttempt": [
+      "prepared",
+      "start",
+      "terminal"
+    ],
+    "outcomePhasesPerAttempt": [
+      "start",
+      "terminal"
+    ],
+    "sourceEnvelopeGaps": 0,
+    "itemValidationGaps": 0,
+    "recordDecisionInterpretation": "preserved as redacted; no semantic BLOCK/finding inferred"
+  },
+  "separateCollectionGaps": {
+    "noArtifactAttempts": [
+      {
+        "runId": "38473334693",
+        "runAttempt": "1",
+        "attemptConclusion": "failure",
+        "prBindings": [],
+        "prBindingUnresolved": true,
+        "artifactCount": 0,
+        "status": "unrecovered-no-artifact"
+      },
+      {
+        "runId": "38473334693",
+        "runAttempt": "2",
+        "attemptConclusion": "failure",
+        "prBindings": [],
+        "prBindingUnresolved": true,
+        "artifactCount": 0,
+        "status": "unrecovered-no-artifact"
+      },
+      {
+        "runId": "38473334693",
+        "runAttempt": "3",
+        "attemptConclusion": "failure",
+        "prBindings": [],
+        "prBindingUnresolved": true,
+        "artifactCount": 0,
+        "status": "unrecovered-no-artifact"
+      }
+    ],
+    "count": 3,
+    "status": "unrecovered; not represented as zero observations"
+  },
+  "coverageLimits": [
+    "This package is a selected non-success sample, not a population harvest, denominator, coverage claim, or efficacy estimate.",
+    "Run/attempt conclusions are execution metadata only. In particular, run conclusion and attempt conclusion may differ.",
+    "The selected run with a public PR binding is recorded as PR 619; the other two attempts remain unbound and no PR is inferred.",
+    "The three no-artifact attempts remain separate unresolved collection gaps.",
+    "Candidate dataset population/cases/audits arrays are structural placeholders; underlying totals remain unknown, not zero.",
+    "Capture and validation did not invoke models, rerun workflows, fixtures, schedule/opt-in changes, or security probes. Publication and readback are separate coordinator steps."
+  ],
+  "publicContentAllowlist": "Only already-production-redacted exports plus public PR/run/attempt/artifact metadata and validation/limitations metadata. No validators, provenance with local paths, private ZIPs, extracted private copies, or signed URLs."
+}

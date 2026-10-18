@@ -1,0 +1,218 @@
+{
+  "validation": "passed",
+  "sourceRuntime": "repository emitted production runtime",
+  "productionChecks": [
+    "parseMeasurementJson (256 KiB, duplicate-key, depth-32 checks)",
+    "validateMeasurementRecord",
+    "validateMeasurementDataset",
+    "corrected exact redactMeasurement field/value conditions"
+  ],
+  "reRedactionApplied": false,
+  "recordValuesChanged": false,
+  "deduplicated": false,
+  "selectedArtifactCount": 6,
+  "validatedArtifactCount": 6,
+  "recordCount": 15,
+  "sourceEnvelopeGaps": 0,
+  "itemValidationGaps": 0,
+  "collectionGaps": 0,
+  "bindingConsistency": {
+    "recordsWithCi": 15,
+    "recordsWithoutCi": 0,
+    "repositoryIdsCompared": 15,
+    "runIdsCompared": 15,
+    "runAttemptsCompared": 15,
+    "knownPrNumbersCompared": 5,
+    "knownPrShaPairsCompared": 5,
+    "recordsOnUnboundRunsWithCi": 10,
+    "note": "Only non-null redacted CI values are compared. API-unbound attempts remain unlinked; no PR is inferred or asserted."
+  },
+  "artifactChecks": [
+    {
+      "artifactId": "12137778176",
+      "runId": "39130703163",
+      "runAttempt": "1",
+      "phase": "review",
+      "route": "ci-review",
+      "attemptId": "7ef6ec75-695c-48b1-9a56-eeeb60886d07",
+      "phases": [
+        "prepared",
+        "start",
+        "terminal"
+      ],
+      "gaps": 0,
+      "recordCount": 3,
+      "terminalObservations": [
+        {
+          "state": "incomplete",
+          "decision": null,
+          "observation": {
+            "reviewJob": "failure",
+            "timingSource": "collector",
+            "ciAcquisition": "public-job-metadata",
+            "jobId": "117685193566",
+            "reviewStepOutcome": "skipped",
+            "jobTiming": {
+              "startedAt": "2026-10-18T13:15:22Z",
+              "completedAt": "2026-10-18T13:15:30Z",
+              "elapsedMs": 8000
+            },
+            "reviewTiming": null
+          }
+        }
+      ]
+    },
+    {
+      "artifactId": "12137623714",
+      "runId": "39130703163",
+      "runAttempt": "1",
+      "phase": "outcome",
+      "route": "ci-outcome",
+      "attemptId": "95d3dc9f-5cf4-4cb8-a54d-e7e28f8aaff1",
+      "phases": [
+        "start",
+        "terminal"
+      ],
+      "gaps": 0,
+      "recordCount": 2,
+      "terminalObservations": [
+        {
+          "state": "completed",
+          "decision": null,
+          "observation": {
+            "reviewJob": "failure",
+            "reportJob": "success",
+            "acceptJob": "failure",
+            "policyJob": "success"
+          }
+        }
+      ]
+    },
+    {
+      "artifactId": "12121542659",
+      "runId": "39088836215",
+      "runAttempt": "1",
+      "phase": "review",
+      "route": "ci-review",
+      "attemptId": "e5875a3f-44fe-4f21-b92e-c4b3adeae2c4",
+      "phases": [
+        "prepared",
+        "start",
+        "terminal"
+      ],
+      "gaps": 0,
+      "recordCount": 3,
+      "terminalObservations": [
+        {
+          "state": "incomplete",
+          "decision": null,
+          "observation": {
+            "reviewJob": "failure",
+            "timingSource": "collector",
+            "ciAcquisition": "public-job-metadata",
+            "jobId": "117561067124",
+            "reviewStepOutcome": "skipped",
+            "jobTiming": {
+              "startedAt": "2026-10-18T02:06:00Z",
+              "completedAt": "2026-10-18T02:06:10Z",
+              "elapsedMs": 10000
+            },
+            "reviewTiming": null
+          }
+        }
+      ]
+    },
+    {
+      "artifactId": "12122285398",
+      "runId": "39088836215",
+      "runAttempt": "1",
+      "phase": "outcome",
+      "route": "ci-outcome",
+      "attemptId": "a4221641-1d5b-429e-85a4-86659cf684ec",
+      "phases": [
+        "start",
+        "terminal"
+      ],
+      "gaps": 0,
+      "recordCount": 2,
+      "terminalObservations": [
+        {
+          "state": "completed",
+          "decision": null,
+          "observation": {
+            "reviewJob": "failure",
+            "reportJob": "success",
+            "acceptJob": "failure",
+            "policyJob": "success"
+          }
+        }
+      ]
+    },
+    {
+      "artifactId": "12128792624",
+      "runId": "39107349903",
+      "runAttempt": "1",
+      "phase": "review",
+      "route": "ci-review",
+      "attemptId": "4be16c28-23bb-4b97-8070-e42cb1c1cd3f",
+      "phases": [
+        "prepared",
+        "start",
+        "terminal"
+      ],
+      "gaps": 0,
+      "recordCount": 3,
+      "terminalObservations": [
+        {
+          "state": "incomplete",
+          "decision": null,
+          "observation": {
+            "reviewJob": "failure",
+            "timingSource": "collector",
+            "ciAcquisition": "public-job-metadata",
+            "jobId": "117616048150",
+            "reviewStepOutcome": "failure",
+            "jobTiming": {
+              "startedAt": "2026-10-18T07:21:48Z",
+              "completedAt": "2026-10-18T07:22:18Z",
+              "elapsedMs": 30000
+            },
+            "reviewTiming": {
+              "startedAt": "2026-10-18T07:22:00Z",
+              "completedAt": "2026-10-18T07:22:15Z",
+              "elapsedMs": 15000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "artifactId": "12128837472",
+      "runId": "39107349903",
+      "runAttempt": "1",
+      "phase": "outcome",
+      "route": "ci-outcome",
+      "attemptId": "690f7a41-9db6-4f15-b922-3638803d5ec6",
+      "phases": [
+        "start",
+        "terminal"
+      ],
+      "gaps": 0,
+      "recordCount": 2,
+      "terminalObservations": [
+        {
+          "state": "completed",
+          "decision": null,
+          "observation": {
+            "reviewJob": "failure",
+            "reportJob": "success",
+            "acceptJob": "failure",
+            "policyJob": "success"
+          }
+        }
+      ]
+    }
+  ],
+  "interpretation": "Selected workflow failures/cancellation and terminal job statuses are operational observations only. Recorded decision values are preserved; no semantic BLOCK, finding, PR link for unresolved rows, acceptance, or efficacy is inferred.",
+  "scopeLimit": "These validation counts cover only the six selected paired artifacts. The three no-artifact attempts are separate unresolved gaps."
+}
