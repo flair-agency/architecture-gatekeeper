@@ -279,15 +279,17 @@ jobs:
             printf 'Event merge metadata has stale or invalid parents; expected [%s], got [%s].\n' "$expected_parents" "$actual_parents" >&2
             echo 'refresh=true' >> "$GITHUB_OUTPUT"
           fi
-      - name: Resolve current pull request merge ref once
-        id: refresh_merge
+      - name: Fetch and verify current pull request merge commit
+        id: verified_merge_commit
         if: steps.event_revision.outputs.refresh == 'true'
-        timeout-minutes: 1
+        timeout-minutes: 2
         env:
           FETCH_TOKEN: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
           REPOSITORY: ${{ github.repository }}
           SERVER_URL: ${{ github.server_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           test -n "$FETCH_TOKEN"
@@ -307,11 +309,17 @@ jobs:
           REMOTE_URL="$SERVER_URL/$REPOSITORY.git"
           MERGE_REF="refs/pull/$PR_NUMBER/merge"
           echo "::add-mask::$AUTH"
-          RESPONSE="$(GIT_CONFIG_COUNT=1 \
+          git_with_source_auth() {
+            GIT_CONFIG_COUNT=1 \
             GIT_CONFIG_KEY_0="http.$SERVER_URL/.extraheader" \
             GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $AUTH" \
             GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/false SSH_ASKPASS=/bin/false \
-            timeout 30s git ls-remote --refs "$REMOTE_URL" "$MERGE_REF")"
+              timeout 30s git "$@"
+          }
+          if ! RESPONSE="$(git_with_source_auth ls-remote --refs "$REMOTE_URL" "$MERGE_REF" 2>/dev/null)"; then
+            echo 'Current pull request merge ref lookup failed' >&2
+            exit 1
+          fi
           if test "$(printf '%s\n' "$RESPONSE" | wc -l | tr -d ' ')" != 1; then
             echo 'Current pull request merge ref is missing or ambiguous' >&2
             exit 1
@@ -321,13 +329,42 @@ jobs:
             echo 'Current pull request merge ref returned an invalid immutable SHA' >&2
             exit 1
           fi
+          if ! git_with_source_auth fetch --no-tags --no-recurse-submodules --no-write-fetch-head "$REMOTE_URL" "$REFRESHED_SHA" 2>/dev/null; then
+            echo 'Resolved immutable merge commit could not be fetched' >&2
+            exit 1
+          fi
+          if ! OBJECT_TYPE="$(git --no-replace-objects cat-file -t "$REFRESHED_SHA" 2>/dev/null)"; then
+            echo 'Fetched immutable merge object is unavailable' >&2
+            exit 1
+          fi
+          if test "$OBJECT_TYPE" != commit; then
+            echo 'Resolved merge object is not a commit' >&2
+            exit 1
+          fi
+          if ! FETCHED_SHA="$(git --no-replace-objects rev-parse --verify "$REFRESHED_SHA^{commit}" 2>/dev/null)"; then
+            echo 'Fetched immutable merge object cannot be resolved as a commit' >&2
+            exit 1
+          fi
+          if test "$FETCHED_SHA" != "$REFRESHED_SHA"; then
+            echo 'Fetched merge object differs from the resolved immutable SHA' >&2
+            exit 1
+          fi
+          if ! ACTUAL_PARENTS="$(git --no-replace-objects rev-list --parents -n 1 "$REFRESHED_SHA" 2>/dev/null)"; then
+            echo 'Fetched merge commit parent metadata is unavailable' >&2
+            exit 1
+          fi
+          EXPECTED_PARENTS="$REFRESHED_SHA $BASE_SHA $HEAD_SHA"
+          if test "$ACTUAL_PARENTS" != "$EXPECTED_PARENTS"; then
+            printf 'Resolved merge candidate %s has invalid ordered parents; expected [%s], got [%s].\n' "$FETCHED_SHA" "$EXPECTED_PARENTS" "$ACTUAL_PARENTS" >&2
+            exit 1
+          fi
           printf 'sha=%s\n' "$REFRESHED_SHA" >> "$GITHUB_OUTPUT"
       - name: Refresh current pull request merge revision
         if: steps.event_revision.outputs.refresh == 'true'
         uses: actions/checkout@v5
         timeout-minutes: 3
         with:
-          ref: ${{ steps.refresh_merge.outputs.sha }}
+          ref: ${{ steps.verified_merge_commit.outputs.sha }}
           fetch-depth: 0
           submodules: ${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}
           token: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
@@ -337,7 +374,7 @@ jobs:
         env:
           EXPECTED_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           REFRESHED: ${{ steps.event_revision.outputs.refresh }}
-          REFRESHED_SHA: ${{ steps.refresh_merge.outputs.sha }}
+          REFRESHED_SHA: ${{ steps.verified_merge_commit.outputs.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |

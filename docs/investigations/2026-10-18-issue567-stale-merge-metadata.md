@@ -15,9 +15,14 @@ event SHA as the normal path. Only when the immutable event SHA has an ordered
 parent mismatch do they perform one bounded lookup of
 `refs/pull/<number>/merge`, check out the resulting immutable SHA, and verify
 that it has exactly the event base and head as its ordered parents. The
-resolved SHA becomes the reviewed SHA used by the review and downstream
-records. Missing or ambiguous refs, lookup or checkout failures, and any
-candidate with different parents remain incomplete.
+recovery now fetches that full immutable SHA into the existing checkout,
+verifies the fetched object is a commit with those exact ordered parents, and
+only then passes the verified SHA to a refreshed checkout. Recursive
+submodules are materialized by that refreshed checkout only after this
+pre-checkout validation; the post-checkout SHA and parent guard remains in
+place. The verified SHA becomes the reviewed SHA used by review and downstream
+records. Missing or ambiguous refs, failed fetches, non-commit objects,
+checkout failures, and candidates with different parents remain incomplete.
 
 The workflow regressions use locally created Git commits to reproduce the stale
 metadata shape and exercise the exact-parent checks and bounded resolver script.
@@ -25,4 +30,9 @@ Gemini launcher tests exercise the same transition through its trusted
 object-fetch helper and assert the selected SHA it returns; the source handoff
 to publication and output was inspected separately. These checks do not replay
 the hosted GitHub event or establish GitHub Actions checkout behavior for the
-issue's historical run.
+issue's historical run. The focused Actions regression executes the inline
+resolver against controlled Git command results, including invalid candidate
+objects and parent tuples, and verifies rejected candidates emit no checkout
+SHA. Local CodeQL 2.27.1 is separate from the hosted 2.27.2 analysis; only the
+subsequent hosted run can establish whether the unchanged Actions query suite
+accepts the revised checkout ordering in GitHub's environment.
