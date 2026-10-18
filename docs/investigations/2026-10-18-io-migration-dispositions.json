@@ -100,7 +100,7 @@
     "intentional-publication-protocol": 1,
     "intentional-required-input-contract": 13,
     "intentional-route-specific-contract": 12,
-    "preserve-current-host-owned-persistence": 2,
+    "preserve-current-native-session-responsibilities": 2,
     "probe-owning-resources": 3,
     "retain-caller-owned-execution-adapter": 2,
     "retain-distinct-observation-contract": 2,
@@ -852,8 +852,8 @@
     {
       "path": "src/local-review/native-review.mts",
       "family": "native session persistence",
-      "disposition": "preserve-current-host-owned-persistence",
-      "contract_reason": "Native request/decision paths are caller/host-selected persistence handoffs, not runner-temp files; no #566 stream/persistence transfer is authorized by these inventories.",
+      "disposition": "preserve-current-native-session-responsibilities",
+      "contract_reason": "The trusted Skill execution side supplies paths and owns private allocation, exact-request/decision recording and cleanup; the native adapter constructs/persists the request and validates the decision. This does not attest parent privacy. #566’s proposed stream/persistence transfer remains separate and unapproved.",
       "reference_ids": [
         "R7",
         "R0"
@@ -926,8 +926,8 @@
     {
       "path": "src/native-review.mjs",
       "family": "native session persistence",
-      "disposition": "preserve-current-host-owned-persistence",
-      "contract_reason": "Native request/decision paths are caller/host-selected persistence handoffs, not runner-temp files; no #566 stream/persistence transfer is authorized by these inventories.",
+      "disposition": "preserve-current-native-session-responsibilities",
+      "contract_reason": "The trusted Skill execution side supplies paths and owns private allocation, exact-request/decision recording and cleanup; the native adapter constructs/persists the request and validates the decision. This does not attest parent privacy. #566’s proposed stream/persistence transfer remains separate and unapproved.",
       "reference_ids": [
         "R7",
         "R0"
@@ -1570,7 +1570,7 @@
     "Only explicitly observed import/call and named supplemental surfaces are indexed; absence does not imply no I/O.",
     "Retain means preserve the named current contract, not prove no possible duplication or that all operations are safe.",
     "Selected equivalent mechanisms are adopted; known further comparison candidates remain explicitly tracked in the Markdown.",
-    "Existing canonical host-session persistence stays current; the proposed #566 transfer is separate and unapproved.",
+    "The existing canonical Skill/native session responsibility split stays current; the proposed #566 transfer is separate and unapproved.",
     "Source accuracy, tests, hosted checks, protected acceptance and owner decisions retain separate meanings."
   ]
 }
