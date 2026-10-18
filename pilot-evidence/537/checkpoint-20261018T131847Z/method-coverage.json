@@ -1,0 +1,496 @@
+{
+  "schemaVersion": 2,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "frozenReadCutoffUtc": "2026-10-18T13:18:47Z",
+  "windowStartUtc": "2026-10-13T13:43:35Z",
+  "windowEndExclusiveUtc": "2026-11-10T13:43:35Z",
+  "retrieval": {
+    "prSearch": {
+      "operation": "github_search_prs",
+      "query": "updated:>=2026-10-13",
+      "state": "all",
+      "sort": "updated",
+      "order": "desc",
+      "topn": 100,
+      "searchResults": 52,
+      "exactTimestampRows": 45,
+      "exactFilter": "2026-10-13T13:43:35Z <= updated_at <= 2026-10-18T13:18:47Z",
+      "observedCompletedUtc": "2026-10-18T13:17:51Z"
+    },
+    "prMetadata": {
+      "operation": "github_fetch_pr",
+      "calls": 52,
+      "fieldsRetained": "public PR metadata only (state, dates, draft, branch/ref names and SHAs)",
+      "diffReturnedByConnector": "discarded without inspection or persistence"
+    },
+    "runList": {
+      "operation": "github_fetch generic GET",
+      "urlTemplate": "https://api.github.com/repos/flair-agency/architecture-gatekeeper/actions/runs?per_page=100&event=pull_request_target&created=2026-10-13..2026-10-18&page={1..7}",
+      "pageCounts": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        19
+      ],
+      "totalCount": 619,
+      "pathFilter": ".github/workflows/self-architecture-gate.yml",
+      "exactCreatedAtFilter": "2026-10-13T13:43:35Z <= created_at <= 2026-10-18T13:18:47Z",
+      "readWindowUtc": {
+        "startedUtc": "2026-10-18 13:22:46 UTC",
+        "completedUtc": "2026-10-18 13:22:49 UTC"
+      }
+    },
+    "attemptDetails": {
+      "operation": "github_fetch generic GET",
+      "urlTemplate": "https://api.github.com/repos/flair-agency/architecture-gatekeeper/actions/runs/{run_id}/attempts/{attempt_number}",
+      "attemptNumbers": "1..run_attempt from each run-list row, capped at 5/run",
+      "rows": 179,
+      "batchWindowsUtc": [
+        {
+          "firstTask": 1,
+          "lastTask": 6,
+          "startedUtc": "2026-10-18 13:22:49 UTC",
+          "completedUtc": "2026-10-18 13:22:50 UTC"
+        },
+        {
+          "firstTask": 7,
+          "lastTask": 12,
+          "startedUtc": "2026-10-18 13:22:50 UTC",
+          "completedUtc": "2026-10-18 13:22:51 UTC"
+        },
+        {
+          "firstTask": 13,
+          "lastTask": 18,
+          "startedUtc": "2026-10-18 13:22:51 UTC",
+          "completedUtc": "2026-10-18 13:22:51 UTC"
+        },
+        {
+          "firstTask": 19,
+          "lastTask": 24,
+          "startedUtc": "2026-10-18 13:22:51 UTC",
+          "completedUtc": "2026-10-18 13:22:52 UTC"
+        },
+        {
+          "firstTask": 25,
+          "lastTask": 30,
+          "startedUtc": "2026-10-18 13:22:52 UTC",
+          "completedUtc": "2026-10-18 13:22:53 UTC"
+        },
+        {
+          "firstTask": 31,
+          "lastTask": 36,
+          "startedUtc": "2026-10-18 13:22:53 UTC",
+          "completedUtc": "2026-10-18 13:22:53 UTC"
+        },
+        {
+          "firstTask": 37,
+          "lastTask": 42,
+          "startedUtc": "2026-10-18 13:22:53 UTC",
+          "completedUtc": "2026-10-18 13:22:54 UTC"
+        },
+        {
+          "firstTask": 43,
+          "lastTask": 48,
+          "startedUtc": "2026-10-18 13:22:54 UTC",
+          "completedUtc": "2026-10-18 13:22:55 UTC"
+        },
+        {
+          "firstTask": 49,
+          "lastTask": 54,
+          "startedUtc": "2026-10-18 13:22:55 UTC",
+          "completedUtc": "2026-10-18 13:22:56 UTC"
+        },
+        {
+          "firstTask": 55,
+          "lastTask": 60,
+          "startedUtc": "2026-10-18 13:22:56 UTC",
+          "completedUtc": "2026-10-18 13:22:56 UTC"
+        },
+        {
+          "firstTask": 61,
+          "lastTask": 66,
+          "startedUtc": "2026-10-18 13:22:56 UTC",
+          "completedUtc": "2026-10-18 13:22:57 UTC"
+        },
+        {
+          "firstTask": 67,
+          "lastTask": 72,
+          "startedUtc": "2026-10-18 13:22:57 UTC",
+          "completedUtc": "2026-10-18 13:22:58 UTC"
+        },
+        {
+          "firstTask": 73,
+          "lastTask": 78,
+          "startedUtc": "2026-10-18 13:22:58 UTC",
+          "completedUtc": "2026-10-18 13:22:59 UTC"
+        },
+        {
+          "firstTask": 79,
+          "lastTask": 84,
+          "startedUtc": "2026-10-18 13:22:59 UTC",
+          "completedUtc": "2026-10-18 13:22:59 UTC"
+        },
+        {
+          "firstTask": 85,
+          "lastTask": 90,
+          "startedUtc": "2026-10-18 13:22:59 UTC",
+          "completedUtc": "2026-10-18 13:23:00 UTC"
+        },
+        {
+          "firstTask": 91,
+          "lastTask": 96,
+          "startedUtc": "2026-10-18 13:23:00 UTC",
+          "completedUtc": "2026-10-18 13:23:01 UTC"
+        },
+        {
+          "firstTask": 97,
+          "lastTask": 102,
+          "startedUtc": "2026-10-18 13:23:01 UTC",
+          "completedUtc": "2026-10-18 13:23:01 UTC"
+        },
+        {
+          "firstTask": 103,
+          "lastTask": 108,
+          "startedUtc": "2026-10-18 13:23:01 UTC",
+          "completedUtc": "2026-10-18 13:23:02 UTC"
+        },
+        {
+          "firstTask": 109,
+          "lastTask": 114,
+          "startedUtc": "2026-10-18 13:23:02 UTC",
+          "completedUtc": "2026-10-18 13:23:03 UTC"
+        },
+        {
+          "firstTask": 115,
+          "lastTask": 120,
+          "startedUtc": "2026-10-18 13:23:03 UTC",
+          "completedUtc": "2026-10-18 13:23:04 UTC"
+        },
+        {
+          "firstTask": 121,
+          "lastTask": 126,
+          "startedUtc": "2026-10-18 13:23:04 UTC",
+          "completedUtc": "2026-10-18 13:23:05 UTC"
+        },
+        {
+          "firstTask": 127,
+          "lastTask": 132,
+          "startedUtc": "2026-10-18 13:23:05 UTC",
+          "completedUtc": "2026-10-18 13:23:05 UTC"
+        },
+        {
+          "firstTask": 133,
+          "lastTask": 138,
+          "startedUtc": "2026-10-18 13:23:05 UTC",
+          "completedUtc": "2026-10-18 13:23:06 UTC"
+        },
+        {
+          "firstTask": 139,
+          "lastTask": 144,
+          "startedUtc": "2026-10-18 13:23:06 UTC",
+          "completedUtc": "2026-10-18 13:23:06 UTC"
+        },
+        {
+          "firstTask": 145,
+          "lastTask": 150,
+          "startedUtc": "2026-10-18 13:23:06 UTC",
+          "completedUtc": "2026-10-18 13:23:07 UTC"
+        },
+        {
+          "firstTask": 151,
+          "lastTask": 156,
+          "startedUtc": "2026-10-18 13:23:07 UTC",
+          "completedUtc": "2026-10-18 13:23:08 UTC"
+        },
+        {
+          "firstTask": 157,
+          "lastTask": 162,
+          "startedUtc": "2026-10-18 13:23:08 UTC",
+          "completedUtc": "2026-10-18 13:23:09 UTC"
+        },
+        {
+          "firstTask": 163,
+          "lastTask": 168,
+          "startedUtc": "2026-10-18 13:23:09 UTC",
+          "completedUtc": "2026-10-18 13:23:09 UTC"
+        },
+        {
+          "firstTask": 169,
+          "lastTask": 174,
+          "startedUtc": "2026-10-18 13:23:09 UTC",
+          "completedUtc": "2026-10-18 13:23:10 UTC"
+        },
+        {
+          "firstTask": 175,
+          "lastTask": 180,
+          "startedUtc": "2026-10-18 13:23:10 UTC",
+          "completedUtc": "2026-10-18 13:23:11 UTC"
+        },
+        {
+          "firstTask": 181,
+          "lastTask": 186,
+          "startedUtc": "2026-10-18 13:23:11 UTC",
+          "completedUtc": "2026-10-18 13:23:11 UTC"
+        },
+        {
+          "firstTask": 187,
+          "lastTask": 192,
+          "startedUtc": "2026-10-18 13:23:11 UTC",
+          "completedUtc": "2026-10-18 13:23:12 UTC"
+        },
+        {
+          "firstTask": 193,
+          "lastTask": 198,
+          "startedUtc": "2026-10-18 13:23:12 UTC",
+          "completedUtc": "2026-10-18 13:23:13 UTC"
+        },
+        {
+          "firstTask": 199,
+          "lastTask": 204,
+          "startedUtc": "2026-10-18 13:23:13 UTC",
+          "completedUtc": "2026-10-18 13:23:14 UTC"
+        },
+        {
+          "firstTask": 205,
+          "lastTask": 210,
+          "startedUtc": "2026-10-18 13:23:14 UTC",
+          "completedUtc": "2026-10-18 13:23:15 UTC"
+        },
+        {
+          "firstTask": 211,
+          "lastTask": 216,
+          "startedUtc": "2026-10-18 13:23:15 UTC",
+          "completedUtc": "2026-10-18 13:23:15 UTC"
+        },
+        {
+          "firstTask": 217,
+          "lastTask": 222,
+          "startedUtc": "2026-10-18 13:23:15 UTC",
+          "completedUtc": "2026-10-18 13:23:16 UTC"
+        },
+        {
+          "firstTask": 223,
+          "lastTask": 228,
+          "startedUtc": "2026-10-18 13:23:16 UTC",
+          "completedUtc": "2026-10-18 13:23:17 UTC"
+        },
+        {
+          "firstTask": 229,
+          "lastTask": 234,
+          "startedUtc": "2026-10-18 13:23:17 UTC",
+          "completedUtc": "2026-10-18 13:23:17 UTC"
+        },
+        {
+          "firstTask": 235,
+          "lastTask": 240,
+          "startedUtc": "2026-10-18 13:23:17 UTC",
+          "completedUtc": "2026-10-18 13:23:18 UTC"
+        },
+        {
+          "firstTask": 241,
+          "lastTask": 246,
+          "startedUtc": "2026-10-18 13:23:18 UTC",
+          "completedUtc": "2026-10-18 13:23:19 UTC"
+        },
+        {
+          "firstTask": 247,
+          "lastTask": 252,
+          "startedUtc": "2026-10-18 13:23:19 UTC",
+          "completedUtc": "2026-10-18 13:23:20 UTC"
+        },
+        {
+          "firstTask": 253,
+          "lastTask": 258,
+          "startedUtc": "2026-10-18 13:23:20 UTC",
+          "completedUtc": "2026-10-18 13:23:20 UTC"
+        },
+        {
+          "firstTask": 259,
+          "lastTask": 264,
+          "startedUtc": "2026-10-18 13:23:20 UTC",
+          "completedUtc": "2026-10-18 13:23:21 UTC"
+        },
+        {
+          "firstTask": 265,
+          "lastTask": 270,
+          "startedUtc": "2026-10-18 13:23:21 UTC",
+          "completedUtc": "2026-10-18 13:23:22 UTC"
+        },
+        {
+          "firstTask": 271,
+          "lastTask": 276,
+          "startedUtc": "2026-10-18 13:23:22 UTC",
+          "completedUtc": "2026-10-18 13:23:22 UTC"
+        },
+        {
+          "firstTask": 277,
+          "lastTask": 282,
+          "startedUtc": "2026-10-18 13:23:22 UTC",
+          "completedUtc": "2026-10-18 13:23:23 UTC"
+        },
+        {
+          "firstTask": 283,
+          "lastTask": 288,
+          "startedUtc": "2026-10-18 13:23:23 UTC",
+          "completedUtc": "2026-10-18 13:23:24 UTC"
+        },
+        {
+          "firstTask": 289,
+          "lastTask": 294,
+          "startedUtc": "2026-10-18 13:23:24 UTC",
+          "completedUtc": "2026-10-18 13:23:24 UTC"
+        },
+        {
+          "firstTask": 295,
+          "lastTask": 300,
+          "startedUtc": "2026-10-18 13:23:24 UTC",
+          "completedUtc": "2026-10-18 13:23:25 UTC"
+        },
+        {
+          "firstTask": 301,
+          "lastTask": 306,
+          "startedUtc": "2026-10-18 13:23:25 UTC",
+          "completedUtc": "2026-10-18 13:23:26 UTC"
+        },
+        {
+          "firstTask": 307,
+          "lastTask": 312,
+          "startedUtc": "2026-10-18 13:23:26 UTC",
+          "completedUtc": "2026-10-18 13:23:26 UTC"
+        },
+        {
+          "firstTask": 313,
+          "lastTask": 318,
+          "startedUtc": "2026-10-18 13:23:26 UTC",
+          "completedUtc": "2026-10-18 13:23:27 UTC"
+        },
+        {
+          "firstTask": 319,
+          "lastTask": 324,
+          "startedUtc": "2026-10-18 13:23:27 UTC",
+          "completedUtc": "2026-10-18 13:23:28 UTC"
+        },
+        {
+          "firstTask": 325,
+          "lastTask": 330,
+          "startedUtc": "2026-10-18 13:23:28 UTC",
+          "completedUtc": "2026-10-18 13:23:29 UTC"
+        },
+        {
+          "firstTask": 331,
+          "lastTask": 336,
+          "startedUtc": "2026-10-18 13:23:29 UTC",
+          "completedUtc": "2026-10-18 13:23:29 UTC"
+        },
+        {
+          "firstTask": 337,
+          "lastTask": 342,
+          "startedUtc": "2026-10-18 13:23:29 UTC",
+          "completedUtc": "2026-10-18 13:23:30 UTC"
+        },
+        {
+          "firstTask": 343,
+          "lastTask": 348,
+          "startedUtc": "2026-10-18 13:23:30 UTC",
+          "completedUtc": "2026-10-18 13:23:30 UTC"
+        },
+        {
+          "firstTask": 349,
+          "lastTask": 353,
+          "startedUtc": "2026-10-18 13:23:30 UTC",
+          "completedUtc": "2026-10-18 13:23:31 UTC"
+        }
+      ]
+    },
+    "artifactMetadata": {
+      "operation": "github_fetch_workflow_run_artifacts",
+      "calls": 174,
+      "endpoint": "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts",
+      "pageBehavior": "first page only; no run returned 100 artifacts",
+      "retainedFields": [
+        "artifact id",
+        "name",
+        "size",
+        "expired",
+        "created/updated/expiry timestamps",
+        "digest"
+      ],
+      "downloaded": false,
+      "rows": 217
+    }
+  },
+  "coverage": {
+    "runListPagesExceededCap": false,
+    "totalPagesFetched": 7,
+    "pageCap": 10,
+    "rowCap": 1000,
+    "rows": 619,
+    "selfGateRowsOverall": 222,
+    "selfGateRowsInFrozenCreatedAtWindow": 174,
+    "selfGateCap": 300,
+    "selectedSelfGateOverflow": false,
+    "attempts": 179,
+    "attemptCapPerRun": 5,
+    "maxRunAttempt": 4,
+    "attemptErrors": 0,
+    "artifacts": 217,
+    "artifactCap1000Exceeded": false,
+    "artifactPageOverflow": false,
+    "artifactErrors": 0,
+    "summaryAsObservedAfterFrozenCutoff": {
+      "runs": {
+        "completed/success": 140,
+        "completed/failure": 29,
+        "completed/cancelled": 5
+      },
+      "attempts": {
+        "completed/success": 140,
+        "completed/failure": 33,
+        "completed/cancelled": 6
+      },
+      "measurementArtifacts": 216,
+      "review": 108,
+      "outcome": 108
+    },
+    "frozenArtifactCreationCounts": {
+      "createdByCutoff": 214,
+      "review": 107,
+      "outcome": 107,
+      "createdAfterCutoff": 2
+    },
+    "notableTiming": "Run 39130941543 was created before the frozen read cutoff but its updated_at and both measurement artifact created_at values are after cutoff; its success and artifacts are later observations, not projected backward.",
+    "limitations": [
+      "Run list is not an atomic snapshot. Run/attempt states are recorded as observed at their collection times; last updates after the frozen cutoff remain unknown as-of cutoff.",
+      "The workflow-run endpoint is date-bounded by run created_at. A rerun of a run whose original created_at predates the frozen window but whose later attempt started inside it is not discoverable through this query; not separately enumerated.",
+      "Some run rows have empty pull_requests bindings. No PR is inferred from title, branch name, or SHA; these remain unbound.",
+      "Attempt metadata covers every numbered attempt up to current run_attempt (max 4); no attempt number over five was present.",
+      "Artifact metadata connector returns first page. All per-run pages were below 100 entries, so no page reached the cap; no artifact bytes or signed URLs were retrieved."
+    ],
+    "earlierIncompleteMethodRetained": "public-metadata.initial-narrow-wrapper.json and method-coverage.initial-narrow-wrapper.json document the earlier narrow-wrapper gap; corrected here by paginated generic GET.",
+    "privacy": "No user IDs/names/avatar/email, private findings, artifact bytes, signed URLs or raw GitHub responses stored. Artifact names, IDs and digests are public allowlisted metadata.",
+    "interpretation": "Counts describe public metadata only; no semantic decision, natural defect outcome, sampling membership, cohort metric or efficacy estimate is inferred.",
+    "prInventory": {
+      "searchResults": 52,
+      "exactUpdatedAtAfterFrozenStart": 45,
+      "searchRowsBeforeExactUtcBoundary": 7,
+      "stateAtPrObservation": {
+        "merged": 42,
+        "open": 2,
+        "closedUnmerged": 1,
+        "currentlyDraft": 0
+      },
+      "frozenEligibleNumbers": [
+        517,
+        514,
+        510,
+        423,
+        297,
+        237
+      ],
+      "newEligibilityUnresolvedWithoutReadyTransitionHistory": 44
+    }
+  }
+}

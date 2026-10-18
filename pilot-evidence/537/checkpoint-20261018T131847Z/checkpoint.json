@@ -1,0 +1,629 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "537-checkpoint-20261018T131847Z",
+  "destination": "pilot-evidence/537/checkpoint-20261018T131847Z/",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "frozenPilotWindow": {
+    "startUtc": "2026-10-13T13:43:35Z",
+    "endExclusiveUtc": "2026-11-10T13:43:35Z",
+    "timezone": "Asia/Tokyo"
+  },
+  "frozenReadCutoffUtc": "2026-10-18T13:18:47Z",
+  "sourceObservation": {
+    "prMetadataObservedThroughUtc": "2026-10-18T13:17:51Z",
+    "runListObservedWindowUtc": {
+      "startedUtc": "2026-10-18 13:22:46 UTC",
+      "completedUtc": "2026-10-18 13:22:49 UTC"
+    },
+    "attemptAndArtifactMetadataBatchWindowsUtc": [
+      {
+        "firstTask": 1,
+        "lastTask": 6,
+        "startedUtc": "2026-10-18 13:22:49 UTC",
+        "completedUtc": "2026-10-18 13:22:50 UTC"
+      },
+      {
+        "firstTask": 7,
+        "lastTask": 12,
+        "startedUtc": "2026-10-18 13:22:50 UTC",
+        "completedUtc": "2026-10-18 13:22:51 UTC"
+      },
+      {
+        "firstTask": 13,
+        "lastTask": 18,
+        "startedUtc": "2026-10-18 13:22:51 UTC",
+        "completedUtc": "2026-10-18 13:22:51 UTC"
+      },
+      {
+        "firstTask": 19,
+        "lastTask": 24,
+        "startedUtc": "2026-10-18 13:22:51 UTC",
+        "completedUtc": "2026-10-18 13:22:52 UTC"
+      },
+      {
+        "firstTask": 25,
+        "lastTask": 30,
+        "startedUtc": "2026-10-18 13:22:52 UTC",
+        "completedUtc": "2026-10-18 13:22:53 UTC"
+      },
+      {
+        "firstTask": 31,
+        "lastTask": 36,
+        "startedUtc": "2026-10-18 13:22:53 UTC",
+        "completedUtc": "2026-10-18 13:22:53 UTC"
+      },
+      {
+        "firstTask": 37,
+        "lastTask": 42,
+        "startedUtc": "2026-10-18 13:22:53 UTC",
+        "completedUtc": "2026-10-18 13:22:54 UTC"
+      },
+      {
+        "firstTask": 43,
+        "lastTask": 48,
+        "startedUtc": "2026-10-18 13:22:54 UTC",
+        "completedUtc": "2026-10-18 13:22:55 UTC"
+      },
+      {
+        "firstTask": 49,
+        "lastTask": 54,
+        "startedUtc": "2026-10-18 13:22:55 UTC",
+        "completedUtc": "2026-10-18 13:22:56 UTC"
+      },
+      {
+        "firstTask": 55,
+        "lastTask": 60,
+        "startedUtc": "2026-10-18 13:22:56 UTC",
+        "completedUtc": "2026-10-18 13:22:56 UTC"
+      },
+      {
+        "firstTask": 61,
+        "lastTask": 66,
+        "startedUtc": "2026-10-18 13:22:56 UTC",
+        "completedUtc": "2026-10-18 13:22:57 UTC"
+      },
+      {
+        "firstTask": 67,
+        "lastTask": 72,
+        "startedUtc": "2026-10-18 13:22:57 UTC",
+        "completedUtc": "2026-10-18 13:22:58 UTC"
+      },
+      {
+        "firstTask": 73,
+        "lastTask": 78,
+        "startedUtc": "2026-10-18 13:22:58 UTC",
+        "completedUtc": "2026-10-18 13:22:59 UTC"
+      },
+      {
+        "firstTask": 79,
+        "lastTask": 84,
+        "startedUtc": "2026-10-18 13:22:59 UTC",
+        "completedUtc": "2026-10-18 13:22:59 UTC"
+      },
+      {
+        "firstTask": 85,
+        "lastTask": 90,
+        "startedUtc": "2026-10-18 13:22:59 UTC",
+        "completedUtc": "2026-10-18 13:23:00 UTC"
+      },
+      {
+        "firstTask": 91,
+        "lastTask": 96,
+        "startedUtc": "2026-10-18 13:23:00 UTC",
+        "completedUtc": "2026-10-18 13:23:01 UTC"
+      },
+      {
+        "firstTask": 97,
+        "lastTask": 102,
+        "startedUtc": "2026-10-18 13:23:01 UTC",
+        "completedUtc": "2026-10-18 13:23:01 UTC"
+      },
+      {
+        "firstTask": 103,
+        "lastTask": 108,
+        "startedUtc": "2026-10-18 13:23:01 UTC",
+        "completedUtc": "2026-10-18 13:23:02 UTC"
+      },
+      {
+        "firstTask": 109,
+        "lastTask": 114,
+        "startedUtc": "2026-10-18 13:23:02 UTC",
+        "completedUtc": "2026-10-18 13:23:03 UTC"
+      },
+      {
+        "firstTask": 115,
+        "lastTask": 120,
+        "startedUtc": "2026-10-18 13:23:03 UTC",
+        "completedUtc": "2026-10-18 13:23:04 UTC"
+      },
+      {
+        "firstTask": 121,
+        "lastTask": 126,
+        "startedUtc": "2026-10-18 13:23:04 UTC",
+        "completedUtc": "2026-10-18 13:23:05 UTC"
+      },
+      {
+        "firstTask": 127,
+        "lastTask": 132,
+        "startedUtc": "2026-10-18 13:23:05 UTC",
+        "completedUtc": "2026-10-18 13:23:05 UTC"
+      },
+      {
+        "firstTask": 133,
+        "lastTask": 138,
+        "startedUtc": "2026-10-18 13:23:05 UTC",
+        "completedUtc": "2026-10-18 13:23:06 UTC"
+      },
+      {
+        "firstTask": 139,
+        "lastTask": 144,
+        "startedUtc": "2026-10-18 13:23:06 UTC",
+        "completedUtc": "2026-10-18 13:23:06 UTC"
+      },
+      {
+        "firstTask": 145,
+        "lastTask": 150,
+        "startedUtc": "2026-10-18 13:23:06 UTC",
+        "completedUtc": "2026-10-18 13:23:07 UTC"
+      },
+      {
+        "firstTask": 151,
+        "lastTask": 156,
+        "startedUtc": "2026-10-18 13:23:07 UTC",
+        "completedUtc": "2026-10-18 13:23:08 UTC"
+      },
+      {
+        "firstTask": 157,
+        "lastTask": 162,
+        "startedUtc": "2026-10-18 13:23:08 UTC",
+        "completedUtc": "2026-10-18 13:23:09 UTC"
+      },
+      {
+        "firstTask": 163,
+        "lastTask": 168,
+        "startedUtc": "2026-10-18 13:23:09 UTC",
+        "completedUtc": "2026-10-18 13:23:09 UTC"
+      },
+      {
+        "firstTask": 169,
+        "lastTask": 174,
+        "startedUtc": "2026-10-18 13:23:09 UTC",
+        "completedUtc": "2026-10-18 13:23:10 UTC"
+      },
+      {
+        "firstTask": 175,
+        "lastTask": 180,
+        "startedUtc": "2026-10-18 13:23:10 UTC",
+        "completedUtc": "2026-10-18 13:23:11 UTC"
+      },
+      {
+        "firstTask": 181,
+        "lastTask": 186,
+        "startedUtc": "2026-10-18 13:23:11 UTC",
+        "completedUtc": "2026-10-18 13:23:11 UTC"
+      },
+      {
+        "firstTask": 187,
+        "lastTask": 192,
+        "startedUtc": "2026-10-18 13:23:11 UTC",
+        "completedUtc": "2026-10-18 13:23:12 UTC"
+      },
+      {
+        "firstTask": 193,
+        "lastTask": 198,
+        "startedUtc": "2026-10-18 13:23:12 UTC",
+        "completedUtc": "2026-10-18 13:23:13 UTC"
+      },
+      {
+        "firstTask": 199,
+        "lastTask": 204,
+        "startedUtc": "2026-10-18 13:23:13 UTC",
+        "completedUtc": "2026-10-18 13:23:14 UTC"
+      },
+      {
+        "firstTask": 205,
+        "lastTask": 210,
+        "startedUtc": "2026-10-18 13:23:14 UTC",
+        "completedUtc": "2026-10-18 13:23:15 UTC"
+      },
+      {
+        "firstTask": 211,
+        "lastTask": 216,
+        "startedUtc": "2026-10-18 13:23:15 UTC",
+        "completedUtc": "2026-10-18 13:23:15 UTC"
+      },
+      {
+        "firstTask": 217,
+        "lastTask": 222,
+        "startedUtc": "2026-10-18 13:23:15 UTC",
+        "completedUtc": "2026-10-18 13:23:16 UTC"
+      },
+      {
+        "firstTask": 223,
+        "lastTask": 228,
+        "startedUtc": "2026-10-18 13:23:16 UTC",
+        "completedUtc": "2026-10-18 13:23:17 UTC"
+      },
+      {
+        "firstTask": 229,
+        "lastTask": 234,
+        "startedUtc": "2026-10-18 13:23:17 UTC",
+        "completedUtc": "2026-10-18 13:23:17 UTC"
+      },
+      {
+        "firstTask": 235,
+        "lastTask": 240,
+        "startedUtc": "2026-10-18 13:23:17 UTC",
+        "completedUtc": "2026-10-18 13:23:18 UTC"
+      },
+      {
+        "firstTask": 241,
+        "lastTask": 246,
+        "startedUtc": "2026-10-18 13:23:18 UTC",
+        "completedUtc": "2026-10-18 13:23:19 UTC"
+      },
+      {
+        "firstTask": 247,
+        "lastTask": 252,
+        "startedUtc": "2026-10-18 13:23:19 UTC",
+        "completedUtc": "2026-10-18 13:23:20 UTC"
+      },
+      {
+        "firstTask": 253,
+        "lastTask": 258,
+        "startedUtc": "2026-10-18 13:23:20 UTC",
+        "completedUtc": "2026-10-18 13:23:20 UTC"
+      },
+      {
+        "firstTask": 259,
+        "lastTask": 264,
+        "startedUtc": "2026-10-18 13:23:20 UTC",
+        "completedUtc": "2026-10-18 13:23:21 UTC"
+      },
+      {
+        "firstTask": 265,
+        "lastTask": 270,
+        "startedUtc": "2026-10-18 13:23:21 UTC",
+        "completedUtc": "2026-10-18 13:23:22 UTC"
+      },
+      {
+        "firstTask": 271,
+        "lastTask": 276,
+        "startedUtc": "2026-10-18 13:23:22 UTC",
+        "completedUtc": "2026-10-18 13:23:22 UTC"
+      },
+      {
+        "firstTask": 277,
+        "lastTask": 282,
+        "startedUtc": "2026-10-18 13:23:22 UTC",
+        "completedUtc": "2026-10-18 13:23:23 UTC"
+      },
+      {
+        "firstTask": 283,
+        "lastTask": 288,
+        "startedUtc": "2026-10-18 13:23:23 UTC",
+        "completedUtc": "2026-10-18 13:23:24 UTC"
+      },
+      {
+        "firstTask": 289,
+        "lastTask": 294,
+        "startedUtc": "2026-10-18 13:23:24 UTC",
+        "completedUtc": "2026-10-18 13:23:24 UTC"
+      },
+      {
+        "firstTask": 295,
+        "lastTask": 300,
+        "startedUtc": "2026-10-18 13:23:24 UTC",
+        "completedUtc": "2026-10-18 13:23:25 UTC"
+      },
+      {
+        "firstTask": 301,
+        "lastTask": 306,
+        "startedUtc": "2026-10-18 13:23:25 UTC",
+        "completedUtc": "2026-10-18 13:23:26 UTC"
+      },
+      {
+        "firstTask": 307,
+        "lastTask": 312,
+        "startedUtc": "2026-10-18 13:23:26 UTC",
+        "completedUtc": "2026-10-18 13:23:26 UTC"
+      },
+      {
+        "firstTask": 313,
+        "lastTask": 318,
+        "startedUtc": "2026-10-18 13:23:26 UTC",
+        "completedUtc": "2026-10-18 13:23:27 UTC"
+      },
+      {
+        "firstTask": 319,
+        "lastTask": 324,
+        "startedUtc": "2026-10-18 13:23:27 UTC",
+        "completedUtc": "2026-10-18 13:23:28 UTC"
+      },
+      {
+        "firstTask": 325,
+        "lastTask": 330,
+        "startedUtc": "2026-10-18 13:23:28 UTC",
+        "completedUtc": "2026-10-18 13:23:29 UTC"
+      },
+      {
+        "firstTask": 331,
+        "lastTask": 336,
+        "startedUtc": "2026-10-18 13:23:29 UTC",
+        "completedUtc": "2026-10-18 13:23:29 UTC"
+      },
+      {
+        "firstTask": 337,
+        "lastTask": 342,
+        "startedUtc": "2026-10-18 13:23:29 UTC",
+        "completedUtc": "2026-10-18 13:23:30 UTC"
+      },
+      {
+        "firstTask": 343,
+        "lastTask": 348,
+        "startedUtc": "2026-10-18 13:23:30 UTC",
+        "completedUtc": "2026-10-18 13:23:30 UTC"
+      },
+      {
+        "firstTask": 349,
+        "lastTask": 353,
+        "startedUtc": "2026-10-18 13:23:30 UTC",
+        "completedUtc": "2026-10-18 13:23:31 UTC"
+      }
+    ],
+    "inventorySourceRevision": "7266dfd5ecf2ef6430449c67bd98c793a4874dfc",
+    "inventorySourceTree": "0123f31efc4134fc24e38143d8f1a8cabc6fecb0"
+  },
+  "payloadFiles": [
+    {
+      "path": "public-candidate.json",
+      "bytes": 8721,
+      "sha256": "9897faca8b969d15725b0ae5555643e8a901e29c295929a77ad1e6652a47a6b3",
+      "contentClass": "validated-redacted-measurement-export"
+    },
+    {
+      "path": "artifact-inventory.json",
+      "bytes": 3256,
+      "sha256": "44467689205c3f5d4810fbfea92be37286e3730969fdeec0d55e721ddec37577",
+      "contentClass": "public-artifact-metadata"
+    },
+    {
+      "path": "public-metadata.json",
+      "bytes": 15171,
+      "sha256": "888902f6bd820de0f6ceb9b81c5c03c964a5cc29c94c46a5a500319a41a0f935",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "method-coverage.json",
+      "bytes": 16168,
+      "sha256": "80db54b708f1c72ffc9516bd9f12b3504bb793bbd7e31d0a7b52b9260121ccf6",
+      "contentClass": "public-inventory-method-and-limitations"
+    },
+    {
+      "path": "pr-metadata.json",
+      "bytes": 36583,
+      "sha256": "6530a1827429979b4cf9dcd7afdcac74ef6be05ae9311e926ff94c3bc0ff6c31",
+      "contentClass": "public-pr-metadata"
+    },
+    {
+      "path": "self-gate-runs-01.json",
+      "bytes": 30429,
+      "sha256": "8536ef472a33a7df09c62043be00e2c4577f04b3393820cc10b25a98557b77ba",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-02.json",
+      "bytes": 25328,
+      "sha256": "5fb07f9659a9221a46d03856f210002be3ee619218db018bcebda2be479b8550",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-03.json",
+      "bytes": 25480,
+      "sha256": "11eb43422e538ac3073ec11f0cb375096554f1d59b3b050b4f4612043aa2fdfe",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-04.json",
+      "bytes": 25477,
+      "sha256": "5f5e6f8fd935eb5ad27a2b0ca57163746be10322a5bc58e5dc7e98799060e6c7",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-05.json",
+      "bytes": 27894,
+      "sha256": "4169a4c986d7d7c11921da0e05b99e1fed996087e4cc8c1198d55e40dc01ed2c",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-06.json",
+      "bytes": 26660,
+      "sha256": "28ae78bd91853f66a5f953c01d8323254971bd3ad34670e06320b061e587df8d",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-07.json",
+      "bytes": 26696,
+      "sha256": "c19270387837825bd7db2015b90b7918714b5dae6e5996a16a3b27e06a6a96f0",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-08.json",
+      "bytes": 25734,
+      "sha256": "a09e911533ef1461d55c3481549864809d6f1227620ec7a052bddeada728a407",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-09.json",
+      "bytes": 29901,
+      "sha256": "c606bf134256c78f141cb0f6c8f54d0249f567e7ea7bc7a39f25f9bad15cc02e",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-10.json",
+      "bytes": 26923,
+      "sha256": "a11ba23cd26640b90fb46a23595eba614b8bb4dbf0f6a6de4cae5b3b74a72538",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-11.json",
+      "bytes": 26892,
+      "sha256": "e36e94a76c9f3621ec693e3bbdd1a8c5b0bb3b39bc6ade95ceae1d852f3718f6",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-12.json",
+      "bytes": 28318,
+      "sha256": "40b58316aca9747d927c31d55b4add834daa6f38cd1db5d78274dcdda6feebd2",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-13.json",
+      "bytes": 30590,
+      "sha256": "a27a2cb0ecb73610ffdf8c6a49d6447fb0c42f010ee3fe90f4e713559151de60",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-14.json",
+      "bytes": 31145,
+      "sha256": "6183172b2259d2db574601da07714a3bf3e31bf9165f0c5bd81d0df55a2306cd",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    },
+    {
+      "path": "self-gate-runs-15.json",
+      "bytes": 13661,
+      "sha256": "bdb98f285173dbcb9b9a6fe11f9824af98f2bb8e29d9c1462b9019b9a2e578e2",
+      "contentClass": "public-run-attempt-artifact-metadata"
+    }
+  ],
+  "candidateValidation": {
+    "result": "PASS",
+    "candidateSha256": "9897faca8b969d15725b0ae5555643e8a901e29c295929a77ad1e6652a47a6b3",
+    "recordCount": 5,
+    "productionChecks": [
+      "parseMeasurementJson",
+      "validateMeasurementRecord",
+      "validateMeasurementDataset",
+      "closed redactMeasurement allowlist"
+    ],
+    "productionSourceRevision": "7266dfd5ecf2ef6430449c67bd98c793a4874dfc",
+    "productionSourceFiles": [
+      {
+        "path": "src/measurement.mts",
+        "sha256": "0d152cf86e66abfc3c6ea2fbe547c5862f57f72d2dffd73be283ba2dd754b10a"
+      },
+      {
+        "path": "src/measurement-analysis.mts",
+        "sha256": "3be10fd3e64f10edcb89ee8c19ba1178548a3c3a8123c37dbc1a5146b8729343"
+      },
+      {
+        "path": "src/measurement-consistency.mts",
+        "sha256": "cc2119bd3592b3592fc8c8a7dfabbc52b577ae7574f4967b1a91514183cca465"
+      },
+      {
+        "path": "src/io/read-descriptor.mts",
+        "sha256": "1be7f9c9f48dbe576b76bc2e69de815b3f30e928ea63c715163a1e54114d772c"
+      },
+      {
+        "path": "package.json",
+        "sha256": "2bdbb272ac41cfdc127fcaf83dc3122f54db4e526728cf2e8d949bb16e1892a8"
+      }
+    ],
+    "externalValidatorSha256": "4e8312f33851cc53f73ed2f5082afc27992bd2d9c487242304a0fdeb9a29e414",
+    "recordsReRedacted": false,
+    "recordsChanged": false,
+    "recordsDeduplicated": false
+  },
+  "selectedExistingArtifactObservation": {
+    "kind": "one selected natural self-PR run; selection is not an eligibility/adoption determination",
+    "pullRequest": "618",
+    "runId": "39125461473",
+    "runAttempt": "1",
+    "artifacts": 2,
+    "records": 5,
+    "reviewPhases": [
+      "prepared",
+      "start",
+      "terminal"
+    ],
+    "outcomePhases": [
+      "start",
+      "terminal"
+    ],
+    "collectionGapsInSelectedArtifacts": 0
+  },
+  "inventoryCoverageAsObserved": {
+    "selfGateRunsInFrozenCreatedAtWindow": 174,
+    "attemptsEnumerated": 179,
+    "runStatusesAsObserved": {
+      "completed/success": 140,
+      "completed/failure": 29,
+      "completed/cancelled": 5
+    },
+    "attemptStatusesAsObserved": {
+      "completed/success": 140,
+      "completed/failure": 33,
+      "completed/cancelled": 6
+    },
+    "runAttemptNumberDistribution": {
+      "1": 171,
+      "2": 2,
+      "4": 1
+    },
+    "runsWithoutPRBinding": {
+      "count": 170,
+      "denominator": 174,
+      "treatment": "unbound; no PR inferred",
+      "scope": "selected frozen-window self-gate rows in the 15 staged run chunks"
+    },
+    "runsWithoutArtifactObjects": {
+      "count": 68,
+      "scope": "selected frozen-window self-gate rows in the 15 staged run chunks (174 rows)"
+    },
+    "postCutoffMeasurementArtifacts": {
+      "count": 2,
+      "runIds": [
+        39130941543
+      ],
+      "treatment": "later observations; not projected backward to frozen cutoff"
+    },
+    "newEligibilityUnresolvedWithoutReadyTransitionHistory": 44,
+    "frozenInitialEligiblePrNumbers": [
+      517,
+      514,
+      510,
+      423,
+      297,
+      237
+    ],
+    "artifactMetadata": {
+      "allArtifactsOnSelfRuns": 217,
+      "measurementArtifacts": 216,
+      "reviewArtifacts": 108,
+      "outcomeArtifacts": 108,
+      "expiredMeasurementArtifacts": 0,
+      "measurementArtifactsCreatedByFrozenCutoff": 214,
+      "reviewArtifactsCreatedByCutoff": 107,
+      "outcomeArtifactsCreatedByCutoff": 107,
+      "measurementArtifactsCreatedAfterCutoff": 2,
+      "uniqueRunAttemptPairsWithTwoArtifacts": 108,
+      "runsWithNoArtifactObjects": 68,
+      "artifactPagesAtCap100": 0
+    }
+  },
+  "limitations": [
+    "This package stages one selected natural run with two artifacts and five redacted records; it is not a population harvest or denominator.",
+    "Empty population, cases, and audits arrays in public-candidate.json are structural placeholders required by the production dataset validator; their counts are unknown, not zero.",
+    "Do not infer efficacy, rates, full pilot coverage, eligibility of the selected PR, or adoption from this package.",
+    "The inventory is a non-atomic public-metadata observation: later run/attempt status changes remain unknown at the cutoff; reruns of runs created before the window may not be discoverable by the date-bounded run query.",
+    "The 170 self-gate rows without PR bindings remain unbound. No binding is inferred from title, branch name, or SHA.",
+    "The public inventory identifies 44 created/updated PR rows with unresolved new eligibility absent ready-transition history.",
+    "Two measurement artifacts were created after the frozen read cutoff for run 39130941543 and are not projected backward.",
+    "Durable private backup remains unverified. No model, workflow rerun, fixture, schedule, opt-in, or measurement-variable change was performed for this package."
+  ],
+  "archivePolicy": {
+    "included": "Only the production-redacted candidate, public PR/run/attempt/artifact metadata, and validation/limitations sidecar.",
+    "excluded": "Private capture, review history, validators, local absolute paths, signed URLs, source ZIP files, and narrative/finding data.",
+    "candidateAndJsonBound": "Every staged JSON must remain <=256 KiB and pass production JSON depth-32 parsing."
+  }
+}

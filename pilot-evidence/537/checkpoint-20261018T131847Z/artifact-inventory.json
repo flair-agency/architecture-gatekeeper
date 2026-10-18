@@ -1,0 +1,100 @@
+{
+  "evidenceKind": "existing-redacted-workflow-artifacts",
+  "sourceRun": {
+    "repository": "flair-agency/architecture-gatekeeper",
+    "pullRequest": "618",
+    "runId": "39125461473",
+    "runAttempt": "1",
+    "workflowSha": "8743549e309b6516328bedd30975ae0f44f89b08",
+    "baseSha": "8743549e309b6516328bedd30975ae0f44f89b08",
+    "headSha": "7266dfd5ecf2ef6430449c67bd98c793a4874dfc",
+    "reviewedSha": "a7d7aec4ea80a61b4ec6d2c17e77047e3fef15d5",
+    "runUrl": "https://github.com/flair-agency/architecture-gatekeeper/actions/runs/39125461473"
+  },
+  "artifacts": [
+    {
+      "artifactId": "12136071967",
+      "memberName": "agk-review-measurement-export.json",
+      "sourceBytes": 1165,
+      "sourceSha256": "24836fbee36a67abb09890e356f5895936dc4e9ffb9e94c7ab5dc761bf7b8752",
+      "memberBytes": 5364,
+      "memberSha256": "6985e35db1997b0ed5c108957ff51591320e699cc9e98314dd805dd3ebd69c34",
+      "entryCount": 1,
+      "uncompressedBytes": 5364,
+      "phases": [
+        "prepared",
+        "start",
+        "terminal"
+      ],
+      "gaps": 0,
+      "attemptId": "f06eb113-d2cc-41b6-95dc-10d7004b72a4"
+    },
+    {
+      "artifactId": "12135334957",
+      "memberName": "agk-outcome-measurement-export.json",
+      "sourceBytes": 1009,
+      "sourceSha256": "223c5cc894d2ac07e62ff0694833574a597b91b76105666bb305e1d3b9e845ea",
+      "memberBytes": 3347,
+      "memberSha256": "94193ea0ead84bd6854e3f2953bfae0f9986aad1c805fd21a1c5578045bcd87c",
+      "entryCount": 1,
+      "uncompressedBytes": 3347,
+      "phases": [
+        "start",
+        "terminal"
+      ],
+      "gaps": 0,
+      "attemptId": "3b149dd4-6431-41eb-bbb5-1224f8bd6036"
+    }
+  ],
+  "attempts": [
+    {
+      "attemptId": "f06eb113-d2cc-41b6-95dc-10d7004b72a4",
+      "route": "ci-review",
+      "phases": [
+        "prepared",
+        "start",
+        "terminal"
+      ],
+      "terminal": {
+        "state": "completed",
+        "decision": "PASS",
+        "observation": {
+          "reviewJob": "success",
+          "timingSource": "collector",
+          "ciAcquisition": "public-job-metadata",
+          "jobId": "117669646855",
+          "reviewStepOutcome": "success",
+          "jobTiming": {
+            "startedAt": "2026-10-18T12:00:26Z",
+            "completedAt": "2026-10-18T12:01:47Z",
+            "elapsedMs": 81000
+          },
+          "reviewTiming": {
+            "startedAt": "2026-10-18T12:00:40Z",
+            "completedAt": "2026-10-18T12:01:43Z",
+            "elapsedMs": 63000
+          }
+        }
+      }
+    },
+    {
+      "attemptId": "3b149dd4-6431-41eb-bbb5-1224f8bd6036",
+      "route": "ci-outcome",
+      "phases": [
+        "start",
+        "terminal"
+      ],
+      "terminal": {
+        "state": "completed",
+        "decision": null,
+        "observation": {
+          "reviewJob": "success",
+          "reportJob": "success",
+          "acceptJob": "success",
+          "policyJob": "success"
+        }
+      }
+    }
+  ],
+  "scopeNote": "Only these two supplied artifacts are represented. This is not a population harvest, denominator, effectiveness estimate, or proof of natural window coverage. Public run bindings were checked for internal consistency with the supplied metadata; no additional GitHub query was performed."
+}
