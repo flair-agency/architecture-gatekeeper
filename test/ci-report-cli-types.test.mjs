@@ -20,17 +20,40 @@ assert.equal(parsed.options.noImplicitAny, true);
 assert.equal(parsed.options.allowJs, true);
 assert.match(source, /^\/\/ @ts-check$/m);
 
-// Append compile-only calls to a virtual copy of the actual exported CLI
-// source so its supported transport and completion contracts stay checked.
-function diagnosticsFor(probe) {
-  const options = { ...parsed.options, noEmit: true };
-  const host = ts.createCompilerHost(options);
-  const originalGetSourceFile = host.getSourceFile.bind(host);
-  host.getSourceFile = (file, languageVersion, ...args) => file === sourcePath
-    ? ts.createSourceFile(file, `${source}\n${probe}\n`, languageVersion, true, ts.ScriptKind.JS)
-    : originalGetSourceFile(file, languageVersion, ...args);
-  return ts.getPreEmitDiagnostics(ts.createProgram([sourcePath], options, host)).map(item => ({
-    file: item.file?.fileName,
+// Compile independent virtual copies of the actual exported CLI together.
+// They share a directory with the facade, so its relative imports resolve as
+// they do for the physical source. Each probe keeps its own module scope.
+const probes = Object.freeze([
+  '/** @type {Promise<void>} */ const completion = main();',
+  '/** @type {Promise<void>} */ const completion = main(undefined);',
+  '/** @type {import("./ci-review/ci-report.mts").ReportFetch} */ const transport = fetch; /** @type {Promise<void>} */ const completion = main(transport);',
+  "main(['unused']);",
+  '/** @type {Promise<string>} */ const completion = main();',
+]);
+const virtualPaths = Object.freeze(probes.map((_, index) => join(dirname(sourcePath), `__ci-report-type-probe-${index}.mjs`)));
+const options = { ...parsed.options, noEmit: true };
+const virtualSources = new Map(virtualPaths.map((file, index) => [file, `${source}\n${probes[index]}\n`]));
+const host = ts.createCompilerHost(options);
+const originalGetSourceFile = host.getSourceFile.bind(host);
+const originalFileExists = host.fileExists.bind(host);
+host.fileExists = file => virtualSources.has(file) || originalFileExists(file);
+host.getSourceFile = (file, languageVersion, ...args) => virtualSources.has(file)
+  ? ts.createSourceFile(file, virtualSources.get(file), languageVersion, true, ts.ScriptKind.JS)
+  : originalGetSourceFile(file, languageVersion, ...args);
+const allDiagnostics = ts.getPreEmitDiagnostics(ts.createProgram(virtualPaths, options, host));
+const unexpectedDependencyDiagnostics = allDiagnostics.filter(item => !virtualSources.has(item.file?.fileName));
+assert.deepEqual(unexpectedDependencyDiagnostics.map(item => ({
+  file: item.file?.fileName, code: item.code,
+  line: item.file && item.start !== undefined
+    ? item.file.getLineAndCharacterOfPosition(item.start).line + 1 : undefined,
+  message: ts.flattenDiagnosticMessageText(item.messageText, '\n'),
+})), [], 'every unexpected or transitive diagnostic must fail');
+function diagnosticsFor(index) {
+  assert.ok(Number.isInteger(index) && index >= 0 && index < virtualPaths.length,
+    `Uncompiled report type probe: ${index}`);
+  return allDiagnostics.filter(item => item.file?.fileName === virtualPaths[index]).map(item => ({
+    // The virtual module is an independent copy of this physical facade.
+    file: sourcePath,
     code: item.code,
     line: item.file && item.start !== undefined
       ? item.file.getLineAndCharacterOfPosition(item.start).line + 1 : undefined,
@@ -39,21 +62,17 @@ function diagnosticsFor(probe) {
 }
 
 test('report CLI accepts an optional ReportFetch and returns Promise<void>', () => {
-  for (const probe of [
-    '/** @type {Promise<void>} */ const completion = main();',
-    '/** @type {Promise<void>} */ const completion = main(undefined);',
-    '/** @type {import("./ci-review/ci-report.mts").ReportFetch} */ const transport = fetch; /** @type {Promise<void>} */ const completion = main(transport);',
-  ]) assert.deepEqual(diagnosticsFor(probe), []);
+  for (const index of [0, 1, 2]) assert.deepEqual(diagnosticsFor(index), []);
 });
 
 test('report CLI rejects argv and a value-producing completion claim', () => {
   const cases = [
-    { probe: "main(['unused']);", code: 2345, message: /not assignable.*ReportFetch/s },
-    { probe: '/** @type {Promise<string>} */ const completion = main();', code: 2322,
+    { index: 3, code: 2345, message: /not assignable.*ReportFetch/s },
+    { index: 4, code: 2322,
       message: /Promise<void>.*Promise<string>/s },
   ];
-  for (const { probe, code, message } of cases) {
-    const diagnostics = diagnosticsFor(probe);
+  for (const { index, code, message } of cases) {
+    const diagnostics = diagnosticsFor(index);
     assert.equal(diagnostics.length, 1, 'every unexpected or transitive diagnostic must fail');
     assert.equal(diagnostics[0].file, sourcePath);
     assert.equal(diagnostics[0].line, source.split('\n').length + 1);
