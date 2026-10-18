@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
-import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-amendment-pr-run-context-contract');
@@ -35,7 +35,7 @@ function diagnosticEvidence(diagnostics) {
 }
 
 test('PR/run context accepts unknown input and sync, Promise, and Promise.resolve thenable fetches', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('PR/run context keeps repeated success observations unknown and excludes success fields from incomplete results', () => {

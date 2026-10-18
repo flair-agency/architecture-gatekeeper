@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
-import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/github-ruleset-readback-contract');
@@ -35,7 +35,7 @@ function diagnosticEvidence(diagnostics) {
 }
 
 test('github-ruleset-readback positive contracts and direct callbacks compile with project settings', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('github-ruleset-readback rejects incompatible contracts at their intended fields', () => {
