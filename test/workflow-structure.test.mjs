@@ -73,13 +73,15 @@ if (args.includes('ls-remote')) {
     const checkoutIndex = steps.findIndex(step => step.uses?.startsWith('actions/checkout@') && step.with?.ref === mergeSha);
     const metadataIndex = steps.findIndex(step => step.name === 'Check event merge revision metadata');
     const resolveIndex = steps.findIndex(step => step.name === 'Fetch and verify current pull request merge commit');
-    const refreshIndex = steps.findIndex(step => step.name === 'Refresh current pull request merge revision');
+    const selectIndex = steps.findIndex(step => step.name === 'Select validated pull request merge commit');
+    const refreshIndex = steps.findIndex(step => step.name === 'Materialize selected pull request merge revision');
     const recordIndex = steps.findIndex(step => step.name === 'Record reviewed merge revision');
     const buildIndex = steps.findIndex(step => step.name === 'Build the pinned validation runtime' || step.name === 'Build the pinned protected runtime');
     assert.ok(guardIndex > steps.findIndex(step => step.name === 'Check enforced credentials'), `${profile} guard follows credential check`);
     assert.ok(checkoutIndex > guardIndex, `${profile} immutable checkout follows event tuple guard`);
     assert.ok(metadataIndex > checkoutIndex, `${profile} metadata comparison follows initial checkout`);
-    assert.ok(resolveIndex > metadataIndex && refreshIndex > resolveIndex && refreshIndex < recordIndex, `${profile} verified immutable object precedes refreshed checkout and final revision record`);
+    assert.ok(resolveIndex > metadataIndex && selectIndex > resolveIndex && refreshIndex > selectIndex && refreshIndex < recordIndex,
+      `${profile} selected immutable object is validated before final checkout and revision record`);
     assert.ok(buildIndex > recordIndex, `${profile} exact merge tuple check precedes runtime build`);
 
     const guard = steps[guardIndex];
@@ -92,7 +94,7 @@ if (args.includes('ls-remote')) {
     assert.match(guard.run, /process\.env\.BASE_SHA/);
     assert.match(guard.run, /process\.env\.HEAD_SHA/);
     assert.equal(steps[checkoutIndex].with['fetch-depth'], 0);
-    assert.equal(steps[checkoutIndex].with.submodules, "${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}");
+    assert.equal(steps[checkoutIndex].with.submodules, false, `${profile} initial checkout defers submodule materialization`);
     assert.equal(steps[checkoutIndex].with.token, "${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}");
     assert.equal(steps[checkoutIndex].with['persist-credentials'], false);
     assert.ok(!steps[checkoutIndex].with.ref.includes('refs/pull/'), `${profile} initial checkout uses the immutable event SHA`);
@@ -108,7 +110,6 @@ if (args.includes('ls-remote')) {
       PR_NUMBER: '${{ github.event.pull_request.number }}',
       BASE_SHA: '${{ github.event.pull_request.base.sha }}',
       HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
-      SUBMODULES_ENABLED: "${{ needs.policy.outputs.authority_manifest_path == '' }}",
     });
     assert.match(resolver.run, /timeout 30s git "\$@"/);
     assert.match(resolver.run, /ls-remote --refs "\$REMOTE_URL" "\$MERGE_REF"/);
@@ -119,29 +120,44 @@ if (args.includes('ls-remote')) {
     assert.match(resolver.run, /git --no-replace-objects rev-list --parents -n 1 "\$REFRESHED_SHA"/);
     assert.match(resolver.run, /ACTUAL_PARENTS.*EXPECTED_PARENTS/);
     assert.ok(resolver.run.indexOf('ACTUAL_PARENTS') < resolver.run.indexOf('GITHUB_OUTPUT'), `${profile} emits only after exact parent verification`);
-    assert.ok(resolver.run.indexOf('ACTUAL_PARENTS') < resolver.run.indexOf('submodule deinit') &&
-      resolver.run.indexOf('submodule deinit') < resolver.run.indexOf('GITHUB_OUTPUT'),
-    `${profile} clears stale submodule worktrees after validating parents and before exposing the SHA`);
-    assert.match(resolver.run, /timeout 30s env GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=\/bin\/false SSH_ASKPASS=\/bin\/false git submodule deinit --force --all/);
-    assert.match(resolver.run, /unset FETCH_TOKEN AUTH/);
     assert.match(resolver.run, /GIT_CONFIG_KEY_0=.*http\..*extraheader/);
     assert.match(resolver.run, /echo \"::add-mask::\$AUTH\"/);
     assert.ok(resolver.run.indexOf('::add-mask::$AUTH') < resolver.run.indexOf('ls-remote') &&
       resolver.run.indexOf('ls-remote') < resolver.run.indexOf('fetch --no-tags'), `${profile} masks authorization before both network commands`);
     assert.match(resolver.run, /REFRESHED_SHA.*\^\[a-f0-9\]\{40\}\$/);
     assert.match(resolver.run, /REFRESHED_REF.*MERGE_REF/);
+    const selected = steps[selectIndex];
+    assert.equal(selected.id, 'selected_merge_commit');
+    assert.deepEqual(selected.env, {
+      EXPECTED_MERGE_SHA: mergeSha,
+      REFRESH: '${{ steps.event_revision.outputs.refresh }}',
+      REFRESHED_SHA: '${{ steps.verified_merge_commit.outputs.sha }}',
+      BASE_SHA: '${{ github.event.pull_request.base.sha }}',
+      HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
+      SUBMODULES_ENABLED: "${{ needs.policy.outputs.authority_manifest_path == '' }}",
+    });
+    assert.match(selected.run, /SELECTED_SHA=.*REFRESHED_SHA/);
+    assert.match(selected.run, /SELECTED_SHA=.*EXPECTED_MERGE_SHA/);
+    assert.match(selected.run, /cat-file -t "\$SELECTED_SHA"/);
+    assert.match(selected.run, /rev-list --parents -n 1 "\$SELECTED_SHA"/);
+    assert.ok(selected.run.indexOf('ACTUAL_PARENTS') < selected.run.indexOf('submodule deinit') &&
+      selected.run.indexOf('submodule deinit') < selected.run.indexOf('GITHUB_OUTPUT'),
+    `${profile} clears stale submodule worktrees after validating parents and before exposing the SHA`);
+    assert.match(selected.run, /timeout 30s env GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=\/bin\/false SSH_ASKPASS=\/bin\/false git submodule deinit --force --all/);
+    assert.match(selected.run, /printf 'sha=%s\\n' "\$SELECTED_SHA"/);
     const refresh = steps[refreshIndex];
-    assert.equal(refresh.if, "steps.event_revision.outputs.refresh == 'true'");
-    assert.equal(refresh.with.ref, '${{ steps.verified_merge_commit.outputs.sha }}');
+    assert.equal(refresh.if, "steps.event_revision.outputs.refresh == 'true' || needs.policy.outputs.authority_manifest_path == ''");
+    assert.equal(refresh.with.ref, '${{ steps.selected_merge_commit.outputs.sha }}');
     assert.equal(refresh['continue-on-error'], undefined, `${profile} invalid candidates stop before refreshed checkout`);
-    assert.equal(refresh.with['fetch-depth'], 0, `${profile} refresh fetches only the merge commit and its parents`);
-    assert.equal(refresh['timeout-minutes'], 3, `${profile} refresh has a bounded checkout timeout`);
-    assert.equal(refresh.with.submodules, steps[checkoutIndex].with.submodules, `${profile} refreshed checkout rematerializes selected submodules`);
+    assert.equal(refresh.with['fetch-depth'], 0, `${profile} selected checkout fetches full merge history`);
+    assert.equal(refresh['timeout-minutes'], 3, `${profile} selected checkout has a bounded timeout`);
+    assert.equal(refresh.with.submodules, "${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}",
+      `${profile} only final selected checkout recursively materializes policy-selected submodules`);
     assert.equal(refresh.with.token, steps[checkoutIndex].with.token, `${profile} refresh uses the same read-only checkout token selection`);
     assert.equal(refresh.with['persist-credentials'], false);
 
     const metadata = steps[metadataIndex];
-    checkedScripts.push({ profile, metadata: metadata.run, resolver: resolver.run, record: steps[recordIndex].run });
+    checkedScripts.push({ profile, metadata: metadata.run, resolver: resolver.run, selected: selected.run, record: steps[recordIndex].run });
     assert.equal(metadata.id, 'event_revision');
     assert.deepEqual(metadata.env, {
       EXPECTED_MERGE_SHA: mergeSha,
@@ -158,16 +174,14 @@ if (args.includes('ls-remote')) {
     const record = steps[recordIndex];
     assert.equal(record.id, 'revision');
     assert.deepEqual(record.env, {
-      EXPECTED_MERGE_SHA: mergeSha,
-      REFRESHED: '${{ steps.event_revision.outputs.refresh }}',
-      REFRESHED_SHA: '${{ steps.verified_merge_commit.outputs.sha }}',
+      SELECTED_SHA: '${{ steps.selected_merge_commit.outputs.sha }}',
       BASE_SHA: '${{ github.event.pull_request.base.sha }}',
       HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
     });
     assert.match(record.run, /git rev-parse HEAD/);
     assert.match(record.run, /git --no-replace-objects rev-list --parents -n 1/);
     assert.match(record.run, /actual_parents.*!=.*expected_parents/);
-    assert.match(record.run, /REFRESHED.*true/);
+    assert.match(record.run, /actual_sha.*SELECTED_SHA/);
     assert.match(record.run, /printf 'sha=%s\\n' "\$actual_sha"/);
     const context = steps.find(step => step.name === 'Attach exact pull request task context to protected review');
     if (context) assert.equal(context.env.REVIEWED_SHA, '${{ steps.revision.outputs.sha }}');
@@ -182,7 +196,6 @@ if (args.includes('ls-remote')) {
     const configuredResolverInputs = {
       FETCH_TOKEN: 'test-read-token', REPOSITORY: 'flair-agency/architecture-gatekeeper',
       SERVER_URL: 'https://github.com', PR_NUMBER: '42', BASE_SHA: baseSha, HEAD_SHA: headSha,
-      SUBMODULES_ENABLED: 'true',
     };
     const resolverEnv = overrides => ({
       ...Object.fromEntries(Object.keys(resolver.env).map(name => [name, configuredResolverInputs[name]])),
@@ -214,6 +227,43 @@ if (args.includes('ls-remote')) {
     assert.doesNotMatch(JSON.stringify(accepted.calls), /test-read-token|AUTHORIZATION:/,
       `${profile} does not place credentials on Git argv or in captured logs`);
 
+    const selectedEnv = overrides => ({
+      EXPECTED_MERGE_SHA: candidateSha, REFRESH: 'true', REFRESHED_SHA: candidateSha,
+      BASE_SHA: baseSha, HEAD_SHA: headSha, SUBMODULES_ENABLED: 'true',
+      CANDIDATE_SHA: candidateSha, OBJECT_TYPE: 'commit',
+      PARENT_LINE: `${candidateSha} ${baseSha} ${headSha}`,
+      DEINIT_STATUS: '0', PATH: `${fixtureDir}:${process.env.PATH}`,
+      GITHUB_OUTPUT: outputPath, GIT_CALL_LOG: callsPath,
+      ...overrides,
+    });
+    const runSelected = overrides => {
+      writeFileSync(outputPath, '');
+      writeFileSync(callsPath, '');
+      const result = runInline(selected.run, selectedEnv(overrides), fixtureDir);
+      const calls = readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+      return { result, output: readFileSync(outputPath, 'utf8'), calls };
+    };
+    const selectedRefreshed = runSelected({});
+    assert.equal(selectedRefreshed.result.status, 0, `${profile} selects validated refreshed SHA before checkout`);
+    assert.equal(selectedRefreshed.output, `sha=${candidateSha}\n`);
+    assert.deepEqual(selectedRefreshed.calls.map(call => call.args), [
+      ['--no-replace-objects', 'cat-file', '-t', candidateSha],
+      ['--no-replace-objects', 'rev-list', '--parents', '-n', '1', candidateSha],
+      ['submodule', 'deinit', '--force', '--all'],
+    ]);
+    assert.equal(selectedRefreshed.calls.at(-1).fetchTokenAbsent, true,
+      `${profile} selected checkout cleanup receives no source token`);
+    const selectedNormal = runSelected({
+      REFRESH: 'false', REFRESHED_SHA: '', SUBMODULES_ENABLED: 'false',
+    });
+    assert.equal(selectedNormal.result.status, 0, `${profile} selects the exact event SHA on the normal path`);
+    assert.equal(selectedNormal.output, `sha=${candidateSha}\n`);
+    assert.equal(selectedNormal.calls.some(call => call.args[0] === 'submodule'), false,
+      `${profile} skips submodule cleanup when submodules are not selected`);
+    const cleanupFailure = runSelected({ DEINIT_STATUS: '9' });
+    assert.notEqual(cleanupFailure.result.status, 0, `${profile} blocks selected checkout when cleanup fails`);
+    assert.equal(cleanupFailure.output, '', `${profile} cleanup failure emits no selected checkout SHA`);
+
     const rejectedCandidates = [
       ['missing ref', { LOOKUP_OUTPUT: '' }],
       ['ambiguous refs', { LOOKUP_OUTPUT: `${candidateSha}\t${mergeRef}\n${candidateSha}\t${mergeRef}\n` }],
@@ -230,7 +280,6 @@ if (args.includes('ls-remote')) {
       ['different head', { PARENT_LINE: `${candidateSha} ${baseSha} ${'e'.repeat(40)}` }],
       ['missing parent', { PARENT_LINE: `${candidateSha} ${baseSha}` }],
       ['extra parent', { PARENT_LINE: `${candidateSha} ${baseSha} ${headSha} ${'f'.repeat(40)}` }],
-      ['submodule cleanup failure', { DEINIT_STATUS: '9' }],
     ];
     for (const [label, overrides] of rejectedCandidates) {
       const rejected = runResolver(overrides);
@@ -240,19 +289,10 @@ if (args.includes('ls-remote')) {
       assert.equal(rejected.calls.filter(call => call.args.includes('ls-remote')).length, 1,
         `${profile} performs exactly one merge-ref lookup for ${label}`);
       if (label === 'fetch failure') assert.equal(rejected.calls.some(call => call.args.includes('cat-file')), false);
-      if (label === 'submodule cleanup failure') {
-        assert.ok(rejected.calls.some(call => call.args[0] === 'submodule' && call.args[1] === 'deinit'));
-      }
       if (['missing ref', 'ambiguous refs', 'malformed SHA', 'unexpected ref', 'extra ref data', 'lookup network failure'].includes(label)) {
         assert.equal(rejected.calls.some(call => call.args.includes('fetch')), false, `${profile} does not fetch ${label}`);
       }
     }
-    const noSubmodules = runResolver({ SUBMODULES_ENABLED: 'false' });
-    assert.equal(noSubmodules.result.status, 0, `${profile} accepts candidate when target checkout has submodules disabled`);
-    assert.equal(noSubmodules.calls.some(call => call.args[0] === 'submodule'), false,
-      `${profile} does not deinitialize when policy selects no submodules`);
-    assert.equal(accepted.calls.find(call => call.args[0] === 'submodule')?.fetchTokenAbsent, true,
-      `${profile} does not pass source credentials to submodule cleanup`);
 
     const validSha = 'a'.repeat(40);
     const validEvent = { MERGE_SHA: validSha, BASE_SHA: 'b'.repeat(40), HEAD_SHA: 'c'.repeat(40) };
@@ -271,6 +311,8 @@ if (args.includes('ls-remote')) {
   assert.equal(checkedScripts[2].metadata, checkedScripts[0].metadata, 'provider and consumer metadata guards stay aligned');
   assert.equal(checkedScripts[1].resolver, checkedScripts[0].resolver, 'self and consumer resolver stay aligned');
   assert.equal(checkedScripts[2].resolver, checkedScripts[0].resolver, 'provider and consumer resolver stay aligned');
+  assert.equal(checkedScripts[1].selected, checkedScripts[0].selected, 'self and consumer selected revision guards stay aligned');
+  assert.equal(checkedScripts[2].selected, checkedScripts[0].selected, 'provider and consumer selected revision guards stay aligned');
   assert.equal(checkedScripts[1].record, checkedScripts[0].record, 'self and consumer final validation stay aligned');
   assert.equal(checkedScripts[2].record, checkedScripts[0].record, 'provider and consumer final validation stay aligned');
   const root = mkdtempSync(join(tmpdir(), 'agk-merge-revision-'));
@@ -311,6 +353,7 @@ if (args.includes('ls-remote')) {
 
     const workflow = workflowsToCheck.consumer.jobs.review.steps;
     const metadata = workflow.find(step => step.name === 'Check event merge revision metadata');
+    const selection = workflow.find(step => step.name === 'Select validated pull request merge commit');
     const record = workflow.find(step => step.name === 'Record reviewed merge revision');
     const outputPath = join(root, 'github-output');
 
@@ -332,9 +375,15 @@ if (args.includes('ls-remote')) {
     assert.equal(normalMetadata.status, 0, normalMetadata.stderr);
     assert.equal(readFileSync(outputPath, 'utf8'), 'refresh=false\n');
     writeFileSync(outputPath, '');
+    const normalSelection = runInline(selection.run, {
+      EXPECTED_MERGE_SHA: staleMerge, REFRESH: 'false', REFRESHED_SHA: '', BASE_SHA: base,
+      HEAD_SHA: previousHead, SUBMODULES_ENABLED: 'false', GITHUB_OUTPUT: outputPath,
+    }, repository);
+    assert.equal(normalSelection.status, 0, normalSelection.stderr);
+    assert.equal(readFileSync(outputPath, 'utf8'), `sha=${staleMerge}\n`);
+    writeFileSync(outputPath, '');
     const normalRecord = runInline(record.run, {
-      EXPECTED_MERGE_SHA: staleMerge, REFRESHED: 'false', REFRESHED_SHA: '', BASE_SHA: base,
-      HEAD_SHA: previousHead, GITHUB_OUTPUT: outputPath,
+      SELECTED_SHA: staleMerge, BASE_SHA: base, HEAD_SHA: previousHead, GITHUB_OUTPUT: outputPath,
     }, repository);
     assert.equal(normalRecord.status, 0, normalRecord.stderr);
     assert.equal(readFileSync(outputPath, 'utf8'), `sha=${staleMerge}\n`);
@@ -348,11 +397,17 @@ if (args.includes('ls-remote')) {
     assert.equal(staleMetadata.status, 0, staleMetadata.stderr);
     assert.match(staleMetadata.stderr, /stale or invalid parents/);
     assert.equal(readFileSync(outputPath, 'utf8'), 'refresh=true\n');
+    writeFileSync(outputPath, '');
+    const recoveredSelection = runInline(selection.run, {
+      EXPECTED_MERGE_SHA: staleMerge, REFRESH: 'true', REFRESHED_SHA: freshMerge,
+      BASE_SHA: base, HEAD_SHA: currentHead, SUBMODULES_ENABLED: 'false', GITHUB_OUTPUT: outputPath,
+    }, repository);
+    assert.equal(recoveredSelection.status, 0, recoveredSelection.stderr);
+    assert.equal(readFileSync(outputPath, 'utf8'), `sha=${freshMerge}\n`);
     git('checkout', '--detach', freshMerge); // models checkout of the single resolved immutable merge SHA
     writeFileSync(outputPath, '');
     const recovered = runInline(record.run, {
-      EXPECTED_MERGE_SHA: staleMerge, REFRESHED: 'true', REFRESHED_SHA: freshMerge,
-      BASE_SHA: base, HEAD_SHA: currentHead, GITHUB_OUTPUT: outputPath,
+      SELECTED_SHA: freshMerge, BASE_SHA: base, HEAD_SHA: currentHead, GITHUB_OUTPUT: outputPath,
     }, repository);
     assert.equal(recovered.status, 0, recovered.stderr);
     assert.equal(readFileSync(outputPath, 'utf8'), `sha=${freshMerge}\n`);
@@ -367,11 +422,17 @@ if (args.includes('ls-remote')) {
       ['reversed parents', reversed], ['different base', wrongBase], ['different head', wrongHead],
       ['non-merge candidate', oneParent], ['extra parent', extraParent],
     ]) {
+      writeFileSync(outputPath, '');
+      const rejectedSelection = runInline(selection.run, {
+        EXPECTED_MERGE_SHA: staleMerge, REFRESH: 'true', REFRESHED_SHA: candidate,
+        BASE_SHA: base, HEAD_SHA: currentHead, SUBMODULES_ENABLED: 'false', GITHUB_OUTPUT: outputPath,
+      }, repository);
+      assert.notEqual(rejectedSelection.status, 0, `${label} is rejected before selected checkout`);
+      assert.equal(readFileSync(outputPath, 'utf8'), '', `${label} emits no selected checkout SHA`);
       git('checkout', '--detach', candidate);
       writeFileSync(outputPath, '');
       const rejected = runInline(record.run, {
-        EXPECTED_MERGE_SHA: staleMerge, REFRESHED: 'true', REFRESHED_SHA: candidate,
-        BASE_SHA: base, HEAD_SHA: currentHead, GITHUB_OUTPUT: outputPath,
+        SELECTED_SHA: candidate, BASE_SHA: base, HEAD_SHA: currentHead, GITHUB_OUTPUT: outputPath,
       }, repository);
       assert.notEqual(rejected.status, 0, `${label} fails closed after refresh`);
       assert.equal(readFileSync(outputPath, 'utf8'), '', `${label} emits no reviewed SHA`);
@@ -381,8 +442,7 @@ if (args.includes('ls-remote')) {
     git('checkout', '--detach', staleMerge);
     writeFileSync(outputPath, '');
     const persistent = runInline(record.run, {
-      EXPECTED_MERGE_SHA: staleMerge, REFRESHED: 'true', REFRESHED_SHA: freshMerge,
-      BASE_SHA: base, HEAD_SHA: currentHead, GITHUB_OUTPUT: outputPath,
+      SELECTED_SHA: freshMerge, BASE_SHA: base, HEAD_SHA: currentHead, GITHUB_OUTPUT: outputPath,
     }, repository);
     assert.notEqual(persistent.status, 0, 'persistent stale merge mismatch fails closed');
     assert.equal(readFileSync(outputPath, 'utf8'), '', 'persistent mismatch emits no reviewed SHA');

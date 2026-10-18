@@ -14,27 +14,31 @@ second parent is stale. The reusable review workflows and the protected Gemini l
 event SHA as the normal path. Only when the immutable event SHA has an ordered
 parent mismatch do they perform one bounded lookup of
 `refs/pull/<number>/merge`, check out the resulting immutable SHA, and verify
-that it has exactly the event base and head as its ordered parents. The
-recovery now fetches that full immutable SHA into the existing checkout,
-verifies the fetched object is a commit with those exact ordered parents, and
-only then passes the verified SHA to a refreshed checkout. Recursive
-submodules are materialized by that refreshed checkout only after this
-pre-checkout validation; the post-checkout SHA and parent guard remains in
-place. The verified SHA becomes the reviewed SHA used by review and downstream
-records. Missing or ambiguous refs, failed fetches, non-commit objects,
+parent mismatch do they perform one bounded lookup of
+`refs/pull/<number>/merge`. The initial Codex workflow checkout never fetches
+submodules. The recovery fetches the full immutable candidate into that
+checkout, verifies it is a commit with exactly the event base and head as its
+ordered parents, then a single selection step chooses that candidate or the
+already-validated event SHA on the normal path. It verifies the selected
+object and parents, clears any existing submodule worktrees when the selected
+legacy checkout policy enables them, and emits the SHA only after cleanup.
+Only then can the final checkout materialize recursive submodules from the
+selected tree. The post-checkout SHA and parent guard remains in place. The
+selected SHA becomes the reviewed SHA used by review and downstream records.
+Missing or ambiguous refs, failed fetches, non-commit objects, cleanup or
 checkout failures, and candidates with different parents remain incomplete.
 
 The workflow regressions use locally created Git commits to reproduce the stale
 metadata shape and exercise the exact-parent checks and bounded resolver script.
-The refresh path also deinitializes existing submodule worktrees, without source
-credentials, after validating the candidate's ordered parents and before
-emitting the selected SHA. This prevents a reused checkout from retaining old
-tracked submodule contents when the refreshed tree removes or renames a module;
-cleanup failure leaves no SHA for the refreshed checkout. A real local Git
-regression confirms the residue with clean/reset/checkout/recursive-update for
-removed and renamed top-level modules and a renamed nested module, then verifies
-deinitialization leaves only the refreshed tree and a clean status. The fixture
-does not invoke the Actions checkout binary or a hosted workflow.
+The selected-step cleanup runs without source credentials, after validating
+the selected candidate's ordered parents and before emitting its SHA. A real
+local Git regression confirms that clean/reset/checkout/recursive-update can
+leave removed and renamed top-level modules and a renamed nested module, then
+verifies deinitialization leaves only the refreshed tree and a clean status.
+Another local Git regression makes the old event tree's submodule remote
+unavailable: eager recursive materialization fails, while a nonrecursive event
+checkout followed by selected-candidate recursive materialization succeeds.
+These fixtures do not invoke the Actions checkout binary or a hosted workflow.
 Gemini launcher tests exercise the same transition through its trusted
 object-fetch helper and assert the selected SHA it returns; the source handoff
 to publication and output was inspected separately. These checks do not replay

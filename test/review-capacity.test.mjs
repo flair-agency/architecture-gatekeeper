@@ -21,9 +21,10 @@ const runtimeFiles = [
 ];
 const sentinel = 'PRIVATE_CAPACITY_CONTENT_SENTINEL';
 const calledWorkflow = '.github/workflows/architecture-gate.yml';
-const currentCalledWorkflowSha256 = '237e6a6ba0baebc4a70e8190911bac60044636c2c9d5cf675aa253b5e5095b45';
-const previousCalledWorkflowSha256 = 'ecf6a70d7bffb73f152143dacd5d44a09a57a54c616fa4e3ed94117c89abb046';
-const earlierCalledWorkflowSha256 = '3bd669043e677fed4f79d43f8fbe40778aa5b82a4ebd95e50e31d949f00076f2';
+const currentCalledWorkflowSha256 = 'e0ba804c39a8ad52b875084c3f2c9a77edda261af1583558f08d74472ddd5906';
+const previousCalledWorkflowSha256 = '237e6a6ba0baebc4a70e8190911bac60044636c2c9d5cf675aa253b5e5095b45';
+const earlierCalledWorkflowSha256 = 'ecf6a70d7bffb73f152143dacd5d44a09a57a54c616fa4e3ed94117c89abb046';
+const olderCalledWorkflowSha256 = '3bd669043e677fed4f79d43f8fbe40778aa5b82a4ebd95e50e31d949f00076f2';
 const oldestCalledWorkflowSha256 = '65af7366c7cd8493ab836d1bf5a8b259e02d4fad71426e7c16b158693e64eebf';
 const git = (root, ...args) => execFileSync('git', ['--no-replace-objects', '-C', root, ...args], {
   encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env,
@@ -78,6 +79,8 @@ test('supports current and exact predecessor called-workflow fingerprints and re
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, previousCalledWorkflowSha256,
     currentCalledWorkflowSha256), true);
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, earlierCalledWorkflowSha256,
+    currentCalledWorkflowSha256), true);
+  assert.equal(supportsPreparationFormatDigest(calledWorkflow, olderCalledWorkflowSha256,
     currentCalledWorkflowSha256), true);
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, oldestCalledWorkflowSha256,
     currentCalledWorkflowSha256), true);
