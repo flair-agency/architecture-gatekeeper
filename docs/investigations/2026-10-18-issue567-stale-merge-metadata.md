@@ -65,5 +65,6 @@ validation succeeded. The refresh-fetch step and selected materialization step
 were skipped under the ordinary Authority Set profile. This confirms the
 normal path only; it is not evidence that a hosted stale event exercised
 recovery. Issue #567 remains open for observation of a naturally occurring
-stale-metadata event. No replay, new model, CI trigger, or live fixture probe
-was performed for this documentation update.
+stale-metadata event. No stale-event replay or live fixture probe was used
+to produce these observations. Normal required CI and reviews for a
+documentation change remain separate from operational recovery verification.
