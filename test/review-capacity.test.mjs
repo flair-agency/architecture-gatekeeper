@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,7 @@ const runtimeFiles = [
   'src/preflight-authority-set-review.mjs', 'src/prepare-review-context.mjs',
   'src/authority-validation/authority-set.mts', 'src/authority-validation/resolve-ci-policy.mts',
   'src/authority-validation/prepare-authority-set.mts',
+  'src/io/read-descriptor.mts',
   'src/authority-validation/preflight-authority-set-review.mts',
   'src/review-inputs/prepare-review-context.mts',
 ];
@@ -91,6 +92,21 @@ test('supports current and exact predecessor called-workflow fingerprints and re
     earlierCalledWorkflowSha256, currentCalledWorkflowSha256), false);
 });
 
+test('preparation fingerprints pin the preparer and helper while retaining the exact pre-helper format', () => {
+  const preparer = 'src/authority-validation/prepare-authority-set.mts';
+  const helper = 'src/io/read-descriptor.mts';
+  const previousPreparer = '9bce34d75aa8b4d414a089f042616cabb2dd1ac331fcfbe70a43afff304e9dae';
+  const preparerBytes = readFileSync(join(toolRoot, preparer));
+  const helperBytes = readFileSync(join(toolRoot, helper));
+  const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+  assert.equal(supportsPreparationFormatDigest(preparer, digest(preparerBytes), digest(preparerBytes)), true);
+  assert.equal(supportsPreparationFormatDigest(preparer, previousPreparer, digest(preparerBytes)), true);
+  assert.equal(supportsPreparationFormatDigest(preparer, 'f'.repeat(64), digest(preparerBytes)), false);
+  assert.equal(supportsPreparationFormatDigest(helper, digest(helperBytes), digest(helperBytes)), true);
+  assert.equal(supportsPreparationFormatDigest(helper, 'f'.repeat(64), digest(helperBytes)), false);
+  assert.equal(supportsPreparationFormatDigest(helper, digest(helperBytes), 'f'.repeat(64)), false);
+});
+
 async function production(t, f, input) {
   const temp = mkdtempSync(join(tmpdir(), 'agk-capacity-production-'));
   t.after(() => rmSync(temp, { recursive: true, force: true }));
@@ -120,10 +136,83 @@ async function production(t, f, input) {
   return { result, bytes: readFileSync(join(temp, 'architecture-gate-review-prompt.md')) };
 }
 
+test('exact pre-helper preparer bases retain their former format with absent or unused helper files', async t => {
+  const oldPreparer = readFileSync(join(toolRoot,
+    'test/fixtures/review-capacity/pre-helper-preparer.mts.txt'));
+  const oldDigest = '9bce34d75aa8b4d414a089f042616cabb2dd1ac331fcfbe70a43afff304e9dae';
+  for (const helperMode of ['absent', 'unused']) {
+    const f = fixture(t, { amendBase: ({ root }) => {
+      put(root, 'src/authority-validation/prepare-authority-set.mts', oldPreparer);
+      if (helperMode === 'absent') rmSync(join(root, 'src/io/read-descriptor.mts'));
+      else put(root, 'src/io/read-descriptor.mts', 'unused legacy helper bytes\n');
+    } });
+    const input = candidate(f);
+    const report = await checkReviewCapacity(input);
+    assert.equal(report.state, 'fit', helperMode);
+    assert.equal(report.measurement.exact, true, helperMode);
+    assert.equal(report.policy.formatDigests['src/authority-validation/prepare-authority-set.mts'], oldDigest);
+    assert.equal(Object.hasOwn(report.policy.formatDigests, 'src/io/read-descriptor.mts'), false, helperMode);
+    const actual = await production(t, f, input);
+    assert.equal(report.measurement.totalBytes, actual.bytes.length, helperMode);
+    assert.equal(report.measurement.promptSha256, createHash('sha256').update(actual.bytes).digest('hex'), helperMode);
+  }
+});
+
+test('current preparer bases require the exact helper and unknown preparers remain undetermined', async t => {
+  const cases = [
+    ['missing helper', ({ root }) => rmSync(join(root, 'src/io/read-descriptor.mts'))],
+    ['drifted helper', ({ root }) => put(root, 'src/io/read-descriptor.mts', 'changed helper bytes\n')],
+    ['unknown preparer', ({ root }) => put(root, 'src/authority-validation/prepare-authority-set.mts', 'changed preparer bytes\n')],
+  ];
+  for (const [label, amendBase] of cases) {
+    const f = fixture(t, { amendBase });
+    const report = await checkReviewCapacity(candidate(f));
+    assert.equal(report.state, 'undetermined', label);
+    assert.equal(report.measurement.exact, false, label);
+    assert.equal(report.measurement.totalBytes, null, label);
+    assert.equal(report.measurement.remainingBytes, null, label);
+  }
+});
+
+test('local helper pin is enforced even when the base uses the exact pre-helper preparer', t => {
+  const oldPreparer = readFileSync(join(toolRoot,
+    'test/fixtures/review-capacity/pre-helper-preparer.mts.txt'));
+  const f = fixture(t, { amendBase: ({ root }) => {
+    put(root, 'src/authority-validation/prepare-authority-set.mts', oldPreparer);
+    rmSync(join(root, 'src/io/read-descriptor.mts'));
+  } });
+  const input = candidate(f);
+  const copy = mkdtempSync(join(tmpdir(), 'agk-capacity-tool-copy-'));
+  t.after(() => rmSync(copy, { recursive: true, force: true }));
+  cpSync(join(toolRoot, 'src'), join(copy, 'src'), { recursive: true });
+  for (const path of runtimeFiles.filter(path => path.startsWith('.github/'))) {
+    put(copy, path, readFileSync(join(toolRoot, path)));
+  }
+  mkdirSync(join(copy, 'scripts'));
+  cpSync(cli, join(copy, 'scripts/review-capacity.mjs'));
+  symlinkSync(join(toolRoot, 'node_modules'), join(copy, 'node_modules'), 'dir');
+  writeFileSync(join(copy, 'src/io/read-descriptor.mts'),
+    `${readFileSync(join(toolRoot, 'src/io/read-descriptor.mts'), 'utf8')}\n// drifted local helper\n`);
+  const run = spawnSync(process.execPath, [join(copy, 'scripts/review-capacity.mjs'), '--base', input.base,
+    '--head', input.head],
+    { cwd: f.root, encoding: 'utf8', timeout: 30_000 });
+  assert.equal(run.status, 2, run.stderr);
+  const report = JSON.parse(run.stdout);
+  assert.equal(report.state, 'undetermined');
+  assert.equal(report.reason, 'unsupported-preparation-format');
+  assert.equal(report.measurement.exact, false);
+  assert.equal(report.measurement.totalBytes, null);
+  assert.equal(report.measurement.remainingBytes, null);
+});
+
 test('measures actual production-prepared UTF-8/escaped input and redacts private payloads', async t => {
   const f = fixture(t);
   const input = candidate(f, { 'subject.md': 'after 雪 " \\\n', 'line\nname.md': 'new path\n' });
   const report = await checkReviewCapacity(input);
+  assert.equal(report.policy.formatDigests['src/authority-validation/prepare-authority-set.mts'],
+    createHash('sha256').update(readFileSync(join(toolRoot, 'src/authority-validation/prepare-authority-set.mts'))).digest('hex'));
+  assert.equal(report.policy.formatDigests['src/io/read-descriptor.mts'],
+    createHash('sha256').update(readFileSync(join(toolRoot, 'src/io/read-descriptor.mts'))).digest('hex'));
   const actual = await production(t, f, input);
   assert.equal(report.state, 'fit');
   assert.equal(report.measurement.exact, true);

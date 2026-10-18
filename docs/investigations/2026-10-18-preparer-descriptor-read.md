@@ -1,0 +1,11 @@
+# Authority preparer descriptor-read reuse
+
+This change reuses `src/io/read-descriptor.mts` in the authority-set preparer. The helper receives an already-open descriptor and caller-allocated buffer, reads from the descriptor's current position until EOF or capacity, and returns only the bytes read. It does not open or close files, inspect metadata, allocate storage, validate inputs, decode content, or translate errors.
+
+`readBounded` in `src/authority-validation/prepare-authority-set.mts` retains the size validation, nonblocking open, regular-file check, initial size limit, `maxBytes + 1` sentinel capacity, post-read limit check, caller-specific error labels, and `finally` close. Manifest and limits decoding still happens after the read. This preserves the preparer's existing short-read, growth, shrinkage, and empty-file behavior.
+
+The CLI test forces short reads through the actual emitted preparer and checks both manifest and limits reads reach EOF and produce the same selected authority bundle. Existing tests continue to cover byte limits, invalid and empty inputs, non-regular files, and output behavior. Capacity tests pin both the new preparer and shared helper, and assert the report's actual format digests.
+
+The capacity diagnostic retains one exact preparation-format predecessor: preparer SHA-256 `9bce34d75aa8b4d414a089f042616cabb2dd1ac331fcfbe70a43afff304e9dae`. That source predates the helper import. For only that exact base preparer, the diagnostic skips reading and reporting a base helper digest; a missing or present-but-unused helper therefore retains prior behavior. The local helper is still checked against its exact pinned digest. Current preparer bases require the helper, and unknown preparer/helper digests remain undetermined without a partial total. The stable predecessor bytes are retained in `test/fixtures/review-capacity/pre-helper-preparer.mts.txt`.
+
+This is an internal read-loop reuse and preparation-format compatibility update. It does not change authority selection, policy, output formats, or review acceptance. It adds no dependency and makes no new race, host, or filesystem safety claim. Distribution and emitted-runtime verification remain separate coordinator checks.

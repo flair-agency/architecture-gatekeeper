@@ -1,7 +1,8 @@
-import { constants, openSync, readSync, closeSync, fstatSync, mkdirSync, writeFileSync, rmSync, lstatSync } from 'node:fs';
+import { constants, openSync, closeSync, fstatSync, mkdirSync, writeFileSync, rmSync, lstatSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys, validateAuthorityLimits } from '../authority-set.mjs';
 import { createGitHubAuthoritySource } from '../github-authority-source.mjs';
+import { readDescriptorBytes } from '../io/read-descriptor.mts';
 const MAX_LIMITS_BYTES = 4 * 1024;
 const MAX_MANIFEST_INPUT_BYTES = 1024 * 1024;
 export interface AuthorityLimits {
@@ -22,15 +23,9 @@ function readBounded(path: string, maxBytes: number, label: string): Buffer {
     const metadata = fstatSync(descriptor);
     if (!metadata.isFile()) throw new Error(`${label} input must be a regular file.`);
     if (metadata.size > maxBytes) throw new Error(`${label} exceeds its input byte limit.`);
-    const buffer = Buffer.alloc(maxBytes + 1);
-    let length = 0;
-    while (length <= maxBytes) {
-      const count = readSync(descriptor, buffer, length, buffer.length - length, null);
-      if (count === 0) break;
-      length += count;
-    }
-    if (length > maxBytes) throw new Error(`${label} exceeds its input byte limit.`);
-    return buffer.subarray(0, length);
+    const bytes = readDescriptorBytes(descriptor, Buffer.alloc(maxBytes + 1));
+    if (bytes.length > maxBytes) throw new Error(`${label} exceeds its input byte limit.`);
+    return bytes;
   } finally {
     if (descriptor !== undefined) closeSync(descriptor);
   }
