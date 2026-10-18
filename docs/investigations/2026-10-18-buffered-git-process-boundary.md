@@ -46,6 +46,7 @@ caller dispositions remain with #573.
 | All three caller bodies | External comparison expands all four actual helper calls and compares complete transpiled operation ASTs to the adopted base; native/helper import substitution is checked separately |
 | Runtime identity | Existing preview identity regression adds the emitted helper; existing source/emitted owner-addition regression adds the helper pair, including exact digest, stale request/receipt rejection and fresh success |
 | Flat compatibility fixture | Synthetic reconstruction copies/remaps the helper to a flat path, checks its digest in that identity, then removes its grouped directory; actual installed distribution keeps the emitted nested path |
+| CodeQL route preservation | Existing regression assertions follow each snapshot/diff caller through the actual shared native sink; both snapshot commands retain every generic source independently, and original accessor baseline/model checks remain |
 
 The source/compiled helper operations must match. The historical AST pin is not
 replaced with a new digest. Its expansion rejects extra top-level operations,
