@@ -103,10 +103,10 @@ the consumer's protected-base policy. The separate
 [provider-capable workflow](.github/workflows/architecture-gate-providers.yml)
 implements ordinary Gemini review with a pinned profile and a
 masked, full-detail report handoff. It remains inactive until a consumer adopts
-that workflow and selects Gemini in protected-base policy; the existing
-Codex-only consumer workflow and this repository's self policy remain unchanged.
-This implementation does not establish consumer support or acceptance. See the
-[caller authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
+that workflow and selects Gemini in protected-base policy. This separate
+adoption does not select Gemini for the existing Codex-only consumer workflow
+or this repository's self policy, and does not establish broader consumer
+support or acceptance. See the [caller authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
 
 The CI reporter confines its projection and summary files to the invoking
 GitHub runner's per-step file-command layout and rejects linked or substituted
@@ -114,6 +114,17 @@ files. Its optional local `REPORT_PATH` must name
 `architecture-gate-report.md` in the current directory; it creates that file
 exclusively and never overwrites an existing destination. See the
 [report filesystem boundary](docs/integration-reference.md#report-filesystem-boundary).
+
+In workflow revisions that include this behavior, `pull_request_target` first
+checks out the event merge SHA without submodules. A matching ordered event
+base/head tuple takes the fast path; only a parent mismatch on that exact event
+commit permits one bounded lookup of the current PR merge ref. The immutable
+result must match the same tuple before the selected tree is materialized; any
+recursive submodule checkout follows selection. The review record uses that
+selected SHA in the same run. Missing or malformed event SHA, checkout
+mismatch, invalid recovery, or failed materialization leaves review incomplete;
+event base/head are never replaced. The [CI integration guide](docs/integration-reference.md#ci-integration)
+describes full conditions and earlier workflow pins.
 
 Legacy authority and owner-addition CI artifact steps run with the GitHub
 runner's `RUNNER_TEMP` as their working directory. Their CLIs accept only fixed
