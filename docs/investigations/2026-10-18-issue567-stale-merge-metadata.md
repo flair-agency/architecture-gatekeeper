@@ -26,6 +26,15 @@ checkout failures, and candidates with different parents remain incomplete.
 
 The workflow regressions use locally created Git commits to reproduce the stale
 metadata shape and exercise the exact-parent checks and bounded resolver script.
+The refresh path also deinitializes existing submodule worktrees, without source
+credentials, after validating the candidate's ordered parents and before
+emitting the selected SHA. This prevents a reused checkout from retaining old
+tracked submodule contents when the refreshed tree removes or renames a module;
+cleanup failure leaves no SHA for the refreshed checkout. A real local Git
+regression confirms the residue with clean/reset/checkout/recursive-update for
+removed and renamed top-level modules and a renamed nested module, then verifies
+deinitialization leaves only the refreshed tree and a clean status. The fixture
+does not invoke the Actions checkout binary or a hosted workflow.
 Gemini launcher tests exercise the same transition through its trusted
 object-fetch helper and assert the selected SHA it returns; the source handoff
 to publication and output was inspected separately. These checks do not replay

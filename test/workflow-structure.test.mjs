@@ -34,6 +34,7 @@ appendFileSync(process.env.GIT_CALL_LOG, JSON.stringify({
     process.env.GIT_CONFIG_VALUE_0?.startsWith('AUTHORIZATION: basic '),
   noninteractive: process.env.GIT_TERMINAL_PROMPT === '0' &&
     process.env.GIT_ASKPASS === '/bin/false' && process.env.SSH_ASKPASS === '/bin/false',
+  fetchTokenAbsent: !Object.hasOwn(process.env, 'FETCH_TOKEN'),
 }) + '\\n');
 if (args.includes('ls-remote')) {
   if (process.env.LOOKUP_STATUS !== '0') process.exit(Number(process.env.LOOKUP_STATUS));
@@ -46,6 +47,8 @@ if (args.includes('ls-remote')) {
   process.stdout.write((process.env.REVPARSE_SHA ?? process.env.CANDIDATE_SHA) + '\\n');
 } else if (args.includes('rev-list')) {
   process.stdout.write((process.env.PARENT_LINE ?? (process.env.CANDIDATE_SHA + ' ' + process.env.BASE_SHA + ' ' + process.env.HEAD_SHA)) + '\\n');
+} else if (args[0] === 'submodule' && args[1] === 'deinit') {
+  if (process.env.DEINIT_STATUS && process.env.DEINIT_STATUS !== '0') process.exit(Number(process.env.DEINIT_STATUS));
 } else {
   process.exit(91);
 }
@@ -105,6 +108,7 @@ if (args.includes('ls-remote')) {
       PR_NUMBER: '${{ github.event.pull_request.number }}',
       BASE_SHA: '${{ github.event.pull_request.base.sha }}',
       HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
+      SUBMODULES_ENABLED: "${{ needs.policy.outputs.authority_manifest_path == '' }}",
     });
     assert.match(resolver.run, /timeout 30s git "\$@"/);
     assert.match(resolver.run, /ls-remote --refs "\$REMOTE_URL" "\$MERGE_REF"/);
@@ -115,6 +119,11 @@ if (args.includes('ls-remote')) {
     assert.match(resolver.run, /git --no-replace-objects rev-list --parents -n 1 "\$REFRESHED_SHA"/);
     assert.match(resolver.run, /ACTUAL_PARENTS.*EXPECTED_PARENTS/);
     assert.ok(resolver.run.indexOf('ACTUAL_PARENTS') < resolver.run.indexOf('GITHUB_OUTPUT'), `${profile} emits only after exact parent verification`);
+    assert.ok(resolver.run.indexOf('ACTUAL_PARENTS') < resolver.run.indexOf('submodule deinit') &&
+      resolver.run.indexOf('submodule deinit') < resolver.run.indexOf('GITHUB_OUTPUT'),
+    `${profile} clears stale submodule worktrees after validating parents and before exposing the SHA`);
+    assert.match(resolver.run, /timeout 30s env GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=\/bin\/false SSH_ASKPASS=\/bin\/false git submodule deinit --force --all/);
+    assert.match(resolver.run, /unset FETCH_TOKEN AUTH/);
     assert.match(resolver.run, /GIT_CONFIG_KEY_0=.*http\..*extraheader/);
     assert.match(resolver.run, /echo \"::add-mask::\$AUTH\"/);
     assert.ok(resolver.run.indexOf('::add-mask::$AUTH') < resolver.run.indexOf('ls-remote') &&
@@ -173,6 +182,7 @@ if (args.includes('ls-remote')) {
     const configuredResolverInputs = {
       FETCH_TOKEN: 'test-read-token', REPOSITORY: 'flair-agency/architecture-gatekeeper',
       SERVER_URL: 'https://github.com', PR_NUMBER: '42', BASE_SHA: baseSha, HEAD_SHA: headSha,
+      SUBMODULES_ENABLED: 'true',
     };
     const resolverEnv = overrides => ({
       ...Object.fromEntries(Object.keys(resolver.env).map(name => [name, configuredResolverInputs[name]])),
@@ -220,6 +230,7 @@ if (args.includes('ls-remote')) {
       ['different head', { PARENT_LINE: `${candidateSha} ${baseSha} ${'e'.repeat(40)}` }],
       ['missing parent', { PARENT_LINE: `${candidateSha} ${baseSha}` }],
       ['extra parent', { PARENT_LINE: `${candidateSha} ${baseSha} ${headSha} ${'f'.repeat(40)}` }],
+      ['submodule cleanup failure', { DEINIT_STATUS: '9' }],
     ];
     for (const [label, overrides] of rejectedCandidates) {
       const rejected = runResolver(overrides);
@@ -229,10 +240,19 @@ if (args.includes('ls-remote')) {
       assert.equal(rejected.calls.filter(call => call.args.includes('ls-remote')).length, 1,
         `${profile} performs exactly one merge-ref lookup for ${label}`);
       if (label === 'fetch failure') assert.equal(rejected.calls.some(call => call.args.includes('cat-file')), false);
+      if (label === 'submodule cleanup failure') {
+        assert.ok(rejected.calls.some(call => call.args[0] === 'submodule' && call.args[1] === 'deinit'));
+      }
       if (['missing ref', 'ambiguous refs', 'malformed SHA', 'unexpected ref', 'extra ref data', 'lookup network failure'].includes(label)) {
         assert.equal(rejected.calls.some(call => call.args.includes('fetch')), false, `${profile} does not fetch ${label}`);
       }
     }
+    const noSubmodules = runResolver({ SUBMODULES_ENABLED: 'false' });
+    assert.equal(noSubmodules.result.status, 0, `${profile} accepts candidate when target checkout has submodules disabled`);
+    assert.equal(noSubmodules.calls.some(call => call.args[0] === 'submodule'), false,
+      `${profile} does not deinitialize when policy selects no submodules`);
+    assert.equal(accepted.calls.find(call => call.args[0] === 'submodule')?.fetchTokenAbsent, true,
+      `${profile} does not pass source credentials to submodule cleanup`);
 
     const validSha = 'a'.repeat(40);
     const validEvent = { MERGE_SHA: validSha, BASE_SHA: 'b'.repeat(40), HEAD_SHA: 'c'.repeat(40) };

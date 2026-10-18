@@ -32,13 +32,14 @@ class CapacityExceeded extends Error {
 // These are preparation-format checks, not a new consumer policy selector.
 // The called-workflow fingerprint is updated for pre-checkout immutable-commit
 // verification; prompt/task serialization and preparation inputs are
-// unchanged, and the assembler already measures the supplied SHA. The two
-// exact predecessor fingerprints retain the documented pre-merge preview
+// unchanged, and the assembler already measures the supplied SHA. The exact
+// predecessor fingerprints retain the documented pre-merge preview
 // path from the older protected base. Other base/runtime drift must be
 // explicitly reviewed before this diagnostic can measure it.
 const PREVIOUS_CONTEXT_SHA256 = '510b197070f8f12a15567409cf8e92e6da365bbd96e17ef4917cd8c21b38acf0';
-const PREVIOUS_CALLED_WORKFLOW_SHA256 = '3bd669043e677fed4f79d43f8fbe40778aa5b82a4ebd95e50e31d949f00076f2';
-const EARLIER_CALLED_WORKFLOW_SHA256 = '65af7366c7cd8493ab836d1bf5a8b259e02d4fad71426e7c16b158693e64eebf';
+const PREVIOUS_CALLED_WORKFLOW_SHA256 = 'ecf6a70d7bffb73f152143dacd5d44a09a57a54c616fa4e3ed94117c89abb046';
+const EARLIER_CALLED_WORKFLOW_SHA256 = '3bd669043e677fed4f79d43f8fbe40778aa5b82a4ebd95e50e31d949f00076f2';
+const OLDEST_CALLED_WORKFLOW_SHA256 = '65af7366c7cd8493ab836d1bf5a8b259e02d4fad71426e7c16b158693e64eebf';
 const FORMAT_FILES = [SELF_WORKFLOW, CALLED_WORKFLOW,
   'src/authority-set.mjs', 'src/resolve-ci-policy.mjs', 'src/prepare-authority-set.mjs',
   'src/preflight-authority-set-review.mjs', 'src/prepare-review-context.mjs',
@@ -50,7 +51,7 @@ const FORMAT_FILES = [SELF_WORKFLOW, CALLED_WORKFLOW,
 
 const CURRENT_FORMAT_SHA256 = {
   ".github/workflows/self-architecture-gate.yml": "b3cd229184f6a90e4edd78ccc15d7a1c527c5c71ac99eb13030298eeba9e6412",
-  ".github/workflows/architecture-gate.yml": "ecf6a70d7bffb73f152143dacd5d44a09a57a54c616fa4e3ed94117c89abb046",
+  ".github/workflows/architecture-gate.yml": "237e6a6ba0baebc4a70e8190911bac60044636c2c9d5cf675aa253b5e5095b45",
   "src/authority-set.mjs": "d086de4acf4783b47901c3111760f6659bae111b53d4679261dccd6aa91586fa",
   "src/resolve-ci-policy.mjs": "01243736b030f1776d3de55454c450855324cd42f2c5542b3be5512efbd8aae7",
   "src/prepare-authority-set.mjs": "9141969e86b817f4b68819ee597f505840bf5f85d260bdffd39f61f7a19ce688",
@@ -66,7 +67,7 @@ const CURRENT_FORMAT_SHA256 = {
 export function supportsPreparationFormatDigest(path, baseDigest, toolDigest) {
   if (toolDigest !== CURRENT_FORMAT_SHA256[path]) return false;
   return baseDigest === toolDigest ||
-    (path === CALLED_WORKFLOW && [PREVIOUS_CALLED_WORKFLOW_SHA256, EARLIER_CALLED_WORKFLOW_SHA256].includes(baseDigest)) ||
+    (path === CALLED_WORKFLOW && [PREVIOUS_CALLED_WORKFLOW_SHA256, EARLIER_CALLED_WORKFLOW_SHA256, OLDEST_CALLED_WORKFLOW_SHA256].includes(baseDigest)) ||
     (path === 'src/review-inputs/prepare-review-context.mts' && baseDigest === PREVIOUS_CONTEXT_SHA256);
 }
 

@@ -233,6 +233,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SUBMODULES_ENABLED: ${{ needs.policy.outputs.authority_manifest_path == '' }}
         run: |
           set -euo pipefail
           test -n "$FETCH_TOKEN"
@@ -300,6 +301,13 @@ jobs:
           if test "$ACTUAL_PARENTS" != "$EXPECTED_PARENTS"; then
             printf 'Resolved merge candidate %s has invalid ordered parents; expected [%s], got [%s].\n' "$FETCHED_SHA" "$EXPECTED_PARENTS" "$ACTUAL_PARENTS" >&2
             exit 1
+          fi
+          if test "$SUBMODULES_ENABLED" = true; then
+            unset FETCH_TOKEN AUTH
+            if ! timeout 30s env GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/false SSH_ASKPASS=/bin/false git submodule deinit --force --all; then
+              echo 'Existing submodule worktrees could not be cleared before refreshed checkout' >&2
+              exit 1
+            fi
           fi
           printf 'sha=%s\n' "$REFRESHED_SHA" >> "$GITHUB_OUTPUT"
       - name: Refresh current pull request merge revision
