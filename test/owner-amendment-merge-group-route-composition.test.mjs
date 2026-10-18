@@ -239,7 +239,7 @@ function apiFixture({ repoPath, baseSha, bSha, groupSha, triggerHeadSha, profile
     repositoryId, triggerPr, bPr, triggerArtifactName };
 }
 
-function makeRepo(profile, { includeRuntime = false } = {}) {
+function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false } = {}) {
   const repoPath = mkdtempSync(join(tmpdir(), 'agk-merge-group-route-'));
   git(repoPath, ['init', '-q']);
   if (includeRuntime) {
@@ -257,7 +257,9 @@ function makeRepo(profile, { includeRuntime = false } = {}) {
   const members = [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }];
   if (profile === 'completed-owner-decision-self-v1') members.push({ id: 'ownership-charter', repository: 'self',
     revision: 'authority-revision', path: 'docs/ownership.md' });
-  put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(policy)}\n`));
+  const basePolicy = structuredClone(policy);
+  if (candidateOnlyOptIn) delete basePolicy.branches.main.ownerAmendment;
+  put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(basePolicy)}\n`));
   put(repoPath, '.codex/gatekeeper/authorities.json', Buffer.from(`${JSON.stringify({ version: 1, authorities: members })}\n`));
   const oldArchitecture = Buffer.from('# Architecture\nExisting rule needs an owner decision.\n');
   const newArchitecture = Buffer.from('# Architecture\nThe amended rule preserves protected review.\n');
@@ -269,9 +271,10 @@ function makeRepo(profile, { includeRuntime = false } = {}) {
     put(repoPath, 'docs/ownership.md', oldOwnership);
   }
   const baseSha = commit(repoPath, 'protected base');
+  if (candidateOnlyOptIn) put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(policy)}\n`));
   put(repoPath, 'docs/architecture.md', newArchitecture);
   if (oldOwnership) put(repoPath, 'docs/ownership.md', newOwnership);
-  const bSha = commit(repoPath, 'authority-only B');
+  const bSha = commit(repoPath, candidateOnlyOptIn ? 'candidate policy opt-in B' : 'authority-only B');
   const groupCommit = git(repoPath, ['commit-tree', `${bSha}^{tree}`, '-p', baseSha, '-p', bSha, '-m', 'merge group']);
   const groupSha = groupCommit.toString('ascii').trim();
   const runGit = args => git(repoPath, args);
@@ -646,6 +649,78 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
   } finally { rmSync(temporary, { recursive: true, force: true }); }
 }
 
+async function exerciseCandidateOnlyOptInGate(fixture, api, event) {
+  const temporary = mkdtempSync(join(tmpdir(), 'agk-candidate-opt-in-'));
+  try {
+    fixture.runGit(['remote', 'add', 'origin', fixture.repoPath]);
+    fixture.runGit(['checkout', '--detach', fixture.baseSha]);
+    assert.equal(fixture.runGit(['rev-parse', 'HEAD']).toString('ascii').trim(), fixture.baseSha);
+
+    const basePolicyBytes = fixture.runGit(['show', `${fixture.baseSha}:.codex/gatekeeper/ci-policy.json`]);
+    const candidatePolicyBytes = fixture.runGit(['show', `${fixture.bSha}:.codex/gatekeeper/ci-policy.json`]);
+    const basePolicy = resolveCiPolicy(parseCiPolicyJson(basePolicyBytes.toString('utf8')), 'main');
+    const candidatePolicy = resolveCiPolicy(parseCiPolicyJson(candidatePolicyBytes.toString('utf8')), 'main');
+    assert.equal(JSON.parse(basePolicyBytes.toString('utf8')).branches.main.ownerAmendment, undefined);
+    assert.equal(basePolicy.mode, 'enforced');
+    assert.equal(basePolicy.ownerAmendmentGrade, undefined);
+    assert.equal(candidatePolicy.mode, 'enforced');
+    assert.equal(candidatePolicy.ownerAmendmentGrade, 'G0');
+    assert.equal(candidatePolicy.ownerAmendmentTriggerProfile, fixture.profile);
+    assert.notEqual(fixture.baseSha, fixture.bSha);
+
+    const prefix = `/repos/${repository}`;
+    const paths = [prefix, `${prefix}/commits/${fixture.groupSha}`, `${prefix}/commits/${fixture.bSha}`,
+      `${prefix}/commits/${fixture.bSha}/pulls`, '/graphql'];
+    const responses = {};
+    for (const path of paths) {
+      const response = await api.fetchImpl(`https://api.github.com${path}`);
+      assert.equal(response.status, 200, path);
+      responses[path] = { json: structuredClone(await response.json()) };
+    }
+
+    const dataPath = join(temporary, 'responses.json');
+    const tracePath = join(temporary, 'trace.jsonl');
+    const shimPath = join(temporary, 'fetch-shim.mjs');
+    const bin = join(temporary, 'bin'); mkdirSync(bin);
+    writeFileSync(dataPath, JSON.stringify(responses));
+    writeFileSync(shimPath, `import { readFileSync, appendFileSync } from 'node:fs';
+globalThis.fetch = async (raw, options = {}) => {
+  const url = new URL(raw);
+  if (url.origin !== 'https://api.github.com' || (options.method && options.method !== 'GET' && url.pathname !== '/graphql')) throw new Error('Unexpected external fixture request');
+  appendFileSync(${JSON.stringify(tracePath)}, JSON.stringify({ fetch: url.pathname }) + '\\n');
+  const response = JSON.parse(readFileSync(${JSON.stringify(dataPath)}, 'utf8'))[url.pathname];
+  if (!response) throw new Error('Unexpected fixture API path: ' + url.pathname);
+  return new Response(JSON.stringify(response.json), { status: response.status ?? 200 });
+};\n`);
+    const ghPath = join(bin, 'gh');
+    writeFileSync(ghPath, `#!${process.execPath}
+import { appendFileSync } from 'node:fs';
+appendFileSync(${JSON.stringify(tracePath)}, JSON.stringify({ gh: process.argv.slice(2) }) + '\\n');
+throw new Error('Unexpected gh work in candidate-only opt-in case');\n`);
+    chmodSync(ghPath, 0o700);
+    const configPath = join(temporary, 'gitconfig');
+    writeFileSync(configPath, `[url "${fixture.repoPath}"]\n\tinsteadOf = https://github.com/${repository}.git\n[protocol]\n\tallow = never\n[protocol "file"]\n\tallow = always\n`);
+    const runner = join(realpathSync(temporary), 'runner'); mkdirSync(runner);
+    const eventDirectory = join(runner, 'owner-amendment-merge-group'); mkdirSync(eventDirectory);
+    writeFileSync(join(eventDirectory, 'event.json'), JSON.stringify(event));
+    const outputPath = join(runner, 'output'); writeFileSync(outputPath, '');
+    const env = { ...process.env, GITHUB_REPOSITORY: repository, GH_TOKEN: 'synthetic-fixture-token',
+      GITHUB_WORKSPACE: fixture.repoPath, RUNNER_TEMP: runner, GITHUB_OUTPUT: outputPath,
+      OWNER_AMENDMENT_TAG_RULESET_ID: String(tagRulesetId), GITHUB_RUN_ID: '202', GITHUB_RUN_ATTEMPT: '1',
+      GITHUB_WORKFLOW_SHA: fixture.baseSha, NODE_OPTIONS: `--import=${shimPath}`,
+      PATH: `${bin}:${process.env.PATH}`, GIT_CONFIG_GLOBAL: configPath, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_COUNT: '0' };
+    const stdout = execFileSync(process.execPath, [join(fixture.repoPath, 'scripts/owner-amendment-merge-group-gate.mjs')],
+      { env, cwd: runner, encoding: 'utf8', timeout: 30_000, maxBuffer: 2 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+
+    assert.equal(stdout, 'No protected amendment tag selects a fresh ordinary review of the exact current base/B tuple.\n');
+    assert.equal(readFileSync(outputPath, 'utf8'), `route=ordinary\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+    assert.equal(existsSync(join(runner, 'owner-amendment-eligibility')), false);
+    const trace = readFileSync(tracePath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    assert.deepEqual(trace.filter(item => item.fetch).map(item => item.fetch).sort(), [...paths].sort());
+    assert.equal(trace.some(item => item.gh), false);
+  } finally { rmSync(temporary, { recursive: true, force: true }); }
+}
+
 for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
   test(`exercises production route components with test adapter projections for ${profile}`, async t => {
     const fixture = makeRepo(profile, { includeRuntime: true });
@@ -828,5 +903,18 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
       assert.equal(evidence.priorAuthoritySetDigest, resolved.priorAuthoritySetDigest);
       assert.equal(evidence.resultingAuthoritySetDigest, resolved.resultingAuthoritySetDigest);
     }
+  });
+}
+
+for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
+  test(`production main ignores candidate-only ${profile} opt-in`, async t => {
+    const fixture = makeRepo(profile, { includeRuntime: true, candidateOnlyOptIn: true });
+    t.after(fixture.cleanup);
+    const api = apiFixture({ repoPath: fixture.repoPath, baseSha: fixture.baseSha, bSha: fixture.bSha,
+      groupSha: fixture.groupSha, triggerHeadSha: fixture.triggerHeadSha, profile,
+      triggerRecordBytes: Buffer.from('{}'), bundleBytes: Buffer.from('{}') });
+    const event = { action: 'checks_requested', repository: { full_name: repository }, merge_group: {
+      base_ref: 'refs/heads/main', base_sha: fixture.baseSha, head_sha: fixture.groupSha } };
+    await exerciseCandidateOnlyOptInGate(fixture, api, event);
   });
 }
