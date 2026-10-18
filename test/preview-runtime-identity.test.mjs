@@ -88,7 +88,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
   await runtime.validatePreviewReceipt(receipt, f.root);
 
-  nestedPaths.push('measurement-ci.mjs', 'measurement-api.mjs', 'measurement-analysis.mjs', 'measurement-cli.mjs', 'measurement.mjs', 'measurement-consistency.mjs', 'diagnostic-path.mjs');
+  nestedPaths.push('measurement-ci.mjs', 'measurement-api.mjs', 'measurement-analysis.mjs', 'measurement-cli.mjs', 'measurement.mjs', 'measurement-consistency.mjs', 'diagnostic-path.mjs', 'io/read-descriptor.mjs');
   const unchangedPaths = [...new Set([...nestedPaths.filter(path => path.includes('/')).map(path => path.split('/').at(-1)),
     'preview-lifecycle.mjs', 'owner-addition-ci.mjs', 'github-owner-addition-provenance.mjs']
     .filter(file => existsSync(join(runtimeRoot, 'dist', file))))];
@@ -284,6 +284,16 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const bufferedGitDirectory = join(flatRoot, 'dist/git');
   assert.deepEqual(readdirSync(bufferedGitDirectory), ['buffered-git.mjs'], 'the synthetic flat fixture has only the expected grouped Git helper');
   copyFileSync(join(bufferedGitDirectory, 'buffered-git.mjs'), join(flatRoot, 'dist/buffered-git.mjs'));
+  const descriptorDirectory = join(flatRoot, 'dist/io');
+  assert.deepEqual(readdirSync(descriptorDirectory), ['read-descriptor.mjs'],
+    'the synthetic flat fixture has only the expected descriptor helper');
+  copyFileSync(join(descriptorDirectory, 'read-descriptor.mjs'), join(flatRoot, 'dist/read-descriptor.mjs'));
+  for (const name of ['diagnostic-path.mjs', 'measurement.mjs']) {
+    const path = join(flatRoot, 'dist', name); const text = readFileSync(path, 'utf8');
+    assert.equal((text.match(/from (["'])\.\/io\/read-descriptor\.mjs\1/g) ?? []).length, 1,
+      `${name} must retain one descriptor-helper import in the synthetic flat fixture`);
+    writeFileSync(path, text.replace(/from (["'])\.\/io\/read-descriptor\.mjs\1/, "from './read-descriptor.mjs'"));
+  }
   const legacyGitSnapshotSource = readFileSync(join(flatRoot, 'dist/authority-validation/legacy-git-snapshot.mjs'), 'utf8');
   assert.equal((legacyGitSnapshotSource.match(/from (["'])\.\.\/git\/buffered-git\.mjs\1/g) ?? []).length, 1,
     'the reconstructed flat snapshot has one import of the shared Git helper');
@@ -474,6 +484,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
   rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
   rmSync(bufferedGitDirectory, { recursive: true });
+  rmSync(descriptorDirectory, { recursive: true });
   const flatLegacyAuthorityCli = await import(pathToFileURL(legacyAuthorityCliPath).href);
   assert.equal(typeof flatLegacyAuthorityCli.prepareLegacyAuthority, 'function');
   assert.equal(typeof flatLegacyAuthorityCli.validateLegacyAuthorityDecision, 'function');
@@ -522,6 +533,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     .update(readFileSync(join(flatRoot, 'dist/legacy-authority-decision-helpers.mjs'))).digest('hex'));
   assert.equal(flatRequest.runtime.files['buffered-git.mjs'], createHash('sha256')
     .update(readFileSync(join(flatRoot, 'dist/buffered-git.mjs'))).digest('hex'));
+  assert.equal(flatRequest.runtime.files['read-descriptor.mjs'], createHash('sha256')
+    .update(readFileSync(join(flatRoot, 'dist/read-descriptor.mjs'))).digest('hex'));
   for (const helper of ['single-authority-member-helper.mjs', 'multi-authority-eligibility-helper.mjs']) {
     assert.equal(flatRequest.runtime.files[helper], createHash('sha256')
       .update(readFileSync(join(flatRoot, 'dist', helper))).digest('hex'));

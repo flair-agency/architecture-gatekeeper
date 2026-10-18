@@ -86,6 +86,8 @@ test('source runtime identity binds authored .mts and invalidates stale requests
     sha256(readFileSync(join(sourceRoot, 'src/owner-addition/finalize-owner-addition.mts'))));
   assert.equal(request.runtime.files['ci-review/ci-report-entrypoint.mts'],
     sha256(readFileSync(join(sourceRoot, 'src/ci-review/ci-report-entrypoint.mts'))));
+  assert.equal(request.runtime.files['io/read-descriptor.mts'],
+    sha256(readFileSync(join(sourceRoot, 'src/io/read-descriptor.mts'))));
   const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
   await runtime.validatePreviewReceipt(receipt, f.root);
 
@@ -110,4 +112,14 @@ test('source runtime identity binds authored .mts and invalidates stale requests
     /request differs from immutable predecessor inputs/);
   const reportFreshReceipt = await runtime.completePreviewLifecycle(reportChanged, ordinary(decision()), f.root);
   await runtime.validatePreviewReceipt(reportFreshReceipt, f.root);
+  appendFileSync(join(sourceRoot, 'src/io/read-descriptor.mts'), '\n// isolated helper source-byte mutation\n');
+  const helperChanged = await runtime.preparePreviewLifecycle(spec, f.root);
+  assert.notEqual(helperChanged.runtime.files['io/read-descriptor.mts'],
+    reportChanged.runtime.files['io/read-descriptor.mts']);
+  await assert.rejects(runtime.completePreviewLifecycle(reportChanged, ordinary(decision()), f.root),
+    /request differs from immutable predecessor inputs/);
+  await assert.rejects(runtime.validatePreviewReceipt(reportFreshReceipt, f.root),
+    /request differs from immutable predecessor inputs/);
+  const helperFreshReceipt = await runtime.completePreviewLifecycle(helperChanged, ordinary(decision()), f.root);
+  await runtime.validatePreviewReceipt(helperFreshReceipt, f.root);
 });

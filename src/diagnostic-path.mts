@@ -1,6 +1,7 @@
-import { closeSync, constants, fstatSync, lstatSync, openSync, readSync, realpathSync } from 'node:fs';
+import { closeSync, constants, fstatSync, lstatSync, openSync, realpathSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, resolve, sep } from 'node:path';
+import { readDescriptorBytes } from './io/read-descriptor.mts';
 
 /** Bound local diagnostic I/O to host-selected locations, never caller-provided roots.
  * This is a filesystem guard, not authentication or isolation from a same-user process.
@@ -50,17 +51,10 @@ export function readDiagnosticText(path: unknown, maximumBytes: number, accountR
     // Bound the actual read too: a file may grow after fstat. readFileSync(fd)
     // alone could otherwise allocate beyond the declared limit.
     const bytes = Buffer.alloc(maximumBytes + 1);
-    let length = 0;
-    while (length < bytes.length) {
-      const count = readSync(fd, bytes, length, bytes.length - length, null);
-      if (!count) break;
-      length += count;
-      // Account actual I/O before decoding, including bytes from reads that
-      // later fail or exceed the individual file limit. Existing callers omit
-      // the optional observer and retain the same guards and decoding.
-      accountReadBytes?.(count);
-    }
-    if (length > maximumBytes) throw new Error('Diagnostic file exceeds limit.');
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, length));
+    // Account actual I/O before decoding, including bytes from reads that
+    // later fail or exceed the individual file limit.
+    const actual = readDescriptorBytes(fd, bytes, accountReadBytes);
+    if (actual.length > maximumBytes) throw new Error('Diagnostic file exceeds limit.');
+    return new TextDecoder('utf-8', { fatal: true }).decode(actual);
   } finally { closeSync(fd); }
 }

@@ -1,4 +1,4 @@
-import { constants, openSync, closeSync, fstatSync, lstatSync, realpathSync, readSync } from 'node:fs';
+import { constants, openSync, closeSync, fstatSync, lstatSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
@@ -9,6 +9,7 @@ import { validatePreparedAuthorityDecision } from '../validate-authority-set-dec
 import { validateLegacyAuthorityDecision } from '../prepare-legacy-ci-authority.mjs';
 import { classifyReview, digestDecision, parseAuthorityProvenance, parseLegacyAuthorityProvenance } from '../ci-report.mjs';
 import { appendGitHubOutput } from '../runner-temp-path.mjs';
+import { readDescriptorBytes } from '../io/read-descriptor.mts';
 import { contextOf, requireSelfPassContext, createPassDisplay, emitPassDisplay, fail, type PassContext } from './codex-pass-publication.mts';
 
 /** Fixed job-local inputs; no destination or filename comes from reviewer output. */
@@ -25,10 +26,9 @@ export function readCodexInput(name: 'decision'|'schema'|'rules'|'authority'|'le
   try {
     const stat = fstatSync(fd); const limit = name === 'decision' ? 65_536 : 1_048_576;
     if (!stat.isFile() || stat.nlink !== 1 || stat.dev !== before.dev || stat.ino !== before.ino || stat.size < 1 || stat.size > limit) fail();
-    const bytes = Buffer.alloc(limit + 1); let size = 0;
-    while (size < bytes.length) { const n = readSync(fd,bytes,size,bytes.length-size,null); if (!n) break; size += n; }
-    if (size !== stat.size || size > limit) fail();
-    return new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes.subarray(0,size));
+    const bytes = readDescriptorBytes(fd, Buffer.alloc(limit + 1));
+    if (bytes.length !== stat.size || bytes.length > limit) fail();
+    return new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
   } finally { closeSync(fd); }
 }
 function json(text: string, label: string, depth = 256): unknown {
