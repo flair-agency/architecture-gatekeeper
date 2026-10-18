@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { runBufferedGit } from '../git/buffered-git.mts';
 import { appendGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory,
   writeRunnerTempFile } from '../runner-temp-path.mjs';
 import { TextDecoder } from 'node:util';
@@ -32,7 +32,7 @@ function outputDirectory(value: unknown): string {
 const SHA = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
 function git(root: unknown, ...args: unknown[]) {
-  return execFileSync('git', args as string[], { cwd: root as string, encoding: 'buffer', maxBuffer: 2_000_000 });
+  return runBufferedGit(root as string, args as string[]);
 }
 
 function committedFile(root: unknown, revision: unknown, path: unknown, maxBytes: number): Buffer {
