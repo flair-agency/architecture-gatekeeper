@@ -12,76 +12,174 @@ const source = {
   consumer: read('../.github/workflows/architecture-gate-consumer.yml'),
   self: read('../.github/workflows/architecture-gate.yml'),
   caller: read('../.github/workflows/self-architecture-gate.yml'),
+  providers: read('../.github/workflows/architecture-gate-providers.yml'),
 };
 const workflows = () => Object.fromEntries(Object.entries(source).map(([key, text]) => [key, parseWorkflow(text, key)]));
 const valid = () => assertWorkflowStructure(workflows());
 
 test('production workflow files satisfy parsed structural invariants', valid);
 
-test('review jobs validate and check out the immutable event merge commit', () => {
+test('review jobs recover stale merge metadata once and validate exact ordered event parents', () => {
   const mergeSha = '${{ github.event.pull_request.merge_commit_sha }}';
   const workflowsToCheck = workflows();
-  const runInline = (script, env) => spawnSync('/bin/bash', ['-e', '-u', '-o', 'pipefail', '-c', script], {
+  const checkedScripts = [];
+  const runInline = (script, env, cwd) => spawnSync('/bin/bash', ['-e', '-u', '-o', 'pipefail', '-c', script], {
+    cwd,
     env: { ...process.env, ...env },
     encoding: 'utf8',
   });
 
-  for (const profile of ['consumer', 'self']) {
-    const steps = workflowsToCheck[profile].jobs.review.steps;
+  for (const profile of ['consumer', 'self', 'providers']) {
+    const jobName = 'review';
+    const steps = workflowsToCheck[profile].jobs[jobName].steps;
     const guardIndex = steps.findIndex(step => step.name === 'Validate immutable pull request merge revision');
     const checkoutIndex = steps.findIndex(step => step.uses?.startsWith('actions/checkout@') && step.with?.ref === mergeSha);
+    const metadataIndex = steps.findIndex(step => step.name === 'Check event merge revision metadata');
+    const resolveIndex = steps.findIndex(step => step.name === 'Resolve current pull request merge ref once');
+    const refreshIndex = steps.findIndex(step => step.name === 'Refresh current pull request merge revision');
     const recordIndex = steps.findIndex(step => step.name === 'Record reviewed merge revision');
-    const buildIndex = steps.findIndex(step => step.name === 'Build the pinned validation runtime');
+    const buildIndex = steps.findIndex(step => step.name === 'Build the pinned validation runtime' || step.name === 'Build the pinned protected runtime');
     assert.ok(guardIndex > steps.findIndex(step => step.name === 'Check enforced credentials'), `${profile} guard follows credential check`);
-    assert.ok(checkoutIndex > guardIndex, `${profile} immutable guard precedes candidate checkout`);
-    assert.ok(recordIndex > checkoutIndex, `${profile} HEAD assertion follows candidate checkout`);
+    assert.ok(checkoutIndex > guardIndex, `${profile} immutable checkout follows event tuple guard`);
+    assert.ok(metadataIndex > checkoutIndex, `${profile} metadata comparison follows initial checkout`);
+    assert.ok(resolveIndex > metadataIndex && refreshIndex > resolveIndex && refreshIndex < recordIndex, `${profile} bounded immutable refresh precedes final revision record`);
     assert.ok(buildIndex > recordIndex, `${profile} exact merge tuple check precedes runtime build`);
 
     const guard = steps[guardIndex];
-    assert.deepEqual(guard.env, { MERGE_SHA: mergeSha });
+    assert.deepEqual(guard.env, {
+      MERGE_SHA: mergeSha,
+      BASE_SHA: '${{ github.event.pull_request.base.sha }}',
+      HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
+    });
     assert.match(guard.run, /process\.env\.MERGE_SHA/);
-    assert.match(guard.run, /sha\.length !== 40/);
-    assert.match(guard.run, /\^\[a-f0-9\]\{40\}\$/);
+    assert.match(guard.run, /process\.env\.BASE_SHA/);
+    assert.match(guard.run, /process\.env\.HEAD_SHA/);
     assert.equal(steps[checkoutIndex].with['fetch-depth'], 0);
     assert.equal(steps[checkoutIndex].with.submodules, "${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}");
     assert.equal(steps[checkoutIndex].with.token, "${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}");
     assert.equal(steps[checkoutIndex].with['persist-credentials'], false);
-    assert.ok(!steps[checkoutIndex].with.ref.includes('refs/pull/'), `${profile} checkout must not resolve a moving pull request ref`);
+    assert.ok(!steps[checkoutIndex].with.ref.includes('refs/pull/'), `${profile} initial checkout uses the immutable event SHA`);
+
+    const resolver = steps[resolveIndex];
+    assert.equal(resolver.id, 'refresh_merge');
+    assert.equal(resolver.if, "steps.event_revision.outputs.refresh == 'true'");
+    assert.equal(resolver['timeout-minutes'], 1, `${profile} merge-ref lookup has a bounded step timeout`);
+    assert.deepEqual(resolver.env, {
+      FETCH_TOKEN: steps[checkoutIndex].with.token,
+      REPOSITORY: '${{ github.repository }}',
+      SERVER_URL: '${{ github.server_url }}',
+      PR_NUMBER: '${{ github.event.pull_request.number }}',
+    });
+    assert.match(resolver.run, /timeout 30s git ls-remote --refs/);
+    assert.match(resolver.run, /GIT_CONFIG_KEY_0=.*http\..*extraheader/);
+    assert.match(resolver.run, /echo \"::add-mask::\$AUTH\"/);
+    assert.match(resolver.run, /REFRESHED_SHA.*\^\[a-f0-9\]\{40\}\$/);
+    assert.match(resolver.run, /REFRESHED_REF.*MERGE_REF/);
+    const refresh = steps[refreshIndex];
+    assert.equal(refresh.if, "steps.event_revision.outputs.refresh == 'true'");
+    assert.equal(refresh.with.ref, '${{ steps.refresh_merge.outputs.sha }}');
+    assert.equal(refresh.with['fetch-depth'], 0, `${profile} refresh fetches only the merge commit and its parents`);
+    assert.equal(refresh['timeout-minutes'], 3, `${profile} refresh has a bounded checkout timeout`);
+    assert.equal(refresh.with.submodules, steps[checkoutIndex].with.submodules, `${profile} refreshed checkout rematerializes selected submodules`);
+    assert.equal(refresh.with.token, steps[checkoutIndex].with.token, `${profile} refresh uses the same read-only checkout token selection`);
+    assert.equal(refresh.with['persist-credentials'], false);
+
+    const metadata = steps[metadataIndex];
+    checkedScripts.push({ profile, metadata: metadata.run, resolver: resolver.run, record: steps[recordIndex].run });
+    assert.equal(metadata.id, 'event_revision');
+    assert.deepEqual(metadata.env, {
+      EXPECTED_MERGE_SHA: mergeSha,
+      BASE_SHA: '${{ github.event.pull_request.base.sha }}',
+      HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
+    });
+    assert.match(metadata.run, /actual_sha.*EXPECTED_MERGE_SHA/);
+    assert.match(metadata.run, /Initial checkout SHA.*differs from event merge SHA/);
+    assert.match(metadata.run, /actual_parents.*expected_parents/);
+    assert.match(metadata.run, /printf .*expected.*got/);
+    assert.match(metadata.run, /refresh=false/);
+    assert.match(metadata.run, /refresh=true/);
 
     const record = steps[recordIndex];
     assert.equal(record.id, 'revision');
     assert.deepEqual(record.env, {
       EXPECTED_MERGE_SHA: mergeSha,
+      REFRESHED: '${{ steps.event_revision.outputs.refresh }}',
+      REFRESHED_SHA: '${{ steps.refresh_merge.outputs.sha }}',
       BASE_SHA: '${{ github.event.pull_request.base.sha }}',
       HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
     });
     assert.match(record.run, /git rev-parse HEAD/);
-    assert.match(record.run, /actual_sha.*!=.*EXPECTED_MERGE_SHA/);
     assert.match(record.run, /git --no-replace-objects rev-list --parents -n 1/);
     assert.match(record.run, /actual_parents.*!=.*expected_parents/);
-    assert.ok(record.run.indexOf('actual_sha') < record.run.indexOf('GITHUB_OUTPUT'), `${profile} output is written after comparison`);
-    assert.ok(record.run.indexOf('actual_parents') < record.run.indexOf('GITHUB_OUTPUT'), `${profile} output follows the exact parent tuple check`);
-    assert.match(record.run, /printf 'sha=%s\\n' "\$EXPECTED_MERGE_SHA"/);
+    assert.match(record.run, /REFRESHED.*true/);
+    assert.match(record.run, /printf 'sha=%s\\n' "\$actual_sha"/);
     const context = steps.find(step => step.name === 'Attach exact pull request task context to protected review');
-    assert.equal(context.env.BASE_SHA, '${{ github.event.pull_request.base.sha }}');
-    assert.equal(context.env.HEAD_SHA, '${{ github.event.pull_request.head.sha }}');
-    assert.equal(context.env.REVIEWED_SHA, '${{ steps.revision.outputs.sha }}');
+    if (context) assert.equal(context.env.REVIEWED_SHA, '${{ steps.revision.outputs.sha }}');
 
     const validSha = 'a'.repeat(40);
-    assert.equal(runInline(guard.run, { MERGE_SHA: validSha }).status, 0, `${profile} accepts a valid immutable SHA`);
-    for (const [label, value] of [
-      ['missing', undefined],
-      ['empty/null representation', ''],
-      ['short', 'a'.repeat(39)],
-      ['invalid character', 'a'.repeat(39) + 'g'],
-      ['uppercase', 'A'.repeat(40)],
-      ['embedded newline', 'a'.repeat(39) + '\n'],
-      ['mutable pull request ref', 'refs/pull/42/merge'],
+    const validEvent = { MERGE_SHA: validSha, BASE_SHA: 'b'.repeat(40), HEAD_SHA: 'c'.repeat(40) };
+    assert.equal(runInline(guard.run, validEvent).status, 0, `${profile} accepts valid event SHAs`);
+    for (const [label, field, value] of [
+      ['missing merge', 'MERGE_SHA', undefined], ['malformed base', 'BASE_SHA', 'b'.repeat(39)],
+      ['invalid head character', 'HEAD_SHA', 'c'.repeat(39) + 'g'],
     ]) {
-      const env = { MERGE_SHA: value };
-      if (value === undefined) delete env.MERGE_SHA;
+      const env = { ...validEvent, [field]: value };
+      if (value === undefined) delete env[field];
       assert.notEqual(runInline(guard.run, env).status, 0, `${profile} rejects ${label}`);
     }
+  }
+
+  assert.equal(checkedScripts[1].metadata, checkedScripts[0].metadata, 'self and consumer metadata guards stay aligned');
+  assert.equal(checkedScripts[2].metadata, checkedScripts[0].metadata, 'provider and consumer metadata guards stay aligned');
+  assert.equal(checkedScripts[1].resolver, checkedScripts[0].resolver, 'self and consumer resolver stay aligned');
+  assert.equal(checkedScripts[2].resolver, checkedScripts[0].resolver, 'provider and consumer resolver stay aligned');
+  assert.equal(checkedScripts[1].record, checkedScripts[0].record, 'self and consumer final validation stay aligned');
+  assert.equal(checkedScripts[2].record, checkedScripts[0].record, 'provider and consumer final validation stay aligned');
+  const resolverScript = workflowsToCheck.consumer.jobs.review.steps.find(step => step.name === 'Resolve current pull request merge ref once').run;
+  const resolverRoot = mkdtempSync(join(tmpdir(), 'agk-merge-ref-resolution-'));
+  try {
+    const fakeBin = join(resolverRoot, 'bin');
+    mkdirSync(fakeBin);
+    const fakeGit = join(fakeBin, 'git');
+    writeFileSync(fakeGit, `#!/bin/sh\nprintf '%s\n' "$*" >> "$FAKE_GIT_LOG"\nif test "$FAKE_GIT_EXIT" != 0; then exit "$FAKE_GIT_EXIT"; fi\nprintf '%s\n' "$FAKE_GIT_RESPONSE"\n`);
+    chmodSync(fakeGit, 0o755);
+    const fakeTimeout = join(fakeBin, 'timeout');
+    writeFileSync(fakeTimeout, `#!/bin/sh\ntest "$1" = 30s || exit 99\nshift\nexec "$@"\n`);
+    chmodSync(fakeTimeout, 0o755);
+    const runResolver = response => {
+      const output = join(resolverRoot, 'github-output');
+      const log = join(resolverRoot, 'git-args');
+      writeFileSync(output, '');
+      writeFileSync(log, '');
+      const result = runInline(resolverScript, {
+        FETCH_TOKEN: 'test-token', REPOSITORY: 'owner/repo', SERVER_URL: 'https://github.com',
+        PR_NUMBER: '42', GITHUB_OUTPUT: output, FAKE_GIT_RESPONSE: response,
+        FAKE_GIT_EXIT: response === 'network-failure' ? '7' : '0', FAKE_GIT_LOG: log,
+        PATH: `${fakeBin}:${process.env.PATH || '/usr/bin:/bin'}`,
+      });
+      return { result, output: readFileSync(output, 'utf8'), args: readFileSync(log, 'utf8') };
+    };
+    const resolvedSha = 'd'.repeat(40);
+    const validResolution = runResolver(`${resolvedSha}\trefs/pull/42/merge`);
+    assert.equal(validResolution.result.status, 0, validResolution.result.stderr);
+    assert.equal(validResolution.output, `sha=${resolvedSha}\n`);
+    assert.equal(validResolution.args.trim().split('\n').length, 1, 'valid merge ref is queried exactly once');
+    assert.doesNotMatch(validResolution.args, /test-token|AUTHORIZATION/, 'token is not passed on the git command line');
+    for (const [label, response] of [
+      ['missing ref', ''],
+      ['ambiguous ref', `${resolvedSha}\trefs/pull/42/merge\n${resolvedSha}\trefs/pull/43/merge`],
+      ['malformed SHA', `not-a-sha\trefs/pull/42/merge`],
+      ['wrong ref name', `${resolvedSha}\trefs/pull/41/merge`],
+      ['extra ref data', `${resolvedSha}\trefs/pull/42/merge extra`],
+      ['network failure', 'network-failure'],
+    ]) {
+      const rejected = runResolver(response);
+      assert.notEqual(rejected.result.status, 0, `${label} fails immutable ref resolution`);
+      assert.equal(rejected.output, '', `${label} emits no candidate SHA`);
+      assert.equal(rejected.args.trim().split('\n').length, 1, `${label} performs only one merge-ref query`);
+    }
+  } finally {
+    rmSync(resolverRoot, { recursive: true, force: true });
   }
 
   const root = mkdtempSync(join(tmpdir(), 'agk-merge-revision-'));
@@ -101,43 +199,102 @@ test('review jobs validate and check out the immutable event merge commit', () =
     git('commit', '-q', '-m', 'protected base snapshot');
     const base = git('rev-parse', 'HEAD');
     git('checkout', '-q', '-b', 'candidate');
-    writeFileSync(join(repository, 'head.txt'), 'candidate head snapshot\n');
+    writeFileSync(join(repository, 'head.txt'), 'previous candidate head\n');
     git('add', 'head.txt');
-    git('commit', '-q', '-m', 'candidate head snapshot');
-    const head = git('rev-parse', 'HEAD');
+    git('commit', '-q', '-m', 'previous candidate head');
+    const previousHead = git('rev-parse', 'HEAD');
     git('checkout', '-q', 'base');
     git('merge', '--no-ff', '--no-edit', 'candidate');
-    const merge = git('rev-parse', 'HEAD');
-    assert.match(merge, /^[a-f0-9]{40}$/);
+    const staleMerge = git('rev-parse', 'HEAD');
 
-    const record = workflowsToCheck.consumer.jobs.review.steps.find(step => step.name === 'Record reviewed merge revision');
+    writeFileSync(join(repository, 'head.txt'), 'current candidate head\n');
+    git('checkout', '-q', 'candidate');
+    git('add', 'head.txt');
+    git('commit', '-q', '-m', 'current candidate head');
+    const currentHead = git('rev-parse', 'HEAD');
+    git('checkout', '-q', 'base');
+    git('reset', '--hard', base);
+    git('merge', '--no-ff', '--no-edit', 'candidate');
+    const freshMerge = git('rev-parse', 'HEAD');
+    assert.notEqual(staleMerge, freshMerge, 'fixture represents stale event merge metadata');
+
+    const workflow = workflowsToCheck.consumer.jobs.review.steps;
+    const metadata = workflow.find(step => step.name === 'Check event merge revision metadata');
+    const record = workflow.find(step => step.name === 'Record reviewed merge revision');
     const outputPath = join(root, 'github-output');
-    writeFileSync(outputPath, '');
-    const matching = spawnSync('/bin/bash', ['-e', '-u', '-o', 'pipefail', '-c', record.run], {
-      cwd: repository,
-      env: { ...process.env, EXPECTED_MERGE_SHA: merge, BASE_SHA: base, HEAD_SHA: head, GITHUB_OUTPUT: outputPath },
-      encoding: 'utf8',
-    });
-    assert.equal(matching.status, 0, matching.stderr);
-    assert.equal(readFileSync(outputPath, 'utf8'), `sha=${merge}\n`);
 
-    const rejectedTuples = [
-      ['mismatched merge SHA', { EXPECTED_MERGE_SHA: 'b'.repeat(40), BASE_SHA: base, HEAD_SHA: head }],
-      ['swapped event parents', { EXPECTED_MERGE_SHA: merge, BASE_SHA: head, HEAD_SHA: base }],
-      ['stale event base', { EXPECTED_MERGE_SHA: merge, BASE_SHA: 'c'.repeat(40), HEAD_SHA: head }],
-      ['missing event base', { EXPECTED_MERGE_SHA: merge, BASE_SHA: '', HEAD_SHA: head }],
-      ['missing event head', { EXPECTED_MERGE_SHA: merge, BASE_SHA: base, HEAD_SHA: '' }],
-    ];
-    for (const [label, tuple] of rejectedTuples) {
+    // A checkout SHA mismatch is not event metadata skew and must never trigger recovery.
+    git('checkout', '--detach', staleMerge);
+    writeFileSync(outputPath, '');
+    const changedCheckout = runInline(metadata.run, {
+      EXPECTED_MERGE_SHA: freshMerge, BASE_SHA: base, HEAD_SHA: previousHead, GITHUB_OUTPUT: outputPath,
+    }, repository);
+    assert.notEqual(changedCheckout.status, 0, 'a changed initial checkout SHA fails without recovery');
+    assert.equal(readFileSync(outputPath, 'utf8'), '', 'a changed initial checkout SHA emits no refresh request');
+
+    // The normal exact event tuple remains on the fast path and emits the event SHA.
+    git('checkout', '--detach', staleMerge);
+    writeFileSync(outputPath, '');
+    const normalMetadata = runInline(metadata.run, {
+      EXPECTED_MERGE_SHA: staleMerge, BASE_SHA: base, HEAD_SHA: previousHead, GITHUB_OUTPUT: outputPath,
+    }, repository);
+    assert.equal(normalMetadata.status, 0, normalMetadata.stderr);
+    assert.equal(readFileSync(outputPath, 'utf8'), 'refresh=false\n');
+    writeFileSync(outputPath, '');
+    const normalRecord = runInline(record.run, {
+      EXPECTED_MERGE_SHA: staleMerge, REFRESHED: 'false', REFRESHED_SHA: '', BASE_SHA: base,
+      HEAD_SHA: previousHead, GITHUB_OUTPUT: outputPath,
+    }, repository);
+    assert.equal(normalRecord.status, 0, normalRecord.stderr);
+    assert.equal(readFileSync(outputPath, 'utf8'), `sha=${staleMerge}\n`);
+
+    // Issue #567: immutable event SHA exists but carries the previous head. One refresh selects the new exact-parent merge.
+    git('checkout', '--detach', staleMerge);
+    writeFileSync(outputPath, '');
+    const staleMetadata = runInline(metadata.run, {
+      EXPECTED_MERGE_SHA: staleMerge, BASE_SHA: base, HEAD_SHA: currentHead, GITHUB_OUTPUT: outputPath,
+    }, repository);
+    assert.equal(staleMetadata.status, 0, staleMetadata.stderr);
+    assert.match(staleMetadata.stderr, /stale or invalid parents/);
+    assert.equal(readFileSync(outputPath, 'utf8'), 'refresh=true\n');
+    git('checkout', '--detach', freshMerge); // models checkout of the single resolved immutable merge SHA
+    writeFileSync(outputPath, '');
+    const recovered = runInline(record.run, {
+      EXPECTED_MERGE_SHA: staleMerge, REFRESHED: 'true', REFRESHED_SHA: freshMerge,
+      BASE_SHA: base, HEAD_SHA: currentHead, GITHUB_OUTPUT: outputPath,
+    }, repository);
+    assert.equal(recovered.status, 0, recovered.stderr);
+    assert.equal(readFileSync(outputPath, 'utf8'), `sha=${freshMerge}\n`);
+
+    const tree = git('rev-parse', `${freshMerge}^{tree}`);
+    const reversed = git('commit-tree', tree, '-p', currentHead, '-p', base);
+    const wrongBase = git('commit-tree', tree, '-p', staleMerge, '-p', currentHead);
+    const wrongHead = git('commit-tree', tree, '-p', base, '-p', previousHead);
+    const oneParent = git('commit-tree', tree, '-p', base);
+    const extraParent = git('commit-tree', tree, '-p', base, '-p', currentHead, '-p', previousHead);
+    for (const [label, candidate] of [
+      ['reversed parents', reversed], ['different base', wrongBase], ['different head', wrongHead],
+      ['non-merge candidate', oneParent], ['extra parent', extraParent],
+    ]) {
+      git('checkout', '--detach', candidate);
       writeFileSync(outputPath, '');
-      const rejected = spawnSync('/bin/bash', ['-e', '-u', '-o', 'pipefail', '-c', record.run], {
-        cwd: repository,
-        env: { ...process.env, ...tuple, GITHUB_OUTPUT: outputPath },
-        encoding: 'utf8',
-      });
-      assert.notEqual(rejected.status, 0, `${label} fails the trusted merge guard`);
-      assert.equal(readFileSync(outputPath, 'utf8'), '', `${label} emits no reviewed revision`);
+      const rejected = runInline(record.run, {
+        EXPECTED_MERGE_SHA: staleMerge, REFRESHED: 'true', REFRESHED_SHA: candidate,
+        BASE_SHA: base, HEAD_SHA: currentHead, GITHUB_OUTPUT: outputPath,
+      }, repository);
+      assert.notEqual(rejected.status, 0, `${label} fails closed after refresh`);
+      assert.equal(readFileSync(outputPath, 'utf8'), '', `${label} emits no reviewed SHA`);
     }
+
+    // A refresh that is skipped or remains stale cannot silently accept the old SHA.
+    git('checkout', '--detach', staleMerge);
+    writeFileSync(outputPath, '');
+    const persistent = runInline(record.run, {
+      EXPECTED_MERGE_SHA: staleMerge, REFRESHED: 'true', REFRESHED_SHA: freshMerge,
+      BASE_SHA: base, HEAD_SHA: currentHead, GITHUB_OUTPUT: outputPath,
+    }, repository);
+    assert.notEqual(persistent.status, 0, 'persistent stale merge mismatch fails closed');
+    assert.equal(readFileSync(outputPath, 'utf8'), '', 'persistent mismatch emits no reviewed SHA');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

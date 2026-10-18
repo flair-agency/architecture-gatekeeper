@@ -34,15 +34,20 @@ type GitExec = (file: string, args: readonly string[], options: {
   stdio: ['ignore', 'pipe', 'pipe'];
 }) => string;
 
-/** Fetch only the exact reviewed commit object; leave checkout state untouched. */
+/** Fetch an exact event commit and recover one stale merge-parent tuple through the current PR ref. */
 export function fetchOrdinaryGeminiReviewedObject(input: {
-  root: string; repository: string; reviewedSha: string; sourceToken: string;
-}, registerSecret: (secret: string) => void, runGit: GitExec = execFileSync as GitExec): void {
+  root: string; repository: string; reviewedSha: string; baseSha: string; headSha: string;
+  prNumber: string; sourceToken: string;
+}, registerSecret: (secret: string) => void, runGit: GitExec = execFileSync as GitExec,
+  writeDiagnostic: (message: string) => void = message => process.stderr.write(message)): string {
   if (!input || typeof input !== 'object' || !/^\//.test(input.root) || resolve(input.root) !== input.root ||
       !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(input.repository) ||
-      !SHA.test(input.reviewedSha) || typeof input.sourceToken !== 'string' || !input.sourceToken ||
-      input.sourceToken.length > 16_384 || /[\u0000\r\n]/.test(input.sourceToken) || typeof registerSecret !== 'function' ||
-      typeof runGit !== 'function') fail();
+      !SHA.test(input.reviewedSha) || !SHA.test(input.baseSha) || !SHA.test(input.headSha) ||
+      new Set([input.reviewedSha, input.baseSha, input.headSha]).size !== 3 ||
+      typeof input.prNumber !== 'string' || !/^[1-9][0-9]{0,15}$/.test(input.prNumber) ||
+      typeof input.sourceToken !== 'string' || !input.sourceToken || input.sourceToken.length > 16_384 ||
+      /[\u0000\r\n]/.test(input.sourceToken) || typeof registerSecret !== 'function' || typeof runGit !== 'function' ||
+      typeof writeDiagnostic !== 'function') fail();
   const authorization = `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${input.sourceToken}`, 'utf8').toString('base64')}`;
   try {
     const registration = registerSecret(authorization) as unknown;
@@ -51,6 +56,8 @@ export function fetchOrdinaryGeminiReviewedObject(input: {
       fail();
     }
   } catch { fail(); }
+  const remoteUrl = `https://github.com/${input.repository}.git`;
+  const mergeRef = `refs/pull/${input.prNumber}/merge`;
   const gitEnv: NodeJS.ProcessEnv = {
     PATH: process.env.PATH || '/usr/bin:/bin',
     HOME: process.env.HOME || '/tmp',
@@ -66,15 +73,48 @@ export function fetchOrdinaryGeminiReviewedObject(input: {
     SSH_ASKPASS: '/bin/false',
     GIT_ALLOW_PROTOCOL: 'https',
   };
-  try {
-    runGit('git', ['--no-replace-objects', '-C', input.root, 'fetch', '--no-tags', '--no-recurse-submodules',
-      '--no-write-fetch-head', `https://github.com/${input.repository}.git`, input.reviewedSha], {
-      encoding: 'utf8', maxBuffer: 131_072, timeout: 60_000, env: gitEnv, stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    const resolved = runGit('git', ['--no-replace-objects', '-C', input.root, 'rev-parse', '--verify', `${input.reviewedSha}^{commit}`], {
-      encoding: 'utf8', maxBuffer: 8_192, timeout: 10_000, env: gitEnv, stdio: ['ignore', 'pipe', 'pipe'],
+  const run = (args: string[], timeout: number): string => runGit('git',
+    ['--no-replace-objects', '-C', input.root, ...args], {
+      encoding: 'utf8', maxBuffer: 131_072, timeout, env: gitEnv, stdio: ['ignore', 'pipe', 'pipe'],
     }).trim();
-    if (resolved !== input.reviewedSha) fail();
+  const fetchAndVerify = (sha: string): string => {
+    run(['fetch', '--no-tags', '--no-recurse-submodules', '--no-write-fetch-head', remoteUrl, sha], 60_000);
+    const resolved = run(['rev-parse', '--verify', `${sha}^{commit}`], 10_000);
+    if (resolved !== sha) fail();
+    return run(['rev-list', '--parents', '-n', '1', sha], 10_000);
+  };
+  const expectedParents = (mergeSha: string): string => `${mergeSha} ${input.baseSha} ${input.headSha}`;
+  const diagnose = (message: string): void => {
+    try { writeDiagnostic(message); } catch { fail(); }
+  };
+  try {
+    const eventParents = fetchAndVerify(input.reviewedSha);
+    if (eventParents === expectedParents(input.reviewedSha)) return input.reviewedSha;
+    diagnose('Event merge metadata has stale or inconsistent ordered parents; resolving the current PR merge ref once.\n');
+
+    let refreshedSha: string;
+    try {
+      const response = run(['ls-remote', '--refs', remoteUrl, mergeRef], 30_000);
+      const lines = response.split('\n');
+      if (lines.length !== 1) fail();
+      const fields = lines[0].split(/\s+/);
+      if (fields.length !== 2 || !SHA.test(fields[0]) || fields[1] !== mergeRef) fail();
+      refreshedSha = fields[0];
+    } catch {
+      diagnose('Current PR merge ref is missing, ambiguous, malformed, or unavailable; review remains incomplete.\n');
+      fail();
+    }
+    let refreshedParents: string;
+    try { refreshedParents = fetchAndVerify(refreshedSha); }
+    catch {
+      diagnose('Resolved immutable PR merge SHA could not be fetched or verified; review remains incomplete.\n');
+      fail();
+    }
+    if (refreshedParents !== expectedParents(refreshedSha)) {
+      diagnose('Refreshed merge candidate has invalid ordered event base/head parents; review remains incomplete.\n');
+      fail();
+    }
+    return refreshedSha;
   } catch { fail(); }
 }
 
@@ -90,7 +130,8 @@ export async function runOrdinaryGeminiCiWorkflow(): Promise<void> {
   const eventSha = env('GITHUB_SHA');
   const baseSha = env('BASE_SHA');
   const headSha = env('HEAD_SHA');
-  const reviewedSha = env('REVIEWED_SHA');
+  const eventMergeSha = env('REVIEWED_SHA');
+  const prNumber = env('PR_NUMBER');
   const baseBranch = env('BASE_BRANCH');
   // These selector values come from the protected caller workflow. The adapter
   // resolves their bytes only from the protected base commit.
@@ -105,8 +146,9 @@ export async function runOrdinaryGeminiCiWorkflow(): Promise<void> {
   const runnerTemp = resolve(env('RUNNER_TEMP'));
   if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(repository) ||
       !/^[1-9][0-9]{0,15}$/.test(runId) || !/^[1-9][0-9]{0,5}$/.test(runAttempt) ||
-      ![workflowSha, callerWorkflowSha, eventSha, baseSha, headSha, reviewedSha].every(value => SHA.test(value)) ||
-      new Set([baseSha, headSha, reviewedSha]).size !== 3 || !/^[A-Za-z0-9._/-]{1,128}$/.test(baseBranch) ||
+      ![workflowSha, callerWorkflowSha, eventSha, baseSha, headSha, eventMergeSha].every(value => SHA.test(value)) ||
+      new Set([baseSha, headSha, eventMergeSha]).size !== 3 || !/^[1-9][0-9]{0,15}$/.test(prNumber) ||
+      !/^[A-Za-z0-9._/-]{1,128}$/.test(baseBranch) ||
       !workflowRef.startsWith(`${workflowRepository}/.github/workflows/`) || workflowRef.length > 512 ||
       !callerWorkflowRef.startsWith(`${repository}/.github/workflows/`) || callerWorkflowRef.length > 512 ||
       !root.startsWith('/') || !runnerTemp.startsWith('/') || root === runnerTemp) fail();
@@ -119,7 +161,8 @@ export async function runOrdinaryGeminiCiWorkflow(): Promise<void> {
   const registerSecret = (secret: string): void => { process.stdout.write(maskCommand(secret)); };
   // Register the source capability before it can be used to prepare protected input.
   registerSecret(sourceToken);
-  fetchOrdinaryGeminiReviewedObject({ root, repository, reviewedSha, sourceToken }, registerSecret);
+  const reviewedSha = fetchOrdinaryGeminiReviewedObject({ root, repository, reviewedSha: eventMergeSha,
+    baseSha, headSha, prNumber, sourceToken }, registerSecret);
 
   const runtimeDirectory = join(runnerTemp, `agk-ordinary-gemini-runtime-${runId}-${runAttempt}`);
   prepareOrdinaryGeminiCiRuntime({ root, baseSha, runtimeDirectory });

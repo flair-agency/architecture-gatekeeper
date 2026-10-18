@@ -317,6 +317,8 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.ok(runtimeBuildIndex > revisionIndex, 'reviewed merge identity and parent tuple are checked before runtime build');
   assert.deepEqual(revision.env, {
     EXPECTED_MERGE_SHA: '${{ github.event.pull_request.merge_commit_sha }}',
+    REFRESHED: '${{ steps.event_revision.outputs.refresh }}',
+    REFRESHED_SHA: '${{ steps.refresh_merge.outputs.sha }}',
     BASE_SHA: '${{ github.event.pull_request.base.sha }}',
     HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
   });
@@ -326,7 +328,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(revision.run, /expected_parents="\$actual_sha \$BASE_SHA \$HEAD_SHA"/);
   assert.match(revision.run, /actual_parents.*!=.*expected_parents/);
   assert.ok(revision.run.indexOf('actual_parents') < revision.run.indexOf('GITHUB_OUTPUT'), 'reviewed SHA is emitted only after exact parent verification');
-  assert.match(revision.run, /printf 'sha=%s\\n' "\$EXPECTED_MERGE_SHA"/);
+  assert.match(revision.run, /printf 'sha=%s\\n' "\$actual_sha"/);
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
   assert.deepEqual(parsed.jobs.report.permissions, { contents: 'read', actions: 'read', 'pull-requests': 'write' },

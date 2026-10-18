@@ -189,8 +189,10 @@ jobs:
       - name: Validate immutable pull request merge revision
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          node -e 'const sha = process.env.MERGE_SHA; if (typeof sha !== "string" || sha.length !== 40 || !/^[a-f0-9]{40}$/.test(sha)) { console.error("Missing or malformed pull request merge commit SHA"); process.exit(1); }'
+          node -e 'for (const [name, sha] of Object.entries({ merge: process.env.MERGE_SHA, base: process.env.BASE_SHA, head: process.env.HEAD_SHA })) { if (typeof sha !== "string" || sha.length !== 40 || !/^[a-f0-9]{40}$/.test(sha)) { console.error(`Missing or malformed pull request ${name} SHA`); process.exit(1); } }'
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
@@ -198,8 +200,8 @@ jobs:
           submodules: ${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}
           token: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
           persist-credentials: false
-      - name: Record reviewed merge revision
-        id: revision
+      - name: Check event merge revision metadata
+        id: event_revision
         env:
           EXPECTED_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -208,16 +210,98 @@ jobs:
           set -euo pipefail
           actual_sha="$(git rev-parse HEAD)"
           if test "$actual_sha" != "$EXPECTED_MERGE_SHA"; then
-            echo "Checked out merge revision does not match the event merge commit SHA" >&2
+            echo "Initial checkout SHA $actual_sha differs from event merge SHA $EXPECTED_MERGE_SHA" >&2
             exit 1
           fi
           actual_parents="$(git --no-replace-objects rev-list --parents -n 1 "$actual_sha")"
           expected_parents="$actual_sha $BASE_SHA $HEAD_SHA"
-          if test "$actual_parents" != "$expected_parents"; then
-            echo "Checked out merge revision does not have the exact event base/head parents" >&2
+          if test "$actual_parents" = "$expected_parents"; then
+            echo 'Event merge metadata matches the checked out commit.'
+            echo 'refresh=false' >> "$GITHUB_OUTPUT"
+          else
+            printf 'Event merge metadata has stale or invalid parents; expected [%s], got [%s].\n' "$expected_parents" "$actual_parents" >&2
+            echo 'refresh=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Resolve current pull request merge ref once
+        id: refresh_merge
+        if: steps.event_revision.outputs.refresh == 'true'
+        timeout-minutes: 1
+        env:
+          FETCH_TOKEN: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test -n "$FETCH_TOKEN"
+          case "$REPOSITORY" in
+            */*) ;;
+            *) echo 'Invalid repository identity for merge-ref resolution' >&2; exit 1 ;;
+          esac
+          case "$SERVER_URL" in
+            https://*) ;;
+            *) echo 'Invalid GitHub server URL for merge-ref resolution' >&2; exit 1 ;;
+          esac
+          case "$PR_NUMBER" in
+            ''|*[!0-9]*) echo 'Invalid pull request number for merge-ref resolution' >&2; exit 1 ;;
+          esac
+          AUTH="$(printf 'x-access-token:%s' "$FETCH_TOKEN" | base64 -w0)"
+          SERVER_URL="${SERVER_URL%/}"
+          REMOTE_URL="$SERVER_URL/$REPOSITORY.git"
+          MERGE_REF="refs/pull/$PR_NUMBER/merge"
+          echo "::add-mask::$AUTH"
+          RESPONSE="$(GIT_CONFIG_COUNT=1 \
+            GIT_CONFIG_KEY_0="http.$SERVER_URL/.extraheader" \
+            GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $AUTH" \
+            GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/false SSH_ASKPASS=/bin/false \
+            timeout 30s git ls-remote --refs "$REMOTE_URL" "$MERGE_REF")"
+          if test "$(printf '%s\n' "$RESPONSE" | wc -l | tr -d ' ')" != 1; then
+            echo 'Current pull request merge ref is missing or ambiguous' >&2
             exit 1
           fi
-          printf 'sha=%s\n' "$EXPECTED_MERGE_SHA" >> "$GITHUB_OUTPUT"
+          read -r REFRESHED_SHA REFRESHED_REF EXTRA <<< "$RESPONSE"
+          if test -n "$EXTRA" || ! [[ "$REFRESHED_SHA" =~ ^[a-f0-9]{40}$ ]] || test "$REFRESHED_REF" != "$MERGE_REF"; then
+            echo 'Current pull request merge ref returned an invalid immutable SHA' >&2
+            exit 1
+          fi
+          printf 'sha=%s\n' "$REFRESHED_SHA" >> "$GITHUB_OUTPUT"
+      - name: Refresh current pull request merge revision
+        if: steps.event_revision.outputs.refresh == 'true'
+        uses: actions/checkout@v5
+        timeout-minutes: 3
+        with:
+          ref: ${{ steps.refresh_merge.outputs.sha }}
+          fetch-depth: 0
+          submodules: ${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}
+          token: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          persist-credentials: false
+      - name: Record reviewed merge revision
+        id: revision
+        env:
+          EXPECTED_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          REFRESHED: ${{ steps.event_revision.outputs.refresh }}
+          REFRESHED_SHA: ${{ steps.refresh_merge.outputs.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          actual_parents="$(git --no-replace-objects rev-list --parents -n 1 "$actual_sha")"
+          expected_parents="$actual_sha $BASE_SHA $HEAD_SHA"
+          if test "$actual_parents" != "$expected_parents"; then
+            printf 'Merge candidate %s has invalid ordered parents; expected [%s], got [%s].\n' "$actual_sha" "$expected_parents" "$actual_parents" >&2
+            exit 1
+          fi
+          if test "$REFRESHED" = true; then
+            if ! [[ "$REFRESHED_SHA" =~ ^[a-f0-9]{40}$ ]] || test "$actual_sha" != "$REFRESHED_SHA"; then
+              echo "Checked out merge candidate $actual_sha differs from the resolved immutable merge SHA $REFRESHED_SHA" >&2
+              exit 1
+            fi
+          elif test "$actual_sha" != "$EXPECTED_MERGE_SHA"; then
+            echo "Event merge revision changed without an authorized metadata-skew refresh" >&2
+            exit 1
+          fi
+          printf 'sha=%s\n' "$actual_sha" >> "$GITHUB_OUTPUT"
       - name: Materialize protected review instructions
         if: inputs.protected-review-instructions && needs.policy.outputs.policy_version != '1'
         env:
@@ -490,6 +574,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           REVIEWED_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_BRANCH: ${{ github.base_ref }}
           CALLER_POLICY_PATH: ${{ inputs.policy-path }}
           CALLER_PROMPT_PATH: ${{ inputs.prompt-path }}
