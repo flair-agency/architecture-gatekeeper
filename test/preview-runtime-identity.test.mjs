@@ -32,7 +32,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'github/github-authority-source.mjs', 'github/github-merge-group-event.mjs', 'github/github-owner-amendment-readback.mjs',
     'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs',
     'github/github-ruleset-readback.mjs', 'github/github-ruleset-readback-cli.mjs', 'review-inputs/review-input-path.mjs',
-    'authority-validation/legacy-git-snapshot.mjs', 'authority-validation/json-schema.mjs',
+    'authority-validation/legacy-git-snapshot.mjs', 'git/buffered-git.mjs', 'authority-validation/json-schema.mjs',
     'authority-validation/multi-authority-provenance.mjs', 'ci-review/legacy-authority-decision.mjs', 'ci-review/prepared-ci-decision.mjs', 'ci-review/ci-decision-kind.mjs', 'ci-review/verify-legacy-validation-selection.mjs', 'ci-execution/ci-execution-observation.mjs', 'owner-amendment/owner-amendment-block-semantic-record.mjs', 'owner-amendment/owner-amendment-block-context-verifier.mjs', 'owner-amendment/owner-amendment-block-evidence-composer.mjs', 'authority-validation/validate-decision.mjs', 'authority-validation/validate-authority-set-decision.mjs', 'authority-validation/preflight-authority-set-review.mjs', 'review-inputs/prepare-review-file-context.mjs', 'review-inputs/prepare-review-context.mjs', 'review-inputs/materialize-review-workspace.mjs', 'review-inputs/review-security-proxy.mjs', 'review-contract/review-contract.mjs', 'authority-validation/resolve-ci-policy.mjs', 'authority-validation/prepare-authority-set.mjs', 'owner-addition/owner-addition-adoption.mjs', 'owner-addition/owner-decision-addition.mjs'];
   nestedPaths.push('owner-amendment/owner-amendment-block-handoff.mjs',
     'owner-amendment/owner-amendment-block-handoff-compose.mjs',
@@ -185,16 +185,26 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   }
   restoreFlatImplementation('prepare-legacy-ci-authority.mjs', 'ci-review/legacy-ci-authority-preparer.mjs', {
     inlineRunner: 'runLegacyCiAuthorityCli',
-    remap: text => text.replace(/from (["'])\.\/legacy-authority-decision\.mjs\1/g, "from './legacy-authority-decision-helpers.mjs'"),
+    remap: text => {
+      assert.equal((text.match(/from (["'])\.\/git\/buffered-git\.mjs\1/g) ?? []).length, 1,
+        'the reconstructed flat legacy preparer has one import of the shared Git helper');
+      return text.replace(/from (["'])\.\/git\/buffered-git\.mjs\1/g, "from './buffered-git.mjs'")
+        .replace(/from (["'])\.\/legacy-authority-decision\.mjs\1/g, "from './legacy-authority-decision-helpers.mjs'");
+    },
   });
   restoreFlatImplementation('owner-addition-multiauthority.mjs', 'owner-addition/owner-addition-multiauthority.mjs', {
     remap: text => text.replace(/from (["'])\.\/multi-authority-eligibility\.mjs\1/g, "from './multi-authority-eligibility-helper.mjs'"),
   });
   restoreFlatImplementation('owner-addition-ci.mjs', 'owner-addition/owner-addition-ci-operations.mjs', {
     imports: "import { realpathSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\nimport { trustedGitHubWorkspaceRoot } from './github-runner-workspace.mjs';\n",
-    remap: text => text.replace(/export (async )?function (prepare|validateOwnerAdditionCiCli)\(/g, '$1function $2(')
-      .replace(/from (["'])\.\/single-authority-member\.mjs\1/g, "from './single-authority-member-helper.mjs'")
-      + '\nexport { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema, validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema };\n',
+    remap: text => {
+      assert.equal((text.match(/from (["'])\.\/git\/buffered-git\.mjs\1/g) ?? []).length, 1,
+        'the reconstructed flat owner-addition CLI has one import of the shared Git helper');
+      return text.replace(/export (async )?function (prepare|validateOwnerAdditionCiCli)\(/g, '$1function $2(')
+        .replace(/from (["'])\.\/single-authority-member\.mjs\1/g, "from './single-authority-member-helper.mjs'")
+        .replace(/from (["'])\.\/git\/buffered-git\.mjs\1/g, "from './buffered-git.mjs'")
+        + '\nexport { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema, validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema };\n';
+    },
   });
   for (const [flatName, groupedName] of [
     ['gemini-transport.mjs', 'reviewer-transports/gemini-transport.mjs'],
@@ -271,8 +281,14 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   assert.equal(flatRulesetResult.stderr, 'Isolated ruleset readback incomplete; no handoff authorization or credential output.\n');
   writeFileSync(join(flatRoot, 'dist/review-input-path.mjs'),
     readFileSync(join(flatRoot, 'dist/review-inputs/review-input-path.mjs')));
+  const bufferedGitDirectory = join(flatRoot, 'dist/git');
+  assert.deepEqual(readdirSync(bufferedGitDirectory), ['buffered-git.mjs'], 'the synthetic flat fixture has only the expected grouped Git helper');
+  copyFileSync(join(bufferedGitDirectory, 'buffered-git.mjs'), join(flatRoot, 'dist/buffered-git.mjs'));
+  const legacyGitSnapshotSource = readFileSync(join(flatRoot, 'dist/authority-validation/legacy-git-snapshot.mjs'), 'utf8');
+  assert.equal((legacyGitSnapshotSource.match(/from (["'])\.\.\/git\/buffered-git\.mjs\1/g) ?? []).length, 1,
+    'the reconstructed flat snapshot has one import of the shared Git helper');
   writeFileSync(join(flatRoot, 'dist/legacy-git-snapshot.mjs'),
-    readFileSync(join(flatRoot, 'dist/authority-validation/legacy-git-snapshot.mjs')));
+    legacyGitSnapshotSource.replace(/from (["'])\.\.\/git\/buffered-git\.mjs\1/, "from './buffered-git.mjs'"));
   writeFileSync(join(flatRoot, 'dist/json-schema.mjs'),
     readFileSync(join(flatRoot, 'dist/authority-validation/json-schema.mjs')));
   writeFileSync(join(flatRoot, 'dist/multi-authority-provenance.mjs'),
@@ -457,6 +473,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
   rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
+  rmSync(bufferedGitDirectory, { recursive: true });
   const flatLegacyAuthorityCli = await import(pathToFileURL(legacyAuthorityCliPath).href);
   assert.equal(typeof flatLegacyAuthorityCli.prepareLegacyAuthority, 'function');
   assert.equal(typeof flatLegacyAuthorityCli.validateLegacyAuthorityDecision, 'function');
@@ -503,6 +520,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   assert.equal(flatRequest.runtime.files['github-ruleset-readback-cli.mjs'], createHash('sha256').update(legacyRulesetCli).digest('hex'));
   assert.equal(flatRequest.runtime.files['legacy-authority-decision-helpers.mjs'], createHash('sha256')
     .update(readFileSync(join(flatRoot, 'dist/legacy-authority-decision-helpers.mjs'))).digest('hex'));
+  assert.equal(flatRequest.runtime.files['buffered-git.mjs'], createHash('sha256')
+    .update(readFileSync(join(flatRoot, 'dist/buffered-git.mjs'))).digest('hex'));
   for (const helper of ['single-authority-member-helper.mjs', 'multi-authority-eligibility-helper.mjs']) {
     assert.equal(flatRequest.runtime.files[helper], createHash('sha256')
       .update(readFileSync(join(flatRoot, 'dist', helper))).digest('hex'));

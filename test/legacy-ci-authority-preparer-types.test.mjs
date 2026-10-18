@@ -57,6 +57,62 @@ function runtimeAst(sourceText, fileName) {
   return canonical(ast.body);
 }
 
+// Expand only this reviewed process boundary before comparing the historical
+// operation pin. Use the actual helper AST, rather than replacing its call with
+// an assumed implementation. Explicit 'buffer' equals Node's former default;
+// the controlled-executable tests separately exercise that byte contract.
+function expandBufferedGitBoundary(body, helperBody) {
+  assert.equal(helperBody.length, 2, 'the helper has no additional top-level operations');
+  const [nativeImport, exported] = helperBody;
+  assert.equal(nativeImport.type, 'ImportDeclaration');
+  assert.equal(nativeImport.source.value, 'node:child_process');
+  assert.deepEqual(nativeImport.specifiers.map(item => [item.type, item.imported?.name, item.local.name]),
+    [['ImportSpecifier', 'execFileSync', 'execFileSync']]);
+  assert.equal(exported.type, 'ExportNamedDeclaration');
+  const helper = exported.declaration;
+  assert.equal(helper.type, 'FunctionDeclaration');
+  assert.equal(helper.id.name, 'runBufferedGit');
+  assert.equal(helper.async, false);
+  assert.equal(helper.generator, false);
+  assert.deepEqual(helper.params.map(item => [item.type, item.name]),
+    [['Identifier', 'root'], ['Identifier', 'args']]);
+  assert.equal(helper.body.body.length, 1);
+  assert.equal(helper.body.body[0].type, 'ReturnStatement');
+  const invocation = helper.body.body[0].argument;
+  assert.equal(invocation.type, 'CallExpression');
+  assert.equal(invocation.callee.name, 'execFileSync');
+  assert.equal(invocation.arguments.length, 3);
+  assert.deepEqual(invocation.arguments[1], { type: 'Identifier', name: 'args' });
+  const options = invocation.arguments[2];
+  assert.equal(options.type, 'ObjectExpression');
+  assert.deepEqual(options.properties.map(item => [item.type, item.key.name, item.computed, item.kind]),
+    [['Property', 'cwd', false, 'init'], ['Property', 'encoding', false, 'init'],
+      ['Property', 'maxBuffer', false, 'init']]);
+  assert.deepEqual(options.properties[0].value, { type: 'Identifier', name: 'root' });
+  assert.equal(options.properties[1].value.type, 'Literal');
+  assert.equal(options.properties[1].value.value, 'buffer');
+  let expansions = 0;
+  function expand(node) {
+    if (Array.isArray(node)) return node.map(expand);
+    if (!node || typeof node !== 'object') return node;
+    if (node.type === 'CallExpression' && node.callee?.type === 'Identifier' &&
+        node.callee.name === 'runBufferedGit') {
+      assert.equal(node.arguments.length, 2);
+      const expanded = structuredClone(invocation);
+      expanded.arguments[1] = node.arguments[1];
+      expanded.arguments[2].properties = expanded.arguments[2].properties
+        .filter(item => item.key.name !== 'encoding');
+      expanded.arguments[2].properties[0].value = node.arguments[0];
+      expansions += 1;
+      return expanded;
+    }
+    return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, expand(value)]));
+  }
+  const expanded = expand(body);
+  assert.equal(expansions, 1, 'only the existing Git diff acquisition is delegated');
+  return expanded;
+}
+
 function operationNodes(body) {
   const nodes = body.filter(node => node.type !== 'ImportDeclaration' && node.type !== 'ExportAllDeclaration')
     .map(node => node.type === 'ExportNamedDeclaration' ? node.declaration : node).filter(Boolean);
@@ -86,8 +142,13 @@ test('complete legacy preparer implementation and flat guard retain their pinned
   const emittedFacadeBody = runtimeAst(readFileSync(emittedFacadePath, 'utf8'), emittedFacadePath);
   const leafBody = runtimeAst(leafSource, leafPath);
   const emittedLeafBody = runtimeAst(emittedLeafSource, emittedLeafPath);
+  const helperPath = join(root, 'src/git/buffered-git.mts');
+  const emittedHelperPath = join(root, 'dist/git/buffered-git.mjs');
+  const helperBody = runtimeAst(readFileSync(helperPath, 'utf8'), helperPath);
+  const emittedHelperBody = runtimeAst(readFileSync(emittedHelperPath, 'utf8'), emittedHelperPath);
   assert.deepEqual(facadeBody, emittedFacadeBody);
   assert.deepEqual(leafBody, emittedLeafBody);
+  assert.deepEqual(helperBody, emittedHelperBody, 'source/emitted shared process operations');
 
   const facadeGuard = facadeBody.find(node => node.type === 'IfStatement');
   const emittedGuard = emittedFacadeBody.find(node => node.type === 'IfStatement');
@@ -97,19 +158,19 @@ test('complete legacy preparer implementation and flat guard retain their pinned
   assert.equal(facadeGuard.consequent.type, 'ExpressionStatement');
   assert.equal(facadeGuard.consequent.expression.type, 'CallExpression');
   assert.equal(facadeGuard.consequent.expression.callee.name, 'runLegacyCiAuthorityCli');
-  assert.equal(hash(operationNodes(leafBody)), authorized821c3eaOperationAst,
-    'typed runtime operations must match the owner-authorized 821c3ea baseline');
+  assert.equal(hash(operationNodes(expandBufferedGitBoundary(leafBody, helperBody))), authorized821c3eaOperationAst,
+    'expanding the verified process helper retains the owner-authorized 821c3ea operation pin');
   const typedLeaf = ts.createSourceFile(leafPath, leafSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const sourceImports = typedLeaf.statements.filter(ts.isImportDeclaration)
     .map(node => node.moduleSpecifier.text);
   const emittedImports = parse(emittedLeafSource, { ecmaVersion: 'latest', sourceType: 'module' }).body
     .filter(node => node.type === 'ImportDeclaration').map(node => node.source.value);
   assert.deepEqual(sourceImports, [
-    'node:child_process', 'node:path', 'node:util', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
+    'node:path', 'node:util', '../git/buffered-git.mts', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
     '../legacy-git-snapshot.mjs', '../github-runner-workspace.mjs', './legacy-authority-decision.mts',
   ]);
   assert.deepEqual(emittedImports, [
-    'node:child_process', 'node:path', 'node:util', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
+    'node:path', 'node:util', '../git/buffered-git.mjs', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
     '../legacy-git-snapshot.mjs', '../github-runner-workspace.mjs', './legacy-authority-decision.mjs',
   ]);
 

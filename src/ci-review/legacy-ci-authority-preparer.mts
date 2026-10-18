@@ -1,6 +1,6 @@
-import { execFileSync } from 'node:child_process';
 import { resolve as resolvePath } from 'node:path';
 import { TextDecoder } from 'node:util';
+import { runBufferedGit } from '../git/buffered-git.mts';
 import { appendGitHubOutput, readRunnerTempFile, writeRunnerTempFile } from '../runner-temp-path.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mjs';
 import { readRegularGitSnapshot } from '../legacy-git-snapshot.mjs';
@@ -42,9 +42,8 @@ function assertFixedOutputSelections(options: LegacyAuthorityPreparationInput): 
     }
   }
 }
-const gitDiffNames = (root: unknown, baseSha: unknown, reviewedSha: unknown) => execFileSync('git',
-  ['diff', '--name-only', '-z', '--no-renames', baseSha, reviewedSha] as string[],
-  { cwd: root, maxBuffer: 2_000_000 } as Parameters<typeof execFileSync>[2])
+const gitDiffNames = (root: unknown, baseSha: unknown, reviewedSha: unknown) => runBufferedGit(root as string,
+  ['diff', '--name-only', '-z', '--no-renames', baseSha, reviewedSha] as string[])
   .toString('utf8').split('\0').filter(Boolean);
 
 export interface LegacyAuthorityPreparationInput {

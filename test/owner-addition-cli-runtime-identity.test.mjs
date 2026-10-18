@@ -9,6 +9,7 @@ import { ordinary, decision, fixture, spec, commitOn } from './fixtures/preview-
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.resolve('@flair-agency/architecture-gatekeeper/preview-lifecycle'))));
 const operations = [
+  ['git/buffered-git.mjs', 'git/buffered-git.mts'],
   ['owner-addition/owner-addition-ci-operations.mjs', 'owner-addition/owner-addition-ci-operations.mts'],
   ['owner-addition/owner-addition-multiauthority.mjs', 'owner-addition/owner-addition-multiauthority.mts'],
 ];
