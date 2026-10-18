@@ -242,6 +242,10 @@ function apiFixture({ repoPath, baseSha, bSha, groupSha, triggerHeadSha, profile
 function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false } = {}) {
   const repoPath = mkdtempSync(join(tmpdir(), 'agk-merge-group-route-'));
   git(repoPath, ['init', '-q']);
+  // These short-lived fixtures need no detached Git housekeeping after a
+  // synchronous command has returned and cleanup has started.
+  git(repoPath, ['config', 'maintenance.auto', 'false']);
+  git(repoPath, ['config', 'gc.auto', '0']);
   if (includeRuntime) {
     for (const path of ['src', 'dist', 'scripts']) cpSync(join(root, path), join(repoPath, path), { recursive: true });
   }
@@ -280,7 +284,10 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false 
   const runGit = args => git(repoPath, args);
   return { repoPath, profile, baseSha, bSha, groupSha, runGit, policy, members,
     oldArchitecture, newArchitecture, oldOwnership, newOwnership, triggerHeadSha: 'c'.repeat(40),
-    cleanup: () => rmSync(repoPath, { recursive: true, force: true }) };
+    cleanup: () => {
+      rmSync(repoPath, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+      assert.equal(existsSync(repoPath), false, 'temporary Git fixture must be removed');
+    } };
 }
 
 function triggerEvidence(fixture, resolved, api) {

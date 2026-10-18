@@ -45,3 +45,14 @@ control completed within its bound and its temporary copy was removed.
 Repository production files were unchanged. The delivery PR records final
 revision-bound strict, full-suite, package, CodeQL, review and protected
 acceptance results separately from these local observations.
+
+The first hosted run at `1d1fb92` passed 2,076 of 2,077 cases but failed the
+self profile's cleanup hook with `ENOTEMPTY` while removing its temporary
+`.git` directory. It was held, not adopted. A separate ordinary two-case
+Trace2 observation confirmed that fixture Git commands start automatic
+maintenance with `--detach`; it did not identify the writer in that hosted
+failure. Temporary repositories now disable automatic maintenance and GC.
+Cleanup also uses Node's finite three retries with a 100 ms linear delay for
+transient removal errors and asserts absence afterward; persistent failure
+still fails the test. This changes fixture lifetime handling only, with no
+production Git setting, policy binding or routing assertion change.
