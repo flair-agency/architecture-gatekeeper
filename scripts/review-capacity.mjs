@@ -36,6 +36,7 @@ class CapacityExceeded extends Error {
 // Other base/runtime drift must be explicitly reviewed before this diagnostic
 // can measure it.
 const PREVIOUS_CONTEXT_SHA256 = '510b197070f8f12a15567409cf8e92e6da365bbd96e17ef4917cd8c21b38acf0';
+const PREVIOUS_CALLED_WORKFLOW_SHA256 = '65af7366c7cd8493ab836d1bf5a8b259e02d4fad71426e7c16b158693e64eebf';
 const FORMAT_FILES = [SELF_WORKFLOW, CALLED_WORKFLOW,
   'src/authority-set.mjs', 'src/resolve-ci-policy.mjs', 'src/prepare-authority-set.mjs',
   'src/preflight-authority-set-review.mjs', 'src/prepare-review-context.mjs',
@@ -59,6 +60,13 @@ const CURRENT_FORMAT_SHA256 = {
   "src/authority-validation/preflight-authority-set-review.mts": "0d63bd79613598af3d8e4d75bc9bdbbaf7ada600e41ba0b65625c0e1014bc495",
   "src/review-inputs/prepare-review-context.mts": "581b80bf5a5b3c6bce4e0369e5620605a92cef7080f0b82c1e6ae3d76f17ba02"
 };
+
+export function supportsPreparationFormatDigest(path, baseDigest, toolDigest) {
+  if (toolDigest !== CURRENT_FORMAT_SHA256[path]) return false;
+  return baseDigest === toolDigest ||
+    (path === CALLED_WORKFLOW && baseDigest === PREVIOUS_CALLED_WORKFLOW_SHA256) ||
+    (path === 'src/review-inputs/prepare-review-context.mts' && baseDigest === PREVIOUS_CONTEXT_SHA256);
+}
 
 function git(root, args, maxBuffer = 256) {
   return execFileSync('git', ['--no-replace-objects', '-C', root, ...args], {
@@ -90,9 +98,7 @@ function pathsForSelfRoute(root, baseSha) {
     const bytes = read(root, baseSha, path, 262_144);
     const digest = hash(bytes);
     const toolDigest = hash(readFileSync(new URL(`../${path}`, import.meta.url)));
-    if (toolDigest !== CURRENT_FORMAT_SHA256[path] ||
-        (digest !== toolDigest && !(path === 'src/review-inputs/prepare-review-context.mts' &&
-          digest === PREVIOUS_CONTEXT_SHA256))) reject('unsupported-preparation-format');
+    if (!supportsPreparationFormatDigest(path, digest, toolDigest)) reject('unsupported-preparation-format');
     formatDigests[path] = digest;
     contents[path] = bytes;
   }

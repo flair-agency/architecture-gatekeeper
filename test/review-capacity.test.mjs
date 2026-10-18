@@ -6,7 +6,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { capacityState, checkReviewCapacity } from '../scripts/review-capacity.mjs';
+import { capacityState, checkReviewCapacity, supportsPreparationFormatDigest } from '../scripts/review-capacity.mjs';
 
 const toolRoot = fileURLToPath(new URL('../', import.meta.url));
 const cli = join(toolRoot, 'scripts/review-capacity.mjs');
@@ -20,6 +20,9 @@ const runtimeFiles = [
   'src/review-inputs/prepare-review-context.mts',
 ];
 const sentinel = 'PRIVATE_CAPACITY_CONTENT_SENTINEL';
+const calledWorkflow = '.github/workflows/architecture-gate.yml';
+const previousCalledWorkflowSha256 = '65af7366c7cd8493ab836d1bf5a8b259e02d4fad71426e7c16b158693e64eebf';
+const currentCalledWorkflowSha256 = '3bd669043e677fed4f79d43f8fbe40778aa5b82a4ebd95e50e31d949f00076f2';
 const git = (root, ...args) => execFileSync('git', ['--no-replace-objects', '-C', root, ...args], {
   encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env,
     GIT_AUTHOR_NAME: 'Capacity test', GIT_AUTHOR_EMAIL: 'capacity@example.invalid',
@@ -66,6 +69,18 @@ function candidate(f, changes = { 'subject.md': 'after 雪 " \\\n' }) {
   git(f.root, 'merge', '--no-ff', '-qm', 'local preview fixture', head);
   return { root: f.root, base: f.base, head, reviewed: git(f.root, 'rev-parse', 'HEAD') };
 }
+
+test('supports the exact pre-merge called-workflow fingerprint and rejects unknown workflow drift', () => {
+  assert.equal(supportsPreparationFormatDigest(calledWorkflow, currentCalledWorkflowSha256,
+    currentCalledWorkflowSha256), true);
+  assert.equal(supportsPreparationFormatDigest(calledWorkflow, previousCalledWorkflowSha256,
+    currentCalledWorkflowSha256), true);
+  assert.equal(supportsPreparationFormatDigest(calledWorkflow, 'f'.repeat(64), currentCalledWorkflowSha256), false);
+  assert.equal(supportsPreparationFormatDigest(calledWorkflow, previousCalledWorkflowSha256,
+    'f'.repeat(64)), false);
+  assert.equal(supportsPreparationFormatDigest('.github/workflows/self-architecture-gate.yml',
+    previousCalledWorkflowSha256, currentCalledWorkflowSha256), false);
+});
 
 async function production(t, f, input) {
   const temp = mkdtempSync(join(tmpdir(), 'agk-capacity-production-'));
