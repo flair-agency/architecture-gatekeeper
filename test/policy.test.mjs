@@ -318,7 +318,7 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.deepEqual(revision.env, {
     EXPECTED_MERGE_SHA: '${{ github.event.pull_request.merge_commit_sha }}',
     REFRESHED: '${{ steps.event_revision.outputs.refresh }}',
-    REFRESHED_SHA: '${{ steps.refresh_merge.outputs.sha }}',
+    REFRESHED_SHA: '${{ steps.verified_merge_commit.outputs.sha }}',
     BASE_SHA: '${{ github.event.pull_request.base.sha }}',
     HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
   });
