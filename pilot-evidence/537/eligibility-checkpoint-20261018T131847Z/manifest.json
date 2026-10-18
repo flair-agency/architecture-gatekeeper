@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "public-eligibility-stage-manifest",
+  "destination": "pilot-evidence/537/eligibility-checkpoint-20261018T131847Z/",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "frozenReadCutoffUtc": "2026-10-18T13:18:47Z",
+  "files": [
+    {
+      "path": "eligibility-reconciliation-candidate.json",
+      "bytes": 64991,
+      "sha256": "9f9a9e8d3e86aa422fdb0335a6ef9fc73c9b4eb0b4d4b34323cc86051c8ebe1a",
+      "contentClass": "public-pr-eligibility-history-candidate"
+    },
+    {
+      "path": "route-capability.json",
+      "bytes": 946,
+      "sha256": "c6538b19052df96ec948637fac921740cf26a070d49788102d41f38e9668e15d",
+      "contentClass": "public-route-capability-metadata"
+    }
+  ],
+  "sourceReferences": {
+    "frozenPlanBranch": "pilot/537-evidence-20261013",
+    "frozenPlanPath": "pilot-evidence/537/plan-20261013.json",
+    "recoveryRunbookPath": "pilot-evidence/537/recovery-runbook-20261013.json",
+    "sourceCheckpointPath": "pilot-evidence/537/checkpoint-20261018T131847Z/checkpoint.json",
+    "sourceCheckpointSha256": "e453b585ad1e0dea517043150b49b08d35ba52577ea21928f5591d5eef0f5fc4",
+    "sourceInventoryPath": "pilot-evidence/537/checkpoint-20261018T131847Z/public-metadata.json",
+    "sourceInventorySha256": "888902f6bd820de0f6ceb9b81c5c03c964a5cc29c94c46a5a500319a41a0f935",
+    "sourcePRMetadataPath": "pilot-evidence/537/checkpoint-20261018T131847Z/pr-metadata.json",
+    "sourcePRMetadataSha256": "6530a1827429979b4cf9dcd7afdcac74ef6be05ae9311e926ff94c3bc0ff6c31",
+    "reconciliationCandidateSha256": "306045d9fde303458853854ce57c395a42d22c085dc8fa25d41004d5fcbf9019"
+  },
+  "eligibilitySummary": {
+    "frozenInitialEligiblePRs": 6,
+    "initialPopulationUnchanged": true,
+    "overlapIn45ReconciledRows": [
+      517
+    ],
+    "additionalExplicitReadyCandidates": 43,
+    "confirmedAdditionalWindowQualified": 42,
+    "uncertainPRs": [
+      563,
+      580
+    ],
+    "outside": 0
+  },
+  "fetchTimeBoundsUtc": {
+    "earliestKnownProbeCompleted": "2026-10-18T13:37:35Z",
+    "latestKnownAllHistoriesCompleted": "2026-10-18T13:39:44Z",
+    "exactPerRequestTimesCaptured": false
+  },
+  "scopeNote": "This stage is a supplemental eligibility-history candidate only; it does not replace the original 44-unresolved snapshot or the published 174-run inventory and does not claim a full population, denominator, audit, efficacy, or completion."
+}

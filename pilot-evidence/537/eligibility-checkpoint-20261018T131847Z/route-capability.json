@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "public-transition-history-route-capability",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "method": "GET",
+  "resource": "public GitHub issues timeline subresource",
+  "pathTemplate": "/repos/{owner}/{repo}/issues/{number}/timeline",
+  "capabilityEvidence": {
+    "probePR": 618,
+    "returnedEventCount": 26,
+    "observedTransitionKinds": [
+      "ready_for_review",
+      "closed"
+    ],
+    "readyForReviewAt": "2026-10-18T11:59:55Z",
+    "closedAt": "2026-10-18T12:09:56Z",
+    "fetchUtc": "2026-10-18T13:37:35Z",
+    "evidenceSha256": "02903cadf6f5c057d0162d1a108fdcc558aa22e23e98c47c660859267a3a0099"
+  },
+  "privacy": "Only public PR number, event kinds and timestamps retained; no actor identity, comment body, or findings.",
+  "limit": "One-PR route-capability check only. It demonstrates event availability but does not establish initial draft state for PRs lacking explicit history."
+}

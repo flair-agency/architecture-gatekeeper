@@ -1,0 +1,1964 @@
+{
+  "schemaVersion": 1,
+  "kind": "eligibility-reconciliation-candidate",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "frozenPilotWindow": {
+    "startUtc": "2026-10-13T13:43:35Z",
+    "endExclusiveUtc": "2026-11-10T13:43:35Z",
+    "timezone": "Asia/Tokyo"
+  },
+  "frozenReadCutoffUtc": "2026-10-18T13:18:47Z",
+  "initialEligiblePopulation": {
+    "prNumbers": [
+      517,
+      514,
+      510,
+      423,
+      297,
+      237
+    ],
+    "preservedUnchanged": true,
+    "overlapWith45Rows": [
+      517
+    ]
+  },
+  "sourceEvidence": {
+    "originalReconciliationCandidateSha256": "306045d9fde303458853854ce57c395a42d22c085dc8fa25d41004d5fcbf9019",
+    "frozenInventoryCheckpointId": "537-checkpoint-20261018T131847Z",
+    "frozenInventoryCheckpointSha256": "e453b585ad1e0dea517043150b49b08d35ba52577ea21928f5591d5eef0f5fc4",
+    "prMetadataSha256": "6530a1827429979b4cf9dcd7afdcac74ef6be05ae9311e926ff94c3bc0ff6c31",
+    "runAttemptArtifactInventorySha256": "888902f6bd820de0f6ceb9b81c5c03c964a5cc29c94c46a5a500319a41a0f935",
+    "transitionRouteCapabilityEvidenceSha256": "02903cadf6f5c057d0162d1a108fdcc558aa22e23e98c47c660859267a3a0099"
+  },
+  "reconciliationRule": "Preserve the frozen initial eligible PR set independently. For an additional PR created within the frozen window, an explicit ready_for_review event at or before the cutoff establishes that the PR entered a non-draft state by the cutoff; because its creation is in-window, its first non-draft state cannot predate the window. The ready event timestamp is not asserted to be the exact first-ever non-draft transition. Missing or incomplete evidence remains uncertain. Do not infer historical state from current draft/status alone.",
+  "counts": {
+    "retainedPRRows": 45,
+    "frozenInitialEligiblePRs": 6,
+    "frozenInitialPopulationOverlapInRetainedRows": 1,
+    "additionalExplicitReadyTransitionCandidates": 43,
+    "additionalWindowQualifiedByAvailableHistory": 42,
+    "uncertain": 2,
+    "outside": 0
+  },
+  "additionalWindowQualifiedPrNumbers": [
+    619,
+    618,
+    617,
+    616,
+    615,
+    614,
+    613,
+    612,
+    611,
+    610,
+    609,
+    608,
+    607,
+    606,
+    605,
+    604,
+    603,
+    602,
+    601,
+    600,
+    599,
+    598,
+    597,
+    596,
+    595,
+    594,
+    593,
+    592,
+    591,
+    590,
+    589,
+    588,
+    587,
+    586,
+    585,
+    584,
+    581,
+    583,
+    582,
+    579,
+    578,
+    577
+  ],
+  "uncertainPrNumbers": [
+    580,
+    563
+  ],
+  "outsidePrNumbers": [],
+  "laterObservedTransitions": [
+    {
+      "prNumber": 619,
+      "event": "closed",
+      "createdAt": "2026-10-18T13:34:55Z"
+    },
+    {
+      "prNumber": 619,
+      "event": "merged",
+      "createdAt": "2026-10-18T13:34:55Z"
+    }
+  ],
+  "historyCoverage": {
+    "endpointPathTemplate": "/repos/{owner}/{repo}/issues/{number}/timeline",
+    "method": "GET",
+    "maxPagesPerPR": 3,
+    "pageSize": 100,
+    "maxConcurrency": 6,
+    "requestedPRs": 45,
+    "completedHistories": 45,
+    "pagesReturned": 47,
+    "eventsObserved": 1733,
+    "errorsOrCaps": 0,
+    "fetchTimeBoundsUtc": {
+      "earliestKnownProbeCompleted": "2026-10-18T13:37:35Z",
+      "latestKnownAllHistoriesCompleted": "2026-10-18T13:39:44Z",
+      "exactPerRequestTimesCaptured": false
+    }
+  },
+  "rows": [
+    {
+      "prNumber": 619,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T13:14:50Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T13:17:08Z",
+      "closedAtFromRetainedMetadata": null,
+      "mergedFromRetainedMetadata": false,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 38,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T13:18:05Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T13:34:55Z",
+            "relativeToCutoff": "after-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T13:34:55Z",
+            "relativeToCutoff": "after-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T13:18:05Z"
+    },
+    {
+      "prNumber": 618,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T11:59:25Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T12:09:56Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T12:09:56Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 26,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T11:59:55Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T12:09:56Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T12:09:56Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T11:59:55Z"
+    },
+    {
+      "prNumber": 617,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T11:32:02Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T11:54:35Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T11:54:34Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 34,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T11:33:09Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T11:54:34Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T11:54:35Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T11:33:09Z"
+    },
+    {
+      "prNumber": 616,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T10:57:18Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T11:11:03Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T11:11:03Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 31,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T10:58:21Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T11:11:03Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T11:11:03Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T10:58:21Z"
+    },
+    {
+      "prNumber": 615,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T10:20:49Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T10:43:26Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T10:43:26Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 26,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T10:21:40Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T10:43:26Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T10:43:26Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T10:21:40Z"
+    },
+    {
+      "prNumber": 614,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T07:16:33Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T07:39:24Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T07:39:24Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 25,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T07:21:18Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T07:39:24Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T07:39:24Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T07:21:18Z"
+    },
+    {
+      "prNumber": 613,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T06:59:27Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T07:11:50Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T07:11:50Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 24,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T07:01:41Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T07:11:50Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T07:11:50Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T07:01:41Z"
+    },
+    {
+      "prNumber": 612,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T06:29:57Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:38:58Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T06:38:58Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 24,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T06:30:23Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T06:38:58Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T06:38:58Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T06:30:23Z"
+    },
+    {
+      "prNumber": 611,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T06:18:22Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:27:52Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T06:27:52Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 31,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T06:20:47Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T06:27:52Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T06:27:52Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T06:20:47Z"
+    },
+    {
+      "prNumber": 610,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T04:57:22Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:23Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T05:23:35Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 44,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T04:57:49Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T05:13:27Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T05:23:35Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T05:23:35Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T04:57:49Z"
+    },
+    {
+      "prNumber": 609,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T04:44:25Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:22Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T04:54:28Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 27,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T04:45:14Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T04:54:28Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T04:54:28Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T04:45:14Z"
+    },
+    {
+      "prNumber": 608,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T04:30:03Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:21Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T04:41:05Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 28,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T04:32:20Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T04:41:05Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T04:41:05Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T04:32:20Z"
+    },
+    {
+      "prNumber": 607,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T03:55:43Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:20Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T04:24:31Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 55,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T03:56:07Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T04:07:10Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T04:10:29Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T04:24:31Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T04:24:31Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T03:56:07Z"
+    },
+    {
+      "prNumber": 606,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T03:33:44Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:18Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T03:48:35Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 42,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T03:34:47Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T03:48:35Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T03:48:35Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T03:34:47Z"
+    },
+    {
+      "prNumber": 605,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T03:16:23Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:17Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T03:30:31Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 33,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T03:18:05Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T03:30:31Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T03:30:31Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T03:18:05Z"
+    },
+    {
+      "prNumber": 604,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T01:57:08Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:15Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T02:19:14Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 45,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T01:58:13Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T02:07:06Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T02:19:13Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T02:19:14Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T01:58:13Z"
+    },
+    {
+      "prNumber": 603,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T01:43:22Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:14Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T05:38:52Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 56,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T02:28:08Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T03:21:41Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T03:36:20Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T04:36:18Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T04:50:28Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T05:05:43Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T05:16:30Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T05:28:46Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T05:38:52Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T05:38:52Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T02:28:08Z"
+    },
+    {
+      "prNumber": 602,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-18T01:06:55Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:13Z",
+      "closedAtFromRetainedMetadata": "2026-10-18T01:24:33Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 29,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-18T01:07:44Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-18T01:24:33Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-18T01:24:33Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-18T01:07:44Z"
+    },
+    {
+      "prNumber": 601,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-17T23:15:49Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:12Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T23:28:53Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 29,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T23:17:03Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T23:28:53Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T23:28:54Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-17T23:17:03Z"
+    },
+    {
+      "prNumber": 600,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-17T23:01:46Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:10Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T23:14:15Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 29,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T23:02:21Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T23:14:15Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T23:14:15Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-17T23:02:21Z"
+    },
+    {
+      "prNumber": 599,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-17T22:27:26Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:09Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T22:59:50Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 44,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T22:28:12Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T22:39:21Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T22:59:50Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T22:59:50Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-17T22:28:12Z"
+    },
+    {
+      "prNumber": 598,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-17T22:11:03Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:08Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T22:25:05Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 30,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T22:11:33Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T22:25:05Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T22:25:05Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-17T22:11:33Z"
+    },
+    {
+      "prNumber": 597,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-17T21:27:16Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:06Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T21:40:58Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 42,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T21:27:58Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T21:35:36Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T21:40:58Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T21:40:58Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-17T21:27:58Z"
+    },
+    {
+      "prNumber": 596,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-17T21:01:32Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:05Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T21:21:08Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 40,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T21:04:19Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T21:13:44Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T21:21:08Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T21:21:08Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-17T21:04:19Z"
+    },
+    {
+      "prNumber": 595,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-17T20:46:09Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:04Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T20:57:32Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 26,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T20:46:59Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T20:57:32Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T20:57:33Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-17T20:46:59Z"
+    },
+    {
+      "prNumber": 594,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-17T19:27:39Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:02Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T19:39:31Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 33,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T19:28:17Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T19:39:31Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T19:39:31Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-17T19:28:17Z"
+    },
+    {
+      "prNumber": 593,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-17T19:15:19Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:01Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T19:25:23Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 38,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T19:18:03Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T19:25:23Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T19:25:23Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-17T19:18:03Z"
+    },
+    {
+      "prNumber": 592,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-17T18:35:00Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:23:00Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T18:53:09Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 31,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T18:36:07Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T18:53:09Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T18:53:09Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-17T18:36:07Z"
+    },
+    {
+      "prNumber": 591,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-15T18:32:59Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:22:59Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T18:20:30Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 50,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-15T18:38:07Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T17:42:14Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T18:20:30Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T18:20:30Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-15T18:38:07Z"
+    },
+    {
+      "prNumber": 590,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-14T12:16:44Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:22:57Z",
+      "closedAtFromRetainedMetadata": "2026-10-14T12:37:35Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 25,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T12:27:06Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T12:37:35Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-14T12:37:35Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-14T12:27:06Z"
+    },
+    {
+      "prNumber": 589,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-14T12:00:20Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:22:56Z",
+      "closedAtFromRetainedMetadata": "2026-10-14T14:31:01Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 74,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T12:10:35Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T12:45:57Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T13:36:16Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T14:21:48Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T14:31:01Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-14T14:31:01Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-14T12:10:35Z"
+    },
+    {
+      "prNumber": 588,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-14T11:31:28Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:22:54Z",
+      "closedAtFromRetainedMetadata": "2026-10-14T11:43:42Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 20,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T11:40:12Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T11:43:42Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-14T11:43:42Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-14T11:40:12Z"
+    },
+    {
+      "prNumber": 587,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-14T10:39:44Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:22:53Z",
+      "closedAtFromRetainedMetadata": "2026-10-17T18:31:16Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 2,
+        "eventsObserved": 115,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T14:48:11Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T15:06:46Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T17:42:20Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-17T18:23:03Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-17T18:31:16Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-17T18:31:16Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-14T14:48:11Z"
+    },
+    {
+      "prNumber": 586,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-14T09:51:59Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:22:52Z",
+      "closedAtFromRetainedMetadata": "2026-10-14T10:32:10Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 23,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T10:23:35Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T10:32:10Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-14T10:32:10Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-14T10:23:35Z"
+    },
+    {
+      "prNumber": 585,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-14T07:35:15Z",
+      "updatedAtFromRetainedMetadata": "2026-10-18T06:22:51Z",
+      "closedAtFromRetainedMetadata": "2026-10-14T09:39:12Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 20,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T09:19:53Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T09:39:12Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-14T09:39:12Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-14T09:19:53Z"
+    },
+    {
+      "prNumber": 584,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-14T07:06:29Z",
+      "updatedAtFromRetainedMetadata": "2026-10-14T11:13:21Z",
+      "closedAtFromRetainedMetadata": "2026-10-14T11:13:21Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 2,
+        "eventsObserved": 163,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T08:22:55Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T08:35:22Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "reopened",
+            "createdAt": "2026-10-14T08:35:32Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T08:39:46Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "reopened",
+            "createdAt": "2026-10-14T08:39:50Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T08:45:56Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "reopened",
+            "createdAt": "2026-10-14T08:46:00Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T08:50:45Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T09:26:58Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "reopened",
+            "createdAt": "2026-10-14T09:27:03Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T10:59:02Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T11:05:41Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T11:13:21Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-14T11:13:21Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-14T08:22:55Z"
+    },
+    {
+      "prNumber": 581,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-13T20:56:15Z",
+      "updatedAtFromRetainedMetadata": "2026-10-14T07:24:32Z",
+      "closedAtFromRetainedMetadata": "2026-10-14T07:19:58Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 17,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-13T21:17:22Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T07:13:45Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T07:19:58Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-14T07:19:58Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-13T21:17:22Z"
+    },
+    {
+      "prNumber": 583,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-13T23:43:29Z",
+      "updatedAtFromRetainedMetadata": "2026-10-14T01:15:11Z",
+      "closedAtFromRetainedMetadata": "2026-10-14T01:12:40Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 81,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-13T23:43:44Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-13T23:57:32Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T00:06:13Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T00:26:06Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T00:40:42Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-14T01:05:03Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-14T01:12:40Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-14T01:12:40Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-13T23:43:44Z"
+    },
+    {
+      "prNumber": 582,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-13T22:59:46Z",
+      "updatedAtFromRetainedMetadata": "2026-10-13T23:41:06Z",
+      "closedAtFromRetainedMetadata": "2026-10-13T23:40:41Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 32,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-13T23:02:09Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-13T23:24:01Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-13T23:34:04Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-13T23:40:41Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-13T23:40:41Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-13T23:02:09Z"
+    },
+    {
+      "prNumber": 580,
+      "disposition": "uncertain-no-explicit-ready-transition",
+      "createdAtFromRetainedMetadata": "2026-10-13T20:42:44Z",
+      "updatedAtFromRetainedMetadata": "2026-10-13T23:06:07Z",
+      "closedAtFromRetainedMetadata": "2026-10-13T22:58:34Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 34,
+        "transitionEvents": [
+          {
+            "event": "closed",
+            "createdAt": "2026-10-13T21:05:05Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "reopened",
+            "createdAt": "2026-10-13T21:05:08Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-13T21:42:00Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "reopened",
+            "createdAt": "2026-10-13T21:42:02Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-13T21:48:27Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "reopened",
+            "createdAt": "2026-10-13T21:48:29Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-13T22:58:34Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-13T22:58:34Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": null
+    },
+    {
+      "prNumber": 579,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-13T19:12:09Z",
+      "updatedAtFromRetainedMetadata": "2026-10-13T20:45:22Z",
+      "closedAtFromRetainedMetadata": "2026-10-13T20:45:21Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 18,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-13T19:41:58Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-13T20:36:10Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-13T20:45:21Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-13T20:45:21Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-13T19:41:58Z"
+    },
+    {
+      "prNumber": 517,
+      "disposition": "frozen-initial-population-preserved",
+      "createdAtFromRetainedMetadata": "2026-10-11T13:36:06Z",
+      "updatedAtFromRetainedMetadata": "2026-10-13T19:38:34Z",
+      "closedAtFromRetainedMetadata": "2026-10-13T19:38:34Z",
+      "mergedFromRetainedMetadata": false,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 55,
+        "transitionEvents": [
+          {
+            "event": "closed",
+            "createdAt": "2026-10-11T14:40:15Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "reopened",
+            "createdAt": "2026-10-11T14:40:20Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-11T14:41:45Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-11T22:47:04Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "reopened",
+            "createdAt": "2026-10-11T22:47:10Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-12T03:35:43Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-13T19:38:35Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-11T14:41:45Z"
+    },
+    {
+      "prNumber": 563,
+      "disposition": "uncertain-prewindow-created-initial-nondraft-history-not-established",
+      "createdAtFromRetainedMetadata": "2026-10-12T07:01:44Z",
+      "updatedAtFromRetainedMetadata": "2026-10-13T19:00:35Z",
+      "closedAtFromRetainedMetadata": "2026-10-13T18:58:42Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 20,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-13T18:52:27Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-13T18:58:42Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-13T18:58:43Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "uncertaintyReason": "The first explicit ready_for_review event is within the window, but the PR was created before the window and the timeline has no opened event proving its initial draft state. No converted_to_draft event appears in the retained complete history; this absence does not establish that it was never non-draft before the window.",
+      "earliestExplicitReadyForReviewEventAt": "2026-10-13T18:52:27Z"
+    },
+    {
+      "prNumber": 578,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-13T17:42:13Z",
+      "updatedAtFromRetainedMetadata": "2026-10-13T18:46:31Z",
+      "closedAtFromRetainedMetadata": "2026-10-13T18:08:45Z",
+      "mergedFromRetainedMetadata": true,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 14,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-13T17:53:48Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "closed",
+            "createdAt": "2026-10-13T18:08:45Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          },
+          {
+            "event": "merged",
+            "createdAt": "2026-10-13T18:08:45Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-13T17:53:48Z"
+    },
+    {
+      "prNumber": 577,
+      "disposition": "additional-window-qualified-by-creation-and-ready",
+      "createdAtFromRetainedMetadata": "2026-10-13T14:28:55Z",
+      "updatedAtFromRetainedMetadata": "2026-10-13T14:59:37Z",
+      "closedAtFromRetainedMetadata": null,
+      "mergedFromRetainedMetadata": false,
+      "draftAtObservationFromRetainedMetadata": false,
+      "history": {
+        "status": "ok",
+        "complete": true,
+        "pages": 1,
+        "eventsObserved": 12,
+        "transitionEvents": [
+          {
+            "event": "ready_for_review",
+            "createdAt": "2026-10-13T14:53:24Z",
+            "relativeToCutoff": "at-or-before-cutoff"
+          }
+        ],
+        "errors": []
+      },
+      "earliestExplicitReadyForReviewEventAt": "2026-10-13T14:53:24Z"
+    }
+  ],
+  "preservationNotice": "This candidate supplements the original frozen checkpoint and its 44 unresolved eligibility rows. It does not rewrite that snapshot or the published run/artifact inventory.",
+  "interpretationLimits": [
+    "No full-population denominator, effectiveness, audit, sampling, natural-defect, or completion claim is made.",
+    "Uncertainty remains explicit for PR 563 initial state and PR 580 missing explicit ready transition.",
+    "PR 619 close/merge events after the read cutoff are later observations and are not projected backward.",
+    "The 45-row source selection is retained metadata, not a complete repository-wide PR history."
+  ],
+  "qualificationEvidence": {
+    "confirmed42CreatedWithinWindow": true,
+    "confirmed42CreationTimestampCheck": "Every confirmed additional PR was created within the frozen window and has an explicit ready_for_review event at or before the cutoff. Its first non-draft state cannot predate creation, so eligibility is within-window; the exact first non-draft event is not established.",
+    "prewindowCreatedException": {
+      "prNumber": 563,
+      "createdAt": "2026-10-12T07:01:44Z",
+      "timelineHasConvertedToDraftBeforeReady": false,
+      "timelineHasEarlierReadyForReview": false,
+      "initialOpenedStateProven": false,
+      "disposition": "uncertain-prewindow-created-initial-nondraft-history-not-established",
+      "earliestExplicitReadyForReviewEventAt": "2026-10-13T18:52:27Z"
+    },
+    "missingTransitionException": {
+      "prNumber": 580,
+      "explicitReadyForReviewEventFound": false,
+      "disposition": "uncertain-no-explicit-ready-transition"
+    }
+  },
+  "additionalReadyTransitionCandidatePrNumbers": [
+    619,
+    618,
+    617,
+    616,
+    615,
+    614,
+    613,
+    612,
+    611,
+    610,
+    609,
+    608,
+    607,
+    606,
+    605,
+    604,
+    603,
+    602,
+    601,
+    600,
+    599,
+    598,
+    597,
+    596,
+    595,
+    594,
+    593,
+    592,
+    591,
+    590,
+    589,
+    588,
+    587,
+    586,
+    585,
+    584,
+    581,
+    583,
+    582,
+    579,
+    563,
+    578,
+    577
+  ]
+}

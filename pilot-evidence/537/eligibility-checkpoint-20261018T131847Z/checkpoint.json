@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "checkpointId": "537-eligibility-checkpoint-20261018T131847Z",
+  "destination": "pilot-evidence/537/eligibility-checkpoint-20261018T131847Z/",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "frozenPilotWindow": {
+    "startUtc": "2026-10-13T13:43:35Z",
+    "endExclusiveUtc": "2026-11-10T13:43:35Z",
+    "timezone": "Asia/Tokyo"
+  },
+  "frozenReadCutoffUtc": "2026-10-18T13:18:47Z",
+  "frozenPlanReference": {
+    "branch": "pilot/537-evidence-20261013",
+    "planPath": "pilot-evidence/537/plan-20261013.json",
+    "recoveryRunbookPath": "pilot-evidence/537/recovery-runbook-20261013.json"
+  },
+  "sourceCheckpointReference": {
+    "checkpointId": "537-checkpoint-20261018T131847Z",
+    "path": "pilot-evidence/537/checkpoint-20261018T131847Z/checkpoint.json",
+    "sha256": "e453b585ad1e0dea517043150b49b08d35ba52577ea21928f5591d5eef0f5fc4"
+  },
+  "sourceInventoryReference": {
+    "path": "pilot-evidence/537/checkpoint-20261018T131847Z/public-metadata.json",
+    "bytes": 15171,
+    "sha256": "888902f6bd820de0f6ceb9b81c5c03c964a5cc29c94c46a5a500319a41a0f935"
+  },
+  "sourcePRMetadataReference": {
+    "path": "pilot-evidence/537/checkpoint-20261018T131847Z/pr-metadata.json",
+    "bytes": 36583,
+    "sha256": "6530a1827429979b4cf9dcd7afdcac74ef6be05ae9311e926ff94c3bc0ff6c31"
+  },
+  "sourceObservation": {
+    "historyPRs": 45,
+    "timelinePages": 47,
+    "timelineEvents": 1733,
+    "completeHistories": 45,
+    "errorsOrCaps": 0,
+    "earliestKnownFetchRelatedBoundUtc": "2026-10-18T13:37:35Z",
+    "latestKnownFetchRelatedBoundUtc": "2026-10-18T13:39:44Z",
+    "exactPerRequestTimesCaptured": false,
+    "laterObservedTransitionEvents": [
+      {
+        "prNumber": 619,
+        "event": "closed",
+        "createdAt": "2026-10-18T13:34:55Z"
+      },
+      {
+        "prNumber": 619,
+        "event": "merged",
+        "createdAt": "2026-10-18T13:34:55Z"
+      }
+    ]
+  },
+  "eligibilitySummary": {
+    "frozenInitialEligiblePrNumbers": [
+      517,
+      514,
+      510,
+      423,
+      297,
+      237
+    ],
+    "initialPopulationUnchanged": true,
+    "overlapInReconciled45": [
+      517
+    ],
+    "additionalExplicitReadyTransitionCandidates": 43,
+    "confirmedAdditionalWindowQualifiedPrNumbersCount": 42,
+    "uncertainPrNumbers": [
+      563,
+      580
+    ],
+    "outsideCount": 0,
+    "original44UnresolvedSnapshotSuperseded": false
+  },
+  "payloadFiles": [
+    {
+      "path": "eligibility-reconciliation-candidate.json",
+      "bytes": 64991,
+      "sha256": "9f9a9e8d3e86aa422fdb0335a6ef9fc73c9b4eb0b4d4b34323cc86051c8ebe1a",
+      "contentClass": "public-pr-eligibility-history-candidate"
+    },
+    {
+      "path": "route-capability.json",
+      "bytes": 946,
+      "sha256": "c6538b19052df96ec948637fac921740cf26a070d49788102d41f38e9668e15d",
+      "contentClass": "public-route-capability-metadata"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 2409,
+      "sha256": "b5bf58237e768b284d2508d7b6e7eb5c2d8b4e02486b375c1dc97d3b7c0b2f78",
+      "contentClass": "public-stage-manifest"
+    }
+  ],
+  "parserBoundary": {
+    "implementation": "production dist measurement parser parseMeasurementJson",
+    "maxBytesPerJSON": 262144,
+    "maxDepth": 32,
+    "runtimeObserved": [
+      "worker Node v24.19.0",
+      "coordinator Node v22.23.3"
+    ],
+    "allStageJSONValidated": true,
+    "validatedJSONFiles": [
+      "checkpoint.json",
+      "eligibility-reconciliation-candidate.json",
+      "manifest.json",
+      "route-capability.json"
+    ]
+  },
+  "archivePolicy": {
+    "included": "Public PR transition metadata, sanitized route capability record, manifest and this checkpoint.",
+    "excluded": "User/actor identifiers, comment bodies, findings, local absolute paths, signed URLs, private source ZIPs.",
+    "candidateAndJsonBound": "Every JSON in this stage must be at most 256 KiB and pass production parser depth-32 checks."
+  },
+  "limitations": [
+    "The 43 ready-transition candidates include PR 563; it remains uncertain whether its first-ever non-draft transition occurred in-window because it predates the window and initial opened state is not proven.",
+    "PR 580 has no explicit ready_for_review event and remains uncertain.",
+    "Do not replace the earlier 44 unresolved snapshot or infer from current state alone.",
+    "No full population, denominator, audit, efficacy, sampling, natural-defect, or completion claim."
+  ]
+}
