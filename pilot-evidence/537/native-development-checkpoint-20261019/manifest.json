@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "recordKind": "native-development-diagnostic-checkpoint",
+  "issue": 537,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "capturedAtUtc": "2026-10-19T05:39:17Z",
+  "sourceFrozenCutoffUtc": "2026-10-18T13:18:47Z",
+  "candidateCommit": "dd8bc098ae7508459c2fa932d34f19358a2fd37b",
+  "baseCommit": "19079e8f777911e9383718c2c6745b0ef5ff1b35",
+  "scope": "Supplemental installed-runtime native local diagnostic capture for the documented self-consumer change; not a full-pilot or acceptance claim.",
+  "counts": {
+    "frozenPriorRecords": 535,
+    "latePairSupplementRecords": 5,
+    "nativeExportRecords": 3,
+    "nativeExportGaps": 0,
+    "duplicatePhaseIdentitiesAgainstPriorArchive": 0,
+    "recordsDropped": 0,
+    "recordsDeduplicated": 0
+  },
+  "limits": [
+    "Does not establish full coverage or all local routes.",
+    "Does not establish case validity, acceptance, effectiveness, or final reviewed-head status.",
+    "Host execution provenance and reviewer identity remain private.",
+    "Unknown feedback fields remain as produced by the production redactor."
+  ],
+  "publicRevisionInventory": "pr-620-revision-inventory.json",
+  "files": {
+    "exports/native-measurement-export.json": {
+      "bytes": 3827,
+      "sha256": "e56eb5bf37cc1772090e29042db1c655701b53fd07665336386666d853f49011"
+    },
+    "measurement-dataset.json": {
+      "bytes": 3888,
+      "sha256": "be1d2f830a43fce7239062552c3730d1b9e5d31bf61bd14f2c7efb115ea10cb4"
+    },
+    "pr-620-revision-inventory.json": {
+      "bytes": 821,
+      "sha256": "0fce35f3584023159afb8a22b556e46e1d1c0c10c7e730535d8169df7a3a7b21"
+    }
+  }
+}

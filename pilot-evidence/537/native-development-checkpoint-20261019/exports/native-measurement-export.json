@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "records": [
+    {
+      "version": 1,
+      "kind": "agk-diagnostic",
+      "attemptId": "3de031ad-ffe1-4ef7-a19c-afa10eda301b",
+      "phase": "prepared",
+      "route": "native",
+      "runtime": {
+        "package": "@flair-agency/architecture-gatekeeper",
+        "version": "0.6.0-preview.4",
+        "collectorSha256": "f193628f22352418afd81ce62739f0d8c6b2a8c2c97e4fd8f3fdcce3bffa3c3b"
+      },
+      "startedAt": "2026-10-19T05:28:59.742Z",
+      "changeId": "3bbeb25ebc8f581782afe1f5780c3d7a0a9e73086d54bdf57198d5d88bcf46fc",
+      "repositoryId": "beb3737c65e9c2fffd06a608ae66c16fc1a290af4a5a0cade377fba8b29eb7e8",
+      "requestId": "ef7a3d10e23a978a96bfa6dd3df7ff7b6044e6799bff5f454876e976b7e4e223",
+      "promptSha256": "8b986efdfb64fba8b1636e66e89e2d545018f7f7ff873a26f2384f45b1844a8f",
+      "schemaSha256": "0a2a751496752688e7624b492801db537d0af7c5fde1723d4d502a6d348fe961",
+      "authorityProvenanceSha256": null,
+      "policySha256": null,
+      "reviewedRevision": "dd8bc098ae7508459c2fa932d34f19358a2fd37b",
+      "snapshotSha256": null,
+      "scopeKind": "proposed-task",
+      "decision": null,
+      "findingCount": null,
+      "ci": null,
+      "observation": {},
+      "feedback": {
+        "publication": "unknown",
+        "delivery": "unknown",
+        "response": "unknown"
+      }
+    },
+    {
+      "version": 1,
+      "kind": "agk-diagnostic",
+      "attemptId": "3de031ad-ffe1-4ef7-a19c-afa10eda301b",
+      "phase": "start",
+      "route": "native",
+      "runtime": {
+        "package": "@flair-agency/architecture-gatekeeper",
+        "version": "0.6.0-preview.4",
+        "collectorSha256": "f193628f22352418afd81ce62739f0d8c6b2a8c2c97e4fd8f3fdcce3bffa3c3b"
+      },
+      "startedAt": "2026-10-19T05:28:59.742Z",
+      "changeId": "3bbeb25ebc8f581782afe1f5780c3d7a0a9e73086d54bdf57198d5d88bcf46fc",
+      "repositoryId": "beb3737c65e9c2fffd06a608ae66c16fc1a290af4a5a0cade377fba8b29eb7e8",
+      "requestId": null,
+      "promptSha256": null,
+      "schemaSha256": null,
+      "authorityProvenanceSha256": null,
+      "policySha256": null,
+      "reviewedRevision": null,
+      "snapshotSha256": null,
+      "scopeKind": null,
+      "decision": null,
+      "findingCount": null,
+      "ci": null,
+      "observation": {},
+      "feedback": {
+        "publication": "unknown",
+        "delivery": "unknown",
+        "response": "unknown"
+      }
+    },
+    {
+      "version": 1,
+      "kind": "agk-diagnostic",
+      "attemptId": "3de031ad-ffe1-4ef7-a19c-afa10eda301b",
+      "phase": "terminal",
+      "route": "native",
+      "runtime": {
+        "package": "@flair-agency/architecture-gatekeeper",
+        "version": "0.6.0-preview.4",
+        "collectorSha256": "f193628f22352418afd81ce62739f0d8c6b2a8c2c97e4fd8f3fdcce3bffa3c3b"
+      },
+      "startedAt": "2026-10-19T05:28:59.742Z",
+      "completedAt": "2026-10-19T05:31:28.878Z",
+      "state": "completed",
+      "changeId": "3bbeb25ebc8f581782afe1f5780c3d7a0a9e73086d54bdf57198d5d88bcf46fc",
+      "repositoryId": "beb3737c65e9c2fffd06a608ae66c16fc1a290af4a5a0cade377fba8b29eb7e8",
+      "requestId": "ef7a3d10e23a978a96bfa6dd3df7ff7b6044e6799bff5f454876e976b7e4e223",
+      "promptSha256": "8b986efdfb64fba8b1636e66e89e2d545018f7f7ff873a26f2384f45b1844a8f",
+      "schemaSha256": "0a2a751496752688e7624b492801db537d0af7c5fde1723d4d502a6d348fe961",
+      "authorityProvenanceSha256": null,
+      "policySha256": null,
+      "reviewedRevision": "dd8bc098ae7508459c2fa932d34f19358a2fd37b",
+      "snapshotSha256": null,
+      "scopeKind": "proposed-task",
+      "decision": "PASS",
+      "findingCount": 0,
+      "ci": null,
+      "observation": {},
+      "feedback": {
+        "publication": "returned-to-caller",
+        "delivery": "unknown",
+        "response": "unknown"
+      }
+    }
+  ],
+  "gaps": 0
+}
