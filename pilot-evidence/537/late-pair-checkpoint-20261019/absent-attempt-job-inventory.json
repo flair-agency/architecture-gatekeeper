@@ -1,0 +1,2144 @@
+{
+  "schemaVersion": 1,
+  "kind": "later-public-run-attempt-job-inventory",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "originalArtifactCutoffUtc": "2026-10-18T13:18:47Z",
+  "originalCoverageSha256": "de1b5862eaa57bce90bffa5285c558332fb1d64848b16f5094c6900c081d8d4e",
+  "observedReadStartedUtc": "2026-10-19 05:08:53 UTC",
+  "observedReadCompletedUtc": "2026-10-19 05:09:22 UTC",
+  "selection": "All 72 original absentAttemptRows, once each, using exact runId/runAttempt jobs endpoint with per_page=100 and requiring total_count == returned job count.",
+  "counts": {
+    "originalAbsentAttempts": 72,
+    "completeJobMetadataResponses": 72,
+    "gateAndAcceptSkippedNoReviewOrMeasurementJobListed": 68,
+    "measurementJobListed": 4,
+    "metadataReadGaps": 0
+  },
+  "rows": [
+    {
+      "runId": "39130941543",
+      "runAttempt": "1",
+      "totalJobCount": 14,
+      "jobs": [
+        {
+          "jobId": "117685784257",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117685803040",
+          "name": "architecture-gate / policy",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117685804096",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117685870405",
+          "name": "architecture-gate / review",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117685870430",
+          "name": "architecture-gate / owner-amendment-attempt-classifier",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117685871347",
+          "name": "architecture-gate / gemini-review",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117685920143",
+          "name": "architecture-gate / owner-amendment-semantic-eligibility",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117685988586",
+          "name": "architecture-gate / owner-amendment-semantic-eligibility-signer",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117686157425",
+          "name": "architecture-gate / report",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117686158093",
+          "name": "architecture-gate / owner-amendment-owner-decision-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117686158209",
+          "name": "architecture-gate / owner-addition",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117686158569",
+          "name": "architecture-gate / block-review-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117686228699",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117686324436",
+          "name": "architecture-gate / measurement",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "observationClass": "measurement-job-listed"
+    },
+    {
+      "runId": "39125433848",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117669462095",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117669476109",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117669476152",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39123624684",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117664114081",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117664130524",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117664130636",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39121280816",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117657233391",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117657248072",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117657248152",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39118888525",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117650228198",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117650246243",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117650246318",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39107056354",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117615097818",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117615115004",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117615115171",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39105995728",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117611844256",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117611858025",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117611858109",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39104237746",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117606595358",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117606615499",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117606615593",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39100653197",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117596061400",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117596079008",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117596079071",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39100373156",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117595240916",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117595253443",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117595253555",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39099966723",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117594043567",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117594064037",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117594064150",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39099606817",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117592991168",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117593013319",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117593013694",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39099341952",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117592210684",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117592229620",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117592229926",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39098876491",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117590861848",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117590874862",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117590875048",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39098467462",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117589673507",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117589689485",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117589689590",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39098136263",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117588720787",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117588740074",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117588740297",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39097648726",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117587303327",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117587321819",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117587321980",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39097306490",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117586306970",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117586322917",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117586323099",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39096145113",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117582895944",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117582909108",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117582909114",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39095890189",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117582122808",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117582138191",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117582138225",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39095327199",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117580459487",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117580472367",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117580472725",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39094155045",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117576960817",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117576975714",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117576975773",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39094063686",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117576687956",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117576708335",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117576708345",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39093253267",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117574266764",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117574284232",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117574284807",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39093036209",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117573613512",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117573635189",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117573635425",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39090185887",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117565095546",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117565108578",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117565108813",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39088320658",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117559470987",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117559485598",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117559485618",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39085288224",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117550423237",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117550436423",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117550436507",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39078339831",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117530028337",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117530041422",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117530041804",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39077413971",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117527339607",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117527352654",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117527352878",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39075902284",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117522875600",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117522895545",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117522895642",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39075147704",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117520647285",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117520668334",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117520668812",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39074016302",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117517315000",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117517338326",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117517338832",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39071296913",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117509300792",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117509320262",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117509320352",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39071007214",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117508429582",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117508451618",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117508451949",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39069180283",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117503024619",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117503044416",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117503044625",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39068116841",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117499896302",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117499913814",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117499914080",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39062561404",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117483357688",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117483376950",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117483377194",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39061665462",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117480716492",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117480743131",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117480743718",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39058737131",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117472072885",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117472098591",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117472098707",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39057743487",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117469106298",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117469122376",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117469122734",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39054302935",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117459012662",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117459036334",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117459036590",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "39054247651",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "117458848662",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "117458870910",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "117458871143",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38786551302",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "116599904073",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "116599950084",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "116599950885",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38582079654",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115914295776",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115914356624",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115914357556",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38577884113",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115899689247",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115899734242",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115899734829",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38571264233",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115876770351",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115876821155",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115876821864",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38565358439",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115856529033",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115856574544",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115856575208",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38562613662",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115847192111",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115847228725",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115847229239",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38560605985",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115840445364",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115840479463",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115840479723",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38558852428",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115834630748",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115834671023",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115834671850",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38554907849",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115821526399",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115821569093",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115821569215",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38551134485",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115809087947",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115809119665",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115809120147",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38546363012",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115793303093",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115793346679",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115793347439",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38545487639",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115790365974",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115790410577",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115790410722",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38537459625",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115763718081",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115763756396",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115763756755",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38537440630",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115763654808",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115763699120",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115763699434",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38536708335",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115761237324",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115761281265",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115761281641",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38536691544",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115761180419",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115761209254",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115761209620",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38536201084",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115759564333",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115759597531",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115759598913",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38531639275",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115744653028",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115744693067",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115744693984",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38529301028",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115737030491",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115737063463",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115737064559",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38522543822",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115715344115",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115715367703",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115715367812",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38473334693",
+      "runAttempt": "1",
+      "totalJobCount": 13,
+      "jobs": [
+        {
+          "jobId": "115557741539",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115557776123",
+          "name": "architecture-gate / policy",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115557777151",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115557888379",
+          "name": "architecture-gate / owner-amendment-attempt-classifier",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115557888574",
+          "name": "architecture-gate / review",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115557996656",
+          "name": "architecture-gate / owner-amendment-semantic-eligibility",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115558116237",
+          "name": "architecture-gate / owner-amendment-semantic-eligibility-signer",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115558669887",
+          "name": "architecture-gate / report",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "jobId": "115558670817",
+          "name": "architecture-gate / owner-addition",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115558671360",
+          "name": "architecture-gate / block-review-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115558671457",
+          "name": "architecture-gate / owner-amendment-owner-decision-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115558762856",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "jobId": "115558807256",
+          "name": "architecture-gate / measurement",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "observationClass": "measurement-job-listed"
+    },
+    {
+      "runId": "38473334693",
+      "runAttempt": "2",
+      "totalJobCount": 13,
+      "jobs": [
+        {
+          "jobId": "115568291991",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115568292606",
+          "name": "architecture-gate / report",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "jobId": "115568293214",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115568293366",
+          "name": "architecture-gate / policy",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115568293439",
+          "name": "architecture-gate / owner-addition",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115568293442",
+          "name": "architecture-gate / owner-amendment-attempt-classifier",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115568293755",
+          "name": "architecture-gate / review",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115568294015",
+          "name": "architecture-gate / owner-amendment-semantic-eligibility",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115568294114",
+          "name": "architecture-gate / owner-amendment-semantic-eligibility-signer",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115568294372",
+          "name": "architecture-gate / block-review-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115568295042",
+          "name": "architecture-gate / owner-amendment-owner-decision-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115568448357",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "jobId": "115568516011",
+          "name": "architecture-gate / measurement",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "observationClass": "measurement-job-listed"
+    },
+    {
+      "runId": "38473334693",
+      "runAttempt": "3",
+      "totalJobCount": 13,
+      "jobs": [
+        {
+          "jobId": "115568701556",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115568739963",
+          "name": "architecture-gate / policy",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115568741475",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115568865046",
+          "name": "architecture-gate / review",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115568865214",
+          "name": "architecture-gate / owner-amendment-attempt-classifier",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115568994582",
+          "name": "architecture-gate / owner-amendment-semantic-eligibility",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115569156714",
+          "name": "architecture-gate / owner-amendment-semantic-eligibility-signer",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115569809183",
+          "name": "architecture-gate / report",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "jobId": "115569809221",
+          "name": "architecture-gate / owner-amendment-owner-decision-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115569809360",
+          "name": "architecture-gate / owner-addition",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115569809372",
+          "name": "architecture-gate / block-review-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115569893656",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "jobId": "115569961802",
+          "name": "architecture-gate / measurement",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "observationClass": "measurement-job-listed"
+    },
+    {
+      "runId": "38466757198",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115535419077",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115535452679",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115535453323",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38460381995",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115513702989",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115513775759",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115513776006",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38452967283",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115488315239",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115488418756",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115488420897",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38448483439",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115473003530",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115473042548",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115473043419",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38440796070",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115446530268",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115446638271",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115446639059",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    },
+    {
+      "runId": "38413732177",
+      "runAttempt": "1",
+      "totalJobCount": 3,
+      "jobs": [
+        {
+          "jobId": "115352497524",
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "jobId": "115352541321",
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "jobId": "115352541861",
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "observationClass": "gate-and-accept-skipped-no-review-or-measurement-job-listed"
+    }
+  ],
+  "limits": [
+    "Later job metadata does not reconstruct cutoff state or overwrite the original 72 artifact-absent rows.",
+    "Skipped gate jobs are observed; their event/condition cause and PR eligibility are not established. These attempts are retained, not excluded.",
+    "Workflow/job success is not a semantic PASS or evidence of protected acceptance. No missing semantic terminal is reconstructed from jobs.",
+    "Run 39130941543/1 has a separate two-artifact later supplement; run 38473334693 attempts 1/2/3 remain without recovered measurement exports.",
+    "Job IDs and names are public run/attempt inventory metadata only; no logs, event payloads, runner identities, code, findings or credentials are retained here."
+  ]
+}

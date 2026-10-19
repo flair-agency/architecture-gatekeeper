@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "attempts": [
+    {
+      "runId": "39130941543",
+      "runAttempt": "1",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-10-18T13:18:07Z",
+      "updatedAt": "2026-10-18T13:21:00Z",
+      "workflow": "self-architecture-gate.yml",
+      "headSha": "3bb7d987dea4854cc0da70d045c678be5f5e3b5b",
+      "artifacts": [
+        {
+          "artifactId": "12138031618",
+          "runId": "39130941543",
+          "runAttempt": "1",
+          "phase": "review",
+          "name": "agk-measurement-review-39130941543-1-edd7c573-7e8e-4f92-9997-47b2c2fae087",
+          "createdAt": "2026-10-18T13:20:54Z",
+          "expiresAt": "2026-11-17T13:20:53Z",
+          "expiredAtCapture": false,
+          "sourceBytes": 1166,
+          "sourceSha256": "d78fed84ababa2f31be7c18347347f6e675525569635d420690e19cb5a55a5f4",
+          "memberName": "agk-review-measurement-export.json",
+          "exportFile": "exports/review-measurement-export.json",
+          "memberBytes": 5364,
+          "memberSha256": "83de437dfd6690d59e335f8b7f8efb52783c42f158d1320a034da5c381aa31a2",
+          "recordCount": 3,
+          "phases": [
+            "prepared",
+            "start",
+            "terminal"
+          ],
+          "collectionGaps": 0
+        },
+        {
+          "artifactId": "12136969723",
+          "runId": "39130941543",
+          "runAttempt": "1",
+          "phase": "outcome",
+          "name": "agk-measurement-outcome-39130941543-1-2aae189b-eaab-46c3-be89-ae96c22a3d0d",
+          "createdAt": "2026-10-18T13:20:56Z",
+          "expiresAt": "2026-11-17T13:20:55Z",
+          "expiredAtCapture": false,
+          "sourceBytes": 1006,
+          "sourceSha256": "3a0dd811f289266f055df4b93e6166181191d2a33206df9b636820d134024df8",
+          "memberName": "agk-outcome-measurement-export.json",
+          "exportFile": "exports/outcome-measurement-export.json",
+          "memberBytes": 3347,
+          "memberSha256": "7cab2f5fc44ede2af0907b47d9cfde41bfc06bb8fe02a9d783501e315fa825e6",
+          "recordCount": 2,
+          "phases": [
+            "start",
+            "terminal"
+          ],
+          "collectionGaps": 0
+        }
+      ],
+      "sourceApiPrBindings": [],
+      "association": "unresolved",
+      "note": "Retained measurement records include ci.pr=619, while the current source API observation has an empty pull_requests list. An earlier retained run-metadata observation reported PR 619; those time-separated observations are preserved as conflicting metadata, and this supplement does not assert a PR binding."
+    }
+  ]
+}

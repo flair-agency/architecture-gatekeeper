@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "records": [
+    {
+      "version": 1,
+      "kind": "agk-diagnostic",
+      "attemptId": "edd7c573-7e8e-4f92-9997-47b2c2fae087",
+      "phase": "prepared",
+      "route": "ci-review",
+      "runtime": {
+        "package": "@flair-agency/architecture-gatekeeper",
+        "version": "0.6.0-preview.4",
+        "collectorSha256": "f193628f22352418afd81ce62739f0d8c6b2a8c2c97e4fd8f3fdcce3bffa3c3b"
+      },
+      "startedAt": "2026-10-18T13:20:52.876Z",
+      "changeId": "9b667fedfd3548586bae51a3c30e4a0a75a9cf977f43ad2f89a6ec70629ee49e",
+      "repositoryId": "a145c2a851b21a783f67890950d26f5d07f67ece3990af7348ccaa1cdde02aed",
+      "requestId": null,
+      "promptSha256": null,
+      "schemaSha256": null,
+      "authorityProvenanceSha256": null,
+      "policySha256": null,
+      "reviewedRevision": "db236855769a1a5ee34f2279f3abbf062568a1fb",
+      "snapshotSha256": null,
+      "scopeKind": "ci-merge-revision",
+      "decision": null,
+      "findingCount": null,
+      "ci": {
+        "repositoryId": "fd6987c44e38af71c5aca59b30c52bc88f87ba4b64353a1d75b36d6d2605ff79",
+        "pr": "619",
+        "runId": "39130941543",
+        "runAttempt": "1",
+        "workflowSha": "0bba81a4fbfd06683ab65de4685c9be305d73017",
+        "baseSha": "0bba81a4fbfd06683ab65de4685c9be305d73017",
+        "headSha": "3bb7d987dea4854cc0da70d045c678be5f5e3b5b",
+        "reviewedSha": "db236855769a1a5ee34f2279f3abbf062568a1fb",
+        "job": "review"
+      },
+      "observation": {},
+      "feedback": {
+        "publication": "unknown",
+        "delivery": "unknown",
+        "response": "unknown"
+      }
+    },
+    {
+      "version": 1,
+      "kind": "agk-diagnostic",
+      "attemptId": "edd7c573-7e8e-4f92-9997-47b2c2fae087",
+      "phase": "start",
+      "route": "ci-review",
+      "runtime": {
+        "package": "@flair-agency/architecture-gatekeeper",
+        "version": "0.6.0-preview.4",
+        "collectorSha256": "f193628f22352418afd81ce62739f0d8c6b2a8c2c97e4fd8f3fdcce3bffa3c3b"
+      },
+      "startedAt": "2026-10-18T13:20:52.876Z",
+      "changeId": "9b667fedfd3548586bae51a3c30e4a0a75a9cf977f43ad2f89a6ec70629ee49e",
+      "repositoryId": "a145c2a851b21a783f67890950d26f5d07f67ece3990af7348ccaa1cdde02aed",
+      "requestId": null,
+      "promptSha256": null,
+      "schemaSha256": null,
+      "authorityProvenanceSha256": null,
+      "policySha256": null,
+      "reviewedRevision": null,
+      "snapshotSha256": null,
+      "scopeKind": null,
+      "decision": null,
+      "findingCount": null,
+      "ci": {
+        "repositoryId": "fd6987c44e38af71c5aca59b30c52bc88f87ba4b64353a1d75b36d6d2605ff79",
+        "pr": "619",
+        "runId": "39130941543",
+        "runAttempt": "1",
+        "workflowSha": "0bba81a4fbfd06683ab65de4685c9be305d73017",
+        "baseSha": "0bba81a4fbfd06683ab65de4685c9be305d73017",
+        "headSha": "3bb7d987dea4854cc0da70d045c678be5f5e3b5b",
+        "reviewedSha": "db236855769a1a5ee34f2279f3abbf062568a1fb",
+        "job": "review"
+      },
+      "observation": {},
+      "feedback": {
+        "publication": "unknown",
+        "delivery": "unknown",
+        "response": "unknown"
+      }
+    },
+    {
+      "version": 1,
+      "kind": "agk-diagnostic",
+      "attemptId": "edd7c573-7e8e-4f92-9997-47b2c2fae087",
+      "phase": "terminal",
+      "route": "ci-review",
+      "runtime": {
+        "package": "@flair-agency/architecture-gatekeeper",
+        "version": "0.6.0-preview.4",
+        "collectorSha256": "f193628f22352418afd81ce62739f0d8c6b2a8c2c97e4fd8f3fdcce3bffa3c3b"
+      },
+      "startedAt": "2026-10-18T13:20:52.876Z",
+      "completedAt": "2026-10-18T13:20:53.585Z",
+      "state": "completed",
+      "changeId": "9b667fedfd3548586bae51a3c30e4a0a75a9cf977f43ad2f89a6ec70629ee49e",
+      "repositoryId": "a145c2a851b21a783f67890950d26f5d07f67ece3990af7348ccaa1cdde02aed",
+      "requestId": null,
+      "promptSha256": null,
+      "schemaSha256": null,
+      "authorityProvenanceSha256": null,
+      "policySha256": null,
+      "reviewedRevision": "db236855769a1a5ee34f2279f3abbf062568a1fb",
+      "snapshotSha256": null,
+      "scopeKind": "ci-merge-revision",
+      "decision": "PASS",
+      "findingCount": null,
+      "ci": {
+        "repositoryId": "fd6987c44e38af71c5aca59b30c52bc88f87ba4b64353a1d75b36d6d2605ff79",
+        "pr": "619",
+        "runId": "39130941543",
+        "runAttempt": "1",
+        "workflowSha": "0bba81a4fbfd06683ab65de4685c9be305d73017",
+        "baseSha": "0bba81a4fbfd06683ab65de4685c9be305d73017",
+        "headSha": "3bb7d987dea4854cc0da70d045c678be5f5e3b5b",
+        "reviewedSha": "db236855769a1a5ee34f2279f3abbf062568a1fb",
+        "job": "review"
+      },
+      "observation": {
+        "reviewJob": "success",
+        "timingSource": "collector",
+        "ciAcquisition": "public-job-metadata",
+        "jobId": "117685870405",
+        "reviewStepOutcome": "success",
+        "jobTiming": {
+          "startedAt": "2026-10-18T13:18:35Z",
+          "completedAt": "2026-10-18T13:19:53Z",
+          "elapsedMs": 78000
+        },
+        "reviewTiming": {
+          "startedAt": "2026-10-18T13:18:52Z",
+          "completedAt": "2026-10-18T13:19:46Z",
+          "elapsedMs": 54000
+        }
+      },
+      "feedback": {
+        "publication": "unknown",
+        "delivery": "unknown",
+        "response": "unknown"
+      }
+    }
+  ],
+  "gaps": 0
+}

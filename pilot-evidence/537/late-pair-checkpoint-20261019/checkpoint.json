@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "issue": 537,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "kind": "late-pair-diagnostic-supplement",
+  "supplementCapturedAtUtc": "2026-10-19",
+  "sourceFrozenCutoffUtc": "2026-10-18T13:18:47Z",
+  "oldArchiveRecordCount": 535,
+  "oldAttemptsWithoutPrecutoffMeasurementArtifacts": 72,
+  "newRunAttemptPairs": 1,
+  "newArtifactCount": 2,
+  "newRecordCount": 5,
+  "newCollectionGaps": 0,
+  "duplicatePhaseIdentitiesAgainstOldArchive": 0,
+  "scope": "Explicit supplement to the frozen pre-cutoff 535-record archive; old cutoff and counts remain unchanged.",
+  "limits": [
+    "Does not establish full coverage.",
+    "Does not establish PR binding; the run association remains unresolved across time-separated metadata observations.",
+    "Does not establish case validity, acceptance, or the final reviewed head.",
+    "Current observed head is intermediate and is not asserted to be final."
+  ],
+  "files": {
+    "absent-attempt-job-inventory.json": {
+      "bytes": 60030,
+      "sha256": "367472d1a71653ad62709f67445621c763e269f851a0cd570cd56155722fbc45"
+    },
+    "artifact-inventory.json": {
+      "bytes": 2658,
+      "sha256": "56fb286d402a947f73ea64d41a468c74f4adb9a81977bd125d5f524010bbdb1d"
+    },
+    "exports/outcome-measurement-export.json": {
+      "bytes": 3347,
+      "sha256": "7cab2f5fc44ede2af0907b47d9cfde41bfc06bb8fe02a9d783501e315fa825e6"
+    },
+    "exports/review-measurement-export.json": {
+      "bytes": 5364,
+      "sha256": "83de437dfd6690d59e335f8b7f8efb52783c42f158d1320a034da5c381aa31a2"
+    },
+    "measurement-dataset.json": {
+      "bytes": 8721,
+      "sha256": "447769ce2e0bbb0c20be2e56dbef33d10b893c54ede77b1d87987e7890990b9b"
+    }
+  },
+  "additionalRunAttemptInventory": {
+    "file": "absent-attempt-job-inventory.json",
+    "originalAbsentAttempts": 72,
+    "completeJobMetadataResponses": 72,
+    "metadataReadGaps": 0,
+    "sourceCoverageSha256": "de1b5862eaa57bce90bffa5285c558332fb1d64848b16f5094c6900c081d8d4e",
+    "interpretation": "Bounded public job metadata supplemental to the original cutoff inventory; records job outcomes only, does not infer event cause or missing semantic results."
+  },
+  "publicRunInventoryRows": 72
+}
