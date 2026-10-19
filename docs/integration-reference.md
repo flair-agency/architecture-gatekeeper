@@ -251,9 +251,10 @@ A consumer may opt into a separate change screen after a supported file-capable
 tool completes. This pilot reviews the bounded tracked working-tree diff and
 returns informational Hook context; it does not block the completed tool,
 change its result, or establish repository acceptance. No consumer is enabled
-by default. Keep the launcher and hook configuration in the consumer's trusted
-project, and use the exact installed package version. The normal Codex
-project-trust decision still applies to the hook code and its command.
+by default. Keep the launcher under consumer control, use the exact installed
+package version, and review the hook code and exact command through normal Codex
+project trust. The project-local hook configuration belongs in the consumer
+project.
 
 Create a consumer-owned launcher such as
 `.codex/hooks/architecture-screen.mjs`:
@@ -328,8 +329,18 @@ tool has completed.
 ### First CLI trial in Architecture Gatekeeper
 
 Use the exact installed package version with the consumer-owned launcher and
-project-local `.codex/hooks.json` shown above. Start the normal CLI in the
-project, trust the project and exact hook definition through the usual prompts,
+project-local `.codex/hooks.json` shown above. For this self-consumer case,
+replace the generic JSON command above with one naming the absolute Node
+executable and an external launcher in the consumer's installed-package
+directory. Node package self-reference can otherwise resolve the launcher's
+bare import to this source checkout's `dist` entrypoint instead of the
+separately installed archive. Verify with `import.meta.resolve()` from the
+launcher's location that it selects the intended installed entrypoint. The
+generic in-project launcher and command remain suitable for ordinary consumers
+whose bare import resolves to their intended installed package. Include the
+exact handler and command in the usual project and handler trust review. Start
+the normal CLI in the project, trust the project and exact hook definition
+through the usual prompts,
 then check `/hooks` for the intended handler with `Installed=1` and `Active=1`.
 Make one tracked edit and continue ordinary verification while the screen
 runs. The result reviews its captured candidate; untracked or unsupported
