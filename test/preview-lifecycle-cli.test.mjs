@@ -84,6 +84,7 @@ test('CLI rejects an oversized committed predecessor despite a smaller candidate
   git(f.root, 'add', authorityPath);
   git(f.root, 'commit', '-m', 'Synthetic already-oversized predecessor without a recovery profile');
   f.base = git(f.root, 'rev-parse', 'HEAD');
+  const ordinaryOversizedHead = commitOn(f, 'cli-oversized-base-ordinary-change', { 'app.txt': 'Ordinary change\n' });
   const smallerAuthority = 'Candidate proposes smaller authority.\n';
   const candidate = commitOn(f, 'cli-smaller-authority-candidate', { [authorityPath]: smallerAuthority });
   assert.equal(git(f.root, 'show', `${candidate}:${authorityPath}`), smallerAuthority.trim());
@@ -98,15 +99,18 @@ test('CLI rejects an oversized committed predecessor despite a smaller candidate
     checkout: git(f.root, 'rev-parse', 'HEAD'),
     status: git(f.root, 'status', '--porcelain=v1', '--untracked-files=all'),
   });
-  const before = canonicalSnapshot();
-  assert.equal(before.target, f.base);
-  assert.equal(before.authority, oversizedAuthority);
-  assert.equal(before.checkout, candidate);
-  assert.equal(before.status, '');
+  for (const head of [ordinaryOversizedHead, candidate]) {
+    git(f.root, 'switch', '--detach', head);
+    const before = canonicalSnapshot();
+    assert.equal(before.target, f.base);
+    assert.equal(before.authority, oversizedAuthority);
+    assert.equal(before.checkout, head);
+    assert.equal(before.status, '');
 
-  failed(f.root, 'prepare', Buffer.from(JSON.stringify({ spec: spec(f, 'review', candidate) })), /prepare failed/);
-  assert.deepEqual(canonicalSnapshot(), before,
-    'failed preparation neither installs the candidate nor rewrites the predecessor, selectors or refs');
+    failed(f.root, 'prepare', Buffer.from(JSON.stringify({ spec: spec(f, 'review', head) })), /prepare failed/);
+    assert.deepEqual(canonicalSnapshot(), before,
+      'failed preparation neither installs the candidate nor rewrites the predecessor, selectors or refs');
+  }
 });
 
 test('depth-64 A response triggers depth-68 B receipt through finalize and fresh review', async t => {
