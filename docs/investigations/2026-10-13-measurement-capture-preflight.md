@@ -31,4 +31,4 @@ record capture. Current CI exports do not retain full findings, reviewer
 execution or feedback delivery; unavailable facts remain unknown.
 
 See [measurement boundaries and aggregation](../measurement.md) and the
-[public pilot plan](https://github.com/flair-agency/architecture-gatekeeper/blob/pilot/537-evidence-20261013/pilot-evidence/537/plan-20261013.json).
+[public pilot plan](https://github.com/flair-agency/architecture-gatekeeper/blob/eefd69492c39152f4d7efa6e5ceeacf00542eee5/pilot-evidence/537/plan-20261013.json).
