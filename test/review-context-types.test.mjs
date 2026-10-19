@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const configPath = join(root, 'tsconfig.json');
@@ -25,7 +26,7 @@ test('review input physical leaf and flat facade compose under strict project op
   const knownFixtures = new Set([positiveFixture, negativeFixture]);
   assert.ok(fixtureDiagnostics.every(diagnostic => knownFixtures.has(diagnostic.file?.fileName)),
     'all fixture diagnostics must be owned by one of the two fixtures');
-  assert.deepEqual(diagnosticsFor(positiveFixture), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor(positiveFixture)), []);
 });
 
 test('review input fixture rejects an invalid effective limit field', () => {

@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { decodeLimits, prepareAuthoritySet } from '../dist/prepare-authority-set.mjs';
 
@@ -134,6 +135,33 @@ test('direct CLI invocation writes the selected self-authority bundle', t => {
   const provenance = JSON.parse(readFileSync(join(outputDir, 'authority-provenance.json'), 'utf8'));
   assert.equal(provenance.members[0].id, authority.id);
   assert.equal(provenance.members[0].resolvedCommit, f.authorityRevision);
+});
+
+test('direct CLI handles short descriptor reads for limits and manifest files', t => {
+  const f = fixture(t); const outputDir = join(f.root, 'short-read-bundle');
+  const trace = join(f.root, 'short-read-trace.json');
+  const hook = `import fs from 'node:fs';
+import {syncBuiltinESMExports} from 'node:module';
+const paths=new Map(), reads=[]; const open=fs.openSync, close=fs.closeSync, read=fs.readSync;
+fs.openSync=(path,...args)=>{const fd=open(path,...args);paths.set(fd,String(path));return fd;};
+fs.readSync=(fd,buffer,offset,length,position)=>{const path=paths.get(fd), size=Math.min(length,3);const count=read(fd,buffer,offset,size,position);if(path===${JSON.stringify(f.manifestPath)}||path===${JSON.stringify(f.limitsPath)})reads.push({path,count});return count;};
+fs.closeSync=(fd)=>{paths.delete(fd);return close(fd);};
+process.on('exit',()=>fs.writeFileSync(${JSON.stringify(trace)},JSON.stringify(reads)));
+syncBuiltinESMExports();`;
+  const result = spawnSync(process.execPath, ['--import', `data:text/javascript,${encodeURIComponent(hook)}`,
+    fileURLToPath(new URL('../dist/prepare-authority-set.mjs', import.meta.url)),
+    '--manifest', f.manifestPath, '--self-repository', 'flair-agency/example', '--self-root', f.selfRoot,
+    '--authority-sha', f.authorityRevision, '--limits', f.limitsPath, '--output-dir', outputDir],
+  { encoding: 'utf8', env: { ...process.env, GATEKEEPER_SOURCE_TOKEN: '' } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(readFileSync(join(outputDir, 'authority-prompt.md'), 'utf8'), /# committed authority/);
+  const reads = JSON.parse(readFileSync(trace, 'utf8'));
+  for (const path of [f.limitsPath, f.manifestPath]) {
+    const calls = reads.filter(read => read.path === path);
+    assert.ok(calls.length > 1, path);
+    assert.ok(calls.filter(read => read.count > 0).length > 1, path);
+    assert.equal(calls.at(-1).count, 0, path);
+  }
 });
 
 test('invalid and empty manifests fail before output creation', async t => {

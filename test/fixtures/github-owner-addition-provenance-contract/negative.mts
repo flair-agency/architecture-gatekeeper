@@ -1,0 +1,11 @@
+import { verifyOwnerAdditionEligibilityProvenance } from '../../../src/github-owner-addition-provenance.mjs';
+import type { GitHubOwnerAdditionProvenanceResult, GitHubOwnerAdditionProvenanceFetch } from '../../../src/github/github-owner-addition-provenance.mts';
+declare const result: GitHubOwnerAdditionProvenanceResult;
+verifyOwnerAdditionEligibilityProvenance({});
+const wrongFetch: GitHubOwnerAdditionProvenanceFetch = (url: number) => ({ ok: true, json: () => url });
+const accepted: 'accepted' = result.status;
+const uncheckedProcedure: string = result.artifacts.procedure;
+const uncheckedBase: string = result.provenance.baseSha;
+result.provenance.workflow.attempt = 2;
+result.authorityIds.push('member');
+void [wrongFetch, accepted, uncheckedProcedure, uncheckedBase];

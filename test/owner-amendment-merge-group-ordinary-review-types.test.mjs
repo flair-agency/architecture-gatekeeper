@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-amendment-merge-group-ordinary-review-contract');
@@ -22,12 +23,15 @@ function summarize(diagnostics) {
   }));
 }
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'),
+  join(fixtureRoot, 'negative.mts'),
+  join(fixtureRoot, 'missing-validation-inputs.mts'),
+], options, 'ordinary-review module contract must remain error-free');
+
 function compile(name) {
   const file = join(fixtureRoot, name);
-  const program = ts.createProgram([file], options);
-  const diagnostics = summarize(ts.getPreEmitDiagnostics(program));
-  assert.deepEqual(diagnostics.filter(item => item.file !== file), [], 'ordinary-review module contract must remain error-free');
-  return diagnostics.filter(item => item.file === file);
+  return summarize(diagnosticsForFixture(file));
 }
 
 test('merge-group ordinary review types retain unknown tuple observations, computed bytes, and thenable fetch callbacks', () => {

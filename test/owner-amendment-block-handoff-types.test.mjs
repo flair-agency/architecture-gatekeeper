@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtures = join(root, 'test/fixtures/owner-amendment-block-handoff-contract');
@@ -16,16 +17,18 @@ assert.equal(config.options.noImplicitAny, true);
 assert.equal(config.options.noEmitOnError, true);
 const options = { ...config.options, rootDir: root, noEmit: true };
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtures, 'positive.mts'),
+  join(fixtures, 'negative.mts'),
+], options, 'facade and grouped module must resolve');
+
 function diagnosticsFor(name) {
   const file = join(fixtures, name);
-  const program = ts.createProgram([file], options);
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  assert.deepEqual(diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file), [], 'facade and grouped module must resolve');
-  return diagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
+  return diagnosticsForFixture(file);
 }
 
 test('BLOCK handoff facade preserves generic B, provenance and generated result types', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('BLOCK handoff rejects narrowed generated values, frozen outer writes, and incomplete expected context', () => {

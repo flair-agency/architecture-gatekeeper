@@ -20,17 +20,40 @@ assert.equal(parsed.options.noImplicitAny, true);
 assert.equal(parsed.options.allowJs, true);
 assert.match(source, /^\/\/ @ts-check$/m);
 
-// The CLI is private. Append compile-only calls to a virtual copy of its actual
-// source rather than exporting it or inventing an argv adapter for the test.
-function diagnosticsFor(probe) {
-  const options = { ...parsed.options, noEmit: true };
-  const host = ts.createCompilerHost(options);
-  const originalGetSourceFile = host.getSourceFile.bind(host);
-  host.getSourceFile = (file, languageVersion, ...args) => file === sourcePath
-    ? ts.createSourceFile(file, `${source}\n${probe}\n`, languageVersion, true, ts.ScriptKind.JS)
-    : originalGetSourceFile(file, languageVersion, ...args);
-  return ts.getPreEmitDiagnostics(ts.createProgram([sourcePath], options, host)).map(item => ({
-    file: item.file?.fileName,
+// Compile independent virtual copies of the actual exported CLI together.
+// They share a directory with the facade, so its relative imports resolve as
+// they do for the physical source. Each probe keeps its own module scope.
+const probes = Object.freeze([
+  '/** @type {Promise<void>} */ const completion = main();',
+  '/** @type {Promise<void>} */ const completion = main(undefined);',
+  '/** @type {import("./ci-review/ci-report.mts").ReportFetch} */ const transport = fetch; /** @type {Promise<void>} */ const completion = main(transport);',
+  "main(['unused']);",
+  '/** @type {Promise<string>} */ const completion = main();',
+]);
+const virtualPaths = Object.freeze(probes.map((_, index) => join(dirname(sourcePath), `__ci-report-type-probe-${index}.mjs`)));
+const options = { ...parsed.options, noEmit: true };
+const virtualSources = new Map(virtualPaths.map((file, index) => [file, `${source}\n${probes[index]}\n`]));
+const host = ts.createCompilerHost(options);
+const originalGetSourceFile = host.getSourceFile.bind(host);
+const originalFileExists = host.fileExists.bind(host);
+host.fileExists = file => virtualSources.has(file) || originalFileExists(file);
+host.getSourceFile = (file, languageVersion, ...args) => virtualSources.has(file)
+  ? ts.createSourceFile(file, virtualSources.get(file), languageVersion, true, ts.ScriptKind.JS)
+  : originalGetSourceFile(file, languageVersion, ...args);
+const allDiagnostics = ts.getPreEmitDiagnostics(ts.createProgram(virtualPaths, options, host));
+const unexpectedDependencyDiagnostics = allDiagnostics.filter(item => !virtualSources.has(item.file?.fileName));
+assert.deepEqual(unexpectedDependencyDiagnostics.map(item => ({
+  file: item.file?.fileName, code: item.code,
+  line: item.file && item.start !== undefined
+    ? item.file.getLineAndCharacterOfPosition(item.start).line + 1 : undefined,
+  message: ts.flattenDiagnosticMessageText(item.messageText, '\n'),
+})), [], 'every unexpected or transitive diagnostic must fail');
+function diagnosticsFor(index) {
+  assert.ok(Number.isInteger(index) && index >= 0 && index < virtualPaths.length,
+    `Uncompiled report type probe: ${index}`);
+  return allDiagnostics.filter(item => item.file?.fileName === virtualPaths[index]).map(item => ({
+    // The virtual module is an independent copy of this physical facade.
+    file: sourcePath,
     code: item.code,
     line: item.file && item.start !== undefined
       ? item.file.getLineAndCharacterOfPosition(item.start).line + 1 : undefined,
@@ -38,18 +61,18 @@ function diagnosticsFor(probe) {
   }));
 }
 
-test('private report CLI has its original zero-argument Promise<void> contract', () => {
-  assert.deepEqual(diagnosticsFor('/** @type {Promise<void>} */ const completion = main();'), []);
+test('report CLI accepts an optional ReportFetch and returns Promise<void>', () => {
+  for (const index of [0, 1, 2]) assert.deepEqual(diagnosticsFor(index), []);
 });
 
-test('private report CLI rejects argv and a value-producing completion claim', () => {
+test('report CLI rejects argv and a value-producing completion claim', () => {
   const cases = [
-    { probe: "main(['unused']);", code: 2554, message: /Expected 0 arguments, but got 1/ },
-    { probe: '/** @type {Promise<string>} */ const completion = main();', code: 2322,
+    { index: 3, code: 2345, message: /not assignable.*ReportFetch/s },
+    { index: 4, code: 2322,
       message: /Promise<void>.*Promise<string>/s },
   ];
-  for (const { probe, code, message } of cases) {
-    const diagnostics = diagnosticsFor(probe);
+  for (const { index, code, message } of cases) {
+    const diagnostics = diagnosticsFor(index);
     assert.equal(diagnostics.length, 1, 'every unexpected or transitive diagnostic must fail');
     assert.equal(diagnostics[0].file, sourcePath);
     assert.equal(diagnostics[0].line, source.split('\n').length + 1);
@@ -66,21 +89,44 @@ function canonical(value) {
     .map(([key, child]) => [key, canonical(child)]));
 }
 
-function runtimeDigest(text) {
-  const ast = parse(text, { ecmaVersion: 'latest', sourceType: 'module' });
+function runtimeAst(text, fileName) {
+  const output = ts.transpileModule(text, { fileName, compilerOptions: parsed.options }).outputText;
+  const ast = parse(output, { ecmaVersion: 'latest', sourceType: 'module' });
   for (const node of ast.body) {
-    if (node.type === 'ImportDeclaration' && node.source.value.endsWith('.mts')) {
+    if ((node.type === 'ImportDeclaration' || node.type === 'ExportNamedDeclaration') && node.source?.value.endsWith('.mts')) {
       node.source.value = `${node.source.value.slice(0, -4)}.mjs`;
     }
   }
-  return createHash('sha256').update(JSON.stringify(canonical(ast.body))).digest('hex');
+  return canonical(ast.body);
 }
 
-test('source and emitted report CLI preserve the complete pre-change runtime AST', () => {
-  // Baseline: e6cb272d1c78dea50a48eee1ad9c523b260187b0:src/ci-report.mjs.
-  // Only coordinates, literal spelling and the compiler's .mts import rewrite
-  // are normalized. Main, exports, property reads, dispatch and sinks are bound.
-  const baseline = '105764db4749d7ac70ef554bb1185b415bd40d367b93e93a0d8b896c8fa0ad30';
-  assert.equal(runtimeDigest(source), baseline);
-  assert.equal(runtimeDigest(readFileSync(join(root, 'dist/ci-report.mjs'), 'utf8')), baseline);
+test('complete report source and emitted CLI preserve adopted operations, imports and exact flat guard', async () => {
+  const groupedPath = join(root, 'src/ci-review/ci-report-entrypoint.mts');
+  const physical = runtimeAst(readFileSync(groupedPath, 'utf8'), groupedPath);
+  const emittedPath = join(root, 'dist/ci-review/ci-report-entrypoint.mjs');
+  const emitted = runtimeAst(readFileSync(emittedPath, 'utf8'), emittedPath);
+  assert.deepEqual(physical, emitted);
+  const facade = runtimeAst(source, sourcePath);
+  const emittedFacadePath = join(root, 'dist/ci-report.mjs');
+  assert.deepEqual(facade, runtimeAst(readFileSync(emittedFacadePath, 'utf8'), emittedFacadePath));
+  const operations = [...physical.filter(node => node.type !== 'ImportDeclaration'), facade.at(-1)];
+  // Immutable adopted51215db9: all original helper and complete main operations.
+  // The former whole-program hash0e7aa8c1 includes imports before relocation.
+  assert.equal(createHash('sha256').update(JSON.stringify(operations)).digest('hex'),
+    '4085b9db0adbbd0900f612f86e9478d4c081cc67da2d44c3151cfda5b5ce3970');
+  assert.equal(createHash('sha256').update(JSON.stringify(facade.at(-1))).digest('hex'),
+    '18585ceaab740b5908703195f247a312667f7383aecc08fb18f86e8406c0e46e');
+  assert.deepEqual(physical.filter(node => node.type === 'ImportDeclaration').map(node => node.source.value), [
+    'node:fs/promises', 'node:fs', 'node:path', '../runner-temp-path.mjs',
+    '../github-runner-env.mjs', '../ordinary-gemini-ci-publication.mjs',
+    '../multi-authority-provenance.mjs', './ci-report.mjs',
+  ], 'preserve original compatibility imports; original node:url guard binding stays flat');
+  const flat = await import('../dist/ci-report.mjs');
+  const group = await import('../dist/ci-review/ci-report-entrypoint.mjs');
+  const names = ['COMMENT_MARKER', 'sanitizeReportApiContext', 'digestDecision', 'validateInlineFindings',
+    'formatInlineFindingHeading', 'postInlineReview', 'parseAuthorityProvenance',
+    'parseLegacyAuthorityProvenance', 'parseOwnerAdditionProcedure', 'classifyReview',
+    'renderReport', 'upsertPullRequestComment', 'loadCodexPassReport', 'main'];
+  assert.deepEqual(Object.keys(flat).sort(), [...names].sort());
+  for (const name of names) assert.equal(flat[name], group[name], name);
 });

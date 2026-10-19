@@ -32,7 +32,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'github/github-authority-source.mjs', 'github/github-merge-group-event.mjs', 'github/github-owner-amendment-readback.mjs',
     'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs',
     'github/github-ruleset-readback.mjs', 'github/github-ruleset-readback-cli.mjs', 'review-inputs/review-input-path.mjs',
-    'authority-validation/legacy-git-snapshot.mjs', 'authority-validation/json-schema.mjs',
+    'authority-validation/legacy-git-snapshot.mjs', 'git/buffered-git.mjs', 'authority-validation/json-schema.mjs',
     'authority-validation/multi-authority-provenance.mjs', 'ci-review/legacy-authority-decision.mjs', 'ci-review/prepared-ci-decision.mjs', 'ci-review/ci-decision-kind.mjs', 'ci-review/verify-legacy-validation-selection.mjs', 'ci-execution/ci-execution-observation.mjs', 'owner-amendment/owner-amendment-block-semantic-record.mjs', 'owner-amendment/owner-amendment-block-context-verifier.mjs', 'owner-amendment/owner-amendment-block-evidence-composer.mjs', 'authority-validation/validate-decision.mjs', 'authority-validation/validate-authority-set-decision.mjs', 'authority-validation/preflight-authority-set-review.mjs', 'review-inputs/prepare-review-file-context.mjs', 'review-inputs/prepare-review-context.mjs', 'review-inputs/materialize-review-workspace.mjs', 'review-inputs/review-security-proxy.mjs', 'review-contract/review-contract.mjs', 'authority-validation/resolve-ci-policy.mjs', 'authority-validation/prepare-authority-set.mjs', 'owner-addition/owner-addition-adoption.mjs', 'owner-addition/owner-decision-addition.mjs'];
   nestedPaths.push('owner-amendment/owner-amendment-block-handoff.mjs',
     'owner-amendment/owner-amendment-block-handoff-compose.mjs',
@@ -57,6 +57,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'ci-review/ci-procedural-authority-change.mjs',
     'ci-review/ci-procedural-acceptance.mjs',
     'ci-review/ci-report.mjs',
+    'ci-review/ci-report-entrypoint.mjs',
     'owner-amendment/owner-amendment.mjs',
     'gemini-cli/gemini-cli-response.mjs',
     'gemini-cli/gemini-cli-process.mjs',
@@ -67,13 +68,16 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'reviewer-transports/local-reviewer-execution.mjs',
     'runner-paths/runner-temp-path.mjs',
     'local-review/local-gate.mjs',
+    'local-review/native-review.mjs',
     'local-review/local-post-tool-screen.mjs',
     'local-review/manual-review.mjs',
     'owner-addition/owner-addition-finalize.mjs',
+    'owner-addition/finalize-owner-addition.mjs',
     'owner-addition/multi-authority-eligibility.mjs',
     'owner-addition/single-authority-member.mjs',
     'github/owner-addition-evidence-zip.mjs',
-    'github/github-runner-env.mjs');
+    'github/github-runner-env.mjs',
+    'github/github-owner-addition-provenance.mjs');
   assert.ok(request.runtime.files['preview-lifecycle.mjs']);
   assert.ok(request.runtime.files['../package.json']);
   for (const nestedPath of nestedPaths) {
@@ -84,7 +88,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
   await runtime.validatePreviewReceipt(receipt, f.root);
 
-  nestedPaths.push('measurement-ci.mjs', 'measurement-api.mjs', 'measurement-analysis.mjs', 'measurement-cli.mjs', 'measurement.mjs', 'measurement-consistency.mjs', 'diagnostic-path.mjs');
+  nestedPaths.push('measurement-ci.mjs', 'measurement-api.mjs', 'measurement-analysis.mjs', 'measurement-cli.mjs', 'measurement.mjs', 'measurement-consistency.mjs', 'diagnostic-path.mjs', 'io/read-descriptor.mjs');
   const unchangedPaths = [...new Set([...nestedPaths.filter(path => path.includes('/')).map(path => path.split('/').at(-1)),
     'preview-lifecycle.mjs', 'owner-addition-ci.mjs', 'github-owner-addition-provenance.mjs']
     .filter(file => existsSync(join(runtimeRoot, 'dist', file))))];
@@ -132,6 +136,97 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   t.after(() => rmSync(flatRoot, { recursive: true, force: true }));
   cpSync(join(packageRoot, 'dist'), join(flatRoot, 'dist'), { recursive: true });
   copyFileSync(join(packageRoot, 'package.json'), join(flatRoot, 'package.json'));
+  // Later migration stages retain flat facades. Reconstruct their complete
+  // predecessor bodies only when the actual emitted implementation exists.
+  function restoreFlatImplementation(flatName, groupedName, { inlineRunner, imports = '', remap = text => text } = {}) {
+    const implementationPath = join(flatRoot, 'dist', groupedName);
+    if (!existsSync(implementationPath)) return false;
+    const facadePath = join(flatRoot, 'dist', flatName);
+    const facade = readFileSync(facadePath, 'utf8');
+    assert.match(facade, new RegExp(`from (["'])\\.\\/${groupedName.replaceAll('.', '\\.')}\\1`),
+      `${flatName} must delegate to its actual implementation`);
+    const implementation = readFileSync(implementationPath, 'utf8');
+    if (groupedName === 'ci-review/legacy-ci-authority-preparer.mjs') {
+      assert.match(facade, /export \{ prepareLegacyAuthority, validateLegacyAuthorityDecision \} from/);
+      assert.match(implementation, /export \{ validateLegacyAuthorityDecision \};/);
+    }
+    if (groupedName === 'owner-addition/owner-addition-multiauthority.mjs') {
+      assert.match(facade, /export \{ prepareMultiAuthorityAddition, validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema \};/);
+      assert.match(implementation, /export \{ validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema \};/);
+    }
+    if (groupedName === 'owner-addition/owner-addition-ci-operations.mjs') {
+      assert.match(facade, /import \{ prepare, resolveSingleOwnerAdditionAuthorityId, validateOwnerAdditionCiCli \} from/);
+      assert.match(implementation, /import \{ selectSingleOwnerAdditionMember \} from (["'])\.\/single-authority-member\.mjs\1/);
+    }
+    if (groupedName === 'gemini-cli/launcher-entrypoint.mjs') {
+      assert.ok(implementation.includes("dirname(fileURLToPath(import.meta.url)), '..', 'gemini-ci-runner.mjs'"));
+    }
+    let body = implementation.replace(/^#![^\n]*\n/, '')
+      .replace(/from (["'])\.\.\//g, 'from $1./');
+    const guardStart = facade.indexOf('if (process.argv[1]');
+    if (inlineRunner) {
+      const marker = `export function ${inlineRunner}()`;
+      const runnerStart = body.lastIndexOf(marker);
+      assert.ok(runnerStart > 0, `${groupedName} must retain its complete CLI runner`);
+      const opening = body.indexOf('{', runnerStart);
+      const tail = body.slice(opening + 1);
+      assert.match(tail, /}\s*$/);
+      assert.ok(guardStart >= 0);
+      const guard = facade.slice(guardStart);
+      const originalOpening = guard.includes('{')
+        ? guard.slice(0, guard.indexOf('{') + 1)
+        : guard.slice(0, guard.indexOf('\n')).trimEnd() + ' {';
+      body = body.slice(0, runnerStart) + '\n' + originalOpening + tail.slice(0, tail.lastIndexOf('}')) + '}\n';
+    } else if (guardStart >= 0) {
+      body += '\n' + facade.slice(guardStart);
+    }
+    writeFileSync(facadePath, imports + remap(body));
+    return true;
+  }
+  restoreFlatImplementation('prepare-legacy-ci-authority.mjs', 'ci-review/legacy-ci-authority-preparer.mjs', {
+    inlineRunner: 'runLegacyCiAuthorityCli',
+    remap: text => {
+      assert.equal((text.match(/from (["'])\.\/git\/buffered-git\.mjs\1/g) ?? []).length, 1,
+        'the reconstructed flat legacy preparer has one import of the shared Git helper');
+      return text.replace(/from (["'])\.\/git\/buffered-git\.mjs\1/g, "from './buffered-git.mjs'")
+        .replace(/from (["'])\.\/legacy-authority-decision\.mjs\1/g, "from './legacy-authority-decision-helpers.mjs'");
+    },
+  });
+  restoreFlatImplementation('owner-addition-multiauthority.mjs', 'owner-addition/owner-addition-multiauthority.mjs', {
+    remap: text => text.replace(/from (["'])\.\/multi-authority-eligibility\.mjs\1/g, "from './multi-authority-eligibility-helper.mjs'"),
+  });
+  restoreFlatImplementation('owner-addition-ci.mjs', 'owner-addition/owner-addition-ci-operations.mjs', {
+    imports: "import { realpathSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\nimport { trustedGitHubWorkspaceRoot } from './github-runner-workspace.mjs';\n",
+    remap: text => {
+      assert.equal((text.match(/from (["'])\.\/git\/buffered-git\.mjs\1/g) ?? []).length, 1,
+        'the reconstructed flat owner-addition CLI has one import of the shared Git helper');
+      return text.replace(/export (async )?function (prepare|validateOwnerAdditionCiCli)\(/g, '$1function $2(')
+        .replace(/from (["'])\.\/single-authority-member\.mjs\1/g, "from './single-authority-member-helper.mjs'")
+        .replace(/from (["'])\.\/git\/buffered-git\.mjs\1/g, "from './buffered-git.mjs'")
+        + '\nexport { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema, validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema };\n';
+    },
+  });
+  for (const [flatName, groupedName] of [
+    ['gemini-transport.mjs', 'reviewer-transports/gemini-transport.mjs'],
+    ['gemini-security-proxy.mjs', 'gemini-cli/gemini-security-proxy.mjs'],
+    ['gemini-ci-runner.mjs', 'gemini-cli/ci-runner-entrypoint.mjs'],
+    ['gemini-launcher.mjs', 'gemini-cli/launcher-entrypoint.mjs'],
+  ]) {
+    restoreFlatImplementation(flatName, groupedName, {
+      inlineRunner: flatName === 'gemini-ci-runner.mjs' ? 'runGeminiCiReviewCli'
+        : flatName === 'gemini-launcher.mjs' ? 'runGeminiLauncherCli' : undefined,
+      imports: flatName === 'gemini-ci-runner.mjs' ? "import { fileURLToPath } from 'node:url';\n"
+        : flatName === 'gemini-launcher.mjs' ? "import { realpathSync } from 'node:fs';\n" : '',
+      remap: text => flatName === 'gemini-launcher.mjs'
+        ? text.replace("dirname(fileURLToPath(import.meta.url)), '..', 'gemini-ci-runner.mjs'", "dirname(fileURLToPath(import.meta.url)), '.', 'gemini-ci-runner.mjs'") : text,
+    });
+  }
+  if (restoreFlatImplementation('preview-lifecycle.mjs', 'preview-lifecycle-runtime.mjs')) {
+    rmSync(join(flatRoot, 'dist/preview-lifecycle-runtime.mjs'));
+  }
+  restoreFlatImplementation('materialize-regular-git-snapshot.mjs', 'review-inputs/materialize-regular-git-snapshot.mjs', {
+    inlineRunner: 'runMaterializeRegularGitSnapshotCli',
+  });
   writeFileSync(join(flatRoot, 'dist/owner-addition-validation.mjs'),
     readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-validation.mjs')));
   writeFileSync(join(flatRoot, 'dist/ci-execution-result.mjs'),
@@ -186,8 +281,24 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   assert.equal(flatRulesetResult.stderr, 'Isolated ruleset readback incomplete; no handoff authorization or credential output.\n');
   writeFileSync(join(flatRoot, 'dist/review-input-path.mjs'),
     readFileSync(join(flatRoot, 'dist/review-inputs/review-input-path.mjs')));
+  const bufferedGitDirectory = join(flatRoot, 'dist/git');
+  assert.deepEqual(readdirSync(bufferedGitDirectory), ['buffered-git.mjs'], 'the synthetic flat fixture has only the expected grouped Git helper');
+  copyFileSync(join(bufferedGitDirectory, 'buffered-git.mjs'), join(flatRoot, 'dist/buffered-git.mjs'));
+  const descriptorDirectory = join(flatRoot, 'dist/io');
+  assert.deepEqual(readdirSync(descriptorDirectory), ['read-descriptor.mjs'],
+    'the synthetic flat fixture has only the expected descriptor helper');
+  copyFileSync(join(descriptorDirectory, 'read-descriptor.mjs'), join(flatRoot, 'dist/read-descriptor.mjs'));
+  for (const name of ['diagnostic-path.mjs', 'measurement.mjs']) {
+    const path = join(flatRoot, 'dist', name); const text = readFileSync(path, 'utf8');
+    assert.equal((text.match(/from (["'])\.\/io\/read-descriptor\.mjs\1/g) ?? []).length, 1,
+      `${name} must retain one descriptor-helper import in the synthetic flat fixture`);
+    writeFileSync(path, text.replace(/from (["'])\.\/io\/read-descriptor\.mjs\1/, "from './read-descriptor.mjs'"));
+  }
+  const legacyGitSnapshotSource = readFileSync(join(flatRoot, 'dist/authority-validation/legacy-git-snapshot.mjs'), 'utf8');
+  assert.equal((legacyGitSnapshotSource.match(/from (["'])\.\.\/git\/buffered-git\.mjs\1/g) ?? []).length, 1,
+    'the reconstructed flat snapshot has one import of the shared Git helper');
   writeFileSync(join(flatRoot, 'dist/legacy-git-snapshot.mjs'),
-    readFileSync(join(flatRoot, 'dist/authority-validation/legacy-git-snapshot.mjs')));
+    legacyGitSnapshotSource.replace(/from (["'])\.\.\/git\/buffered-git\.mjs\1/, "from './buffered-git.mjs'"));
   writeFileSync(join(flatRoot, 'dist/json-schema.mjs'),
     readFileSync(join(flatRoot, 'dist/authority-validation/json-schema.mjs')));
   writeFileSync(join(flatRoot, 'dist/multi-authority-provenance.mjs'),
@@ -229,8 +340,12 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/review-contract/review-contract.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/resolve-ci-policy.mjs'),
     readFileSync(join(flatRoot, 'dist/authority-validation/resolve-ci-policy.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
-  writeFileSync(join(flatRoot, 'dist/prepare-authority-set.mjs'),
-    readFileSync(join(flatRoot, 'dist/authority-validation/prepare-authority-set.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+  const flatPreparerSource = readFileSync(join(flatRoot, 'dist/authority-validation/prepare-authority-set.mjs'), 'utf8');
+  assert.equal((flatPreparerSource.match(/from (["'])\.\.\/io\/read-descriptor\.mjs\1/g) ?? []).length, 1,
+    'the reconstructed flat preparer has one import of the shared descriptor helper');
+  writeFileSync(join(flatRoot, 'dist/prepare-authority-set.mjs'), flatPreparerSource
+    .replace(/from (["'])\.\.\/io\/read-descriptor\.mjs\1/, "from './read-descriptor.mjs'")
+    .replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/owner-addition-adoption.mjs'),
     readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-adoption.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/owner-decision-addition.mjs'),
@@ -239,8 +354,27 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-finalize.mjs'), 'utf8')
       .replace(/from (["'])\.\.\/authority-validation\//g, "from $1./"));
   const finalizerCliPath = join(flatRoot, 'dist/owner-addition-finalize.mjs');
-  writeFileSync(finalizerCliPath, readFileSync(finalizerCliPath, 'utf8')
-    .replace(/from (["'])\.\/owner-addition\/owner-addition-finalize\.mjs\1/, "from './owner-addition-finalize-helper.mjs'"));
+  // Restore the complete former flat API/helper body and inline CLI body.
+  // The last compiler-emitted runner is bound separately by the operation pin;
+  // this fixture needs no compiler or parser in the installed runtime package.
+  const finalizerImplementation = readFileSync(join(flatRoot, 'dist/owner-addition/finalize-owner-addition.mjs'), 'utf8');
+  const finalizerCliMarker = 'export async function runOwnerAdditionFinalizeCli() {';
+  const finalizerCliStart = finalizerImplementation.lastIndexOf(finalizerCliMarker);
+  assert.ok(finalizerCliStart > 0);
+  const finalizerCliTail = finalizerImplementation.slice(finalizerCliStart + finalizerCliMarker.length);
+  assert.match(finalizerCliTail, /}\s*$/);
+  const formerCliBody = finalizerCliTail.slice(0, finalizerCliTail.lastIndexOf('}'));
+  const formerFinalizerBody = finalizerImplementation.slice(0, finalizerCliStart)
+    .replace(/^#![^\n]*\n/, '')
+    .replace(/from (["'])\.\.\//g, (match, quote) => `from ${quote}./`)
+    .replace(/from (["'])\.\/owner-addition-finalize\.mjs\1/g, "from './owner-addition-finalize-helper.mjs'");
+  const finalizerFacade = readFileSync(finalizerCliPath, 'utf8');
+  const finalizerGuardStart = finalizerFacade.indexOf('if (process.argv[1]');
+  assert.ok(finalizerGuardStart >= 0);
+  const finalizerGuardOpening = finalizerFacade.slice(finalizerGuardStart, finalizerFacade.indexOf('{', finalizerGuardStart) + 1);
+  writeFileSync(finalizerCliPath,
+    "import { realpathSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\n" +
+    formerFinalizerBody + '\n' + finalizerGuardOpening + formerCliBody + '}\n');
   writeFileSync(join(flatRoot, 'dist/multi-authority-eligibility-helper.mjs'),
     readFileSync(join(flatRoot, 'dist/owner-addition/multi-authority-eligibility.mjs'), 'utf8')
       .replace(/from (["'])\.\.\//g, "from $1./"));
@@ -251,16 +385,19 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/owner-addition/single-authority-member.mjs')));
   const ownerAdditionCiPath = join(flatRoot, 'dist/owner-addition-ci.mjs');
   const ownerAdditionCiSource = readFileSync(ownerAdditionCiPath, 'utf8');
-  assert.match(ownerAdditionCiSource, /from (["'])\.\/owner-addition\/single-authority-member\.mjs\1/);
+  assert.match(ownerAdditionCiSource, existsSync(join(flatRoot, 'dist/owner-addition/owner-addition-ci-operations.mjs'))
+    ? /from (["'])\.\/single-authority-member-helper\.mjs\1/
+    : /from (["'])\.\/owner-addition\/single-authority-member\.mjs\1/);
   writeFileSync(ownerAdditionCiPath, ownerAdditionCiSource
     .replace(/from (["'])\.\/owner-addition\/single-authority-member\.mjs\1/, "from './single-authority-member-helper.mjs'"));
   writeFileSync(join(flatRoot, 'dist/owner-addition-evidence-zip-helper.mjs'),
     readFileSync(join(flatRoot, 'dist/github/owner-addition-evidence-zip.mjs')));
   const githubOwnerAdditionProvenancePath = join(flatRoot, 'dist/github-owner-addition-provenance.mjs');
-  const githubOwnerAdditionProvenanceSource = readFileSync(githubOwnerAdditionProvenancePath, 'utf8');
-  assert.match(githubOwnerAdditionProvenanceSource, /from (["'])\.\/github\/owner-addition-evidence-zip\.mjs\1/);
+  const githubOwnerAdditionProvenanceSource = readFileSync(join(flatRoot, 'dist/github/github-owner-addition-provenance.mjs'), 'utf8');
+  assert.match(githubOwnerAdditionProvenanceSource, /from (["'])\.\/owner-addition-evidence-zip\.mjs\1/);
   writeFileSync(githubOwnerAdditionProvenancePath, githubOwnerAdditionProvenanceSource
-    .replace(/from (["'])\.\/github\/owner-addition-evidence-zip\.mjs\1/, "from './owner-addition-evidence-zip-helper.mjs'"));
+    .replace(/from '\.\.\//g, "from './")
+    .replace(/from (["'])\.\/owner-addition-evidence-zip\.mjs\1/, "from './owner-addition-evidence-zip-helper.mjs'"));
   for (const file of ['owner-amendment-block-handoff.mjs',
     'owner-amendment-block-handoff-compose.mjs', 'owner-amendment-block-handoff-orchestrator.mjs',
     'owner-amendment-owner-decision-handoff.mjs', 'owner-amendment-owner-decision-handoff-cli.mjs',
@@ -299,6 +436,15 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
         .replace(/from '\.\.\/reviewer-transports\//g, "from './")
         .replace(/from '\.\.\//g, "from './"));
   }
+  // Restore the complete former flat native body and its original guard before
+  // deleting grouped modules. Importing the restored API remains non-dispatching.
+  const nativeImplementation = readFileSync(join(flatRoot, 'dist/local-review/native-review.mjs'), 'utf8')
+    .replace(/from (["'])\.\.\//g, 'from $1./');
+  const nativeFacade = readFileSync(join(flatRoot, 'dist/native-review.mjs'), 'utf8');
+  const nativeGuard = nativeFacade.slice(nativeFacade.indexOf('if (process.argv[1]'));
+  assert.ok(nativeGuard.startsWith('if (process.argv[1]'));
+  writeFileSync(join(flatRoot, 'dist/native-review.mjs'),
+    "import { realpathSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\n" + nativeImplementation + '\n' + nativeGuard);
   rmSync(join(flatRoot, 'dist/local-review'), { recursive: true });
   rmSync(join(flatRoot, 'dist/runner-paths'), { recursive: true });
   rmSync(join(flatRoot, 'dist/reviewer-transports'), { recursive: true });
@@ -327,8 +473,13 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/github/codex-pass-log.mjs'), 'utf8')
       .replace(/from '\.\.\/ci-review\/codex-pass-publication\.mjs'/g, "from './codex-pass-publication.mjs'"));
   const reportCliPath = join(flatRoot, 'dist/ci-report.mjs');
-  writeFileSync(reportCliPath, readFileSync(reportCliPath, 'utf8')
-    .replace(/from ["']\.\/ci-review\/ci-report\.mjs["']/, "from './ci-report-helpers.mjs'"));
+  const reportFacade = readFileSync(reportCliPath, 'utf8');
+  const reportBody = readFileSync(join(flatRoot, 'dist/ci-review/ci-report-entrypoint.mjs'), 'utf8')
+    .replace(/from '\.\.\//g, "from './")
+    .replace(/from '\.\/ci-report\.mjs'/, "from './ci-report-helpers.mjs'");
+  const reportGuard = reportFacade.slice(reportFacade.lastIndexOf('\nif (process.argv[1]'));
+  // Reconstruct the complete former flat CLI, including its public main and guard.
+  writeFileSync(reportCliPath, "import { fileURLToPath } from 'node:url';\n" + reportBody + reportGuard);
   rmSync(join(flatRoot, 'dist/ci-review'), { recursive: true });
   rmSync(join(flatRoot, 'dist/authority-validation'), { recursive: true });
   rmSync(join(flatRoot, 'dist/review-inputs'), { recursive: true });
@@ -336,6 +487,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
   rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
+  rmSync(bufferedGitDirectory, { recursive: true });
+  rmSync(descriptorDirectory, { recursive: true });
   const flatLegacyAuthorityCli = await import(pathToFileURL(legacyAuthorityCliPath).href);
   assert.equal(typeof flatLegacyAuthorityCli.prepareLegacyAuthority, 'function');
   assert.equal(typeof flatLegacyAuthorityCli.validateLegacyAuthorityDecision, 'function');
@@ -345,6 +498,9 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   { decision: 'PASS', authorityFiles: ['docs/architecture.md'] });
   const flatFinalizer = await import(pathToFileURL(finalizerCliPath).href);
   assert.equal(typeof flatFinalizer.buildOwnerAdditionFinalRecord, 'function');
+  assert.equal(typeof flatFinalizer.finalizeOwnerAddition, 'function');
+  assert.equal(typeof flatFinalizer.parsePinnedGatekeeperWorkflow, 'function');
+  assert.equal('runOwnerAdditionFinalizeCli' in flatFinalizer, false, 'restore the original inline CLI rather than a new wrapper');
   const flatMultiAuthority = await import(pathToFileURL(multiAuthorityCliPath).href);
   assert.equal(typeof flatMultiAuthority.validateMultiAuthorityEligibility, 'function');
   assert.equal(typeof flatMultiAuthority.validateMultiAuthorityEligibilitySchema, 'function');
@@ -368,6 +524,8 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   assert.equal(typeof flatCodexTransport.runCodexReviewer, 'function');
   assert.equal(typeof flatLocalReviewer.executeLocalReviewerSync, 'function');
   assert.equal(typeof flatLocalReviewer.executeLocalReviewer, 'function');
+  const flatNative = await import(pathToFileURL(join(flatRoot, 'dist/native-review.mjs')).href);
+  assert.equal(typeof flatNative.runNativeReviewCli, 'function');
   const flatRuntime = await import(pathToFileURL(join(flatRoot, 'dist/preview-lifecycle.mjs')).href);
   const flatRequest = await flatRuntime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
   const expectedFlatPaths = readdirSync(join(flatRoot, 'dist')).filter(file => file.endsWith('.mjs')).sort();
@@ -377,6 +535,14 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   assert.equal(flatRequest.runtime.files['github-ruleset-readback-cli.mjs'], createHash('sha256').update(legacyRulesetCli).digest('hex'));
   assert.equal(flatRequest.runtime.files['legacy-authority-decision-helpers.mjs'], createHash('sha256')
     .update(readFileSync(join(flatRoot, 'dist/legacy-authority-decision-helpers.mjs'))).digest('hex'));
+  assert.equal(flatRequest.runtime.files['buffered-git.mjs'], createHash('sha256')
+    .update(readFileSync(join(flatRoot, 'dist/buffered-git.mjs'))).digest('hex'));
+  assert.equal(flatRequest.runtime.files['read-descriptor.mjs'], createHash('sha256')
+    .update(readFileSync(join(flatRoot, 'dist/read-descriptor.mjs'))).digest('hex'));
+  for (const helper of ['single-authority-member-helper.mjs', 'multi-authority-eligibility-helper.mjs']) {
+    assert.equal(flatRequest.runtime.files[helper], createHash('sha256')
+      .update(readFileSync(join(flatRoot, 'dist', helper))).digest('hex'));
+  }
   const flatReceipt = await flatRuntime.completePreviewLifecycle(flatRequest, ordinary(decision()), f.root);
   await flatRuntime.validatePreviewReceipt(flatReceipt, f.root);
   const authorityPath = 'docs/authority.md';

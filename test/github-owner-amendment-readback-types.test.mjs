@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/github-owner-amendment-readback-contract');
@@ -16,14 +17,13 @@ assert.equal(tsconfig.options.noImplicitAny, true);
 assert.equal(tsconfig.options.noEmitOnError, true);
 const compilerOptions = { ...tsconfig.options, rootDir: root, noEmit: true };
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'), join(fixtureRoot, 'negative.mts'),
+], compilerOptions, 'imports and authored declarations must be error-free');
+
 function diagnosticsFor(fixture) {
   const file = join(fixtureRoot, fixture);
-  const program = ts.createProgram([file], compilerOptions);
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  const fixtureDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
-  const otherDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file);
-  assert.deepEqual(otherDiagnostics, [], 'imports and authored declarations must be error-free');
-  return fixtureDiagnostics;
+  return diagnosticsForFixture(file);
 }
 
 function diagnosticEvidence(diagnostics) {
@@ -35,7 +35,7 @@ function diagnosticEvidence(diagnostics) {
 }
 
 test('github-owner-amendment-readback positive contracts and direct callback composition compile with project settings', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('github-owner-amendment-readback rejects incompatible contracts at their intended fields', () => {

@@ -3,11 +3,40 @@ import assert from 'node:assert/strict';
 import { cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'acorn';
+import ts from 'typescript';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+function copyEntrypointModules(fixtureRoot) {
+  const pending = [join(root, 'src/native-review.mjs'), join(root, 'src/owner-addition-finalize.mjs'), join(root, 'src/ci-report.mjs')];
+  const copied = new Set();
+  while (pending.length) {
+    const path = pending.pop();
+    if (copied.has(path)) continue;
+    copied.add(path);
+    const destination = join(fixtureRoot, relative(root, path));
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(path, destination);
+    const source = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
+    const collect = node => {
+      let specifier;
+      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+        specifier = node.moduleSpecifier.text;
+      } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) {
+        specifier = node.argument.literal.text;
+      } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && ts.isStringLiteral(node.arguments[0])) {
+        specifier = node.arguments[0].text;
+      }
+      if (specifier?.startsWith('.')) pending.push(resolve(dirname(path), specifier));
+      ts.forEachChild(node, collect);
+    };
+    collect(source);
+  }
+  return [...copied].map(path => relative(join(root, 'src'), path).replace(/\.mts$/, '.mjs'));
+}
 
 function runBuild(fixtureRoot) {
   const result = spawnSync('npm', ['run', 'build'], {
@@ -61,7 +90,8 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   mkdirSync(join(fixtureRoot, 'src/github'), { recursive: true });
   for (const module of ['github-associated-repository', 'github-cli-runner',
     'github-authority-source', 'github-merge-group-event', 'github-owner-amendment-readback',
-    'github-owner-addition-readback', 'github-app-check-reporter', 'github-ruleset-readback', 'github-runner-env']) {
+    'github-owner-addition-readback', 'github-app-check-reporter', 'github-ruleset-readback', 'github-runner-env',
+    'github-owner-addition-provenance']) {
     cpSync(join(root, `src/github/${module}.mts`), join(fixtureRoot, `src/github/${module}.mts`));
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
   }
@@ -71,8 +101,12 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   mkdirSync(join(fixtureRoot, 'src/runner-paths'), { recursive: true });
   cpSync(join(root, 'src/runner-paths/runner-temp-path.mts'), join(fixtureRoot, 'src/runner-paths/runner-temp-path.mts'));
   mkdirSync(join(fixtureRoot, 'src/authority-validation'), { recursive: true });
+  cpSync(join(root, 'src/github/owner-addition-evidence-zip.mts'), join(fixtureRoot, 'src/github/owner-addition-evidence-zip.mts'));
+  cpSync(join(root, 'src/multi-authority-provenance.mjs'), join(fixtureRoot, 'src/multi-authority-provenance.mjs'));
+  cpSync(join(root, 'src/authority-validation/multi-authority-provenance.mts'), join(fixtureRoot, 'src/authority-validation/multi-authority-provenance.mts'));
   cpSync(join(root, 'src/authority-validation/authority-set.mts'), join(fixtureRoot, 'src/authority-validation/authority-set.mts'));
   cpSync(join(root, 'src/authority-validation/resolve-ci-policy.mts'), join(fixtureRoot, 'src/authority-validation/resolve-ci-policy.mts'));
+  const entrypointModules = copyEntrypointModules(fixtureRoot);
   writeFileSync(join(fixtureRoot, 'src/legacy.mjs'), 'export const legacyValue = 7;\n');
   writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), "import { legacyValue } from '../legacy.mjs';\nexport const answer: number = legacyValue + 35;\n");
   symlinkSync(join(root, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
@@ -82,9 +116,10 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   writeFileSync(join(dist, 'stale.mjs'), 'old artifact\n');
   const initialBuild = runBuild(fixtureRoot);
   assert.equal(initialBuild.status, 0, initialBuild.stderr);
-  assert.deepEqual(emittedFiles(dist), [
+  assert.deepEqual(emittedFiles(dist), [...new Set([
     'authority-set.mjs',
     'authority-validation/authority-set.mjs',
+    'authority-validation/multi-authority-provenance.mjs',
     'authority-validation/resolve-ci-policy.mjs',
     'ci-execution-result.mjs',
     'ci-execution/ci-execution-result.mjs',
@@ -93,6 +128,7 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'github-authority-source.mjs',
     'github-cli-runner.mjs',
     'github-merge-group-event.mjs',
+    'github-owner-addition-provenance.mjs',
     'github-owner-addition-readback.mjs',
     'github-owner-amendment-readback.mjs',
     'github-ruleset-readback.mjs',
@@ -102,11 +138,14 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'github/github-authority-source.mjs',
     'github/github-cli-runner.mjs',
     'github/github-merge-group-event.mjs',
+    'github/github-owner-addition-provenance.mjs',
     'github/github-owner-addition-readback.mjs',
     'github/github-owner-amendment-readback.mjs',
     'github/github-ruleset-readback.mjs',
     'github/github-runner-env.mjs',
+    'github/owner-addition-evidence-zip.mjs',
     'legacy.mjs',
+    'multi-authority-provenance.mjs',
     'owner-addition-validation.mjs',
     'owner-addition/owner-addition-validation.mjs',
     'owner-addition/peer.mjs',
@@ -135,7 +174,8 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'resolve-ci-policy.mjs',
     'runner-paths/runner-temp-path.mjs',
     'runner-temp-path.mjs',
-  ]);
+    ...entrypointModules,
+  ])].sort());
   assert.equal(readFileSync(join(dist, 'legacy.mjs'), 'utf8'), 'export const legacyValue = 7;\n');
   assert.deepEqual(reExportTargets(join(dist, 'owner-addition-validation.mjs')), ['./owner-addition/owner-addition-validation.mjs']);
   assert.deepEqual(reExportTargets(join(dist, 'ci-execution-result.mjs')), ['./ci-execution/ci-execution-result.mjs']);

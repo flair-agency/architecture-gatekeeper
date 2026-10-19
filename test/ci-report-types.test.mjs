@@ -3,6 +3,7 @@ import test from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/ci-report-contract');
@@ -16,17 +17,12 @@ assert.equal(parsed.options.noImplicitAny, true);
 assert.equal(parsed.options.noEmitOnError, true);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
 
+const diagnosticsForFixture = compileFixtureDiagnostics([
+  join(fixtureRoot, 'positive.mts'), join(fixtureRoot, 'negative.mts'),
+], options, 'CI report implementation and all transitive diagnostics must remain clean');
+
 function diagnosticsFor(name) {
-  const file = join(fixtureRoot, name);
-  const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([file], options));
-  const brief = diagnostics.filter(item => item.file?.fileName !== file).map(item => {
-    const location = item.file && item.start !== undefined ? item.file.getLineAndCharacterOfPosition(item.start) : null;
-    return { code: item.code, file: item.file?.fileName.split('/').slice(-3).join('/'),
-      line: location ? location.line + 1 : null,
-      message: ts.flattenDiagnosticMessageText(item.messageText, ' ').slice(0, 180) };
-  });
-  assert.deepEqual(brief, [], 'CI report implementation and all transitive diagnostics must remain clean');
-  return diagnostics.filter(item => item.file?.fileName === file).map(item => ({
+  return diagnosticsForFixture(join(fixtureRoot, name)).map(item => ({
     code: item.code, line: item.file.getLineAndCharacterOfPosition(item.start).line + 1,
     message: ts.flattenDiagnosticMessageText(item.messageText, '\n'),
   }));

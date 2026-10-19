@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { runOwnerAmendmentMergeGroupGit } from './owner-amendment-merge-group-git.mjs';
 import { appendGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory, validateSelfAuthorityManifest } from '../dist/runner-temp-path.mjs';
 import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from '../dist/owner-amendment-tag-api.mjs';
 import { selectOwnerAmendmentMergeGroupBContext } from '../dist/owner-amendment-merge-group-b-context.mjs';
@@ -32,9 +33,7 @@ function selectRoute(route, selection) {
   }
   appendGitHubOutput(`${Object.entries(values).map(([key, value]) => `${key}=${value}`).join('\n')}\n`);
 }
-const git = args => execFileSync('git', ['-C', process.env.GITHUB_WORKSPACE, ...args], { encoding: 'buffer', maxBuffer: 2 * 1024 * 1024,
-  timeout: 30_000,
-  stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' } });
+const git = runOwnerAmendmentMergeGroupGit;
 const gh = createGitHubCliRunner(execFileSync);
 
 async function getJson(url, { expectedOwnerAmendmentTagUrl } = {}) {

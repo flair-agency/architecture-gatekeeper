@@ -251,9 +251,10 @@ A consumer may opt into a separate change screen after a supported file-capable
 tool completes. This pilot reviews the bounded tracked working-tree diff and
 returns informational Hook context; it does not block the completed tool,
 change its result, or establish repository acceptance. No consumer is enabled
-by default. Keep the launcher and hook configuration in the consumer's trusted
-project, and use the exact installed package version. The normal Codex
-project-trust decision still applies to the hook code and its command.
+by default. Keep the launcher under consumer control, use the exact installed
+package version, and review the hook code and exact command through normal Codex
+project trust. The project-local hook configuration belongs in the consumer
+project.
 
 Create a consumer-owned launcher such as
 `.codex/hooks/architecture-screen.mjs`:
@@ -328,8 +329,18 @@ tool has completed.
 ### First CLI trial in Architecture Gatekeeper
 
 Use the exact installed package version with the consumer-owned launcher and
-project-local `.codex/hooks.json` shown above. Start the normal CLI in the
-project, trust the project and exact hook definition through the usual prompts,
+project-local `.codex/hooks.json` shown above. For this self-consumer case,
+replace the generic JSON command above with one naming the absolute Node
+executable and an external launcher in the consumer's installed-package
+directory. Node package self-reference can otherwise resolve the launcher's
+bare import to this source checkout's `dist` entrypoint instead of the
+separately installed archive. Verify with `import.meta.resolve()` from the
+launcher's location that it selects the intended installed entrypoint. The
+generic in-project launcher and command remain suitable for ordinary consumers
+whose bare import resolves to their intended installed package. Include the
+exact handler and command in the usual project and handler trust review. Start
+the normal CLI in the project, trust the project and exact hook definition
+through the usual prompts,
 then check `/hooks` for the intended handler with `Installed=1` and `Active=1`.
 Make one tracked edit and continue ordinary verification while the screen
 runs. The result reviews its captured candidate; untracked or unsupported
@@ -424,9 +435,28 @@ are excluded from that diff. The complete prompt, including task data, must fit
 the selected limit; missing revisions, mismatched merge parents or excess bytes
 leave review incomplete. These parent checks validate GitHub's synthetic review
 checkout against the recorded event tuple; they do not restrict the eventual PR
-merge strategy or prove canonical transition or host enforcement. A stale or
-mismatched checkout requires a fresh review run. Other compatibility routes are
-unchanged.
+merge strategy or prove canonical transition or host enforcement. On
+`pull_request_target`, workflow revisions with this behavior initially check
+out the event merge SHA without recursively fetching submodules. A missing or
+malformed event SHA, or a checkout whose SHA differs from that event value,
+fails immediately. If the exact event commit has the ordered event base/head
+parents, it remains selected and the workflow does no merge-ref lookup. Only a
+parent mismatch on that event commit permits one bounded lookup of the current
+PR merge ref. The returned immutable SHA must resolve to a commit with exactly
+the same ordered event parents before it can be selected. Existing compatibility
+routes that enable recursive submodules materialize them only from the
+selected tree; the workflow then verifies the checked-out SHA and parent tuple
+before preparing or running the review. The review record and provenance use
+that selected SHA in the same run. Workflow pins predating this behavior retain
+the behavior of their pinned revision.
+
+Recovery does not replace a missing or malformed event merge SHA, an initial
+checkout SHA mismatch, or the event base/head revisions. A failed or ambiguous
+lookup, unavailable or invalid commit, wrong parent tuple, failed cleanup or
+materialization, final checkout mismatch, or input-capacity failure leaves the
+review incomplete. These cases require correcting the underlying input or
+starting a new review with valid event metadata; matching event metadata never
+falls back to a moving ref. Other compatibility routes are unchanged.
 
 When the pinned Action supplies them, the reviewer job emits bounded numeric
 Codex usage and tool counts to its Actions log, including on the ordinary
@@ -521,8 +551,122 @@ settings remain separate. The candidate self policy selects its existing effecti
 7-minute job, 5-minute step and standard Codex profile for staged verification.
 Protected adoption and a subsequent opted-in hosted run remain required;
 configuration alone proves neither backend identity nor process termination.
-Consumer adoption stays unavailable pending representative hosted verification.
-Gemini remains unwired.
+The provider-capable reusable workflow (`.github/workflows/architecture-gate-providers.yml`)
+implements an ordinary Gemini review path with a pinned profile, protected
+selector inputs, parent-held WIF credentials, and a separate report job. The
+reporter retrieves only the unique completed projection step from the same run
+attempt, verifies its protected tuple (`run_id`, `run_attempt`, and
+`job.head_sha === run.head_sha`), and renders the full report and inline findings
+through the existing report path. Masked display data cannot supply the semantic
+conclusion or decision digest, and report failure blocks acceptance. The
+existing Codex-only consumer workflow (`.github/workflows/architecture-gate-consumer.yml`)
+and this repository's protected self policy remain unchanged; consumer adoption
+remains inactive pending broader owner authorization, workflow adoption, and
+representative hosted verification.
+
+#### Implemented Policy `v6` provider selection, caller boundary, and recovery
+
+This implementation does not establish general consumer support or broader
+activation beyond the single bounded PR `#517` verification session authorized in
+[`docs/architecture/review-execution.md`](architecture/review-execution.md). In
+the implemented `.github/workflows/architecture-gate-providers.yml` contract, an
+ordinary `enforced` branch explicitly selects `codex` or `gemini` in
+`.codex/gatekeeper/ci-policy.json` (`version: 6`), while `local-only` defaults
+and branch entries retain the bare `{ "mode": "local-only" }` waiver form
+(provider, model, and reasoning fields are rejected on `local-only` entries):
+
+```json
+{
+  "version": 6,
+  "default": { "mode": "local-only" },
+  "branches": {
+    "main": {
+      "mode": "enforced",
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "thinkingLevel": "MEDIUM",
+      "authorityManifestPath": ".codex/gatekeeper/authorities.json",
+      "authorityLimits": {
+        "maxManifestBytes": 16384,
+        "maxMembers": 16,
+        "maxFileBytes": 81920,
+        "maxTotalBytes": 262144,
+        "maxPromptBytes": 524288
+      }
+    }
+  }
+}
+```
+
+- **Authentication and caller prerequisites**: When `provider: "gemini"` is
+  selected on `.github/workflows/architecture-gate-providers.yml`, the caller job
+  must pass `with: protected-review-instructions: true` (required by `policy` for
+  Authority Set policies), an explicit caller `permissions` map granting all four
+  required scopes — `contents: read` (for runtime and candidate checkouts),
+  `pull-requests: write` (for `report` PR comment publication), `id-token: write`
+  (for `gemini-review` Google Cloud WIF exchange), and `actions: read` (for
+  `report` same-run job-log retrieval), since GitHub sets omitted caller scopes
+  to `none` and a called reusable workflow cannot elevate caller permissions —
+  the `GCP_WIF_PROVIDER` and `GCP_WIF_SERVICE_ACCOUNT` secrets, and
+  `CI_SOURCE_READ_TOKEN` when the selected Authority Set contains a private
+  external repository member (since `gemini-review` passes
+  `secrets.CI_SOURCE_READ_TOKEN || github.token` as `GATEKEEPER_SOURCE_READ_TOKEN`
+  for GitHub API external authority reads, and the caller's repository-scoped
+  `github.token` cannot read another private repository). No Codex CLI
+  or `OPENAI_API_KEY` is required on the Gemini route.
+- **Supported profile and hard bounds**: Policy `v6` supports only the ordinary
+  `enforced` (with explicit `provider: "codex" | "gemini"`) and bare `local-only`
+  modes. It rejects `ownerAddition`, `ownerAmendment`, and `adoptionEvidence`;
+  governance routes (`OWNER_ADDITION` and `OWNER_AMENDMENT`) remain Codex-only. The Gemini CI route enforces the
+  pinned `@google/gemini-cli@0.62.0` runtime, Vertex AI `gemini-3.8-flash`
+  (`global`, `thinkingLevel: MEDIUM`, no `thinkingBudget`), a 180-second session
+  deadline, a 10-request per-session upstream cap, and revision-bound context
+  ceilings (at most 32 combined packet files across changed candidate files and
+  protected reference files, 128 KiB per file, 512 KiB total packet, and 192 KiB
+  complete stdin prompt).
+- **Diagnostics and fail-closed reporting**: WIF failures, runtime bootstrap
+  failures, context ceiling violations, timeouts, cancellations, invalid JSON, or
+  missing/mismatched same-run projections fail `gemini-review` or `report`
+  without emitting successful report outputs or falling back to raw `DECISION`
+  text, causing `Require successful reporting` in `accept` to exit non-zero and
+  prevent `ci-enforced-acceptance.mjs` from running without leaking raw model
+  text or credentials.
+- **Explicit protected recovery and rollback**: There is no automatic provider
+  fallback, standby retry, or parallel result adoption. Switching a branch on the
+  implemented `.github/workflows/architecture-gate-providers.yml` contract from
+  `gemini` back to `codex` (or vice versa) requires a protected change to
+  `.codex/gatekeeper/ci-policy.json` updating `provider`, `model`, and the
+  provider's reasoning field (`reasoningEffort` for `codex`; `thinkingLevel` for
+  `gemini`), together with the corresponding caller secret (`OPENAI_API_KEY` for
+  `codex`; `GCP_WIF_PROVIDER` and `GCP_WIF_SERVICE_ACCOUNT` for `gemini`; plus
+  `CI_SOURCE_READ_TOKEN` when the Authority Set reads a private external
+  repository), and optionally reverting the reusable workflow reference to
+  `.github/workflows/architecture-gate-consumer.yml` once the protected policy
+  selects Codex-compatible settings.
+
+#### Report filesystem boundary
+
+The internal CI reporter requires the invoking GitHub runner's preserved
+`GITHUB_OUTPUT` when reading a Gemini projection or appending a step summary.
+It validates the standard `_runner_file_commands/set_output_<GUID>` layout,
+derives the paired `step_summary_<GUID>` destination, and compares the supplied
+summary path with that exact destination. It holds the checked, no-follow
+summary descriptor across awaited reporting work. The projection destination
+is derived from the same runner temporary root and validated numeric run and
+attempt; the supplied path and `RUNNER_TEMP` must match. Projection reads are
+bounded and check regular-file, link, mode, size and opened-file identity.
+Unsupported layouts and mismatched or linked destinations fail closed.
+
+An optional `REPORT_PATH` local copy must equal the canonical absolute path
+`<current-working-directory>/architecture-gate-report.md`. The reporter creates
+it exclusively with mode `0600`; existing files, symbolic links and hardlinks
+are retained and cause failure. Callers that previously selected arbitrary
+report paths must use this fixed destination and move a completed local copy
+themselves if needed. Production reusable report jobs do not set this option.
+
+These checks constrain destinations; they do not authenticate forged process
+environments or establish same-user host isolation. They add no trust model for
+`GITHUB_STEP_SUMMARY` and do not change semantic decision or acceptance policy.
 
 Opted-in staged ordinary reviews pass the exact Action final-message source
 through shared execution normalization before existing semantic validators.

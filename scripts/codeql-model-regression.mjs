@@ -41,6 +41,10 @@ if (isAbsolute(p)) {
 }
 `;
   writeFileSync(join(fixture, 'output-probe.mjs'), probe);
+  const materializerOutputProbe = `import { materializeRegularGitSnapshot } from './src/materialize-regular-git-snapshot.mjs';
+materializeRegularGitSnapshot({ root: '/repository', commit: 'a'.repeat(40), path: 'file.txt', outputPath: process.argv[2] }); // generic-materializer-output
+`;
+  writeFileSync(join(fixture, 'materializer-output-probe.mjs'), materializerOutputProbe);
   const workspaceProbe = `import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { trustedGitHubWorkspaceRoot, otherWorkspaceRoot, callerSelectedRoot } from './src/github-runner-workspace.mjs';
@@ -63,7 +67,7 @@ execFileSync('git', ['status'], { cwd: copiedAccessor() }); // copied-workspace
 readFileSync(copiedAccessor()); // copied-workspace-path
 readRegularGitSnapshot({ root: process.env.GITHUB_WORKSPACE, commit: 'a'.repeat(40), path: 'file.txt' }); // generic-env-reader
 readRegularGitSnapshot({ root: process.argv[2], commit: 'a'.repeat(40), path: 'file.txt' }); // generic-cli-reader
-prepareLegacyAuthority({ root: process.argv[2], baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), reviewedSha: 'c'.repeat(40), baseBranch: 'main', policyPath: 'policy.json', outputPromptPath: 'prompt', outputSchemaPath: 'schema', outputPath: 'complete', provenancePath: 'provenance' }); // generic-prepare-cli
+prepareLegacyAuthority({ root: process.argv[2], baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), reviewedSha: 'c'.repeat(40), baseBranch: 'main', policyPath: 'policy.json', outputPromptPath: 'architecture-gate-prompt.md', outputSchemaPath: 'architecture-gate-decision.schema.json', outputPath: 'architecture-gate-legacy-prompt.md', provenancePath: 'architecture-gate-legacy-provenance.json' }); // generic-prepare-cli
 `;
   writeFileSync(join(fixture, 'src/github-runner-workspace.mjs'), readFileSync(join(source, 'src/github-runner-workspace.mjs'), 'utf8') +
     `\nexport function otherWorkspaceRoot() { return process.env.OTHER_WORKSPACE; }\nexport function callerSelectedRoot(root) { return root; }\n`);
@@ -98,7 +102,8 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
     const sarif = join(scan, `model-regression-${modeled ? 'modeled' : 'baseline'}.sarif`);
     const args = ['database', 'analyze', db, 'codeql/javascript-queries:Security/CWE-022/TaintedPath.ql', '--threat-model=local', '--rerun'];
     if (modeled) args.push(...githubModelArgs(source));
-    args.push('--format=sarif-latest', `--output=${sarif}`, '--threads=2', '--ram=4096');
+    // Shared sinks have more than four explanations; retain bounded evidence for every production route.
+    args.push('--format=sarif-latest', '--max-paths=100', `--output=${sarif}`, '--threads=2', '--ram=4096');
     run(args);
     results[modeled] = JSON.parse(readFileSync(sarif, 'utf8')).runs.flatMap(r => r.results || []);
   }
@@ -117,6 +122,10 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
       threadHas(threadFlow, file, line))));
     assert.equal(matching, expected, `${tag} flow ${expected ? 'was not detected' : 'was unexpectedly modeled'}`);
   };
+  for (const modeled of [false, true]) {
+    assertProbeFlow(results[modeled], 'materializer-output-probe.mjs', findLine(materializerOutputProbe, 'generic-materializer-output'), true,
+      'Generic materializer argv destination must remain unmodeled');
+  }
   const outputLines = ['trusted-output', 'implementation-output', 'env-output', 'cli-output', 'other-output', 'direct-output', 'checked-output'];
   for (const tag of outputLines) {
     assertProbeFlow(results.false, 'output-probe.mjs', findLine(probe, tag), true, tag);
@@ -137,40 +146,50 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
     'Output model must preserve each unrelated output finding');
 
   const threads = list => list.flatMap(result => (result.codeFlows || []).flatMap(codeFlow => codeFlow.threadFlows));
+  for (const modeled of [false, true]) {
+    assert.equal(threads(results[modeled]).some(thread =>
+      threadHas(thread, 'src/review-inputs/materialize-regular-git-snapshot.mts', 37) &&
+      threadHas(thread, 'src/review-inputs/materialize-regular-git-snapshot.mts', 32)), false,
+    'CLI argv destination must be confined before the materializer writer');
+  }
   const accessorLine = 3;
+  const bufferedGitSinkFile = 'src/git/buffered-git.mts';
+  const bufferedGitSinkLine = 4;
+  const bufferedGitResults = list => list.filter(result => result.locations.some(location =>
+    location.physicalLocation.artifactLocation.uri === bufferedGitSinkFile &&
+    location.physicalLocation.region.startLine === bufferedGitSinkLine));
   const hasAccessor = (list, callFile, callLine, sinkFile, sinkLine) => threads(list).some(thread =>
-    threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine) && threadHas(thread, callFile, callLine) && threadHas(thread, sinkFile, sinkLine));
-  assert.ok(hasAccessor(results.false, 'src/materialize-regular-git-snapshot.mjs', 27, 'src/authority-validation/legacy-git-snapshot.mts', 31),
+    threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine) && threadHas(thread, callFile, callLine) &&
+    threadHas(thread, sinkFile, sinkLine) && threadHas(thread, bufferedGitSinkFile, bufferedGitSinkLine));
+  assert.ok(hasAccessor(results.false, 'src/review-inputs/materialize-regular-git-snapshot.mts', 39, 'src/authority-validation/legacy-git-snapshot.mts', 31),
     'Baseline must trace accessor through materializer into Git snapshot cwd');
-  assert.ok(hasAccessor(results.false, 'src/prepare-legacy-ci-authority.mjs', 76, 'src/prepare-legacy-ci-authority.mjs', 34),
+  assert.ok(hasAccessor(results.false, 'src/ci-review/legacy-ci-authority-preparer.mts', 140, 'src/ci-review/legacy-ci-authority-preparer.mts', 99),
     'Baseline must trace accessor into preparer git diff cwd');
-  assert.equal(hasAccessor(results.true, 'src/materialize-regular-git-snapshot.mjs', 27, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
+  assert.equal(hasAccessor(results.true, 'src/review-inputs/materialize-regular-git-snapshot.mts', 39, 'src/authority-validation/legacy-git-snapshot.mts', 31), false,
     'Model must remove materializer accessor flow');
-  assert.equal(hasAccessor(results.true, 'src/prepare-legacy-ci-authority.mjs', 76, 'src/prepare-legacy-ci-authority.mjs', 34), false,
+  assert.equal(hasAccessor(results.true, 'src/ci-review/legacy-ci-authority-preparer.mts', 140, 'src/ci-review/legacy-ci-authority-preparer.mts', 99), false,
     'Model must remove preparer accessor flow to git diff cwd');
-  assert.ok(threads(results.true).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-cli-reader')) &&
+  assert.ok(threads(bufferedGitResults(results.true)).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-cli-reader')) &&
     threadHas(thread, 'src/authority-validation/legacy-git-snapshot.mts', 31)), 'Generic reader CLI root flow must remain');
-  assert.ok(threads(results.true).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli')) &&
-    threadHas(thread, 'src/prepare-legacy-ci-authority.mjs', 34)), 'Generic preparer CLI root flow to git diff cwd must remain');
-  assert.ok(threads(results.true).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli')) &&
-    threadHas(thread, 'src/prepare-legacy-ci-authority.mjs', 36) && threadHas(thread, 'src/authority-validation/legacy-git-snapshot.mts', 31)),
+  assert.ok(threads(bufferedGitResults(results.true)).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli')) &&
+    threadHas(thread, 'src/ci-review/legacy-ci-authority-preparer.mts', 99)), 'Generic preparer CLI root flow to git diff cwd must remain');
+  assert.ok(threads(bufferedGitResults(results.true)).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli')) &&
+    threadHas(thread, 'src/ci-review/legacy-ci-authority-preparer.mts', 101) && threadHas(thread, 'src/authority-validation/legacy-git-snapshot.mts', 34)),
     'Generic preparer CLI root flow to snapshot reader must remain');
 
   assert.equal(threads(results.true).some(thread => threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine)), false,
     'No modeled flow may retain the dedicated accessor origin');
   for (const sinkLine of [31, 34]) {
-    const sinkResults = results.true.filter(result => result.locations.some(location =>
-      location.physicalLocation.artifactLocation.uri === 'src/authority-validation/legacy-git-snapshot.mts' &&
-      location.physicalLocation.region.startLine === sinkLine));
     for (const tag of ['generic-env-reader', 'generic-cli-reader', 'generic-prepare-cli']) {
-      assert.ok(threads(sinkResults).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, tag))),
+      assert.ok(threads(bufferedGitResults(results.true)).some(thread =>
+        threadHas(thread, 'src/authority-validation/legacy-git-snapshot.mts', sinkLine) &&
+        threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, tag))),
         `${tag} must remain at Git snapshot sink ${sinkLine}`);
     }
   }
-  const diffSinkResults = results.true.filter(result => result.locations.some(location =>
-    location.physicalLocation.artifactLocation.uri === 'src/prepare-legacy-ci-authority.mjs' &&
-    location.physicalLocation.region.startLine === 14));
-  assert.ok(threads(diffSinkResults).some(thread => threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli'))),
+  assert.ok(threads(bufferedGitResults(results.true)).some(thread =>
+    threadHas(thread, 'src/ci-review/legacy-ci-authority-preparer.mts', 45) &&
+    threadHas(thread, 'workspace-probe.mjs', findLine(workspaceProbe, 'generic-prepare-cli'))),
     'Generic preparer CLI root must remain at the actual git diff cwd sink');
   const workspaceAlerts = list => alerts(list).filter(alert => alert.file === 'workspace-probe.mjs');
   const trustedLines = ['trusted-workspace', 'trusted-workspace-path'].map(tag => findLine(workspaceProbe, tag));
@@ -183,18 +202,19 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
     assertProbeFlow(results.false,'native-probe.mjs',line,true,tag);
     assertProbeFlow(results.true,'native-probe.mjs',line,!tag.startsWith('trusted-native-'),tag);
   }
-  const nativeSource=readFileSync(join(source,'src/native-review.mjs'),'utf8');
+  const nativeImplementationPath='src/local-review/native-review.mts';
+  const nativeSource=readFileSync(join(source,nativeImplementationPath),'utf8');
   const nativeSink=tag=>findLine(nativeSource,tag);
   const nativeAccessorSource=readFileSync(join(source,'src/native-session-paths.mjs'),'utf8');
   const nativeOrigin=name=>findLine(nativeAccessorSource,name==='trustedNativeRequestPath'?'native-request-origin':'native-decision-origin');
   for(const [name,sinkTag] of [['trustedNativeRequestPath','native-request-persistence'],['trustedNativeRequestPath','native-request-read'],['trustedNativeDecisionPath','native-decision-read']]) {
     const origin=nativeOrigin(name),sink=nativeSink(sinkTag);assert.ok(origin>0&&sink>0);
-    const flow=list=>threads(list).some(thread=>threadHas(thread,'src/native-session-paths.mjs',origin)&&threadHas(thread,'src/native-review.mjs',sink));
+    const flow=list=>threads(list).some(thread=>threadHas(thread,'src/native-session-paths.mjs',origin)&&threadHas(thread,nativeImplementationPath,sink));
     assert.ok(flow(results.false),`Baseline must trace original native accessor into production ${sinkTag}`);
     assert.equal(flow(results.true),false,`Model must remove only original accessor flow at ${sinkTag}`);
   }
   for(const [probeTag,sinkTag] of [['injected-native-prepare','native-request-persistence'],['injected-native-validate','native-request-read'],['injected-native-validate','native-decision-read']]) {
-    assert.ok(threads(results.true).some(thread=>threadHas(thread,'native-probe.mjs',findLine(nativeProbe,probeTag))&&threadHas(thread,'src/native-review.mjs',nativeSink(sinkTag))),`Injected array flow must remain at production ${sinkTag}`);
+    assert.ok(threads(results.true).some(thread=>threadHas(thread,'native-probe.mjs',findLine(nativeProbe,probeTag))&&threadHas(thread,nativeImplementationPath,nativeSink(sinkTag))),`Injected array flow must remain at production ${sinkTag}`);
   }
 
   const report = {
@@ -206,6 +226,8 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
     nativeOriginalAccessorProductionFlowsRemoved: true,
     nativeInjectedProductionFlowsRetained: true,
     genericReaderAndPreparerFlowsRetained: true,
+    genericMaterializerOutputFlowRetained: true,
+    materializerCliDestinationFlowRemoved: true,
     note: 'SARIF alert counts aggregate flows at shared sinks; these counts do not represent production finding reduction or adoption.',
     passed: true,
   };

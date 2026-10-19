@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { constants, copyFileSync, existsSync, mkdirSync, mkdtempSync, realpathSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -111,9 +111,32 @@ test('both workflows keep validation inside required review and publish only com
   for (const filename of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
     const workflow = parseWorkflow(readFileSync(new URL(`../.github/workflows/${filename}`, import.meta.url), 'utf8'));
     const collector = workflow.jobs.measurement.steps.find(step => step.id === 'review-measurement');
-    assert.equal(collector.env.REVIEW_RESULT, '${{ needs.review.result }}');
-    assert.equal(collector.env.REVIEW_DECISION_KIND, '${{ needs.review.outputs.decision_kind }}');
-    assert.equal(collector.env.REVIEW_PUBLISHED_DECISION, '${{ needs.review.outputs.final_message }}');
+    assert.equal(
+      collector.env.EVENT_SHA,
+      filename === 'architecture-gate.yml' ? '${{ github.sha }}' : undefined,
+    );
+    assert.equal(
+      collector.env.REVIEW_PROVIDER,
+      filename === 'architecture-gate.yml' ? '${{ needs.policy.outputs.provider }}' : undefined,
+    );
+    assert.equal(
+      collector.env.REVIEW_RESULT,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}"
+        : '${{ needs.review.result }}',
+    );
+    assert.equal(
+      collector.env.REVIEW_DECISION_KIND,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.decision_kind }}"
+        : '${{ needs.review.outputs.decision_kind }}',
+    );
+    assert.equal(
+      collector.env.REVIEW_PUBLISHED_DECISION,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs.policy.outputs.provider == 'gemini' && '' || needs.review.outputs.final_message }}"
+        : '${{ needs.review.outputs.final_message }}',
+    );
     assert.equal(collector.env.REVIEW_JOB_NAME, '${{ inputs.measurement-review-job-name }}');
     for (const key of ['REVIEW_RESPONSE', 'REVIEW_OUTPUT_FILE', 'PROMPT_PATH', 'SCHEMA_PATH', 'REVIEW_MODEL', 'REVIEW_EFFORT']) assert.equal(collector.env[key], undefined);
     for (const name of ['Record ordinary execution observation', 'Identify the completed ordinary decision', 'Apply consumer-owned decision validation', 'Require exact reported legacy authority files', 'Require exact reported Authority IDs']) {
@@ -148,21 +171,35 @@ test('completion covers every combination of selected stages, with failures isol
     ['AUTHORITY_VALIDATION_SELECTED', 'AUTHORITY_VALIDATION']];
   const baseline = { ...f.env };
   for (let mask = 0; mask < 32; mask++) {
-    const selection = { ...baseline };
+    const directory = join(f.parent, `records-mask-${mask}`); mkdirSync(directory, { mode: 0o700 });
+    const fMask = { ...f, directory, env: { ...baseline, AGK_MEASUREMENT_DIR: directory } };
+    const selection = { ...fMask.env };
     stages.forEach(([flag, outcome], index) => { const selected = Boolean(mask & (1 << index)); selection[flag] = String(selected); selection[outcome] = selected ? 'success' : 'skipped'; });
-    f.env = { ...selection };
-    assert.equal(finishAttempt(f).state, 'completed', `selection mask ${mask}`);
+    fMask.env = { ...selection };
+    assert.equal(finishAttempt(fMask).state, 'completed', `selection mask ${mask}`);
     for (const [flag, outcome] of stages.filter(([flag]) => selection[flag] === 'true')) {
-      f.env = { ...selection, [outcome]: 'failure' };
-      assert.equal(finishAttempt(f).state, 'incomplete', `selection mask ${mask}, failed ${flag}`);
+      fMask.env = { ...selection, [outcome]: 'failure' };
+      assert.equal(finishAttempt(fMask).state, 'incomplete', `selection mask ${mask}, failed ${flag}`);
     }
     for (const outcome of ['failure', 'skipped', undefined]) {
-      f.env = { ...selection, REVIEW_OUTCOME: outcome };
-      assert.equal(finishAttempt(f).state, 'incomplete', `selection mask ${mask}, failed review ${outcome}`);
+      fMask.env = { ...selection, REVIEW_OUTCOME: outcome };
+      assert.equal(finishAttempt(fMask).state, 'incomplete', `selection mask ${mask}, failed review ${outcome}`);
     }
-    f.env = { ...selection, REVIEW_OUTCOME: 'cancelled' };
-    assert.equal(finishAttempt(f).state, 'cancelled', `cancelled selection mask ${mask}`);
+    fMask.env = { ...selection, REVIEW_OUTCOME: 'cancelled' };
+    assert.equal(finishAttempt(fMask).state, 'cancelled', `cancelled selection mask ${mask}`);
+    for (const name of readdirSync(directory)) {
+      copyFileSync(join(directory, name), join(f.directory, name), constants.COPYFILE_EXCL);
+    }
   }
+  // Retain one real read of the complete mixed history after checking every
+  // outcome locally, rather than repeatedly scanning unrelated prior masks.
+  const combined = loadMeasurementDirectory(f.directory);
+  assert.equal(combined.gaps, 0);
+  const terminals = combined.records.filter(record => record.phase === 'terminal');
+  assert.equal(terminals.length, 240);
+  assert.deepEqual(Object.fromEntries(['completed', 'incomplete', 'cancelled'].map(state =>
+    [state, terminals.filter(record => record.state === state).length])),
+  { completed: 32, incomplete: 176, cancelled: 32 });
 });
 
 test('all required post-model stages retain validation and reporting order with no diagnostic waits', () => {

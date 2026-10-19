@@ -61,14 +61,17 @@ test('GitHub CLI entrypoints read recorded-base snapshots from the supplied runn
   write(root, 'src/app.mjs', 'export const value = 1;\n');
   git(root, 'add', '.'); git(root, 'commit', '-qm', 'candidate implementation');
   const candidateSha = git(root, 'rev-parse', 'HEAD');
-  const outputPromptPath = join(root, 'prompt.out');
-  const outputSchemaPath = join(root, 'schema.out');
-  const outputValidationPath = join(root, 'validation.out');
-  const outputPath = join(root, 'complete.out');
-  const provenancePath = join(root, 'provenance.json');
+  const runnerTemp = mkdtempSync(join(tmpdir(), 'github-workspace-runner-temp-'));
+  t.after(() => rmSync(runnerTemp, { recursive: true, force: true }));
+  const outputPromptPath = join(runnerTemp, 'architecture-gate-prompt.md');
+  const outputSchemaPath = join(runnerTemp, 'architecture-gate-decision.schema.json');
+  const outputValidationPath = join(runnerTemp, 'architecture-gate-decision.validation.json');
+  const outputPath = join(runnerTemp, 'architecture-gate-legacy-prompt.md');
+  const provenancePath = join(runnerTemp, 'architecture-gate-legacy-provenance.json');
   const prepareEnv = {
     ...process.env,
     GITHUB_WORKSPACE: root,
+    RUNNER_TEMP: runnerTemp,
     BASE_SHA: baseSha,
     HEAD_SHA: candidateSha,
     REVIEWED_SHA: candidateSha,
@@ -85,7 +88,7 @@ test('GitHub CLI entrypoints read recorded-base snapshots from the supplied runn
   };
   delete prepareEnv.GITHUB_OUTPUT;
   const prepare = () => spawnSync(process.execPath, [prepareCli, 'prepare'],
-    { cwd: tmpdir(), encoding: 'utf8', env: prepareEnv });
+    { cwd: runnerTemp, encoding: 'utf8', env: prepareEnv });
   const prepared = prepare();
   assert.equal(prepared.status, 0, prepared.stderr);
   assert.match(readFileSync(outputPath, 'utf8'), /recorded base authority/);

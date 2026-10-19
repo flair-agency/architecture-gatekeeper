@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
+import { prepareGeminiCiVerificationInput } from '../dist/prepare-gemini-ci-verification-input.mjs';
 import { resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 import { parseWorkflow } from './helpers/workflow-structure.mjs';
 
@@ -22,7 +25,7 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
       REVIEW_RESPONSE: 'steps.codex.outputs.final-message',
     })) assert.ok(block.includes(`${name}: \${{ ${expression} }}`));
     assert.match(text, /execution_settings_base64: \$\{\{ steps\.resolve\.outputs\.executionSettingsBase64 \}\}/);
-    assert.equal(observation.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github');
+    assert.equal(observation.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github-response');
     assert.equal(observation.env.GATEKEEPER_RUNTIME_ROOT, '${{ steps.validation_runtime_location.outputs.root }}');
     const checkout = text.split('name: Check out the pinned validation runtime')[1]?.split('      - name:')[0];
     assert.match(checkout, /id: validation_runtime/);
@@ -32,7 +35,7 @@ for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) 
     const observationPosition = text.indexOf('name: Record ordinary execution observation');
     const validationPosition = text.indexOf('name: Identify the completed ordinary decision');
     assert.ok(actionPosition < observationPosition && observationPosition < validationPosition);
-    assert.match(text, /DECISION: \$\{\{ steps\.codex\.outputs\.final-message \}\}/);
+    assert.ok(text.includes("DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}"));
     assert.doesNotMatch(block, /printf|>>|final_message:|continue-on-error/);
   });
 }
@@ -57,8 +60,8 @@ test('candidate-path observer cannot execute unless the pinned runtime checkout 
 
     const temp = mkdtempSync(join(tmpdir(), 'agk-runtime-checkout-'));
     try {
-      const candidateScript = join(temp, '.architecture-gatekeeper-validation-runtime', 'dist', 'ci-execution-observation.mjs');
-      mkdirSync(join(temp, '.architecture-gatekeeper-validation-runtime', 'dist'), { recursive: true });
+      const candidateScript = join(temp, 'dist', 'ci-execution-observation.mjs');
+      mkdirSync(join(temp, 'dist'), { recursive: true });
       const marker = join(temp, 'executed');
       writeFileSync(candidateScript, `import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 'ran');\n`);
       const invokeWhenEnabled = (state) => {
@@ -83,6 +86,169 @@ test('candidate-path observer cannot execute unless the pinned runtime checkout 
       rmSync(temp, { recursive: true, force: true });
     }
   }
+});
+
+test('ordinary execution handoff failures reach report and deny both acceptance routes offline', t => {
+  // These are local subprocesses with injected host observations. They do not run
+  // GitHub Actions or establish the host's real step/job outcome semantics.
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const observer = fileURLToPath(new URL('../dist/ci-execution-observation.mjs', import.meta.url));
+  const reporter = fileURLToPath(new URL('../dist/ci-report.mjs', import.meta.url));
+  const enforced = fileURLToPath(new URL('../dist/ci-enforced-acceptance.mjs', import.meta.url));
+  const procedural = fileURLToPath(new URL('../dist/ci-procedural-acceptance.mjs', import.meta.url));
+  const workflowMappings = [
+    '.github/workflows/architecture-gate.yml',
+    '.github/workflows/architecture-gate-consumer.yml',
+    '.github/workflows/architecture-gate-providers.yml',
+  ];
+  for (const file of workflowMappings) {
+    const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    const observe = text.split('      - name: Record ordinary execution observation\n')[1]?.split('      - name:')[0];
+    assert.ok(observe, file);
+    const parsed = parseWorkflow(text, file);
+    const observation = parsed.jobs.review.steps.find(step => step.name === 'Record ordinary execution observation');
+    assert.equal(observation.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github-response');
+    assert.equal(observation.env.GATEKEEPER_RUNTIME_ROOT, '${{ steps.validation_runtime_location.outputs.root }}');
+    assert.doesNotMatch(observe, /continue-on-error/);
+    const ordinaryOutput = "(needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message";
+    assert.equal(parsed.jobs.review.outputs.final_message, file === '.github/workflows/architecture-gate.yml'
+      ? "${{ steps.pass-display.outputs.pass_conclusion != 'PASS' && (" + ordinaryOutput + ") || '' }}"
+      : '${{ ' + ordinaryOutput + ' }}');
+    const reportJob = text.match(/  report:\n([\s\S]*?)\n  accept:/)?.[1];
+    const acceptJob = text.match(/  accept:\n([\s\S]*)$/)?.[1];
+    assert.ok(reportJob, file);
+    assert.ok(acceptJob, file);
+    const selectedResult = parsed.jobs['gemini-review']
+      ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}"
+      : '${{ needs.review.result }}';
+    assert.equal(parsed.jobs.report.steps.find(step => step.env?.REVIEW_RESULT)?.env.REVIEW_RESULT, selectedResult);
+    assert.match(reportJob, /DECISION: \$\{\{ needs\.review\.outputs\.final_message \}\}/);
+    assert.equal(parsed.jobs.accept.steps.find(step => step.env?.REVIEW_RESULT)?.env.REVIEW_RESULT, selectedResult);
+    assert.match(acceptJob, /CONCLUSION: \$\{\{ needs\.report\.outputs\.conclusion \}\}/);
+  }
+
+  const temp = mkdtempSync(join(tmpdir(), 'agk-failed-handoff-'));
+  t.after(() => rmSync(temp, { recursive: true, force: true }));
+  const baseEnv = { PATH: process.env.PATH };
+  let serial = 0;
+  const nextFiles = label => {
+    const dir = join(temp, `${label}-${serial++}`);
+    mkdirSync(dir);
+    const output = join(dir, 'github-output');
+    writeFileSync(output, '');
+    return { dir, output };
+  };
+  const invokeObserver = (outcome, response) => {
+    const files = nextFiles('observer');
+    const result = spawnSync(process.execPath, [observer, '--github-response'], {
+      cwd: files.dir,
+      env: { ...baseEnv, RUNNER_TEMP: files.dir, GITHUB_OUTPUT: realpathSync(files.output),
+        REVIEW_PROVIDER: 'codex', REVIEW_MODEL: 'gpt-6.1-sol',
+        REVIEW_SETTINGS_BASE64: Buffer.from(JSON.stringify({ reasoningEffort: 'medium' })).toString('base64'),
+        REVIEW_OUTCOME: outcome, REVIEW_RESPONSE: response },
+      encoding: 'utf8', input: '',
+      timeout: 10_000,
+    });
+    assert.equal(result.error, undefined, result.stderr);
+    assert.equal(result.status, outcome === 'success' && response ? 0 : 1, result.stderr);
+    const output = readFileSync(files.output, 'utf8');
+    const match = output.match(/^final_message<<([^\n]+)\n([\s\S]*?)\n\1\n/m);
+    return { result, output, decision: match?.[2] ?? '' };
+  };
+  const invokeReport = (label, { reviewResult, decision }) => {
+    const files = nextFiles(`report-${label}`);
+    const commands = join(files.dir, '_runner_file_commands');
+    mkdirSync(commands);
+    const commandId = randomUUID();
+    const output = join(commands, `set_output_${commandId}`);
+    const summary = join(commands, `step_summary_${commandId}`);
+    writeFileSync(output, '');
+    writeFileSync(summary, '');
+    const result = spawnSync(process.execPath, [reporter], {
+      cwd: files.dir,
+      env: { ...baseEnv, GITHUB_OUTPUT: realpathSync(output),
+        REPORT_PATH: join(files.dir, 'architecture-gate-report.md'), GITHUB_STEP_SUMMARY: summary,
+        GITHUB_API_URL: 'https://example.invalid',
+        MODE: 'enforced', POLICY_RESULT: 'success', REVIEW_RESULT: reviewResult,
+        DECISION: decision, OWNER_ADDITION_SELECTED: 'true', OWNER_ADDITION_RESULT: 'success',
+        OWNER_ADDITION_ELIGIBILITY: 'ELIGIBLE' },
+      encoding: 'utf8',
+      timeout: 10_000,
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 0, result.stderr);
+    const report = readFileSync(join(files.dir, 'architecture-gate-report.md'), 'utf8');
+    const reportOutputs = readFileSync(output, 'utf8');
+    assert.match(reportOutputs, /^conclusion=ERROR$/m);
+    const conclusion = reportOutputs.match(/^conclusion=(.+)$/m)?.[1];
+    assert.equal(conclusion, 'ERROR');
+    assert.doesNotMatch(`${result.stdout}${result.stderr}${report}${reportOutputs}`, /SYNTHETIC_RAW_MARKER/);
+    return { report, conclusion };
+  };
+  const deny = (acceptCli, { reviewResult, conclusion }) => {
+    const result = spawnSync(process.execPath, [acceptCli], {
+      cwd: root,
+      env: { ...baseEnv, REVIEW_RESULT: reviewResult, CONCLUSION: conclusion,
+        OWNER_ADDITION_SELECTED: 'G0', OWNER_ADDITION_RESULT: 'success', OWNER_ADDITION_ELIGIBILITY: 'ELIGIBLE',
+        POLICY_VERSION: '5', EVIDENCE_PRODUCER: 'github-actions', SELECTED_AUTHORITY_CHANGED: 'true' },
+      encoding: 'utf8',
+      timeout: 10_000,
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1, result.stderr);
+    if (reviewResult !== 'success') {
+      assert.match(result.stderr, acceptCli === enforced
+        ? /protected review did not complete successfully/i
+        : /requires its selected policy, producer and completed review/i);
+    } else if (acceptCli === enforced) {
+      assert.match(result.stderr, /requires model-backed PASS or verified selected G0 eligibility/i);
+    } else {
+      assert.match(result.stderr, /selected authority requires successful OWNER_ADDITION/i);
+    }
+    assert.doesNotMatch(`${result.stdout}${result.stderr}`, /SYNTHETIC_RAW_MARKER/);
+  };
+
+  const stalePass = '{"decision":"PASS","summary":"SYNTHETIC_RAW_MARKER"}';
+  for (const outcome of ['failure', 'cancelled', 'skipped']) {
+    const observed = invokeObserver(outcome, stalePass);
+    assert.equal(observed.result.status, 1, outcome);
+    assert.equal(observed.output, 'execution_status=incomplete\n', `${outcome}: ${observed.result.stdout} ${observed.result.stderr}`);
+    assert.equal(observed.decision, '', outcome);
+    assert.doesNotMatch(observed.result.stdout, /SYNTHETIC_RAW_MARKER/);
+    assert.doesNotMatch(observed.result.stderr, /SYNTHETIC_RAW_MARKER/);
+    assert.doesNotMatch(observed.output, /SYNTHETIC_RAW_MARKER/);
+    const { report, conclusion } = invokeReport(outcome, { reviewResult: 'failure', decision: observed.decision });
+    assert.match(report, /review did not complete successfully/i);
+    deny(enforced, { reviewResult: 'failure', conclusion });
+    deny(procedural, { reviewResult: 'failure', conclusion });
+  }
+
+  const empty = invokeObserver('success', '');
+  assert.equal(empty.result.status, 1);
+  assert.equal(empty.output, 'execution_status=incomplete\n');
+  assert.equal(empty.decision, '');
+  const emptyReport = invokeReport('empty-response', { reviewResult: 'failure', decision: empty.decision });
+  deny(enforced, { reviewResult: 'failure', conclusion: emptyReport.conclusion });
+  deny(procedural, { reviewResult: 'failure', conclusion: emptyReport.conclusion });
+
+  const completedButSuppressed = invokeObserver('success', stalePass);
+  assert.equal(completedButSuppressed.result.status, 0);
+  assert.match(completedButSuppressed.output, /execution_status=completed/);
+  // The empty downstream input is manually injected here; actual runner
+  // suppression behavior is exercised by the separate #432 fixture.
+  const suppressedReport = invokeReport('suppressed-output', { reviewResult: 'success', decision: '' });
+  assert.match(suppressedReport.report, /reporting input was absent/i);
+  deny(enforced, { reviewResult: 'success', conclusion: suppressedReport.conclusion });
+  deny(procedural, { reviewResult: 'success', conclusion: suppressedReport.conclusion });
+
+  const malformed = invokeObserver('success', 'malformed synthetic response');
+  assert.equal(malformed.result.status, 0);
+  assert.equal(malformed.decision, 'malformed synthetic response');
+  const malformedReport = invokeReport('malformed', { reviewResult: 'success', decision: malformed.decision });
+  assert.match(malformedReport.report, /invalid structured decision/i);
+  assert.doesNotMatch(`${malformedReport.report}`, /malformed synthetic response/);
+  deny(enforced, { reviewResult: 'success', conclusion: malformedReport.conclusion });
+  deny(procedural, { reviewResult: 'success', conclusion: malformedReport.conclusion });
 });
 
 test('self selects existing effective Codex limits without changing governance selection', () => {
@@ -136,3 +302,353 @@ test('encoded expected settings agree with the same resolved Action configuratio
     });
   }
 });
+
+test('Policy v6 ordinary Gemini and Codex selection excludes governance routes and supports explicit protected recovery', async t => {
+  const authorityLimits = {
+    maxManifestBytes: 16384,
+    maxMembers: 16,
+    maxFileBytes: 81920,
+    maxTotalBytes: 262144,
+    maxPromptBytes: 524288,
+  };
+  const v6GeminiPolicy = {
+    version: 6,
+    default: { mode: 'local-only' },
+    branches: {
+      main: {
+        mode: 'enforced',
+        provider: 'gemini',
+        model: 'gemini-3.8-flash',
+        thinkingLevel: 'MEDIUM',
+        authorityManifestPath: '.codex/gatekeeper/authorities.json',
+        authorityLimits,
+      },
+    },
+  };
+  const v6CodexPolicy = {
+    version: 6,
+    default: { mode: 'local-only' },
+    branches: {
+      main: {
+        mode: 'enforced',
+        provider: 'codex',
+        model: 'gpt-6.1-sol',
+        reasoningEffort: 'medium',
+        authorityManifestPath: '.codex/gatekeeper/authorities.json',
+        authorityLimits,
+      },
+    },
+  };
+
+  const resolvedGemini = resolveCiPolicy(v6GeminiPolicy, 'main');
+  assert.equal(resolvedGemini.policyVersion, 6);
+  assert.equal(resolvedGemini.provider, 'gemini');
+  assert.equal(resolvedGemini.model, 'gemini-3.8-flash');
+  assert.equal(resolvedGemini.thinkingLevel, 'MEDIUM');
+  assert.equal(resolvedGemini.reasoningEffort, undefined);
+  assert.equal(resolvedGemini.ownerAdditionGrade, undefined);
+  assert.equal(resolvedGemini.ownerAmendmentGrade, undefined);
+
+  const resolvedCodex = resolveCiPolicy(v6CodexPolicy, 'main');
+  assert.equal(resolvedCodex.policyVersion, 6);
+  assert.equal(resolvedCodex.provider, 'codex');
+  assert.equal(resolvedCodex.model, 'gpt-6.1-sol');
+  assert.equal(resolvedCodex.reasoningEffort, 'medium');
+  assert.equal(resolvedCodex.thinkingLevel, undefined);
+  assert.equal(resolvedCodex.ownerAdditionGrade, undefined);
+  assert.equal(resolvedCodex.ownerAmendmentGrade, undefined);
+
+  const resolvedLocalOnly = resolveCiPolicy(v6GeminiPolicy, 'feature-branch');
+  assert.equal(resolvedLocalOnly.policyVersion, 6);
+  assert.equal(resolvedLocalOnly.mode, 'local-only');
+  assert.equal(resolvedLocalOnly.provider, undefined);
+  assert.equal(resolvedLocalOnly.model, undefined);
+  assert.equal(resolvedLocalOnly.thinkingLevel, undefined);
+  assert.equal(resolvedLocalOnly.reasoningEffort, undefined);
+
+  assert.throws(() => resolveCiPolicy({
+    ...v6GeminiPolicy,
+    branches: {
+      ...v6GeminiPolicy.branches,
+      'feature-branch': {
+        mode: 'local-only',
+        provider: 'gemini',
+      },
+    },
+  }, 'feature-branch'), /Unknown CI policy branch feature-branch field: provider/);
+
+  for (const basePolicy of [v6GeminiPolicy, v6CodexPolicy]) {
+    assert.throws(() => resolveCiPolicy({
+      ...basePolicy,
+      branches: {
+        main: {
+          ...basePolicy.branches.main,
+          ownerAddition: {
+            version: 2,
+            authorityId: 'architecture-owner-addition',
+            grade: 'G0',
+            authorityPath: 'docs/architecture/owner-addition.md',
+            promptPath: '.codex/gatekeeper/owner-addition-prompt.md',
+            schemaPath: '.codex/gatekeeper/owner-addition-eligibility.schema.json',
+          },
+        },
+      },
+    }, 'main'), /Unknown CI policy branch main field: ownerAddition/);
+    assert.throws(() => resolveCiPolicy({
+      ...basePolicy,
+      branches: {
+        main: {
+          ...basePolicy.branches.main,
+          ownerAmendment: {
+            version: 1,
+            grade: 'G0',
+            triggerProfiles: ['completed-owner-decision-self-v1'],
+          },
+        },
+      },
+    }, 'main'), /Unknown CI policy branch main field: ownerAmendment/);
+    assert.throws(() => resolveCiPolicy({
+      ...basePolicy,
+      branches: {
+        main: {
+          ...basePolicy.branches.main,
+          adoptionEvidence: {
+            producer: 'github-actions',
+            workflowPath: '.github/workflows/self-architecture-gate.yml',
+            jobName: 'owner-addition',
+          },
+        },
+      },
+    }, 'main'), /Unknown CI policy branch main field: adoptionEvidence/);
+    assert.throws(() => resolveCiPolicy({
+      ...basePolicy,
+      branches: {
+        main: { ...basePolicy.branches.main, mode: 'procedural' },
+      },
+    }, 'main'), /v6 supports only enforced or local-only mode/);
+  }
+
+  const providersWorkflow = parseWorkflow(
+    readFileSync(new URL('../.github/workflows/architecture-gate-providers.yml', import.meta.url), 'utf8'),
+    'architecture-gate-providers.yml',
+  );
+  assert.equal(
+    providersWorkflow.jobs.review.if,
+    "(needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.provider != 'gemini'",
+  );
+  assert.equal(
+    providersWorkflow.jobs['gemini-review'].if,
+    "needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.provider == 'gemini'",
+  );
+  assert.equal(providersWorkflow.jobs['owner-amendment'], undefined);
+  assert.equal(providersWorkflow.jobs[' gemini-review']?.outputs?.decision_kind, undefined);
+  assert.equal(providersWorkflow.jobs['gemini-review'].outputs.decision_kind, undefined);
+
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const reporter = fileURLToPath(new URL('../dist/ci-report.mjs', import.meta.url));
+  const enforced = fileURLToPath(new URL('../dist/ci-enforced-acceptance.mjs', import.meta.url));
+  const temp = mkdtempSync(join(tmpdir(), 'agk-gemini-e2e-composition-'));
+  t.after(() => rmSync(temp, { recursive: true, force: true }));
+  const baseEnv = { PATH: process.env.PATH };
+  let serial = 0;
+
+  const invokeGeminiFailureReport = (reviewResult) => {
+    const dir = realpathSync(mkdtempSync(join(temp, `gemini-report-${serial++}-`)));
+    const commands = join(dir, '_runner_file_commands');
+    mkdirSync(commands);
+    const commandId = randomUUID();
+    const output = join(commands, `set_output_${commandId}`);
+    const summary = join(commands, `step_summary_${commandId}`);
+    writeFileSync(output, '');
+    writeFileSync(summary, '');
+    const result = spawnSync(process.execPath, [reporter], {
+      cwd: dir,
+      env: {
+        ...baseEnv,
+        RUNNER_TEMP: dir,
+        GITHUB_RUN_ID: '100',
+        GITHUB_RUN_ATTEMPT: '1',
+        GITHUB_OUTPUT: realpathSync(output),
+        REPORT_PATH: join(dir, 'architecture-gate-report.md'),
+        GITHUB_STEP_SUMMARY: summary,
+        GITHUB_API_URL: 'https://example.invalid',
+        MODE: 'enforced',
+        POLICY_VERSION: '6',
+        POLICY_RESULT: 'success',
+        REVIEW_RESULT: reviewResult,
+        REPORT_EXPECTED_PROVIDER: 'gemini',
+        REPORT_EXPECTED_CONCLUSION: '',
+        REPORT_EXPECTED_DECISION_DIGEST: '',
+        REPORT_EXPECTED_NONCE: '',
+        REPORT_PROJECTION_PATH: join(dir, 'agk-ordinary-gemini-report-100-1.json'),
+        DECISION: JSON.stringify({ decision: 'PASS', summary: 'untrusted fallback must be ignored' }),
+        OWNER_ADDITION_SELECTED: 'false',
+        OWNER_ADDITION_RESULT: 'skipped',
+        OWNER_ADDITION_ELIGIBILITY: '',
+      },
+      encoding: 'utf8',
+      timeout: 10_000,
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    const reportOutputs = readFileSync(output, 'utf8');
+    assert.equal(reportOutputs, '');
+    return { conclusion: '' };
+  };
+
+  const invokeEnforcedAccept = ({ reviewResult, conclusion }) => spawnSync(process.execPath, [enforced], {
+    cwd: root,
+    env: {
+      ...baseEnv,
+      REVIEW_RESULT: reviewResult,
+      CONCLUSION: conclusion,
+      OWNER_ADDITION_SELECTED: '',
+      OWNER_ADDITION_RESULT: 'skipped',
+      OWNER_ADDITION_ELIGIBILITY: '',
+    },
+    encoding: 'utf8',
+    timeout: 10_000,
+  });
+
+  for (const outcome of ['failure', 'cancelled', 'skipped']) {
+    const failedReport = invokeGeminiFailureReport(outcome);
+    const acceptResult = invokeEnforcedAccept({ reviewResult: outcome, conclusion: failedReport.conclusion });
+    assert.equal(acceptResult.status, 1, outcome);
+    assert.match(acceptResult.stderr, /protected review did not complete successfully/i);
+  }
+
+  for (const [conclusion, expectedStatus] of [
+    ['PASS', 0],
+    ['BLOCK', 1],
+    ['OWNER_DECISION', 1],
+    ['ERROR', 1],
+    ['', 1],
+  ]) {
+    const acceptResult = invokeEnforcedAccept({ reviewResult: 'success', conclusion });
+    assert.equal(acceptResult.status, expectedStatus, `conclusion=${conclusion}: ${acceptResult.stderr}`);
+    if (expectedStatus === 0) {
+      assert.match(acceptResult.stdout, /Enforced CI acceptance route: ordinary-pass/);
+    } else {
+      assert.match(acceptResult.stderr, /requires model-backed PASS or verified selected G0 eligibility/i);
+    }
+  }
+
+  // Candidate edits to a selected Authority Set member under Policy v6 remain bound
+  // to baseSha for authority/reference materialization and only appear as untrusted diff evidence.
+  const repoRoot = mkdtempSync(join(temp, 'authority-change-git-'));
+  const runGit = args => execFileSync('git', ['-C', repoRoot, ...args], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: 'fixture',
+      GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
+      GIT_COMMITTER_NAME: 'fixture',
+      GIT_COMMITTER_EMAIL: 'fixture@example.invalid',
+      GIT_NO_REPLACE_OBJECTS: '1',
+    },
+  }).trim();
+  const writeRepoFile = (relPath, content) => {
+    const target = join(repoRoot, relPath);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, content);
+  };
+  const authorityIds = [
+    'architecture-contract',
+    'architecture-authority-set',
+    'architecture-owner-addition',
+    'architecture-owner-amendment',
+    'architecture-review-execution',
+    'architecture-self-profile',
+  ];
+  const authorityPaths = authorityIds.map((_, idx) => `docs/architecture/member-${idx + 1}.md`);
+  runGit(['init', '-q']);
+  runGit(['checkout', '-b', 'main']);
+  writeRepoFile('.codex/gatekeeper/ci-policy.json', `${JSON.stringify({
+    version: 6,
+    default: { mode: 'local-only' },
+    branches: {
+      main: {
+        mode: 'enforced',
+        provider: 'gemini',
+        model: 'gemini-3.8-flash',
+        thinkingLevel: 'MEDIUM',
+        authorityManifestPath: '.codex/gatekeeper/authorities.json',
+        authorityLimits: {
+          maxManifestBytes: 65_536,
+          maxMembers: 32,
+          maxFileBytes: 131_072,
+          maxTotalBytes: 524_288,
+          maxPromptBytes: 196_608,
+        },
+      },
+    },
+  }, null, 2)}\n`);
+  writeRepoFile('.codex/gatekeeper/authorities.json', `${JSON.stringify({
+    version: 1,
+    authorities: authorityIds.map((id, idx) => ({
+      id,
+      repository: 'self',
+      revision: 'authority-revision',
+      path: authorityPaths[idx],
+    })),
+  }, null, 2)}\n`);
+  writeRepoFile('.codex/gatekeeper/ci-prompt.md', 'Protected base review instructions.\n');
+  writeRepoFile('.codex/gatekeeper/decision.schema.json', `${JSON.stringify({
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    type: 'object',
+    required: ['decision', 'authorityIds'],
+    additionalProperties: false,
+    properties: {
+      decision: { type: 'string', enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] },
+      authorityIds: { type: 'array', minItems: 6, items: { type: 'string' } },
+    },
+  }, null, 2)}\n`);
+  writeRepoFile('.codex/gatekeeper/decision.validation.json', `${JSON.stringify({ version: 1, rules: [] }, null, 2)}\n`);
+  for (const [idx, relPath] of authorityPaths.entries()) {
+    writeRepoFile(relPath, `Protected base authority ${authorityIds[idx]}.\n`);
+  }
+  runGit(['add', '-A']);
+  runGit(['commit', '-m', 'base']);
+  const baseSha = runGit(['rev-parse', 'HEAD']);
+  runGit(['checkout', '-b', 'candidate']);
+  writeRepoFile(authorityPaths[0], 'Candidate unauthorized authority amendment.\n');
+  runGit(['add', '-A']);
+  runGit(['commit', '-m', 'candidate authority edit']);
+  const headSha = runGit(['rev-parse', 'HEAD']);
+  runGit(['checkout', 'main']);
+  runGit(['merge', '--no-ff', '--no-edit', 'candidate']);
+  const reviewedSha = runGit(['rev-parse', 'HEAD']);
+
+  const prepared = await prepareGeminiCiVerificationInput({
+    root: repoRoot,
+    repository: 'flair-agency/architecture-gatekeeper',
+    baseBranch: 'main',
+    baseSha,
+    headSha,
+    reviewedSha,
+    policyPath: '.codex/gatekeeper/ci-policy.json',
+    promptPath: '.codex/gatekeeper/ci-prompt.md',
+    schemaPath: '.codex/gatekeeper/decision.schema.json',
+    validationPath: '.codex/gatekeeper/decision.validation.json',
+    referencePaths: [],
+  });
+  assert.deepEqual(
+    prepared.authorityProvenance.members.map(member => member.resolvedCommit),
+    authorityIds.map(() => baseSha),
+  );
+  assert.equal(
+    prepared.packet.references.find(ref => ref.path === authorityPaths[0])?.text,
+    'Protected base authority architecture-contract.\n',
+  );
+  assert.deepEqual(prepared.bindings.changedFiles.map(file => file.path), [authorityPaths[0]]);
+  assert.doesNotMatch(
+    prepared.protectedPromptText.split('## Pull request task context')[0],
+    /Candidate unauthorized authority amendment/,
+  );
+  assert.match(
+    prepared.protectedPromptText.split('## Pull request task context')[1],
+    /Candidate unauthorized authority amendment/,
+  );
+});
+

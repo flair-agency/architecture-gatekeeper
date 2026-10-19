@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 import { parse } from 'acorn';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,15 +20,9 @@ assert.equal(tsconfig.options.noImplicitAny, true);
 assert.equal(tsconfig.options.noEmitOnError, true);
 const compilerOptions = { ...tsconfig.options, rootDir: root, noEmit: true };
 
-function diagnosticsFor(fixture) {
-  const file = join(fixtureRoot, fixture);
-  const program = ts.createProgram([file], compilerOptions);
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  const fixtureDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
-  const otherDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file);
-  assert.deepEqual(otherDiagnostics, [], 'imports and authored declarations must be error-free');
-  return fixtureDiagnostics;
-}
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFixture = compileFixtureDiagnostics(fixtureFiles, compilerOptions,
+  'imports and authored declarations must be error-free');
 
 function diagnosticEvidence(diagnostics) {
   return diagnostics.map(diagnostic => ({
@@ -38,11 +33,11 @@ function diagnosticEvidence(diagnostics) {
 }
 
 test('runner output path bridge has a zero-argument string contract under project settings', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsForFixture(join(fixtureRoot, 'positive.mts'))), []);
 });
 
 test('runner output path bridge rejects caller-selected arguments and incompatible return contracts', () => {
-  const diagnostics = diagnosticEvidence(diagnosticsFor('negative.mts'));
+  const diagnostics = diagnosticEvidence(diagnosticsForFixture(join(fixtureRoot, 'negative.mts')));
   assert.deepEqual(diagnostics.map(({ code, line }) => [code, line]),
     [[2554, 3], [2322, 4], [2322, 5], [2554, 9], [2322, 10], [2322, 11]]);
   for (const offset of [0, 3]) {

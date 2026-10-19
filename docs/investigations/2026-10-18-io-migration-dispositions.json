@@ -1,0 +1,1576 @@
+{
+  "format": "quality573-io-migration-dispositions-v1",
+  "status": "Source-only implementation-model checkpoint; not exhaustive I/O, security assessment, authority, runtime verification or whole-issue completion.",
+  "source_snapshot": {
+    "adoptedCommit": "03da5c0f0da2c3f84427d084572aa14151ac6d09",
+    "tree": "5f99c3973583472909dd6683e568c775f967c907",
+    "inspectedCheckout": "2aed63cfffa4802b7397abdff12df035fb74a505",
+    "observedPaths": 73,
+    "srcPaths": 57,
+    "srcRuntimeImportPaths": 56,
+    "srcTypeOnlyImportPaths": 1,
+    "scriptPaths": 16,
+    "method": "TypeScript AST ImportDeclaration and literal import()/require() calls; type-only declarations separated; src/scripts tracked authored .mts/.mjs only; no transitive library, computed import, inline workflow or injected call proof"
+  },
+  "reference_catalog": {
+    "R0": {
+      "title": "Initial Git/filesystem responsibility inventory",
+      "status": "historical, non-normative source map; its own text says not exhaustive",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/blob/03da5c0f0da2c3f84427d084572aa14151ac6d09/docs/investigations/2026-10-18-git-filesystem-responsibility-inventory.md"
+    },
+    "R1": {
+      "title": "Shared descriptor read mechanism (#615)",
+      "status": "adopted mechanism note; caller policies retained; package/runtime/acceptance limits stated there",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/blob/03da5c0f0da2c3f84427d084572aa14151ac6d09/docs/investigations/2026-10-18-descriptor-read-mechanism.md"
+    },
+    "R2": {
+      "title": "Authority preparer descriptor reuse (#616)",
+      "status": "adopted preparer-specific reuse note; preserves pinned preparation behavior; distribution checks are separate",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/blob/03da5c0f0da2c3f84427d084572aa14151ac6d09/docs/investigations/2026-10-18-preparer-descriptor-read.md"
+    },
+    "R3": {
+      "title": "Buffered Git process boundary (#604)",
+      "status": "adopted bounded process helper with distinct caller policies; broader #573 remains partial",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/blob/03da5c0f0da2c3f84427d084572aa14151ac6d09/docs/investigations/2026-10-18-buffered-git-process-boundary.md"
+    },
+    "R4": {
+      "title": "Merge-group Git wrapper extraction (#599)",
+      "status": "adopted wrapper-only consolidation; commands and route policies remain caller-owned",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/blob/03da5c0f0da2c3f84427d084572aa14151ac6d09/docs/investigations/2026-10-18-merge-group-git-wrapper-extraction.md"
+    },
+    "R5": {
+      "title": "Ordinary self-CI I/O inventory",
+      "status": "corrected report has bounded independent source-accuracy reread; review binds older source snapshot, not whole #573 acceptance",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/issues/573#issuecomment-6248905083"
+    },
+    "R6": {
+      "title": "Mediated owner-amendment I/O inventory",
+      "status": "current-tree source report with bounded independent source-accuracy reread; review is limited to source accuracy",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/issues/573#issuecomment-6249192074"
+    },
+    "R7": {
+      "title": "Provider, hook, and native I/O inventory",
+      "status": "Source-only current-tree contract inventory; independent final source-accuracy reread passed. Existing canonical host-session ownership and pending #566 transfer are distinct.",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/issues/573#issuecomment-6249300313"
+    },
+    "R8": {
+      "title": "Remaining CI workflow I/O inventory",
+      "status": "Source-only current-tree workflow contract inventory; independent final source-accuracy reread passed; job/step/native subprocess budgets remain distinct.",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/issues/573#issuecomment-6249302102"
+    },
+    "R9": {
+      "title": "Metadata reuse follow-up assessment",
+      "status": "Source-only metadata reuse assessment at #615. Its eight named implementation files are byte-identical between #615 and #616; no reuse or new performance proof is inferred.",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/issues/573#issuecomment-6248933065"
+    },
+    "R10": {
+      "title": "Developer, release, and probe I/O inventory",
+      "status": "Source-only current-tree developer/release/probe inventory; independent final source-accuracy reread passed; no probe execution authorized.",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/issues/573#issuecomment-6249303947"
+    },
+    "R11": {
+      "title": "Native import scan",
+      "status": "Defined AST import census for the source revision in this index; not transitive or workflow completeness.",
+      "href": "2026-10-18-io-migration-dispositions.md#census-and-method"
+    },
+    "R12": {
+      "title": "Bounded Git mechanism and library comparison",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/issues/573#issuecomment-6244661083",
+      "status": "Exact-version comparison for selected synchronous buffered Git callers; not a universal library choice."
+    },
+    "R13": {
+      "title": "Direct filesystem ownership inventory",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/issues/573#issuecomment-6244660289",
+      "status": "Historical #604 source inventory; selected descriptor callers were subsequently migrated in #615/#616."
+    },
+    "R14": {
+      "title": "Preview lifecycle I/O inventory",
+      "href": "https://github.com/flair-agency/architecture-gatekeeper/issues/573#issuecomment-6249338730",
+      "status": "Source-only current-tree inventory; independent final source-accuracy reread passed; local observation retains UNVERIFIED assurance."
+    }
+  },
+  "disposition_counts": {
+    "adopted-mechanism-retains-caller-contract": 5,
+    "adopted-shared-mechanism": 3,
+    "intentional-caller-owned-contract": 2,
+    "intentional-lifecycle-contract": 1,
+    "intentional-observation-boundary": 2,
+    "intentional-protocol-boundary": 3,
+    "intentional-provider-specific-contract": 11,
+    "intentional-publication-protocol": 1,
+    "intentional-required-input-contract": 13,
+    "intentional-route-specific-contract": 12,
+    "preserve-current-native-session-responsibilities": 2,
+    "probe-owning-resources": 3,
+    "retain-caller-owned-execution-adapter": 2,
+    "retain-distinct-observation-contract": 2,
+    "reuse-deferred-retain-current-capture": 3,
+    "separately-reviewed-tool-contract": 1,
+    "thin-delegating-native-boundary": 1,
+    "tool-owning-resources": 6
+  },
+  "sourceLinkBase": "https://github.com/flair-agency/architecture-gatekeeper/blob/03da5c0f0da2c3f84427d084572aa14151ac6d09/",
+  "rows": [
+    {
+      "path": "scripts/check-source-cycles.mjs",
+      "family": "development/build/analysis tool",
+      "disposition": "tool-owning-resources",
+      "contract_reason": "Each tool owns its source scan, generated CodeQL fixture/database/SARIF outputs, or fixed dist cleanup; its path, retention and delegated command contract are tool-specific.",
+      "reference_ids": [
+        "R10",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs/promises",
+          "line": 3,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/clean-dist.mjs",
+      "family": "development/build/analysis tool",
+      "disposition": "tool-owning-resources",
+      "contract_reason": "Each tool owns its source scan, generated CodeQL fixture/database/SARIF outputs, or fixed dist cleanup; its path, retention and delegated command contract are tool-specific.",
+      "reference_ids": [
+        "R10",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 3,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/codeql-local.mjs",
+      "family": "development/build/analysis tool",
+      "disposition": "tool-owning-resources",
+      "contract_reason": "Each tool owns its source scan, generated CodeQL fixture/database/SARIF outputs, or fixed dist cleanup; its path, retention and delegated command contract are tool-specific.",
+      "reference_ids": [
+        "R10",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 3,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 4,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/codeql-model-regression.mjs",
+      "family": "development/build/analysis tool",
+      "disposition": "tool-owning-resources",
+      "contract_reason": "Each tool owns its source scan, generated CodeQL fixture/database/SARIF outputs, or fixed dist cleanup; its path, retention and delegated command contract are tool-specific.",
+      "reference_ids": [
+        "R10",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/issue83-block-record-probe.mjs",
+      "family": "test-only historical probe",
+      "disposition": "probe-owning-resources",
+      "contract_reason": "Inputs, external Git/GitHub calls (for verifier/probe variants), bounded parsing, output and temp lifetime belong to the explicitly invoked experiment; results are not acceptance evidence.",
+      "reference_ids": [
+        "R10",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 4,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/issue83-offline-block-verifier.mjs",
+      "family": "test-only historical probe",
+      "disposition": "probe-owning-resources",
+      "contract_reason": "Inputs, external Git/GitHub calls (for verifier/probe variants), bounded parsing, output and temp lifetime belong to the explicitly invoked experiment; results are not acceptance evidence.",
+      "reference_ids": [
+        "R10",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 4,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 5,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/issue83-real-pr-block-probe.mjs",
+      "family": "test-only historical probe",
+      "disposition": "probe-owning-resources",
+      "contract_reason": "Inputs, external Git/GitHub calls (for verifier/probe variants), bounded parsing, output and temp lifetime belong to the explicitly invoked experiment; results are not acceptance evidence.",
+      "reference_ids": [
+        "R10",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 4,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 5,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/owner-amendment-attempt-classifier.mjs",
+      "family": "owner-amendment workflow producer/classifier",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "These direct Git/GitHub/filesystem calls produce or classify route-specific provenance and records; keep workflow input, revision, output, attestation and failure ownership with that route.",
+      "reference_ids": [
+        "R6",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/owner-amendment-block-producer.mjs",
+      "family": "owner-amendment workflow producer/classifier",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "These direct Git/GitHub/filesystem calls produce or classify route-specific provenance and records; keep workflow input, revision, output, attestation and failure ownership with that route.",
+      "reference_ids": [
+        "R6",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 5,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 6,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/owner-amendment-merge-group-gate.mjs",
+      "family": "owner-amendment merge-group route",
+      "disposition": "adopted-mechanism-retains-caller-contract",
+      "contract_reason": "The shared runner covers explicit delegated Git calls only; materializer reads, tag/API/attestation I/O, route decision and temporary outputs retain separate owners and limits.",
+      "reference_ids": [
+        "R4",
+        "R6"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/owner-amendment-merge-group-git.mjs",
+      "family": "workflow Git process boundary",
+      "disposition": "adopted-shared-mechanism",
+      "contract_reason": "#599 factors the identical Git invocation options for two CLIs; ordered argv, cwd binding, buffer/deadline and process exceptions remain explicit.",
+      "reference_ids": [
+        "R4"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/owner-amendment-owner-decision-producer.mjs",
+      "family": "owner-amendment workflow producer/classifier",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "These direct Git/GitHub/filesystem calls produce or classify route-specific provenance and records; keep workflow input, revision, output, attestation and failure ownership with that route.",
+      "reference_ids": [
+        "R6",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 5,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/owner-amendment-semantic-eligibility-producer.mjs",
+      "family": "owner-amendment workflow producer/classifier",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "These direct Git/GitHub/filesystem calls produce or classify route-specific provenance and records; keep workflow input, revision, output, attestation and failure ownership with that route.",
+      "reference_ids": [
+        "R6",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/release-channel.mjs",
+      "family": "release workflow helper",
+      "disposition": "tool-owning-resources",
+      "contract_reason": "Consumes caller-provided environment and checkout context, emits workflow values; registry readback values are supplied by caller, not acquired by this script.",
+      "reference_ids": [
+        "R10",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 1,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/relocate-protected-runtime.mjs",
+      "family": "hosted runtime relocation",
+      "disposition": "tool-owning-resources",
+      "contract_reason": "This workflow operation validates and renames the pinned runtime checkout; Git cwd, runner temp, cleanup/rollback limitations are specific and not a generic path helper.",
+      "reference_ids": [
+        "R10"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:child_process",
+          "line": 5,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "scripts/review-capacity.mjs",
+      "family": "review-capacity diagnostic",
+      "disposition": "separately-reviewed-tool-contract",
+      "contract_reason": "Retain the dedicated capacity format, exact base/candidate inputs and output behavior; this index does not repeat its independent runner/format analysis or treat it as general filesystem API.",
+      "reference_ids": [
+        "R0",
+        "R11"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 4,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 6,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/authority-validation/authority-set.mts",
+      "family": "required CI authority/review input",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "These are required policy/review preparation and validation boundaries; preserve exact revision, byte/mode, decode, size/deadline, output and failure distinctions rather than adopting optional diagnostic rules.",
+      "reference_ids": [
+        "R5",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/authority-validation/prepare-authority-set.mts",
+      "family": "authority preparer descriptor read",
+      "disposition": "adopted-mechanism-retains-caller-contract",
+      "contract_reason": "#616 reuses the loop but keeps preparer size checks, nonblocking open, regular-file validation, maxBytes+1 sentinel, decode order, labels and close ownership; preparer digest compatibility remains special.",
+      "reference_ids": [
+        "R2",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/ci-decision-kind.mjs",
+      "family": "workflow output append",
+      "disposition": "intentional-protocol-boundary",
+      "contract_reason": "Append-only workflow command output is a distinct caller-created sink and protocol; keep its exact path acquisition and append behavior, not a generic file writer.",
+      "reference_ids": [
+        "R0",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/ci-procedural-authority-change.mjs",
+      "family": "workflow output append",
+      "disposition": "intentional-protocol-boundary",
+      "contract_reason": "Append-only workflow command output is a distinct caller-created sink and protocol; keep its exact path acquisition and append behavior, not a generic file writer.",
+      "reference_ids": [
+        "R0",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/ci-review/ci-procedural-authority-change.mts",
+      "family": "injected process/callback caller",
+      "disposition": "retain-caller-owned-execution-adapter",
+      "contract_reason": "These route modules pass an actual native executable into injected adapters; orchestration, repository/revision selection and failure handling remain caller-owned. An injected seam is not a thin guard or host proof.",
+      "reference_ids": [
+        "R6",
+        "R7",
+        "R11"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/ci-review/ci-report-entrypoint.mts",
+      "family": "CI report/PASS publication",
+      "disposition": "intentional-publication-protocol",
+      "contract_reason": "Required input/report validation and workflow display sinks have separate producers and append/read protocols; retain the runner-owned output binding and exact report fields.",
+      "reference_ids": [
+        "R5",
+        "R8",
+        "R1"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs/promises",
+          "line": 2,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 3,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/ci-review/codex-pass-producer.mts",
+      "family": "descriptor byte-copy caller",
+      "disposition": "adopted-mechanism-retains-caller-contract",
+      "contract_reason": "#615 reuses only the low-level descriptor read loop; Caller still owns open/stat/capacity/observer/decode/close order and its distinct output meaning.",
+      "reference_ids": [
+        "R1",
+        "R7",
+        "R9"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/diagnostic-path.mts",
+      "family": "descriptor byte-copy caller",
+      "disposition": "adopted-mechanism-retains-caller-contract",
+      "contract_reason": "#615 reuses only the low-level descriptor read loop; Caller still owns open/stat/capacity/observer/decode/close order and its distinct output meaning.",
+      "reference_ids": [
+        "R1",
+        "R7",
+        "R9"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/gemini-ci-runner.mjs",
+      "family": "provider execution and lifecycle",
+      "disposition": "intentional-provider-specific-contract",
+      "contract_reason": "Codex synchronous temp/process ownership, Gemini HTTP fetch/deadline, Gemini CLI workspace/private-HOME/process-group/proxy and CI output persistence differ; retain each adapter and lifetime.",
+      "reference_ids": [
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 6,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/gemini-ci-runtime.mjs",
+      "family": "provider execution and lifecycle",
+      "disposition": "intentional-provider-specific-contract",
+      "contract_reason": "Codex synchronous temp/process ownership, Gemini HTTP fetch/deadline, Gemini CLI workspace/private-HOME/process-group/proxy and CI output persistence differ; retain each adapter and lifetime.",
+      "reference_ids": [
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 3,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 4,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/gemini-cli/ci-runner-entrypoint.mts",
+      "family": "provider execution and lifecycle",
+      "disposition": "intentional-provider-specific-contract",
+      "contract_reason": "Codex synchronous temp/process ownership, Gemini HTTP fetch/deadline, Gemini CLI workspace/private-HOME/process-group/proxy and CI output persistence differ; retain each adapter and lifetime.",
+      "reference_ids": [
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 7,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/gemini-cli/gemini-cli-process.mts",
+      "family": "provider execution and lifecycle",
+      "disposition": "intentional-provider-specific-contract",
+      "contract_reason": "Codex synchronous temp/process ownership, Gemini HTTP fetch/deadline, Gemini CLI workspace/private-HOME/process-group/proxy and CI output persistence differ; retain each adapter and lifetime.",
+      "reference_ids": [
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 2,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 3,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/gemini-cli/gemini-cli-session.mts",
+      "family": "provider execution and lifecycle",
+      "disposition": "intentional-provider-specific-contract",
+      "contract_reason": "Codex synchronous temp/process ownership, Gemini HTTP fetch/deadline, Gemini CLI workspace/private-HOME/process-group/proxy and CI output persistence differ; retain each adapter and lifetime.",
+      "reference_ids": [
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 6,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/gemini-cli/launcher-entrypoint.mts",
+      "family": "provider execution and lifecycle",
+      "disposition": "intentional-provider-specific-contract",
+      "contract_reason": "Codex synchronous temp/process ownership, Gemini HTTP fetch/deadline, Gemini CLI workspace/private-HOME/process-group/proxy and CI output persistence differ; retain each adapter and lifetime.",
+      "reference_ids": [
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 18,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 21,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/gemini-launcher.mjs",
+      "family": "provider execution and lifecycle",
+      "disposition": "intentional-provider-specific-contract",
+      "contract_reason": "Codex synchronous temp/process ownership, Gemini HTTP fetch/deadline, Gemini CLI workspace/private-HOME/process-group/proxy and CI output persistence differ; retain each adapter and lifetime.",
+      "reference_ids": [
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 6,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/git/buffered-git.mts",
+      "family": "Git process execution",
+      "disposition": "adopted-shared-mechanism",
+      "contract_reason": "#604 centralizes one buffered Git invocation contract; it does not choose commands, repositories, decoding policy or reader semantics.",
+      "reference_ids": [
+        "R3"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/github/github-cli-runner.mts",
+      "family": "injected GitHub CLI type boundary",
+      "disposition": "thin-delegating-native-boundary",
+      "contract_reason": "The native child-process import is type-only and no direct operation is observed; runtime execution is supplied through callbacks, so this row is not itself a process sink.",
+      "reference_ids": [
+        "R0",
+        "R11"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 1,
+          "kind": "type-only"
+        }
+      ]
+    },
+    {
+      "path": "src/github/github-ruleset-readback-cli.mts",
+      "family": "host ruleset readback",
+      "disposition": "intentional-observation-boundary",
+      "contract_reason": "This route materializes/readbacks host observations with caller-specific paths; observation is not eligibility or acceptance, and no generic storage owner is selected.",
+      "reference_ids": [
+        "R0",
+        "R11"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/github/github-ruleset-readback.mts",
+      "family": "host ruleset readback",
+      "disposition": "intentional-observation-boundary",
+      "contract_reason": "This route materializes/readbacks host observations with caller-specific paths; observation is not eligibility or acceptance, and no generic storage owner is selected.",
+      "reference_ids": [
+        "R0",
+        "R11"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/io/read-descriptor.mts",
+      "family": "descriptor byte-copy primitive",
+      "disposition": "adopted-shared-mechanism",
+      "contract_reason": "#615 supplies a loop over an already-open descriptor and caller buffer; it owns no open/close/stat/allocation/validation/decode/error translation.",
+      "reference_ids": [
+        "R1"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/local-gate.mjs",
+      "family": "local/manual review composition",
+      "disposition": "intentional-caller-owned-contract",
+      "contract_reason": "Preparation, optional measurement, reviewer selection and response validation remain with local adapters; an abort signal is cooperative and does not replace provider-owned process limits.",
+      "reference_ids": [
+        "R7",
+        "R9"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/local-review/local-gate.mts",
+      "family": "local/manual review composition",
+      "disposition": "intentional-caller-owned-contract",
+      "contract_reason": "Preparation, optional measurement, reviewer selection and response validation remain with local adapters; an abort signal is cooperative and does not replace provider-owned process limits.",
+      "reference_ids": [
+        "R7",
+        "R9"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 3,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:child_process",
+          "line": 5,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/local-review/local-post-tool-screen.mts",
+      "family": "PostToolUse durable state and snapshot",
+      "disposition": "intentional-lifecycle-contract",
+      "contract_reason": "The hook owns tracked Git snapshots, state/identity reads via readFileSync, lease/marker lifetime, atomic state publication and cleanup; this durable coordination contract differs from provider scratch.",
+      "reference_ids": [
+        "R7",
+        "R13"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 4,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:child_process",
+          "line": 6,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:child_process",
+          "line": 7,
+          "kind": "type-only"
+        }
+      ]
+    },
+    {
+      "path": "src/local-review/native-review.mts",
+      "family": "native session persistence",
+      "disposition": "preserve-current-native-session-responsibilities",
+      "contract_reason": "The trusted Skill execution side supplies paths and owns private allocation, exact-request/decision recording and cleanup; the native adapter constructs/persists the request and validates the decision. This does not attest parent privacy. #566’s proposed stream/persistence transfer remains separate and unapproved.",
+      "reference_ids": [
+        "R7",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/measurement-ci.mts",
+      "family": "optional measurement/diagnostics",
+      "disposition": "reuse-deferred-retain-current-capture",
+      "contract_reason": "Optional raw-byte metadata capture and gap outcomes do not share proven identity/timing with required request preparation; keep repeated root and committed-byte checks pending a same-capture handoff design.",
+      "reference_ids": [
+        "R9",
+        "R7"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 3,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/measurement-cli.mts",
+      "family": "optional measurement/diagnostics",
+      "disposition": "reuse-deferred-retain-current-capture",
+      "contract_reason": "Optional raw-byte metadata capture and gap outcomes do not share proven identity/timing with required request preparation; keep repeated root and committed-byte checks pending a same-capture handoff design.",
+      "reference_ids": [
+        "R9",
+        "R7"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/measurement.mts",
+      "family": "descriptor byte-copy caller",
+      "disposition": "adopted-mechanism-retains-caller-contract",
+      "contract_reason": "#615 reuses only the low-level descriptor read loop; Optional metadata acquisition remains separate and deferred: required request parsing and raw committed-byte hashes do not share a demonstrated capture contract.",
+      "reference_ids": [
+        "R1",
+        "R7",
+        "R9"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 4,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 7,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/native-review.mjs",
+      "family": "native session persistence",
+      "disposition": "preserve-current-native-session-responsibilities",
+      "contract_reason": "The trusted Skill execution side supplies paths and owns private allocation, exact-request/decision recording and cleanup; the native adapter constructs/persists the request and validates the decision. This does not attest parent privacy. #566’s proposed stream/persistence transfer remains separate and unapproved.",
+      "reference_ids": [
+        "R7",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/ordinary-gemini-ci-adapter.mjs",
+      "family": "provider execution and lifecycle",
+      "disposition": "intentional-provider-specific-contract",
+      "contract_reason": "Codex synchronous temp/process ownership, Gemini HTTP fetch/deadline, Gemini CLI workspace/private-HOME/process-group/proxy and CI output persistence differ; retain each adapter and lifetime.",
+      "reference_ids": [
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/ordinary-gemini-ci-publication.mts",
+      "family": "provider execution and lifecycle",
+      "disposition": "intentional-provider-specific-contract",
+      "contract_reason": "Codex synchronous temp/process ownership, Gemini HTTP fetch/deadline, Gemini CLI workspace/private-HOME/process-group/proxy and CI output persistence differ; retain each adapter and lifetime.",
+      "reference_ids": [
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs/promises",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/ordinary-gemini-ci-workflow.mts",
+      "family": "injected process/callback caller",
+      "disposition": "retain-caller-owned-execution-adapter",
+      "contract_reason": "These route modules pass an actual native executable into injected adapters; orchestration, repository/revision selection and failure handling remain caller-owned. An injected seam is not a thin guard or host proof.",
+      "reference_ids": [
+        "R6",
+        "R7",
+        "R11"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/owner-addition-ci.mjs",
+      "family": "owner-addition CI/finalization route",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "Base/B snapshots, policy-selected inputs, procedure, output artifacts and single/multi-authority profiles have caller-specific rules; buffered Git only covers selected expressions.",
+      "reference_ids": [
+        "R3",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/owner-addition-finalize.mjs",
+      "family": "owner-addition CI/finalization route",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "Base/B snapshots, policy-selected inputs, procedure, output artifacts and single/multi-authority profiles have caller-specific rules; buffered Git only covers selected expressions.",
+      "reference_ids": [
+        "R3",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/owner-addition/finalize-owner-addition.mts",
+      "family": "owner-addition CI/finalization route",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "Base/B snapshots, policy-selected inputs, procedure, output artifacts and single/multi-authority profiles have caller-specific rules; buffered Git only covers selected expressions.",
+      "reference_ids": [
+        "R3",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 3,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 4,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/owner-addition/owner-addition-multiauthority.mts",
+      "family": "owner-addition CI/finalization route",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "Base/B snapshots, policy-selected inputs, procedure, output artifacts and single/multi-authority profiles have caller-specific rules; buffered Git only covers selected expressions.",
+      "reference_ids": [
+        "R3",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/owner-amendment/owner-amendment-attestation.mts",
+      "family": "owner-amendment handoff/evidence/tag route",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "Injected Git/API/attestation boundaries, revision/profile checks and record/tag semantics differ by handoff or evidence operation; maintain separate adapter budgets and incomplete outcomes.",
+      "reference_ids": [
+        "R6"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 4,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 5,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/owner-amendment/owner-amendment-handoff-cli.mts",
+      "family": "owner-amendment handoff/evidence/tag route",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "Injected Git/API/attestation boundaries, revision/profile checks and record/tag semantics differ by handoff or evidence operation; maintain separate adapter budgets and incomplete outcomes.",
+      "reference_ids": [
+        "R6"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/owner-amendment/owner-amendment-owner-decision-handoff-cli.mts",
+      "family": "owner-amendment handoff/evidence/tag route",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "Injected Git/API/attestation boundaries, revision/profile checks and record/tag semantics differ by handoff or evidence operation; maintain separate adapter budgets and incomplete outcomes.",
+      "reference_ids": [
+        "R6"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/owner-amendment/owner-amendment-tag-readback.mts",
+      "family": "owner-amendment handoff/evidence/tag route",
+      "disposition": "intentional-route-specific-contract",
+      "contract_reason": "Injected Git/API/attestation boundaries, revision/profile checks and record/tag semantics differ by handoff or evidence operation; maintain separate adapter budgets and incomplete outcomes.",
+      "reference_ids": [
+        "R6"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 2,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 3,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/preflight-authority-set-review.mjs",
+      "family": "required CI authority/review input",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "These are required policy/review preparation and validation boundaries; preserve exact revision, byte/mode, decode, size/deadline, output and failure distinctions rather than adopting optional diagnostic rules.",
+      "reference_ids": [
+        "R5",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/prepare-authority-set.mjs",
+      "family": "required CI authority/review input",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "These are required policy/review preparation and validation boundaries; preserve exact revision, byte/mode, decode, size/deadline, output and failure distinctions rather than adopting optional diagnostic rules.",
+      "reference_ids": [
+        "R5",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 5,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/prepare-protected-ci-input.mjs",
+      "family": "required CI authority/review input",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "These are required policy/review preparation and validation boundaries; preserve exact revision, byte/mode, decode, size/deadline, output and failure distinctions rather than adopting optional diagnostic rules.",
+      "reference_ids": [
+        "R5",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 3,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/prepare-review-context.mjs",
+      "family": "required CI authority/review input",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "These are required policy/review preparation and validation boundaries; preserve exact revision, byte/mode, decode, size/deadline, output and failure distinctions rather than adopting optional diagnostic rules.",
+      "reference_ids": [
+        "R5",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 3,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/preview-lifecycle-cli.mts",
+      "family": "preview lifecycle runtime",
+      "disposition": "retain-distinct-observation-contract",
+      "contract_reason": "Native Git/committed inputs, source/emitted byte identity and CLI receipt/readback remain local observation contracts with UNVERIFIED assurance; they are not the fixed runner-temp or diagnostic storage API.",
+      "reference_ids": [
+        "R14",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/preview-lifecycle-runtime.mts",
+      "family": "preview lifecycle runtime",
+      "disposition": "retain-distinct-observation-contract",
+      "contract_reason": "Native Git/committed inputs, source/emitted byte identity and CLI receipt/readback remain local observation contracts with UNVERIFIED assurance; they are not the fixed runner-temp or diagnostic storage API.",
+      "reference_ids": [
+        "R14",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 4,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 5,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/resolve-ci-policy.mjs",
+      "family": "required CI authority/review input",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "These are required policy/review preparation and validation boundaries; preserve exact revision, byte/mode, decode, size/deadline, output and failure distinctions rather than adopting optional diagnostic rules.",
+      "reference_ids": [
+        "R5",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/review-contract/review-contract.mts",
+      "family": "required local request preparation",
+      "disposition": "reuse-deferred-retain-current-capture",
+      "contract_reason": "Required parsed/decoded inputs and optional raw committed-byte digest capture differ in source bytes, reader/decode contract and phase; do not substitute request values or prior root identity.",
+      "reference_ids": [
+        "R9"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:child_process",
+          "line": 4,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/review-inputs/materialize-regular-git-snapshot.mts",
+      "family": "review materialization/workspace",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "Git object materialization, review-file selection and workspace create/cleanup boundaries have separate readers and owners; preserve request limits and cleanup ownership.",
+      "reference_ids": [
+        "R5",
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/review-inputs/materialize-review-workspace.mts",
+      "family": "review materialization/workspace",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "Git object materialization, review-file selection and workspace create/cleanup boundaries have separate readers and owners; preserve request limits and cleanup ownership.",
+      "reference_ids": [
+        "R5",
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/review-inputs/prepare-review-context.mts",
+      "family": "review materialization/workspace",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "Git object materialization, review-file selection and workspace create/cleanup boundaries have separate readers and owners; preserve request limits and cleanup ownership.",
+      "reference_ids": [
+        "R5",
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:child_process",
+          "line": 3,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/review-inputs/prepare-review-file-context.mts",
+      "family": "review materialization/workspace",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "Git object materialization, review-file selection and workspace create/cleanup boundaries have separate readers and owners; preserve request limits and cleanup ownership.",
+      "reference_ids": [
+        "R5",
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 2,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 3,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/review-inputs/review-input-path.mts",
+      "family": "review materialization/workspace",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "Git object materialization, review-file selection and workspace create/cleanup boundaries have separate readers and owners; preserve request limits and cleanup ownership.",
+      "reference_ids": [
+        "R5",
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 1,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/reviewer-transports/codex-transport.mts",
+      "family": "provider execution and lifecycle",
+      "disposition": "intentional-provider-specific-contract",
+      "contract_reason": "Codex synchronous temp/process ownership, Gemini HTTP fetch/deadline, Gemini CLI workspace/private-HOME/process-group/proxy and CI output persistence differ; retain each adapter and lifetime.",
+      "reference_ids": [
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 1,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:child_process",
+          "line": 4,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/reviewer-transports/gemini-transport.mts",
+      "family": "provider execution and lifecycle",
+      "disposition": "intentional-provider-specific-contract",
+      "contract_reason": "Codex synchronous temp/process ownership, Gemini HTTP fetch/deadline, Gemini CLI workspace/private-HOME/process-group/proxy and CI output persistence differ; retain each adapter and lifetime.",
+      "reference_ids": [
+        "R7",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:child_process",
+          "line": 6,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/runner-paths/runner-temp-path.mts",
+      "family": "fixed CI runner-temp boundary",
+      "disposition": "intentional-protocol-boundary",
+      "contract_reason": "Fixed internal artifact selectors and actual workflow-output sink are distinct; retain runner cwd/temp binding and per-operation checks, not a universal path sanitizer.",
+      "reference_ids": [
+        "R0",
+        "R6",
+        "R8"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 1,
+          "kind": "runtime-static"
+        },
+        {
+          "specifier": "node:fs",
+          "line": 3,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/validate-authority-set-decision.mjs",
+      "family": "required CI authority/review input",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "These are required policy/review preparation and validation boundaries; preserve exact revision, byte/mode, decode, size/deadline, output and failure distinctions rather than adopting optional diagnostic rules.",
+      "reference_ids": [
+        "R5",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    },
+    {
+      "path": "src/validate-decision.mjs",
+      "family": "required CI authority/review input",
+      "disposition": "intentional-required-input-contract",
+      "contract_reason": "These are required policy/review preparation and validation boundaries; preserve exact revision, byte/mode, decode, size/deadline, output and failure distinctions rather than adopting optional diagnostic rules.",
+      "reference_ids": [
+        "R5",
+        "R8",
+        "R0"
+      ],
+      "native_imports": [
+        {
+          "specifier": "node:fs",
+          "line": 2,
+          "kind": "runtime-static"
+        }
+      ]
+    }
+  ],
+  "separate_surfaces_not_counted_among_73": [
+    {
+      "scope": "src/authority-validation/legacy-git-snapshot.mts",
+      "reason": "#604 buffered Git caller has no direct native import in current AST inventory; listed by buffered-process report. Its reader policy stays caller-owned.",
+      "reference_ids": [
+        "R3",
+        "R11"
+      ]
+    },
+    {
+      "scope": "src/ci-review/legacy-ci-authority-preparer.mts",
+      "reason": "#604 buffered Git caller has no direct native import after delegation; the helper and fixed preparation contract are covered separately.",
+      "reference_ids": [
+        "R3",
+        "R8",
+        "R11"
+      ]
+    },
+    {
+      "scope": "src/owner-addition/owner-addition-ci-operations.mts",
+      "reason": "#604 buffered Git caller is not a direct-native-import row in this scan; only its selected Git expressions delegate to the helper.",
+      "reference_ids": [
+        "R3",
+        "R8",
+        "R11"
+      ]
+    },
+    {
+      "scope": "src/owner-amendment/owner-amendment-git-changes.mts / src/owner-amendment/owner-amendment-handoff-git-context.mts / src/owner-amendment/owner-amendment-merge-group-evidence.mts / src/owner-amendment/owner-amendment-merge-group-ordinary-review.mts",
+      "reason": "Mediated callback consumers accept injected Git/API/verification operations; they are outside the native-import set and retain per-caller policies.",
+      "reference_ids": [
+        "R6",
+        "R11"
+      ]
+    },
+    {
+      "scope": "src/github-runner-workspace.mjs / src/github-runner-env.mjs / src/native-session-paths.mjs",
+      "reason": "Path-source accessors without native filesystem imports; model regressions and callers define their bounded responsibility.",
+      "reference_ids": [
+        "R0",
+        "R7",
+        "R10"
+      ]
+    },
+    {
+      "scope": ".github/workflows/**/*.yml and inline shell/runner action steps",
+      "reason": "Workflow inline Git, artifact, command-file, checkout, and action calls are a separate per-step surface; AST scanner does not include YAML or commands.",
+      "reference_ids": [
+        "R5",
+        "R8",
+        "R11"
+      ]
+    },
+    {
+      "scope": "src/preview-lifecycle and other source modules with no native imports",
+      "reason": "Lifecycle/adapter behavior not inferable from this 73-path import list; consult dedicated source/route contracts rather than count absence as no I/O.",
+      "reference_ids": [
+        "R0",
+        "R11"
+      ]
+    },
+    {
+      "scope": "src/gemini-cli/gemini-security-proxy.mts / scripts/probe-historical-block-metadata.mjs",
+      "reason": "HTTP/server/global-fetch I/O is not selected by the fs/child_process import filter; explicit provider/probe contracts are inventoried separately.",
+      "reference_ids": [
+        "R7",
+        "R10"
+      ]
+    },
+    {
+      "scope": "scripts/owner-amendment-merge-group-ordinary-review.mjs",
+      "reason": "The ordinary merge-group CLI delegates native Git calls to the #599 runner; its prepare/validate and fixed-file handoff remain caller-owned.",
+      "reference_ids": [
+        "R4",
+        "R6"
+      ]
+    }
+  ],
+  "constraints": [
+    "Only explicitly observed import/call and named supplemental surfaces are indexed; absence does not imply no I/O.",
+    "Retain means preserve the named current contract, not prove no possible duplication or that all operations are safe.",
+    "Selected equivalent mechanisms are adopted; known further comparison candidates remain explicitly tracked in the Markdown.",
+    "The existing canonical Skill/native session responsibility split stays current; the proposed #566 transfer is separate and unapproved.",
+    "Source accuracy, tests, hosted checks, protected acceptance and owner decisions retain separate meanings."
+  ]
+}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +32,8 @@ function policy() { return { version: 4, default: { mode: 'local-only' }, branch
 
 async function fixture(t, options = {}) {
   const root = mkdtempSync(join(tmpdir(), 'multi-addition-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const runnerTemp = mkdtempSync(join(tmpdir(), 'multi-addition-runner-'));
+  t.after(() => { rmSync(root, { recursive: true, force: true }); rmSync(runnerTemp, { recursive: true, force: true }); });
   git(root, 'init', '-q');
   const selectedPolicy = policy();
   Object.assign(selectedPolicy.branches.main.authorityLimits, options.limits);
@@ -46,6 +47,13 @@ async function fixture(t, options = {}) {
     { id: 'architecture', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' },
     { id: 'privacy', repository: 'self', revision: 'authority-revision', path: 'docs/privacy.md' },
   ] };
+  const extraMemberCount = (options.memberCount ?? 2) - manifest.authorities.length;
+  for (let index = 0; index < extraMemberCount; index++) {
+    const path = `docs/r${String(index).padStart(2, '0')}-${'x'.repeat(227)}.md`;
+    manifest.authorities.push({ id: `long-rule-${String(index).padStart(2, '0')}`, repository: 'self',
+      revision: 'authority-revision', path });
+    write(root, path, `# Long path rule ${index}\nRetain this protected requirement.\n`);
+  }
   if (options.external) manifest.authorities.push({ id: 'external-rule', repository: 'other/authority', revision: 'c'.repeat(40), path: 'docs/rule.md' });
   options.manifest?.(manifest);
   const manifestBytes = Buffer.from(JSON.stringify(manifest));
@@ -86,9 +94,23 @@ async function fixture(t, options = {}) {
     BASE_BRANCH: 'main', POLICY_PATH: '.gate/policy.json', OWNER_AUTHORITY_PATH: 'docs/architecture.md',
     OWNER_PROMPT_PATH: '.gate/eligibility.md', OWNER_SCHEMA_PATH: '.gate/eligibility.json', ORDINARY_SCHEMA_PATH: '.gate/ordinary.json',
     ORDINARY_DECISION: JSON.stringify(ordinary), ORDINARY_AUTHORITY_PROVENANCE_BASE64: encode(provenance),
-    OUTPUT_DIR: join(root, 'addition-inputs'), GITHUB_OUTPUT: join(root, 'outputs') };
-  return { root, base, head, env, policyBytes, selected, provenance, ordinary, record, fetchExternal,
-    prepare: overrides => prepareMultiAuthorityAddition({ ...env, ...overrides }, selected, policyBytes, { fetchExternal }) };
+    RUNNER_TEMP: runnerTemp, OUTPUT_DIR: join(runnerTemp, 'architecture-gate-owner-addition'), GITHUB_OUTPUT: join(runnerTemp, 'outputs') };
+  writeFileSync(env.GITHUB_OUTPUT, '', { mode: 0o600 });
+  const prepare = async overrides => {
+    const cwd = process.cwd();
+    const previousOutput = process.env.GITHUB_OUTPUT;
+    const previousRunnerTemp = process.env.RUNNER_TEMP;
+    process.chdir(runnerTemp);
+    process.env.RUNNER_TEMP = runnerTemp;
+    process.env.GITHUB_OUTPUT = env.GITHUB_OUTPUT;
+    try { return await prepareMultiAuthorityAddition({ ...env, ...overrides }, selected, policyBytes, { fetchExternal }); }
+    finally {
+      process.chdir(cwd);
+      if (previousOutput === undefined) delete process.env.GITHUB_OUTPUT; else process.env.GITHUB_OUTPUT = previousOutput;
+      if (previousRunnerTemp === undefined) delete process.env.RUNNER_TEMP; else process.env.RUNNER_TEMP = previousRunnerTemp;
+    }
+  };
+  return { root, runnerTemp, base, head, env, policyBytes, selected, provenance, ordinary, record, fetchExternal, prepare };
 }
 function eligible(f) { return { ...Object.fromEntries(Object.entries(schema.properties).filter(([, value]) => value.type === 'boolean').map(([key]) => [key, true])),
   version: 2, authorityIds: f.provenance.members.map(member => member.id), authoritySetDigest: f.provenance.setDigest, summary: 'Only the missing reporting decision is added.' }; }
@@ -109,7 +131,7 @@ test('v4 selects new limits and record version without expanding existing policy
 
 test('real Git CLI path includes the complete base set and reports bound v2 procedure', async t => {
   const f = await fixture(t, { other: `# Migration\n${'x'.repeat(153_920)}\n` });
-  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.root, env: f.env });
+  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.runnerTemp, env: f.env });
   const prompt = readFileSync(join(f.env.OUTPUT_DIR, 'eligibility-prompt.md'), 'utf8');
   assert.ok(prompt.includes('x'.repeat(153_920)));
   assert.match(prompt, /every unchanged authority/);
@@ -117,7 +139,25 @@ test('real Git CLI path includes the complete base set and reports bound v2 proc
   const procedure = parseOwnerAdditionProcedure(readFileSync(f.env.GITHUB_OUTPUT, 'utf8').match(/procedure_base64=(.+)/)[1], true);
   assert.equal(procedure.version, 2); assert.equal(procedure.policySha256, hash(f.policyBytes));
   assert.deepEqual(procedure.authoritySet, f.provenance);
-  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'], { cwd: f.root, env: { ...f.env, DECISION: JSON.stringify(eligible(f)) } });
+  const cli = join(sourceRoot, 'dist/owner-addition-ci.mjs');
+  const validateEnv = { ...f.env, DECISION: JSON.stringify(eligible(f)) };
+  execFileSync(process.execPath, [cli, 'validate'], { cwd: f.runnerTemp, env: validateEnv });
+  const sentinel = join(f.root, 'validate-sentinel');
+  for (const [artifactName, kind] of [['eligibility.schema.json', 'symlink'], ['procedure.json', 'hardlink']]) {
+    const artifactPath = join(f.env.OUTPUT_DIR, artifactName);
+    const original = readFileSync(artifactPath);
+    writeFileSync(sentinel, 'validation sentinel');
+    unlinkSync(artifactPath);
+    if (kind === 'symlink') symlinkSync(sentinel, artifactPath);
+    else linkSync(sentinel, artifactPath);
+    const result = spawnSync(process.execPath, [cli, 'validate'], { cwd: f.runnerTemp, env: validateEnv, encoding: 'utf8' });
+    assert.notEqual(result.status, 0, `${kind} exposed ${artifactName} must fail validate`);
+    assert.match(result.stderr, /Runner temporary path:|ELOOP/);
+    assert.doesNotMatch(result.stderr, /invalid JSON|unexpected token/i);
+    assert.equal(readFileSync(sentinel, 'utf8'), 'validation sentinel');
+    unlinkSync(artifactPath);
+    writeFileSync(artifactPath, original);
+  }
   const classified = classifyReview({ mode: 'enforced', policyResult: 'success', reviewResult: 'success', rawDecision: f.env.ORDINARY_DECISION,
     ownerAdditionSelected: true, ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE', ownerAdditionProcedure: procedure });
   assert.equal(classified.conclusion, 'OWNER_ADDITION_G0');
@@ -129,6 +169,58 @@ test('real Git CLI path includes the complete base set and reports bound v2 proc
   assert.ok(report.includes(`object OID \`${procedure.tagObjectOid}\``));
   for (const member of f.provenance.members) assert.ok(report.includes(member.sha256));
   assert.match(report, /not semantic PASS/);
+});
+
+test('multi-authority preparation appends only to the runner-provided output sink', async t => {
+  const f = await fixture(t);
+  const injectedOutput = join(f.root, 'injected-output');
+  await f.prepare({ GITHUB_OUTPUT: injectedOutput });
+  assert.equal(existsSync(injectedOutput), false);
+  assert.match(readFileSync(f.env.GITHUB_OUTPUT, 'utf8'), /^procedure_base64=/);
+  assert.ok(existsSync(join(f.env.OUTPUT_DIR, 'eligibility-prompt.md')));
+  assert.ok(existsSync(join(f.env.OUTPUT_DIR, 'eligibility.schema.json')));
+  assert.ok(existsSync(join(f.env.OUTPUT_DIR, 'procedure.json')));
+});
+
+test('32-member long-path procedure stays one complete output line across retries', async t => {
+  const f = await fixture(t, { memberCount: 32, limits: { maxMembers: 32, maxManifestBytes: 65_536 } });
+  const cli = join(sourceRoot, 'dist/owner-addition-ci.mjs');
+  writeFileSync(f.env.GITHUB_OUTPUT, 'preserved=value\n');
+
+  for (let invocation = 1; invocation <= 2; invocation++) {
+    execFileSync(process.execPath, [cli, 'prepare'], { cwd: f.runnerTemp, env: f.env });
+    const output = readFileSync(f.env.GITHUB_OUTPUT, 'utf8');
+    const lines = output.split('\n');
+    assert.equal(lines.pop(), '', 'runner output ends with a newline');
+    assert.equal(lines[0], 'preserved=value');
+    assert.equal(lines.length, invocation + 1, 'each invocation appends exactly one complete output line');
+    const outputLine = lines[invocation];
+    assert.match(outputLine, /^procedure_base64=/);
+    const encoded = outputLine.slice('procedure_base64='.length);
+    assert.ok(encoded.length > 16_384);
+    const parsed = parseOwnerAdditionProcedure(encoded, true);
+    const artifact = JSON.parse(readFileSync(join(f.env.OUTPUT_DIR, 'procedure.json'), 'utf8'));
+    assert.deepEqual(parsed, artifact);
+    assert.equal(encoded, Buffer.from(JSON.stringify(artifact)).toString('base64'));
+    assert.equal(parsed.authoritySet.members.length, 32);
+    assert.ok(parsed.authoritySet.members.slice(2).every(member => member.path.length === 239));
+    assert.equal(Buffer.from(encoded, 'base64').toString('utf8'), JSON.stringify(artifact));
+  }
+});
+
+test('owner-addition consumer accepts exactly 65,536 encoded base64 characters', async t => {
+  const f = await fixture(t);
+  const procedure = await f.prepare();
+  const compact = JSON.stringify(procedure);
+  const padded = compact + ' '.repeat(49_152 - Buffer.byteLength(compact));
+  assert.equal(Buffer.byteLength(padded), 49_152);
+  const encoded = Buffer.from(padded).toString('base64');
+  assert.equal(encoded.length, 65_536);
+  assert.deepEqual(parseOwnerAdditionProcedure(encoded, true), procedure);
+
+  const nextQuantum = Buffer.from(`${padded} `).toString('base64');
+  assert.equal(nextQuantum.length, 65_540);
+  assert.throws(() => parseOwnerAdditionProcedure(nextQuantum, true), /Invalid G0 owner-addition procedure output/);
 });
 
 test('report truncation preserves complete G0 and Authority Set evidence ahead of long schema-valid review detail', async t => {
@@ -177,10 +269,10 @@ test('procedural v5 emits exact raw pre-merge evidence for the selected producer
       workflowPath: '.github/workflows/architecture-gate.yml', jobName: 'Architecture Gate / owner-addition' };
   } });
   const env = { ...f.env, PR_NUMBER: '42', POLICY_VERSION: '5', GITHUB_RUN_ID: '1234', GITHUB_RUN_ATTEMPT: '2' };
-  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.root, env });
+  execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.runnerTemp, env });
   const decision = JSON.stringify(eligible(f));
   execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'],
-    { cwd: f.root, env: { ...env, DECISION: decision } });
+    { cwd: f.runnerTemp, env: { ...env, DECISION: decision } });
   const evidence = JSON.parse(readFileSync(join(env.OUTPUT_DIR, 'eligibility-evidence.json'), 'utf8'));
   assert.deepEqual([evidence.version, evidence.repository, evidence.targetBranch, evidence.prNumber,
     evidence.baseSha, evidence.headSha, evidence.runId, evidence.runAttempt],
@@ -195,6 +287,21 @@ test('procedural v5 emits exact raw pre-merge evidence for the selected producer
     authoritySetProvenance: Buffer.from(evidence.authoritySetProvenanceBase64, 'base64') })) {
     assert.equal(evidence.digests[name], hash(bytes));
   }
+
+  const contextPath = join(env.OUTPUT_DIR, 'evidence-context.json');
+  const contextBytes = readFileSync(contextPath);
+  const sentinel = join(f.root, 'context-sentinel');
+  writeFileSync(sentinel, 'procedural context sentinel');
+  unlinkSync(contextPath);
+  symlinkSync(sentinel, contextPath);
+  const linkedContext = spawnSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'],
+    { cwd: f.runnerTemp, env: { ...env, DECISION: decision }, encoding: 'utf8' });
+  assert.notEqual(linkedContext.status, 0, 'v5 exposed context symlink must fail validate');
+  assert.match(linkedContext.stderr, /Runner temporary path:|ELOOP/);
+  assert.doesNotMatch(linkedContext.stderr, /invalid JSON|unexpected token/i);
+  assert.equal(readFileSync(sentinel, 'utf8'), 'procedural context sentinel');
+  unlinkSync(contextPath);
+  writeFileSync(contextPath, contextBytes);
 });
 
 test('eligibility preserves BOM-prefixed candidate, authority and instruction bytes', async t => {

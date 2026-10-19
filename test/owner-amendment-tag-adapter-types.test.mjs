@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-amendment-tag-adapter-contract');
@@ -15,15 +16,11 @@ assert.equal(tsconfig.options.strict, true);
 assert.equal(tsconfig.options.noImplicitAny, true);
 assert.equal(tsconfig.options.noEmitOnError, true);
 const compilerOptions = { ...tsconfig.options, rootDir: root, noEmit: true };
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFile = compileFixtureDiagnostics(fixtureFiles, compilerOptions, 'imports and authored declarations must be error-free');
 
 function diagnosticsFor(fixture) {
-  const file = join(fixtureRoot, fixture);
-  const program = ts.createProgram([file], compilerOptions);
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  const fixtureDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
-  const otherDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file);
-  assert.deepEqual(otherDiagnostics, [], 'imports and authored declarations must be error-free');
-  return fixtureDiagnostics;
+  return diagnosticsForFile(join(fixtureRoot, fixture));
 }
 
 function diagnosticEvidence(diagnostics) {
@@ -35,7 +32,7 @@ function diagnosticEvidence(diagnostics) {
 }
 
 test('owner-amendment tag adapter positive callback and result contracts compile', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('owner-amendment tag adapters reject missing required inputs, wrong callbacks, mutable or trusted observations', () => {

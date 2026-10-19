@@ -72,8 +72,155 @@ applicable architecture review on the final candidate; worker verification is
 not protected acceptance. Record focused/full runtimes, actual package results
 and unresolved limits. The entrypoint and workflow investigations under
 `docs/investigations/2026-10-08-*.md` provide concrete #415/#416 examples.
+The [#418/#412 final integration index](investigations/2026-10-18-quality-program-final-integration.md)
+maps these practices to existing checks and revision-bound evidence, including
+their local, hosted and protected limits.
+
+The [initial Git/filesystem inventory](https://github.com/flair-agency/architecture-gatekeeper/blob/d80e44683e356c1d91b9639d1e4df96aa337125a/docs/investigations/2026-10-18-git-filesystem-responsibility-inventory.md)
+maps existing I/O owners and differing caller contracts for #573. It selects no
+shared API or library and does not complete that refactor.
+
+## Early review-input capacity feedback
+
+Before requesting a model review or starting the full test/CodeQL/package path,
+check capacity for a committed change using Node 22.18 or newer and the locked
+development dependencies (`npm ci --ignore-scripts` once). No build, reviewer,
+provider credential, network acquisition or heavy verification is needed for
+this development command:
+
+```bash
+npm run review:capacity -- --base <base-commit> --head <candidate-commit>
+```
+
+The invoking checkout must already be the exact two-parent reviewed merge,
+with ordered parents `[base, candidate]`. `--reviewed <ref>` defaults to `HEAD`;
+references resolve once to full immutable commits. Uncommitted/untracked edits
+are excluded. For feedback before push, make a local preview in an isolated
+worktree, leaving the development branch unchanged:
+
+```bash
+capacity_tool="$(git rev-parse --show-toplevel)"
+capacity_base="$(git rev-parse origin/main)"
+capacity_head="$(git rev-parse HEAD)"
+git worktree add --detach ../agk-capacity-preview "$capacity_base"
+cd ../agk-capacity-preview
+git merge --no-ff --no-edit "$capacity_head"
+node "$capacity_tool/scripts/review-capacity.mjs" --base "$capacity_base" --head "$capacity_head"
+```
+
+Use an up-to-date fetched base and a distinct committed candidate with actual
+changes. Resolve conflicts normally before checking; an absent or non-merge
+snapshot is undetermined. The command itself writes no worktree, refs, prompt
+files or retained diagnostic records. Remove the preview worktree when finished.
+This is a source-development command, not an installed package executable.
+
+Initial coverage is AGK's ordinary Codex self-CI input format, targeting `main`
+and using a self-only version-1 Authority Set under an enforced v2 policy. The
+local repository name is a label, not authenticated GitHub origin or same-repo
+admission. The report binds base, candidate and reviewed merge, policy revision,
+path/digest and selected limit. It reads literal inputs/defaults from the base's
+self caller and reusable workflow, resolves protected policy with the production
+resolver, and materializes the complete selected base authority with the
+production materializer. It shares the exact context assembler with production.
+Neither working-tree policy nor an injected limit can replace these inputs.
+
+The initial tool conservatively recognizes the fingerprinted preparation files
+and workflow format delivered with it, plus the byte-equivalent predecessor
+context implementation. Any other format, an altered local tool dependency,
+legacy/procedural/Gemini policy or external authority is undetermined until
+separately supported. A fresh base/candidate/policy always gets a new result;
+there is no result cache. A later GitHub merge revision, base or selected runtime
+can differ from the local preview: rerun for that snapshot. Feedback supplies no
+host protection, review completion or merge evidence. Local Git, object store,
+configuration and tool execution retain the existing same-user trust boundary.
+
+JSON output distinguishes these states and exit statuses:
+
+| State | Meaning and next action | Exit |
+| --- | --- | --- |
+| `fit` | Exact prompt is below 90% of the selected limit. Continue normal review and verification. | 0 |
+| `approaching-limit` | Exact prompt is at least 90%, and no larger than the hard limit. Consider a coherent smaller scope before adding input. | 0 |
+| `exceeded` | Either complete bounded assembly was measured above the hard limit, or a conservative lower bound already proves the final prompt must exceed it. Reshape the change and check again; production still refuses it. | 1 |
+| `undetermined` | A selection, revision, source, encoding, supported format or bounded preparation could not be completed. Resolve the cause; never interpret this as fitting. | 2 |
+
+The 90% rule is optional development guidance, not a policy limit or required
+check. Exactly-at-limit is approaching and production remains permitted at that
+size. No state is semantic PASS/BLOCK/OWNER_DECISION or authorization to merge.
+Do not raise limits, trim required input or bypass checks in response.
+
+For exact results, `totalBytes` measures final UTF-8 prompt bytes after JSON
+escaping and context attachment. Instructions, rendered complete authority and
+task context components sum to that same total. Remaining capacity may be
+negative. The selected hard limit applies to that prompt; the separately passed
+output schema's bytes/digest are reported separately and are not added to it.
+No token/cost estimate or provider transport-payload limit is inferred.
+
+When a validated instructions-plus-authority prefix alone exceeds the selected
+limit, or captured complete paths / valid diff text prove a lower bound above
+the limit after a bounded Git output overflow, the result remains
+`exact: false`, with `totalBytes` and `remainingBytes` null and a numeric
+`lowerBoundBytes` plus a bounded `stage` label. No partial prompt, diff, or path
+payload is returned. A lower bound uses only already captured complete path
+records or valid diff text; an incomplete final path or UTF-8 character is
+excluded. NUL-containing diff data, malformed UTF-8, stderr-only overflow,
+other process errors, or captures without a sufficient usable lower bound
+remain `undetermined`. The result describes only a capacity fact;
+it does not claim full prompt validity or that other unsupported or unavailable
+inputs would succeed.
+
+Summaries omit prompt, diff, authority and schema contents, provider settings,
+credentials and local paths. Changed filenames are hidden by default. Add
+`--public-paths` only when the candidate names are suitable for disclosure; this
+shows up to five unambiguously matched simple public paths ranked by their
+JSON-escaped patch payload bytes, a subset of task context rather than extra
+prompt components. Quoted/ambiguous paths may have no per-file attribution;
+the complete prompt and total are still measured. This does not authorize
+publication of private changes or authority.
+
+Preparation retains the selected manifest/member/file/authority/prompt bounds.
+Git commands have finite output bounds and a 10-second per-command maximum;
+there is no claim of a global process deadline. Initial diagnostic reads of
+workflow/runtime-format files are bounded at 262144 bytes each and policy,
+schema and validation at 65536 bytes each. These are local preparation bounds,
+not new protected schema or policy limits. Failures without a provable complete
+prompt lower bound remain undetermined; no unavailable input is omitted.
+
+The retained capacity tests model #541's scope-growth problem: growing
+investigation text overtakes implementation as the largest patch contributor
+and exceeds the same selected limit; separately scoped implementation and
+bounded investigation changes each agree with real production-prepared sizes
+and fit. This is a synthetic feature checkpoint, not a replay of #541's hosted
+review, automatic splitting, review-quality score or completion of #537's pilot.
+The tests also instrument the actual CLI to forbid non-Git subprocesses and
+network/model calls, exercise exact/advisory boundaries, private sentinels,
+unsupported preparation and retained production rejection. Other local, Hook,
+native and provider routes, automation and broader I/O extraction remain outside
+this initial #576 delivery; #573 is independent.
+
+## Keeping the Gemini branch synchronized
+
+At Gemini development milestones, compare `feature/gemini-ci` with the current
+`main` and merge adopted main changes through an isolated synchronization PR.
+Resolve behavioral differences in the typed implementations, preserving flat
+entrypoints, main fixes and the feature's bounded Gemini implementation. Use
+normal merge history; do not rewrite branches used by parallel work.
+Synchronization does not renew execution approval or transfer a historical
+review to a new source tuple.
+
+The 2026-10-12 synchronization combines the main typed report helpers and Codex
+PASS retrieval with the feature's Gemini projection and filesystem guards.
+The report entrypoint retains the feature's optional report-publication fetch
+callback and exported `main`; protected Codex display retrieval continues to use
+the original full Fetch transport. The older zero-argument/private report CLI
+and unchanged-AST statements below describe the main migration before this
+behavioral integration. The synchronization tests bind the combined source and
+emitted AST and retain both providers' publication and negative cases.
 
 ## TypeScript source and runtime distribution
+
+### Earlier implementation checkpoints
+
+Earlier slice statuses and counts are historical; the current inventory below supersedes them.
 
 The integrated #419 slices type OWNER_ADDITION validation, execution-result
 states, tag/artifact/ZIP leaves, GitHub association/CLI/source/event helpers,
@@ -218,9 +365,13 @@ G0 procedure validation and tag-envelope checks. Flat exports and original
 runtime operations remain unchanged. External readbacks stay unknown; owned
 parsed records and computed digests have explicit contracts. Types confer no
 owner authorization or new accepting route. The owner-addition CI and GitHub
-owner-addition provenance relocations remain deferred in Draft #520 after
-hosted CodeQL registered alerts #224–#234. No model expansion or dismissal is
-made; local runtime equivalence does not override a failing hosted check.
+owner-addition provenance relocations were deferred in historical Draft #520
+after hosted CodeQL failures. That combined candidate is now closed as
+superseded: #521 adopted the amendment core, #578 the complete provenance
+verifier, and #587 the complete owner-addition CLI operations with #591's
+owner-approved fixed runner-temp boundary. Closing #520 adopts no code and
+dismisses no alert. The final integration index records 96/96 adoption and
+remaining limits; the old failed checks remain historical failures.
 
 The Gemini CLI slice types response extraction, process supervision and parent
 proxy-session composition. Flat exports, original error paths and defaults remain
@@ -238,8 +389,9 @@ Flat exports, read-only invocation, validation, proxy scope and cleanup preserve
 their original operations. The parent proxy composes the typed session directly.
 
 The local-review and runner-path slice types local reviewer composition and
-fixed runner temporary paths. The native CLI remains at its original flat
-`.mjs` implementation and is outside this typed migration. Required async
+fixed runner temporary paths. The complete native CLI candidate moves to
+`local-review/native-review.mts`; its executable flat facade retains the exact
+direct-run guard and catch. Required async
 deadlines, synchronous versus awaited callbacks and complete envelope fields
 have explicit contracts. External decisions, JSON and manifest readbacks remain
 unknown; exact byte reads return Buffer and successful paths return strings.
@@ -282,34 +434,49 @@ before storage, bounded readbacks and the original private file modes. The
 runner accessor stays at its approved model path and returns only the string
 established by its existing runtime check; this does not authenticate provenance.
 
-After the runner-accessor candidate, three checked JavaScript bridges remain
-at their existing source paths: snapshot materializer, native CLI and CI report.
-The report CLI checks its existing private zero-argument `Promise<void>`
-completion contract. Erased operation views retain the original error-message
+After the adopted complete native migration, two checked JavaScript bridges remain
+at their existing source paths: snapshot materializer and CI report.
+The report CLI's public `main`, adopted in #582, accepts an optional
+`ReportFetch` and retains its `Promise<void>` completion contract. Erased operation views retain the original error-message
 reads, inline-item operations and optional findings-length read; external
 observations remain unchecked. These views do not validate an error, guarantee
 an iterable result or authorize a decision. The original optional chain,
-exports, direct-run guard and filesystem sink statements remain intact.
-Actual-config compile-only probes exercise the private function without adding
-a public export or argv parameter. A pinned complete runtime AST comparison
-binds source and emitted operations to the pre-change main tree. These checks
+exports, direct-run guard and adopted runner/report filesystem checks remain intact.
+Actual-config compile-only probes exercise the public function without adding
+an argv parameter. Complete helper and CLI operation pins, relocated import checks,
+the exact flat guard and fourteen export identities bind the source and emitted
+candidate to adopted #583/#581 composition. These checks
 do not prove CodeQL flow preservation; official model/flow verification remains
-required for the candidate. The native CLI
-checks its existing optional string-array arguments, working directory and async
-completion contract; its entire runtime body and direct-execution guard remain
-unchanged. The materializer retains
-two narrow `@ts-expect-error` boundaries where it composes the existing Git
-reader and filesystem writer. They preserve those operations without claiming
-that `outputPath` is a string: the original truthy guard permits native path-like
-and file-descriptor inputs. Six originals have partial helper migrations.
-The CI report keeps its flat CLI and filesystem sinks; the owner-addition
-finalizer keeps its finalizer and CLI operations; and multi-authority
+required for the candidate. The native CLI preserves its existing optional
+string-array arguments, working directory and async completion contract. Its
+complete adopted functions are pinned after type erasure, including measurement,
+required prepare/validate I/O and distinct original-host versus injected argument
+selection. External JSON remains unknown; erased property-read views add no
+validation. All three original native accessor flows and explicitly injected
+negative flows remain checked at the actual grouped production sinks. The
+adopted model packs are unchanged. This migration adopts no stream protocol,
+persistence transfer or new transport ceiling from Issue #566. The materializer now
+uses fixed runner-temporary output selectors with the existing filesystem writer. These CI
+operations accept only fixed string names or the exact absolute path resolved
+from the runner-temporary working directory; native Buffer, URL, descriptor and
+other caller-selected destinations are outside this interface. The workflows
+set `working-directory: ${{ runner.temp }}` for the legacy and owner-addition
+prepare/validate steps in the self, consumer and provider workflows. This is the
+owner-approved design recorded in [PR #591](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
+In the adopted 86/96 baseline, four originals have partial helper migrations.
+The CI report keeps its flat CLI and filesystem operations; multi-authority
 orchestration keeps its adapter while delegating selected eligibility helpers.
 Owner-addition CI delegates only the post-parse single-member selection while
-retaining its Git reads, file writes and command dispatch. GitHub OWNER_ADDITION
-provenance delegates the bounded single-entry ZIP parser while retaining fetch,
-token, artifact selection, digest binding and attestation validation at the
-flat path. These types describe existing parsed bytes and selected-member
+retaining its Git reads, file writes and command dispatch. The GitHub
+OWNER_ADDITION provenance migration, adopted in #578, moves its complete verifier to
+`github/github-owner-addition-provenance.mts`, including fetch, token, artifact
+selection, digest binding and evidence validation. Its flat entrypoint is a pure
+re-export, and the bounded ZIP parser remains in its existing typed leaf.
+External JSON and property rereads remain unknown. Readonly result views do not
+freeze observations or authenticate producer identity. Complete original runtime
+operations are pinned after type erasure in source and emitted output; exact
+public-head CodeQL, installed identity and protected acceptance remain required.
+These types describe existing parsed bytes and selected-member
 results; they do not authenticate provenance or establish acceptance. The legacy CI
 preparer is also partial: its decision check is extracted, while Git, filesystem
 and CLI operations remain at the original path.
@@ -331,15 +498,61 @@ This CI composition candidate brings the count to 81 `.mts` modules and
 The GitHub command candidate has 82 original modules fully migrated to `.mts`
 and 14 originals not fully migrated. The runner-accessor candidate adds one
 complete typed implementation, reaching 83/96 fully migrated and 13 originals
-not fully migrated. Of those 13, three have checked JavaScript contracts
-(snapshot materializer, native CLI and CI report), and six have partial helper
+not fully migrated. The complete GitHub provenance migration was adopted in
+#578, bringing the inventory to 84/96 and 12 unfinished originals.
+The complete native migration was adopted in #563, reaching 85/96 and 11
+unfinished originals. Of those 11, two have checked JavaScript contracts
+(snapshot materializer and CI report), and five have partial helper
 migrations (CI report, owner-addition finalizer, multi-authority orchestration,
-owner-addition CI, GitHub OWNER_ADDITION provenance and the legacy authority
-decision check). CI report belongs to both categories; together they cover eight
+owner-addition CI and the legacy authority
+decision check). CI report belongs to both categories; together they cover six
 distinct originals. The other five remain JavaScript modules
 outside these migrations. These source-layout counts do not change the
 selected CodeQL model or establish acceptance evidence.
+The complete finalizer migration, adopted in #581, moves its remaining API, parser and CLI body
+to `src/owner-addition/finalize-owner-addition.mts`, retaining the existing
+record builder and nine flat exports. It preserves the full risk-corrected
+operations, original flat guard condition, inline CLI behavior and external
+property rereads; callback results and parsed observations remain unknown.
+The preceding resource correction was adopted in #579; #581 reached 86/96 with 10
+unfinished originals: two checked JavaScript contracts and four partial helper
+migrations cover five distinct originals, with the other five owned separately.
+The complete report candidate moves the remaining reporting CLI, descriptor-based
+filesystem checks and masked Gemini projection reads to
+`src/ci-review/ci-report-entrypoint.mts`. It preserves the optional transport,
+global Fetch for protected Codex retrieval, original property reads, existing
+bounds, error ordering, fourteen flat exports and exact flat direct-run guard.
+Parsed JSON remains unknown; erased read views establish no validation or
+authentication. Actual source/emitted operation pins, compile-only native/sync/
+async/thenable composition, real build dependencies and stale/fresh identity
+checks cover the new leaf. Its own current-tree CodeQL, package, full and
+protected verification remain required before adoption. Adoption would reach
+87/96 with nine unfinished originals: one checked JavaScript contract and three
+partial helper migrations cover four distinct originals, plus five parallel-owned
+originals. This does not authorize changes in provider or acceptance policy.
+No migration count advances from a private candidate or local review. The
+native stream/persistence proposal in #566 remains unapproved.
 Migration is partial and does not change consumer architecture or assurance policy.
+
+### Current original96 inventory and implementation boundaries
+
+The fixed denominator is the original 96-module [source map](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-08-source-layout-typescript-map.md); new ordinary-Gemini and measurement modules are outside it. The earlier checkpoint section records historical slice statuses and counts. The [exhaustive current inventory](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-14-original96-typescript-inventory.md) supersedes those partial-implementation descriptions.
+
+Main `512d8329de077c81e87a44a856e9e76448106181` contains **96/96 adopted** original migrations after normal adoption of #591 and #587. The final-three reviewed head `53bd4c96b6ab62367de47f607e59eb000530443a` and adopted main have exactly the same tree, `644f753c0f57fb80d42463e953e1865209727010`. The earlier post-#589 baseline `2769e3f` contained 93/96. The [final integration index](investigations/2026-10-18-quality-program-final-integration.md) records the source/package verification, fresh revision-bound reviews and protected accept, and merge readback separately. The fixed runner-temp scope follows [the owner decision in PR #591](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030); types and source organization establish no new assurance.
+
+| Original | Complete #587 implementation |
+|---|---|
+| prepare-legacy-ci-authority | `src/ci-review/legacy-ci-authority-preparer.mts` |
+| owner-addition-ci | `src/owner-addition/owner-addition-ci-operations.mts` |
+| owner-addition-multiauthority | `src/owner-addition/owner-addition-multiauthority.mts` |
+
+These leaves retain the existing preparation, Git reads, selected-authority checks, adapter invocation, output publication and synchronous/asynchronous CLI dispatch. Internal CI artifact operations now use fixed runner-temp names and accept only the corresponding fixed string selector or its exact absolute path resolved from the runner-temp working directory; arbitrary raw artifact paths and injected `GITHUB_OUTPUT` destinations are outside this interface. The three production workflows set that working directory for legacy and owner-addition prepare/validate steps. Multi-authority `policyBytes` still accepts Node `BinaryLike` inputs for its native digest operation; Buffer, Uint8Array, string and DataView support applies to policy bytes, not artifact paths. The environment and optional external-fetch callback inputs remain operation inputs; parsed JSON and external callback observations remain unknown until existing runtime checks, and erased contracts add no authentication or trust.
+
+Four original flat files retain top-level function declarations: `ci-procedural-authority-change.mjs` (thin CLI), `github-runner-env.mjs` (distinct native source barrier), `prepare-review-context.mjs` (thin CLI), and `validate-decision.mjs` (thin CLI). Other wrappers also retain top-level native I/O and direct-run guards; the four-function count is not an all-native-I/O count. Flat identities, provider/protected-policy checks and native operations remain controlling.
+
+Historical evidence for the earlier `6eedd95c00799d8958537114aea6f1fde8cf33f5` snapshot includes source-only CodeQL results of 40 JavaScript findings, no Actions findings, zero normalized changes against `5835fb7d1b6d6505390a9ca38fd1aad43ee2dda9`, and 24 generic CLI result relocations against the preceding scan at `7e008eadcbf764ef7635541ef7de154c3cee4d26`. These counts and its prior review describe that earlier snapshot only; they do not establish the current fixed runner-temp candidate's CodeQL status, zero findings, risk disposition, or hosted result. The 24 relocated identities do not establish identical fingerprints or removed risk. The 100-path fixture cap preserves query/model semantics and positive/negative assertions; no model expansion, dismissal, or bypass is implied.
+
+Historical verification for `6eedd95` includes strict/build/cycles, 104 focused compiler/runtime/identity checks, byte identity of 230 emitted files to archive `290ce96d1ebb6c8cc9ee3d3b37d12f90bb7ad94aceabcadbd51a74dfc1f1dd47`, and the 2052-test full run at `6ab7076`. Those results are tied to their original revisions. Subsequent fixed-boundary evidence is revision-bound: `7db3b05` passed strict/build/cycles and 55 focused compiler/CLI/identity checks; `49873f5` passed source-only official CodeQL and the unchanged three-model regressions (733 JS-family files, 12 workflows, 16 unchanged JS findings, zero Actions findings). Integration head `014085e`, with identical src/test/script/workflow bytes, passed strict/cycles and a fresh full suite of 2056/2056, zero failures/skips/cancellations, in 483.9 seconds. All 230 emitted files match its actual 252-entry archive and offline installation; installed smoke passed in 109.2 seconds. The archive SHA-256 is `ba2e7d0200ca92e06c03af2fbdb553bbd512df9dfe3b133750ec1dabc2347f19`, identifying that earlier package. Its protected review stopped at the exact event base/head merge-parent guard, so that run established no acceptance. The later bounded-output correction, final verification and normal adoption are recorded separately in the [final integration index](investigations/2026-10-18-quality-program-final-integration.md); the earlier results are not relabeled. Six normative members and selected model packs remain unchanged. #566's native stream/persistence proposal remains unapproved.
 
 Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
 uses `rootDir: src`, `outDir: dist`, `allowJs: true`, `checkJs: false`, and
@@ -459,6 +672,35 @@ locations as corresponding evidence, not independent coverage; retain hosted
 extraction/query results before claiming analysis of the final candidate.
 Installed consumers receive the `dist/` JavaScript and need no TypeScript compiler; verify archive contents
 and clean/offline installation.
+
+## Artifact file I/O checks
+
+Legacy authority and owner-addition CI artifact operations use the existing
+`src/runner-paths/runner-temp-path.mts` helper. The three production workflows
+(`architecture-gate.yml`, `architecture-gate-consumer.yml`, and
+`architecture-gate-providers.yml`) run the legacy and owner-addition prepare and
+validate steps with `working-directory: ${{ runner.temp }}`. The helper confirms
+that `RUNNER_TEMP` equals the process working directory and derives its storage
+root from the real process working directory.
+
+Output selectors are fixed strings. Legacy authority accepts only each known
+relative output name or the exact absolute path resolved from the current
+working directory. Owner-addition accepts its fixed child name or that child's
+exact resolved absolute path. Files beneath those selections are fixed by closed
+path tables; arbitrary caller-selected Buffer, file URL, descriptor or external
+destination forms are not part of these CI interfaces. GitHub workflow output is
+written through the existing `appendGitHubOutput` function, which obtains the
+runner-created `GITHUB_OUTPUT` path through the trusted runner environment
+accessor. It does not accept an injected output path as an operation argument.
+
+The helper retains checks for direct regular files, single-link identity and
+symbolic-link substitution at the operations it performs. These checks support
+the fixed runner-temporary interface; they do not establish complete race
+freedom. Portable Node filesystem calls do not provide a directory-relative
+atomic open transaction, so a same-user actor able to change the runner
+filesystem concurrently may still race between checks and filesystem operations.
+The design does not claim isolation from hostile same-user concurrency or
+artifact custody. See the owner-approved [PR #591 decision](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
 
 ## Static source import cycles
 

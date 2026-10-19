@@ -89,7 +89,12 @@ test('optional outcome job bootstrap and collection cannot fail required review,
     const measurement = workflow.jobs.measurement;
     assert.equal(measurement['continue-on-error'], true, `${filename} optional measurement job must tolerate bootstrap failure`);
     assert.equal(measurement.if, 'always() && inputs.measurement-enabled');
-    assert.deepEqual(measurement.needs, ['policy', 'review', 'report', 'accept']);
+    assert.deepEqual(
+      measurement.needs,
+      filename === 'architecture-gate.yml'
+        ? ['policy', 'review', 'gemini-review', 'report', 'accept']
+        : ['policy', 'review', 'report', 'accept'],
+    );
     assert.deepEqual(measurement.permissions, {});
     assert.ok(measurement.steps.some(step => step.name === 'Fetch the public pinned diagnostic runtime without credentials'));
     assert.ok(!measurement.steps.some(step => step.uses?.startsWith('actions/checkout@')));
@@ -99,9 +104,26 @@ test('optional outcome job bootstrap and collection cannot fail required review,
     const upload = measurement.steps.find(step => step.name === 'Retain independent job outcome metadata');
     assert.equal(collector['continue-on-error'], true);
     assert.equal(upload['continue-on-error'], true);
+    assert.equal(
+      collector.env.REVIEWED_SHA,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.reviewed_sha }}"
+        : '${{ needs.review.outputs.reviewed_sha }}',
+    );
+    assert.equal(
+      collector.env.REVIEW_RESULT,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}"
+        : '${{ needs.review.result }}',
+    );
 
     const review = workflow.jobs.review;
-    assert.equal(review.if, "(needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')");
+    assert.equal(
+      review.if,
+      filename === 'architecture-gate.yml'
+        ? "(needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.provider != 'gemini'"
+        : "(needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')",
+    );
     assert.deepEqual(review.needs, ['policy']);
     assert.equal(workflow.jobs.report.if, 'always()');
     assert.ok(workflow.jobs.report.needs.includes('review'));
@@ -115,10 +137,45 @@ test('optional outcome job bootstrap and collection cannot fail required review,
     assert.equal(independent['timeout-minutes'], 1);
     assert.match(independent.run, /measurement-ci\.mjs collect/);
     assert.match(independent.run, /measurement-cli\.mjs export/);
-    assert.equal(independent.env.REVIEW_RESULT, '${{ needs.review.result }}');
-    assert.equal(independent.env.REVIEW_DECISION_KIND, '${{ needs.review.outputs.decision_kind }}');
-    assert.equal(independent.env.REVIEW_PUBLISHED_DECISION, '${{ needs.review.outputs.final_message }}');
+    assert.equal(
+      independent.env.EVENT_SHA,
+      filename === 'architecture-gate.yml' ? '${{ github.sha }}' : undefined,
+    );
+    assert.equal(
+      independent.env.REVIEW_PROVIDER,
+      filename === 'architecture-gate.yml' ? '${{ needs.policy.outputs.provider }}' : undefined,
+    );
+    assert.equal(
+      independent.env.REVIEWED_SHA,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.reviewed_sha }}"
+        : '${{ needs.review.outputs.reviewed_sha }}',
+    );
+    assert.equal(
+      independent.env.REVIEW_RESULT,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}"
+        : '${{ needs.review.result }}',
+    );
+    assert.equal(
+      independent.env.REVIEW_DECISION_KIND,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.decision_kind }}"
+        : '${{ needs.review.outputs.decision_kind }}',
+    );
+    assert.equal(
+      independent.env.REVIEW_PUBLISHED_DECISION,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs.policy.outputs.provider == 'gemini' && '' || needs.review.outputs.final_message }}"
+        : '${{ needs.review.outputs.final_message }}',
+    );
     assert.equal(independent.env.REVIEW_JOB_NAME, '${{ inputs.measurement-review-job-name }}');
+    assert.equal(
+      independent.env.REVIEW_PASS_CONCLUSION,
+      filename === 'architecture-gate.yml'
+        ? "${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.pass_conclusion }}"
+        : undefined,
+    );
     const reviewUpload = measurement.steps.find(step => step.name === 'Retain optional review attempt metadata');
     assert.equal(reviewUpload['continue-on-error'], true);
     for (const name of ['review', 'report', 'accept']) assert.ok(!workflow.jobs[name].needs.includes('measurement'));

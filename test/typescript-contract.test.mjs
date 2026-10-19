@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 import {
   validateOrdinaryOwnerDecision,
   validateOrdinaryOwnerDecisionSchema,
@@ -20,15 +21,13 @@ assert.equal(tsconfig.options.strict, true, 'the adopted tsconfig must keep stri
 assert.equal(tsconfig.options.noImplicitAny, true, 'the adopted tsconfig must keep noImplicitAny');
 assert.equal(tsconfig.options.noEmitOnError, true, 'the adopted tsconfig must prevent emission after errors');
 const compilerOptions = { ...tsconfig.options, rootDir: root, noEmit: true };
+const fixtureDiagnostics = compileFixtureDiagnostics(
+  ['positive.mts', 'negative-fields.mts', 'negative-arguments.mts'].map(name => join(fixtureRoot, name)),
+  compilerOptions, 'imports, declarations, and compiler configuration must remain error-free',
+);
 
 function diagnosticsFor(fixture) {
-  const file = join(fixtureRoot, fixture);
-  const program = ts.createProgram([file], { ...compilerOptions, rootDir: root });
-  const diagnostics = ts.getPreEmitDiagnostics(program);
-  const fixtureDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName === file);
-  const nonFixtureDiagnostics = diagnostics.filter(diagnostic => diagnostic.file?.fileName !== file);
-  assert.deepEqual(nonFixtureDiagnostics, [], 'imports, declarations, and compiler configuration must remain error-free');
-  return fixtureDiagnostics;
+  return fixtureDiagnostics(join(fixtureRoot, fixture));
 }
 
 function diagnosticLines(diagnostics) {
@@ -39,7 +38,7 @@ function diagnosticLines(diagnostics) {
 }
 
 test('owner-addition validation contracts accept established validator results', () => {
-  assert.deepEqual(diagnosticsFor('positive.mts'), []);
+  assert.deepEqual(summarizeDiagnostics(diagnosticsFor('positive.mts')), []);
 });
 
 test('owner-addition validation contracts reject missing or mistyped decision fields', () => {

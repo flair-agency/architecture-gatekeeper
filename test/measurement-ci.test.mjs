@@ -70,7 +70,13 @@ test('CI measurement is default-off and never a prerequisite for acceptance; no 
   for (const file of ['architecture-gate.yml', 'architecture-gate-consumer.yml']) {
     const w = parseWorkflow(readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), 'utf8'));
     assert.equal(w.on.workflow_call.inputs['measurement-enabled'].default, false);
-    assert.ok(!w.jobs.accept.needs.includes('measurement')); assert.deepEqual(w.jobs.measurement.needs, ['policy','review','report','accept']);
+    assert.ok(!w.jobs.accept.needs.includes('measurement'));
+    assert.deepEqual(
+      w.jobs.measurement.needs,
+      file === 'architecture-gate.yml'
+        ? ['policy', 'review', 'gemini-review', 'report', 'accept']
+        : ['policy', 'review', 'report', 'accept'],
+    );
     assert.deepEqual(w.jobs.measurement.permissions, {});
     const steps = w.jobs.review.steps;
     assert.ok(!steps.some(s => /measurement-(?:ci|cli)\.mjs/.test(s.run || '')));

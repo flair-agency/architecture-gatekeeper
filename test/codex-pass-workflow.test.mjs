@@ -14,7 +14,7 @@ test('self ordinary PASS publication follows all existing validators and has no 
   assert.deepEqual(review.permissions,{contents:'read'});
   assert.equal(publish.env.REVIEW_RESULT,'${{ steps.codex.outcome }}');
   assert.equal(publish.env.AUTHORITY_ROUTE_SELECTED,"${{ needs.policy.outputs.authority_manifest_path != '' }}");
-  assert.equal(review.outputs.final_message,"${{ steps.pass-display.outputs.pass_conclusion != 'PASS' && steps.codex.outputs.final-message || '' }}");
+  assert.equal(review.outputs.final_message,"${{ steps.pass-display.outputs.pass_conclusion != 'PASS' && ((needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message) || '' }}");
   assert.equal(review.outputs.decision_kind,'${{ steps.decision.outputs.kind }}');
 });
 test('report gets exact job-log read privilege, selected metadata cannot fall back, G0 raw inputs and acceptance remain',()=>{

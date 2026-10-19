@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-amendment-record-builder-contract');
@@ -12,6 +13,8 @@ assert.equal(config.error, undefined);
 const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root, undefined, configPath);
 assert.deepEqual(parsed.errors, []);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFile = compileFixtureDiagnostics(fixtureFiles, options, 'record-builder implementation must remain error-free');
 
 function summarize(diagnostics) {
   return diagnostics.map(item => ({
@@ -23,11 +26,7 @@ function summarize(diagnostics) {
 }
 
 function compile(name) {
-  const file = join(fixtureRoot, name);
-  const program = ts.createProgram([file], options);
-  const diagnostics = summarize(ts.getPreEmitDiagnostics(program));
-  assert.deepEqual(diagnostics.filter(item => item.file !== file), [], 'record-builder implementation must remain error-free');
-  return diagnostics.filter(item => item.file === file);
+  return summarize(diagnosticsForFile(join(fixtureRoot, name)));
 }
 
 test('BLOCK record builder types preserve computed bytes and unchecked scope observations', () => {

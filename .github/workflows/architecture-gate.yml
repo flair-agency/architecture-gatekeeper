@@ -43,6 +43,10 @@ on:
         required: false
       CI_SOURCE_READ_TOKEN:
         required: false
+      GCP_WIF_PROVIDER:
+        required: false
+      GCP_WIF_SERVICE_ACCOUNT:
+        required: false
 
 concurrency:
   group: architecture-gate-${{ github.repository }}-${{ github.event.pull_request.number }}
@@ -176,7 +180,7 @@ jobs:
         env:
           SELECTED_PROVIDER: ${{ steps.resolve.outputs.provider }}
         run: |
-          if test -n "$SELECTED_PROVIDER" && test "$SELECTED_PROVIDER" != codex; then
+          if test -n "$SELECTED_PROVIDER" && test "$SELECTED_PROVIDER" != codex && test "$SELECTED_PROVIDER" != gemini; then
             echo 'Selected reviewer provider is not wired into this workflow; review is incomplete.' >&2
             exit 1
           fi
@@ -204,7 +208,7 @@ jobs:
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/verify-legacy-validation-selection.mjs" "$BASE_VALIDATION_PATH" "$CALLER_VALIDATION_PATH"
 
   review:
-    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural')
+    if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.provider != 'gemini'
     needs: [policy]
     permissions:
       contents: read
@@ -213,7 +217,7 @@ jobs:
     # Policy-selected limits take precedence; legacy inputs are separately range-checked.
     timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_job_timeout_minutes) }}
     outputs:
-      final_message: ${{ steps.pass-display.outputs.pass_conclusion != 'PASS' && steps.codex.outputs.final-message || '' }}
+      final_message: ${{ steps.pass-display.outputs.pass_conclusion != 'PASS' && ((needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message) || '' }}
       pass_conclusion: ${{ steps.pass-display.outputs.pass_conclusion }}
       pass_digest: ${{ steps.pass-display.outputs.pass_digest }}
       pass_nonce: ${{ steps.pass-display.outputs.pass_nonce }}
@@ -242,17 +246,19 @@ jobs:
       - name: Validate immutable pull request merge revision
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          node -e 'const sha = process.env.MERGE_SHA; if (typeof sha !== "string" || sha.length !== 40 || !/^[a-f0-9]{40}$/.test(sha)) { console.error("Missing or malformed pull request merge commit SHA"); process.exit(1); }'
+          node -e 'for (const [name, sha] of Object.entries({ merge: process.env.MERGE_SHA, base: process.env.BASE_SHA, head: process.env.HEAD_SHA })) { if (typeof sha !== "string" || sha.length !== 40 || !/^[a-f0-9]{40}$/.test(sha)) { console.error(`Missing or malformed pull request ${name} SHA`); process.exit(1); } }'
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
-          submodules: ${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}
+          submodules: false
           token: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
           persist-credentials: false
-      - name: Record reviewed merge revision
-        id: revision
+      - name: Check event merge revision metadata
+        id: event_revision
         env:
           EXPECTED_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -261,16 +267,172 @@ jobs:
           set -euo pipefail
           actual_sha="$(git rev-parse HEAD)"
           if test "$actual_sha" != "$EXPECTED_MERGE_SHA"; then
-            echo "Checked out merge revision does not match the event merge commit SHA" >&2
+            echo "Initial checkout SHA $actual_sha differs from event merge SHA $EXPECTED_MERGE_SHA" >&2
             exit 1
           fi
           actual_parents="$(git --no-replace-objects rev-list --parents -n 1 "$actual_sha")"
           expected_parents="$actual_sha $BASE_SHA $HEAD_SHA"
-          if test "$actual_parents" != "$expected_parents"; then
-            echo "Checked out merge revision does not have the exact event base/head parents" >&2
+          if test "$actual_parents" = "$expected_parents"; then
+            echo 'Event merge metadata matches the checked out commit.'
+            echo 'refresh=false' >> "$GITHUB_OUTPUT"
+          else
+            printf 'Event merge metadata has stale or invalid parents; expected [%s], got [%s].\n' "$expected_parents" "$actual_parents" >&2
+            echo 'refresh=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Fetch and verify current pull request merge commit
+        id: verified_merge_commit
+        if: steps.event_revision.outputs.refresh == 'true'
+        timeout-minutes: 2
+        env:
+          FETCH_TOKEN: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$FETCH_TOKEN"
+          case "$REPOSITORY" in
+            */*) ;;
+            *) echo 'Invalid repository identity for merge-ref resolution' >&2; exit 1 ;;
+          esac
+          case "$SERVER_URL" in
+            https://*) ;;
+            *) echo 'Invalid GitHub server URL for merge-ref resolution' >&2; exit 1 ;;
+          esac
+          case "$PR_NUMBER" in
+            ''|*[!0-9]*) echo 'Invalid pull request number for merge-ref resolution' >&2; exit 1 ;;
+          esac
+          AUTH="$(printf 'x-access-token:%s' "$FETCH_TOKEN" | base64 -w0)"
+          SERVER_URL="${SERVER_URL%/}"
+          REMOTE_URL="$SERVER_URL/$REPOSITORY.git"
+          MERGE_REF="refs/pull/$PR_NUMBER/merge"
+          echo "::add-mask::$AUTH"
+          git_with_source_auth() {
+            GIT_CONFIG_COUNT=1 \
+            GIT_CONFIG_KEY_0="http.$SERVER_URL/.extraheader" \
+            GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $AUTH" \
+            GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/false SSH_ASKPASS=/bin/false \
+              timeout 30s git "$@"
+          }
+          if ! RESPONSE="$(git_with_source_auth ls-remote --refs "$REMOTE_URL" "$MERGE_REF" 2>/dev/null)"; then
+            echo 'Current pull request merge ref lookup failed' >&2
             exit 1
           fi
-          printf 'sha=%s\n' "$EXPECTED_MERGE_SHA" >> "$GITHUB_OUTPUT"
+          if test "$(printf '%s\n' "$RESPONSE" | wc -l | tr -d ' ')" != 1; then
+            echo 'Current pull request merge ref is missing or ambiguous' >&2
+            exit 1
+          fi
+          read -r REFRESHED_SHA REFRESHED_REF EXTRA <<< "$RESPONSE"
+          if test -n "$EXTRA" || ! [[ "$REFRESHED_SHA" =~ ^[a-f0-9]{40}$ ]] || test "$REFRESHED_REF" != "$MERGE_REF"; then
+            echo 'Current pull request merge ref returned an invalid immutable SHA' >&2
+            exit 1
+          fi
+          if ! git_with_source_auth fetch --no-tags --no-recurse-submodules --no-write-fetch-head "$REMOTE_URL" "$REFRESHED_SHA" 2>/dev/null; then
+            echo 'Resolved immutable merge commit could not be fetched' >&2
+            exit 1
+          fi
+          if ! OBJECT_TYPE="$(git --no-replace-objects cat-file -t "$REFRESHED_SHA" 2>/dev/null)"; then
+            echo 'Fetched immutable merge object is unavailable' >&2
+            exit 1
+          fi
+          if test "$OBJECT_TYPE" != commit; then
+            echo 'Resolved merge object is not a commit' >&2
+            exit 1
+          fi
+          if ! FETCHED_SHA="$(git --no-replace-objects rev-parse --verify "$REFRESHED_SHA^{commit}" 2>/dev/null)"; then
+            echo 'Fetched immutable merge object cannot be resolved as a commit' >&2
+            exit 1
+          fi
+          if test "$FETCHED_SHA" != "$REFRESHED_SHA"; then
+            echo 'Fetched merge object differs from the resolved immutable SHA' >&2
+            exit 1
+          fi
+          if ! ACTUAL_PARENTS="$(git --no-replace-objects rev-list --parents -n 1 "$REFRESHED_SHA" 2>/dev/null)"; then
+            echo 'Fetched merge commit parent metadata is unavailable' >&2
+            exit 1
+          fi
+          EXPECTED_PARENTS="$REFRESHED_SHA $BASE_SHA $HEAD_SHA"
+          if test "$ACTUAL_PARENTS" != "$EXPECTED_PARENTS"; then
+            printf 'Resolved merge candidate %s has invalid ordered parents; expected [%s], got [%s].\n' "$FETCHED_SHA" "$EXPECTED_PARENTS" "$ACTUAL_PARENTS" >&2
+            exit 1
+          fi
+          printf 'sha=%s\n' "$REFRESHED_SHA" >> "$GITHUB_OUTPUT"
+      - name: Select validated pull request merge commit
+        id: selected_merge_commit
+        env:
+          EXPECTED_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          REFRESH: ${{ steps.event_revision.outputs.refresh }}
+          REFRESHED_SHA: ${{ steps.verified_merge_commit.outputs.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SUBMODULES_ENABLED: ${{ needs.policy.outputs.authority_manifest_path == '' }}
+        run: |
+          set -euo pipefail
+          if test "$REFRESH" = true; then
+            SELECTED_SHA="$REFRESHED_SHA"
+          else
+            SELECTED_SHA="$EXPECTED_MERGE_SHA"
+          fi
+          if ! [[ "$SELECTED_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+            echo 'Selected pull request merge SHA is missing or malformed' >&2
+            exit 1
+          fi
+          if ! OBJECT_TYPE="$(git --no-replace-objects cat-file -t "$SELECTED_SHA" 2>/dev/null)" || test "$OBJECT_TYPE" != commit; then
+            echo 'Selected pull request merge object is unavailable or not a commit' >&2
+            exit 1
+          fi
+          if ! ACTUAL_PARENTS="$(git --no-replace-objects rev-list --parents -n 1 "$SELECTED_SHA" 2>/dev/null)"; then
+            echo 'Selected pull request merge parent metadata is unavailable' >&2
+            exit 1
+          fi
+          EXPECTED_PARENTS="$SELECTED_SHA $BASE_SHA $HEAD_SHA"
+          if test "$ACTUAL_PARENTS" != "$EXPECTED_PARENTS"; then
+            printf 'Selected pull request merge %s has invalid ordered parents; expected [%s], got [%s].\n' "$SELECTED_SHA" "$EXPECTED_PARENTS" "$ACTUAL_PARENTS" >&2
+            exit 1
+          fi
+          if test "$SUBMODULES_ENABLED" = true; then
+            if ! timeout 30s env GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/false SSH_ASKPASS=/bin/false git submodule deinit --force --all; then
+              echo 'Existing submodule worktrees could not be cleared before selected checkout' >&2
+              exit 1
+            fi
+          fi
+          if test "$REFRESH" != true && test "$(git rev-parse HEAD)" != "$SELECTED_SHA"; then
+            echo 'Initial checkout does not match the selected pull request merge SHA' >&2
+            exit 1
+          fi
+          printf 'sha=%s\n' "$SELECTED_SHA" >> "$GITHUB_OUTPUT"
+      - name: Materialize selected pull request merge revision
+        if: steps.event_revision.outputs.refresh == 'true' || needs.policy.outputs.authority_manifest_path == ''
+        uses: actions/checkout@v5
+        timeout-minutes: 3
+        with:
+          ref: ${{ steps.selected_merge_commit.outputs.sha }}
+          fetch-depth: 0
+          submodules: ${{ needs.policy.outputs.authority_manifest_path == '' && 'recursive' || 'false' }}
+          token: ${{ needs.policy.outputs.authority_manifest_path == '' && secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          persist-credentials: false
+      - name: Record reviewed merge revision
+        id: revision
+        env:
+          SELECTED_SHA: ${{ steps.selected_merge_commit.outputs.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          actual_parents="$(git --no-replace-objects rev-list --parents -n 1 "$actual_sha")"
+          expected_parents="$actual_sha $BASE_SHA $HEAD_SHA"
+          if test "$actual_parents" != "$expected_parents"; then
+            printf 'Merge candidate %s has invalid ordered parents; expected [%s], got [%s].\n' "$actual_sha" "$expected_parents" "$actual_parents" >&2
+            exit 1
+          fi
+          if ! [[ "$SELECTED_SHA" =~ ^[a-f0-9]{40}$ ]] || test "$actual_sha" != "$SELECTED_SHA"; then
+            echo "Checked out merge candidate $actual_sha differs from the selected immutable merge SHA $SELECTED_SHA" >&2
+            exit 1
+          fi
+          printf 'sha=%s\n' "$actual_sha" >> "$GITHUB_OUTPUT"
       - name: Materialize protected review instructions
         if: inputs.protected-review-instructions && needs.policy.outputs.policy_version != '1'
         env:
@@ -337,6 +499,7 @@ jobs:
           OUTPUT_PATH: ${{ runner.temp }}/architecture-gate-legacy-prompt.md
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        working-directory: ${{ runner.temp }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" prepare
       - name: Materialize protected Authority Set before review
         if: needs.policy.outputs.authority_manifest_path != ''
@@ -428,7 +591,7 @@ jobs:
           REVIEW_OUTCOME: ${{ steps.codex.outcome }}
           REVIEW_RESPONSE: ${{ steps.codex.outputs.final-message }}
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
-        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github
+        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-execution-observation.mjs" --github-response
       - name: Diagnose architecture reviewer completion
         if: always()
         timeout-minutes: 1
@@ -458,26 +621,27 @@ jobs:
         if: needs.policy.outputs.mode == 'procedural' || (needs.policy.outputs.mode == 'enforced' && (needs.policy.outputs.owner_addition_grade == 'G0' || needs.policy.outputs.owner_amendment_grade == 'G0'))
         id: decision
         env:
-          DECISION: ${{ steps.codex.outputs.final-message }}
+          DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-decision-kind.mjs"
       - name: Apply consumer-owned decision validation
         if: (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '')
         env:
-          DECISION: ${{ steps.codex.outputs.final-message }}
+          DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: printf '%s' "$DECISION" | node "$GATEKEEPER_RUNTIME_ROOT/dist/validate-decision.mjs" "$RUNNER_TEMP/architecture-gate-decision.validation.json"
       - name: Require exact reported legacy authority files
         if: needs.policy.outputs.policy_version == '1'
         env:
-          DECISION: ${{ steps.codex.outputs.final-message }}
+          DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
           PROVENANCE_PATH: ${{ runner.temp }}/architecture-gate-legacy-provenance.json
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        working-directory: ${{ runner.temp }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" validate
       - name: Require exact reported Authority IDs
         if: needs.policy.outputs.authority_manifest_path != ''
         env:
-          DECISION: ${{ steps.codex.outputs.final-message }}
+          DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: printf '%s' "$DECISION" | node "$GATEKEEPER_RUNTIME_ROOT/dist/validate-authority-set-decision.mjs" "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
@@ -609,6 +773,77 @@ jobs:
           printf '::notice title=AGK_OWNER_AMENDMENT_BLOCK_RECORD_V1::artifact-id=%s;artifact-sha256=%s;attestation-id=%s;run-id=%s;run-attempt=%s\n' \
             "$ARTIFACT_ID" "$ARTIFACT_DIGEST" "$ATTESTATION_ID" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
 
+  gemini-review:
+    # Only protected policy selects this route; there is no fallback from Codex.
+    if: needs.policy.outputs.mode == 'enforced' && needs.policy.outputs.provider == 'gemini'
+    needs: [policy]
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_job_timeout_minutes) }}
+    outputs:
+      conclusion: ${{ steps.gemini.outputs.conclusion }}
+      decision_digest: ${{ steps.gemini.outputs.decision_digest }}
+      projection_nonce: ${{ steps.gemini.outputs.projection_nonce }}
+      reviewed_sha: ${{ steps.gemini.outputs.reviewed_sha }}
+    steps:
+      - name: Check out the protected base; candidate revisions remain Git objects
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out the pinned protected Gemini launcher
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .architecture-gatekeeper-runtime
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+      - name: Relocate pinned protected runtime
+        id: runtime_location
+        env:
+          EXPECTED_RUNTIME_SHA: ${{ job.workflow_sha }}
+        run: node .architecture-gatekeeper-runtime/scripts/relocate-protected-runtime.mjs .architecture-gatekeeper-runtime >> "$GITHUB_OUTPUT"
+      - name: Build the pinned protected runtime
+        env:
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.runtime_location.outputs.root }}
+        run: |
+          set -euo pipefail
+          test -n "$GATEKEEPER_RUNTIME_ROOT"
+          case "$GATEKEEPER_RUNTIME_ROOT" in
+            /*) ;;
+            *) echo "Protected runtime root must be absolute" >&2; exit 1 ;;
+          esac
+          cd "$GATEKEEPER_RUNTIME_ROOT"
+          npm ci --ignore-scripts
+          npm run build
+      - name: Review with Gemini and emit the masked report projection
+        id: gemini
+        timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_step_timeout_minutes) }}
+        env:
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.runtime_location.outputs.root }}
+          GATEKEEPER_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
+          GATEKEEPER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+          GATEKEEPER_WORKFLOW_REF: ${{ job.workflow_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          CALLER_POLICY_PATH: ${{ inputs.policy-path }}
+          CALLER_PROMPT_PATH: ${{ inputs.prompt-path }}
+          CALLER_SCHEMA_PATH: ${{ inputs.schema-path }}
+          CALLER_VALIDATION_PATH: ${{ inputs.validation-path }}
+          GATEKEEPER_SOURCE_READ_TOKEN: ${{ secrets.CI_SOURCE_READ_TOKEN || github.token }}
+          GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+          GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ordinary-gemini-ci-workflow.mjs"
+
   owner-addition:
     if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.owner_addition_grade == 'G0' && needs.review.outputs.decision_kind == 'OWNER_DECISION'
     needs: [policy, review]
@@ -680,7 +915,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GATEKEEPER_SOURCE_TOKEN: ${{ needs.policy.outputs.owner_addition_version == '2' && (secrets.CI_SOURCE_READ_TOKEN || github.token) || '' }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
-        run: node .architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs prepare
+        working-directory: ${{ runner.temp }}
+        run: node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" prepare
       - name: Review B-specific missing-decision eligibility
         id: codex-addition
         timeout-minutes: 5
@@ -701,7 +937,8 @@ jobs:
           DECISION: ${{ steps.codex-addition.outputs.final-message }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
-        run: node .architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs validate
+        working-directory: ${{ runner.temp }}
+        run: node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" validate
       - name: Preserve exact v5 pre-merge eligibility evidence
         id: eligibility-evidence
         if: needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
@@ -1110,7 +1347,7 @@ jobs:
 
   report:
     if: always()
-    needs: [policy, review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-semantic-eligibility, owner-amendment-semantic-eligibility-signer]
+    needs: [policy, review, gemini-review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-semantic-eligibility, owner-amendment-semantic-eligibility-signer]
     concurrency:
       group: architecture-gate-report-${{ github.workflow }}-${{ github.event.pull_request.number }}
       cancel-in-progress: false
@@ -1138,12 +1375,35 @@ jobs:
         run: |
           npm ci --ignore-scripts --prefix .architecture-gatekeeper-runtime
           npm run --prefix .architecture-gatekeeper-runtime build
+      - name: Retrieve the masked Gemini publication from this exact run attempt
+        if: needs.policy.outputs.provider == 'gemini'
+        env:
+          REPORT_EXPECTED_PROVIDER: ${{ needs.policy.outputs.provider == 'gemini' && 'gemini' || '' }}
+          REPORT_EXPECTED_CONCLUSION: ${{ needs['gemini-review'].outputs.conclusion }}
+          REPORT_EXPECTED_DECISION_DIGEST: ${{ needs['gemini-review'].outputs.decision_digest }}
+          REPORT_EXPECTED_NONCE: ${{ needs['gemini-review'].outputs.projection_nonce }}
+          GATEKEEPER_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
+          GATEKEEPER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+          GATEKEEPER_WORKFLOW_REF: ${{ job.workflow_ref }}
+          GITHUB_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ needs['gemini-review'].outputs.reviewed_sha }}
+        run: node .architecture-gatekeeper-runtime/dist/ordinary-gemini-ci-report-fetch.mjs
       - name: Publish human-readable result
         id: report
         if: always()
         env:
           POLICY_RESULT: ${{ needs.policy.result }}
-          REVIEW_RESULT: ${{ needs.review.result }}
+          REVIEW_RESULT: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}
+          REPORT_EXPECTED_PROVIDER: ${{ needs.policy.outputs.provider == 'gemini' && 'gemini' || '' }}
+          REPORT_EXPECTED_CONCLUSION: ${{ needs['gemini-review'].outputs.conclusion }}
+          REPORT_EXPECTED_DECISION_DIGEST: ${{ needs['gemini-review'].outputs.decision_digest }}
+          REPORT_EXPECTED_NONCE: ${{ needs['gemini-review'].outputs.projection_nonce }}
+          GATEKEEPER_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
+          GATEKEEPER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+          GATEKEEPER_WORKFLOW_REF: ${{ job.workflow_ref }}
+          REPORT_PROJECTION_PATH: ${{ needs.policy.outputs.provider == 'gemini' && format('{0}/agk-ordinary-gemini-report-{1}-{2}.json', runner.temp, github.run_id, github.run_attempt) || '' }}
           MODE: ${{ needs.policy.outputs.mode }}
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
           DECISION: ${{ needs.review.outputs.final_message }}
@@ -1154,10 +1414,7 @@ jobs:
           CODEX_PASS_DIGEST: ${{ needs.review.outputs.pass_digest }}
           CODEX_PASS_NONCE: ${{ needs.review.outputs.pass_nonce }}
           BASE_BRANCH: ${{ github.base_ref }}
-          GATEKEEPER_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
-          GATEKEEPER_WORKFLOW_SHA: ${{ job.workflow_sha }}
-          GATEKEEPER_WORKFLOW_REF: ${{ job.workflow_ref }}
-          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          REVIEWED_SHA: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.reviewed_sha }}
           AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
           LEGACY_AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.legacy_authority_provenance }}
           AUTHORITY_ROUTE_SELECTED: ${{ needs.policy.outputs.authority_manifest_path != '' }}
@@ -1175,7 +1432,7 @@ jobs:
 
   accept:
     if: always()
-    needs: [policy, review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-attempt-classifier, owner-amendment-semantic-eligibility, owner-amendment-semantic-eligibility-signer, report]
+    needs: [policy, review, gemini-review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-attempt-classifier, owner-amendment-semantic-eligibility, owner-amendment-semantic-eligibility-signer, report]
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -1243,7 +1500,7 @@ jobs:
       - name: Require model-backed PASS or verified G0 owner addition/amendment
         if: needs.policy.outputs.mode == 'enforced'
         env:
-          REVIEW_RESULT: ${{ needs.review.result }}
+          REVIEW_RESULT: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}
           CONCLUSION: ${{ needs.report.outputs.conclusion }}
           OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
           OWNER_ADDITION_ELIGIBILITY: ${{ needs['owner-addition'].outputs.eligibility }}
@@ -1258,7 +1515,7 @@ jobs:
       - name: Require PASS or pre-merge G0 eligibility
         if: needs.policy.outputs.mode == 'procedural'
         env:
-          REVIEW_RESULT: ${{ needs.review.result }}
+          REVIEW_RESULT: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}
           CONCLUSION: ${{ needs.report.outputs.conclusion }}
           OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
           OWNER_ADDITION_ELIGIBILITY: ${{ needs['owner-addition'].outputs.eligibility }}
@@ -1271,7 +1528,7 @@ jobs:
   measurement:
     if: always() && inputs.measurement-enabled
     continue-on-error: true
-    needs: [policy, review, report, accept]
+    needs: [policy, review, gemini-review, report, accept]
     permissions: {}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1315,13 +1572,15 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          EVENT_SHA: ${{ github.sha }}
+          REVIEWED_SHA: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.reviewed_sha }}
           RUNTIME_SHA: ${{ job.workflow_sha }}
-          REVIEW_RESULT: ${{ needs.review.result }}
-          REVIEW_DECISION_KIND: ${{ needs.review.outputs.decision_kind }}
-          REVIEW_PUBLISHED_DECISION: ${{ needs.review.outputs.final_message }}
+          REVIEW_PROVIDER: ${{ needs.policy.outputs.provider }}
+          REVIEW_RESULT: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}
+          REVIEW_DECISION_KIND: ${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.decision_kind }}
+          REVIEW_PUBLISHED_DECISION: ${{ needs.policy.outputs.provider == 'gemini' && '' || needs.review.outputs.final_message }}
           REVIEW_JOB_NAME: ${{ inputs.measurement-review-job-name }}
-          REVIEW_PASS_CONCLUSION: ${{ needs.review.outputs.pass_conclusion }}
+          REVIEW_PASS_CONCLUSION: ${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.pass_conclusion }}
         run: |
           node dist/measurement-ci.mjs collect
           node dist/measurement-cli.mjs export "$AGK_MEASUREMENT_DIR" > "$RUNNER_TEMP/agk-review-measurement-export.json"
@@ -1344,10 +1603,10 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          REVIEWED_SHA: ${{ needs.review.outputs.reviewed_sha }}
+          REVIEWED_SHA: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.reviewed_sha }}
           RUNTIME_SHA: ${{ job.workflow_sha }}
           POLICY_RESULT: ${{ needs.policy.result }}
-          REVIEW_RESULT: ${{ needs.review.result }}
+          REVIEW_RESULT: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}
           REPORT_RESULT: ${{ needs.report.result }}
           ACCEPT_RESULT: ${{ needs.accept.result }}
         run: |

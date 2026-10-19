@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -239,9 +239,13 @@ function apiFixture({ repoPath, baseSha, bSha, groupSha, triggerHeadSha, profile
     repositoryId, triggerPr, bPr, triggerArtifactName };
 }
 
-function makeRepo(profile, { includeRuntime = false } = {}) {
+function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false, previousPolicyLocalOnly = false } = {}) {
   const repoPath = mkdtempSync(join(tmpdir(), 'agk-merge-group-route-'));
   git(repoPath, ['init', '-q']);
+  // These short-lived fixtures need no detached Git housekeeping after a
+  // synchronous command has returned and cleanup has started.
+  git(repoPath, ['config', 'maintenance.auto', 'false']);
+  git(repoPath, ['config', 'gc.auto', '0']);
   if (includeRuntime) {
     for (const path of ['src', 'dist', 'scripts']) cpSync(join(root, path), join(repoPath, path), { recursive: true });
   }
@@ -257,7 +261,10 @@ function makeRepo(profile, { includeRuntime = false } = {}) {
   const members = [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }];
   if (profile === 'completed-owner-decision-self-v1') members.push({ id: 'ownership-charter', repository: 'self',
     revision: 'authority-revision', path: 'docs/ownership.md' });
-  put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(policy)}\n`));
+  const basePolicy = structuredClone(policy);
+  if (previousPolicyLocalOnly) basePolicy.branches.main = { mode: 'local-only' };
+  else if (candidateOnlyOptIn) delete basePolicy.branches.main.ownerAmendment;
+  put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(basePolicy)}\n`));
   put(repoPath, '.codex/gatekeeper/authorities.json', Buffer.from(`${JSON.stringify({ version: 1, authorities: members })}\n`));
   const oldArchitecture = Buffer.from('# Architecture\nExisting rule needs an owner decision.\n');
   const newArchitecture = Buffer.from('# Architecture\nThe amended rule preserves protected review.\n');
@@ -269,15 +276,19 @@ function makeRepo(profile, { includeRuntime = false } = {}) {
     put(repoPath, 'docs/ownership.md', oldOwnership);
   }
   const baseSha = commit(repoPath, 'protected base');
+  if (candidateOnlyOptIn || previousPolicyLocalOnly) put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(policy)}\n`));
   put(repoPath, 'docs/architecture.md', newArchitecture);
   if (oldOwnership) put(repoPath, 'docs/ownership.md', newOwnership);
-  const bSha = commit(repoPath, 'authority-only B');
+  const bSha = commit(repoPath, candidateOnlyOptIn || previousPolicyLocalOnly ? 'candidate policy opt-in B' : 'authority-only B');
   const groupCommit = git(repoPath, ['commit-tree', `${bSha}^{tree}`, '-p', baseSha, '-p', bSha, '-m', 'merge group']);
   const groupSha = groupCommit.toString('ascii').trim();
   const runGit = args => git(repoPath, args);
   return { repoPath, profile, baseSha, bSha, groupSha, runGit, policy, members,
     oldArchitecture, newArchitecture, oldOwnership, newOwnership, triggerHeadSha: 'c'.repeat(40),
-    cleanup: () => rmSync(repoPath, { recursive: true, force: true }) };
+    cleanup: () => {
+      rmSync(repoPath, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+      assert.equal(existsSync(repoPath), false, 'temporary Git fixture must be removed');
+    } };
 }
 
 function triggerEvidence(fixture, resolved, api) {
@@ -426,6 +437,7 @@ function makeSemanticPipeline(fixture, resolved, trigger, evidence, api, gitChan
 // Only external GitHub/gh responses are synthetic; no model or cryptographic
 // verification runs, and this does not prove live host enforcement or adoption.
 async function exerciseProductionGate(fixture, api, event, receiptBytes) {
+  const expectedTriggerDecision = fixture.profile === 'completed-block-v1' ? 'BLOCK' : 'OWNER_DECISION';
   const temporary = mkdtempSync(join(tmpdir(), 'agk-production-gate-'));
   try {
     const tag = api.selectedTag();
@@ -460,7 +472,7 @@ globalThis.fetch = async (raw, options = {}) => {
   appendFileSync(${JSON.stringify(tracePath)}, JSON.stringify({ fetch: url.pathname }) + '\\n');
   const response = JSON.parse(readFileSync(${JSON.stringify(dataPath)}, 'utf8'))[url.pathname];
   if (!response) throw new Error('Unexpected fixture API path: ' + url.pathname);
-  return new Response(response.bytes ? Buffer.from(response.bytes, 'base64') : JSON.stringify(response.json), { status: 200 });
+  return new Response(response.bytes ? Buffer.from(response.bytes, 'base64') : JSON.stringify(response.json), { status: response.status ?? 200 });
 };\n`);
     const ghPath = join(bin, 'gh');
     writeFileSync(ghPath, `#!${process.execPath}
@@ -499,7 +511,7 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     assert.match(output, /OWNER_AMENDMENT \/ G0 pre-transition eligibility verified; adoption and canonical placement remain pending/);
     const result = JSON.parse(output.slice(output.indexOf(': ') + 2));
     assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION');
-    assert.equal(result.triggerDecision, 'OWNER_DECISION');
+    assert.equal(result.triggerDecision, expectedTriggerDecision);
     assert.equal(result.adoption, 'pending');
     assert.equal(result.canonical, 'pending');
     assert.equal(result.bSha, fixture.bSha);
@@ -511,10 +523,127 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     assert.ok(trace.filter(item => item.gh?.[0] === 'attestation').length >= 3, 'trigger, nested prepare and eligibility provenance ran');
     assert.ok(trace.some(item => item.fetch === `${prefix}/actions/artifacts/555/zip`), 'eligibility artifact downloaded');
 
+    // Exercise failures through the production child CLI. Each case starts
+    // from the same controlled response snapshot and a clean output file.
+    const artifactListPath = `${prefix}/actions/runs/202/artifacts`;
+    const artifactDetailPath = `${prefix}/actions/artifacts/555`;
+    const runAttemptPath = `${prefix}/actions/runs/202/attempts/1`;
+    const tagRefPath = `${prefix}/git/ref/tags/${tag.tagName}`;
+    const validArtifactList = structuredClone(responses[artifactListPath]);
+    const validArtifactDetail = structuredClone(responses[artifactDetailPath]);
+    const validRunAttempt = structuredClone(responses[runAttemptPath]);
+    const eligibilityZipPath = `${prefix}/actions/artifacts/555/zip`;
+    const validEligibilityZip = structuredClone(responses[eligibilityZipPath]);
+    const validTagRef = structuredClone(responses[tagRefPath]);
+    const groupCommitPath = `${prefix}/commits/${fixture.groupSha}`;
+    const graphqlPath = '/graphql';
+    const runCliFailure = (diagnostic) => {
+      writeFileSync(dataPath, JSON.stringify(responses));
+      writeFileSync(outputPath, '');
+      rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
+      assert.throws(run, error => {
+        assert.match(error.stderr.toString(), diagnostic);
+        assert.equal(error.stdout.toString(), '', 'failed CLI must not emit success-shaped stdout');
+        assert.equal(readFileSync(outputPath, 'utf8'), '', 'failed CLI must not select a workflow route');
+        return true;
+      });
+    };
+    const runSelectorCliFailure = (diagnostic, expectedPaths) => {
+      writeFileSync(dataPath, JSON.stringify(responses));
+      writeFileSync(outputPath, '');
+      writeFileSync(tracePath, '');
+      rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
+      assert.throws(run, error => {
+        assert.equal(error.status, 1, 'selector rejection must exit unsuccessfully');
+        assert.match(error.stderr.toString(), diagnostic);
+        assert.equal(error.stdout.toString(), '', 'selector rejection must not emit success-shaped stdout');
+        assert.equal(readFileSync(outputPath, 'utf8'), '', 'selector rejection must not select a workflow route');
+        assert.equal(existsSync(join(runner, 'owner-amendment-eligibility')), false,
+          'selector rejection must not prepare semantic eligibility');
+        const trace = readFileSync(tracePath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+        assert.deepEqual(trace.filter(item => item.fetch).map(item => item.fetch).sort(), [...expectedPaths].sort());
+        assert.equal(trace.some(item => item.gh), false, 'selector rejection must stop before producer attestation work');
+        assert.equal(trace.some(item => item.fetch?.includes('/actions/')), false,
+          'selector rejection must stop before producer run, job, or artifact inspection');
+        return true;
+      });
+    };
+
+    // These selector bindings already have component-level rejection tests.
+    // Exercise two representative mismatches through the production CLI so
+    // their diagnostics and pre-output/pre-producer boundary remain observable.
+    const validGroupCommit = structuredClone(responses[groupCommitPath]);
+    responses[groupCommitPath].json.commit.tree.sha = 'e'.repeat(40);
+    runSelectorCliFailure(/merge-group commit tree does not match the exact B tree/,
+      [`${prefix}`, groupCommitPath, `${prefix}/commits/${fixture.bSha}`]);
+    responses[groupCommitPath] = validGroupCommit;
+
+    const validGraphql = structuredClone(responses[graphqlPath]);
+    responses[graphqlPath].json.data.repository.pullRequest.mergeQueueEntry.headCommit.oid = 'e'.repeat(40);
+    runSelectorCliFailure(/authenticated merge queue entry does not bind this open PR to the exact event base and B head/,
+      [`${prefix}`, groupCommitPath, `${prefix}/commits/${fixture.bSha}`, `${prefix}/commits/${fixture.bSha}/pulls`, graphqlPath]);
+    responses[graphqlPath] = validGraphql;
+    writeFileSync(dataPath, JSON.stringify(responses));
+
+    responses[artifactListPath].json = { total_count: 0, artifacts: [] };
+    runCliFailure(/expected exactly one matching BLOCK artifact; found 0/);
+    responses[artifactListPath] = structuredClone(validArtifactList);
+
+    // Expired eligibility bytes are stale evidence even when every identity
+    // binding remains exact. Keep listing and detail metadata consistent.
+    responses[artifactListPath].json.artifacts[0].expired = true;
+    responses[artifactListPath].json.artifacts[0].expires_at = '2020-01-01T00:00:00Z';
+    responses[artifactDetailPath].json.expired = true;
+    responses[artifactDetailPath].json.expires_at = '2020-01-01T00:00:00Z';
+    runCliFailure(/matching artifact has invalid identity, run association, or expiry metadata/);
+    responses[artifactListPath] = structuredClone(validArtifactList);
+    responses[artifactDetailPath] = structuredClone(validArtifactDetail);
+
+    // The selected workflow listing reports attempt 1, but its detailed
+    // attempt readback reports attempt 2. Discovery must reject that conflict.
+    responses[runAttemptPath].json.run_attempt = 2;
+    runCliFailure(/workflow run event, repository, head, attempt, or run ID differs from trusted expectation/);
+    responses[runAttemptPath] = structuredClone(validRunAttempt);
+
+    // A successful exact-B signer without its protected tag cannot fall
+    // through to the ordinary route. Model the exact expected tag lookup 404.
+    responses[tagRefPath] = { ...structuredClone(validTagRef), status: 404, json: {} };
+    runCliFailure(/exact B has a successful pre-queue semantic eligibility signer result but no protected amendment tag/);
+
+    // The same exact-B run without a semantic signer must retain the ordinary
+    // dispatch. Assert the child CLI's observable outputs and early return,
+    // beyond the producer-inspection component's NOT_APPLICABLE eligibility.
+    const jobsPath = `${prefix}/actions/runs/202/attempts/1/jobs`;
+    const validJobs = structuredClone(responses[jobsPath]);
+    responses[jobsPath] = { json: { total_count: 0, jobs: [] } };
+    writeFileSync(dataPath, JSON.stringify(responses));
+    writeFileSync(outputPath, '');
+    writeFileSync(tracePath, '');
+    assert.equal(run(), 'No protected amendment tag selects a fresh ordinary review of the exact current base/B tuple.\n');
+    assert.equal(readFileSync(outputPath, 'utf8'), `route=ordinary\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+    assert.equal(existsSync(join(runner, 'owner-amendment-eligibility')), false,
+      'ordinary dispatch must not prepare amendment eligibility');
+    const ordinaryTrace = readFileSync(tracePath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    assert.ok(ordinaryTrace.some(item => item.fetch === jobsPath), 'production main inspected the exact run attempt');
+    assert.ok(ordinaryTrace.some(item => item.fetch === tagRefPath), 'production main observed the missing exact-B tag');
+    assert.ok(ordinaryTrace.every(item => !item.gh && !item.fetch?.includes('/artifacts')),
+      'ordinary dispatch must not verify attestations or download amendment artifacts');
+    responses[jobsPath] = validJobs;
+    responses[tagRefPath] = structuredClone(validTagRef);
+    writeFileSync(dataPath, JSON.stringify(responses));
+
+    // Replay the valid child CLI after the failure and ordinary cases to prove
+    // response restoration before the retained wrong-base/receipt cases.
+    rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
+    writeFileSync(outputPath, '');
+    assert.match(run(), /OWNER_AMENDMENT \/ G0 pre-transition eligibility verified; adoption and canonical placement remain pending/);
+    assert.equal(readFileSync(outputPath, 'utf8'), `route=amendment\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+
     writeFileSync(outputPath, '');
     fixture.runGit(['checkout', '--detach', fixture.bSha]);
     assert.throws(run, error => {
       assert.match(error.stderr.toString(), /checked-out protected verifier revision differs from the exact merge-group base/);
+      assert.equal(error.stdout.toString(), '', 'base mismatch must not emit success-shaped stdout');
       assert.equal(readFileSync(outputPath, 'utf8'), '');
       return true;
     });
@@ -534,15 +663,118 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
     assert.throws(run, error => {
       assert.match(error.stderr.toString(), /receipt tag ref does not target exact B/);
+      assert.equal(error.stdout.toString(), '', 'receipt mismatch must not emit success-shaped stdout');
       assert.equal(readFileSync(outputPath, 'utf8'), '');
       return true;
     });
+
+    // Keep the receipt valid JSON and transport metadata internally consistent,
+    // so production acceptance reaches the closed receipt-shape validator.
+    const closedShapeReceipt = JSON.parse(receiptBytes);
+    closedShapeReceipt.extra = true;
+    const closedShapeBytes = canonicalBytes(closedShapeReceipt);
+    const closedShapeZip = makeZip([{ name: 'eligibility-receipt.json', bytes: closedShapeBytes },
+      { name: 'attestation-bundle.json', bytes: Buffer.from('{"synthetic":true}\n') }]);
+    responses[eligibilityZipPath] = { bytes: closedShapeZip.toString('base64') };
+    const closedShapeArtifact = { ...structuredClone(validArtifactDetail.json),
+      digest: `sha256:${hash(closedShapeZip)}`, size_in_bytes: closedShapeZip.length };
+    responses[artifactDetailPath] = { json: closedShapeArtifact };
+    responses[artifactListPath].json.artifacts = [structuredClone(closedShapeArtifact)];
+    runCliFailure(/semantic eligibility receipt has missing or unknown fields/);
+
+    // Restore the complete valid artifact after the new negative case and
+    // replay production main to show the mutation did not poison later flow.
+    responses[eligibilityZipPath] = validEligibilityZip;
+    responses[artifactDetailPath] = structuredClone(validArtifactDetail);
+    responses[artifactListPath] = structuredClone(validArtifactList);
+    writeFileSync(dataPath, JSON.stringify(responses));
+    writeFileSync(outputPath, '');
+    rmSync(join(runner, 'owner-amendment-eligibility'), { recursive: true, force: true });
+    assert.match(run(), /OWNER_AMENDMENT \/ G0 pre-transition eligibility verified; adoption and canonical placement remain pending/);
+    assert.equal(readFileSync(outputPath, 'utf8'), `route=amendment\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+  } finally { rmSync(temporary, { recursive: true, force: true }); }
+}
+
+async function exerciseCandidateOnlyOptInGate(fixture, api, event, expectedBaseMode = 'enforced') {
+  const temporary = mkdtempSync(join(tmpdir(), 'agk-candidate-opt-in-'));
+  try {
+    fixture.runGit(['remote', 'add', 'origin', fixture.repoPath]);
+    fixture.runGit(['checkout', '--detach', fixture.baseSha]);
+    assert.equal(fixture.runGit(['rev-parse', 'HEAD']).toString('ascii').trim(), fixture.baseSha);
+
+    const basePolicyBytes = fixture.runGit(['show', `${fixture.baseSha}:.codex/gatekeeper/ci-policy.json`]);
+    const candidatePolicyBytes = fixture.runGit(['show', `${fixture.bSha}:.codex/gatekeeper/ci-policy.json`]);
+    const basePolicy = resolveCiPolicy(parseCiPolicyJson(basePolicyBytes.toString('utf8')), 'main');
+    const candidatePolicy = resolveCiPolicy(parseCiPolicyJson(candidatePolicyBytes.toString('utf8')), 'main');
+    assert.equal(JSON.parse(basePolicyBytes.toString('utf8')).branches.main.ownerAmendment, undefined);
+    assert.equal(basePolicy.mode, expectedBaseMode);
+    assert.equal(basePolicy.ownerAmendmentGrade, undefined);
+    assert.equal(candidatePolicy.mode, 'enforced');
+    assert.equal(candidatePolicy.ownerAmendmentGrade, 'G0');
+    assert.equal(candidatePolicy.ownerAmendmentTriggerProfile, fixture.profile);
+    assert.notEqual(fixture.baseSha, fixture.bSha);
+
+    const prefix = `/repos/${repository}`;
+    const paths = [prefix, `${prefix}/commits/${fixture.groupSha}`, `${prefix}/commits/${fixture.bSha}`,
+      `${prefix}/commits/${fixture.bSha}/pulls`, '/graphql'];
+    const responses = {};
+    for (const path of paths) {
+      const response = await api.fetchImpl(`https://api.github.com${path}`);
+      assert.equal(response.status, 200, path);
+      responses[path] = { json: structuredClone(await response.json()) };
+    }
+
+    const dataPath = join(temporary, 'responses.json');
+    const tracePath = join(temporary, 'trace.jsonl');
+    const shimPath = join(temporary, 'fetch-shim.mjs');
+    const bin = join(temporary, 'bin'); mkdirSync(bin);
+    writeFileSync(dataPath, JSON.stringify(responses));
+    writeFileSync(shimPath, `import { readFileSync, appendFileSync } from 'node:fs';
+globalThis.fetch = async (raw, options = {}) => {
+  const url = new URL(raw);
+  if (url.origin !== 'https://api.github.com' || (options.method && options.method !== 'GET' && url.pathname !== '/graphql')) throw new Error('Unexpected external fixture request');
+  appendFileSync(${JSON.stringify(tracePath)}, JSON.stringify({ fetch: url.pathname }) + '\\n');
+  const response = JSON.parse(readFileSync(${JSON.stringify(dataPath)}, 'utf8'))[url.pathname];
+  if (!response) throw new Error('Unexpected fixture API path: ' + url.pathname);
+  return new Response(JSON.stringify(response.json), { status: response.status ?? 200 });
+};\n`);
+    const ghPath = join(bin, 'gh');
+    writeFileSync(ghPath, `#!${process.execPath}
+import { appendFileSync } from 'node:fs';
+appendFileSync(${JSON.stringify(tracePath)}, JSON.stringify({ gh: process.argv.slice(2) }) + '\\n');
+throw new Error('Unexpected gh work in candidate-only opt-in case');\n`);
+    chmodSync(ghPath, 0o700);
+    const configPath = join(temporary, 'gitconfig');
+    writeFileSync(configPath, `[url "${fixture.repoPath}"]\n\tinsteadOf = https://github.com/${repository}.git\n[protocol]\n\tallow = never\n[protocol "file"]\n\tallow = always\n`);
+    const runner = join(realpathSync(temporary), 'runner'); mkdirSync(runner);
+    const eventDirectory = join(runner, 'owner-amendment-merge-group'); mkdirSync(eventDirectory);
+    writeFileSync(join(eventDirectory, 'event.json'), JSON.stringify(event));
+    const outputPath = join(runner, 'output'); writeFileSync(outputPath, '');
+    const env = { ...process.env, GITHUB_REPOSITORY: repository, GH_TOKEN: 'synthetic-fixture-token',
+      GITHUB_WORKSPACE: fixture.repoPath, RUNNER_TEMP: runner, GITHUB_OUTPUT: outputPath,
+      OWNER_AMENDMENT_TAG_RULESET_ID: String(tagRulesetId), GITHUB_RUN_ID: '202', GITHUB_RUN_ATTEMPT: '1',
+      GITHUB_WORKFLOW_SHA: fixture.baseSha, NODE_OPTIONS: `--import=${shimPath}`,
+      PATH: `${bin}:${process.env.PATH}`, GIT_CONFIG_GLOBAL: configPath, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_COUNT: '0' };
+    const stdout = execFileSync(process.execPath, [join(fixture.repoPath, 'scripts/owner-amendment-merge-group-gate.mjs')],
+      { env, cwd: runner, encoding: 'utf8', timeout: 30_000, maxBuffer: 2 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+
+    if (expectedBaseMode === 'local-only') {
+      assert.equal(stdout, 'Protected current-base policy explicitly selects local-only review.\n');
+      assert.equal(readFileSync(outputPath, 'utf8'), `route=not-applicable\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+    } else {
+      assert.equal(stdout, 'No protected amendment tag selects a fresh ordinary review of the exact current base/B tuple.\n');
+      assert.equal(readFileSync(outputPath, 'utf8'), `route=ordinary\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+    }
+    assert.equal(existsSync(join(runner, 'owner-amendment-eligibility')), false);
+    const trace = readFileSync(tracePath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    assert.deepEqual(trace.filter(item => item.fetch).map(item => item.fetch).sort(), [...paths].sort());
+    assert.equal(trace.some(item => item.gh), false);
   } finally { rmSync(temporary, { recursive: true, force: true }); }
 }
 
 for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
   test(`exercises production route components with test adapter projections for ${profile}`, async t => {
-    const fixture = makeRepo(profile, { includeRuntime: profile === 'completed-owner-decision-self-v1' });
+    const fixture = makeRepo(profile, { includeRuntime: true });
     t.after(fixture.cleanup);
     const resolved = resolveOwnerAmendmentHandoffGitContext({ repository, baseSha: fixture.baseSha,
       headSha: fixture.bSha, runGit: fixture.runGit });
@@ -602,11 +834,9 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
       expires_at: '2099-09-30T10:00:00Z', workflow_run: { id: 202, repository_id: api.repositoryId,
         head_repository_id: api.repositoryId, head_sha: fixture.baseSha } };
     api.setEligibilityZip(eligibilityZip, eligibilityArtifact);
-    if (profile === 'completed-owner-decision-self-v1') {
-      await t.test('executes production main with tagged G0 evidence and rejects runtime and receipt binding mismatches', async () => {
-        await exerciseProductionGate(fixture, api, event, receiptBytes);
-      });
-    }
+    await t.test('executes production main with tagged G0 evidence and rejects runtime and receipt binding mismatches', async () => {
+      await exerciseProductionGate(fixture, api, event, receiptBytes);
+    });
     const attempts = await inspectOwnerAmendmentSemanticProducerAttempts({ repository,
       bBaseSha: fixture.baseSha, bHeadSha: fixture.bSha, bPullRequestCreatedAt: selected.bPullRequestCreatedAt,
       queueEnteredAt: selected.queueEnteredAt,
@@ -639,8 +869,8 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
       authorityRevision: fixture.baseSha, fetchExternal: async () => { throw new Error('no external authority expected'); },
       profile: priorPolicy.authorityProfile ?? 'v1' });
     // These component-level projections cover the verifier with modeled
-    // adapters. The separate OWNER_DECISION subtest above executes production
-    // main() with controlled external fixtures; neither establishes a live
+    // adapters. The production child-main subtest executes the selected
+    // profile with controlled external fixtures; neither establishes a live
     // protected route.
     const triggerAdapter = { status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER', repository, baseSha: fixture.baseSha,
       triggerProfile: profile, decision: evidence.triggerDecision, reviewRecordSha256: evidence.reviewRecordSha256,
@@ -724,5 +954,30 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
       assert.equal(evidence.priorAuthoritySetDigest, resolved.priorAuthoritySetDigest);
       assert.equal(evidence.resultingAuthoritySetDigest, resolved.resultingAuthoritySetDigest);
     }
+  });
+}
+
+test('production main selects not-applicable from protected local-only base policy despite candidate G0 opt-in', async t => {
+  const profile = 'completed-owner-decision-self-v1';
+  const fixture = makeRepo(profile, { includeRuntime: true, previousPolicyLocalOnly: true });
+  t.after(fixture.cleanup);
+  const api = apiFixture({ repoPath: fixture.repoPath, baseSha: fixture.baseSha, bSha: fixture.bSha,
+    groupSha: fixture.groupSha, triggerHeadSha: fixture.triggerHeadSha, profile,
+    triggerRecordBytes: Buffer.from('{}'), bundleBytes: Buffer.from('{}') });
+  const event = { action: 'checks_requested', repository: { full_name: repository }, merge_group: {
+    base_ref: 'refs/heads/main', base_sha: fixture.baseSha, head_sha: fixture.groupSha } };
+  await exerciseCandidateOnlyOptInGate(fixture, api, event, 'local-only');
+});
+
+for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
+  test(`production main ignores candidate-only ${profile} opt-in`, async t => {
+    const fixture = makeRepo(profile, { includeRuntime: true, candidateOnlyOptIn: true });
+    t.after(fixture.cleanup);
+    const api = apiFixture({ repoPath: fixture.repoPath, baseSha: fixture.baseSha, bSha: fixture.bSha,
+      groupSha: fixture.groupSha, triggerHeadSha: fixture.triggerHeadSha, profile,
+      triggerRecordBytes: Buffer.from('{}'), bundleBytes: Buffer.from('{}') });
+    const event = { action: 'checks_requested', repository: { full_name: repository }, merge_group: {
+      base_ref: 'refs/heads/main', base_sha: fixture.baseSha, head_sha: fixture.groupSha } };
+    await exerciseCandidateOnlyOptInGate(fixture, api, event);
   });
 }

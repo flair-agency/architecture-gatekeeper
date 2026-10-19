@@ -2,13 +2,14 @@
 // Test-only, independent historical BLOCK inspection. Never returns acceptance.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { closeSync, constants, fstatSync, mkdtempSync, openSync, readSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, constants, fstatSync, mkdtempSync, openSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { TextDecoder } from 'node:util';
 import { isDeepStrictEqual } from 'node:util';
 import { materializeAuthoritySet, rejectDuplicateJsonKeys, validateAuthorityLimits } from '../dist/authority-set.mjs';
+import { readDescriptorBytes } from '../dist/io/read-descriptor.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 import { buildRealPrBlockRecord } from './issue83-real-pr-block-probe.mjs';
 
@@ -35,13 +36,9 @@ function readFileBounded(path, max, label) {
     const stat = fstatSync(descriptor);
     if (!stat.isFile() || stat.size < 1 || stat.size > max) fail(`${label} is absent or exceeds its byte limit.`);
     const bytes = Buffer.alloc(stat.size);
-    let length = 0;
-    while (length < bytes.length) {
-      const count = readSync(descriptor, bytes, length, bytes.length - length, length);
-      if (!count) fail(`${label} changed during read.`);
-      length += count;
-    }
-    return bytes;
+    const actual = readDescriptorBytes(descriptor, bytes);
+    if (actual.length !== stat.size) fail(`${label} changed during read.`);
+    return actual;
   } finally { closeSync(descriptor); }
 }
 function parseJson(bytes, max, label) {

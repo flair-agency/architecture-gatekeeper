@@ -1,0 +1,11 @@
+import { main } from '../../../src/ci-report.mjs';
+import type { ReportFetch } from '../../../src/ci-review/ci-report.mts';
+declare const observation: unknown;
+main(null);
+main(['argv']);
+const wrongCompletion: Promise<string> = main();
+const missingReadJson: ReportFetch = () => ({ ok: true });
+const nonBooleanResponse: ReportFetch = () => ({ ok: 'yes', json: () => observation });
+const narrowedObservation: string = ({ json: () => observation }).json();
+main(fetch, undefined);
+const wrongInput: ReportFetch = (_url: number) => ({ ok: true as const, json: () => observation });

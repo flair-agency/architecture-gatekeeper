@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/single-authority-member-contract');
@@ -15,9 +16,11 @@ assert.equal(parsed.options.strict, true);
 assert.equal(parsed.options.noImplicitAny, true);
 const options = { ...parsed.options, rootDir: root, noEmit: true };
 
+const fixtureFiles = ['positive.mts', 'negative.mts'].map(name => join(fixtureRoot, name));
+const diagnosticsForFile = compileFixtureDiagnostics(fixtureFiles, options, 'single-member selector and transitive imports must type-check');
 function diagnosticsFor(fixture) {
   const file = join(fixtureRoot, fixture);
-  const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([file], options));
+  const diagnostics = diagnosticsForFile(file);
   const summary = diagnostics.map(diagnostic => ({
     file: diagnostic.file?.fileName,
     line: diagnostic.file && diagnostic.start !== undefined

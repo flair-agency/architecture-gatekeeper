@@ -4,6 +4,7 @@ import test from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'acorn';
+import { createHash } from 'node:crypto';
 import ts from 'typescript';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,24 +31,15 @@ function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
   if (!value || typeof value !== 'object') return value;
   return Object.fromEntries(Object.entries(value)
-    .filter(([key]) => !['start', 'end', 'loc', 'range'].includes(key))
+    .filter(([key]) => !['start', 'end', 'loc', 'range', 'raw'].includes(key))
     .map(([key, child]) => [key, canonical(child)]));
 }
 
-function runtimeAst(path, rewriteAuthoredImports = false) {
-  const body = parse(readFileSync(path, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' }).body;
-  // tsc rewrites these authored TypeScript imports to their emitted runtime
-  // paths. Compare the complete AST after only those declared path rewrites.
-  const emittedImports = new Map([
-    ['./measurement.mts', './measurement.mjs'],
-    ['./public-output.mts', './public-output.mjs'],
-  ]);
-  for (const node of rewriteAuthoredImports ? body : []) {
-    if (node.type !== 'ImportDeclaration') continue;
-    const emitted = emittedImports.get(node.source.value);
-    if (emitted) { node.source.value = emitted; node.source.raw = JSON.stringify(emitted); }
-  }
-  return canonical(body);
+function runtimeAst(path) {
+  const compiled = ts.transpileModule(readFileSync(path, 'utf8'), {
+    fileName: path, compilerOptions: parsed.options,
+  }).outputText;
+  return canonical(parse(compiled, { ecmaVersion: 'latest', sourceType: 'module' }).body);
 }
 
 test('native CLI exposes its existing optional string-array/string inputs and async completion', () => {
@@ -64,12 +56,29 @@ test('native CLI rejects incompatible caller inputs and return claims', () => {
     'the checked CLI and transitive imports must remain error-free');
 });
 
-test('source and emitted native CLI retain the complete runtime AST after declared import rewriting', () => {
+test('complete typed native CLI retains adopted operations, modeled origins and flat direct-run guard', async () => {
   const sourcePath = join(root, 'src/native-review.mjs');
   const emittedPath = join(root, 'dist/native-review.mjs');
   const source = readFileSync(sourcePath, 'utf8');
   const emitted = readFileSync(emittedPath, 'utf8');
-  assert.deepEqual(runtimeAst(sourcePath, true), runtimeAst(emittedPath));
+  const sourceBody = runtimeAst(sourcePath);
+  const emittedBody = runtimeAst(emittedPath);
+  assert.deepEqual(sourceBody, emittedBody);
+  const implementationSource = join(root, 'src/local-review/native-review.mts');
+  const implementationEmitted = join(root, 'dist/local-review/native-review.mjs');
+  const typedBody = runtimeAst(implementationSource);
+  assert.deepEqual(typedBody, runtimeAst(implementationEmitted));
+  // Complete original functions at immutable 1efb48d9, including injected
+  // argument parsing, usage, measurement and required prepare/validate I/O.
+  const operations = typedBody.filter(node => node.type !== 'ImportDeclaration');
+  assert.equal(createHash('sha256').update(JSON.stringify(operations)).digest('hex'),
+    'b4455904ec769a62e4a988dc1092d4fa69663876c9828a27798d45a91320ad8e');
+  assert.equal(createHash('sha256').update(JSON.stringify(sourceBody.at(-1))).digest('hex'),
+    '545bb35c525d3b79f80f16afaf2405516ee249fc0c80a2417f59df063ddb32d1',
+    'the original flat guard and catch remain identical');
+  const flat = await import('../dist/native-review.mjs');
+  const grouped = await import('../dist/local-review/native-review.mjs');
+  assert.equal(flat.runNativeReviewCli, grouped.runNativeReviewCli);
   for (const text of [source, emitted]) {
     assert.match(text, /if \(process\.argv\[1\] && fileURLToPath\(import\.meta\.url\) === realpathSync\(process\.argv\[1\]\)\)/);
   }

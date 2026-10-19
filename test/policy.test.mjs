@@ -13,6 +13,34 @@ import { parseWorkflow } from './helpers/workflow-structure.mjs';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const policy = { version: 1, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authorityFiles: ['docs/architecture.md'], promptPath: '.codex/gatekeeper/ci-prompt.md', schemaPath: '.codex/gatekeeper/decision.schema.json', validationPath: null } } };
 test('resolves exact base-branch policy', () => assert.deepEqual(resolveCiPolicy(policy, 'main'), { baseBranch: 'main', mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', policyVersion: 1, legacyAuthorityFilesBase64: Buffer.from('["docs/architecture.md"]').toString('base64'), legacyPromptPath: '.codex/gatekeeper/ci-prompt.md', legacySchemaPath: '.codex/gatekeeper/decision.schema.json', legacyValidationPath: '' }));
+test('artifact CLI workflows run from runner.temp with anchored runtime paths', () => {
+  for (const name of ['architecture-gate.yml', 'architecture-gate-consumer.yml', 'architecture-gate-providers.yml']) {
+    const parsed = parseWorkflow(readFileSync(join(root, '.github/workflows', name), 'utf8'), name);
+    // Consumer/self legacy steps are checked by assertWorkflowStructure;
+    // the provider workflow is outside that helper's selected workflow set.
+    if (name === 'architecture-gate-providers.yml') {
+      const review = parsed.jobs.review;
+      for (const [stepName, command] of [
+        ['Materialize recorded-base legacy authority before review', 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" prepare'],
+        ['Require exact reported legacy authority files', 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" validate'],
+      ]) {
+        const step = review.steps.find(candidate => candidate.name === stepName);
+        assert.equal(step['working-directory'], '${{ runner.temp }}', `${name}: ${stepName} cwd`);
+        assert.equal(step.run, command, `${name}: ${stepName} runtime`);
+      }
+    }
+    const addition = parsed.jobs['owner-addition'];
+    for (const [stepName, command] of [
+      ['Verify the exact G0 procedure and prepare protected eligibility input', 'node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" prepare'],
+      ['Require completed B-specific eligibility review', 'node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" validate'],
+    ]) {
+      const step = addition.steps.find(candidate => candidate.name === stepName);
+      assert.equal(step['working-directory'], '${{ runner.temp }}', `${name}: ${stepName} cwd`);
+      assert.equal(step.run, command, `${name}: ${stepName} runtime`);
+    }
+  }
+});
+
 test('legacy v1 enforced policy requires canonical paths and an explicit validation selection', () => {
   const { validationPath: _validationPath, ...missingValidation } = policy.branches.main;
   assert.throws(() => resolveCiPolicy({ ...policy, branches: { main: missingValidation } }, 'main'), /explicit base-selected validationPath or null/);
@@ -34,11 +62,11 @@ test('legacy v1 workflow binds protected instructions, authority, and exact repo
   const workflow = readFileSync(join(root, '.github/workflows/architecture-gate.yml'), 'utf8');
   const parsed = parseWorkflow(workflow, 'architecture-gate.yml');
   assert.match(workflow, /if: steps\.resolve\.outputs\.authorityManifestPath != '' \|\| steps\.resolve\.outputs\.policyVersion == '1'/);
-  assert.match(workflow, /name: Materialize recorded-base legacy authority before review/);
   const prepareLegacy = parsed.jobs.review.steps.find(step => step.name === 'Materialize recorded-base legacy authority before review');
+  assert.equal(prepareLegacy['working-directory'], '${{ runner.temp }}');
   assert.equal(prepareLegacy.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" prepare');
-  assert.match(workflow, /name: Require exact reported legacy authority files/);
   const validateLegacy = parsed.jobs.review.steps.find(step => step.name === 'Require exact reported legacy authority files');
+  assert.equal(validateLegacy['working-directory'], '${{ runner.temp }}');
   assert.equal(validateLegacy.run, 'node "$GATEKEEPER_RUNTIME_ROOT/dist/prepare-legacy-ci-authority.mjs" validate');
   assert.match(workflow, /LEGACY_AUTHORITY_PROVENANCE_BASE64: \$\{\{ needs\.review\.outputs\.legacy_authority_provenance \}\}/);
   assert.match(workflow, /test "\$POLICY_PATH" = \.codex\/gatekeeper\/ci-policy\.json/);
@@ -282,23 +310,28 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(workflow, /dist\/validate-authority-set-decision\.mjs/);
   assert.match(workflow, /reviewed_sha: \$\{\{ steps\.revision\.outputs\.sha \}\}/);
   const reviewSteps = parseWorkflow(workflow, 'architecture-gate.yml').jobs.review.steps;
+  const selectedRevision = reviewSteps.find(step => step.name === 'Select validated pull request merge commit');
+  assert.ok(selectedRevision, 'the selected immutable revision is validated before checkout');
+  assert.match(selectedRevision.run, /git --no-replace-objects cat-file -t "\$SELECTED_SHA"/);
+  assert.match(selectedRevision.run, /git --no-replace-objects rev-list --parents -n 1 "\$SELECTED_SHA"/);
+  assert.match(selectedRevision.run, /ACTUAL_PARENTS.*!=.*EXPECTED_PARENTS/);
   const revisionIndex = reviewSteps.findIndex((step) => step.name === 'Record reviewed merge revision');
   const revision = reviewSteps[revisionIndex];
   const runtimeBuildIndex = reviewSteps.findIndex((step) => step.name === 'Build the pinned validation runtime');
   assert.ok(revisionIndex >= 0);
   assert.ok(runtimeBuildIndex > revisionIndex, 'reviewed merge identity and parent tuple are checked before runtime build');
   assert.deepEqual(revision.env, {
-    EXPECTED_MERGE_SHA: '${{ github.event.pull_request.merge_commit_sha }}',
+    SELECTED_SHA: '${{ steps.selected_merge_commit.outputs.sha }}',
     BASE_SHA: '${{ github.event.pull_request.base.sha }}',
     HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
   });
   assert.match(revision.run, /git rev-parse HEAD/);
-  assert.match(revision.run, /actual_sha.*!=.*EXPECTED_MERGE_SHA/);
+  assert.match(revision.run, /actual_sha.*!=.*SELECTED_SHA/);
   assert.match(revision.run, /git --no-replace-objects rev-list --parents -n 1 "\$actual_sha"/);
   assert.match(revision.run, /expected_parents="\$actual_sha \$BASE_SHA \$HEAD_SHA"/);
   assert.match(revision.run, /actual_parents.*!=.*expected_parents/);
   assert.ok(revision.run.indexOf('actual_parents') < revision.run.indexOf('GITHUB_OUTPUT'), 'reviewed SHA is emitted only after exact parent verification');
-  assert.match(revision.run, /printf 'sha=%s\\n' "\$EXPECTED_MERGE_SHA"/);
+  assert.match(revision.run, /printf 'sha=%s\\n' "\$actual_sha"/);
   assert.match(workflow, /REVIEWED_SHA: \$\{\{ needs\.review\.outputs\.reviewed_sha \}\}/);
   assert.doesNotMatch(workflow, /REVIEWED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
   assert.deepEqual(parsed.jobs.report.permissions, { contents: 'read', actions: 'read', 'pull-requests': 'write' },
@@ -346,10 +379,14 @@ test('uses the immutable called-workflow runtime and keeps review jobs read-only
   assert.match(additionJob, /test "\$\(git rev-parse FETCH_HEAD\)" = "\$REVIEWED_SHA"/);
   assert.match(additionJob, /test "\$MERGE_PARENT_HEAD" = "\$HEAD_SHA"/);
   assert.match(additionJob, /git -c "http\.extraheader=.*" fetch --no-tags/);
-  assert.match(additionJob, /dist\/owner-addition-ci\.mjs prepare/);
+  const prepareAddition = parsed.jobs['owner-addition'].steps.find(step => step.name === 'Verify the exact G0 procedure and prepare protected eligibility input');
+  assert.equal(prepareAddition['working-directory'], '${{ runner.temp }}');
+  assert.equal(prepareAddition.run, 'node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" prepare');
   assert.match(additionJob, /ORDINARY_DECISION: \$\{\{ needs\.review\.outputs\.final_message \}\}/);
   assert.match(additionJob, /PR_NUMBER: \$\{\{ github\.event\.pull_request\.number \}\}/);
-  assert.match(additionJob, /dist\/owner-addition-ci\.mjs validate/);
+  const validateAddition = parsed.jobs['owner-addition'].steps.find(step => step.name === 'Require completed B-specific eligibility review');
+  assert.equal(validateAddition['working-directory'], '${{ runner.temp }}');
+  assert.equal(validateAddition.run, 'node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" validate');
   assert.match(additionJob, /POLICY_VERSION: \$\{\{ needs\.policy\.outputs\.policy_version \}\}/);
   assert.match(additionJob, /prompt-file: \$\{\{ runner\.temp \}\}\/architecture-gate-owner-addition\/eligibility-prompt\.md/);
   assert.match(additionJob, /name: Preserve exact v5 pre-merge eligibility evidence\n        id: eligibility-evidence\n        if: needs\.policy\.outputs\.policy_version == '5'/);
@@ -443,7 +480,7 @@ test('produces exact OWNER_DECISION trigger evidence only for the prior-policy-s
   assert.doesNotMatch(recordJob, /job\.workflow_repository|job\.workflow_sha|\.architecture-gatekeeper-runtime/);
   assert.match(recordJob, /name: owner-amendment-owner-decision-\$\{\{ github\.event\.pull_request\.base\.sha \}\}-\$\{\{ github\.event\.pull_request\.head\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.match(workflow, /Require completed OWNER_DECISION evidence production when selected/);
-  assert.match(workflow, /needs: \[policy, review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-attempt-classifier, owner-amendment-semantic-eligibility, owner-amendment-semantic-eligibility-signer, report\]/);
+  assert.match(workflow, /needs: \[policy, review, gemini-review, owner-addition, owner-amendment-owner-decision-record, owner-amendment-attempt-classifier, owner-amendment-semantic-eligibility, owner-amendment-semantic-eligibility-signer, report\]/);
   assert.match(workflow, /ownerAmendmentTriggerProfile/);
 });
 
@@ -481,11 +518,18 @@ test('OWNER_AMENDMENT semantic producer never checks out or executes pull-reques
 
 test('protected amendment Git commands pass the checkout through argv instead of child-process cwd', () => {
   for (const path of [
-    '../scripts/owner-amendment-merge-group-gate.mjs',
+    '../scripts/owner-amendment-merge-group-git.mjs',
     '../scripts/owner-amendment-semantic-eligibility-producer.mjs',
   ]) {
     const source = readFileSync(new URL(path, import.meta.url), 'utf8');
-    assert.match(source, /execFileSync\('git', \['-C', process\.env\.GITHUB_WORKSPACE, \.\.\.args\]/);
+    assert.match(source, /execFileSync\('git',\s*\['-C', process\.env\.GITHUB_WORKSPACE, \.\.\.args\]/);
+    assert.doesNotMatch(source, /cwd:\s*process\.env\.GITHUB_WORKSPACE/);
+  }
+  for (const path of [
+    '../scripts/owner-amendment-merge-group-gate.mjs',
+    '../scripts/owner-amendment-merge-group-ordinary-review.mjs',
+  ]) {
+    const source = readFileSync(new URL(path, import.meta.url), 'utf8');
     assert.doesNotMatch(source, /cwd:\s*process\.env\.GITHUB_WORKSPACE/);
   }
   const ownerDecision = readFileSync(new URL('../scripts/owner-amendment-owner-decision-producer.mjs', import.meta.url), 'utf8');
