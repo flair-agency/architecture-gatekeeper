@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "recordKind": "scheduled-weekly-pilot-harvest",
+  "issue": 537,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "snapshotCutoffUtc": "2026-10-20T14:43:39Z",
+  "collectionCompletedAtUtc": "2026-10-20T14:53:58.015789+00:00",
+  "windowStart": "2026-10-13T22:43:35+09:00",
+  "windowEndExclusive": "2026-11-10T22:43:35+09:00",
+  "windowComplete": false,
+  "auditSeed": "pilot537-103c45b7b73d076caa81e7ab0651e010",
+  "sampleMembershipFrozen": false,
+  "publicationState": "validated for archive; remote exact readback required",
+  "newArtifacts": 8,
+  "newRecords": 20,
+  "newWorkflowAttemptPairs": 4,
+  "newDeclaredFixtureRecords": 5,
+  "newDeclaredNaturalCandidateRecords": 15,
+  "newCollectionGaps": 0,
+  "retainedDisjointPriorRecordReferences": 543,
+  "unionDistinctPhaseRecords": 563,
+  "captureScope": "Eight newly observed actual measurement exports; previously archived 216 artifact metadata receipts reconcile unchanged. Previous archives are referenced, not republished or added twice.",
+  "missingness": {
+    "createdInWindowRuns": 180,
+    "createdInWindowAttempts": 185,
+    "attemptsWithMeasurementArtifactPairs": 112,
+    "attemptsWithoutMeasurementArtifactPairs": 73,
+    "withoutListedReviewJob": 70,
+    "successfulMeasurementButMissingExports": [
+      "38473334693/1",
+      "38473334693/2",
+      "38473334693/3"
+    ],
+    "olderCreatedRunQueryComplete": false,
+    "olderCreatedQueryReceivedRows": 1000,
+    "olderCreatedQueryReportedTotal": 2500,
+    "olderCreatedQueryEndAnomaly": "Page 11 returned no rows and total 0 after a reported total of 2500. Not exhaustive; unseen older-created in-window reruns remain a gap."
+  },
+  "provisionalEligibility": {
+    "initialNaturalEligible": 6,
+    "additionalNaturalPositiveObserved": 43,
+    "uncertain": 8,
+    "fixtureExcluded": 1,
+    "notNewlyEligible": 1,
+    "scope": "Selected 59 PRs with complete retained issue-event collections. No full-window population or metric denominator is frozen."
+  },
+  "validation": {
+    "version": 1,
+    "nodeVersion": "v24.19.0",
+    "productionRuntimeVersion": "0.6.0-preview.4",
+    "productionRuntimeSourceRevision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+    "priorFileHashesVerified": true,
+    "priorDistinctPhaseRecords": 543,
+    "newArtifacts": 8,
+    "newRecords": 20,
+    "newEnvelopeGaps": 0,
+    "priorNewDuplicatePhaseIdentities": 0,
+    "unionDistinctPhaseRecords": 563,
+    "unionAttemptGroupsValidated": 113,
+    "newDatasetBytes": 34550,
+    "newReviewTerminals": [
+      {
+        "runId": "39250227737",
+        "runAttempt": "1",
+        "state": "completed",
+        "decision": "PASS"
+      },
+      {
+        "runId": "39207895882",
+        "runAttempt": "1",
+        "state": "completed",
+        "decision": "PASS"
+      },
+      {
+        "runId": "39205081663",
+        "runAttempt": "1",
+        "state": "completed",
+        "decision": "PASS"
+      },
+      {
+        "runId": "39131382009",
+        "runAttempt": "1",
+        "state": "completed",
+        "decision": "PASS"
+      }
+    ],
+    "interpretation": "Record consistency and allowlist only; no producer authentication, case adjudication, acceptance or efficacy claim. Existing archives remain unchanged; do not sum overlapping history."
+  },
+  "files": [
+    {
+      "path": "collection-inventory.json",
+      "bytes": 144309,
+      "sha256": "eed38eeb9c89cf5f8ff102ca3928905d4381a4435aa70674a4e39097c279bf13"
+    },
+    {
+      "path": "measurement-dataset.json",
+      "bytes": 34550,
+      "sha256": "2acb9f50ed20acd3f5fdce39455b8ac9eb76d3469eaff3fe7455623e5f7a3df9"
+    },
+    {
+      "path": "new-artifact-inventory.json",
+      "bytes": 8750,
+      "sha256": "adb32fbb62dac5d783828bd7a1b11f9dbcfb1146d1a7498747cf58b3caa2761a"
+    },
+    {
+      "path": "pr-eligibility-inventory.json",
+      "bytes": 78707,
+      "sha256": "ba1118b9d3a2e411687f3de57754818a9f2f2751f0c805e5601697e12b2f9cee"
+    },
+    {
+      "path": "validated-exports.json",
+      "bytes": 41260,
+      "sha256": "13fd65e03ddd3b39dfbd8a3dba3d28eeb0cd39158813ab35eae0b2a5abde2daa"
+    },
+    {
+      "path": "validation-report.json",
+      "bytes": 1178,
+      "sha256": "edd8ba234c5add9ed11c46fe54ace7dde27ee9bd04b8e53872547c27f7cf4954"
+    }
+  ],
+  "privacy": "Only production-whitelisted measurement exports and projected public PR/run/attempt/artifact metadata; no raw private records, narrative, prompts, reviewer settings, credentials or signed URLs.",
+  "limits": [
+    "Read-only observations and record consistency do not authenticate review producers or event/PR associations.",
+    "New review terminal PASS values are observations, not independent finding adjudication, final case dispositions, acceptance or efficacy.",
+    "No aggregate over all 563 records is emitted; prior and new bounded datasets remain separate.",
+    "No model review, CI rerun, external-role message, PR creation or protected configuration change occurred.",
+    "No new acceptance criterion is completed by this harvest; existing issue state/criteria are preserved."
+  ]
+}
