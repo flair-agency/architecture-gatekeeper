@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "nodeVersion": "v24.19.0",
+  "productionRuntimeVersion": "0.6.0-preview.4",
+  "productionRuntimeSourceRevision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+  "priorFileHashesVerified": true,
+  "priorDistinctPhaseRecords": 543,
+  "newArtifacts": 8,
+  "newRecords": 20,
+  "newEnvelopeGaps": 0,
+  "priorNewDuplicatePhaseIdentities": 0,
+  "unionDistinctPhaseRecords": 563,
+  "unionAttemptGroupsValidated": 113,
+  "newDatasetBytes": 34550,
+  "newReviewTerminals": [
+    {
+      "runId": "39250227737",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS"
+    },
+    {
+      "runId": "39207895882",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS"
+    },
+    {
+      "runId": "39205081663",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS"
+    },
+    {
+      "runId": "39131382009",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS"
+    }
+  ],
+  "interpretation": "Record consistency and allowlist only; no producer authentication, case adjudication, acceptance or efficacy claim. Existing archives remain unchanged; do not sum overlapping history."
+}
