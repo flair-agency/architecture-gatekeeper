@@ -215,3 +215,10 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 
 Licensed under the [MIT License](LICENSE).
 Copyright © 2026 Flair Agency.
+
+The Self Enforced workflow compares the exact candidate against the complete
+Authority Set selected by its recorded base. Ordinary `PASS` cannot accept a
+change to those members, even when the model returns `PASS`; missing or
+mismatched comparison inputs fail closed. Configuration-only migrations remain
+reviewed under the old Policy and selection. This does not activate
+OWNER_AMENDMENT or replace its existing tag guard and evidence requirements.

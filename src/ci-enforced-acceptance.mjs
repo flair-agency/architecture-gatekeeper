@@ -7,6 +7,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const result = assertEnforcedAcceptance({
     reviewResult: process.env.REVIEW_RESULT,
     conclusion: process.env.CONCLUSION,
+    selfAuthorityCheckRequired: process.env.SELF_AUTHORITY_CHECK_REQUIRED,
+    selectedAuthorityChanged: process.env.SELECTED_AUTHORITY_CHANGED,
     ownerAdditionSelected: process.env.OWNER_ADDITION_SELECTED,
     ownerAdditionResult: process.env.OWNER_ADDITION_RESULT,
     ownerAdditionEligibility: process.env.OWNER_ADDITION_ELIGIBILITY,
