@@ -190,6 +190,7 @@ async function main() {
   const event = JSON.parse(readRunnerTempFile(eventDir, 'event.json', 262_144).toString('utf8'));
   const selection = await selectOwnerAmendmentMergeGroupBContext({ event, token });
   if (selection.status !== 'SELECTED_OWNER_AMENDMENT_MERGE_GROUP_B_CONTEXT') fail(selection.reason ?? 'merge-group does not select one exact B.');
+  if (selection.repositoryId !== 1379218762) fail('live queue repository ID differs from the protected self repository.');
   let runtimeRevision;
   try { runtimeRevision = git(['rev-parse', 'HEAD']).toString('utf8').trim(); }
   catch { fail('checked-out protected verifier revision is unavailable.'); }

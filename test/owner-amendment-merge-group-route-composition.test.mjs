@@ -774,6 +774,15 @@ throw new Error('Unexpected gh work in candidate-only opt-in case');\n`);
     const trace = readFileSync(tracePath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
     assert.deepEqual(trace.filter(item => item.fetch).map(item => item.fetch).sort(), [...paths].sort());
     assert.equal(trace.some(item => item.gh), false);
+    // Even mutually consistent responses for the same repository name cannot
+    // replace the stable self repository identity selected by the receiver.
+    writeFileSync(dataPath, JSON.stringify(responses).replaceAll('1379218762', '1379218763'));
+    writeFileSync(outputPath, '');
+    assert.throws(run, error => {
+      assert.match(error.stderr.toString(), /live queue repository ID differs/);
+      return true;
+    });
+    assert.equal(readFileSync(outputPath, 'utf8'), '');
   } finally { rmSync(temporary, { recursive: true, force: true }); }
 }
 
