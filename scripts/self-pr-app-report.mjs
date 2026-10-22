@@ -157,7 +157,7 @@ async function validateAmendmentEligibility(env, context) {
   const childEnv = { ...process.env, BASE_SHA: context.baseSha, B_SHA: context.headSha, BASE_BRANCH: 'main',
     TRIGGER_PROFILE: old.policy.ownerAmendmentTriggerProfile, GITHUB_WORKSPACE: trustedGitHubWorkspaceRoot() };
   const prepareOutput = execFileSync(process.execPath, [resolve(old.cwd, 'scripts/owner-amendment-semantic-eligibility-producer.mjs'), 'prepare'],
-    { cwd: process.env.RUNNER_TEMP, env: childEnv, encoding: 'utf8', timeout: 120_000, maxBuffer: 65_536, stdio: ['ignore', 'pipe', 'pipe'] });
+    { cwd: process.cwd(), env: childEnv, encoding: 'utf8', timeout: 120_000, maxBuffer: 65_536, stdio: ['ignore', 'pipe', 'pipe'] });
   const prepareState = JSON.parse(prepareOutput);
   if (prepareState.status !== 'PREPARED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY') fail('exact-B semantic preparation is absent.');
   const preparedBytes = readRunnerTempFile(resolveRunnerTempDirectory('owner-amendment-eligibility'), 'prepared-context.json', 131_072);
