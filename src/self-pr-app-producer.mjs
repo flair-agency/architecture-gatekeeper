@@ -1,1 +1,1 @@
-export { publishProtectedSelfPrResult } from './github/self-pr-app-producer.mts';
+export { beginProtectedSelfPrCheck, finishProtectedSelfPrCheck } from './github/self-pr-app-producer.mts';

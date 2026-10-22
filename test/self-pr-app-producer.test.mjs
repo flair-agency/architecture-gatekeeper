@@ -1,225 +1,219 @@
-import test, { after } from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash, generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-const { publishProtectedSelfPrResult } = await import('../dist/self-pr-app-producer.mjs');
-const { materializeAuthoritySet } = await import('../dist/authority-set.mjs');
+import { join, resolve } from 'node:path';
+import { beginProtectedSelfPrCheck, finishProtectedSelfPrCheck } from '../dist/self-pr-app-producer.mjs';
 
-const repository = 'flair-agency/architecture-gatekeeper', repositoryId = 1379218762;
-const appId = 1234, installationId = 5678, now = Date.parse('2026-10-22T00:00:00Z');
+const repository = 'flair-agency/architecture-gatekeeper';
+const repositoryId = 1379218762;
+const baseSha = 'a'.repeat(40), headSha = 'b'.repeat(40), subjectSha = 'c'.repeat(40);
+const now = Date.parse('2026-10-22T00:00:00Z');
 const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
-const app = { appId, installationId, repositoryId, privateKeyPem: privateKey.export({ type: 'pkcs8', format: 'pem' }) };
-const canonicalAuthorities = [
-  ['architecture-contract', 'docs/architecture.md'],
-  ['architecture-authority-set', 'docs/architecture/authority-set.md'],
-  ['architecture-owner-addition', 'docs/architecture/owner-addition.md'],
-  ['architecture-owner-amendment', 'docs/architecture/owner-amendment.md'],
-  ['architecture-review-execution', 'docs/architecture/review-execution.md'],
-  ['architecture-self-profile', 'docs/architecture/self-profile.md'],
-];
-const policyPath = '.codex/gatekeeper/ci-policy.json', manifestPath = '.codex/gatekeeper/authorities.json';
-const limits = { maxManifestBytes: 16_384, maxMembers: 16, maxFileBytes: 81_920, maxTotalBytes: 262_144, maxPromptBytes: 524_288 };
-const policy = { version: 2, default: { mode: 'local-only' }, branches: { main: { mode: 'enforced', model: 'gpt-6.1-sol',
-  reasoningEffort: 'medium', authorityManifestPath: manifestPath, authorityLimits: limits,
-  ownerAmendment: { version: 1, grade: 'G0', scope: 'authority-only', triggerProfile: 'completed-owner-decision-self-v1',
-    authorityId: 'architecture-contract', authorityPath: 'docs/architecture.md', evidenceProducer: 'github-actions-attestation',
-    tagNamespace: 'refs/tags/architecture-gatekeeper/amendments', maxPromptBytes: limits.maxPromptBytes },
-  execution: { reviewJobTimeoutMinutes: 7, reviewStepTimeoutMinutes: 5, codexProfile: 'standard' } } } };
-const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-const write = (root, path, content) => { mkdirSync(join(root, path, '..'), { recursive: true }); writeFileSync(join(root, path), content); };
-const hash = value => createHash('sha256').update(value).digest('hex');
-async function makeGitState(extraMember = false) {
-  const root = mkdtempSync(join(tmpdir(), 'self-pr-app-producer-'));
-  git(root, 'init', '-q', '-b', 'main'); git(root, 'config', 'user.name', 'Test'); git(root, 'config', 'user.email', 'test@example.invalid');
-  const authorities = [...canonicalAuthorities, ...(extraMember ? [['owner-extension', 'docs/owner-extension.md']] : [])];
-  const manifest = { version: 1, authorities: authorities.map(([id, path]) => ({ id, repository: 'self', revision: 'authority-revision', path })) };
-  const policyBytes = Buffer.from(JSON.stringify(policy));
-  const manifestBytes = Buffer.from(JSON.stringify(manifest));
-  write(root, policyPath, policyBytes); write(root, manifestPath, manifestBytes);
-  for (const [, path] of authorities) write(root, path, `# Protected old authority: ${path}\n`);
-  git(root, 'add', '-A'); git(root, 'commit', '-qm', 'old protected policy and Authority Set');
-  const baseSha = git(root, 'rev-parse', 'HEAD');
-  const materialized = await materializeAuthoritySet({ manifestBytes, limits, selfRepository: repository, selfRoot: root, authorityRevision: baseSha });
-  const provenance = { version: 1, selfRepository: repository, authorityRevision: baseSha,
-    manifestSha256: materialized.manifestSha256, setDigest: materialized.setDigest,
-    members: materialized.members.map(({ content, ...member }) => member) };
-  git(root, 'switch', '-qc', 'candidate'); write(root, 'code.txt', 'ordinary implementation update\n');
-  git(root, 'add', '-A'); git(root, 'commit', '-qm', 'candidate code update');
-  const headSha = git(root, 'rev-parse', 'HEAD');
-  git(root, 'switch', '-q', 'main'); git(root, 'merge', '--no-ff', '-qm', 'reviewed test merge', headSha);
-  const subjectSha = git(root, 'rev-parse', 'HEAD');
-  return { root, baseSha, headSha, subjectSha, policyBytes, policySha256: hash(policyBytes), manifestBytes, limits, provenance,
-    authorityIds: authorities.map(([id]) => id) };
-}
-const states = [await makeGitState(), await makeGitState(true)];
-after(() => { for (const state of states) rmSync(state.root, { recursive: true, force: true }); });
-const appBody = `## Outcome\nReviewed.\n\n## Issue coverage\n#123 covered.\n\n## Verification\nProtected tests passed.\n\n## Remaining work\nNone: no remaining work.\n\n## Authority and assurance\nReviewed against selected authority.`;
+const app = { appId: 1234, installationId: 5678, repositoryId,
+  privateKeyPem: privateKey.export({ type: 'pkcs8', format: 'pem' }) };
 function response(url, payload, status = 200) {
-  const value = new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json' } });
-  Object.defineProperty(value, 'url', { value: url });
-  return value;
+  const result = new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json' } });
+  Object.defineProperty(result, 'url', { value: url });
+  return result;
 }
-function contextFixture(state, { staleSecond = false, finalRepoMismatch = false } = {}) {
-  let calls = 0;
+function contextFixture({ changeFinal = false } = {}) {
+  let count = 0;
   const fetchImpl = async url => {
-    calls++;
-    const path = new URL(url).pathname.replace('/repos/' + repository, '');
-    const stale = staleSecond && calls > 5;
-    if (path === '/git/ref/heads/main') return response(url, { ref: 'refs/heads/main', object: { type: 'commit', sha: stale ? 'd'.repeat(40) : state.baseSha } });
-    if (path === '/pulls/42') {
-      const badRepo = finalRepoMismatch && calls > 3;
-      return response(url, { number: 42, state: 'open', draft: false, merge_commit_sha: state.subjectSha,
-        base: { ref: 'main', sha: state.baseSha, repo: { full_name: badRepo ? 'elsewhere/repo' : repository, id: repositoryId } },
-        head: { sha: state.headSha, repo: { full_name: repository, id: repositoryId } } });
-    }
-    if (path === '/commits/refs/pull/42/merge') return response(url, { sha: state.subjectSha, parents: [{ sha: state.baseSha }, { sha: state.headSha }] });
-    throw new Error(`Unexpected context request ${path}`);
+    count++;
+    const path = new URL(url).pathname.replace(`/repos/${repository}`, '');
+    const final = changeFinal && count > 5;
+    if (path === '/git/ref/heads/main') return response(url, { ref: 'refs/heads/main', object: { type: 'commit', sha: baseSha } });
+    if (path === '/pulls/42') return response(url, { number: 42, state: 'open', draft: false, merge_commit_sha: subjectSha,
+      base: { ref: 'main', sha: baseSha, repo: { full_name: repository, id: repositoryId } },
+      head: { sha: final ? 'd'.repeat(40) : headSha, repo: { full_name: repository, id: repositoryId } } });
+    if (path === '/commits/refs/pull/42/merge') return response(url, { sha: subjectSha, parents: [{ sha: baseSha }, { sha: headSha }] });
+    throw new Error(`Unexpected URL ${path}`);
   };
-  return { fetchImpl, get calls() { return calls; } };
+  return { fetchImpl, get count() { return count; } };
 }
-function completenessFixture(state, { valid = true } = {}) {
+function reporterFixture() {
   const calls = [];
   const fetchImpl = async (url, options) => {
     calls.push({ url, options });
-    return response(url, { number: 42, state: 'open', draft: false, body: valid ? appBody : 'incomplete',
-      base: { ref: 'main', sha: state.baseSha, repo: { full_name: repository, id: repositoryId } },
-      head: { sha: state.headSha, repo: { full_name: repository, id: repositoryId } } });
-  };
-  return { calls, fetchImpl };
-}
-function reporterFixture(state) {
-  const calls = [];
-  const fetchImpl = async (url, options) => {
-    calls.push({ url, options });
-    if (calls.length === 1) return { ok: true, json: async () => ({ token: 'synthetic-token',
+    if (url.includes('/access_tokens')) return response(url, { token: 'synthetic-token',
       expires_at: new Date(now + 60_000).toISOString(), permissions: { checks: 'write', metadata: 'read' },
-      repositories: [{ id: repositoryId, full_name: repository }] }) };
-    return { ok: true, json: async () => ({ id: 909, name: 'architecture-gate / accept', head_sha: state.subjectSha,
-      status: 'completed', conclusion: 'success', app: { id: appId } }) };
+      repositories: [{ id: repositoryId, full_name: repository }] }, 201);
+    if (options.method === 'POST') return response(url, { id: 909, name: 'architecture-gate / accept', head_sha: subjectSha,
+      status: 'in_progress', conclusion: null, app: { id: app.appId } }, 201);
+    return response(url, { id: 909, name: 'architecture-gate / accept', head_sha: subjectSha,
+      status: 'completed', conclusion: JSON.parse(options.body).conclusion, app: { id: app.appId } });
   };
-  return { calls, fetchImpl };
+  return { fetchImpl, calls };
 }
-const schemaFor = state => ({ type: 'object', required: ['decision', 'authorityIds'], additionalProperties: false, properties: {
-  decision: { type: 'string', enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] },
-  authorityIds: { type: 'array', minItems: state.authorityIds.length, items: { type: 'string' } }, summary: { type: 'string' },
-} });
-const decisionFor = state => ({ decision: 'PASS', authorityIds: state.authorityIds, summary: 'Validated protected review.' });
-function preparedReview(state, chosenDecision = decisionFor(state), provenance = state.provenance) { return {
-  executionInput: { expectedExecution: { provider: 'codex', requestedModel: 'gpt-6.1-sol', requestedSettings: {} },
-    hostStepOutcome: 'success', rawResponse: JSON.stringify(chosenDecision), maxResponseBytes: 65_536 },
-  schemaBytes: JSON.stringify(schemaFor(state)), authorityProvenance: provenance, validationRules: null, maxSchemaBytes: 1_048_576,
-}; }
-function review(state, overrides = {}) { return { mode: 'enforced', policyResult: 'success', reviewResult: 'success',
-  reviewBinding: { repository, prNumber: '42', baseSha: state.baseSha, headSha: state.headSha, reviewedSha: state.subjectSha },
-  authoritySelection: { root: state.root, policyPath, policySha256: state.policySha256 },
-  preparedReview: preparedReview(state), selectedAuthorityChanged: 'false', ...overrides }; }
-function input({ state = states[0], context = contextFixture(state), complete = completenessFixture(state), reporter = reporterFixture(state),
-  reviewValue = review(state), contextInput = {}, reviewInput = {}, getApp = () => app } = {}) {
+function input(context = contextFixture(), reporter = reporterFixture()) {
   let appCalls = 0;
-  return { context, complete, reporter, get appCalls() { return appCalls; },
-    value: { context: { eventName: 'pull_request_target', event: { action: 'synchronize', repository: { full_name: repository, id: repositoryId },
-      pull_request: { number: 42, state: 'open', draft: false,
-        base: { ref: 'main', sha: state.baseSha, repo: { full_name: repository, id: repositoryId } },
-        head: { sha: state.headSha, repo: { full_name: repository, id: repositoryId } } } },
-      sourceBaseSha: state.baseSha, runtimeBaseSha: state.baseSha, token: 'read-only-token', ...contextInput }, contextFetchImpl: context.fetchImpl,
-      runProtectedReview: async () => ({ ...reviewValue, ...reviewInput }),
-      completeness: { token: 'read-only-token', fetchImpl: complete.fetchImpl },
-      getApp: async () => { appCalls++; return getApp(); }, reportFetchImpl: reporter.fetchImpl, now },
-  };
+  const value = { context: { eventName: 'pull_request_target', event: { action: 'synchronize', repository: { full_name: repository, id: repositoryId },
+    pull_request: { number: 42, state: 'open', draft: false,
+      base: { ref: 'main', sha: baseSha, repo: { full_name: repository, id: repositoryId } },
+      head: { sha: headSha, repo: { full_name: repository, id: repositoryId } } } },
+    sourceBaseSha: baseSha, runtimeBaseSha: baseSha, token: 'read-token' }, contextFetchImpl: context.fetchImpl,
+    getApp: async () => { appCalls++; return app; }, reportFetchImpl: reporter.fetchImpl, now };
+  return { value, context, reporter, get appCalls() { return appCalls; } };
+}
+function validated(binding, overrides = {}) { return { status: 'VALIDATED_SELF_PR_RESULT', route: 'ordinary-pass', binding,
+  oldSelectedAuthorityChanged: false, ...overrides }; }
+
+test('begins and completes exact protected test-merge check after matching fresh protected context', async () => {
+  const f = input();
+  const begun = await beginProtectedSelfPrCheck(f.value);
+  assert.equal(begun.status, 'BEGUN_SELF_PR_APP_CHECK');
+  assert.equal(begun.check.headSha, subjectSha);
+  const result = await finishProtectedSelfPrCheck({ ...f.value, begun,
+    validateProtectedResult: async context => validated({ repository, repositoryId, prNumber: '42', baseSha: context.baseSha,
+      headSha: context.headSha, subjectSha: context.subjectSha }) });
+  assert.equal(result.status, 'REPORTED_SELF_PR_RESULT');
+  assert.equal(result.route, 'ordinary-pass');
+  assert.equal(result.check.conclusion, 'success');
+  assert.equal(f.appCalls, 2);
+  assert.equal(f.reporter.calls.filter(call => call.options.method === 'PATCH').length, 1);
+});
+
+test('finishes failure and does not report success for stale protected review binding', async () => {
+  const f = input();
+  const begun = await beginProtectedSelfPrCheck(f.value);
+  const result = await finishProtectedSelfPrCheck({ ...f.value, begun,
+    validateProtectedResult: async context => validated({ repository, repositoryId, prNumber: '42', baseSha: context.baseSha,
+      headSha: context.headSha, subjectSha: 'd'.repeat(40) }) });
+  assert.equal(result.status, 'FAILED_SELF_PR_RESULT');
+  assert.equal(result.check.conclusion, 'failure');
+  assert.equal(f.reporter.calls.filter(call => call.options.method === 'PATCH').length, 1);
+});
+
+test('reports an exact amendment eligibility route as queue eligibility only', async () => {
+  const f = input();
+  const begun = await beginProtectedSelfPrCheck(f.value);
+  const result = await finishProtectedSelfPrCheck({ ...f.value, begun,
+    validateProtectedResult: async context => validated({ repository, repositoryId, prNumber: '42', baseSha: context.baseSha,
+      headSha: context.headSha, subjectSha: context.subjectSha }, { route: 'amendment-queue-eligible', oldSelectedAuthorityChanged: true }) });
+  assert.equal(result.status, 'REPORTED_SELF_PR_RESULT');
+  assert.equal(result.route, 'amendment-queue-eligible');
+  assert.equal(result.check.conclusion, 'success');
+  assert.equal(Object.hasOwn(result, 'adopted'), false);
+});
+
+test('does not complete success when prior selected authority changed flag is not false', async () => {
+  const f = input();
+  const begun = await beginProtectedSelfPrCheck(f.value);
+  const result = await finishProtectedSelfPrCheck({ ...f.value, begun,
+    validateProtectedResult: async context => validated({ repository, repositoryId, prNumber: '42', baseSha: context.baseSha,
+      headSha: context.headSha, subjectSha: context.subjectSha }, { oldSelectedAuthorityChanged: true }) });
+  assert.equal(result.status, 'FAILED_SELF_PR_RESULT');
+  assert.equal(result.check.conclusion, 'failure');
+});
+
+test('final live PR mutation reports failure on the existing check', async () => {
+  const f = input(contextFixture({ changeFinal: true }));
+  const begun = await beginProtectedSelfPrCheck(f.value);
+  const result = await finishProtectedSelfPrCheck({ ...f.value, begun,
+    validateProtectedResult: async context => validated({ repository, repositoryId, prNumber: '42', baseSha: context.baseSha,
+      headSha: context.headSha, subjectSha: context.subjectSha }) });
+  assert.equal(result.status, 'FAILED_SELF_PR_RESULT');
+  assert.equal(result.check.conclusion, 'failure');
+});
+
+function cliFixture(t, { includeReview = false, checkSha, workspaceMismatch = false } = {}) {
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), 'self-pr-app-cli-')));
+  const actualBase = execFileSync('git', ['-C', process.cwd(), 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  const callerBase = workspaceMismatch ? 'a'.repeat(40) : actualBase;
+  const callerHead = 'e'.repeat(40), callerSubject = 'f'.repeat(40);
+  checkSha ??= callerSubject;
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const eventPath = join(directory, 'event.json'), outputPath = join(directory, 'output.txt');
+  const markerPath = join(directory, 'patch.json');
+  const tokenMarkerPath = join(directory, 'token-requested');
+  const gitFetchMarkerPath = join(directory, 'git-fetch.jsonl');
+  const gitBin = join(directory, 'bin');
+  mkdirSync(gitBin);
+  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
+  const gitWrapper = join(gitBin, 'git');
+  writeFileSync(gitWrapper, `#!/usr/bin/env node
+import { appendFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+const args=process.argv.slice(2);
+if(args.includes('fetch')) { appendFileSync(process.env.TEST_GIT_FETCH_MARKER, JSON.stringify(args)+'\\n'); process.exit(0); }
+if(args.includes('rev-parse')&&args.includes('--verify')&&args.at(-1)?.endsWith('^{commit}')) { process.stdout.write(args.at(-1).slice(0,-9)+'\\n'); process.exit(0); }
+const result=spawnSync('${realGit}',args,{stdio:'inherit'}); process.exit(result.status ?? 1);
+`);
+  chmodSync(gitWrapper, 0o755);
+  writeFileSync(outputPath, '');
+  writeFileSync(eventPath, JSON.stringify({ action: 'synchronize', repository: { full_name: repository, id: repositoryId },
+    pull_request: { number: 42, state: 'open', draft: false,
+      base: { ref: 'main', sha: callerBase, repo: { full_name: repository, id: repositoryId } },
+      head: { sha: callerHead, repo: { full_name: repository, id: repositoryId } } } }));
+  const preload = join(directory, 'fetch-mock.mjs');
+  writeFileSync(preload, `
+    import { writeFileSync } from 'node:fs';
+    const repo='${repository}', rid=${repositoryId}, base='${callerBase}', head='${callerHead}', subject='${callerSubject}', checkSha='${checkSha}';
+    globalThis.fetch=async (input, init={})=>{
+      const url=String(input); let status=200, payload;
+      if(url.includes('/access_tokens')) { writeFileSync(process.env.TEST_TOKEN_MARKER,'requested'); status=201; payload={token:'synthetic',expires_at:new Date(Date.now()+60000).toISOString(),permissions:{checks:'write',metadata:'read'},repositories:[{id:rid,full_name:repo}]}; }
+      else if(url.endsWith('/check-runs')&&init.method==='POST') { status=201; payload={id:909,name:'architecture-gate / accept',head_sha:checkSha,status:'in_progress',conclusion:null,app:{id:${app.appId}}}; }
+      else if(url.endsWith('/check-runs/909')&&init.method==='PATCH') { const update=JSON.parse(init.body); payload={id:909,name:'architecture-gate / accept',head_sha:checkSha,status:'completed',conclusion:update.conclusion,app:{id:${app.appId}}}; writeFileSync(process.env.TEST_PATCH_MARKER,JSON.stringify(update)); }
+      else if(url.endsWith('/git/ref/heads/main')) payload={ref:'refs/heads/main',object:{type:'commit',sha:base}};
+      else if(url.endsWith('/pulls/42')) payload={number:42,state:'open',draft:false,merge_commit_sha:subject,base:{ref:'main',sha:base,repo:{full_name:repo,id:rid}},head:{sha:head,repo:{full_name:repo,id:rid}}};
+      else if(url.endsWith('/commits/refs/pull/42/merge')) payload={sha:subject,parents:[{sha:base},{sha:head}]};
+      else throw new Error('unexpected mocked API URL '+url);
+      const response=new Response(JSON.stringify(payload),{status,headers:{'content-type':'application/json'}});
+      Object.defineProperty(response,'url',{value:url}); return response;
+    };
+  `);
+  const env = { ...process.env, PATH: `${gitBin}:${process.env.PATH}`, TEST_GIT_FETCH_MARKER: gitFetchMarkerPath,
+    NODE_OPTIONS: `--import=${preload}`, GITHUB_REPOSITORY: repository,
+    GITHUB_REPOSITORY_ID: String(repositoryId), GITHUB_EVENT_NAME: 'pull_request_target', GITHUB_EVENT_PATH: eventPath,
+    GITHUB_SHA: callerBase, GITHUB_WORKFLOW_SHA: callerBase, GITHUB_WORKFLOW_REF: `${repository}/.github/workflows/self-architecture-gate.yml@refs/heads/main`,
+    GATEKEEPER_WORKFLOW_REPOSITORY: repository, GATEKEEPER_WORKFLOW_SHA: callerBase,
+    GATEKEEPER_WORKFLOW_REF: `${repository}/.github/workflows/self-architecture-gate.yml@refs/heads/main`,
+    GITHUB_RUN_ID: '12345', GITHUB_RUN_ATTEMPT: '1', BASE_SHA: callerBase, HEAD_SHA: callerHead, BASE_BRANCH: 'main',
+    PR_NUMBER: '42', GH_TOKEN: 'read-token', RUNNER_TEMP: directory, GITHUB_OUTPUT: outputPath,
+    AGK_APP_ID: String(app.appId), AGK_APP_INSTALLATION_ID: String(app.installationId),
+    AGK_APP_PRIVATE_KEY: app.privateKeyPem, AGK_CHECK_ID: '909', AGK_CHECK_SHA: checkSha, TEST_PATCH_MARKER: markerPath,
+    TEST_TOKEN_MARKER: tokenMarkerPath,
+    GITHUB_WORKSPACE: process.cwd() };
+  for (const key of ['AGK_REVIEW_WORKFLOW_REPOSITORY','AGK_REVIEW_WORKFLOW_SHA','AGK_REVIEW_WORKFLOW_REF','AGK_REVIEWED_SHA']) delete env[key];
+  if (includeReview) Object.assign(env, { AGK_REVIEW_WORKFLOW_REPOSITORY: repository, AGK_REVIEW_WORKFLOW_SHA: callerBase,
+    AGK_REVIEW_WORKFLOW_REF: `${repository}/.github/workflows/architecture-gate.yml@refs/heads/main`, AGK_REVIEWED_SHA: callerSubject });
+  return { directory, outputPath, markerPath, tokenMarkerPath, gitFetchMarkerPath, env };
 }
 
-test('validates protected ordinary PASS and publishes the exact current test-merge subject', async () => {
-  const f = input();
-  const result = await publishProtectedSelfPrResult(f.value);
-  assert.deepEqual(result, { id: 909, name: 'architecture-gate / accept', repository, headSha: states[0].subjectSha, conclusion: 'success', appId });
-  assert.equal(f.context.calls, 10);
-  assert.equal(f.complete.calls.length, 1);
-  assert.equal(f.appCalls, 1);
-  assert.equal(f.reporter.calls.length, 2);
+test('begin CLI accepts only protected caller tuple and does not require later review projection', t => {
+  const fixture = cliFixture(t, { includeReview: false });
+  execFileSync(process.execPath, [resolve('scripts/self-pr-app-report.mjs'), 'begin'], { cwd: fixture.directory, env: fixture.env, stdio: 'pipe' });
+  const output = readFileSync(fixture.outputPath, 'utf8');
+  assert.match(output, /check_id=909/);
+  assert.match(output, new RegExp(`check_sha=${'f'.repeat(40)}`));
+  assert.match(output, /pr_number=42/);
 });
 
-test('a later unrelated tag observation does not classify or alter ordinary content', async () => {
-  const state = states[0], f = input({ reviewValue: review(state, { laterTagObservation: 'present' }) });
-  const result = await publishProtectedSelfPrResult(f.value);
-  assert.equal(result.conclusion, 'success');
-  assert.equal(f.appCalls, 1);
-  assert.equal(f.reporter.calls.length, 2);
+test('begin CLI rejects a checkout whose HEAD differs from protected base before requesting App credentials', t => {
+  const fixture = cliFixture(t, { workspaceMismatch: true });
+  assert.throws(() => execFileSync(process.execPath, [resolve('scripts/self-pr-app-report.mjs'), 'begin'],
+    { cwd: fixture.directory, env: fixture.env, stdio: 'pipe' }));
+  assert.equal(existsSync(fixture.tokenMarkerPath), false);
 });
 
-test('materializes the complete old manifest without imposing a six-member limit', async () => {
-  const state = states[1], f = input({ state });
-  const result = await publishProtectedSelfPrResult(f.value);
-  assert.equal(result.conclusion, 'success');
-  assert.equal(f.appCalls, 1);
+test('report CLI fetches exact selected commits with protected token and finalizes failure when review projection is missing', t => {
+  const fixture = cliFixture(t, { includeReview: false });
+  assert.throws(() => execFileSync(process.execPath, [resolve('scripts/self-pr-app-report.mjs'), 'report'],
+    { cwd: fixture.directory, env: fixture.env, stdio: 'pipe' }));
+  assert.equal(JSON.parse(readFileSync(fixture.markerPath, 'utf8')).conclusion, 'failure');
+  const fetches = readFileSync(fixture.gitFetchMarkerPath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(fetches.length, 2);
+  assert.ok(fetches.every(args => args.includes('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa') || args.includes('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') || args.includes('ffffffffffffffffffffffffffffffffffffffff')));
+  assert.ok(fetches.some(args => args.at(-1) === 'ffffffffffffffffffffffffffffffffffffffff'));
+  assert.ok(fetches.some(args => args.at(-1) === 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'));
 });
 
-test('does not access App credentials or publisher on review, policy, binding, provenance, or completeness failure', async t => {
-  const state = states[0], baseProvenance = state.provenance;
-  const cases = [
-    ['skipped review', { reviewValue: review(state, { reviewResult: 'skipped' }) }],
-    ['neutral review', { reviewValue: review(state, { reviewResult: 'neutral' }) }],
-    ['failed policy', { reviewValue: review(state, { policyResult: 'failure' }) }],
-    ['non-PASS decision', { reviewValue: review(state, { preparedReview: preparedReview(state, { ...decisionFor(state), decision: 'BLOCK' }) }) }],
-    ['changed selected authority', { reviewValue: review(state, { selectedAuthorityChanged: 'true' }) }],
-    ['stale PASS base binding', { reviewValue: review(state, { reviewBinding: { ...review(state).reviewBinding, baseSha: 'd'.repeat(40) } }) }],
-    ['stale PASS head binding', { reviewValue: review(state, { reviewBinding: { ...review(state).reviewBinding, headSha: 'd'.repeat(40) } }) }],
-    ['stale PASS reviewed subject binding', { reviewValue: review(state, { reviewBinding: { ...review(state).reviewBinding, reviewedSha: 'd'.repeat(40) } }) }],
-    ['Authority provenance moved off old base', {
-      reviewValue: review(state, {
-        preparedReview: preparedReview(state, decisionFor(state), {
-          ...baseProvenance,
-          members: baseProvenance.members.map(member => ({ ...member, resolvedCommit: state.headSha })),
-        }),
-      }),
-    }],
-    ['Authority provenance omission', {
-      reviewValue: review(state, {
-        preparedReview: preparedReview(state, decisionFor(state), {
-          ...baseProvenance,
-          members: baseProvenance.members.slice(0, -1),
-        }),
-      }),
-    }],
-    ['Authority provenance extra member', {
-      reviewValue: review(state, {
-        preparedReview: preparedReview(state, decisionFor(state), {
-          ...baseProvenance,
-          members: [...baseProvenance.members, baseProvenance.members[0]],
-        }),
-      }),
-    }],
-    ['old Policy digest differs from protected base', { reviewValue: review(state, { authoritySelection: { ...review(state).authoritySelection,
-      policySha256: 'd'.repeat(64) } }) }],
-    ['wrong old base repository root', { reviewValue: review(state, { authoritySelection: { ...review(state).authoritySelection,
-      root: states[1].root } }) }],
-    ['incomplete PR description', { complete: completenessFixture(state, { valid: false }) }],
-    ['stale final PR context', { context: contextFixture(state, { staleSecond: true }) }],
-  ];
-  for (const [name, fixture] of cases) await t.test(name, async () => {
-    const f = input(fixture);
-    const result = await publishProtectedSelfPrResult(f.value);
-    assert.equal(result.status, 'INCOMPLETE');
-    assert.equal(f.appCalls, 0);
-    assert.equal(f.reporter.calls.length, 0);
-  });
-});
-
-test('final PR readback rejects repository identity changes', async () => {
-  const state = states[0], f = input({ context: contextFixture(state, { finalRepoMismatch: true }) });
-  const result = await publishProtectedSelfPrResult(f.value);
-  assert.equal(result.status, 'INCOMPLETE');
-  assert.equal(f.appCalls, 0);
-});
-
-test('does not invoke protected review or App callbacks when initial context is invalid', async () => {
-  let reviewCalls = 0;
-  const f = input({ contextInput: { eventName: 'pull_request' } });
-  f.value.runProtectedReview = async () => { reviewCalls++; return review(states[0]); };
-  const result = await publishProtectedSelfPrResult(f.value);
-  assert.equal(result.status, 'INCOMPLETE');
-  assert.equal(reviewCalls, 0);
-  assert.equal(f.appCalls, 0);
+test('report CLI finalizes failure when the begun check SHA does not match fresh selected context', t => {
+  const fixture = cliFixture(t, { includeReview: true, checkSha: 'd'.repeat(40) });
+  assert.throws(() => execFileSync(process.execPath, [resolve('scripts/self-pr-app-report.mjs'), 'report'],
+    { cwd: fixture.directory, env: fixture.env, stdio: 'pipe' }));
+  assert.equal(JSON.parse(readFileSync(fixture.markerPath, 'utf8')).conclusion, 'failure');
 });

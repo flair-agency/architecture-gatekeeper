@@ -1,0 +1,18 @@
+# Unprivileged wake-up only. The protected workflow_run receiver independently
+# selects the live Queue and never trusts this run's result or artifacts.
+name: Self Queue Relay
+
+on:
+  merge_group:
+    types: [checks_requested]
+
+permissions: {}
+
+jobs:
+  relay:
+    if: vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Emit unprivileged relay completion
+        run: echo 'Protected Queue receiver will select current live state.'

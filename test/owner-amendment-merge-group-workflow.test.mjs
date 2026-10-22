@@ -1,18 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { parse } from 'yaml';
 
 test('merge-group amendment verifier remains inactive in the self workflow', () => {
   const workflow = readFileSync(new URL('../.github/workflows/self-architecture-gate.yml', import.meta.url), 'utf8');
   assert.match(workflow, /^name: Self Architecture Gate/m);
   assert.match(workflow, /branches: \[main\]/);
   assert.match(workflow, /architecture-gate:/);
-  assert.match(workflow, /if: needs\.classify-self-repository\.outputs\.classification == 'same-repository' && github\.event_name == 'pull_request_target' && github\.event\.pull_request\.draft == false/);
+  const jobs = parse(workflow).jobs;
+  assert.equal(jobs['architecture-gate'].if, "always() && !cancelled() && (vars.ARCHITECTURE_GATE_SELF_APP_ENABLED != 'true' || needs.self-app-start.result == 'success') && needs.classify-self-repository.outputs.classification == 'same-repository' && github.event_name == 'pull_request_target' && github.event.pull_request.draft == false");
+  assert.deepEqual(jobs['architecture-gate'].needs, ['classify-self-repository', 'self-app-start']);
   assert.match(workflow, /deny-unreviewed-fork:[\s\S]*?name: architecture-gate \/ accept[\s\S]*?exit 1/);
   assert.match(workflow, /architecture-gate \/ accept/);
   assert.doesNotMatch(workflow, /owner-amendment-merge-group-gate\.mjs/);
   assert.doesNotMatch(workflow, /secrets\.OPENAI_API_KEY[\s\S]*merge_group/);
-  assert.doesNotMatch(workflow, /OWNER_AMENDMENT_TAG_RULESET_ID/);
+  assert.match(jobs['self-app-start'].if, /vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true'/);
+  assert.match(jobs['self-app-report'].if, /always\(\).*vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true'/);
   const script = readFileSync(new URL('../scripts/owner-amendment-merge-group-gate.mjs', import.meta.url), 'utf8');
   assert.match(script, /git\(\['rev-parse', 'HEAD'\]\)/);
   assert.match(script, /runtimeRevision !== selection\.bBaseSha/);

@@ -18,6 +18,10 @@ on:
       protected-review-instructions:
         type: boolean
         default: false
+      self-app-projection:
+        description: Export bounded results only to the protected self App reporter; disabled by default
+        type: boolean
+        default: false
       self-flex-probe:
         type: boolean
         default: false
@@ -38,6 +42,58 @@ on:
         description: Exact public review job display name for this invocation; required to disambiguate multiple calls
         type: string
         default: ''
+    outputs:
+      review_workflow_repository:
+        description: Protected reusable reviewer source repository
+        value: ${{ jobs.policy.outputs.self_app_workflow_repository }}
+      review_workflow_sha:
+        description: Protected reusable reviewer source sha
+        value: ${{ jobs.policy.outputs.self_app_workflow_sha }}
+      review_workflow_ref:
+        description: Protected reusable reviewer source ref
+        value: ${{ jobs.policy.outputs.self_app_workflow_ref }}
+      policy_result:
+        description: Protected self producer policy result
+        value: ${{ jobs.policy.result }}
+      mode:
+        description: Protected self producer mode
+        value: ${{ jobs.policy.outputs.mode }}
+      policy_sha256:
+        description: Protected self producer policy sha256
+        value: ${{ jobs.policy.outputs.policy_sha256 }}
+      review_result:
+        description: Protected self producer review result
+        value: ${{ jobs.review.result }}
+      decision_base64:
+        description: Protected self producer decision base64
+        value: ${{ jobs.review.outputs.self_app_decision_base64 }}
+      reviewed_sha:
+        description: Protected self producer reviewed sha
+        value: ${{ jobs.review.outputs.reviewed_sha }}
+      authority_provenance_base64:
+        description: Protected self producer authority provenance base64
+        value: ${{ jobs.review.outputs.authority_provenance }}
+      selected_authority_changed:
+        description: Protected self producer selected authority changed
+        value: ${{ jobs.review.outputs.self_authority_changed }}
+      amendment_signer_result:
+        description: Protected self producer amendment signer result
+        value: ${{ jobs['owner-amendment-semantic-eligibility-signer'].result }}
+      amendment_signer_status:
+        description: Protected self producer amendment signer status
+        value: ${{ jobs['owner-amendment-semantic-eligibility-signer'].outputs.status }}
+      amendment_eligibility:
+        description: Protected self producer amendment eligibility
+        value: ${{ jobs['owner-amendment-semantic-eligibility-signer'].outputs.eligibility }}
+      amendment_artifact_id:
+        description: Protected self producer amendment artifact id
+        value: ${{ jobs['owner-amendment-semantic-eligibility-signer'].outputs.artifact_id }}
+      amendment_artifact_digest:
+        description: Protected self producer amendment artifact digest
+        value: ${{ jobs['owner-amendment-semantic-eligibility-signer'].outputs.artifact_digest }}
+      amendment_completed_at:
+        description: Protected self producer amendment completed at
+        value: ${{ jobs['owner-amendment-semantic-eligibility-signer'].outputs.completed_at }}
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -58,6 +114,9 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     outputs:
+      self_app_workflow_repository: ${{ steps.self-app-source.outputs.repository }}
+      self_app_workflow_sha: ${{ steps.self-app-source.outputs.sha }}
+      self_app_workflow_ref: ${{ steps.self-app-source.outputs.ref }}
       mode: ${{ steps.resolve.outputs.mode }}
       policy_version: ${{ steps.resolve.outputs.policyVersion }}
       policy_sha256: ${{ steps.resolve.outputs.sha256 }}
@@ -92,6 +151,21 @@ jobs:
       review_step_timeout_minutes: ${{ steps.resolve.outputs.reviewStepTimeoutMinutes || steps.review-timeouts.outputs.stepTimeoutMinutes }}
       self_review_environment: ${{ steps.self-review-environment.outputs.selected }}
     steps:
+      - name: Bind the protected reusable reviewer source
+        id: self-app-source
+        if: inputs.self-app-projection
+        env:
+          SOURCE_REPOSITORY: ${{ job.workflow_repository }}
+          SOURCE_SHA: ${{ job.workflow_sha }}
+          SOURCE_REF: ${{ job.workflow_ref }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          for (const [key, value] of Object.entries({ repository: process.env.SOURCE_REPOSITORY, sha: process.env.SOURCE_SHA, ref: process.env.SOURCE_REF })) {
+            if (typeof value !== 'string' || !value || /[\r\n]/.test(value)) throw new Error('Missing protected reusable source identity.');
+            appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
+          }
+          NODE
       - uses: actions/checkout@v5
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
@@ -218,6 +292,7 @@ jobs:
     timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_job_timeout_minutes) }}
     outputs:
       final_message: ${{ steps.pass-display.outputs.pass_conclusion != 'PASS' && ((needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message) || '' }}
+      self_app_decision_base64: ${{ steps.self-app-projection.outputs.decision_base64 }}
       pass_conclusion: ${{ steps.pass-display.outputs.pass_conclusion }}
       pass_digest: ${{ steps.pass-display.outputs.pass_digest }}
       pass_nonce: ${{ steps.pass-display.outputs.pass_nonce }}
@@ -687,6 +762,21 @@ jobs:
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-review/codex-pass-producer.mjs"
 
+
+      - name: Export bounded validated decision to the protected self App reporter
+        id: self-app-projection
+        if: inputs.self-app-projection && github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main'
+        env:
+          DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        run: |
+          node --input-type=module <<'NODE'
+          const { appendGitHubOutput } = await import(`${process.env.GATEKEEPER_RUNTIME_ROOT}/dist/runner-temp-path.mjs`);
+          const bytes = Buffer.from(process.env.DECISION ?? '', 'utf8');
+          if (!bytes.length || bytes.length > 65536) throw new Error('Protected decision bytes are unavailable or oversized.');
+          JSON.parse(bytes.toString('utf8'));
+          appendGitHubOutput(`decision_base64=${bytes.toString('base64')}\n`);
+          NODE
 
   block-review-record:
     if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && needs.policy.result == 'success' && needs.review.result == 'success' && needs.policy.outputs.owner_amendment_grade == 'G0' && needs.policy.outputs.owner_amendment_evidence_producer == 'github-actions-attestation' && needs.review.outputs.decision_kind == 'BLOCK'
