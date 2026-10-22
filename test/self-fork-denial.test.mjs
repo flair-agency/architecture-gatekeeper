@@ -35,13 +35,13 @@ function event({ repositoryId = 123, baseId = 123, headId = 123, number = 45,
 }
 
 test('self caller classifies only complete numeric repository metadata before the reusable workflow', () => {
-  const classifierJob = workflow.slice(workflow.indexOf('  classify-self-repository:'), workflow.indexOf('  architecture-gate:'));
-  const callerJob = workflow.slice(workflow.indexOf('  architecture-gate:'), workflow.indexOf('  deny-unreviewed-fork:'));
+  const classifierJob = workflow.slice(workflow.indexOf('  classify-self-repository:'), workflow.indexOf('  self-app-start:'));
+  const callerJob = workflow.slice(workflow.indexOf('  architecture-gate:'), workflow.indexOf('  self-app-report:'));
   const denialJob = workflow.slice(workflow.indexOf('  deny-unreviewed-fork:'));
   assert.match(classifierJob, /contents: none/);
   assert.match(classifierJob, /id-token: none/);
   assert.doesNotMatch(classifierJob, /secrets\.|OPENAI_API_KEY|id-token: write|attestations: write/);
-  assert.match(callerJob, /needs: classify-self-repository/);
+  assert.match(callerJob, /needs: \[classify-self-repository, self-app-start\]/);
   assert.match(callerJob, /outputs\.classification == 'same-repository'/);
   assert.match(denialJob, /name: architecture-gate \/ accept/);
   assert.match(denialJob, /if: always\(\).*classification != 'same-repository'/);
