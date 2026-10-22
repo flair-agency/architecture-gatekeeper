@@ -239,7 +239,7 @@ function apiFixture({ repoPath, baseSha, bSha, groupSha, triggerHeadSha, profile
     repositoryId, triggerPr, bPr, triggerArtifactName };
 }
 
-function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false, previousPolicyLocalOnly = false } = {}) {
+function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false, previousPolicyLocalOnly = false, ordinary = false } = {}) {
   const repoPath = mkdtempSync(join(tmpdir(), 'agk-merge-group-route-'));
   git(repoPath, ['init', '-q']);
   // These short-lived fixtures need no detached Git housekeeping after a
@@ -261,6 +261,8 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false,
   const members = [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }];
   if (profile === 'completed-owner-decision-self-v1') members.push({ id: 'ownership-charter', repository: 'self',
     revision: 'authority-revision', path: 'docs/ownership.md' });
+  for (let index = members.length; index < 6; index++) members.push({ id: `authority-${index}`, repository: 'self',
+    revision: 'authority-revision', path: `docs/authority-${index}.md` });
   const basePolicy = structuredClone(policy);
   if (previousPolicyLocalOnly) basePolicy.branches.main = { mode: 'local-only' };
   else if (candidateOnlyOptIn) delete basePolicy.branches.main.ownerAmendment;
@@ -270,15 +272,18 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false,
   const newArchitecture = Buffer.from('# Architecture\nThe amended rule preserves protected review.\n');
   put(repoPath, 'docs/architecture.md', oldArchitecture);
   let oldOwnership, newOwnership;
-  if (members.length === 2) {
+  if (members.length > 1) {
     oldOwnership = Buffer.from('# Ownership\nThe owner retains this policy choice.\n');
     newOwnership = Buffer.from('# Ownership\nThe owner resolves this policy choice.\n');
-    put(repoPath, 'docs/ownership.md', oldOwnership);
+    for (const member of members.slice(1)) put(repoPath, member.path, oldOwnership);
   }
   const baseSha = commit(repoPath, 'protected base');
   if (candidateOnlyOptIn || previousPolicyLocalOnly) put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(policy)}\n`));
-  put(repoPath, 'docs/architecture.md', newArchitecture);
-  if (oldOwnership) put(repoPath, 'docs/ownership.md', newOwnership);
+  if (ordinary) put(repoPath, 'ordinary.txt', Buffer.from('ordinary code change\n'));
+  else {
+    put(repoPath, 'docs/architecture.md', newArchitecture);
+    if (profile === 'completed-owner-decision-self-v1') put(repoPath, 'docs/ownership.md', newOwnership);
+  }
   const bSha = commit(repoPath, candidateOnlyOptIn || previousPolicyLocalOnly ? 'candidate policy opt-in B' : 'authority-only B');
   const groupCommit = git(repoPath, ['commit-tree', `${bSha}^{tree}`, '-p', baseSha, '-p', bSha, '-m', 'merge group']);
   const groupSha = groupCommit.toString('ascii').trim();
@@ -314,7 +319,7 @@ function triggerEvidence(fixture, resolved, api) {
   let decision;
   if (fixture.profile === 'completed-block-v1') {
     decision = { decision: 'BLOCK', findings: [], summary: 'The previous rule needs review.', authority: ['protected architecture'],
-      authorityFiles: ['docs/architecture.md'], authorityIds: ['architecture-contract'], responsibility: ['review'],
+      authorityFiles: authority.members.map(member => member.path), authorityIds: authority.members.map(member => member.id), responsibility: ['review'],
       capabilitySurface: ['CI'], qualityGuarantees: ['fail closed'], reviewedScope: ['change A'], prohibitedChanges: ['weaken gate'],
       gates: { sharedMechanism: { decision: 'BLOCK', summary: 'Review rule.', consumerOwnership: '', failClosedBehavior: '', compatibility: '', minimality: '' },
         trustBoundary: { decision: 'PASS', summary: 'Credentials remain isolated.', tokenPermissions: '', untrustedInputs: '', credentialHandling: '', reportingIsolation: '' } } };
@@ -610,24 +615,12 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     responses[tagRefPath] = { ...structuredClone(validTagRef), status: 404, json: {} };
     runCliFailure(/exact B has a successful pre-queue semantic eligibility signer result but no protected amendment tag/);
 
-    // The same exact-B run without a semantic signer must retain the ordinary
-    // dispatch. Assert the child CLI's observable outputs and early return,
-    // beyond the producer-inspection component's NOT_APPLICABLE eligibility.
+    // An old-selected Authority change stays an amendment even without a
+    // signer or tag; ordinary PASS must not become a fallback.
     const jobsPath = `${prefix}/actions/runs/202/attempts/1/jobs`;
     const validJobs = structuredClone(responses[jobsPath]);
     responses[jobsPath] = { json: { total_count: 0, jobs: [] } };
-    writeFileSync(dataPath, JSON.stringify(responses));
-    writeFileSync(outputPath, '');
-    writeFileSync(tracePath, '');
-    assert.equal(run(), 'No protected amendment tag selects a fresh ordinary review of the exact current base/B tuple.\n');
-    assert.equal(readFileSync(outputPath, 'utf8'), `route=ordinary\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
-    assert.equal(existsSync(join(runner, 'owner-amendment-eligibility')), false,
-      'ordinary dispatch must not prepare amendment eligibility');
-    const ordinaryTrace = readFileSync(tracePath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
-    assert.ok(ordinaryTrace.some(item => item.fetch === jobsPath), 'production main inspected the exact run attempt');
-    assert.ok(ordinaryTrace.some(item => item.fetch === tagRefPath), 'production main observed the missing exact-B tag');
-    assert.ok(ordinaryTrace.every(item => !item.gh && !item.fetch?.includes('/artifacts')),
-      'ordinary dispatch must not verify attestations or download amendment artifacts');
+    runCliFailure(/Authority change requires the protected exact-B amendment tag/);
     responses[jobsPath] = validJobs;
     responses[tagRefPath] = structuredClone(validTagRef);
     writeFileSync(dataPath, JSON.stringify(responses));
@@ -695,7 +688,7 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
   } finally { rmSync(temporary, { recursive: true, force: true }); }
 }
 
-async function exerciseCandidateOnlyOptInGate(fixture, api, event, expectedBaseMode = 'enforced') {
+async function exerciseCandidateOnlyOptInGate(fixture, api, event, expectedBaseMode = 'enforced', ordinary = false) {
   const temporary = mkdtempSync(join(tmpdir(), 'agk-candidate-opt-in-'));
   try {
     fixture.runGit(['remote', 'add', 'origin', fixture.repoPath]);
@@ -706,9 +699,9 @@ async function exerciseCandidateOnlyOptInGate(fixture, api, event, expectedBaseM
     const candidatePolicyBytes = fixture.runGit(['show', `${fixture.bSha}:.codex/gatekeeper/ci-policy.json`]);
     const basePolicy = resolveCiPolicy(parseCiPolicyJson(basePolicyBytes.toString('utf8')), 'main');
     const candidatePolicy = resolveCiPolicy(parseCiPolicyJson(candidatePolicyBytes.toString('utf8')), 'main');
-    assert.equal(JSON.parse(basePolicyBytes.toString('utf8')).branches.main.ownerAmendment, undefined);
+    if (!ordinary) assert.equal(JSON.parse(basePolicyBytes.toString('utf8')).branches.main.ownerAmendment, undefined);
     assert.equal(basePolicy.mode, expectedBaseMode);
-    assert.equal(basePolicy.ownerAmendmentGrade, undefined);
+    assert.equal(basePolicy.ownerAmendmentGrade, ordinary ? 'G0' : undefined);
     assert.equal(candidatePolicy.mode, 'enforced');
     assert.equal(candidatePolicy.ownerAmendmentGrade, 'G0');
     assert.equal(candidatePolicy.ownerAmendmentTriggerProfile, fixture.profile);
@@ -755,15 +748,27 @@ throw new Error('Unexpected gh work in candidate-only opt-in case');\n`);
       OWNER_AMENDMENT_TAG_RULESET_ID: String(tagRulesetId), GITHUB_RUN_ID: '202', GITHUB_RUN_ATTEMPT: '1',
       GITHUB_WORKFLOW_SHA: fixture.baseSha, NODE_OPTIONS: `--import=${shimPath}`,
       PATH: `${bin}:${process.env.PATH}`, GIT_CONFIG_GLOBAL: configPath, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_COUNT: '0' };
-    const stdout = execFileSync(process.execPath, [join(fixture.repoPath, 'scripts/owner-amendment-merge-group-gate.mjs')],
+    const run = () => execFileSync(process.execPath, [join(fixture.repoPath, 'scripts/owner-amendment-merge-group-gate.mjs')],
       { env, cwd: runner, encoding: 'utf8', timeout: 30_000, maxBuffer: 2 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
-
     if (expectedBaseMode === 'local-only') {
-      assert.equal(stdout, 'Protected current-base policy explicitly selects local-only review.\n');
+      assert.equal(run(), 'Protected current-base policy explicitly selects local-only review.\n');
       assert.equal(readFileSync(outputPath, 'utf8'), `route=not-applicable\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
-    } else {
-      assert.equal(stdout, 'No protected amendment tag selects a fresh ordinary review of the exact current base/B tuple.\n');
+    } else if (ordinary) {
+      const expected = 'Unchanged old Authority Set selects a fresh ordinary review of the exact current base/B tuple.\n';
+      assert.equal(run(), expected);
       assert.equal(readFileSync(outputPath, 'utf8'), `route=ordinary\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+      // A later lightweight tag cannot reclassify an immutable ordinary diff.
+      fixture.runGit(['tag', `${tagNamespace.replace('refs/tags/', '')}/${fixture.bSha}`, fixture.bSha]);
+      writeFileSync(outputPath, ''); writeFileSync(tracePath, '');
+      assert.equal(run(), expected);
+      assert.equal(readFileSync(outputPath, 'utf8'), `route=ordinary\nbase_sha=${fixture.baseSha}\nb_sha=${fixture.bSha}\n`);
+    } else {
+      assert.throws(run, error => {
+        assert.match(error.stderr.toString(), /Authority change requires a prior-selected amendment route/);
+        assert.equal(error.stdout.toString(), '');
+        return true;
+      });
+      assert.equal(readFileSync(outputPath, 'utf8'), '');
     }
     assert.equal(existsSync(join(runner, 'owner-amendment-eligibility')), false);
     const trace = readFileSync(tracePath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
@@ -979,5 +984,18 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
     const event = { action: 'checks_requested', repository: { full_name: repository }, merge_group: {
       base_ref: 'refs/heads/main', base_sha: fixture.baseSha, head_sha: fixture.groupSha } };
     await exerciseCandidateOnlyOptInGate(fixture, api, event);
+  });
+}
+
+for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
+  test(`ordinary content selects fresh review without reading tag or signer state under ${profile}`, async t => {
+    const fixture = makeRepo(profile, { includeRuntime: true, ordinary: true });
+    t.after(fixture.cleanup);
+    const api = apiFixture({ repoPath: fixture.repoPath, baseSha: fixture.baseSha, bSha: fixture.bSha,
+      groupSha: fixture.groupSha, triggerHeadSha: fixture.triggerHeadSha, profile,
+      triggerRecordBytes: Buffer.from('{}'), bundleBytes: Buffer.from('{}') });
+    const event = { action: 'checks_requested', repository: { full_name: repository }, merge_group: {
+      base_ref: 'refs/heads/main', base_sha: fixture.baseSha, head_sha: fixture.groupSha } };
+    await exerciseCandidateOnlyOptInGate(fixture, api, event, 'enforced', true);
   });
 }

@@ -31,7 +31,7 @@ test('merge_group success is pre-transition verification and keeps adoption/cano
   assert.doesNotMatch(script, /OWNER_AMENDMENT \/ G0 accepted:/);
 });
 
-test('missing-tag merge-group route selects fresh exact-tuple ordinary PASS verification', () => {
+test('content-classified ordinary route selects fresh exact-tuple PASS verification', () => {
   const script = readFileSync(new URL('../scripts/owner-amendment-merge-group-gate.mjs', import.meta.url), 'utf8');
   const attempts = readFileSync(new URL('../dist/owner-amendment/owner-amendment-semantic-producer-attempts.mjs', import.meta.url), 'utf8');
   assert.match(script, /inspectOwnerAmendmentSemanticProducerAttempts/);

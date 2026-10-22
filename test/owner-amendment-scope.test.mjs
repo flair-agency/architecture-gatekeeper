@@ -73,10 +73,15 @@ test('OWNER_DECISION permits multiple changed members from the previous set whil
     manifest: multiManifest, changedFiles: [...changedFiles, { path: otherPath, status: 'modified' }] }), /previous self authority/);
 });
 
-test('completed BLOCK keeps its one-member and one-file compatibility restriction', () => {
+test('completed BLOCK validates a multi-member prior set and retains its one-target change restriction', () => {
   const multiManifest = { version: 1, authorities: [...manifest.authorities,
-    { id: 'security-contract', repository: 'self', revision: 'authority-revision', path: 'docs/security.md' }] };
-  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid, manifest: multiManifest }), /exactly the selected/);
+    { id: 'security-contract', repository: 'self', revision: 'authority-revision', path: 'docs/security.md' },
+    { id: 'upstream-contract', repository: 'example/authority', revision: 'f'.repeat(40), path: 'docs/upstream.md' }] };
+  const result = inspectOwnerAmendmentSelfScope({ ...valid, manifest: multiManifest });
+  assert.equal(result.authorityId, 'architecture-contract');
   assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid,
+    manifest: multiManifest,
     changedFiles: [...valid.changedFiles, { path: 'docs/security.md', status: 'modified' }] }), /exactly the selected/);
+  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid,
+    manifest: multiManifest, changedFiles: [{ path: 'docs/security.md', status: 'modified' }] }), /exactly the selected/);
 });

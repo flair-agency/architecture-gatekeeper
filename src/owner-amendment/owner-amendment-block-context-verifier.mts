@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
-import { rejectDuplicateJsonKeys } from '../authority-set.mjs';
+import { rejectDuplicateJsonKeys, validateAuthoritySetDecision } from '../authority-set.mjs';
 import { validateOwnerAmendmentG0TagEnvelope } from '../owner-amendment.mjs';
 
 const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
@@ -12,8 +12,10 @@ const fail = (message: string): never => { throw new Error(`Owner amendment BLOC
 // fields are unchecked caller or record data, not validated snapshots.
 type PolicyView = { grade: unknown; scope: unknown; triggerProfile: unknown; authorities: unknown };
 type ContextAuthorityView = { id: unknown; path: unknown; previousSha256: unknown; newSha256: unknown };
-type ContextView = { repository: unknown; baseSha: unknown; bSha: unknown; policyRevision: unknown; policy: PolicyView; authority: ContextAuthorityView };
-type ReviewMemberView = { id: unknown; repository: unknown; path: unknown; resolvedCommit: unknown; sha256: unknown };
+type TrustedMemberView = { id?: unknown; path?: unknown; repository?: unknown; revision?: unknown };
+type ContextView = { repository: unknown; baseSha: unknown; bSha: unknown; policyRevision: unknown; policy: PolicyView;
+  authority: ContextAuthorityView; authorityMembers?: TrustedMemberView[] };
+type ReviewMemberView = { id: unknown; repository: unknown; path: unknown; resolvedCommit: unknown; byteLength: unknown; sha256: unknown };
 type ReviewAuthorityView = { selfRepository: unknown; authorityRevision: unknown; members: ReviewMemberView[] };
 type ReviewDecisionView = { decision: unknown; authorityIds: unknown[] };
 type ReviewView = { version: unknown; kind: unknown; repository: unknown; prNumber: unknown; baseSha: unknown; headSha: unknown;
@@ -56,7 +58,13 @@ function canonical(value: unknown): unknown {
 }
 
 function validateContext(context: ContextView): ContextView {
-  exact(context, ['repository', 'baseSha', 'bSha', 'policyRevision', 'policy', 'authority'], 'trusted context');
+  const requiredContextKeys = ['repository', 'baseSha', 'bSha', 'policyRevision', 'policy', 'authority'];
+  if (!context || typeof context !== 'object' || Array.isArray(context) ||
+      Object.keys(context).some(key => ![...requiredContextKeys, 'authorityMembers'].includes(key)) ||
+      requiredContextKeys.some(key => !Object.hasOwn(context, key)) ||
+      Object.keys(context).length !== requiredContextKeys.length + (Object.hasOwn(context, 'authorityMembers') ? 1 : 0)) {
+    fail('trusted context has missing or unknown fields.');
+  }
   sha(context.baseSha, SHA1, 'protected base SHA');
   sha(context.bSha, SHA1, 'exact B SHA');
   if (context.baseSha === context.bSha || context.policyRevision !== context.baseSha) fail('B or policy revision is stale.');
@@ -66,6 +74,22 @@ function validateContext(context: ContextView): ContextView {
   if (context.policy.grade !== 'G0' || context.policy.scope !== 'authority-only' || context.policy.triggerProfile !== 'completed-block-v1' ||
       !Array.isArray(context.policy.authorities) || (context.policy.authorities as unknown[]).length < 1 || (context.policy.authorities as unknown[]).length > 32) {
     fail('previous policy does not select the self G0 completed-BLOCK profile.');
+  }
+  if (Object.hasOwn(context, 'authorityMembers')) {
+    if (!Array.isArray(context.authorityMembers) || context.authorityMembers.length < 1 || context.authorityMembers.length > 32) {
+      fail('trusted previous Authority Set is missing or exceeds its member limit.');
+    }
+    const trustedIds = new Set<string>(), trustedPaths = new Set<string>();
+    for (const member of context.authorityMembers as NonNullable<ContextView["authorityMembers"]>) {
+      if (!member || typeof member.id !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(member.id) || trustedIds.has(member.id) ||
+          typeof member.path !== 'string' || !/^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/.test(member.path) || member.path.length > 240 ||
+          member.path.split('/').some(part => part === '.' || part === '..') || trustedPaths.has(member.path) ||
+          (member.repository === 'self' ? member.revision !== 'authority-revision' :
+            typeof member.repository !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(member.repository) ||
+            !SHA1.test((member.revision ?? '') as string))) fail('trusted previous Authority Set has an invalid or duplicate member.');
+      trustedIds.add(member.id as string);
+      trustedPaths.add(member.path as string);
+    }
   }
   exact(context.authority, ['id', 'path', 'previousSha256', 'newSha256'], 'affected authority');
   if (typeof context.authority.id !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(context.authority.id as string) ||
@@ -87,6 +111,7 @@ function validateContext(context: ContextView): ContextView {
  */
 export function verifyOwnerAmendmentBlockContext({ tagEnvelope, trustedContext }: OwnerAmendmentBlockContextInput): OwnerAmendmentBlockContextResult {
   const context = validateContext(trustedContext as ContextView);
+  const trustedMembers = context.authorityMembers;
   const tagResult = validateOwnerAmendmentG0TagEnvelope(tagEnvelope as TagEnvelopeInput) as TagResultView;
   if (tagResult.headSha !== context.bSha) fail('tag envelope is not bound to exact B.');
 
@@ -107,13 +132,33 @@ export function verifyOwnerAmendmentBlockContext({ tagEnvelope, trustedContext }
       ![review.runId, review.runAttempt].every(value => typeof value === 'string' && /^[1-9]\d*$/.test(value))) {
     fail('ReviewRecord is not a completed historical BLOCK for this repository and protected base.');
   }
-  const member = review.authority?.members?.[0];
+  const members = review.authority?.members;
+  const matchingMembers = Array.isArray(members) ? members.filter(member => member?.id === context.authority.id &&
+    member?.repository === context.repository && member?.path === context.authority.path &&
+    member?.resolvedCommit === context.baseSha && member?.sha256 === context.authority.previousSha256) : [];
+  const memberIds = new Set<unknown>();
+  const expectedMembers = trustedMembers ?? [{ id: context.authority.id, repository: 'self', revision: 'authority-revision', path: context.authority.path }];
+  const membersValid = Array.isArray(members) && members.length === expectedMembers.length && members.every(member => {
+    const valid = member && typeof member.id === 'string' && /^[a-z][a-z0-9-]{0,63}$/.test(member.id) && !memberIds.has(member.id) &&
+      typeof member.repository === 'string' && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(member.repository) &&
+      SHA1.test((member.resolvedCommit ?? '') as string) && typeof member.path === 'string' &&
+      /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/.test(member.path) && member.path.length <= 240 &&
+      !member.path.split('/').some(part => part === '.' || part === '..') && Number.isSafeInteger(member.byteLength) &&
+      (member.byteLength as number) > 0 && SHA256.test((member.sha256 ?? '') as string);
+    if (valid) memberIds.add(member.id);
+    return valid;
+  });
   if (review.authority?.selfRepository !== context.repository || review.authority.authorityRevision !== context.baseSha ||
-      review.authority.members.length !== 1 || member?.id !== context.authority.id || member?.repository !== context.repository ||
-      member?.path !== context.authority.path || member?.resolvedCommit !== context.baseSha ||
-      member?.sha256 !== context.authority.previousSha256 || review.decision?.decision !== 'BLOCK' ||
-      !Array.isArray(review.decision.authorityIds) || review.decision.authorityIds.length !== 1 ||
-      review.decision.authorityIds[0] !== context.authority.id) fail('ReviewRecord does not contain the exact completed single-authority BLOCK for the affected previous authority.');
+      !membersValid || matchingMembers.length !== 1 || review.decision?.decision !== 'BLOCK' ||
+      members.length !== expectedMembers.length || members.some((member, index) => {
+        const expected = expectedMembers[index];
+        return member.id !== expected.id || member.repository !== (expected.repository === 'self' ? context.repository : expected.repository) ||
+          member.resolvedCommit !== (expected.repository === 'self' ? context.baseSha : expected.revision) || member.path !== expected.path;
+      })) {
+    fail('ReviewRecord does not contain the exact completed full-set BLOCK for the affected previous authority.');
+  }
+  try { validateAuthoritySetDecision(review.decision, { members: expectedMembers }); }
+  catch { fail('ReviewRecord BLOCK decision does not report the trusted complete previous Authority Set.'); }
   if (typeof review.decisionBytesBase64 !== 'string' ||
       !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(review.decisionBytesBase64 as string)) {
     fail('ReviewRecord decision bytes are missing or malformed.');

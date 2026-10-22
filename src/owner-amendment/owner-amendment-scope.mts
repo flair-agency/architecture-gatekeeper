@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
-export type OwnerAmendmentSelfScopeResult = Readonly<{ baseSha: unknown; headSha: unknown; authorityId: string; authorityPath: string; previousSha256: string; newSha256: string }>;
+export type OwnerAmendmentSelfScopeResult = Readonly<{ baseSha: unknown; headSha: unknown; authorityId: string; authorityPath: string; previousSha256: string; newSha256: string;
+  authorityMembers?: readonly Readonly<{ id: string; repository: string; revision: string; path: string }>[] }>;
 
 const SHA = /^[a-f0-9]{40}$/;
 const ID = /^[a-z][a-z0-9-]{0,63}$/;
@@ -15,9 +16,10 @@ type ScopeInput = { policy: unknown; manifest: unknown; baseSha: unknown; headSh
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
 /**
- * Check the authority-only scope of a self G0 amendment. BLOCK keeps its
- * original one-member/one-file restriction; OWNER_DECISION validates changes
- * against the complete previous Authority Set. The adapter must derive every
+ * Check the authority-only scope of a self G0 amendment. BLOCK validates the
+ * complete previous Authority Set while retaining its one-target/one-file
+ * restriction. OWNER_DECISION validates changes against that same complete
+ * previous Authority Set. The adapter must derive every
  * input from the previous protected base and exact B Git objects. This is
  * eligibility input, not an acceptance result.
  */
@@ -45,9 +47,23 @@ export function inspectOwnerAmendmentSelfScope({ policy, manifest, baseSha, head
       (selectedMembers[0] as MemberView).revision !== 'authority-revision') {
     throw new Error('Selected target must be exactly one previous self authority member.');
   }
+  const memberIds = new Set<string>(), memberPaths = new Set<string>();
+  for (const rawMember of (manifest as ManifestView).authorities as unknown[]) {
+    const member = rawMember as MemberView;
+    if (!member || typeof member.id !== 'string' || !ID.test(member.id) || memberIds.has(member.id) ||
+        typeof member.path !== 'string' || !PATH.test(member.path) || member.path.length > 240 ||
+        member.path.split('/').some(part => part === '.' || part === '..') || memberPaths.has(member.path) ||
+        (member.repository === 'self' ? member.revision !== 'authority-revision' :
+          typeof member.repository !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(member.repository) ||
+          !SHA.test((member.revision ?? '') as string))) {
+      throw new Error('Previous Authority Set contains an invalid or duplicated member.');
+    }
+    memberIds.add(member.id);
+    memberPaths.add(member.path);
+  }
 
   if ((policy as PolicyView).ownerAmendmentTriggerProfile === 'completed-block-v1') {
-    if (((manifest as ManifestView).authorities as unknown[]).length !== 1 || (changedFiles as unknown[]).length !== 1 ||
+    if ((changedFiles as unknown[]).length !== 1 ||
         ((changedFiles as unknown[])[0] as ChangedFileView | null | undefined)?.path !== path || ((changedFiles as unknown[])[0] as ChangedFileView | null)?.status !== 'modified') {
       throw new Error('B must modify exactly the selected self authority member.');
     }
@@ -67,6 +83,12 @@ export function inspectOwnerAmendmentSelfScope({ policy, manifest, baseSha, head
       (baseAuthorityBytes as Buffer).equals(headAuthorityBytes as Buffer)) {
     throw new Error('B must change the selected authority bytes.');
   }
+  const authorityMembers = (policy as PolicyView).ownerAmendmentTriggerProfile === 'completed-block-v1'
+    ? Object.freeze(((manifest as ManifestView).authorities as unknown[]).map((member: unknown) => Object.freeze({
+    id: (member as MemberView).id as string, repository: (member as MemberView).repository as string,
+    revision: (member as MemberView).revision as string, path: (member as MemberView).path as string,
+  }))) : undefined;
   return Object.freeze({ baseSha, headSha, authorityId: id, authorityPath: path,
-    previousSha256: digest(baseAuthorityBytes as Buffer), newSha256: digest(headAuthorityBytes as Buffer) });
+    previousSha256: digest(baseAuthorityBytes as Buffer), newSha256: digest(headAuthorityBytes as Buffer),
+    ...(authorityMembers ? { authorityMembers } : {}) });
 }
