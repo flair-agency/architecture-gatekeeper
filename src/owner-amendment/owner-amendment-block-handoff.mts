@@ -114,18 +114,29 @@ export function prepareOwnerAmendmentBlockHandoff<B = unknown, P = unknown>({
   const amendmentRecord = parseJson(amendmentRecordBytes, 'AmendmentRecord') as ParsedAmendmentRecordView;
   const prior = reviewRecord.authority?.members;
   const authority = amendmentRecord?.authority;
+  const memberIds = new Set<unknown>();
+  const fullPriorSet = Array.isArray(prior) && prior.length > 0 && prior.length <= 32 && prior.every((member: unknown) => {
+    const id = (member as PriorAuthorityMemberView | null)?.id;
+    const valid = typeof id === 'string' && /^[a-z][a-z0-9-]{0,63}$/.test(id) && !memberIds.has(id);
+    if (valid) memberIds.add(id);
+    return valid;
+  });
+  const targetMembers = Array.isArray(prior) ? prior.filter((member: unknown) =>
+    (member as PriorAuthorityMemberView | null)?.id === (authority as Record<string, unknown> | null)?.id &&
+    (member as PriorAuthorityMemberView | null)?.path === (authority as Record<string, unknown> | null)?.path &&
+    (member as PriorAuthorityMemberView | null)?.repository === reviewRecord.repository &&
+    (member as PriorAuthorityMemberView | null)?.resolvedCommit === reviewRecord.baseSha &&
+    (member as PriorAuthorityMemberView | null)?.sha256 === (authority as Record<string, unknown> | null)?.previousSha256) : [];
   if (!exactKeys(amendmentRecord, ['version', 'repository', 'baseSha', 'headSha', 'policyRevision',
     'authority', 'triggeringReviewSha256', 'attestationBundleSha256', 'purpose']) || amendmentRecord.version !== 2 ||
       amendmentRecord.headSha !== bSha || amendmentRecord.repository !== reviewRecord.repository ||
       amendmentRecord.baseSha !== reviewRecord.baseSha || amendmentRecord.policyRevision !== reviewRecord.baseSha ||
       amendmentRecord.triggeringReviewSha256 !== digest(recordBytes) ||
       amendmentRecord.attestationBundleSha256 !== digest(bundleBytes) ||
-      !Array.isArray(prior) || prior.length !== 1 || (prior[0] as PriorAuthorityMemberView)?.repository !== reviewRecord.repository ||
-      (prior[0] as PriorAuthorityMemberView)?.resolvedCommit !== reviewRecord.baseSha ||
+      !fullPriorSet || !Array.isArray(reviewRecord.decision?.authorityIds) ||
+      reviewRecord.decision.authorityIds.length !== memberIds.size || new Set(reviewRecord.decision.authorityIds).size !== memberIds.size ||
+      reviewRecord.decision.authorityIds.some(id => !memberIds.has(id)) || targetMembers.length !== 1 ||
       !exactKeys(authority, ['id', 'path', 'previousSha256', 'newSha256']) ||
-      (authority as Record<string, unknown>).id !== (prior[0] as PriorAuthorityMemberView).id ||
-      (authority as Record<string, unknown>).path !== (prior[0] as PriorAuthorityMemberView).path ||
-      (authority as Record<string, unknown>).previousSha256 !== (prior[0] as PriorAuthorityMemberView).sha256 ||
       !SHA256.test(((authority as Record<string, unknown>).newSha256 ?? '') as string) ||
       (authority as Record<string, unknown>).previousSha256 === (authority as Record<string, unknown>).newSha256 ||
       typeof amendmentRecord.purpose !== 'string' || amendmentRecord.purpose.length < 1 ||

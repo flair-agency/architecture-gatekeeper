@@ -12,7 +12,7 @@ import { fetchOwnerAmendmentBlockArtifact } from '../dist/owner-amendment-artifa
 import { extractOwnerAmendmentArtifactZip } from '../dist/owner-amendment-artifact-zip.mjs';
 import { verifyOwnerAmendmentBlockEvidence } from '../dist/owner-amendment-attestation.mjs';
 import { materializeAuthoritySet } from '../dist/authority-set.mjs';
-import { createGitHubAuthoritySource } from '../dist/github-authority-source.mjs';
+import { changedSelectedAuthorityPaths } from '../dist/ci-procedural-authority-change.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 import { assertMissingOwnerAmendmentTagHasNoSuccessfulSigner,
   inspectOwnerAmendmentSemanticProducerAttempts } from '../dist/owner-amendment-semantic-producer-attempts.mjs';
@@ -209,6 +209,26 @@ async function main() {
   try { git(['fetch', '--no-tags', 'origin', selection.bHeadSha]); }
   catch { fail('exact B Git object could not be fetched.'); }
 
+  // The old selection and immutable diff choose the route, never the presence of a tag.
+  if (!selectedPolicy.authorityManifestPath || !selectedPolicy.authorityLimitsBase64) fail('old complete Authority Set selection is unavailable.');
+  const manifestBytes = git(['show', `${selection.bBaseSha}:${selectedPolicy.authorityManifestPath}`]);
+  validateSelfAuthorityManifest(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(manifestBytes)));
+  const materialized = await materializeAuthoritySet({ manifestBytes,
+    limits: JSON.parse(Buffer.from(selectedPolicy.authorityLimitsBase64, 'base64').toString('utf8')),
+    selfRepository: repository, selfRoot: process.env.GITHUB_WORKSPACE,
+    authorityRevision: selection.bBaseSha, profile: selectedPolicy.authorityProfile ?? 'v1' });
+  const changed = changedSelectedAuthorityPaths({ repository, baseSha: selection.bBaseSha, headSha: selection.bHeadSha,
+    provenance: { version: 2, selfRepository: repository, authorityRevision: selection.bBaseSha,
+      manifestSha256: materialized.manifestSha256, setDigest: materialized.setDigest,
+      members: materialized.members.map(({ content, ...member }) => member) },
+    execFile: (_command, args) => git(args) });
+  if (changed.length === 0) {
+    selectRoute('ordinary', selection);
+    process.stdout.write('Unchanged old Authority Set selects a fresh ordinary review of the exact current base/B tuple.\n');
+    return;
+  }
+  if (selectedPolicy.ownerAmendmentGrade !== 'G0') fail('Authority change requires a prior-selected amendment route.');
+
   let producerAttempts = null;
   let tagResponse = null;
   if (selectedPolicy.ownerAmendmentGrade === 'G0') {
@@ -220,21 +240,14 @@ async function main() {
     tagResponse = await getJson(expectedTagUrl, { expectedOwnerAmendmentTagUrl: expectedTagUrl });
     if (tagResponse === null) assertMissingOwnerAmendmentTagHasNoSuccessfulSigner(producerAttempts);
   }
-  if (!tagResponse) {
-    selectRoute('ordinary', selection);
-    process.stdout.write('No protected amendment tag selects a fresh ordinary review of the exact current base/B tuple.\n');
-    return;
-  }
+  if (!tagResponse) fail('Authority change requires the protected exact-B amendment tag.');
   if (!Number.isSafeInteger(tagRulesetId) || tagRulesetId < 1) fail('active tag ruleset ID is unavailable for exact B verification.');
   const runGit = args => git(args);
   const context = resolveOwnerAmendmentHandoffGitContext({ repository, baseSha: selection.bBaseSha,
     headSha: selection.bHeadSha, baseBranch: 'main', runGit });
   try { validateSelfAuthorityManifest(context.manifest); }
   catch { fail('the v0.6.0 self profile supports only a non-empty protected Authority Set in this repository.'); }
-  const source = createGitHubAuthoritySource({ token });
-  const materialized = await materializeAuthoritySet({ manifestBytes: context.manifestBytes, limits: context.limits,
-    selfRepository: repository, selfRoot: process.env.GITHUB_WORKSPACE, authorityRevision: selection.bBaseSha,
-    fetchExternal: source, profile: context.policy.authorityProfile ?? 'v1' });
+  if (!manifestBytes.equals(context.manifestBytes)) fail('amendment context differs from the old manifest.');
   const exactChanges = deriveOwnerAmendmentGitChanges({ profile: context.policy.ownerAmendmentTriggerProfile,
     repository, baseSha: selection.bBaseSha, bSha: selection.bHeadSha, targetPath: context.scope.authorityPath,
     selectedAuthorityBytes: context.authorityBytes, changedFiles: context.changedFiles,

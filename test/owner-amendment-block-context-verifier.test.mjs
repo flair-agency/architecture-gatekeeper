@@ -9,19 +9,26 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ?
   Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
 
-function fixture() {
+function fixture(memberCount = 1) {
+  const trustedMembers = [{ id: 'architecture', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' },
+    ...Array.from({ length: memberCount - 1 }, (_, index) => ({ id: `authority-${index + 1}`, repository: 'self', revision: 'authority-revision', path: `docs/authority-${index + 1}.md` }))];
   const trustedContext = { repository: 'flair-agency/example', baseSha: a, bSha: b, policyRevision: a,
     policy: { grade: 'G0', scope: 'authority-only', triggerProfile: 'completed-block-v1',
       authorities: [{ id: 'architecture', path: 'docs/architecture.md' }] },
+    ...(memberCount > 1 ? { authorityMembers: trustedMembers } : {}),
     authority: { id: 'architecture', path: 'docs/architecture.md', previousSha256: oldHash, newSha256: newHash } };
+  const members = [{ id: 'architecture', repository: trustedContext.repository, resolvedCommit: a,
+    path: 'docs/architecture.md', byteLength: 10, sha256: oldHash },
+  ...Array.from({ length: memberCount - 1 }, (_, index) => ({ id: `authority-${index + 1}`,
+    repository: trustedContext.repository, resolvedCommit: a, path: `docs/authority-${index + 1}.md`,
+    byteLength: 12, sha256: String(index + 3).repeat(64) }))];
   const review = { version: 1, kind: 'owner-amendment-block-review-record', repository: trustedContext.repository,
     prNumber: 12, baseSha: a, headSha: c, mergeSha: 'd'.repeat(40), workflowSha: a,
     workflowPath: '.github/workflows/self-architecture-gate.yml', runId: '101', runAttempt: '1',
     authority: { version: 1, selfRepository: trustedContext.repository, authorityRevision: a,
-      manifestSha256: '3'.repeat(64), setDigest: '4'.repeat(64), members: [{ id: 'architecture',
-        repository: trustedContext.repository, resolvedCommit: a, path: 'docs/architecture.md', byteLength: 10, sha256: oldHash }] },
+      manifestSha256: '3'.repeat(64), setDigest: '4'.repeat(64), members },
     inputDigests: { manifest: '5'.repeat(64), policy: '6'.repeat(64), prompt: '7'.repeat(64), schema: '8'.repeat(64), validation: '9'.repeat(64) },
-    decisionSha256: '', decisionBytesBase64: '', decision: { decision: 'BLOCK', authorityIds: ['architecture'] } };
+    decisionSha256: '', decisionBytesBase64: '', decision: { decision: 'BLOCK', authorityIds: members.map(member => member.id) } };
   const decisionBytes = Buffer.from(JSON.stringify(review.decision));
   review.decisionSha256 = digest(decisionBytes);
   review.decisionBytesBase64 = decisionBytes.toString('base64');
@@ -57,6 +64,39 @@ test('validates exact BLOCK AmendmentRecord v2 against trusted B/base/policy/aut
   assert.equal(Object.hasOwn(result, 'acceptance'), false);
 });
 
+test('validates a completed BLOCK against the complete multi-member previous Set while selecting its target', () => {
+  const f = fixture(6);
+  const result = verifyOwnerAmendmentBlockContext({ trustedContext: f.trustedContext, tagEnvelope: f.envelopeArgs });
+  assert.equal(result.authorityId, 'architecture');
+});
+
+test('binds every BLOCK member to the trusted previous manifest order and identity', () => {
+  for (const mutate of [
+    f => { f.trustedContext.authorityMembers.pop(); },
+    f => { f.trustedContext.authorityMembers.reverse(); },
+    f => { f.trustedContext.authorityMembers[5].path = 'docs/other.md'; },
+  ]) {
+    const f = fixture(6); mutate(f);
+    assert.throws(() => verifyOwnerAmendmentBlockContext({ trustedContext: f.trustedContext, tagEnvelope: f.envelopeArgs }));
+  }
+  for (const mutate of [
+    review => { review.authority.members.pop(); },
+    review => { review.authority.members.reverse(); },
+    review => { review.authority.members[5].resolvedCommit = c; },
+  ]) {
+    const f = fixture(6), review = JSON.parse(f.reviewRecordBytes.toString()); mutate(review);
+    const reviewRecordBytes = Buffer.from(`${JSON.stringify(review)}\n`);
+    f.envelopeArgs.reviewRecordBytes = reviewRecordBytes;
+    assert.throws(() => verifyOwnerAmendmentBlockContext({ trustedContext: f.trustedContext, tagEnvelope: f.envelopeArgs }));
+  }
+});
+
+test('requires explicit trusted full Set for a multi-member historical BLOCK', () => {
+  const f = fixture(6);
+  delete f.trustedContext.authorityMembers;
+  assert.throws(() => verifyOwnerAmendmentBlockContext({ trustedContext: f.trustedContext, tagEnvelope: f.envelopeArgs }));
+});
+
 test('rejects mismatched trusted previous policy, B, or affected authority', () => {
   for (const mutate of [
     x => { x.trustedContext.bSha = c; },
@@ -87,6 +127,10 @@ test('rejects ReviewRecord and AmendmentRecord byte or semantic mismatches', () 
     }],
     ['wrong authority', f => {
       const review = JSON.parse(f.reviewRecordBytes.toString()); review.decision.authorityIds = ['other'];
+      f.envelopeArgs.reviewRecordBytes = Buffer.from(`${JSON.stringify(review)}\n`);
+    }],
+    ['incomplete full-set decision', f => {
+      const review = JSON.parse(f.reviewRecordBytes.toString()); review.decision.authorityIds = [];
       f.envelopeArgs.reviewRecordBytes = Buffer.from(`${JSON.stringify(review)}\n`);
     }],
     ['wrong B binding', f => {

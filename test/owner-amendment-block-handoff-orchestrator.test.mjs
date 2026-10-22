@@ -44,14 +44,14 @@ function makeZip(entries) {
 function fixture({ decision = 'BLOCK', discoveryChanges = {}, failTagCreate = false } = {}) {
   const decisionValue = { decision, authorityIds: ['architecture-contract'] };
   const decisionBytes = Buffer.from(JSON.stringify(decisionValue));
+  const authorityMember = { id: 'architecture-contract', repository, resolvedCommit: baseSha,
+    path: 'docs/architecture.md', byteLength: baseAuthorityBytes.length, sha256: sha(baseAuthorityBytes) };
   const record = {
     version: 1, kind: 'owner-amendment-block-review-record', repository,
     prNumber: 9, baseSha, headSha: aSha, mergeSha: 'd'.repeat(40), workflowSha: baseSha,
     workflowPath, runId, runAttempt,
     authority: { version: 1, selfRepository: repository, authorityRevision: baseSha,
-      manifestSha256: '1'.repeat(64), setDigest: '2'.repeat(64), members: [{ id: 'architecture-contract', repository,
-        resolvedCommit: baseSha, path: 'docs/architecture.md', byteLength: baseAuthorityBytes.length,
-        sha256: sha(baseAuthorityBytes) }] },
+      manifestSha256: '1'.repeat(64), setDigest: sha(Buffer.from(JSON.stringify([authorityMember]))), members: [authorityMember] },
     inputDigests: { manifest: '3'.repeat(64), policy: '4'.repeat(64), prompt: '5'.repeat(64), schema: '6'.repeat(64), validation: '7'.repeat(64) },
     decisionSha256: sha(decisionBytes), decisionBytesBase64: decisionBytes.toString('base64'), decision: decisionValue,
   };

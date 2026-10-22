@@ -13,16 +13,20 @@ const expected = { repository: 'flair-agency/example', workflowPath: '.github/wo
 const bSha = 'b'.repeat(40);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 
-function fixture(t) {
+function fixture(t, memberCount = 1) {
   const dir = mkdtempSync(join(tmpdir(), 'agk-block-handoff-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
-  const decision = { decision: 'BLOCK', authorityIds: ['architecture'] };
+  const members = [{ id: 'architecture', path: 'docs/architecture.md', repository: expected.repository,
+    resolvedCommit: expected.workflowSha, sha256: sha(Buffer.from('old authority')) },
+  ...Array.from({ length: memberCount - 1 }, (_, index) => ({ id: `authority-${index + 1}`,
+    path: `docs/authority-${index + 1}.md`, repository: expected.repository, resolvedCommit: expected.workflowSha,
+    sha256: String(index + 3).repeat(64) }))];
+  const decision = { decision: 'BLOCK', authorityIds: members.map(member => member.id) };
   const decisionBytes = Buffer.from(JSON.stringify(decision));
   const record = { version: 1, kind: 'owner-amendment-block-review-record', repository: expected.repository,
     prNumber: 9, baseSha: expected.workflowSha, headSha: 'c'.repeat(40), mergeSha: 'd'.repeat(40),
     workflowSha: expected.workflowSha, workflowPath: expected.workflowPath, runId: expected.runId, runAttempt: expected.runAttempt,
-    authority: { members: [{ id: 'architecture', path: 'docs/architecture.md', repository: expected.repository,
-      resolvedCommit: expected.workflowSha, sha256: sha(Buffer.from('old authority')) }] },
+    authority: { members },
     decisionBytesBase64: decisionBytes.toString('base64'), decisionSha256: sha(decisionBytes), decision };
   const recordBytes = Buffer.from(`${JSON.stringify(record)}\n`);
   const bundleBytes = Buffer.from('{"bundle":"valid fixture"}\n');
@@ -74,6 +78,14 @@ test('runs gh attestation verify over exact record and bundle paths and construc
   assert.deepEqual(Buffer.from(result.envelope.reviewRecordBase64, 'base64'), f.recordBytes);
   assert.deepEqual(Buffer.from(result.envelope.attestationBundleBase64, 'base64'), f.bundleBytes);
   assert.match(result.tagMessage, /"bSha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"/);
+});
+
+test('prepares a handoff when the historical BLOCK record binds the complete multi-member set', t => {
+  const f = fixture(t, 6);
+  const result = prepare(f);
+  assert.equal(result.status, 'PREPARED_BLOCK_HANDOFF_TAG_MESSAGE');
+  assert.deepEqual(JSON.parse(Buffer.from(result.envelope.reviewRecordBase64, 'base64').toString()).decision.authorityIds,
+    f.record.decision.authorityIds);
 });
 
 test('preserves unchecked Buffer.toString output in generated base64 envelope fields', t => {

@@ -22,7 +22,8 @@ type TagReadbackView = { status?: unknown; repository?: unknown; bSha?: unknown;
 type ContextPolicyView = { ownerAmendmentGrade?: unknown; ownerAmendmentScope?: unknown;
   ownerAmendmentTriggerProfile?: unknown };
 type GitContextView = { repository?: unknown; baseSha?: unknown; headSha?: unknown; policyBytes?: unknown;
-  policy?: ContextPolicyView; scope?: { authorityId?: unknown; authorityPath?: unknown };
+  policy?: ContextPolicyView; scope?: { authorityId?: unknown; authorityPath?: unknown;
+    authorityMembers?: readonly { id: string; repository: string; revision: string; path: string }[] };
   authorityBytes?: { base?: unknown; head?: unknown }; priorAuthoritySetDigest?: unknown;
   resultingAuthoritySetDigest?: unknown; changedFiles?: unknown; authorityChanges?: unknown };
 type VerifiedChangeView = { path?: unknown; beforeBytes?: unknown; afterBytes?: unknown };
@@ -154,6 +155,10 @@ function trustedContextFromGit(context: unknown, verifiedChanges: unknown): unkn
       authorities: Object.freeze([{ id: (context as GitContextView).scope!.authorityId, path: (context as GitContextView).scope!.authorityPath }]) }),
     authority: Object.freeze({ id: (context as GitContextView).scope!.authorityId, path: (context as GitContextView).scope!.authorityPath,
       previousSha256: hash(bytes.base as Uint8Array), newSha256: hash(bytes.head as Uint8Array) }),
+    ...(!decision && (context as GitContextView).scope!.authorityMembers
+      ? { authorityMembers: Object.freeze((context as GitContextView).scope!.authorityMembers!.map(member => Object.freeze({
+        id: member.id, path: member.path, repository: member.repository, revision: member.revision,
+      }))) } : {}),
     ...(decision ? { changes, priorAuthoritySetDigest: (context as GitContextView).priorAuthoritySetDigest,
       resultingAuthoritySetDigest: (context as GitContextView).resultingAuthoritySetDigest } : {}) });
 }
