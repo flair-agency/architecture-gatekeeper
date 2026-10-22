@@ -88,7 +88,7 @@ test('runner masking affects structured display only, while canonical original d
   const rendered=renderReport({conclusion:'PASS',summary:report.decision.summary,decision:report.decision},{decisionDigest:report.decisionDigest});
   assert.match(rendered,/\*\*\*/);assert.ok(rendered.includes(report.decisionDigest));
   assert.equal(assertEnforcedAcceptance({reviewResult:'success',conclusion:'PASS',ownerAmendmentSelected:'G0',
-    ownerAmendmentAttemptResult:'success',ownerAmendmentAttempted:'false'}).route,'ordinary-pass');
+    ownerAmendmentAttemptResult:'success',ownerAmendmentAttempted:'false',selectedAuthorityChanged:'false'}).route,'ordinary-pass');
   for(const attempted of ['true',undefined])assert.throws(()=>assertEnforcedAcceptance({reviewResult:'success',conclusion:'PASS',
     ownerAmendmentSelected:'G0',ownerAmendmentAttemptResult:'success',ownerAmendmentAttempted:attempted}));
   assert.ok(calls.every(x=>x.url.startsWith('https://api.github.com/')));

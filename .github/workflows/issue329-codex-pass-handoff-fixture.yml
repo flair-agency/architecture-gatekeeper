@@ -232,7 +232,7 @@ jobs:
             { decisionDigest: expected.decisionDigest, reviewedSha: expected.reviewedSha });
           if (!report.includes('***') || !report.includes(expected.decisionDigest) || report.includes(marker)) fail();
           const accepted = assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'PASS', ownerAmendmentSelected: 'G0',
-            ownerAmendmentAttemptResult: 'success', ownerAmendmentAttempted: 'false' });
+            ownerAmendmentAttemptResult: 'success', ownerAmendmentAttempted: 'false', selectedAuthorityChanged: 'false' });
           if (accepted.route !== 'ordinary-pass') fail();
           for (const attempted of ['true', undefined]) {
             let rejected = false;

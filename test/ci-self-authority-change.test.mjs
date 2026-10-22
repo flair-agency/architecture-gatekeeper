@@ -21,11 +21,11 @@ const policy = { version: 2, default: { mode: 'local-only' }, branches: { main: 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 const write = (root, path, content) => { mkdirSync(join(root, path, '..'), { recursive: true }); writeFileSync(join(root, path), content); };
-async function fixture(t, change = root => write(root, 'code.txt', 'new code\n')) {
+async function fixture(t, change = root => write(root, 'code.txt', 'new code\n'), basePolicy = policy) {
   const cwd = mkdtempSync(join(tmpdir(), 'self-authority-'));
   t.after(() => rmSync(cwd, { recursive: true, force: true }));
   git(cwd, 'init', '-q', '-b', 'main'); git(cwd, 'config', 'user.name', 'Test'); git(cwd, 'config', 'user.email', 'test@example.invalid');
-  write(cwd, policyPath, JSON.stringify(policy)); write(cwd, manifestPath, JSON.stringify(manifest));
+  write(cwd, policyPath, JSON.stringify(basePolicy)); write(cwd, manifestPath, JSON.stringify(manifest));
   for (const path of paths) write(cwd, path, `# Old ${path}\n`);
   write(cwd, 'unselected.md', '# Not selected\n');
   git(cwd, 'add', '.'); git(cwd, 'commit', '-qm', 'old protected inputs');
@@ -38,7 +38,7 @@ async function fixture(t, change = root => write(root, 'code.txt', 'new code\n')
   const headSha = git(cwd, 'rev-parse', 'HEAD');
   git(cwd, 'switch', '-q', 'main'); git(cwd, 'merge', '--no-ff', '-qm', 'reviewed merge', headSha);
   return { cwd, repository, baseSha, headSha, reviewedSha: git(cwd, 'rev-parse', 'HEAD'), baseBranch: 'main',
-    policyPath, policySha256: hash(Buffer.from(JSON.stringify(policy))), provenance };
+    policyPath, policySha256: hash(Buffer.from(JSON.stringify(basePolicy))), provenance };
 }
 const accept = changed => assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'PASS',
   selfAuthorityCheckRequired: 'true', selectedAuthorityChanged: String(changed) });
@@ -145,7 +145,21 @@ test('protected workflow carries the comparison to final Self acceptance and ret
   assert.equal(step.env.REVIEWED_SHA, '${{ steps.revision.outputs.sha }}');
   assert.match(step.run, /GATEKEEPER_RUNTIME_ROOT\/dist\/ci-self-authority-change.mjs/);
   const acceptStep = workflow.jobs.accept.steps.find(step => step.run?.includes('/dist/ci-enforced-acceptance.mjs'));
-  assert.equal(acceptStep.env.SELECTED_AUTHORITY_CHANGED, '${{ needs.review.outputs.self_authority_changed }}');
+  assert.equal(acceptStep.env.SELECTED_AUTHORITY_CHANGED, "${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.self_authority_changed }}");
+  const gemini = workflow.jobs['gemini-review'];
+  const geminiCheck = gemini.steps.find(step => step.id === 'self-authority-change');
+  assert.equal(geminiCheck.env.AUTHORITY_PROVENANCE, '${{ steps.gemini.outputs.authority_provenance }}');
+  assert.equal(geminiCheck.env.REVIEWED_SHA, '${{ steps.gemini.outputs.reviewed_sha }}');
+  assert.equal(gemini.outputs.self_authority_changed, '${{ steps.self-authority-change.outputs.changed }}');
   assert.equal(acceptStep.env.SELF_AUTHORITY_CHECK_REQUIRED, "${{ github.repository == 'flair-agency/architecture-gatekeeper' }}");
   assert.ok(workflow.jobs.accept.steps.some(step => step.run?.includes('attempt-classifier.mjs acceptance-guard')));
+});
+
+test('the same comparison supports Self Gemini v6 without changing consumer provider selection', async t => {
+  const geminiPolicy = { ...policy, version: 6, branches: { main: { mode: 'enforced', provider: 'gemini',
+    model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM', authorityManifestPath: manifestPath, authorityLimits: limits } } };
+  const f = await fixture(t, undefined, geminiPolicy);
+  assert.equal((await inspectSelfAuthorityChanges(f)).changed, false);
+  const workflowSource = readFileSync(new URL('../src/ordinary-gemini-ci-workflow.mts', import.meta.url), 'utf8');
+  assert.match(workflowSource, /authority_provenance=\$\{Buffer.from\(JSON.stringify\(result.authorityProvenance\)\)/);
 });

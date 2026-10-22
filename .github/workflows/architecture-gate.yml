@@ -802,6 +802,7 @@ jobs:
       decision_digest: ${{ steps.gemini.outputs.decision_digest }}
       projection_nonce: ${{ steps.gemini.outputs.projection_nonce }}
       reviewed_sha: ${{ steps.gemini.outputs.reviewed_sha }}
+      self_authority_changed: ${{ steps.self-authority-change.outputs.changed }}
     steps:
       - name: Check out the protected base; candidate revisions remain Git objects
         uses: actions/checkout@v5
@@ -858,6 +859,21 @@ jobs:
           GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
           GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ordinary-gemini-ci-workflow.mjs"
+
+      - name: Compare Self Authority using the recorded-base selection
+        if: needs.policy.outputs.mode == 'enforced' && github.repository == 'flair-agency/architecture-gatekeeper'
+        id: self-authority-change
+        env:
+          AUTHORITY_PROVENANCE: ${{ steps.gemini.outputs.authority_provenance }}
+          SELF_REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEWED_SHA: ${{ steps.gemini.outputs.reviewed_sha }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          POLICY_PATH: ${{ inputs.policy-path }}
+          POLICY_SHA256: ${{ needs.policy.outputs.policy_sha256 }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.runtime_location.outputs.root }}
+        run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-self-authority-change.mjs"
 
   owner-addition:
     if: (needs.policy.outputs.mode == 'enforced' || needs.policy.outputs.mode == 'procedural') && needs.policy.outputs.owner_addition_grade == 'G0' && needs.review.outputs.decision_kind == 'OWNER_DECISION'
@@ -1518,7 +1534,7 @@ jobs:
           REVIEW_RESULT: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].result }}
           CONCLUSION: ${{ needs.report.outputs.conclusion }}
           SELF_AUTHORITY_CHECK_REQUIRED: ${{ github.repository == 'flair-agency/architecture-gatekeeper' }}
-          SELECTED_AUTHORITY_CHANGED: ${{ needs.review.outputs.self_authority_changed }}
+          SELECTED_AUTHORITY_CHANGED: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.self_authority_changed }}
           OWNER_ADDITION_RESULT: ${{ needs['owner-addition'].result }}
           OWNER_ADDITION_ELIGIBILITY: ${{ needs['owner-addition'].outputs.eligibility }}
           OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade }}
