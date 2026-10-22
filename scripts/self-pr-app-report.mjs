@@ -19,19 +19,20 @@ import { fetchOwnerAmendmentBlockArtifact } from '../src/owner-amendment-artifac
 import { extractOwnerAmendmentArtifactZip } from '../src/owner-amendment-artifact-zip.mjs';
 import { verifyOwnerAmendmentBlockEvidence } from '../src/owner-amendment-attestation.mjs';
 import { validateOwnerAmendmentSemanticEligibilityReceipt } from '../src/owner-amendment-semantic-eligibility.mjs';
+import { trustedGitHubWorkspaceRoot } from '../src/github-runner-workspace.mjs';
 
 const SELF = 'flair-agency/architecture-gatekeeper';
 const SELF_ID = 1379218762;
 const SHA = /^[a-f0-9]{40}$/;
 function fail(message) { throw new Error(`Self PR App report: ${message}`); }
 function validateRunnerTemp(env) {
-  if (typeof env.RUNNER_TEMP !== 'string' || !resolve(env.RUNNER_TEMP) || realpathSync(env.RUNNER_TEMP) !== env.RUNNER_TEMP || process.cwd() !== env.RUNNER_TEMP) {
+  if (realpathSync(process.cwd()) !== process.cwd() || env.RUNNER_TEMP !== process.cwd()) {
     fail('working directory must be the runner-owned temporary directory.');
   }
 }
 function validateProtectedWorkspace(env) {
-  const workspace = env.GITHUB_WORKSPACE;
-  if (typeof workspace !== 'string' || !workspace.startsWith('/') || realpathSync(workspace) !== workspace) fail('protected workspace root is unavailable.');
+  const workspace = trustedGitHubWorkspaceRoot();
+  if (typeof workspace !== 'string' || !workspace.startsWith('/')) fail('protected workspace root is unavailable.');
   const top = execFileSync('git', ['--no-replace-objects', '-C', workspace, 'rev-parse', '--show-toplevel'],
     { encoding: 'utf8', maxBuffer: 4096, timeout: 10_000, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   const head = execFileSync('git', ['--no-replace-objects', '-C', workspace, 'rev-parse', 'HEAD'],
@@ -40,7 +41,7 @@ function validateProtectedWorkspace(env) {
 }
 function fetchProtectedReviewObjects(env, context) {
   if (typeof env.GH_TOKEN !== 'string' || env.GH_TOKEN.length === 0) fail('protected read token is unavailable for immutable Git objects.');
-  const workspace = env.GITHUB_WORKSPACE;
+  const workspace = trustedGitHubWorkspaceRoot();
   const remote = `https://github.com/${SELF}.git`;
   const authorization = `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${env.GH_TOKEN}`, 'utf8').toString('base64')}`;
   const gitEnv = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_COUNT: '1',
@@ -79,7 +80,9 @@ function protectedCallerContext(env) {
       env.GITHUB_WORKFLOW_REF !== `${SELF}/.github/workflows/self-architecture-gate.yml@refs/heads/main` ||
       env.GATEKEEPER_WORKFLOW_REPOSITORY !== SELF || !SHA.test(env.GATEKEEPER_WORKFLOW_SHA || '') ||
       env.GATEKEEPER_WORKFLOW_REF !== `${SELF}/.github/workflows/self-architecture-gate.yml@refs/heads/main`) fail('protected caller/runtime identity is not the adopted self workflow.');
-  const event = boundedFile(env.GITHUB_EVENT_PATH, 65_536);
+  const eventPath = resolve(process.cwd(), '_github_workflow', 'event.json');
+  if (env.GITHUB_EVENT_PATH !== eventPath) fail('event path is not the fixed runner temporary event file.');
+  const event = boundedFile(eventPath, 65_536);
   const pr = event?.pull_request;
   if (!pr || String(pr.number) !== env.PR_NUMBER || pr.base?.sha !== env.BASE_SHA || pr.head?.sha !== env.HEAD_SHA || env.BASE_BRANCH !== 'main') fail('protected workflow tuple differs from the trusted PR event.');
   return { event, selectorInput: { eventName: env.GITHUB_EVENT_NAME, event,
@@ -108,7 +111,7 @@ function gitShow(cwd, sha, path, limit = 1_048_576) {
 }
 async function validateOldReviewInputs(env, context) {
   if (env.AGK_MODE !== 'enforced' || env.AGK_POLICY_RESULT !== 'success' || env.AGK_REVIEW_RESULT !== 'success') fail('protected policy/review result is not successful.');
-  const cwd = process.env.GITHUB_WORKSPACE;
+  const cwd = trustedGitHubWorkspaceRoot();
   if (!cwd || realpathSync(cwd) !== cwd) fail('protected checkout root is unavailable.');
   const policyBytes = gitShow(cwd, context.baseSha, '.codex/gatekeeper/ci-policy.json', 65_536);
   const policySha = createHash('sha256').update(policyBytes).digest('hex');
@@ -152,7 +155,7 @@ async function validateAmendmentEligibility(env, context) {
       !['PASS','BLOCK','OWNER_DECISION'].includes(old.classified.conclusion) ||
       ((old.classified.conclusion === 'PASS') !== Boolean(old.pass))) fail('old selected Policy does not route this changed Authority to OWNER_AMENDMENT.');
   const childEnv = { ...process.env, BASE_SHA: context.baseSha, B_SHA: context.headSha, BASE_BRANCH: 'main',
-    TRIGGER_PROFILE: old.policy.ownerAmendmentTriggerProfile, GITHUB_WORKSPACE: old.cwd };
+    TRIGGER_PROFILE: old.policy.ownerAmendmentTriggerProfile, GITHUB_WORKSPACE: trustedGitHubWorkspaceRoot() };
   const prepareOutput = execFileSync(process.execPath, [resolve(old.cwd, 'scripts/owner-amendment-semantic-eligibility-producer.mjs'), 'prepare'],
     { cwd: process.env.RUNNER_TEMP, env: childEnv, encoding: 'utf8', timeout: 120_000, maxBuffer: 65_536, stdio: ['ignore', 'pipe', 'pipe'] });
   const prepareState = JSON.parse(prepareOutput);

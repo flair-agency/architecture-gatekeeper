@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Protected workflow_run relay to current live merge-group context; context only, never acceptance.
 import { execFileSync } from 'node:child_process';
-import { openSync, closeSync, fstatSync, readFileSync, constants } from 'node:fs';
-import { isAbsolute, resolve } from 'node:path';
+import { openSync, closeSync, fstatSync, readFileSync, constants, realpathSync } from 'node:fs';
+import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { trustedGitHubWorkspaceRoot } from '../src/github-runner-workspace.mjs';
 import { resolveOwnerAmendmentWorkflowRunMergeGroupContext } from '../dist/owner-amendment-workflow-run-merge-group-context.mjs';
 import { appendGitHubOutput, resolveRunnerTempDirectory, writeRunnerTempFile } from '../dist/runner-temp-path.mjs';
 
@@ -20,17 +21,22 @@ const QUEUE_STATES = new Set(['AWAITING_CHECKS', 'LOCKED', 'MERGEABLE', 'QUEUED'
 const fail = message => { throw new Error(`Self queue context: ${message}`); };
 
 function readEvent(path) {
-  if (typeof path !== 'string' || !isAbsolute(path) || resolve(path) !== path) fail('GitHub event path is unavailable.');
+  let runnerTemp;
+  try { runnerTemp = realpathSync(process.cwd()); } catch { fail('GitHub runner temp directory is unavailable.'); }
+  if (!process.env.RUNNER_TEMP || process.env.RUNNER_TEMP !== process.cwd() || !isAbsolute(runnerTemp)) fail('GitHub runner temp working directory is invalid.');
+  const eventFile = join(runnerTemp, '_github_workflow', 'event.json');
+  if (typeof path !== 'string' || path !== eventFile) fail('GitHub event path is unavailable.');
   let fd;
   try {
-    fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0));
+    fd = openSync(eventFile, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0));
     const stat = fstatSync(fd);
     if (!stat.isFile() || stat.nlink !== 1 || stat.size < 1 || stat.size > MAX_EVENT_BYTES) fail('GitHub event file is not a bounded regular file.');
     return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(fd)));
   } finally { if (fd !== undefined) closeSync(fd); }
 }
 
-function protectedRuntimeRevision(workspace) {
+function protectedRuntimeRevision() {
+  const workspace = trustedGitHubWorkspaceRoot();
   if (typeof workspace !== 'string' || !isAbsolute(workspace) || resolve(workspace) !== workspace) fail('protected workflow workspace is unavailable.');
   const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: workspace, encoding: 'utf8', timeout: 10_000, maxBuffer: 4096 }).trim();
   if (!SHA.test(revision)) fail('protected runtime revision is malformed.');
@@ -173,8 +179,7 @@ export async function prepareSelfQueueContext({ event, eventName, repository, re
 
 async function main() {
   const event = readEvent(process.env.GITHUB_EVENT_PATH);
-  const workspace = process.env.GITHUB_WORKSPACE;
-  const currentRevision = protectedRuntimeRevision(workspace);
+  const currentRevision = protectedRuntimeRevision();
   const relay = expectedRelay(process.env.SELF_QUEUE_RELAY_WORKFLOW_ID, process.env.SELF_QUEUE_RELAY_WORKFLOW_PATH);
   const eventDir = resolveRunnerTempDirectory('owner-amendment-merge-group');
   const result = await prepareSelfQueueContext({ event, eventName: process.env.GITHUB_EVENT_NAME,

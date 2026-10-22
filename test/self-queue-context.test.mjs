@@ -1,5 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { selectOwnerAmendmentMergeGroupBContext } from '../dist/owner-amendment-merge-group-b-context.mjs';
 import { createBoundedSelfQueueApiFetch, prepareSelfQueueContext } from '../scripts/self-queue-context.mjs';
 
@@ -152,4 +157,33 @@ test('bounded queue API adapter rejects endpoint escapes, redirects, and oversiz
   const redirected = createBoundedSelfQueueApiFetch(async () => new Response('{}', { status: 302 }));
   try { await assert.rejects(redirected('https://api.github.com/repos/flair-agency/architecture-gatekeeper/redirect', { redirect: 'error' }), /unavailable, redirected/); }
   finally { redirected.dispose(); }
+});
+
+test('actual context CLI derives event path from runner temp and uses trusted workspace accessor', t => {
+  const runnerTemp = realpathSync(mkdtempSync(join(tmpdir(), 'self-queue-context-runner-temp-')));
+  const workspace = mkdtempSync(join(tmpdir(), 'self-queue-context-workspace-'));
+  t.after(() => { rmSync(runnerTemp, { recursive: true, force: true }); rmSync(workspace, { recursive: true, force: true }); });
+  execFileSync('git', ['init', '-q', workspace]);
+  execFileSync('git', ['-C', workspace, 'config', 'user.email', 'queue-test@example.invalid']);
+  execFileSync('git', ['-C', workspace, 'config', 'user.name', 'Queue Test']);
+  writeFileSync(join(workspace, 'tracked.txt'), 'protected runtime fixture\n');
+  execFileSync('git', ['-C', workspace, 'add', 'tracked.txt']);
+  execFileSync('git', ['-C', workspace, 'commit', '-qm', 'protected runtime fixture']);
+  const runtimeSha = execFileSync('git', ['-C', workspace, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  mkdirSync(join(runnerTemp, '_github_workflow'));
+  const eventPath = join(runnerTemp, '_github_workflow', 'event.json');
+  writeFileSync(eventPath, JSON.stringify(wakeup));
+  const env = { ...process.env, RUNNER_TEMP: runnerTemp, GITHUB_EVENT_PATH: eventPath, GITHUB_WORKSPACE: workspace,
+    GITHUB_EVENT_NAME: 'workflow_run', GITHUB_REPOSITORY: repository, GITHUB_REPOSITORY_ID: String(repositoryId),
+    SELF_QUEUE_RELAY_WORKFLOW_ID: 'invalid', SELF_QUEUE_RELAY_WORKFLOW_PATH: workflowPath, GH_TOKEN: 'fixture-token' };
+  const script = new URL('../scripts/self-queue-context.mjs', import.meta.url).pathname;
+  const validPath = spawnSync(process.execPath, [script], { cwd: runnerTemp, encoding: 'utf8', env });
+  assert.equal(validPath.status, 1);
+  assert.match(validPath.stderr, /protected relay workflow ID is invalid/);
+
+  const outsidePath = join(runnerTemp, 'outside-event.json');
+  writeFileSync(outsidePath, JSON.stringify(wakeup));
+  const mismatchedPath = spawnSync(process.execPath, [script], { cwd: runnerTemp, encoding: 'utf8', env: { ...env, GITHUB_EVENT_PATH: outsidePath } });
+  assert.equal(mismatchedPath.status, 1);
+  assert.match(mismatchedPath.stderr, /GitHub event path is unavailable/);
 });

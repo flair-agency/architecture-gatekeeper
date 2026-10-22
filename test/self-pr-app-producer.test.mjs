@@ -126,7 +126,9 @@ function cliFixture(t, { includeReview = false, checkSha, workspaceMismatch = fa
   const callerHead = 'e'.repeat(40), callerSubject = 'f'.repeat(40);
   checkSha ??= callerSubject;
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const eventPath = join(directory, 'event.json'), outputPath = join(directory, 'output.txt');
+  const eventDirectory = join(directory, '_github_workflow');
+  mkdirSync(eventDirectory);
+  const eventPath = join(eventDirectory, 'event.json'), outputPath = join(directory, 'output.txt');
   const markerPath = join(directory, 'patch.json');
   const tokenMarkerPath = join(directory, 'token-requested');
   const gitFetchMarkerPath = join(directory, 'git-fetch.jsonl');
@@ -194,6 +196,14 @@ test('begin CLI accepts only protected caller tuple and does not require later r
 
 test('begin CLI rejects a checkout whose HEAD differs from protected base before requesting App credentials', t => {
   const fixture = cliFixture(t, { workspaceMismatch: true });
+  assert.throws(() => execFileSync(process.execPath, [resolve('scripts/self-pr-app-report.mjs'), 'begin'],
+    { cwd: fixture.directory, env: fixture.env, stdio: 'pipe' }));
+  assert.equal(existsSync(fixture.tokenMarkerPath), false);
+});
+
+test('begin CLI rejects a runner event path outside the fixed temp event location before requesting App credentials', t => {
+  const fixture = cliFixture(t);
+  fixture.env.GITHUB_EVENT_PATH = join(fixture.directory, 'attacker-event.json');
   assert.throws(() => execFileSync(process.execPath, [resolve('scripts/self-pr-app-report.mjs'), 'begin'],
     { cwd: fixture.directory, env: fixture.env, stdio: 'pipe' }));
   assert.equal(existsSync(fixture.tokenMarkerPath), false);

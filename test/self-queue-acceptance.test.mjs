@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -88,7 +88,7 @@ test('protected preflight runs actual resolver with mocked GitHub APIs and real 
   const repo = makeRepository(); t.after(() => rmSync(repo.root, { recursive: true, force: true }));
   const f = fixture(repo.mainSha);
   const captured = { events: [], outputs: [] };
-  const result = await runSelfQueueAcceptance({ args: ['preflight'], env: envFor(repo.root), event: f.event,
+  const result = await runSelfQueueAcceptance({ args: ['preflight'], env: envFor(repo.root), event: f.event, workspaceRoot: repo.root,
     fetchImpl: f.fetchImpl, writeEvent: async value => captured.events.push(value),
     emitOutput: async value => captured.outputs.push(value) });
   assert.equal(result.status, 'PROTECTED_QUEUE_CONTEXT_READY');
@@ -115,7 +115,7 @@ test('current queue, exact run selectors, relay identity, and protected HEAD fai
   ]) await t.test(label, async () => {
     const f = fixture(repo.mainSha); edit(f.state);
     const captured = { events: [], outputs: [] };
-    await assert.rejects(runSelfQueueAcceptance({ args: ['preflight'], env: envFor(repo.root), event: f.event,
+    await assert.rejects(runSelfQueueAcceptance({ args: ['preflight'], env: envFor(repo.root), event: f.event, workspaceRoot: repo.root,
       fetchImpl: f.fetchImpl, writeEvent: async value => captured.events.push(value),
       emitOutput: async value => captured.outputs.push(value) }));
     assert.deepEqual(captured.events, []);
@@ -123,7 +123,7 @@ test('current queue, exact run selectors, relay identity, and protected HEAD fai
   });
   const staleRuntime = fixture(repo.mainSha);
   const captured = { events: [], outputs: [] };
-  await assert.rejects(runSelfQueueAcceptance({ args: ['preflight'], env: envFor(repo.root), event: staleRuntime.event,
+  await assert.rejects(runSelfQueueAcceptance({ args: ['preflight'], env: envFor(repo.root), event: staleRuntime.event, workspaceRoot: repo.root,
     runGit: () => 'f'.repeat(40), fetchImpl: staleRuntime.fetchImpl,
     writeEvent: async value => captured.events.push(value), emitOutput: async value => captured.outputs.push(value) }));
   assert.deepEqual(captured.events, []);
@@ -135,7 +135,7 @@ test('current queue, exact run selectors, relay identity, and protected HEAD fai
   ]) await t.test(label, async () => {
     const f = fixture(repo.mainSha);
     const result = { events: [], outputs: [] };
-    await assert.rejects(runSelfQueueAcceptance({ args: ['preflight'], env: { ...envFor(repo.root), ...patchEnv }, event: f.event,
+    await assert.rejects(runSelfQueueAcceptance({ args: ['preflight'], env: { ...envFor(repo.root), ...patchEnv }, event: f.event, workspaceRoot: repo.root,
       fetchImpl: f.fetchImpl, writeEvent: async value => result.events.push(value),
       emitOutput: async value => result.outputs.push(value) }));
     assert.deepEqual(result, { events: [], outputs: [] });
@@ -147,7 +147,7 @@ test('mismatched earlier protected tuple fails before writing a reconstructed ev
   const f = fixture(repo.mainSha);
   const captured = { events: [], outputs: [] };
   await assert.rejects(runSelfQueueAcceptance({ args: ['preflight'],
-    env: { ...envFor(repo.root), SELF_QUEUE_EXPECTED_GROUP_SHA: 'a'.repeat(40) }, event: f.event,
+    env: { ...envFor(repo.root), SELF_QUEUE_EXPECTED_GROUP_SHA: 'a'.repeat(40) }, event: f.event, workspaceRoot: repo.root,
     fetchImpl: f.fetchImpl, writeEvent: async value => captured.events.push(value),
     emitOutput: async value => captured.outputs.push(value) }), /differs from the earlier protected/);
   assert.deepEqual(captured, { events: [], outputs: [] });
@@ -228,13 +228,30 @@ test('default-off relay and protected receiver isolate model and reporting crede
   assert.match(JSON.stringify(receiver.jobs['report-completeness']), /PREPARE_JOB_RESULT/);
 });
 
-test('actual CLI fails closed from runner temp on missing workflow_run file and never reports acceptance', t => {
-  const runnerTemp = mkdtempSync(join(tmpdir(), 'self-queue-cli-runner-temp-'));
+test('actual CLI reads only the derived runner-temp event path and anchors runtime lookup to the trusted workspace', t => {
+  const runnerTemp = realpathSync(mkdtempSync(join(tmpdir(), 'self-queue-cli-runner-temp-')));
   t.after(() => rmSync(runnerTemp, { recursive: true, force: true }));
-  const result = spawnSync(process.execPath, [new URL('../scripts/self-queue-acceptance.mjs', import.meta.url).pathname, 'preflight'], {
-    cwd: runnerTemp, encoding: 'utf8', env: { ...process.env, GITHUB_EVENT_PATH: '', RUNNER_TEMP: runnerTemp, GITHUB_WORKSPACE: '' },
+  const workspace = makeRepository();
+  t.after(() => rmSync(workspace.root, { recursive: true, force: true }));
+  mkdirSync(join(runnerTemp, '_github_workflow'));
+  const eventPath = join(runnerTemp, '_github_workflow', 'event.json');
+  writeFileSync(eventPath, JSON.stringify({ action: 'completed', repository: { full_name: repository, id: repositoryId },
+    workflow_run: { id: runId, run_attempt: attempt } }));
+  const env = { ...process.env, GITHUB_EVENT_PATH: eventPath, RUNNER_TEMP: runnerTemp, GITHUB_WORKSPACE: workspace.root,
+    GITHUB_EVENT_NAME: 'workflow_run', GITHUB_REPOSITORY: repository, GITHUB_REPOSITORY_ID: String(repositoryId),
+    GITHUB_WORKFLOW_REF: workflowRef, GITHUB_WORKFLOW_SHA: workspace.mainSha, GH_TOKEN: 'test-token',
+    SELF_QUEUE_RELAY_WORKFLOW_ID: 'invalid', SELF_QUEUE_RELAY_WORKFLOW_PATH: workflowPath };
+  const script = new URL('../scripts/self-queue-acceptance.mjs', import.meta.url).pathname;
+  const result = spawnSync(process.execPath, [script, 'preflight'], {
+    cwd: runnerTemp, encoding: 'utf8', env,
   });
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /workflow_run event path is unavailable/);
+  assert.match(result.stderr, /protected relay workflow ID is invalid/);
   assert.doesNotMatch(result.stdout, /acceptance|success/i);
+
+  const outsideEvent = join(runnerTemp, 'outside-event.json');
+  writeFileSync(outsideEvent, 'outside event');
+  const mismatched = spawnSync(process.execPath, [script, 'preflight'], { cwd: runnerTemp, encoding: 'utf8', env: { ...env, GITHUB_EVENT_PATH: outsideEvent } });
+  assert.equal(mismatched.status, 1);
+  assert.match(mismatched.stderr, /workflow_run event path is unavailable/);
 });

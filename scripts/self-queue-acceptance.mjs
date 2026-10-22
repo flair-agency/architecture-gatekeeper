@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Protected Queue receiver preflight. It selects context only; existing validators own review and route acceptance.
 import { execFileSync } from 'node:child_process';
-import { openSync, closeSync, fstatSync, readFileSync, constants } from 'node:fs';
-import { isAbsolute, resolve } from 'node:path';
+import { openSync, closeSync, fstatSync, readFileSync, constants, realpathSync } from 'node:fs';
+import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { trustedGitHubWorkspaceRoot } from '../src/github-runner-workspace.mjs';
 import { appendGitHubOutput, resolveRunnerTempDirectory, writeRunnerTempFile } from '../dist/runner-temp-path.mjs';
 import { prepareSelfQueueContext } from './self-queue-context.mjs';
 
@@ -15,10 +16,14 @@ const WORKFLOW_REF = 'flair-agency/architecture-gatekeeper/.github/workflows/sel
 const fail = message => { throw new Error(`Self queue acceptance preflight: ${message}`); };
 
 function readEvent(path) {
-  if (typeof path !== 'string' || !isAbsolute(path) || resolve(path) !== path) fail('workflow_run event path is unavailable.');
+  let runnerTemp;
+  try { runnerTemp = realpathSync(process.cwd()); } catch { fail('runner temp directory is unavailable.'); }
+  if (!process.env.RUNNER_TEMP || process.env.RUNNER_TEMP !== process.cwd() || !isAbsolute(runnerTemp)) fail('runner temp working directory is invalid.');
+  const eventFile = join(runnerTemp, '_github_workflow', 'event.json');
+  if (typeof path !== 'string' || path !== eventFile) fail('workflow_run event path is unavailable.');
   let fd;
   try {
-    fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0));
+    fd = openSync(eventFile, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0));
     const stat = fstatSync(fd);
     if (!stat.isFile() || stat.nlink !== 1 || stat.size < 1 || stat.size > MAX_EVENT_BYTES) fail('workflow_run event is not a bounded regular file.');
     return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(fd)));
@@ -33,7 +38,7 @@ function checkedOutHead(workspace, runGit) {
 }
 
 /** Run the protected preflight again at each Queue boundary and emit exact fresh context outputs. */
-export async function runSelfQueueAcceptance({ args = [], env = process.env, event, runGit = (workspace, ...args) =>
+export async function runSelfQueueAcceptance({ args = [], env = process.env, event, workspaceRoot, runGit = (workspace, ...args) =>
   execFileSync('git', args, { cwd: workspace, encoding: 'utf8', timeout: 10_000, maxBuffer: 4096 }),
   fetchImpl = fetch, resolveContext, writeEvent, emitOutput } = {}) {
   if (!Array.isArray(args) || args.length !== 1 || args[0] !== 'preflight') fail('expected preflight.');
@@ -41,7 +46,7 @@ export async function runSelfQueueAcceptance({ args = [], env = process.env, eve
       env.GITHUB_WORKFLOW_REF !== WORKFLOW_REF || !SHA.test(env.GITHUB_WORKFLOW_SHA ?? '')) {
     fail('protected receiver identity or workflow revision is invalid.');
   }
-  const head = checkedOutHead(env.GITHUB_WORKSPACE, runGit);
+  const head = checkedOutHead(workspaceRoot, runGit);
   if (head !== env.GITHUB_WORKFLOW_SHA) fail('checked-out protected runtime differs from the receiver workflow revision.');
   if (typeof writeEvent !== 'function' || typeof emitOutput !== 'function') fail('protected runner output operations are unavailable.');
   let selectedEvent;
@@ -74,7 +79,7 @@ export async function runSelfQueueAcceptance({ args = [], env = process.env, eve
 async function main(argv = process.argv.slice(2)) {
   const event = readEvent(process.env.GITHUB_EVENT_PATH);
   const eventDir = resolveRunnerTempDirectory('owner-amendment-merge-group');
-  const result = await runSelfQueueAcceptance({ args: argv, env: process.env, event,
+  const result = await runSelfQueueAcceptance({ args: argv, env: process.env, event, workspaceRoot: trustedGitHubWorkspaceRoot(),
     writeEvent: value => writeRunnerTempFile(eventDir, 'event.json', `${JSON.stringify(value)}\n`),
     emitOutput: value => appendGitHubOutput(value),
   });
