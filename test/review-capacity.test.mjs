@@ -22,7 +22,7 @@ const runtimeFiles = [
 ];
 const sentinel = 'PRIVATE_CAPACITY_CONTENT_SENTINEL';
 const calledWorkflow = '.github/workflows/architecture-gate.yml';
-const currentCalledWorkflowSha256 = 'b0411a1b5d21741e9c1233f1c4dd9163c27436caf415acb15b1eed9866f92fe0';
+const currentCalledWorkflowSha256 = '49554405ef79fbca9e85e7719189462594998bdb47b2b04d25cafd28b093e159';
 const preGuardCalledWorkflowSha256 = 'e0ba804c39a8ad52b875084c3f2c9a77edda261af1583558f08d74472ddd5906';
 const previousCalledWorkflowSha256 = '237e6a6ba0baebc4a70e8190911bac60044636c2c9d5cf675aa253b5e5095b45';
 const earlierCalledWorkflowSha256 = 'ecf6a70d7bffb73f152143dacd5d44a09a57a54c616fa4e3ed94117c89abb046';
@@ -78,6 +78,8 @@ function candidate(f, changes = { 'subject.md': 'after 雪 " \\\n' }) {
 test('supports current and exact predecessor called-workflow fingerprints and rejects unknown drift', () => {
   assert.equal(createHash('sha256').update(readFileSync(join(toolRoot, calledWorkflow))).digest('hex'), currentCalledWorkflowSha256);
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, preGuardCalledWorkflowSha256, currentCalledWorkflowSha256), true);
+  assert.equal(supportsPreparationFormatDigest(calledWorkflow, 'b0411a1b5d21741e9c1233f1c4dd9163c27436caf415acb15b1eed9866f92fe0', currentCalledWorkflowSha256), true);
+  assert.equal(supportsPreparationFormatDigest('.github/workflows/self-architecture-gate.yml', 'b3cd229184f6a90e4edd78ccc15d7a1c527c5c71ac99eb13030298eeba9e6412', 'b30ea69dbc816f96003a9e51f85b656dedf1e0e941bbc4996c2d1280b0420d41'), true);
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, currentCalledWorkflowSha256,
     currentCalledWorkflowSha256), true);
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, previousCalledWorkflowSha256,

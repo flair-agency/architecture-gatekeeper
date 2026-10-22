@@ -30,12 +30,16 @@ class CapacityExceeded extends Error {
 }
 
 // These are preparation-format checks, not a new consumer policy selector.
+// The default-off App projections add no prompt input or serialization change.
+// Keep the exact pre-connection caller/callee pair for local adoption previews.
 // The called-workflow fingerprint includes the Self authority comparison.
 // That same-run classifier does not change Codex prompt/task serialization
 // or preparation inputs; Gemini remains outside this diagnostic. The exact
 // predecessor fingerprints retain the documented pre-merge preview
 // path from the older protected base. Other base/runtime drift must be
 // explicitly reviewed before this diagnostic can measure it.
+const PRE_CONNECTION_SELF_SHA256 = 'b3cd229184f6a90e4edd78ccc15d7a1c527c5c71ac99eb13030298eeba9e6412';
+const PRE_CONNECTION_CALLED_SHA256 = 'b0411a1b5d21741e9c1233f1c4dd9163c27436caf415acb15b1eed9866f92fe0';
 const PREVIOUS_CONTEXT_SHA256 = '510b197070f8f12a15567409cf8e92e6da365bbd96e17ef4917cd8c21b38acf0';
 const PREVIOUS_PREPARER_SHA256 = '9bce34d75aa8b4d414a089f042616cabb2dd1ac331fcfbe70a43afff304e9dae';
 const PREPARER = 'src/authority-validation/prepare-authority-set.mts';
@@ -56,8 +60,8 @@ const FORMAT_FILES = [SELF_WORKFLOW, CALLED_WORKFLOW,
   'src/review-inputs/prepare-review-context.mts'];
 
 const CURRENT_FORMAT_SHA256 = {
-  ".github/workflows/self-architecture-gate.yml": "b3cd229184f6a90e4edd78ccc15d7a1c527c5c71ac99eb13030298eeba9e6412",
-  ".github/workflows/architecture-gate.yml": "b0411a1b5d21741e9c1233f1c4dd9163c27436caf415acb15b1eed9866f92fe0",
+  ".github/workflows/self-architecture-gate.yml": "b30ea69dbc816f96003a9e51f85b656dedf1e0e941bbc4996c2d1280b0420d41",
+  ".github/workflows/architecture-gate.yml": "49554405ef79fbca9e85e7719189462594998bdb47b2b04d25cafd28b093e159",
   "src/authority-set.mjs": "d086de4acf4783b47901c3111760f6659bae111b53d4679261dccd6aa91586fa",
   "src/resolve-ci-policy.mjs": "01243736b030f1776d3de55454c450855324cd42f2c5542b3be5512efbd8aae7",
   "src/prepare-authority-set.mjs": "9141969e86b817f4b68819ee597f505840bf5f85d260bdffd39f61f7a19ce688",
@@ -74,7 +78,8 @@ const CURRENT_FORMAT_SHA256 = {
 export function supportsPreparationFormatDigest(path, baseDigest, toolDigest) {
   if (toolDigest !== CURRENT_FORMAT_SHA256[path]) return false;
   return baseDigest === toolDigest ||
-    (path === CALLED_WORKFLOW && [PRE_GUARD_CALLED_WORKFLOW_SHA256, PREVIOUS_CALLED_WORKFLOW_SHA256, EARLIER_CALLED_WORKFLOW_SHA256, OLDER_CALLED_WORKFLOW_SHA256, OLDEST_CALLED_WORKFLOW_SHA256].includes(baseDigest)) ||
+    (path === SELF_WORKFLOW && baseDigest === PRE_CONNECTION_SELF_SHA256) ||
+    (path === CALLED_WORKFLOW && [PRE_CONNECTION_CALLED_SHA256, PRE_GUARD_CALLED_WORKFLOW_SHA256, PREVIOUS_CALLED_WORKFLOW_SHA256, EARLIER_CALLED_WORKFLOW_SHA256, OLDER_CALLED_WORKFLOW_SHA256, OLDEST_CALLED_WORKFLOW_SHA256].includes(baseDigest)) ||
     (path === 'src/review-inputs/prepare-review-context.mts' && baseDigest === PREVIOUS_CONTEXT_SHA256) ||
     (path === PREPARER && baseDigest === PREVIOUS_PREPARER_SHA256);
 }

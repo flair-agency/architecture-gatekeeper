@@ -738,6 +738,21 @@ jobs:
 
 
 
+      - name: Export bounded validated decision to the protected self App reporter
+        id: self-app-projection
+        if: inputs.self-app-projection && github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main'
+        env:
+          DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
+          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
+        run: |
+          node --input-type=module <<'NODE'
+          const { appendGitHubOutput } = await import(`${process.env.GATEKEEPER_RUNTIME_ROOT}/dist/runner-temp-path.mjs`);
+          const bytes = Buffer.from(process.env.DECISION ?? '', 'utf8');
+          if (!bytes.length || bytes.length > 65536) throw new Error('Protected decision bytes are unavailable or oversized.');
+          JSON.parse(bytes.toString('utf8'));
+          appendGitHubOutput(`decision_base64=${bytes.toString('base64')}\n`);
+          NODE
+
       - name: Publish validated ordinary Codex PASS display
         id: pass-display
         if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && needs.policy.outputs.mode == 'enforced' && inputs.protected-review-instructions && steps.decision.outputs.kind == 'PASS'
@@ -763,20 +778,6 @@ jobs:
         run: node "$GATEKEEPER_RUNTIME_ROOT/dist/ci-review/codex-pass-producer.mjs"
 
 
-      - name: Export bounded validated decision to the protected self App reporter
-        id: self-app-projection
-        if: inputs.self-app-projection && github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main'
-        env:
-          DECISION: ${{ (needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message }}
-          GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
-        run: |
-          node --input-type=module <<'NODE'
-          const { appendGitHubOutput } = await import(`${process.env.GATEKEEPER_RUNTIME_ROOT}/dist/runner-temp-path.mjs`);
-          const bytes = Buffer.from(process.env.DECISION ?? '', 'utf8');
-          if (!bytes.length || bytes.length > 65536) throw new Error('Protected decision bytes are unavailable or oversized.');
-          JSON.parse(bytes.toString('utf8'));
-          appendGitHubOutput(`decision_base64=${bytes.toString('base64')}\n`);
-          NODE
 
   block-review-record:
     if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false && needs.policy.result == 'success' && needs.review.result == 'success' && needs.policy.outputs.owner_amendment_grade == 'G0' && needs.policy.outputs.owner_amendment_evidence_producer == 'github-actions-attestation' && needs.review.outputs.decision_kind == 'BLOCK'
