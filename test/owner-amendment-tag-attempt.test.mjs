@@ -87,7 +87,7 @@ test('ordinary PASS remains available when protected exact-B classification conf
     readTagRef: async request => ({ status: 404, requestedUrl: request.expectedUrl }) });
   assert.deepEqual(assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'PASS',
     ownerAmendmentSelected: 'G0', ownerAmendmentAttemptResult: 'success',
-    ownerAmendmentAttempted: String(attempt.attempted) }), { route: 'ordinary-pass' });
+    ownerAmendmentAttempted: String(attempt.attempted), selectedAuthorityChanged: 'false' }), { route: 'ordinary-pass' });
   assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'PASS',
     ownerAmendmentSelected: 'G0', ownerAmendmentAttemptResult: 'failure', ownerAmendmentAttempted: '' }),
   /attempt classification is unavailable/);

@@ -189,7 +189,9 @@ export async function runOrdinaryGeminiCiWorkflow(): Promise<void> {
   });
   const digest = digestDecision(result.decision);
   appendGitHubOutput(`decision_kind=${result.decision.decision}\nconclusion=${result.decision.decision}\n` +
-    `decision_digest=${digest}\nprojection_nonce=${projection.context.nonce}\nreviewed_sha=${reviewedSha}\n`);
+    `decision_digest=${digest}\nprojection_nonce=${projection.context.nonce}\nreviewed_sha=${reviewedSha}\n` +
+    (repository === 'flair-agency/architecture-gatekeeper'
+      ? `authority_provenance=${Buffer.from(JSON.stringify(result.authorityProvenance)).toString('base64')}\n` : ''));
   emitOrdinaryGeminiPublication(projection);
 }
 

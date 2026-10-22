@@ -3,6 +3,8 @@ function fail(message: string): never { throw new Error(`Enforced CI acceptance:
 export interface AssertEnforcedAcceptanceInput {
   reviewResult: unknown;
   conclusion: unknown;
+  selfAuthorityCheckRequired?: unknown;
+  selectedAuthorityChanged?: unknown;
   ownerAdditionSelected?: unknown;
   ownerAdditionResult?: unknown;
   ownerAdditionEligibility?: unknown;
@@ -23,7 +25,7 @@ export function assertEnforcedAcceptance(input: AssertEnforcedAcceptanceInput): 
 export function assertEnforcedAcceptance({ reviewResult, conclusion, ownerAdditionSelected,
   ownerAdditionResult, ownerAdditionEligibility, ownerAmendmentSelected, ownerAmendmentAttemptResult,
   ownerAmendmentAttempted, ownerAmendmentSignerResult, ownerAmendmentSignerStatus,
-  ownerAmendmentEligibility }: AssertEnforcedAcceptanceInput = {} as AssertEnforcedAcceptanceInput): EnforcedAcceptanceRoute {
+  ownerAmendmentEligibility, selfAuthorityCheckRequired, selectedAuthorityChanged }: AssertEnforcedAcceptanceInput = {} as AssertEnforcedAcceptanceInput): EnforcedAcceptanceRoute {
   if (reviewResult !== 'success') fail('the protected review did not complete successfully.');
   if (ownerAmendmentSelected === 'G0' &&
       (ownerAmendmentAttemptResult !== 'success' || !['true', 'false'].includes(ownerAmendmentAttempted as string))) {
@@ -40,7 +42,15 @@ export function assertEnforcedAcceptance({ reviewResult, conclusion, ownerAdditi
   if (ownerAmendmentSelected === 'G0' && ownerAmendmentSignerResult === 'success') {
     fail('semantic eligibility signer success conflicts with the protected no-tag classification.');
   }
+  // The protected caller selects this guard; candidate Policy or model output cannot waive it.
+  const requireAuthorityCheck = selfAuthorityCheckRequired === 'true' || ownerAmendmentSelected === 'G0';
+  if (requireAuthorityCheck && !['true', 'false'].includes(selectedAuthorityChanged as string)) {
+    fail('the protected selected-Authority change comparison is unavailable.');
+  }
   if (conclusion === 'PASS') {
+    if (requireAuthorityCheck && selectedAuthorityChanged !== 'false') {
+      fail('ordinary PASS cannot accept a change to the previous selected Authority Set.');
+    }
     return Object.freeze({ route: 'ordinary-pass' as const });
   }
   if (conclusion === 'OWNER_ADDITION_G0' && ownerAdditionSelected === 'G0' &&
