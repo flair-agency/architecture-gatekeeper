@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { appendFileSync } from 'node:fs';
+import { appendGitHubOutput } from './runner-temp-path.mjs';
 import { fileURLToPath } from 'node:url';
 import { inspectSelfAuthorityChanges } from './ci-review/ci-self-authority-change.mts';
 export { inspectSelfAuthorityChanges };
@@ -16,6 +16,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const provenance = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
   const result = await inspectSelfAuthorityChanges({ repository, baseSha, headSha, reviewedSha,
     baseBranch, policyPath, policySha256, provenance, cwd: process.cwd() });
-  appendFileSync(GITHUB_OUTPUT, `changed=${result.changed}\nconfiguration_paths_base64=${Buffer.from(JSON.stringify(result.configurationPaths)).toString('base64')}\n`);
+  appendGitHubOutput(`changed=${result.changed}\nconfiguration_paths_base64=${Buffer.from(JSON.stringify(result.configurationPaths)).toString('base64')}\n`);
   console.log(`Old selected Authority changed: ${result.changed}; configuration changes: ${result.configurationPaths.length}`);
 }

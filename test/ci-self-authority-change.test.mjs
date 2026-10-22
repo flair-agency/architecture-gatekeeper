@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -22,7 +22,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 const write = (root, path, content) => { mkdirSync(join(root, path, '..'), { recursive: true }); writeFileSync(join(root, path), content); };
 async function fixture(t, change = root => write(root, 'code.txt', 'new code\n'), basePolicy = policy) {
-  const cwd = mkdtempSync(join(tmpdir(), 'self-authority-'));
+  const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'self-authority-')));
   t.after(() => rmSync(cwd, { recursive: true, force: true }));
   git(cwd, 'init', '-q', '-b', 'main'); git(cwd, 'config', 'user.name', 'Test'); git(cwd, 'config', 'user.email', 'test@example.invalid');
   write(cwd, policyPath, JSON.stringify(basePolicy)); write(cwd, manifestPath, JSON.stringify(manifest));
@@ -120,6 +120,8 @@ test('CLI publishes no false output on missing input and final accept rejects a 
   const cli = new URL('../dist/ci-self-authority-change.mjs', import.meta.url).pathname;
   const run = extra => spawnSync(process.execPath, [cli], { cwd: f.cwd, env: { ...env, ...extra }, encoding: 'utf8' });
   assert.notEqual(run({ AUTHORITY_PROVENANCE: '' }).status, 0); assert.equal(readFileSync(output, 'utf8'), '');
+  const linkedOutput = join(f.cwd, 'linked-output'); symlinkSync(output, linkedOutput);
+  assert.notEqual(run({ GITHUB_OUTPUT: linkedOutput }).status, 0); assert.equal(readFileSync(output, 'utf8'), '');
   assert.equal(run({}).status, 0); assert.match(readFileSync(output, 'utf8'), /^changed=true\n/);
   const final = spawnSync(process.execPath, [new URL('../dist/ci-enforced-acceptance.mjs', import.meta.url).pathname], {
     env: { ...process.env, REVIEW_RESULT: 'success', CONCLUSION: 'PASS', SELF_AUTHORITY_CHECK_REQUIRED: 'true', SELECTED_AUTHORITY_CHANGED: 'true' }, encoding: 'utf8' });
