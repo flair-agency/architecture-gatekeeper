@@ -811,7 +811,12 @@ test('v6 amendment cannot infer a trigger or opt-in from an otherwise valid cand
     const f = fixture(profile, { policyVersion: 6 });
     const noSelection = structuredClone(f.policy);
     delete noSelection.branches.main.ownerAmendment;
-    assert.throws(() => f.producer.prepare({ ...f.args, policyBytes: Buffer.from(JSON.stringify(noSelection)) }), /previous protected policy does not select/);
+    // Per-call policy bytes cannot override the independently resolved old policy.
+    assert.doesNotThrow(() => f.producer.prepare({ ...f.args, policyBytes: Buffer.from(JSON.stringify(noSelection)) }));
+    const unselected = createOwnerAmendmentSemanticEligibilityProducer({ ...f.validators,
+      resolveProtectedInputs: () => ({ ...f.validators.resolveProtectedInputs(),
+        policyBytes: Buffer.from(JSON.stringify(noSelection)) }) });
+    assert.throws(() => unselected.prepare(f.args), /previous protected policy does not select/);
     assert.throws(() => f.producer.prepare({ ...f.args, amendmentRecordBytes: Buffer.alloc(0) }));
     assert.throws(() => f.producer.prepare({ ...f.args, tag: { ...f.args.tag, observedTagRefOid: 'e'.repeat(40) } }));
   }
