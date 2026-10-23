@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +18,7 @@ import { parseOwnerAmendmentSemanticTagObject } from '../dist/owner-amendment-se
 import {
   completeOwnerAmendmentSemanticEligibility,
   createOwnerAmendmentSemanticEligibilityProducer,
+  normalizeOwnerAmendmentSemanticReviewOutput,
   validateOwnerAmendmentSemanticEligibilityReceipt,
 } from '../dist/owner-amendment-semantic-eligibility.mjs';
 
@@ -537,6 +540,32 @@ test('closed decision rejects a missing, extra, mismatched, or inconsistent fiel
   for (const decisionBytes of malformed) assert.throws(() => completeOwnerAmendmentSemanticEligibility({ prepared,
     decisionBytes, producer: f.semanticProducer, gatekeeper: f.gatekeeper,
     reviewModel: prepared.model, reviewReasoningEffort: prepared.reasoningEffort }));
+});
+
+test('stage-review-output canonicalizes valid reviewer JSON before completion and rejects invalid JSON', () => {
+  const f = fixture('completed-block-v1');
+  const prepared = f.producer.prepare(f.args);
+  const canonical = eligibilityDecision(prepared);
+  const parsed = JSON.parse(canonical.toString('utf8'));
+  const prettyOutOfOrder = Buffer.from(JSON.stringify(Object.fromEntries(Object.entries(parsed).reverse()), null, 2));
+  const temp = realpathSync(mkdtempSync(join(tmpdir(), 'semantic-review-stage-')));
+  try {
+    execFileSync(process.execPath, [join(root, 'scripts/owner-amendment-semantic-eligibility-producer.mjs'), 'stage-review-output'], {
+      cwd: temp, env: { ...process.env, RUNNER_TEMP: temp, DECISION: prettyOutOfOrder.toString('utf8') }, stdio: 'pipe' });
+    const staged = readFileSync(join(temp, 'owner-amendment-semantic-reviewer-output/decision.json'));
+    assert.deepEqual(staged, canonical);
+    const completed = completeOwnerAmendmentSemanticEligibility({ prepared, decisionBytes: staged,
+      producer: f.semanticProducer, gatekeeper: f.gatekeeper, reviewModel: prepared.model,
+      reviewReasoningEffort: prepared.reasoningEffort });
+    assert.equal(completed.receipt.eligibility, 'ELIGIBLE');
+    assert.throws(() => normalizeOwnerAmendmentSemanticReviewOutput(Buffer.from('{')));
+    assert.throws(() => normalizeOwnerAmendmentSemanticReviewOutput(Buffer.from('{"x":1,"x":2}')));
+    const extra = Buffer.from(JSON.stringify({ ...parsed, surprise: true }));
+    const normalizedExtra = normalizeOwnerAmendmentSemanticReviewOutput(extra);
+    assert.throws(() => completeOwnerAmendmentSemanticEligibility({ prepared, decisionBytes: normalizedExtra,
+      producer: f.semanticProducer, gatekeeper: f.gatekeeper, reviewModel: prepared.model,
+      reviewReasoningEffort: prepared.reasoningEffort }));
+  } finally { rmSync(temp, { recursive: true, force: true }); }
 });
 
 test('fails closed for missing or wrong-profile trigger evidence and stale base or B bindings', () => {

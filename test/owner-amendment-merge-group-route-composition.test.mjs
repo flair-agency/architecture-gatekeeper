@@ -25,9 +25,13 @@ import { verifyOwnerAmendmentBlockEvidence } from '../dist/owner-amendment-attes
 import { parseOwnerAmendmentSemanticTagObject } from '../dist/owner-amendment-semantic-tag-object.mjs';
 import { deriveOwnerAmendmentGitChanges } from '../dist/owner-amendment-git-changes.mjs';
 import { materializeAuthoritySet } from '../dist/authority-set.mjs';
+import { verifyGitHubOwnerAmendmentReadback } from '../dist/github-owner-amendment-readback.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 import { inspectOwnerAmendmentSemanticProducerAttempts } from '../dist/owner-amendment-semantic-producer-attempts.mjs';
 import { selectOwnerAmendmentHandoffPrRunContext } from '../dist/owner-amendment-handoff-pr-run-context.mjs';
+import { prepareOwnerAmendmentMergeGroupOrdinaryReview,
+  validateOwnerAmendmentMergeGroupOrdinaryDecision } from '../dist/owner-amendment-merge-group-ordinary-review.mjs';
+import { assertEnforcedAcceptance } from '../dist/ci-enforced-acceptance.mjs';
 
 const repository = 'flair-agency/architecture-gatekeeper';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -239,7 +243,7 @@ function apiFixture({ repoPath, baseSha, bSha, groupSha, triggerHeadSha, profile
     repositoryId, triggerPr, bPr, triggerArtifactName };
 }
 
-function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false, previousPolicyLocalOnly = false, ordinary = false } = {}) {
+function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false, previousPolicyLocalOnly = false, ordinary = false, currentSelfCycle = false } = {}) {
   const repoPath = mkdtempSync(join(tmpdir(), 'agk-merge-group-route-'));
   git(repoPath, ['init', '-q']);
   // These short-lived fixtures need no detached Git housekeeping after a
@@ -251,25 +255,33 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false,
   }
   const authorityLimits = { maxManifestBytes: 16_384, maxMembers: 16, maxFileBytes: 65_536,
     maxTotalBytes: 262_144, maxPromptBytes: 524_288 };
-  const policy = { version: 2, default: { mode: 'local-only' }, branches: { main: {
+  let policy = { version: 2, default: { mode: 'local-only' }, branches: { main: {
     mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+    execution: { reviewJobTimeoutMinutes: 7, reviewStepTimeoutMinutes: 5, codexProfile: 'standard' },
     authorityManifestPath: '.codex/gatekeeper/authorities.json', authorityLimits,
     ownerAmendment: { version: 1, grade: 'G0', scope: 'authority-only', triggerProfile: profile,
       authorityId: 'architecture-contract', authorityPath: 'docs/architecture.md',
       evidenceProducer: 'github-actions-attestation', tagNamespace, maxPromptBytes: 350_000 },
   } } };
-  const members = [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }];
+  let members = [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }];
   if (profile === 'completed-owner-decision-self-v1') members.push({ id: 'ownership-charter', repository: 'self',
     revision: 'authority-revision', path: 'docs/ownership.md' });
   for (let index = members.length; index < 6; index++) members.push({ id: `authority-${index}`, repository: 'self',
     revision: 'authority-revision', path: `docs/authority-${index}.md` });
+  if (currentSelfCycle) {
+    policy = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json')));
+    members = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/authorities.json'))).authorities;
+  }
   const basePolicy = structuredClone(policy);
   if (previousPolicyLocalOnly) basePolicy.branches.main = { mode: 'local-only' };
   else if (candidateOnlyOptIn) delete basePolicy.branches.main.ownerAmendment;
   put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(basePolicy)}\n`));
   put(repoPath, '.codex/gatekeeper/authorities.json', Buffer.from(`${JSON.stringify({ version: 1, authorities: members })}\n`));
-  const oldArchitecture = Buffer.from('# Architecture\nExisting rule needs an owner decision.\n');
-  const newArchitecture = Buffer.from('# Architecture\nThe amended rule preserves protected review.\n');
+  for (const name of ['ci-prompt.md', 'ci-decision.schema.json', 'decision.validation.json']) {
+    put(repoPath, `.codex/gatekeeper/${name}`, readFileSync(join(root, '.codex/gatekeeper', name)));
+  }
+  let oldArchitecture = Buffer.from('# Architecture\nExisting rule needs an owner decision.\n');
+  let newArchitecture = Buffer.from('# Architecture\nThe amended rule preserves protected review.\n');
   put(repoPath, 'docs/architecture.md', oldArchitecture);
   let oldOwnership, newOwnership;
   if (members.length > 1) {
@@ -277,19 +289,44 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false,
     newOwnership = Buffer.from('# Ownership\nThe owner resolves this policy choice.\n');
     for (const member of members.slice(1)) put(repoPath, member.path, oldOwnership);
   }
+  if (currentSelfCycle) {
+    for (const name of ['ci-policy.json', 'authorities.json']) put(repoPath, `.codex/gatekeeper/${name}`,
+      readFileSync(join(root, '.codex/gatekeeper', name)));
+    for (const member of members) put(repoPath, member.path, readFileSync(join(root, member.path)));
+    const fixtureRule = '\n## Isolated functional fixture: report-mode choice\n\n' +
+      'This clause governs only the local synthetic fixture file fixture-mode.json. It changes no AGK production responsibility. ' +
+      'Existing decision fixture-report-mode selects verbose output. Changing that product preference to compact is an unresolved Owner value choice, ' +
+      'not a forbidden implementation or security change. A candidate selecting compact must receive OWNER_DECISION until this existing decision is amended. ' +
+      'The adopted output mode is verbose.\n';
+    oldArchitecture = Buffer.concat([readFileSync(join(root, 'docs/architecture.md')), Buffer.from(fixtureRule)]);
+    newArchitecture = Buffer.from(oldArchitecture.toString().replace(fixtureRule,
+      '\n## Isolated functional fixture: report-mode choice\n\n' +
+      'This clause governs only the local synthetic fixture file fixture-mode.json. It changes no AGK production responsibility. ' +
+      'Existing decision fixture-report-mode now selects compact output. The Owner value choice is resolved; setting fixture-mode.json to compact conforms to this decision.\n'));
+    put(repoPath, 'docs/architecture.md', oldArchitecture);
+    put(repoPath, 'fixture-mode.json', '{"mode":"verbose"}\n');
+  }
   const baseSha = commit(repoPath, 'protected base');
+  let triggerHeadSha = 'c'.repeat(40), triggerASha;
+  if (profile === 'completed-owner-decision-self-v1' && !ordinary && !candidateOnlyOptIn && !previousPolicyLocalOnly) {
+    if (currentSelfCycle) put(repoPath, 'fixture-mode.json', '{"mode":"compact"}\n');
+    else put(repoPath, 'request.md', Buffer.from('Synthetic A requests an owner choice for the existing architecture rule.\n'));
+    triggerASha = commit(repoPath, 'synthetic A requests owner decision');
+    triggerHeadSha = triggerASha;
+    git(repoPath, ['checkout', '--detach', baseSha]);
+  }
   if (candidateOnlyOptIn || previousPolicyLocalOnly) put(repoPath, '.codex/gatekeeper/ci-policy.json', Buffer.from(`${JSON.stringify(policy)}\n`));
   if (ordinary) put(repoPath, 'ordinary.txt', Buffer.from('ordinary code change\n'));
   else {
     put(repoPath, 'docs/architecture.md', newArchitecture);
-    if (profile === 'completed-owner-decision-self-v1') put(repoPath, 'docs/ownership.md', newOwnership);
+    if (profile === 'completed-owner-decision-self-v1' && !currentSelfCycle) put(repoPath, 'docs/ownership.md', newOwnership);
   }
   const bSha = commit(repoPath, candidateOnlyOptIn || previousPolicyLocalOnly ? 'candidate policy opt-in B' : 'authority-only B');
   const groupCommit = git(repoPath, ['commit-tree', `${bSha}^{tree}`, '-p', baseSha, '-p', bSha, '-m', 'merge group']);
   const groupSha = groupCommit.toString('ascii').trim();
   const runGit = args => git(repoPath, args);
-  return { repoPath, profile, baseSha, bSha, groupSha, runGit, policy, members,
-    oldArchitecture, newArchitecture, oldOwnership, newOwnership, triggerHeadSha: 'c'.repeat(40),
+  return { repoPath, profile, baseSha, bSha, groupSha, runGit, policy, members, triggerASha, currentSelfCycle,
+      oldArchitecture, newArchitecture, oldOwnership, newOwnership, triggerHeadSha,
     cleanup: () => {
       rmSync(repoPath, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
       assert.equal(existsSync(repoPath), false, 'temporary Git fixture must be removed');
@@ -299,23 +336,24 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false,
 function triggerEvidence(fixture, resolved, api) {
   const schema = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/ci-decision.schema.json'), 'utf8'));
   const validation = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/decision.validation.json'), 'utf8'));
-  const inputDigests = Object.fromEntries(['manifest', 'policy', 'prompt', 'schema', 'validation'].map(key =>
-    [key, hash(Buffer.from(`trigger-${key}`))]));
+  const inputDigests = Object.fromEntries(Object.entries({ manifest: 'authorities.json', policy: 'ci-policy.json',
+    prompt: 'ci-prompt.md', schema: 'ci-decision.schema.json', validation: 'decision.validation.json' }).map(([key, path]) =>
+    [key, hash(fixture.runGit(['show', `${fixture.baseSha}:.codex/gatekeeper/${path}`]))]));
   inputDigests.manifest = hash(resolved.manifestBytes);
   inputDigests.policy = hash(resolved.policyBytes);
   const authority = { version: 1, selfRepository: repository, authorityRevision: fixture.baseSha,
     manifestSha256: hash(resolved.manifestBytes), setDigest: hash(Buffer.from(JSON.stringify(resolved.manifest.authorities.map((member, index) => {
-      const bytes = index === 0 ? fixture.oldArchitecture : fixture.oldOwnership;
+      const bytes = fixture.runGit(['show', `${fixture.baseSha}:${member.path}`]);
       return { id: member.id, repository, resolvedCommit: fixture.baseSha, path: member.path,
         byteLength: bytes.length, sha256: hash(bytes) };
     })))),
     members: resolved.manifest.authorities.map((member, index) => {
-      const bytes = index === 0 ? fixture.oldArchitecture : fixture.oldOwnership;
+      const bytes = fixture.runGit(['show', `${fixture.baseSha}:${member.path}`]);
       return { id: member.id, repository, resolvedCommit: fixture.baseSha, path: member.path,
         byteLength: bytes.length, sha256: hash(bytes) };
     }) };
   const producerContext = { repository, prNumber: 199, baseSha: fixture.baseSha, headSha: fixture.triggerHeadSha,
-    mergeSha: 'd'.repeat(40), workflowSha: fixture.baseSha, workflowPath, runId: '101', runAttempt: '2' };
+    mergeSha: fixture.triggerASha ? fixture.runGit(['commit-tree', `${fixture.triggerASha}^{tree}`, '-p', fixture.baseSha, '-p', fixture.triggerASha, '-m', 'A test merge']).toString('ascii').trim() : 'd'.repeat(40), workflowSha: fixture.baseSha, workflowPath, runId: '101', runAttempt: '2' };
   let decision;
   if (fixture.profile === 'completed-block-v1') {
     decision = { decision: 'BLOCK', findings: [], summary: 'The previous rule needs review.', authority: ['protected architecture'],
@@ -332,7 +370,7 @@ function triggerEvidence(fixture, resolved, api) {
       gates: { sharedMechanism: { decision: 'OWNER_DECISION', summary: 'Existing rule needs an owner choice.', consumerOwnership: '', failClosedBehavior: '', compatibility: '', minimality: '' },
         trustBoundary: { decision: 'PASS', summary: 'No trust change.', tokenPermissions: '', untrustedInputs: '', credentialHandling: '', reportingIsolation: '' } } };
   }
-  const decisionBytes = Buffer.from(`${JSON.stringify(decision)}\n`);
+  const decisionBytes = fixture.nativeInitialDecision ?? Buffer.from(`${JSON.stringify(decision)}\n`);
   const record = fixture.profile === 'completed-block-v1'
     ? buildOwnerAmendmentBlockRecord({ decisionBytes, schema, validation, authority, context: producerContext, inputDigests })
     : buildOwnerAmendmentOwnerDecisionRecord({ decisionBytes, schema, validation, authority, context: producerContext, inputDigests });
@@ -340,13 +378,13 @@ function triggerEvidence(fixture, resolved, api) {
   const bundleBytes = Buffer.from('{"controlled-attestation-fixture":true}\n');
   const blockRun = { runId: '101', runAttempt: '2', headSha: fixture.triggerHeadSha, aPrNumber: 199,
     workflowPath, workflowRef: 'refs/heads/main', workflowSha: fixture.baseSha };
-  const purpose = 'Resolve the previous protected authority decision.';
+  const purpose = fixture.currentSelfCycle ? 'Resolve existing fixture-report-mode Owner choice: adopt compact output for fixture-mode.json only.' : 'Resolve the previous protected authority decision.';
   const handoffArgs = { repository, policy: resolved.policy, manifest: resolved.manifest,
     baseSha: fixture.baseSha, bSha: fixture.bSha, changedFiles: resolved.changedFiles,
     baseAuthorityBytes: resolved.authorityBytes.base, headAuthorityBytes: resolved.authorityBytes.head,
     purpose, token: 'fixture-token', runGh: api.runGh, rulesetId: tagRulesetId, tagger,
     tagNamespace, fetchImpl: api.fetchImpl };
-  return { authority, producerContext, decision, decisionBytes, record, recordBytes, bundleBytes, blockRun, purpose, handoffArgs };
+  return { authority, producerContext, decision: JSON.parse(decisionBytes), decisionBytes, record, recordBytes, bundleBytes, blockRun, purpose, handoffArgs };
 }
 
 function eligibilityDecision(prepared) {
@@ -433,7 +471,15 @@ function makeSemanticPipeline(fixture, resolved, trigger, evidence, api, gitChan
     tag, tagObjectBytes, producer: producerIdentity, selectedProducer: producerIdentity,
     gatekeeper, selectedGatekeeper: gatekeeper, reviewModel: resolved.policy.model,
     reviewReasoningEffort: resolved.policy.reasoningEffort });
-  const completed = semantic.complete({ prepared, decisionBytes: eligibilityDecision(prepared),
+  const rawDecision = localReview(fixture, 'b-eligibility', prepared.promptBytes, prepared.schemaBytes, eligibilityDecision(prepared));
+  const runner = realpathSync(mkdtempSync(join(tmpdir(), 'agk-semantic-output-')));
+  let decisionBytes;
+  try {
+    execFileSync(process.execPath, [join(root, 'scripts/owner-amendment-semantic-eligibility-producer.mjs'), 'stage-review-output'],
+      { cwd: runner, env: { ...process.env, RUNNER_TEMP: runner, DECISION: rawDecision.toString('utf8') }, stdio: 'pipe' });
+    decisionBytes = readFileSync(join(runner, 'owner-amendment-semantic-reviewer-output/decision.json'));
+  } finally { rmSync(runner, { recursive: true, force: true }); }
+  const completed = semantic.complete({ prepared, decisionBytes,
     producer: producerIdentity, gatekeeper, reviewModel: prepared.model, reviewReasoningEffort: prepared.reasoningEffort });
   return { semantic, prepared, completed, producerIdentity, gatekeeper, tag, authoritySet, changes };
 }
@@ -786,15 +832,88 @@ throw new Error('Unexpected gh work in candidate-only opt-in case');\n`);
   } finally { rmSync(temporary, { recursive: true, force: true }); }
 }
 
-for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
-  test(`exercises production route components with test adapter projections for ${profile}`, async t => {
-    const fixture = makeRepo(profile, { includeRuntime: true });
+// Local execution adapter for this bounded fixture. External responses are never
+// host evidence: the production validators still validate every returned byte.
+function localReview(fixture, name, prompt, schema, fallback, reviewTuple = {}) {
+  if (!fixture.currentSelfCycle) return fallback;
+  const request = {
+    model: fixture.policy.branches.main.model, reasoningEffort: fixture.policy.branches.main.reasoningEffort,
+    promptSha256: hash(Buffer.from(prompt)), schemaSha256: hash(Buffer.from(schema)),
+    baseSha: reviewTuple.baseSha ?? fixture.baseSha, aSha: reviewTuple.aSha ?? fixture.triggerASha, bSha: fixture.bSha,
+  };
+  const output = process.env.AGK_OWNER_CYCLE_EVIDENCE_DIR;
+  if (output) {
+    mkdirSync(output, { recursive: true });
+    writeFileSync(join(output, `${name}-prompt.md`), prompt);
+    writeFileSync(join(output, `${name}-schema.json`), schema);
+    writeFileSync(join(output, `${name}-request.json`), JSON.stringify(request, null, 2));
+  }
+  const native = process.env.AGK_OWNER_CYCLE_NATIVE_DIR;
+  if (!native) return fallback;
+  const file = join(native, `${name}.json`);
+  if (!existsSync(file)) throw new Error(`LOCAL_REVIEW_PENDING: ${name}; prepared inputs exported`);
+  assert.deepEqual(JSON.parse(readFileSync(join(native, `${name}-request.json`))), request, 'external response must bind the exact exported review input');
+  return readFileSync(file);
+}
+
+async function localCanonicalReadback(fixture, canonicalSha) {
+  const run = args => fixture.runGit(args).toString('utf8').trim();
+  const fetchImpl = async url => {
+    const path = new URL(url).pathname.replace(`/repos/${repository}`, '');
+    let value;
+    if (path === '') value = { full_name: repository };
+    else if (path === '/pulls/201') value = { number: 201, state: 'closed', merged: true,
+      merged_at: '2026-09-29T13:00:00Z', head: { sha: fixture.bSha },
+      base: { ref: 'main', repo: { full_name: repository } }, merge_commit_sha: canonicalSha };
+    else if (path === '/git/ref/heads/main') value = { ref: 'refs/heads/main', object: { type: 'commit', sha: run(['rev-parse', 'refs/heads/main']) } };
+    else if (path.startsWith('/compare/')) {
+      const [base, target] = path.slice('/compare/'.length).split('...');
+      const mergeBase = run(['merge-base', base, target]);
+      value = { status: base === target ? 'identical' : 'ahead', base_commit: { sha: base }, merge_base_commit: { sha: mergeBase } };
+    } else if (path.startsWith('/git/commits/')) {
+      const sha = path.slice('/git/commits/'.length);
+      value = { sha, tree: { sha: run(['rev-parse', `${sha}^{tree}`]) },
+        parents: run(['show', '-s', '--format=%P', sha]).split(' ').filter(Boolean).map(sha => ({ sha })) };
+    } else if (path.startsWith('/git/trees/')) {
+      const sha = path.slice('/git/trees/'.length);
+      value = { sha, truncated: false, tree: run(['ls-tree', sha]).split('\n').filter(Boolean).map(line => {
+        const match = /^(\d+) (\w+) ([a-f0-9]+)\t(.+)$/.exec(line);
+        return { mode: match[1], type: match[2], sha: match[3], path: match[4] };
+      }) };
+    } else if (path.startsWith('/git/blobs/')) {
+      const sha = path.slice('/git/blobs/'.length), bytes = fixture.runGit(['cat-file', 'blob', sha]);
+      value = { sha, size: bytes.length, encoding: 'base64', content: bytes.toString('base64') };
+    }
+    return new Response(JSON.stringify(value ?? {}), { status: value ? 200 : 404 });
+  };
+  const results = [];
+  for (const member of fixture.members) {
+    const authorityDigest = hash(fixture.runGit(['show', `${fixture.bSha}:${member.path}`]));
+    const result = await verifyGitHubOwnerAmendmentReadback({ token: 'local-synthetic-token', repository,
+      targetBranch: 'main', pullRequestNumber: 201, previousBaseSha: fixture.baseSha, bSha: fixture.bSha,
+      authorityPath: member.path, authorityDigest, fetchImpl });
+    assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_CANONICAL_READBACK');
+    results.push(result);
+  }
+  return { status: 'VERIFIED_LOCAL_SIX_MEMBER_READBACK', members: results,
+    limitation: 'Real local Git objects; PR metadata and GitHub transport modeled, no protected host adoption.' };
+}
+
+for (const [profile, currentSelfCycle] of [['completed-block-v1', false], ['completed-owner-decision-self-v1', false], ['completed-owner-decision-self-v1', true]]) {
+  test(`exercises production route components with test adapter projections for ${profile}${currentSelfCycle ? ' current-self-cycle' : ''}`, async t => {
+    const fixture = makeRepo(profile, { includeRuntime: true, currentSelfCycle });
     t.after(fixture.cleanup);
     const resolved = resolveOwnerAmendmentHandoffGitContext({ repository, baseSha: fixture.baseSha,
       headSha: fixture.bSha, runGit: fixture.runGit });
     const api = apiFixture({ repoPath: fixture.repoPath, baseSha: fixture.baseSha, bSha: fixture.bSha,
       groupSha: fixture.groupSha, triggerHeadSha: fixture.triggerHeadSha, profile,
       triggerRecordBytes: Buffer.from('{}'), bundleBytes: Buffer.from('{}') });
+    if (currentSelfCycle) {
+      fixture.initialA = await prepareOwnerAmendmentMergeGroupOrdinaryReview({ repository,
+        baseSha: fixture.baseSha, headSha: fixture.triggerASha, selfRoot: fixture.repoPath, runGit: fixture.runGit });
+      fixture.nativeInitialDecision = localReview(fixture, 'initial-a', fixture.initialA.prompt,
+        fixture.initialA.schemaBytes, null);
+    }
     const trigger = triggerEvidence(fixture, resolved, api);
     api.setTriggerRecord(trigger.recordBytes, trigger.bundleBytes);
     const selectedHandoff = await selectOwnerAmendmentHandoffPrRunContext({ input: { repository,
@@ -935,6 +1054,85 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
     assert.equal(accepted.status, 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION', accepted.reason);
     assert.equal(accepted.triggerDecision, profile === 'completed-block-v1' ? 'BLOCK' : 'OWNER_DECISION');
     assert.deepEqual(accepted.changes.map(change => change.path), authorityChanges.map(change => change.path));
+    if (profile === 'completed-owner-decision-self-v1' && fixture.triggerASha) {
+      // Complete the local lifecycle with real Git objects: A is a sibling of
+      // B, B is merged into the protected base, then A is replayed on that
+      // canonical result and receives fresh ordinary review inputs.
+      const initialA = fixture.initialA ?? await prepareOwnerAmendmentMergeGroupOrdinaryReview({ repository,
+        baseSha: fixture.baseSha, headSha: fixture.triggerASha, selfRoot: fixture.repoPath,
+        runGit: fixture.runGit });
+      fixture.runGit(['checkout', '--detach', fixture.baseSha]);
+      fixture.runGit(['merge', '--no-ff', '--no-edit', fixture.bSha]);
+      const canonicalSha = fixture.runGit(['rev-parse', 'HEAD']).toString('ascii').trim();
+      fixture.runGit(['update-ref', 'refs/heads/main', canonicalSha]);
+      const readback = await localCanonicalReadback(fixture, canonicalSha);
+      fixture.runGit(['cherry-pick', fixture.triggerASha]);
+      const freshASha = fixture.runGit(['rev-parse', 'HEAD']).toString('ascii').trim();
+      const freshA = await prepareOwnerAmendmentMergeGroupOrdinaryReview({ repository,
+        baseSha: canonicalSha, headSha: freshASha, selfRoot: fixture.repoPath,
+        runGit: fixture.runGit });
+      const syntheticFreshPass = Buffer.from(JSON.stringify({ decision: 'PASS', findings: [],
+        summary: 'Synthetic deterministic fixture response for exact fresh A tuple.',
+        authority: ['Complete selected Authority Set'],
+        authorityFiles: freshA.authority.members.map(member => member.path),
+        authorityIds: freshA.authority.members.map(member => member.id),
+        responsibility: ['Review exact fresh A'], capabilitySurface: ['Local fixture'],
+        qualityGuarantees: ['Exact tuple validation'], reviewedScope: ['Fresh A commit'],
+        prohibitedChanges: ['Inference beyond fixture'],
+        gates: { sharedMechanism: { decision: 'PASS', summary: 'Fixture response.', consumerOwnership: 'Preserved',
+          failClosedBehavior: 'Preserved', compatibility: 'Preserved', minimality: 'Bounded' },
+        trustBoundary: { decision: 'PASS', summary: 'Fixture response.', tokenPermissions: 'Local only',
+          untrustedInputs: 'Data', credentialHandling: 'None', reportingIsolation: 'Local' } } }));
+      const freshDecision = localReview(fixture, 'fresh-a', freshA.prompt, freshA.schemaBytes, syntheticFreshPass,
+        { baseSha: canonicalSha, aSha: freshASha });
+      const freshAccepted = validateOwnerAmendmentMergeGroupOrdinaryDecision({ decisionBytes: freshDecision,
+        expected: { repository, baseSha: canonicalSha, headSha: freshASha }, prepared: freshA });
+      assert.equal(freshAccepted.status, 'VERIFIED_FRESH_MERGE_GROUP_ORDINARY_PASS');
+      assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'OWNER_AMENDMENT_G0',
+        ownerAmendmentSelected: 'G0', ownerAmendmentAttemptResult: 'success', ownerAmendmentAttempted: 'true',
+        ownerAmendmentSignerResult: 'success', ownerAmendmentSignerStatus: 'prepared',
+        ownerAmendmentEligibility: 'ELIGIBLE' }), /eligible tagged OWNER_AMENDMENT requires a separately implemented protected transition route/);
+      assert.equal(fixture.runGit(['rev-parse', `${canonicalSha}^1`]).toString('ascii').trim(), fixture.baseSha);
+      assert.equal(fixture.runGit(['rev-parse', `${canonicalSha}^2`]).toString('ascii').trim(), fixture.bSha);
+      const evidenceRoot = currentSelfCycle ? process.env.AGK_OWNER_CYCLE_EVIDENCE_DIR : undefined;
+      if (evidenceRoot) {
+        mkdirSync(evidenceRoot, { recursive: true });
+        for (const [name, bytes] of [
+          ['initial-a-prompt.md', initialA.prompt], ['initial-a-schema.json', initialA.schemaBytes],
+          ['b-eligibility-prompt.md', semanticPipeline.prepared.promptBytes],
+          ['b-eligibility-schema.json', semanticPipeline.prepared.schemaBytes],
+          ['fresh-a-prompt.md', freshA.prompt], ['fresh-a-schema.json', freshA.schemaBytes],
+          ['initial-a-decision.json', trigger.decisionBytes], ['b-receipt.json', receiptBytes],
+          ['trigger-review-record.json', trigger.recordBytes], ['amendment-tag.txt', api.selectedTag().rawTagObject],
+          ['fresh-a-decision.json', freshDecision], ['canonical-readback.json', JSON.stringify(readback, null, 2)],
+        ]) writeFileSync(join(evidenceRoot, name), bytes);
+        const bundlePath = join(evidenceRoot, 'local-cycle.bundle');
+        for (const [name, sha] of [['base', fixture.baseSha], ['original-a', fixture.triggerASha],
+          ['b', fixture.bSha], ['canonical', canonicalSha], ['fresh-a', freshASha]]) {
+          fixture.runGit(['update-ref', `refs/heads/local-cycle/${name}`, sha]);
+        }
+        fixture.runGit(['bundle', 'create', bundlePath, ...['base', 'original-a', 'b', 'canonical', 'fresh-a']
+          .map(name => `refs/heads/local-cycle/${name}`)]);
+        writeFileSync(join(evidenceRoot, 'cycle-evidence.json'), JSON.stringify({
+        classification: 'local synthetic integration evidence; no protected GitHub adoption proof',
+        currentSourceRevision: git(root, ['rev-parse', 'HEAD']).toString('ascii').trim(),
+        currentSourceHasTrackedEdits: git(root, ['diff', '--name-only']).length > 0,
+        fixtureBaseSha: fixture.baseSha,
+        fixturePolicySha256: hash(resolved.policyBytes),
+        matchesCurrentPolicy: resolved.policyBytes.equals(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'))),
+        selectedSetTopology: fixture.members.map(({ id, path }) => ({ id, path })),
+        ownerDecision: { decision: 'OWNER_DECISION', commitSha: fixture.triggerASha,
+          source: process.env.AGK_OWNER_CYCLE_NATIVE_DIR ? 'externally supplied response; execution provenance recorded separately' : 'deterministic fixture response' },
+        amendmentB: { commitSha: fixture.bSha, eligibility: semanticPipeline.completed.status,
+          eligibilityDecision: 'ELIGIBLE', source: process.env.AGK_OWNER_CYCLE_NATIVE_DIR ? 'externally supplied response; execution provenance recorded separately' : 'deterministic fixture response' },
+        canonicalReadback: { commitSha: canonicalSha, firstParent: fixture.baseSha, secondParent: fixture.bSha, status: readback.status },
+        freshA: { commitSha: freshASha, baseSha: canonicalSha, result: freshAccepted.status,
+          response: process.env.AGK_OWNER_CYCLE_NATIVE_DIR ? 'externally supplied response; execution provenance recorded separately' : 'deterministic fixture response' },
+        legacyKAcceptance: 'eligible tagged amendment rejected by retained legacy K; dedicated N route is inactive on production',
+          githubAndProvenance: 'mocked API/attestation observations in route-composition test',
+        }, null, 2) + '\n');
+      }
+    }
     await t.test('rejects a different merge-group base or head', async () => {
       for (const field of ['base_sha', 'head_sha']) {
         const wrong = structuredClone(event);
@@ -964,7 +1162,7 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
     }
     assert.equal(evidence.tagObjectOid, handoff.tagObjectSha);
     if (profile === 'completed-owner-decision-self-v1') {
-      assert.deepEqual(evidence.changes.map(change => change.path), ['docs/architecture.md', 'docs/ownership.md']);
+      assert.deepEqual(evidence.changes.map(change => change.path), currentSelfCycle ? ['docs/architecture.md'] : ['docs/architecture.md', 'docs/ownership.md']);
       assert.equal(evidence.priorAuthoritySetDigest, resolved.priorAuthoritySetDigest);
       assert.equal(evidence.resultingAuthoritySetDigest, resolved.resultingAuthoritySetDigest);
     }
