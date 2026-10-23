@@ -260,7 +260,7 @@ test('Queue finalizer source-only path failure-finalizes both exact checks witho
     globalThis.fetch=async (input,init={})=>{
       const url=String(input); let status=201, payload;
       if(url.endsWith('/access_tokens')) payload={token:'synthetic',expires_at:new Date(Date.now()+60000).toISOString(),permissions:{checks:'write',metadata:'read'},repositories:[{id:1379218762,full_name:'${repository}'}]};
-      else if(init.method==='PATCH') { status=200; const id=Number(url.split('/').at(-1)); const name=id===701?'architecture-gate / accept':'completeness'; const appId=id===701?Number(process.env.AGK_APP_ID):15368; payload={id,name,head_sha:process.env.QUEUE_SHA,status:'completed',conclusion:JSON.parse(init.body).conclusion,app:{id:appId}}; appendFileSync(process.env.TEST_PATCHES,JSON.stringify({id,name,headSha:payload.head_sha,appId,conclusion:payload.conclusion})+'\\n'); }
+      else if(init.method==='PATCH') { status=200; const id=Number(url.split('/').at(-1)); const name=id===701?'architecture-gate / protected-accept':'completeness'; const appId=id===701?Number(process.env.AGK_APP_ID):15368; payload={id,name,head_sha:process.env.QUEUE_SHA,status:'completed',conclusion:JSON.parse(init.body).conclusion,app:{id:appId}}; appendFileSync(process.env.TEST_PATCHES,JSON.stringify({id,name,headSha:payload.head_sha,appId,conclusion:payload.conclusion})+'\\n'); }
       else throw new Error('unexpected URL '+url);
       return new Response(JSON.stringify(payload),{status,headers:{'content-type':'application/json'}});
     };
@@ -275,7 +275,7 @@ test('Queue finalizer source-only path failure-finalizes both exact checks witho
   assert.equal(result.status, 0, result.stderr);
   const patches = readFileSync(callsPath, 'utf8').trim().split('\n').map(line => JSON.parse(line)).sort((a, b) => a.id - b.id);
   assert.deepEqual(patches, [
-    { id: 701, name: 'architecture-gate / accept', headSha: groupSha, appId: 1234, conclusion: 'failure' },
+    { id: 701, name: 'architecture-gate / protected-accept', headSha: groupSha, appId: 1234, conclusion: 'failure' },
     { id: 702, name: 'completeness', headSha: groupSha, appId: 15368, conclusion: 'failure' },
   ]);
 });

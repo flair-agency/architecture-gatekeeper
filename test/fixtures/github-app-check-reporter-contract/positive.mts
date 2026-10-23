@@ -16,5 +16,5 @@ for (const fetchImpl of [globalThis.fetch, sync, asynchronous, thenable]) {
 }
 declare const published: GitHubAppReporterResult;
 const observation: unknown = published.id;
-const name: 'architecture-gate / accept' = published.name;
+const name: 'architecture-gate / protected-accept' = published.name;
 void [observation, name];
