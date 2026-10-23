@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { TextDecoder } from 'node:util';
+import { pathToFileURL } from 'node:url';
 import { appendGitHubOutput } from '../src/runner-temp-path.mjs';
 import { selectSelfPrContext } from '../src/self-pr-context.mjs';
 import { beginProtectedSelfPrCheck, finishProtectedSelfPrCheck } from '../src/self-pr-app-producer.mjs';
@@ -25,6 +26,9 @@ const SELF = 'flair-agency/architecture-gatekeeper';
 const SELF_ID = 1379218762;
 const SHA = /^[a-f0-9]{40}$/;
 function fail(message) { throw new Error(`Self PR App report: ${message}`); }
+export function extractEligibilityArtifact(zipBytes) {
+  return extractOwnerAmendmentArtifactZip(zipBytes, { profile: 'eligibility' });
+}
 function validateRunnerTemp(env) {
   if (realpathSync(process.cwd()) !== process.cwd() || env.RUNNER_TEMP !== process.cwd()) {
     fail('working directory must be the runner-owned temporary directory.');
@@ -171,7 +175,7 @@ async function validateAmendmentEligibility(env, context) {
     runId: env.GITHUB_RUN_ID, runAttempt: env.GITHUB_RUN_ATTEMPT, baseSha: context.baseSha, headSha: context.headSha, profile: 'eligibility' }, token: env.GH_TOKEN });
   if (artifact.status !== 'FETCHED_OWNER_AMENDMENT_ELIGIBILITY_ARTIFACT' ||
       artifact.artifactDigest !== `sha256:${env.AGK_AMENDMENT_ARTIFACT_DIGEST}`) fail('semantic eligibility archive digest differs from protected signer output.');
-  const extracted = extractOwnerAmendmentArtifactZip({ profile: 'eligibility', zipBytes: artifact.zipBytes });
+  const extracted = extractEligibilityArtifact(artifact.zipBytes);
   if (extracted.status !== 'EXTRACTED_OWNER_AMENDMENT_ELIGIBILITY_ARTIFACT') fail('semantic eligibility artifact contents are malformed.');
   const attested = verifyOwnerAmendmentBlockEvidence({ recordBytes: extracted.eligibilityReceiptBytes,
     bundleBytes: extracted.attestationBundleBytes, expected: { repository: SELF,
@@ -237,4 +241,6 @@ async function main() {
   if (result.status !== 'REPORTED_SELF_PR_RESULT') fail(result.reason || 'protected PR result was not reported.');
   appendGitHubOutput(`conclusion=success\nroute=${result.route}\n`);
 }
-main().catch(error => { process.stderr.write(`${error instanceof Error ? error.message : 'Self PR App report failed.'}\n`); process.exitCode = 1; });
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch(error => { process.stderr.write(`${error instanceof Error ? error.message : 'Self PR App report failed.'}\n`); process.exitCode = 1; });
+}

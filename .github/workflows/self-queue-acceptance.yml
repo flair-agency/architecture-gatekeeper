@@ -207,6 +207,9 @@ jobs:
     outputs:
       model: ${{ steps.prepare.outputs.model }}
       effort: ${{ steps.prepare.outputs.effort }}
+      codex_args: ${{ steps.prepare.outputs.codex_args }}
+      job_timeout_minutes: ${{ steps.prepare.outputs.job_timeout_minutes }}
+      step_timeout_minutes: ${{ steps.prepare.outputs.step_timeout_minutes }}
       input_artifact_id: ${{ steps.upload-inputs.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -263,7 +266,7 @@ jobs:
     needs: [select-route, prepare-ordinary-review]
     if: vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true' && needs.select-route.outputs.route == 'ordinary' && needs.prepare-ordinary-review.result == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: ${{ fromJSON(needs.prepare-ordinary-review.outputs.job_timeout_minutes) }}
     environment: architecture-gate-self-protected
     permissions: {}
     outputs:
@@ -276,6 +279,7 @@ jobs:
           path: ${{ runner.temp }}/queue-review
       - uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e
         id: codex
+        timeout-minutes: ${{ fromJSON(needs.prepare-ordinary-review.outputs.step_timeout_minutes) }}
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           output-file: ${{ runner.temp }}/queue-decision.json
@@ -285,7 +289,7 @@ jobs:
           effort: ${{ needs.prepare-ordinary-review.outputs.effort }}
           sandbox: read-only
           safety-strategy: drop-sudo
-          codex-args: '["--ephemeral","-c","project_doc_max_bytes=0","--json"]'
+          codex-args: ${{ needs.prepare-ordinary-review.outputs.codex_args }}
       - id: upload-decision
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

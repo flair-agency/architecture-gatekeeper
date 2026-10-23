@@ -24,7 +24,8 @@ export type PrepareMergeGroupOrdinaryReviewInput = Readonly<{
 export type PreparedMergeGroupOrdinaryReview = Readonly<{
   status: 'PREPARED_FRESH_MERGE_GROUP_ORDINARY_REVIEW';
   repository: 'flair-agency/architecture-gatekeeper';
-  baseSha: unknown; headSha: unknown; model: string; reasoningEffort: string; prompt: string;
+  baseSha: unknown; headSha: unknown; model: string; reasoningEffort: string; codexArgs: string[];
+  codexProfile: 'standard' | 'flex'; reviewJobTimeoutMinutes: number; reviewStepTimeoutMinutes: number; prompt: string;
   schemaBytes: Buffer; validationBytes: Buffer;
   authority: { members: Array<{ id: string; repository: string; resolvedCommit: string; path: string; sha256: string }>; setDigest: string };
   inputDigests: Readonly<{ policy: string; prompt: string; schema: string; validation: string; manifest: string }>;
@@ -42,7 +43,8 @@ type GitOutputTextView = { toString: (encoding?: BufferEncoding) => string };
 type ErrorMessageView = { message?: unknown };
 type CiPolicyView = {
   mode?: unknown; authorityManifestPath?: unknown; authorityLimitsBase64?: unknown;
-  authorityProfile?: string; model?: unknown; reasoningEffort?: unknown;
+  authorityProfile?: string; model?: unknown; reasoningEffort?: unknown; executionSelection?: unknown;
+  reviewJobTimeoutMinutes?: unknown; reviewStepTimeoutMinutes?: unknown; codexArgs?: unknown;
 };
 type AuthorityLimitsView = {
   maxManifestBytes: number; maxMembers: number; maxFileBytes: number; maxTotalBytes: number; maxPromptBytes: number;
@@ -134,6 +136,18 @@ export async function prepareOwnerAmendmentMergeGroupOrdinaryReview(
       typeof policy.reasoningEffort !== 'string' || !/^[A-Za-z0-9._-]{1,32}$/.test(policy.reasoningEffort)) {
     fail('current-base policy does not select a supported model review and complete Authority Set.');
   }
+  let codexArgs: unknown;
+  try { codexArgs = JSON.parse(policy.codexArgs as string); } catch { fail('current-base policy does not select a supported Codex execution profile.'); }
+  const standardArgs = ['--ephemeral', '-c', 'project_doc_max_bytes=0', '--json'];
+  const flexArgs = ['--ephemeral', '-c', 'project_doc_max_bytes=0', '-c', "service_tier='flex'", '--json'];
+  const profile = JSON.stringify(codexArgs) === JSON.stringify(standardArgs) ? 'standard' :
+    JSON.stringify(codexArgs) === JSON.stringify(flexArgs) ? 'flex' : '';
+  if (policy.executionSelection !== 'policy' || !profile ||
+      !Number.isSafeInteger(policy.reviewJobTimeoutMinutes) || (policy.reviewJobTimeoutMinutes as number) < 1 || (policy.reviewJobTimeoutMinutes as number) > 360 ||
+      !Number.isSafeInteger(policy.reviewStepTimeoutMinutes) || (policy.reviewStepTimeoutMinutes as number) < 1 || (policy.reviewStepTimeoutMinutes as number) > 359 ||
+      (policy.reviewJobTimeoutMinutes as number) <= (policy.reviewStepTimeoutMinutes as number)) {
+    fail('current-base policy execution selection is unsupported by the protected Queue workflow.');
+  }
   const limits = limitsFrom(policy);
   const promptBytes = readBlob(runGit, baseSha as string, PROMPT_PATH, limits.maxPromptBytes);
   const schemaBytes = readBlob(runGit, baseSha as string, SCHEMA_PATH, 262_144);
@@ -174,7 +188,9 @@ export async function prepareOwnerAmendmentMergeGroupOrdinaryReview(
   const authority = { members: materialized.members.map(({ id, repository: sourceRepository, resolvedCommit, path, sha256 }) =>
     ({ id, repository: sourceRepository, resolvedCommit, path, sha256 })), setDigest: materialized.setDigest };
   return Object.freeze({ status: 'PREPARED_FRESH_MERGE_GROUP_ORDINARY_REVIEW', repository, baseSha, headSha,
-    model: policy.model as string, reasoningEffort: policy.reasoningEffort as string, prompt: completePrompt,
+    model: policy.model as string, reasoningEffort: policy.reasoningEffort as string, codexArgs: codexArgs as string[],
+    codexProfile: profile as 'standard' | 'flex', reviewJobTimeoutMinutes: policy.reviewJobTimeoutMinutes as number,
+    reviewStepTimeoutMinutes: policy.reviewStepTimeoutMinutes as number, prompt: completePrompt,
     schemaBytes, validationBytes, authority, inputDigests: Object.freeze({ policy: hash(policyBytes), prompt: hash(promptBytes),
       schema: hash(schemaBytes), validation: hash(validationBytes), manifest: materialized.manifestSha256 }),
   });
