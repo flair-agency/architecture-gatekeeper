@@ -1,0 +1,474 @@
+# Default-off protected Queue receiver. Every privileged boundary rebuilds the
+# current queue event from live GitHub metadata; the relay grants no authority.
+name: Self Queue Acceptance
+
+on:
+  workflow_run:
+    workflows: [Self Queue Relay]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: self-queue-acceptance-${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
+  cancel-in-progress: false
+
+jobs:
+  select-context:
+    if: vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      base_sha: ${{ steps.context.outputs.base_sha }}
+      group_sha: ${{ steps.context.outputs.group_sha }}
+      pr_number: ${{ steps.context.outputs.pr_number }}
+      b_sha: ${{ steps.context.outputs.b_sha }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: 22
+      - name: Install and build protected runtime
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+      - name: Rebuild current protected Queue context
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          SELF_QUEUE_RELAY_WORKFLOW_ID: ${{ vars.SELF_QUEUE_RELAY_WORKFLOW_ID }}
+          SELF_QUEUE_RELAY_WORKFLOW_PATH: .github/workflows/self-queue-relay.yml
+        working-directory: ${{ runner.temp }}
+        run: node "$GITHUB_WORKSPACE/scripts/self-queue-acceptance.mjs" preflight
+
+  begin-completeness:
+    needs: select-context
+    if: vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true' && needs.select-context.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    environment: architecture-gate-self-app-report
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      checks: write
+    outputs:
+      app_check_id: ${{ steps.begin.outputs.app_check_id }}
+      completeness_check_id: ${{ steps.begin.outputs.completeness_check_id }}
+      queue_sha: ${{ steps.context.outputs.group_sha }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: 22
+      - name: Install protected runtime dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+      - name: Rebuild Queue context before starting check
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          SELF_QUEUE_RELAY_WORKFLOW_ID: ${{ vars.SELF_QUEUE_RELAY_WORKFLOW_ID }}
+          SELF_QUEUE_RELAY_WORKFLOW_PATH: .github/workflows/self-queue-relay.yml
+          SELF_QUEUE_EXPECTED_GROUP_SHA: ${{ needs.select-context.outputs.group_sha }}
+          SELF_QUEUE_EXPECTED_BASE_SHA: ${{ needs.select-context.outputs.base_sha }}
+          SELF_QUEUE_EXPECTED_B_SHA: ${{ needs.select-context.outputs.b_sha }}
+          SELF_QUEUE_EXPECTED_PR_NUMBER: ${{ needs.select-context.outputs.pr_number }}
+        working-directory: ${{ runner.temp }}
+        run: node "$GITHUB_WORKSPACE/scripts/self-queue-acceptance.mjs" preflight
+      - name: Start Actions-owned Queue completeness check
+        id: begin
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          QUEUE_SHA: ${{ steps.context.outputs.group_sha }}
+          AGK_APP_ID: ${{ vars.ARCHITECTURE_GATE_SELF_APP_ID }}
+          AGK_APP_INSTALLATION_ID: ${{ vars.ARCHITECTURE_GATE_SELF_APP_INSTALLATION_ID }}
+          AGK_APP_PRIVATE_KEY: ${{ secrets.ARCHITECTURE_GATE_SELF_APP_PRIVATE_KEY }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { pathToFileURL } from 'node:url';
+          const dist = pathToFileURL(`${process.env.GITHUB_WORKSPACE}/dist/`);
+          const { appendGitHubOutput } = await import(new URL('runner-temp-path.mjs', dist));
+          const { beginSelfArchitectureCheck, beginSelfQueueCompletenessCheck,
+            finalizeSelfArchitectureCheck, finalizeSelfQueueCompletenessCheck } = await import(new URL('github-app-check-reporter.mjs', dist));
+          const app = { appId: Number(process.env.AGK_APP_ID), installationId: Number(process.env.AGK_APP_INSTALLATION_ID),
+            repositoryId: 1379218762, privateKeyPem: process.env.AGK_APP_PRIVATE_KEY };
+          const appCheck = await beginSelfArchitectureCheck({ app, headSha: process.env.QUEUE_SHA });
+          let completenessCheck;
+          try {
+            completenessCheck = await beginSelfQueueCompletenessCheck({ token: process.env.GITHUB_TOKEN, headSha: process.env.QUEUE_SHA });
+            appendGitHubOutput(`app_check_id=${appCheck.id}\ncompleteness_check_id=${completenessCheck.id}\n`);
+          } catch (error) {
+            await Promise.allSettled([
+              finalizeSelfArchitectureCheck({ app, check: appCheck, conclusion: 'failure' }),
+              ...(completenessCheck ? [finalizeSelfQueueCompletenessCheck({ token: process.env.GITHUB_TOKEN,
+                check: completenessCheck, conclusion: 'failure' })] : []),
+            ]);
+            throw error;
+          }
+          NODE
+        working-directory: ${{ runner.temp }}
+
+  select-route:
+    needs: [select-context, begin-completeness]
+    if: vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true' && needs.select-context.result == 'success' && needs.begin-completeness.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      route: ${{ steps.gate.outputs.route }}
+      base_sha: ${{ steps.gate.outputs.base_sha }}
+      b_sha: ${{ steps.gate.outputs.b_sha }}
+      group_sha: ${{ steps.context.outputs.group_sha }}
+      pr_number: ${{ steps.context.outputs.pr_number }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: 22
+      - name: Install protected runtime dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+      - name: Rebuild Queue context before route selection
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          SELF_QUEUE_RELAY_WORKFLOW_ID: ${{ vars.SELF_QUEUE_RELAY_WORKFLOW_ID }}
+          SELF_QUEUE_RELAY_WORKFLOW_PATH: .github/workflows/self-queue-relay.yml
+          SELF_QUEUE_EXPECTED_GROUP_SHA: ${{ needs.begin-completeness.outputs.queue_sha }}
+          SELF_QUEUE_EXPECTED_BASE_SHA: ${{ needs.select-context.outputs.base_sha }}
+          SELF_QUEUE_EXPECTED_B_SHA: ${{ needs.select-context.outputs.b_sha }}
+          SELF_QUEUE_EXPECTED_PR_NUMBER: ${{ needs.select-context.outputs.pr_number }}
+        working-directory: ${{ runner.temp }}
+        run: node "$GITHUB_WORKSPACE/scripts/self-queue-acceptance.mjs" preflight
+      - name: Verify exact current base/B and select ordinary or amendment route
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+        working-directory: ${{ runner.temp }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-gate.mjs"
+
+  prepare-ordinary-review:
+    needs: [select-context, begin-completeness, select-route]
+    if: vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true' && needs.select-route.outputs.route == 'ordinary'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      model: ${{ steps.prepare.outputs.model }}
+      effort: ${{ steps.prepare.outputs.effort }}
+      codex_args: ${{ steps.prepare.outputs.codex_args }}
+      job_timeout_minutes: ${{ steps.prepare.outputs.job_timeout_minutes }}
+      step_timeout_minutes: ${{ steps.prepare.outputs.step_timeout_minutes }}
+      input_artifact_id: ${{ steps.upload-inputs.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: 22
+      - name: Install protected runtime dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+      - name: Rebuild Queue context and prepare exact review inputs
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          SELF_QUEUE_RELAY_WORKFLOW_ID: ${{ vars.SELF_QUEUE_RELAY_WORKFLOW_ID }}
+          SELF_QUEUE_RELAY_WORKFLOW_PATH: .github/workflows/self-queue-relay.yml
+          SELF_QUEUE_EXPECTED_GROUP_SHA: ${{ needs.select-route.outputs.group_sha }}
+          SELF_QUEUE_EXPECTED_BASE_SHA: ${{ needs.select-route.outputs.base_sha }}
+          SELF_QUEUE_EXPECTED_B_SHA: ${{ needs.select-route.outputs.b_sha }}
+          SELF_QUEUE_EXPECTED_PR_NUMBER: ${{ needs.select-route.outputs.pr_number }}
+          BASE_SHA: ${{ needs.select-route.outputs.base_sha }}
+          B_SHA: ${{ needs.select-route.outputs.b_sha }}
+        run: |
+          node "$GITHUB_WORKSPACE/scripts/self-queue-acceptance.mjs" preflight
+          git -C "$GITHUB_WORKSPACE" fetch --no-tags origin "$B_SHA"
+          git -C "$GITHUB_WORKSPACE" cat-file -e "$B_SHA^{commit}"
+          node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-ordinary-review.mjs" prepare
+          mkdir -p "$RUNNER_TEMP/queue-review"
+          cp "$RUNNER_TEMP/owner-amendment-merge-group/ordinary-prompt.md" "$RUNNER_TEMP/queue-review/prompt.md"
+          cp "$RUNNER_TEMP/owner-amendment-merge-group/ordinary-schema.json" "$RUNNER_TEMP/queue-review/schema.json"
+          cp "$RUNNER_TEMP/owner-amendment-merge-group/ordinary-context.json" "$RUNNER_TEMP/queue-review/review-context.json"
+        working-directory: ${{ runner.temp }}
+      - id: upload-inputs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: self-queue-review-inputs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/queue-review/
+          if-no-files-found: error
+          retention-days: 1
+
+  review-ordinary:
+    needs: [select-route, prepare-ordinary-review]
+    if: vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true' && needs.select-route.outputs.route == 'ordinary' && needs.prepare-ordinary-review.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(needs.prepare-ordinary-review.outputs.job_timeout_minutes) }}
+    environment: architecture-gate-self-protected
+    permissions: {}
+    outputs:
+      decision_artifact_id: ${{ steps.upload-decision.outputs.artifact-id }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ needs.prepare-ordinary-review.outputs.input_artifact_id }}
+          run-id: ${{ github.run_id }}
+          path: ${{ runner.temp }}/queue-review
+      - uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e
+        id: codex
+        timeout-minutes: ${{ fromJSON(needs.prepare-ordinary-review.outputs.step_timeout_minutes) }}
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          output-file: ${{ runner.temp }}/queue-decision.json
+          prompt-file: ${{ runner.temp }}/queue-review/prompt.md
+          output-schema-file: ${{ runner.temp }}/queue-review/schema.json
+          model: ${{ needs.prepare-ordinary-review.outputs.model }}
+          effort: ${{ needs.prepare-ordinary-review.outputs.effort }}
+          sandbox: read-only
+          safety-strategy: drop-sudo
+          codex-args: ${{ needs.prepare-ordinary-review.outputs.codex_args }}
+      - id: upload-decision
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: self-queue-decision-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/queue-decision.json
+          if-no-files-found: error
+          retention-days: 1
+
+  report-completeness:
+    needs: [select-context, begin-completeness, select-route, prepare-ordinary-review, review-ordinary]
+    if: always() && vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true' && needs.begin-completeness.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: architecture-gate-self-app-report
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      checks: write
+    steps:
+      - id: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: setup-node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: 22
+      - id: build
+        name: Install protected runtime dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+      - name: Rebuild exact Queue context
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          SELF_QUEUE_RELAY_WORKFLOW_ID: ${{ vars.SELF_QUEUE_RELAY_WORKFLOW_ID }}
+          SELF_QUEUE_RELAY_WORKFLOW_PATH: .github/workflows/self-queue-relay.yml
+          SELF_QUEUE_EXPECTED_GROUP_SHA: ${{ needs.begin-completeness.outputs.queue_sha }}
+          SELF_QUEUE_EXPECTED_BASE_SHA: ${{ needs.select-route.outputs.base_sha }}
+          SELF_QUEUE_EXPECTED_B_SHA: ${{ needs.select-route.outputs.b_sha }}
+          SELF_QUEUE_EXPECTED_PR_NUMBER: ${{ needs.select-route.outputs.pr_number }}
+        working-directory: ${{ runner.temp }}
+        run: node "$GITHUB_WORKSPACE/scripts/self-queue-acceptance.mjs" preflight
+      - name: Rerun protected gate
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
+        working-directory: ${{ runner.temp }}
+        run: node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-gate.mjs"
+      - name: Bind report boundary to the started check and selected route
+        id: binding
+        env:
+          CURRENT_QUEUE_SHA: ${{ steps.context.outputs.group_sha }}
+          STARTED_QUEUE_SHA: ${{ needs.begin-completeness.outputs.queue_sha }}
+          CURRENT_PR: ${{ steps.context.outputs.pr_number }}
+          SELECTED_PR: ${{ needs.select-route.outputs.pr_number }}
+          CURRENT_BASE: ${{ steps.gate.outputs.base_sha }}
+          SELECTED_BASE: ${{ needs.select-route.outputs.base_sha }}
+          CURRENT_B: ${{ steps.gate.outputs.b_sha }}
+          SELECTED_B: ${{ needs.select-route.outputs.b_sha }}
+          CURRENT_ROUTE: ${{ steps.gate.outputs.route }}
+          SELECTED_ROUTE: ${{ needs.select-route.outputs.route }}
+        run: |
+          test "$CURRENT_QUEUE_SHA" = "$STARTED_QUEUE_SHA"
+          test "$CURRENT_PR" = "$SELECTED_PR"
+          test "$CURRENT_BASE" = "$SELECTED_BASE"
+          test "$CURRENT_B" = "$SELECTED_B"
+          test "$CURRENT_ROUTE" = "$SELECTED_ROUTE"
+      - name: Validate live exact-Queue PR description completeness
+        if: success() && (steps.gate.outputs.route == 'ordinary' || steps.gate.outputs.route == 'amendment')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SELF_PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          SELF_PR_BASE_SHA: ${{ steps.gate.outputs.base_sha }}
+          SELF_PR_HEAD_SHA: ${{ steps.gate.outputs.b_sha }}
+        run: node scripts/self-queue-completeness.mjs
+      - name: Retrieve same protected run-attempt review inputs
+        if: success() && steps.gate.outputs.route == 'ordinary'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ needs.prepare-ordinary-review.outputs.input_artifact_id }}
+          run-id: ${{ github.run_id }}
+          path: ${{ runner.temp }}/queue-review
+      - name: Retrieve same protected run-attempt decision for revalidation
+        if: success() && steps.gate.outputs.route == 'ordinary'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ needs.review-ordinary.outputs.decision_artifact_id }}
+          run-id: ${{ github.run_id }}
+          path: ${{ runner.temp }}/queue-decision
+      - name: Reconstruct ordinary inputs and validate raw reviewer decision
+        if: success() && steps.gate.outputs.route == 'ordinary'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          SELF_QUEUE_RELAY_WORKFLOW_ID: ${{ vars.SELF_QUEUE_RELAY_WORKFLOW_ID }}
+          SELF_QUEUE_RELAY_WORKFLOW_PATH: .github/workflows/self-queue-relay.yml
+          SELF_QUEUE_EXPECTED_GROUP_SHA: ${{ needs.select-route.outputs.group_sha }}
+          SELF_QUEUE_EXPECTED_BASE_SHA: ${{ needs.select-route.outputs.base_sha }}
+          SELF_QUEUE_EXPECTED_B_SHA: ${{ needs.select-route.outputs.b_sha }}
+          SELF_QUEUE_EXPECTED_PR_NUMBER: ${{ needs.select-route.outputs.pr_number }}
+          BASE_SHA: ${{ needs.select-route.outputs.base_sha }}
+          B_SHA: ${{ needs.select-route.outputs.b_sha }}
+        run: |
+          node "$GITHUB_WORKSPACE/scripts/self-queue-acceptance.mjs" preflight
+          git -C "$GITHUB_WORKSPACE" fetch --no-tags origin "$B_SHA"
+          git -C "$GITHUB_WORKSPACE" cat-file -e "$B_SHA^{commit}"
+          node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-ordinary-review.mjs" prepare
+          cmp "$RUNNER_TEMP/owner-amendment-merge-group/ordinary-context.json" "$RUNNER_TEMP/queue-review/review-context.json"
+          cmp "$RUNNER_TEMP/owner-amendment-merge-group/ordinary-prompt.md" "$RUNNER_TEMP/queue-review/prompt.md"
+          cmp "$RUNNER_TEMP/owner-amendment-merge-group/ordinary-schema.json" "$RUNNER_TEMP/queue-review/schema.json"
+          DECISION="$(cat "$RUNNER_TEMP/queue-decision/queue-decision.json")" node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-ordinary-review.mjs" validate
+        working-directory: ${{ runner.temp }}
+      - name: Finalize exact Actions completeness check
+        if: always() && steps.checkout.outcome == 'success' && steps.setup-node.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          AGK_APP_ID: ${{ vars.ARCHITECTURE_GATE_SELF_APP_ID }}
+          AGK_APP_INSTALLATION_ID: ${{ vars.ARCHITECTURE_GATE_SELF_APP_INSTALLATION_ID }}
+          AGK_APP_PRIVATE_KEY: ${{ secrets.ARCHITECTURE_GATE_SELF_APP_PRIVATE_KEY }}
+          QUEUE_SHA: ${{ needs.begin-completeness.outputs.queue_sha }}
+          APP_CHECK_ID: ${{ needs.begin-completeness.outputs.app_check_id }}
+          COMPLETENESS_CHECK_ID: ${{ needs.begin-completeness.outputs.completeness_check_id }}
+          REPORT_JOB_STATUS: ${{ job.status }}
+          CONTEXT_JOB_RESULT: ${{ needs.select-context.result }}
+          BEGIN_JOB_RESULT: ${{ needs.begin-completeness.result }}
+          ROUTE_JOB_RESULT: ${{ needs.select-route.result }}
+          PREPARE_JOB_RESULT: ${{ needs.prepare-ordinary-review.result }}
+          ROUTE: ${{ steps.gate.outputs.route }}
+          CURRENT_QUEUE_SHA: ${{ steps.context.outputs.group_sha }}
+          REVIEW_JOB_RESULT: ${{ needs.review-ordinary.result }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { finalizeSelfArchitectureCheck, finalizeSelfQueueCompletenessCheck } from './src/github-app-check-reporter.mjs';
+          const app = { appId: Number(process.env.AGK_APP_ID), installationId: Number(process.env.AGK_APP_INSTALLATION_ID),
+            repositoryId: 1379218762, privateKeyPem: process.env.AGK_APP_PRIVATE_KEY };
+          const appId = Number(process.env.APP_CHECK_ID);
+          const completenessId = Number(process.env.COMPLETENESS_CHECK_ID);
+          if (!Number.isSafeInteger(appId) || appId < 1 || !Number.isSafeInteger(completenessId) || completenessId < 1 ||
+              !/^[a-f0-9]{40}$/.test(process.env.QUEUE_SHA ?? '')) throw new Error('Exact Queue check handles unavailable.');
+          const sharedChecksPassed = process.env.CONTEXT_JOB_RESULT === 'success' &&
+            process.env.BEGIN_JOB_RESULT === 'success' && process.env.ROUTE_JOB_RESULT === 'success';
+          const routeChecksPassed = process.env.ROUTE === 'ordinary'
+            ? process.env.PREPARE_JOB_RESULT === 'success' && process.env.REVIEW_JOB_RESULT === 'success'
+            : process.env.ROUTE === 'amendment' && process.env.PREPARE_JOB_RESULT === 'skipped' && process.env.REVIEW_JOB_RESULT === 'skipped';
+          const passed = process.env.REPORT_JOB_STATUS === 'success' && process.env.CURRENT_QUEUE_SHA === process.env.QUEUE_SHA &&
+            sharedChecksPassed && routeChecksPassed;
+          const conclusion = passed ? 'success' : 'failure';
+          const outcomes = await Promise.allSettled([
+            finalizeSelfArchitectureCheck({ app,
+              check: { id: appId, name: 'architecture-gate / accept', repository: 'flair-agency/architecture-gatekeeper', headSha: process.env.QUEUE_SHA, appId: app.appId },
+              conclusion }),
+            finalizeSelfQueueCompletenessCheck({ token: process.env.GITHUB_TOKEN,
+            check: { id: completenessId, name: 'completeness', repository: 'flair-agency/architecture-gatekeeper', headSha: process.env.QUEUE_SHA, appId: 15368 },
+              conclusion }),
+          ]);
+          if (outcomes.some(item => item.status === 'rejected')) throw new Error('One or more protected Queue checks could not be finalized.');
+          NODE
+        working-directory: ${{ github.workspace }}

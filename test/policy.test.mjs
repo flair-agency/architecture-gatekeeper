@@ -421,7 +421,15 @@ test('dogfoods only the protected reusable workflow with separated permissions',
   assert.match(pullRequestCaller, /validation-path: \.codex\/gatekeeper\/decision\.validation\.json/);
   assert.doesNotMatch(pullRequestCaller, /owner-decision-environment/);
   assert.match(pullRequestCaller, /OPENAI_API_KEY: \$\{\{ vars\.ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT != 'true' && secrets\.OPENAI_API_KEY \|\| '' \}\}/);
-  assert.doesNotMatch(pullRequestCaller, /actions\/checkout/);
+  const jobs = parseWorkflow(caller).jobs;
+  assert.equal(jobs['architecture-gate'].uses, './.github/workflows/architecture-gate.yml');
+  assert.equal(jobs['architecture-gate'].steps, undefined);
+  for (const id of ['self-app-start', 'self-app-report']) {
+    assert.match(jobs[id].if, /ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true'/);
+    const checkout = jobs[id].steps.find(step => step.uses?.startsWith('actions/checkout@'));
+    assert.equal(checkout.with.ref, '${{ github.workflow_sha }}');
+    assert.equal(checkout.with['persist-credentials'], false);
+  }
 });
 
 test('produces attested BLOCK records only in a credential-separated signer job', () => {

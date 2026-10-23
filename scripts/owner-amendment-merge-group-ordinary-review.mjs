@@ -34,13 +34,14 @@ async function prepare() {
   writeRunnerTempFile(eventDir, 'ordinary-authority.json', JSON.stringify(prepared.authority));
   writeRunnerTempFile(eventDir, 'ordinary-context.json', JSON.stringify({ repository: prepared.repository,
     baseSha: prepared.baseSha, headSha: prepared.headSha, model: prepared.model,
-    reasoningEffort: prepared.reasoningEffort, inputDigests: prepared.inputDigests,
+    reasoningEffort: prepared.reasoningEffort, codexArgs: prepared.codexArgs, codexProfile: prepared.codexProfile,
+    reviewJobTimeoutMinutes: prepared.reviewJobTimeoutMinutes, reviewStepTimeoutMinutes: prepared.reviewStepTimeoutMinutes, inputDigests: prepared.inputDigests,
     authoritySetDigest: prepared.authority.setDigest,
     completePromptSha256: createHash('sha256').update(prepared.prompt).digest('hex'),
     schemaSha256: createHash('sha256').update(prepared.schemaBytes).digest('hex'),
     validationSha256: createHash('sha256').update(prepared.validationBytes).digest('hex'),
     authoritySha256: createHash('sha256').update(JSON.stringify(prepared.authority)).digest('hex') }));
-  appendGitHubOutput(`model=${prepared.model}\neffort=${prepared.reasoningEffort}\n`);
+  appendGitHubOutput(`model=${prepared.model}\neffort=${prepared.reasoningEffort}\ncodex_args=${JSON.stringify(prepared.codexArgs)}\njob_timeout_minutes=${prepared.reviewJobTimeoutMinutes}\nstep_timeout_minutes=${prepared.reviewStepTimeoutMinutes}\n`);
   process.stdout.write(`Prepared fresh ordinary review for exact current queue tuple ${prepared.baseSha}/${prepared.headSha}.\n`);
 }
 
