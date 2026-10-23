@@ -685,12 +685,13 @@ jobs:
         env:
           DECISION: ${{ steps.codex-addition.outputs.final-message }}
           OUTPUT_DIR: ${{ runner.temp }}/architecture-gate-owner-addition
+          MODE: ${{ needs.policy.outputs.mode }}
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
         working-directory: ${{ runner.temp }}
         run: node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/dist/owner-addition-ci.mjs" validate
       - name: Preserve exact v5 pre-merge eligibility evidence
         id: eligibility-evidence
-        if: needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
+        if: needs.policy.outputs.mode == 'procedural' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: owner-addition-eligibility-evidence-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
@@ -699,7 +700,7 @@ jobs:
           overwrite: false
           retention-days: 90
       - name: Record exact uploaded eligibility artifact binding
-        if: needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
+        if: needs.policy.outputs.mode == 'procedural' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'
         env:
           ARTIFACT_ID: ${{ steps.eligibility-evidence.outputs.artifact-id }}
           ARTIFACT_DIGEST: ${{ steps.eligibility-evidence.outputs.artifact-digest }}

@@ -41,7 +41,7 @@ function zipOne(name, bytes) {
   return Buffer.concat([archiveData, directory, end]);
 }
 
-export function ownerAdditionFinalizeFixture({ scenario = 'success', procedurePatch = {} } = {}) {
+export function ownerAdditionFinalizeFixture({ scenario = 'success', procedurePatch = {}, policyVersion = 5 } = {}) {
   const repository = 'flair-agency/example';
   const baseSha = sha('a'); const bSha = sha('b'); const mergeSha = sha('c');
   const targetSha = sha('d'); const treeSha = sha('e'); const runId = '9001'; const attempt = 2;
@@ -56,8 +56,8 @@ export function ownerAdditionFinalizeFixture({ scenario = 'success', procedurePa
   const tagObjectOid = sha('f');
   const authorityBytes = Buffer.from('synthetic proposed authority\n');
   const baseAuthorityBytes = Buffer.from('synthetic base authority\n');
-  const policy = { version: 5, default: { mode: 'local-only' }, branches: { main: {
-    mode: 'procedural', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+  const policy = { version: policyVersion, default: { mode: 'local-only' }, branches: { main: {
+    mode: 'procedural', ...(policyVersion === 6 ? { provider: 'codex' } : {}), model: 'gpt-6.1-sol', reasoningEffort: 'medium',
     authorityManifestPath: '.codex/gatekeeper/authorities.json',
     authorityLimits: { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 262144, maxTotalBytes: 524288, maxPromptBytes: 1048576 },
     ownerAddition: { version: 2, grade: 'G0', authorityId: 'architecture', authorityPath,

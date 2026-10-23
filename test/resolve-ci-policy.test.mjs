@@ -301,3 +301,43 @@ test('v6 rejects a Codex execution selection on the Gemini branch', () => {
   };
   assert.throws(() => resolveCiPolicy(policyForVersion(6, gemini), 'main'), /only supported for Codex/);
 });
+
+// CI format version and route evidence version are independent selections.
+for (const legacyVersion of [2, 4, 5]) {
+  test(`v6 preserves explicit v${legacyVersion} route outputs and execution settings`, () => {
+    const branch = codexBranchForVersion(legacyVersion);
+    const old = resolveCiPolicy(policyForVersion(legacyVersion, branch), 'main');
+    const current = resolveCiPolicy(policyForVersion(6, { ...branch, provider: 'codex' }), 'main');
+    assert.deepEqual(current, { ...old, provider: 'codex', policyVersion: 6 });
+  });
+}
+
+test('v6 keeps Owner routes opt-in and rejects only unsupported or incomplete combinations', () => {
+  const plain = codexBranchForVersion(6);
+  for (const key of ['ownerAdditionGrade', 'ownerAmendmentGrade', 'adoptionEvidenceProducer', 'authorityProfile']) {
+    assert.equal(Object.hasOwn(resolveCiPolicy(policyForVersion(6, plain), 'main'), key), false);
+  }
+  const multi = { ...codexBranchForVersion(4), provider: 'codex' };
+  const procedural = { ...codexBranchForVersion(5), provider: 'codex' };
+  const invalid = [
+    { ...multi, ownerAmendment: amendment },
+    { ...procedural, ownerAmendment: amendment },
+    { ...plain, adoptionEvidence: procedural.adoptionEvidence },
+    { ...procedural, adoptionEvidence: undefined },
+    { ...procedural, ownerAddition: undefined },
+    { ...procedural, ownerAddition: codexBranchForVersion(2).ownerAddition },
+    { ...plain, ownerAddition: { ...multi.ownerAddition, version: 1 } },
+    { ...plain, authorityLimits: { ...limits, maxFileBytes: 262144 } },
+    { ...plain, ownerAmendment: { ...amendment, triggerProfile: 'completed-owner-decision-self-v1' } },
+  ];
+  for (const selection of invalid) assert.throws(() => resolveCiPolicy(policyForVersion(6, selection), 'main'));
+  for (const legacyVersion of [2, 4, 5]) {
+    const selection = { ...codexBranchForVersion(legacyVersion), provider: 'gemini', model: 'gemini-3.8-flash', thinkingLevel: 'MEDIUM' };
+    delete selection.reasoningEffort;
+    delete selection.execution;
+    assert.throws(() => resolveCiPolicy(policyForVersion(6, selection), 'main'), /Gemini supports ordinary enforced review only/);
+  }
+  assert.equal(resolveCiPolicy(policyForVersion(6, { ...plain, ownerAmendment: {
+    ...amendment, triggerProfile: 'completed-owner-decision-self-v1', maxPromptBytes: 262144,
+  } }), 'main').ownerAmendmentTriggerProfile, 'completed-owner-decision-self-v1');
+});

@@ -78,18 +78,17 @@ export async function prepare(env: NodeJS.ProcessEnv) {
   const fixedOutputDirectory = outputDirectory(outputDir);
   const policyBytes = committedFile(root, baseSha, policyPath, 65_536);
   const selected = resolveCiPolicy(parseCiPolicyJson(utf8(policyBytes, 'Previous protected policy')), baseBranch);
-  if (!((selected.policyVersion === 5 && selected.mode === 'procedural') ||
-        (selected.policyVersion !== 5 && selected.mode === 'enforced')) ||
+  if (!['procedural', 'enforced'].includes(selected.mode as string) ||
       selected.ownerAdditionGrade !== 'G0' ||
       selected.ownerAdditionAuthorityPath !== authorityPath ||
       selected.ownerAdditionPromptPath !== promptPath || selected.ownerAdditionSchemaPath !== schemaPath) {
     throw new Error('Previous protected policy does not select this owner-addition route.');
   }
-  if (selected.policyVersion === 5) {
+  if (selected.mode === 'procedural') {
     const prNumber = Number(env.PR_NUMBER);
     if (!Number.isSafeInteger(prNumber) || prNumber < 1) throw new Error('Missing exact PR identity for procedural evidence.');
     writeRunnerTempFile(fixedOutputDirectory, OUTPUT_FILES.context, JSON.stringify({
-      version: 1, policyVersion: 5, repository, targetBranch: baseBranch, prNumber, baseSha, headSha,
+      version: 1, policyVersion: selected.policyVersion, repository, targetBranch: baseBranch, prNumber, baseSha, headSha,
       ordinaryDecisionBase64: Buffer.from(ordinaryDecisionRaw || '', 'utf8').toString('base64'),
       authoritySetProvenanceBase64: env.ORDINARY_AUTHORITY_PROVENANCE_BASE64 || '',
     }), { overwrite: true });
@@ -157,9 +156,12 @@ export function validateOwnerAdditionCiCli(): void {
       if (procedure.version !== 2) throw new Error('Multi-document eligibility requires a version 2 procedure.');
       validateMultiAuthorityEligibility(process.env.DECISION || '', schema, procedure.authoritySet);
     } else validateOwnerAdditionEligibility(process.env.DECISION || '', schema);
-    if (process.env.POLICY_VERSION === '5') {
+    if (process.env.POLICY_VERSION === '6' && !['enforced', 'procedural'].includes(process.env.MODE || '')) {
+      throw new Error('Policy v6 eligibility validation requires the selected mode.');
+    }
+    if (process.env.POLICY_VERSION === '5' || (process.env.POLICY_VERSION === '6' && process.env.MODE === 'procedural')) {
       const context = JSON.parse(readRunnerTempFile(directory, OUTPUT_FILES.context).toString('utf8')) as unknown as CliEvidenceContextView;
-      if (context.policyVersion !== 5 || context.version !== 1) throw new Error('Procedural evidence context version differs.');
+      if (context.policyVersion !== Number(process.env.POLICY_VERSION) || context.version !== 1) throw new Error('Procedural evidence context version differs.');
       const procedure = readRunnerTempFile(directory, OUTPUT_FILES.procedure);
       const ordinaryDecision = Buffer.from(context.ordinaryDecisionBase64 as string, 'base64');
       const eligibilityDecision = Buffer.from(process.env.DECISION || '', 'utf8');

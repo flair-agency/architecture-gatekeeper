@@ -45,11 +45,11 @@ function structuredCloneProtectedInputs(value) {
 }
 
 function fixture(triggerProfile, { multiAuthority = false, maxPromptBytes = 300_000, maxFileBytes = 131_072,
-  maxTotalBytes = 524_288, baseBranch = 'main' } = {}) {
+  maxTotalBytes = 524_288, baseBranch = 'main', policyVersion = 2 } = {}) {
   const policy = {
-    version: 2,
+    version: policyVersion,
     default: { mode: 'local-only' },
-    branches: { [baseBranch]: { mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+    branches: { [baseBranch]: { mode: 'enforced', ...(policyVersion === 6 ? { provider: 'codex' } : {}), model: 'gpt-6.1-sol', reasoningEffort: 'medium',
       authorityManifestPath: '.codex/gatekeeper/authorities.json',
       authorityLimits: { maxManifestBytes: 16_384, maxMembers: 16, maxFileBytes,
         maxTotalBytes, maxPromptBytes: 524_288 },
@@ -396,9 +396,9 @@ test('production BLOCK adapter rejects non-profile AmendmentRecord bytes before 
   }
 });
 
-test('shared producer prepares and validates the enabled BLOCK self trigger profile with exact receipt bindings', () => {
-  for (const profile of ['completed-block-v1']) {
-    const f = fixture(profile);
+for (const policyVersion of [2, 6]) test(`v${policyVersion} shared producer validates both trigger profiles with exact receipt bindings`, () => {
+  for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
+    const f = fixture(profile, { policyVersion });
     const resolvedPolicy = resolveCiPolicy(parseCiPolicyJson(f.args.policyBytes.toString('utf8')), 'main');
     assert.equal(resolvedPolicy.ownerAmendmentTriggerProfile, profile);
     assert.equal(resolvedPolicy.ownerAmendmentAuthorityId, 'architecture');
@@ -568,8 +568,8 @@ test('stage-review-output canonicalizes valid reviewer JSON before completion an
   } finally { rmSync(temp, { recursive: true, force: true }); }
 });
 
-test('fails closed for missing or wrong-profile trigger evidence and stale base or B bindings', () => {
-  const block = fixture('completed-block-v1');
+for (const policyVersion of [2, 6]) test(`v${policyVersion} fails closed for missing or wrong-profile evidence and stale bindings`, () => {
+  const block = fixture('completed-block-v1', { policyVersion });
   assert.throws(() => block.producer.prepare({ ...block.args,
     triggerReviewRecordBytes: Buffer.alloc(0) }), /trigger ReviewRecord bytes/);
   const policyForOwner = Buffer.from(JSON.stringify({ ...block.policy,
@@ -804,4 +804,15 @@ test('INELIGIBLE is a completed decision with a false check and cannot be rewrit
   const changedExpected = { ...completed.receipt, bSha: '9'.repeat(40) };
   assert.throws(() => validateOwnerAmendmentSemanticEligibilityReceipt({ receiptBytes: completed.receiptBytes,
     expected: changedExpected }), /differ from the protected prepared selection/);
+});
+
+test('v6 amendment cannot infer a trigger or opt-in from an otherwise valid candidate', () => {
+  for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']) {
+    const f = fixture(profile, { policyVersion: 6 });
+    const noSelection = structuredClone(f.policy);
+    delete noSelection.branches.main.ownerAmendment;
+    assert.throws(() => f.producer.prepare({ ...f.args, policyBytes: Buffer.from(JSON.stringify(noSelection)) }), /previous protected policy does not select/);
+    assert.throws(() => f.producer.prepare({ ...f.args, amendmentRecordBytes: Buffer.alloc(0) }));
+    assert.throws(() => f.producer.prepare({ ...f.args, tag: { ...f.args.tag, observedTagRefOid: 'e'.repeat(40) } }));
+  }
 });

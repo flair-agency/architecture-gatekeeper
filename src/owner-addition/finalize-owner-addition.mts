@@ -306,10 +306,10 @@ export async function finalizeOwnerAddition({ repository, pullRequestNumber, git
   const policyBytes = await file(policyPath as string, baseSha);
   const policy = parseCiPolicyJson(policyBytes.toString('utf8')) as UnknownRecord & { version: unknown };
   const selected = resolveCiPolicy(policy, targetBranch as string) as ReturnType<typeof resolveCiPolicy> & OwnerAdditionFinalRecordInput['selected'];
-  if (policy.version !== 5 || selected.mode !== 'procedural' || selected.adoptionEvidenceProducer !== 'github-actions' ||
-      selected.policyVersion !== 5 || typeof selected.adoptionEvidenceWorkflowPath !== 'string' ||
+  if (![5, 6].includes(policy.version as number) || selected.mode !== 'procedural' || selected.adoptionEvidenceProducer !== 'github-actions' ||
+      selected.policyVersion !== policy.version || selected.ownerAdditionVersion !== 2 || typeof selected.adoptionEvidenceWorkflowPath !== 'string' ||
       typeof selected.adoptionEvidenceJobName !== 'string' || selected.adoptionEvidenceWorkflowPath !== callerPath) {
-    fail('recorded-base policy does not select the v5 procedural GitHub Actions route.');
+    fail('recorded-base policy does not select the v5/v6 procedural GitHub Actions route.');
   }
   const jobName = validateOwnerAdditionProducerJobName(selected.adoptionEvidenceJobName, gatekeeperWorkflow.callerJobId);
   const jobs = object(await request(['actions', 'runs', runId, 'attempts', attempt, 'jobs'], repository, '?per_page=100'), 'producer jobs') as UnknownRecord & { jobs?: unknown; total_count?: unknown };

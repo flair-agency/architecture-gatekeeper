@@ -36,7 +36,7 @@ function canonical(value) { return Array.isArray(value) ? value.map(canonical) :
   ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value; }
 function sha256(text) { return createHash('sha256').update(text).digest('hex'); }
 
-test('protected adapter verifies exact B and reports G0 separately from ordinary OWNER_DECISION', t => {
+for (const policyVersion of [2, 6]) test(`v${policyVersion} protected adapter verifies exact B and reports G0 separately from ordinary OWNER_DECISION`, t => {
   const root = mkdtempSync(join(tmpdir(), 'owner-addition-ci-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const runnerTemp = mkdtempSync(join(tmpdir(), 'owner-addition-runner-temp-'));
@@ -44,8 +44,8 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
   run(root, 'git', 'init', '-q');
   const oldAuthority = '# Architecture\n\nThe reporting owner is unselected.\n';
   const newAuthority = `${oldAuthority}\n## Reporting choice\n\nThe product owner owns reporting.\n`;
-  const policy = { version: 2, default: { mode: 'local-only' }, branches: { main: {
-    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium',
+  const policy = { version: policyVersion, default: { mode: 'local-only' }, branches: { main: {
+    mode: 'enforced', ...(policyVersion === 6 ? { provider: 'codex' } : {}), model: 'gpt-6.1-sol', reasoningEffort: 'medium',
     authorityManifestPath: '.codex/gatekeeper/authorities.json',
     authorityLimits: { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 },
     ownerAddition: { grade: 'G0', authorityPath: 'docs/architecture.md',
@@ -83,7 +83,7 @@ test('protected adapter verifies exact B and reports G0 separately from ordinary
     OWNER_SCHEMA_PATH: '.codex/gatekeeper/owner-addition.schema.json',
     ORDINARY_SCHEMA_PATH: '.codex/gatekeeper/ordinary.schema.json',
     ORDINARY_DECISION: '{"decision":"OWNER_DECISION","ownerDecisionId":"reporting-owner","summary":"reporting owner is not selected"}',
-    RUNNER_TEMP: runnerTemp, OUTPUT_DIR: 'architecture-gate-owner-addition', GITHUB_OUTPUT: outputFile };
+    POLICY_VERSION: String(policyVersion), MODE: 'enforced', RUNNER_TEMP: runnerTemp, OUTPUT_DIR: 'architecture-gate-owner-addition', GITHUB_OUTPUT: outputFile };
   execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: runnerTemp, env });
   assert.ok(Buffer.byteLength(readFileSync(join(outputDir, 'eligibility-prompt.md'))) <= 524288);
   const output = readFileSync(outputFile, 'utf8');

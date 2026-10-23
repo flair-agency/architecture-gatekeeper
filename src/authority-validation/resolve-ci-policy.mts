@@ -107,15 +107,15 @@ function validateV6Branch(branch: PolicyBranchView, label: string): void {
     requireOnlyKeys(branch, new Set(['mode']), label);
     return;
   }
-  if ((branch as PolicyBranchView).mode !== 'enforced') throw new Error(`${label} v6 supports only enforced or local-only mode`);
   if ((branch as PolicyBranchView).provider !== 'codex' && (branch as PolicyBranchView).provider !== 'gemini') throw new Error(`${label} v6 requires provider codex or gemini`);
 
   const common = ['mode', 'provider', 'model', 'authorityManifestPath', 'authorityLimits', 'execution'];
   const providerSetting = (branch as PolicyBranchView).provider === 'codex' ? 'reasoningEffort' : 'thinkingLevel';
-  const allowed = new Set([...common, providerSetting]);
+  const allowed = new Set([...common, providerSetting, 'ownerAddition', 'ownerAmendment', 'adoptionEvidence']);
   requireOnlyKeys(branch, allowed, label);
-  const expectedSize = allowed.size - (Object.hasOwn(branch, 'execution') ? 0 : 1);
-  if (Object.keys(branch).length !== expectedSize) throw new Error(`${label} v6 requires its complete provider and Authority Set selection`);
+  if (![...common.filter(key => key !== 'execution'), providerSetting].every(key => Object.hasOwn(branch, key))) {
+    throw new Error(`${label} v6 requires its complete provider and Authority Set selection`);
+  }
   if (typeof (branch as PolicyBranchView).model !== 'string' || !/^[A-Za-z0-9._-]+$/.test((branch as PolicyBranchView).model as string)) {
     throw new Error(`Enforced ${label} requires a valid model`);
   }
@@ -124,6 +124,19 @@ function validateV6Branch(branch: PolicyBranchView, label: string): void {
       throw new Error(`Invalid Codex model or reasoning effort for ${label}`);
     }
     if (Object.hasOwn(branch, 'execution')) validateCodexExecutionSelection((branch as PolicyBranchView).execution as PolicyBranchView, label);
+    // Reuse the existing route contracts, without reinterpreting old policy bytes
+    // or activating a route when its explicit selection is absent. The resolved
+    // policy identity remains v6; these numbers select validators only.
+    const { provider: _provider, ...selection } = branch;
+    const routeVersion = branch.mode === 'procedural' ? 5 :
+      (branch.ownerAddition as PolicyBranchView | undefined)?.version === 2 ? 4 : 2;
+    if (routeVersion !== 2 && Object.hasOwn(branch, 'ownerAmendment')) {
+      throw new Error(`${label} multi-document addition/procedural plus owner amendment is not a supported combination`);
+    }
+    validateBranch(selection, label, routeVersion);
+    return;
+  } else if (branch.mode !== 'enforced' || ['ownerAddition', 'ownerAmendment', 'adoptionEvidence'].some(key => Object.hasOwn(branch, key))) {
+    throw new Error(`${label} Gemini supports ordinary enforced review only; Owner procedures require a supported Codex selection`);
   } else if ((branch as PolicyBranchView).model !== 'gemini-3.8-flash' || (branch as PolicyBranchView).thinkingLevel !== 'MEDIUM') {
     throw new Error(`Invalid Gemini model or thinking level for ${label}`);
   } else if (Object.hasOwn(branch, 'execution')) {
@@ -254,23 +267,25 @@ export function resolveCiPolicy(policy: unknown, baseBranch: string): ResolvedCi
     validateBranch(branch as PolicyBranchView, `CI policy branch ${branchName}`, (policy as PolicyView).version as number);
   }
   const selected = (Object.hasOwn((policy as PolicyView).branches as object, baseBranch) ? ((policy as PolicyView).branches as PolicyBranchView)[baseBranch] : (policy as PolicyView).default) as PolicyBranchView;
-  if ((policy as PolicyView).version === 6) {
-    if (selected.mode === 'local-only') return { baseBranch, mode: 'local-only', policyVersion: 6 };
+  const version = (policy as PolicyView).version as number;
+  const multiAddition = [4, 5].includes(version) || (version === 6 && (selected.ownerAddition as PolicyBranchView | undefined)?.version === 2);
+  if (version === 6 && selected.mode === 'local-only') return { baseBranch, mode: 'local-only', policyVersion: 6 };
+  if (version === 6 && selected.provider === 'gemini') {
     return {
       baseBranch,
       mode: 'enforced',
       policyVersion: 6,
       provider: selected.provider,
       model: selected.model,
-      ...(selected.provider === 'codex' ? { reasoningEffort: selected.reasoningEffort } : { thinkingLevel: selected.thinkingLevel }),
+      thinkingLevel: selected.thinkingLevel,
       authorityManifestPath: selected.authorityManifestPath,
       authorityLimitsBase64: Buffer.from(JSON.stringify(validateAuthorityLimits(selected.authorityLimits))).toString('base64'),
-      ...(selected.provider === 'codex' ? resolvedCodexExecutionSelection(selected.execution as PolicyBranchView, selected.reasoningEffort) : {}),
     };
   }
   const result: ResolvedCiPolicy = selected.mode === 'local-only'
     ? { baseBranch, mode: 'local-only', model: '', reasoningEffort: '' }
     : { baseBranch, mode: selected.mode, model: selected.model, reasoningEffort: selected.reasoningEffort };
+  if (version === 6) Object.assign(result, { policyVersion: 6, provider: selected.provider });
   if ((policy as PolicyView).version === 1 && selected.mode === 'enforced') {
     result.policyVersion = 1;
     result.legacyAuthorityFilesBase64 = Buffer.from(JSON.stringify(selected.authorityFiles)).toString('base64');
@@ -280,12 +295,12 @@ export function resolveCiPolicy(policy: unknown, baseBranch: string): ResolvedCi
   }
   if (selected.authorityManifestPath) {
     result.authorityManifestPath = selected.authorityManifestPath;
-    const profile = [4, 5].includes((policy as PolicyView).version as number) ? MULTI_AUTHORITY_PROFILE : 'v1';
+    const profile = multiAddition ? MULTI_AUTHORITY_PROFILE : 'v1';
     result.authorityLimitsBase64 = Buffer.from(JSON.stringify(validateAuthorityLimits(selected.authorityLimits, profile))).toString('base64');
-    if ([4, 5].includes((policy as PolicyView).version as number)) result.authorityProfile = profile;
+    if (multiAddition) result.authorityProfile = profile;
   }
   if (selected.ownerAddition) {
-    if ([4, 5].includes((policy as PolicyView).version as number)) {
+    if (multiAddition) {
       result.policyVersion = (policy as PolicyView).version;
       result.ownerAdditionVersion = 2;
       result.ownerAdditionAuthorityId = (selected.ownerAddition as PolicyBranchView).authorityId;
@@ -295,7 +310,7 @@ export function resolveCiPolicy(policy: unknown, baseBranch: string): ResolvedCi
     result.ownerAdditionPromptPath = (selected.ownerAddition as PolicyBranchView).promptPath;
     result.ownerAdditionSchemaPath = (selected.ownerAddition as PolicyBranchView).schemaPath;
   }
-  if ((policy as PolicyView).version === 5 && selected.mode === 'procedural') {
+  if (selected.mode === 'procedural') {
     result.adoptionEvidenceProducer = (selected.adoptionEvidence as PolicyBranchView).producer;
     result.adoptionEvidenceWorkflowPath = (selected.adoptionEvidence as PolicyBranchView).workflowPath;
     result.adoptionEvidenceJobName = (selected.adoptionEvidence as PolicyBranchView).jobName;

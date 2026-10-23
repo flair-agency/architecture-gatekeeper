@@ -566,8 +566,8 @@ representative hosted verification.
 
 #### Implemented Policy `v6` provider selection, caller boundary, and recovery
 
-This implementation does not establish general consumer support or broader
-activation beyond the single bounded PR `#517` verification session authorized in
+The Gemini implementation does not establish general consumer support or broader
+Gemini activation beyond the single bounded PR `#517` verification session authorized in
 [`docs/architecture/review-execution.md`](architecture/review-execution.md). In
 the implemented `.github/workflows/architecture-gate-providers.yml` contract, an
 ordinary `enforced` branch explicitly selects `codex` or `gemini` in
@@ -614,10 +614,11 @@ and branch entries retain the bare `{ "mode": "local-only" }` waiver form
   for GitHub API external authority reads, and the caller's repository-scoped
   `github.token` cannot read another private repository). No Codex CLI
   or `OPENAI_API_KEY` is required on the Gemini route.
-- **Supported profile and hard bounds**: Policy `v6` supports only the ordinary
-  `enforced` (with explicit `provider: "codex" | "gemini"`) and bare `local-only`
-  modes. It rejects `ownerAddition`, `ownerAmendment`, and `adoptionEvidence`;
-  governance routes (`OWNER_ADDITION` and `OWNER_AMENDMENT`) remain Codex-only. The Gemini CI route enforces the
+- **Supported profiles and hard bounds**: Policy `v6` preserves explicit ordinary
+  `enforced` provider selection and bare `local-only` entries. With `provider:
+  "codex"`, it also accepts the existing Owner selections described below.
+  Gemini plus Owner procedures or `procedural` mode is unsupported and rejected:
+  those existing eligibility producers execute Codex, not Gemini. The Gemini CI route enforces the
   pinned `@google/gemini-cli@0.62.0` runtime, Vertex AI `gemini-3.8-flash`
   (`global`, `thinkingLevel: MEDIUM`, no `thinkingBudget`), a 180-second session
   deadline, a 10-request per-session upstream cap, and revision-bound context
@@ -643,6 +644,52 @@ and branch entries retain the bare `{ "mode": "local-only" }` waiver form
   repository), and optionally reverting the reusable workflow reference to
   `.github/workflows/architecture-gate-consumer.yml` once the protected policy
   selects Codex-compatible settings.
+
+#### Policy v6 compatibility and explicit Owner selections
+
+Policy format version is separate from route selection and evidence version.
+The current source extends v6 without changing old v1/v2/v4/v5 policy meanings.
+Use a runtime/workflow containing this extension; already published older pins
+that reject these v6 fields do not gain support automatically.
+
+| Existing selection | Earlier CI format | Explicit selection in v6 |
+| --- | --- | --- |
+| Ordinary Authority Set review | v2 | `mode: "enforced"`, provider/model/settings, manifest and limits; no Owner fields |
+| Initial single-member OWNER_ADDITION / G0 | v2 | `provider: "codex"`, `mode: "enforced"`, unchanged unversioned `ownerAddition` object |
+| Multi-document OWNER_ADDITION / G0 | v4 | `provider: "codex"`, `mode: "enforced"`, unchanged `ownerAddition.version: 2` object with affected member ID |
+| Procedural multi-document OWNER_ADDITION / G0 | v5 | `provider: "codex"`, `mode: "procedural"`, `ownerAddition.version: 2` and unchanged `adoptionEvidence` producer selection |
+| Existing self OWNER_AMENDMENT / G0 profiles | v2 | `provider: "codex"`, `mode: "enforced"`, unchanged `ownerAmendment` object and exact trigger profile |
+| Local-only waiver | v1/v2/v4/v5/v6 | Bare `{ "mode": "local-only" }`; no provider or Owner fields |
+
+To represent an existing v2/v4/v5 selection in v6, preserve its route fields,
+model, effort, paths, limits, producer and execution settings, set the document
+`version` to `6`, and add `provider: "codex"` to each non-local-only branch and
+default. This is a proposed configuration migration, not permission to change a
+consumer: adopt it under that consumer's previous policy and governance. Pin a
+compatible runtime first; candidate policy never selects its own review.
+
+The `ownerAddition.version: 2` selection retains the existing multi-document
+schema, complete-set digest, single affected-file scope and 256 KiB file ceiling.
+The unversioned addition retains its single-member constraint and original
+limits. Amendment retains both supported trigger profiles, complete previous
+Set, exact-B evidence, producer validation and protected transition requirements;
+selecting v6 does not enable the self App/Queue route. Ordinary review without
+Owner fields does not select either procedure or raise its limits.
+
+Existing single-member addition and amendment may be selected together, as in
+v2. Combining multi-document addition (including its expanded ordinary review
+profile) with amendment, or combining procedural addition with amendment, is
+not a supported composition and is rejected. No existing format supported those
+combinations. `adoptionEvidence` is required for procedural addition and rejected
+for enforced review. Missing or malformed selections never fall back to another
+route or provider. Reports retain the actual v6 policy revision/digest and the
+original route-specific evidence versions.
+
+`preview-unverified-procedure-v1` remains a separate, predecessor-selected
+Git-based procedure. Its selection is not an `ownerAmendment` CI opt-in or the
+v5/v6 `procedural` mode. It can use an ordinary v6 Codex review selection while
+retaining `UNVERIFIED` custody; this does not claim protected G0 adoption or
+GitHub enforcement. Existing initial-migration scope restrictions remain intact.
 
 #### Report filesystem boundary
 
