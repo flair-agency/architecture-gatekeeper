@@ -370,7 +370,7 @@ function triggerEvidence(fixture, resolved, api) {
       gates: { sharedMechanism: { decision: 'OWNER_DECISION', summary: 'Existing rule needs an owner choice.', consumerOwnership: '', failClosedBehavior: '', compatibility: '', minimality: '' },
         trustBoundary: { decision: 'PASS', summary: 'No trust change.', tokenPermissions: '', untrustedInputs: '', credentialHandling: '', reportingIsolation: '' } } };
   }
-  const decisionBytes = fixture.nativeInitialDecision ?? Buffer.from(`${JSON.stringify(decision)}\n`);
+  const decisionBytes = Buffer.from(`${JSON.stringify(decision)}\n`);
   const record = fixture.profile === 'completed-block-v1'
     ? buildOwnerAmendmentBlockRecord({ decisionBytes, schema, validation, authority, context: producerContext, inputDigests })
     : buildOwnerAmendmentOwnerDecisionRecord({ decisionBytes, schema, validation, authority, context: producerContext, inputDigests });
@@ -471,7 +471,7 @@ function makeSemanticPipeline(fixture, resolved, trigger, evidence, api, gitChan
     tag, tagObjectBytes, producer: producerIdentity, selectedProducer: producerIdentity,
     gatekeeper, selectedGatekeeper: gatekeeper, reviewModel: resolved.policy.model,
     reviewReasoningEffort: resolved.policy.reasoningEffort });
-  const rawDecision = localReview(fixture, 'b-eligibility', prepared.promptBytes, prepared.schemaBytes, eligibilityDecision(prepared));
+  const rawDecision = eligibilityDecision(prepared);
   const runner = realpathSync(mkdtempSync(join(tmpdir(), 'agk-semantic-output-')));
   let decisionBytes;
   try {
@@ -834,28 +834,6 @@ throw new Error('Unexpected gh work in candidate-only opt-in case');\n`);
 
 // Local execution adapter for this bounded fixture. External responses are never
 // host evidence: the production validators still validate every returned byte.
-function localReview(fixture, name, prompt, schema, fallback, reviewTuple = {}) {
-  if (!fixture.currentSelfCycle) return fallback;
-  const request = {
-    model: fixture.policy.branches.main.model, reasoningEffort: fixture.policy.branches.main.reasoningEffort,
-    promptSha256: hash(Buffer.from(prompt)), schemaSha256: hash(Buffer.from(schema)),
-    baseSha: reviewTuple.baseSha ?? fixture.baseSha, aSha: reviewTuple.aSha ?? fixture.triggerASha, bSha: fixture.bSha,
-  };
-  const output = process.env.AGK_OWNER_CYCLE_EVIDENCE_DIR;
-  if (output) {
-    mkdirSync(output, { recursive: true });
-    writeFileSync(join(output, `${name}-prompt.md`), prompt);
-    writeFileSync(join(output, `${name}-schema.json`), schema);
-    writeFileSync(join(output, `${name}-request.json`), JSON.stringify(request, null, 2));
-  }
-  const native = process.env.AGK_OWNER_CYCLE_NATIVE_DIR;
-  if (!native) return fallback;
-  const file = join(native, `${name}.json`);
-  if (!existsSync(file)) throw new Error(`LOCAL_REVIEW_PENDING: ${name}; prepared inputs exported`);
-  assert.deepEqual(JSON.parse(readFileSync(join(native, `${name}-request.json`))), request, 'external response must bind the exact exported review input');
-  return readFileSync(file);
-}
-
 async function localCanonicalReadback(fixture, canonicalSha) {
   const run = args => fixture.runGit(args).toString('utf8').trim();
   const fetchImpl = async url => {
@@ -911,8 +889,6 @@ for (const [profile, currentSelfCycle] of [['completed-block-v1', false], ['comp
     if (currentSelfCycle) {
       fixture.initialA = await prepareOwnerAmendmentMergeGroupOrdinaryReview({ repository,
         baseSha: fixture.baseSha, headSha: fixture.triggerASha, selfRoot: fixture.repoPath, runGit: fixture.runGit });
-      fixture.nativeInitialDecision = localReview(fixture, 'initial-a', fixture.initialA.prompt,
-        fixture.initialA.schemaBytes, null);
     }
     const trigger = triggerEvidence(fixture, resolved, api);
     api.setTriggerRecord(trigger.recordBytes, trigger.bundleBytes);
@@ -1066,6 +1042,7 @@ for (const [profile, currentSelfCycle] of [['completed-block-v1', false], ['comp
       const canonicalSha = fixture.runGit(['rev-parse', 'HEAD']).toString('ascii').trim();
       fixture.runGit(['update-ref', 'refs/heads/main', canonicalSha]);
       const readback = await localCanonicalReadback(fixture, canonicalSha);
+      assert.equal(readback.status, 'VERIFIED_LOCAL_SIX_MEMBER_READBACK');
       fixture.runGit(['cherry-pick', fixture.triggerASha]);
       const freshASha = fixture.runGit(['rev-parse', 'HEAD']).toString('ascii').trim();
       const freshA = await prepareOwnerAmendmentMergeGroupOrdinaryReview({ repository,
@@ -1083,8 +1060,7 @@ for (const [profile, currentSelfCycle] of [['completed-block-v1', false], ['comp
           failClosedBehavior: 'Preserved', compatibility: 'Preserved', minimality: 'Bounded' },
         trustBoundary: { decision: 'PASS', summary: 'Fixture response.', tokenPermissions: 'Local only',
           untrustedInputs: 'Data', credentialHandling: 'None', reportingIsolation: 'Local' } } }));
-      const freshDecision = localReview(fixture, 'fresh-a', freshA.prompt, freshA.schemaBytes, syntheticFreshPass,
-        { baseSha: canonicalSha, aSha: freshASha });
+      const freshDecision = syntheticFreshPass;
       const freshAccepted = validateOwnerAmendmentMergeGroupOrdinaryDecision({ decisionBytes: freshDecision,
         expected: { repository, baseSha: canonicalSha, headSha: freshASha }, prepared: freshA });
       assert.equal(freshAccepted.status, 'VERIFIED_FRESH_MERGE_GROUP_ORDINARY_PASS');
@@ -1094,44 +1070,6 @@ for (const [profile, currentSelfCycle] of [['completed-block-v1', false], ['comp
         ownerAmendmentEligibility: 'ELIGIBLE' }), /eligible tagged OWNER_AMENDMENT requires a separately implemented protected transition route/);
       assert.equal(fixture.runGit(['rev-parse', `${canonicalSha}^1`]).toString('ascii').trim(), fixture.baseSha);
       assert.equal(fixture.runGit(['rev-parse', `${canonicalSha}^2`]).toString('ascii').trim(), fixture.bSha);
-      const evidenceRoot = currentSelfCycle ? process.env.AGK_OWNER_CYCLE_EVIDENCE_DIR : undefined;
-      if (evidenceRoot) {
-        mkdirSync(evidenceRoot, { recursive: true });
-        for (const [name, bytes] of [
-          ['initial-a-prompt.md', initialA.prompt], ['initial-a-schema.json', initialA.schemaBytes],
-          ['b-eligibility-prompt.md', semanticPipeline.prepared.promptBytes],
-          ['b-eligibility-schema.json', semanticPipeline.prepared.schemaBytes],
-          ['fresh-a-prompt.md', freshA.prompt], ['fresh-a-schema.json', freshA.schemaBytes],
-          ['initial-a-decision.json', trigger.decisionBytes], ['b-receipt.json', receiptBytes],
-          ['trigger-review-record.json', trigger.recordBytes], ['amendment-tag.txt', api.selectedTag().rawTagObject],
-          ['fresh-a-decision.json', freshDecision], ['canonical-readback.json', JSON.stringify(readback, null, 2)],
-        ]) writeFileSync(join(evidenceRoot, name), bytes);
-        const bundlePath = join(evidenceRoot, 'local-cycle.bundle');
-        for (const [name, sha] of [['base', fixture.baseSha], ['original-a', fixture.triggerASha],
-          ['b', fixture.bSha], ['canonical', canonicalSha], ['fresh-a', freshASha]]) {
-          fixture.runGit(['update-ref', `refs/heads/local-cycle/${name}`, sha]);
-        }
-        fixture.runGit(['bundle', 'create', bundlePath, ...['base', 'original-a', 'b', 'canonical', 'fresh-a']
-          .map(name => `refs/heads/local-cycle/${name}`)]);
-        writeFileSync(join(evidenceRoot, 'cycle-evidence.json'), JSON.stringify({
-        classification: 'local synthetic integration evidence; no protected GitHub adoption proof',
-        currentSourceRevision: git(root, ['rev-parse', 'HEAD']).toString('ascii').trim(),
-        currentSourceHasTrackedEdits: git(root, ['diff', '--name-only']).length > 0,
-        fixtureBaseSha: fixture.baseSha,
-        fixturePolicySha256: hash(resolved.policyBytes),
-        matchesCurrentPolicy: resolved.policyBytes.equals(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'))),
-        selectedSetTopology: fixture.members.map(({ id, path }) => ({ id, path })),
-        ownerDecision: { decision: 'OWNER_DECISION', commitSha: fixture.triggerASha,
-          source: process.env.AGK_OWNER_CYCLE_NATIVE_DIR ? 'externally supplied response; execution provenance recorded separately' : 'deterministic fixture response' },
-        amendmentB: { commitSha: fixture.bSha, eligibility: semanticPipeline.completed.status,
-          eligibilityDecision: 'ELIGIBLE', source: process.env.AGK_OWNER_CYCLE_NATIVE_DIR ? 'externally supplied response; execution provenance recorded separately' : 'deterministic fixture response' },
-        canonicalReadback: { commitSha: canonicalSha, firstParent: fixture.baseSha, secondParent: fixture.bSha, status: readback.status },
-        freshA: { commitSha: freshASha, baseSha: canonicalSha, result: freshAccepted.status,
-          response: process.env.AGK_OWNER_CYCLE_NATIVE_DIR ? 'externally supplied response; execution provenance recorded separately' : 'deterministic fixture response' },
-        legacyKAcceptance: 'eligible tagged amendment rejected by retained legacy K; dedicated N route is inactive on production',
-          githubAndProvenance: 'mocked API/attestation observations in route-composition test',
-        }, null, 2) + '\n');
-      }
     }
     await t.test('rejects a different merge-group base or head', async () => {
       for (const field of ['base_sha', 'head_sha']) {
