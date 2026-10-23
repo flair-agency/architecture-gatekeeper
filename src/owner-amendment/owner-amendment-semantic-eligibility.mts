@@ -228,6 +228,13 @@ function parseJson(bytes: unknown, label: string, maximum: number): { source: st
   return { source: source as string, value };
 }
 
+/** Parse reviewer JSON with the producer's bounded duplicate-safe parser and encode it canonically.
+ * Semantic shape and binding checks remain the responsibility of completion. */
+export function normalizeOwnerAmendmentSemanticReviewOutput(bytes: unknown): Buffer {
+  const parsed = parseJson(bytes, 'semantic eligibility decision', 65_536);
+  return canonicalBytes(parsed.value);
+}
+
 function validateSha(value: unknown, pattern: RegExp, label: string): asserts value is string {
   if (typeof value !== 'string' || !pattern.test(value)) fail(`${label} is invalid.`);
 }

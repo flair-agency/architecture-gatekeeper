@@ -3,7 +3,8 @@ import { execFileSync } from 'node:child_process';
 import { readRunnerTempFile, resolveRunnerTempDirectory, writeRunnerTempFile,
   validateRepositoryTreePath, validateSelfAuthorityManifest,
   ownerAmendmentTagApiRoute } from '../dist/runner-temp-path.mjs';
-import { createOwnerAmendmentSemanticEligibilityProducer, completeOwnerAmendmentSemanticEligibility } from '../dist/owner-amendment-semantic-eligibility.mjs';
+import { createOwnerAmendmentSemanticEligibilityProducer, completeOwnerAmendmentSemanticEligibility,
+  normalizeOwnerAmendmentSemanticReviewOutput } from '../dist/owner-amendment-semantic-eligibility.mjs';
 import { resolveOwnerAmendmentHandoffGitContext } from '../dist/owner-amendment-handoff-git-context.mjs';
 import { readOwnerAmendmentTagForMergeGroup } from '../dist/owner-amendment-tag-readback.mjs';
 import { verifyOwnerAmendmentBlockEvidence } from '../dist/owner-amendment-attestation.mjs';
@@ -151,8 +152,9 @@ async function prepare() {
 async function main() {
   const command = process.argv[2];
   if (command === 'stage-review-output') {
-    const decisionBytes = Buffer.from(process.env.DECISION ?? '', 'utf8');
-    if (!decisionBytes.length || decisionBytes.length > 65_536) fail('semantic decision is missing or oversized.');
+    let decisionBytes;
+    try { decisionBytes = normalizeOwnerAmendmentSemanticReviewOutput(Buffer.from(process.env.DECISION ?? '', 'utf8')); }
+    catch (error) { fail((error instanceof Error ? error.message : 'semantic decision is invalid.')); }
     const outputDir = resolveRunnerTempDirectory('owner-amendment-semantic-reviewer-output');
     writeRunnerTempFile(outputDir, 'decision.json', decisionBytes);
     process.stdout.write(`${JSON.stringify({ status: 'STAGED_SEMANTIC_REVIEW_OUTPUT', bytes: decisionBytes.length })}\n`);
