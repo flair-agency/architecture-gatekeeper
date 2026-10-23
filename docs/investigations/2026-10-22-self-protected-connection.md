@@ -25,6 +25,21 @@ before requesting App credentials; such a failure cannot safely finalize a check
 and remains incomplete. Queue final N independently checks the live description
 in addition to required L.
 
+If report-job dependency installation or compilation fails after trusted checkout
+and Node setup, a source-only command calls the existing App reporter to finalize
+the exact begun check as failure. It needs neither `dist` nor `node_modules` and
+cannot report success. Missing trusted checkout/runtime, runner loss, cancellation
+before reporting, or transport failure can still leave the check incomplete;
+no untrusted recovery process receives the App credential.
+
+Completeness describes the PR body observed when the check ran. A later body
+edit reruns PR L, but does not promise atomic invalidation of an already reported
+Queue check before merge. The delivery fields verify neither their claims nor
+Authority, evidence or acceptance. This metadata observation is distinct from
+the existing through-transition protection of amendment tag/evidence bindings;
+those protections remain required. Completeness success does not extend that
+protection to future body edits.
+
 Workflow structure tests and synthetic API/CLI tests establish code composition,
 not live GitHub enforcement. Installed-distribution verification is separate from
 protected CI acceptance. The initial adapter uses the current Codex self Policy;

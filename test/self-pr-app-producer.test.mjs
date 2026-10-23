@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { deflateRawSync } from 'node:zlib';
@@ -221,6 +221,15 @@ const result=spawnSync('${realGit}',args,{stdio:'inherit'}); process.exit(result
     AGK_REVIEW_WORKFLOW_REF: `${repository}/.github/workflows/architecture-gate.yml@refs/heads/main`, AGK_REVIEWED_SHA: callerSubject });
   return { directory, outputPath, markerPath, tokenMarkerPath, gitFetchMarkerPath, env };
 }
+function sourceOnlyCliPath(fixture) {
+  const isolated = join(fixture.directory, 'source-only-runtime');
+  mkdirSync(join(isolated, 'scripts'), { recursive: true });
+  cpSync(resolve('src'), join(isolated, 'src'), { recursive: true });
+  cpSync(resolve('scripts/self-pr-app-report.mjs'), join(isolated, 'scripts/self-pr-app-report.mjs'));
+  assert.equal(existsSync(join(isolated, 'dist')), false);
+  assert.equal(existsSync(join(isolated, 'node_modules')), false);
+  return join(isolated, 'scripts/self-pr-app-report.mjs');
+}
 
 test('begin CLI accepts only protected caller tuple and does not require later review projection', t => {
   const fixture = cliFixture(t, { includeReview: false });
@@ -281,4 +290,22 @@ test('report CLI finalizes failure when the begun check SHA does not match fresh
   assert.throws(() => execFileSync(process.execPath, [resolve('scripts/self-pr-app-report.mjs'), 'report'],
     { cwd: fixture.directory, env: fixture.env, stdio: 'pipe' }));
   assert.equal(JSON.parse(readFileSync(fixture.markerPath, 'utf8')).conclusion, 'failure');
+});
+
+test('source-only setup-failure command finalizes the exact check without dist or node_modules', t => {
+  const fixture = cliFixture(t, { includeReview: false });
+  const script = sourceOnlyCliPath(fixture);
+  execFileSync(process.execPath, [script, 'report-setup-failure'], { cwd: fixture.directory, env: fixture.env, stdio: 'pipe' });
+  assert.equal(JSON.parse(readFileSync(fixture.markerPath, 'utf8')).conclusion, 'failure');
+  assert.match(readFileSync(fixture.outputPath, 'utf8'), /conclusion=failure/);
+  assert.equal(existsSync(fixture.tokenMarkerPath), true);
+});
+
+test('source-only setup-failure command rejects wrong protected workspace before requesting credentials', t => {
+  const fixture = cliFixture(t, { includeReview: false, workspaceMismatch: true });
+  const script = sourceOnlyCliPath(fixture);
+  assert.throws(() => execFileSync(process.execPath, [script, 'report-setup-failure'],
+    { cwd: fixture.directory, env: fixture.env, stdio: 'pipe' }));
+  assert.equal(existsSync(fixture.tokenMarkerPath), false);
+  assert.equal(existsSync(fixture.markerPath), false);
 });

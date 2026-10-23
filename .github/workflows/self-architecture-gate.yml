@@ -151,19 +151,24 @@ jobs:
       actions: read
       attestations: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - id: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: ${{ github.workflow_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+      - id: setup-node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: 22
-      - name: Build adopted protected runtime
+      - id: build
+        name: Build adopted protected runtime
         run: |
           npm ci --ignore-scripts
           npm run build
-      - name: Validate protected result and report PR eligibility
+      - id: report
+        if: always() && steps.checkout.outcome == 'success' && steps.setup-node.outcome == 'success'
+        name: Validate result or finalize after runtime build failure
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
@@ -208,7 +213,12 @@ jobs:
           AGK_AMENDMENT_ARTIFACT_DIGEST: ${{ needs.architecture-gate.outputs.amendment_artifact_digest }}
           AGK_AMENDMENT_COMPLETED_AT: ${{ needs.architecture-gate.outputs.amendment_completed_at }}
         working-directory: ${{ runner.temp }}
-        run: node "$GITHUB_WORKSPACE/scripts/self-pr-app-report.mjs" report
+        run: |
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            node "$GITHUB_WORKSPACE/scripts/self-pr-app-report.mjs" report
+          else
+            node "$GITHUB_WORKSPACE/scripts/self-pr-app-report.mjs" report-setup-failure
+          fi
 
   deny-unreviewed-fork:
     name: architecture-gate / accept

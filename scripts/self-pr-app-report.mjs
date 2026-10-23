@@ -8,8 +8,9 @@ import { pathToFileURL } from 'node:url';
 import { appendGitHubOutput } from '../src/runner-temp-path.mjs';
 import { beginProtectedSelfPrCheck, finishProtectedSelfPrCheck } from '../src/self-pr-app-producer.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
-import { validateCodexPass } from '../dist/ci-review/codex-pass-producer.mjs';
-import { contextOf, requireSelfPassContext } from '../dist/ci-review/codex-pass-publication.mjs';
+import { validateCodexPass } from '../src/ci-review/codex-pass-producer.mts';
+import { contextOf, requireSelfPassContext } from '../src/ci-review/codex-pass-publication.mts';
+import { finalizeSelfArchitectureCheck } from '../src/github-app-check-reporter.mjs';
 import { inspectSelfAuthorityChanges } from '../src/ci-self-authority-change.mjs';
 import { classifyReview } from '../src/ci-report.mjs';
 import { readRunnerTempFile, resolveRunnerTempDirectory } from '../src/runner-temp-path.mjs';
@@ -195,7 +196,7 @@ async function validateAmendmentEligibility(env, context) {
 }
 async function main() {
   const [command] = process.argv.slice(2), env = process.env;
-  if (!['begin', 'report'].includes(command)) fail('usage: self-pr-app-report.mjs begin|report');
+  if (!['begin', 'report', 'report-setup-failure'].includes(command)) fail('usage: self-pr-app-report.mjs begin|report|report-setup-failure');
   const trusted = protectedCallerContext(env);
   const producerInput = { context: trusted.selectorInput, contextFetchImpl: fetch, getApp: () => getApp(env) };
   if (command === 'begin') {
@@ -204,6 +205,19 @@ async function main() {
     const begun = await beginProtectedSelfPrCheck(producerInput);
     const { context: selected, check } = begun;
     appendGitHubOutput(`check_id=${check.id}\ncheck_sha=${check.headSha}\npr_number=${selected.prNumber}\nbase_sha=${selected.baseSha}\nhead_sha=${selected.headSha}\n`);
+    return;
+  }
+  if (command === 'report-setup-failure') {
+    validateRunnerTemp(env);
+    validateProtectedWorkspace(env);
+    if (!/^[1-9]\d*$/.test(env.AGK_CHECK_ID || '') || !Number.isSafeInteger(Number(env.AGK_CHECK_ID)) ||
+        !SHA.test(env.AGK_CHECK_SHA || '')) fail('exact protected begin-check identity is unavailable.');
+    const app = getApp(env);
+    const check = { id: Number(env.AGK_CHECK_ID), name: 'architecture-gate / accept', repository: SELF,
+      headSha: env.AGK_CHECK_SHA, appId: app.appId };
+    const finalized = await finalizeSelfArchitectureCheck({ app, check, conclusion: 'failure' });
+    if (finalized.conclusion !== 'failure' || finalized.id !== check.id || finalized.headSha !== check.headSha) fail('exact begun App check did not finalize as failure.');
+    appendGitHubOutput('conclusion=failure\nreason=protected runtime setup failed\n');
     return;
   }
   validateRunnerTemp(env);

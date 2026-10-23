@@ -70,6 +70,16 @@ test('dedicated App credentials and pending-check lifecycle stay in protected st
     assert.ok(Object.hasOwn(steps.find(step => step.run)?.env || {}, 'AGK_APP_PRIVATE_KEY') || steps.some(step => Object.hasOwn(step.env || {}, 'AGK_APP_PRIVATE_KEY')));
     assert.ok(steps.every(step => !String(step.run || '').includes('actions/github-script')));
   }
+  const reportJob = jobs['self-app-report'];
+  const build = reportJob.steps.find(step => step.id === 'build');
+  const report = reportJob.steps.find(step => step.id === 'report');
+  assert.ok(build && report);
+  assert.ok(!Object.hasOwn(build.env || {}, 'AGK_APP_PRIVATE_KEY'), 'build receives no App credential');
+  assert.match(report.if, /always\(\)/);
+  assert.match(report.if, /steps\.checkout\.outcome == 'success'/);
+  assert.match(report.if, /steps\.setup-node\.outcome == 'success'/);
+  assert.match(report.run, /steps\.build\.outcome/);
+  assert.match(report.run, /self-pr-app-report\.mjs\" report-setup-failure/);
   assert.match(jobs['architecture-gate'].if, /needs\.self-app-start\.result == 'success'/);
   assert.match(jobs['deny-unreviewed-fork'].if, /classification != 'same-repository'/);
   assert.match(jobs['deny-unreviewed-fork'].steps.at(-1).run, /exit 1/);
