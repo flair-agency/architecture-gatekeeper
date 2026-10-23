@@ -310,15 +310,18 @@ jobs:
       pull-requests: read
       checks: write
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - id: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: ${{ github.workflow_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+      - id: setup-node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: 22
-      - name: Install protected runtime dependencies
+      - id: build
+        name: Install protected runtime dependencies
         run: |
           npm ci --ignore-scripts
           npm run build
@@ -424,7 +427,7 @@ jobs:
           DECISION="$(cat "$RUNNER_TEMP/queue-decision/queue-decision.json")" node "$GITHUB_WORKSPACE/scripts/owner-amendment-merge-group-ordinary-review.mjs" validate
         working-directory: ${{ runner.temp }}
       - name: Finalize exact Actions completeness check
-        if: always()
+        if: always() && steps.checkout.outcome == 'success' && steps.setup-node.outcome == 'success'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           AGK_APP_ID: ${{ vars.ARCHITECTURE_GATE_SELF_APP_ID }}
@@ -443,9 +446,7 @@ jobs:
           REVIEW_JOB_RESULT: ${{ needs.review-ordinary.result }}
         run: |
           node --input-type=module <<'NODE'
-          import { pathToFileURL } from 'node:url';
-          const reporterUrl = new URL('github-app-check-reporter.mjs', pathToFileURL(`${process.env.GITHUB_WORKSPACE}/dist/`));
-          const { finalizeSelfArchitectureCheck, finalizeSelfQueueCompletenessCheck } = await import(reporterUrl);
+          import { finalizeSelfArchitectureCheck, finalizeSelfQueueCompletenessCheck } from './src/github-app-check-reporter.mjs';
           const app = { appId: Number(process.env.AGK_APP_ID), installationId: Number(process.env.AGK_APP_INSTALLATION_ID),
             repositoryId: 1379218762, privateKeyPem: process.env.AGK_APP_PRIVATE_KEY };
           const appId = Number(process.env.APP_CHECK_ID);
@@ -470,4 +471,4 @@ jobs:
           ]);
           if (outcomes.some(item => item.status === 'rejected')) throw new Error('One or more protected Queue checks could not be finalized.');
           NODE
-        working-directory: ${{ runner.temp }}
+        working-directory: ${{ github.workspace }}

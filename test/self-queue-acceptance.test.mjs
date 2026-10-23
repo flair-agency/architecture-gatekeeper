@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { generateKeyPairSync } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -18,6 +19,9 @@ const groupSha = 'c'.repeat(40), bSha = 'b'.repeat(40);
 const queueBranch = 'gh-readonly-queue/main/pr-216-abcdef0123456789';
 const treeSha = 'e'.repeat(40), runId = 99887766, attempt = 2;
 const apiRoot = 'https://api.github.com/repos/flair-agency/architecture-gatekeeper';
+const queueReportWorkflow = parse(readFileSync(new URL('../.github/workflows/self-queue-acceptance.yml', import.meta.url), 'utf8'));
+const queueFinalizer = queueReportWorkflow.jobs['report-completeness'].steps.find(step => step.name === 'Finalize exact Actions completeness check');
+const queueFinalizerScript = queueFinalizer.run.slice(queueFinalizer.run.indexOf('\n') + 1, queueFinalizer.run.lastIndexOf('\nNODE'));
 
 function makeRepository() {
   const root = mkdtempSync(join(tmpdir(), 'self-queue-acceptance-git-'));
@@ -180,7 +184,16 @@ test('default-off relay and protected receiver isolate model and reporting crede
   assert.equal(receiver.jobs['report-completeness'].steps.find(step => step.name === 'Validate live exact-Queue PR description completeness').env.SELF_PR_NUMBER,
     '${{ steps.context.outputs.pr_number }}');
   assert.doesNotMatch(JSON.stringify(receiver.jobs['report-completeness']), /steps\.gate\.outputs\.(group_sha|pr_number)/);
-  assert.equal(finalizer.if, 'always()');
+  assert.match(finalizer.if, /always\(\)/);
+  assert.match(finalizer.if, /steps\.checkout\.outcome == 'success'/);
+  assert.match(finalizer.if, /steps\.setup-node\.outcome == 'success'/);
+  const reportJob = receiver.jobs['report-completeness'];
+  assert.equal(reportJob.steps.find(step => step.uses?.startsWith('actions/checkout@')).id, 'checkout');
+  assert.equal(reportJob.steps.find(step => step.uses?.startsWith('actions/setup-node@')).id, 'setup-node');
+  assert.equal(reportJob.steps.find(step => step.name === 'Install protected runtime dependencies').id, 'build');
+  assert.match(finalizer.run, /from '\.\/src\/github-app-check-reporter\.mjs'/);
+  assert.doesNotMatch(finalizer.run, /\.\/dist\/github-app-check-reporter\.mjs/);
+  assert.equal(finalizer['working-directory'], '${{ github.workspace }}');
   assert.match(finalizer.run, /passed \? 'success' : 'failure'/);
   assert.doesNotMatch(finalizer.run, /conclusion[^\n]*neutral|conclusion[^\n]*skipped/);
   assert.equal(receiver.jobs['begin-completeness'].environment, 'architecture-gate-self-app-report');
@@ -226,6 +239,45 @@ test('default-off relay and protected receiver isolate model and reporting crede
   assert.match(JSON.stringify(receiver.jobs['report-completeness']), /ordinary-context\.json/);
   assert.match(JSON.stringify(receiver.jobs['report-completeness']), /CONTEXT_JOB_RESULT/);
   assert.match(JSON.stringify(receiver.jobs['report-completeness']), /PREPARE_JOB_RESULT/);
+});
+
+test('Queue finalizer source-only path failure-finalizes both exact checks without dist or node_modules', t => {
+  const root = mkdtempSync(join(tmpdir(), 'queue-source-only-reporter-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const runnerTemp = join(root, 'runner-temp');
+  const workspace = join(root, 'workspace');
+  mkdirSync(runnerTemp); mkdirSync(join(workspace, 'src', 'github'), { recursive: true });
+  cpSync(new URL('../src/github-app-check-reporter.mjs', import.meta.url), join(workspace, 'src', 'github-app-check-reporter.mjs'));
+  cpSync(new URL('../src/github/github-app-check-reporter.mts', import.meta.url), join(workspace, 'src', 'github', 'github-app-check-reporter.mts'));
+  assert.equal(existsSync(join(workspace, 'dist')), false);
+  assert.equal(existsSync(join(workspace, 'node_modules')), false);
+
+  const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const callsPath = join(root, 'patches.jsonl');
+  const preload = join(root, 'fetch-mock.mjs');
+  writeFileSync(preload, `
+    import { appendFileSync } from 'node:fs';
+    globalThis.fetch=async (input,init={})=>{
+      const url=String(input); let status=201, payload;
+      if(url.endsWith('/access_tokens')) payload={token:'synthetic',expires_at:new Date(Date.now()+60000).toISOString(),permissions:{checks:'write',metadata:'read'},repositories:[{id:1379218762,full_name:'${repository}'}]};
+      else if(init.method==='PATCH') { status=200; const id=Number(url.split('/').at(-1)); const name=id===701?'architecture-gate / accept':'completeness'; const appId=id===701?Number(process.env.AGK_APP_ID):15368; payload={id,name,head_sha:process.env.QUEUE_SHA,status:'completed',conclusion:JSON.parse(init.body).conclusion,app:{id:appId}}; appendFileSync(process.env.TEST_PATCHES,JSON.stringify({id,name,headSha:payload.head_sha,appId,conclusion:payload.conclusion})+'\\n'); }
+      else throw new Error('unexpected URL '+url);
+      return new Response(JSON.stringify(payload),{status,headers:{'content-type':'application/json'}});
+    };
+  `);
+  const env = { ...process.env, NODE_OPTIONS: `--import=${preload}`, GITHUB_WORKSPACE: workspace,
+    AGK_APP_ID: '1234', AGK_APP_INSTALLATION_ID: '5678', AGK_APP_PRIVATE_KEY: privateKey.export({ type: 'pkcs8', format: 'pem' }),
+    APP_CHECK_ID: '701', COMPLETENESS_CHECK_ID: '702', QUEUE_SHA: groupSha, REPORT_JOB_STATUS: 'failure',
+    CONTEXT_JOB_RESULT: 'success', BEGIN_JOB_RESULT: 'success', ROUTE_JOB_RESULT: 'success', PREPARE_JOB_RESULT: 'failure',
+    ROUTE: 'ordinary', CURRENT_QUEUE_SHA: groupSha, REVIEW_JOB_RESULT: 'success', GITHUB_TOKEN: 'read-token', TEST_PATCHES: callsPath };
+  const result = spawnSync(process.execPath, ['--input-type=module', '-'], { input: queueFinalizerScript,
+    cwd: workspace, env, encoding: 'utf8', timeout: 30_000 });
+  assert.equal(result.status, 0, result.stderr);
+  const patches = readFileSync(callsPath, 'utf8').trim().split('\n').map(line => JSON.parse(line)).sort((a, b) => a.id - b.id);
+  assert.deepEqual(patches, [
+    { id: 701, name: 'architecture-gate / accept', headSha: groupSha, appId: 1234, conclusion: 'failure' },
+    { id: 702, name: 'completeness', headSha: groupSha, appId: 15368, conclusion: 'failure' },
+  ]);
 });
 
 test('actual CLI reads only the derived runner-temp event path and anchors runtime lookup to the trusted workspace', t => {
