@@ -30,7 +30,8 @@ class CapacityExceeded extends Error {
 }
 
 // These are preparation-format checks, not a new consumer policy selector.
-// The default-off App projections add no prompt input or serialization change.
+// The default-off App projections and failure-only report branch add no prompt
+// input or serialization change.
 // Keep the exact pre-connection caller/callee pair for local adoption previews.
 // The called-workflow fingerprint includes the Self authority comparison.
 // That same-run classifier does not change Codex prompt/task serialization
@@ -60,7 +61,7 @@ const FORMAT_FILES = [SELF_WORKFLOW, CALLED_WORKFLOW,
   'src/review-inputs/prepare-review-context.mts'];
 
 const CURRENT_FORMAT_SHA256 = {
-  ".github/workflows/self-architecture-gate.yml": "b30ea69dbc816f96003a9e51f85b656dedf1e0e941bbc4996c2d1280b0420d41",
+  ".github/workflows/self-architecture-gate.yml": "f9970a3a2ab510b07665cdc0aed4da7cb323668e6a9c7a59febec4105e300eea",
   ".github/workflows/architecture-gate.yml": "49554405ef79fbca9e85e7719189462594998bdb47b2b04d25cafd28b093e159",
   "src/authority-set.mjs": "d086de4acf4783b47901c3111760f6659bae111b53d4679261dccd6aa91586fa",
   "src/resolve-ci-policy.mjs": "01243736b030f1776d3de55454c450855324cd42f2c5542b3be5512efbd8aae7",
