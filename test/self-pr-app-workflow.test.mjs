@@ -5,6 +5,8 @@ import { parse } from 'yaml';
 
 const selfPath = new URL('../.github/workflows/self-architecture-gate.yml', import.meta.url);
 const calledPath = new URL('../.github/workflows/architecture-gate.yml', import.meta.url);
+const completenessPath = new URL('../.github/workflows/pr-description.yml', import.meta.url);
+const queuePath = new URL('../.github/workflows/self-queue-acceptance.yml', import.meta.url);
 const parseWorkflow = path => parse(readFileSync(path, 'utf8'));
 
 test('self App workflow projection resolves only declared protected outputs', () => {
@@ -71,4 +73,17 @@ test('dedicated App credentials and pending-check lifecycle stay in protected st
   assert.match(jobs['architecture-gate'].if, /needs\.self-app-start\.result == 'success'/);
   assert.match(jobs['deny-unreviewed-fork'].if, /classification != 'same-repository'/);
   assert.match(jobs['deny-unreviewed-fork'].steps.at(-1).run, /exit 1/);
+});
+
+test('PR metadata edits rerun the metadata-only completeness workflow while Queue validates completeness at final N', () => {
+  const self = parseWorkflow(selfPath);
+  const completeness = parseWorkflow(completenessPath);
+  const queue = parseWorkflow(queuePath);
+  assert.ok(completeness.on.pull_request_target.types.includes('edited'));
+  assert.ok(!self.on.pull_request_target.types.includes('edited'));
+  const appReport = readFileSync(new URL('../scripts/self-pr-app-report.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(appReport, /pr-description-completeness|validateQueuedPrDescription|pull_request\.body/);
+  const queueCompleteness = queue.jobs['report-completeness'].steps.find(step => String(step.run || '').includes('self-queue-completeness.mjs'));
+  assert.ok(queueCompleteness, 'Queue report still performs its own exact-Queue completeness validation');
+  assert.match(String(queueCompleteness.if), /route == 'ordinary'.*route == 'amendment'/);
 });

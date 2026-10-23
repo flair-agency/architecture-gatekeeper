@@ -6,13 +6,11 @@ import { resolve } from 'node:path';
 import { TextDecoder } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { appendGitHubOutput } from '../src/runner-temp-path.mjs';
-import { selectSelfPrContext } from '../src/self-pr-context.mjs';
 import { beginProtectedSelfPrCheck, finishProtectedSelfPrCheck } from '../src/self-pr-app-producer.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
 import { validateCodexPass } from '../dist/ci-review/codex-pass-producer.mjs';
 import { contextOf, requireSelfPassContext } from '../dist/ci-review/codex-pass-publication.mjs';
 import { inspectSelfAuthorityChanges } from '../src/ci-self-authority-change.mjs';
-import { validateQueuedPrDescription } from '../src/pr-description-completeness.mjs';
 import { classifyReview } from '../src/ci-report.mjs';
 import { readRunnerTempFile, resolveRunnerTempDirectory } from '../src/runner-temp-path.mjs';
 import { discoverOwnerAmendmentBlockArtifact } from '../src/owner-amendment-artifact-discovery.mjs';
@@ -210,13 +208,9 @@ async function main() {
   }
   validateRunnerTemp(env);
   validateProtectedWorkspace(env);
-  const priorResult = await selectSelfPrContext({ ...trusted.selectorInput, fetchImpl: fetch });
-  if (priorResult.status !== 'SELECTED_SELF_PR_CONTEXT' || priorResult.prNumber !== env.PR_NUMBER ||
-      priorResult.baseSha !== env.BASE_SHA || priorResult.headSha !== env.HEAD_SHA) fail('fresh selected PR context differs from the trusted caller tuple.');
-  const prior = priorResult;
-  fetchProtectedReviewObjects(env, prior);
-  validateProtectedWorkspace(env);
-  const begun = { status: 'BEGUN_SELF_PR_APP_CHECK', context: prior,
+  const begun = { status: 'BEGUN_SELF_PR_APP_CHECK', context: {
+    status: 'SELECTED_SELF_PR_CONTEXT', repository: SELF, repositoryId: SELF_ID, prNumber: env.PR_NUMBER,
+    baseSha: env.BASE_SHA, headSha: env.HEAD_SHA, subjectSha: env.AGK_CHECK_SHA },
     check: { id: Number(env.AGK_CHECK_ID), name: 'architecture-gate / accept', repository: SELF,
       headSha: env.AGK_CHECK_SHA, appId: Number(env.AGK_APP_ID) } };
   const result = await finishProtectedSelfPrCheck({ ...producerInput, begun,
@@ -224,15 +218,14 @@ async function main() {
     validateRunnerTemp(env);
     validateProtectedWorkspace(env);
     if (env.AGK_CHECK_SHA !== selected.subjectSha) fail('begun check subject differs from the freshly selected test-merge SHA.');
+    fetchProtectedReviewObjects(env, selected);
+    validateProtectedWorkspace(env);
     const reportContext = runtimeContext(env).context;
     if (reportContext.baseSha !== selected.baseSha || reportContext.headSha !== selected.headSha || reportContext.reviewedSha !== selected.subjectSha) fail('trusted reusable review context differs from the current PR context.');
     let route;
     if (env.AGK_SELECTED_AUTHORITY_CHANGED === 'false') route = await validateOrdinary(env, reportContext);
     else if (env.AGK_SELECTED_AUTHORITY_CHANGED === 'true') route = await validateAmendmentEligibility(env, reportContext);
     else fail('protected old selected-authority comparison is missing.');
-    const completeness = await validateQueuedPrDescription({ token: env.GH_TOKEN, prNumber: Number(selected.prNumber),
-      baseSha: selected.baseSha, headSha: selected.headSha, fetchImpl: fetch });
-    if (completeness.status !== 'VALIDATED' || completeness.ok !== true) fail('PR description completeness validation failed.');
     return { status: 'VALIDATED_SELF_PR_RESULT', route: route.route,
       binding: { repository: selected.repository, repositoryId: selected.repositoryId, prNumber: selected.prNumber,
         baseSha: selected.baseSha, headSha: selected.headSha, subjectSha: selected.subjectSha },

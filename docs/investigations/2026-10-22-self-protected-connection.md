@@ -13,10 +13,17 @@ in place. Host activation is a separate Owner decision.
 | PR admission | `self-pr-context` and `self-pr-app-report` select current main, exact PR head and test-merge parents; the protected-base workflow starts and finishes the same App check | API/CLI negative fixtures reject stale base, wrong subject/repository/source and missing inputs; no production App run claimed |
 | Ordinary PR | Previous-Policy full-Set comparison and existing Codex decision validator | A model PASS never substitutes for unchanged Authority; configuration migration remains evaluated under old Policy |
 | Amendment PR | Reconstructed existing semantic preparation and same-run attested ELIGIBLE receipt | Exact B, selected trigger/scope, tag, evidence, source/run/attempt and digests remain required; result means Queue eligibility only |
+| PR completeness | Existing metadata-only `pr-description` workflow reports L, including on PR-body edits | L remains required; PR App N does not duplicate this mutable-metadata predicate or require another model review after a body correction |
 | Queue | Unprivileged `merge_group` relay wakes protected `workflow_run`; each privileged boundary reselects live Queue | Candidate workflow result/artifacts supply no authority; stale/recreated groups fail tuple checks |
 | Queue completeness | Existing five-section PR-description validator on current exact PR tuple, reported as `completeness` by Actions App 15368 | Invalid metadata or incomplete retrieval cannot become unconditional success |
 | Queue acceptance | Existing amendment gate or freshly prepared ordinary review, then separate dedicated-App report on exact Q | Raw ordinary result is revalidated against reconstructed input bytes; BLOCK/OWNER_DECISION and missing/skipped/failing work reject |
 | Reporting | Dedicated App has one-repository checks:write; model jobs receive no App key | Begin in_progress, finalize same ID/SHA/name/App as success or failure; transport failure remains incomplete |
+
+Fresh PR-context selection and protected Git-fetch failures finalize the begun
+check as failure. An invalid local protected workspace or runner boundary fails
+before requesting App credentials; such a failure cannot safely finalize a check
+and remains incomplete. Queue final N independently checks the live description
+in addition to required L.
 
 Workflow structure tests and synthetic API/CLI tests establish code composition,
 not live GitHub enforcement. Installed-distribution verification is separate from

@@ -156,7 +156,7 @@ test('final live PR mutation reports failure on the existing check', async () =>
   assert.equal(result.check.conclusion, 'failure');
 });
 
-function cliFixture(t, { includeReview = false, checkSha, workspaceMismatch = false } = {}) {
+function cliFixture(t, { includeReview = false, checkSha, workspaceMismatch = false, contextInvalid = false } = {}) {
   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'self-pr-app-cli-')));
   const actualBase = execFileSync('git', ['-C', process.cwd(), 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
   const callerBase = workspaceMismatch ? 'a'.repeat(40) : actualBase;
@@ -190,13 +190,13 @@ const result=spawnSync('${realGit}',args,{stdio:'inherit'}); process.exit(result
   const preload = join(directory, 'fetch-mock.mjs');
   writeFileSync(preload, `
     import { writeFileSync } from 'node:fs';
-    const repo='${repository}', rid=${repositoryId}, base='${callerBase}', head='${callerHead}', subject='${callerSubject}', checkSha='${checkSha}';
+    const repo='${repository}', rid=${repositoryId}, base='${callerBase}', head='${callerHead}', subject='${callerSubject}', checkSha='${checkSha}', contextInvalid=${contextInvalid};
     globalThis.fetch=async (input, init={})=>{
       const url=String(input); let status=200, payload;
       if(url.includes('/access_tokens')) { writeFileSync(process.env.TEST_TOKEN_MARKER,'requested'); status=201; payload={token:'synthetic',expires_at:new Date(Date.now()+60000).toISOString(),permissions:{checks:'write',metadata:'read'},repositories:[{id:rid,full_name:repo}]}; }
       else if(url.endsWith('/check-runs')&&init.method==='POST') { status=201; payload={id:909,name:'architecture-gate / accept',head_sha:checkSha,status:'in_progress',conclusion:null,app:{id:${app.appId}}}; }
       else if(url.endsWith('/check-runs/909')&&init.method==='PATCH') { const update=JSON.parse(init.body); payload={id:909,name:'architecture-gate / accept',head_sha:checkSha,status:'completed',conclusion:update.conclusion,app:{id:${app.appId}}}; writeFileSync(process.env.TEST_PATCH_MARKER,JSON.stringify(update)); }
-      else if(url.endsWith('/git/ref/heads/main')) payload={ref:'refs/heads/main',object:{type:'commit',sha:base}};
+      else if(url.endsWith('/git/ref/heads/main')) payload={ref:'refs/heads/main',object:{type:'commit',sha:contextInvalid?'d'.repeat(40):base}};
       else if(url.endsWith('/pulls/42')) payload={number:42,state:'open',draft:false,merge_commit_sha:subject,base:{ref:'main',sha:base,repo:{full_name:repo,id:rid}},head:{sha:head,repo:{full_name:repo,id:rid}}};
       else if(url.endsWith('/commits/refs/pull/42/merge')) payload={sha:subject,parents:[{sha:base},{sha:head}]};
       else throw new Error('unexpected mocked API URL '+url);
@@ -256,6 +256,24 @@ test('report CLI fetches exact selected commits with protected token and finaliz
   assert.ok(fetches.every(args => args.includes('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa') || args.includes('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') || args.includes('ffffffffffffffffffffffffffffffffffffffff')));
   assert.ok(fetches.some(args => args.at(-1) === 'ffffffffffffffffffffffffffffffffffffffff'));
   assert.ok(fetches.some(args => args.at(-1) === 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'));
+});
+
+test('report CLI rejects a protected workspace mismatch before requesting App credentials or patching the begun check', t => {
+  const fixture = cliFixture(t, { includeReview: true, workspaceMismatch: true });
+  assert.throws(() => execFileSync(process.execPath, [resolve('scripts/self-pr-app-report.mjs'), 'report'],
+    { cwd: fixture.directory, env: fixture.env, stdio: 'pipe' }));
+  assert.equal(existsSync(fixture.tokenMarkerPath), false);
+  assert.equal(existsSync(fixture.markerPath), false);
+});
+
+test('report CLI finalizes the exact begun check when fresh live-context selection fails before result validation', t => {
+  const fixture = cliFixture(t, { includeReview: true, contextInvalid: true });
+  assert.throws(() => execFileSync(process.execPath, [resolve('scripts/self-pr-app-report.mjs'), 'report'],
+    { cwd: fixture.directory, env: fixture.env, stdio: 'pipe' }));
+  const patch = JSON.parse(readFileSync(fixture.markerPath, 'utf8'));
+  assert.equal(patch.conclusion, 'failure');
+  assert.equal(patch.output.title, 'Protected validation failed');
+  assert.equal(existsSync(fixture.gitFetchMarkerPath), false);
 });
 
 test('report CLI finalizes failure when the begun check SHA does not match fresh selected context', t => {
