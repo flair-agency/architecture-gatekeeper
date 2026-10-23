@@ -303,7 +303,7 @@ test('encoded expected settings agree with the same resolved Action configuratio
   }
 });
 
-test('Policy v6 ordinary Gemini and Codex selection excludes governance routes and supports explicit protected recovery', async t => {
+test('Policy v6 keeps ordinary providers separate from supported explicit Owner selections', async t => {
   const authorityLimits = {
     maxManifestBytes: 16384,
     maxMembers: 16,
@@ -378,7 +378,7 @@ test('Policy v6 ordinary Gemini and Codex selection excludes governance routes a
   }, 'feature-branch'), /Unknown CI policy branch feature-branch field: provider/);
 
   for (const basePolicy of [v6GeminiPolicy, v6CodexPolicy]) {
-    assert.throws(() => resolveCiPolicy({
+    const withAddition = {
       ...basePolicy,
       branches: {
         main: {
@@ -393,7 +393,12 @@ test('Policy v6 ordinary Gemini and Codex selection excludes governance routes a
           },
         },
       },
-    }, 'main'), /Unknown CI policy branch main field: ownerAddition/);
+    };
+    if (basePolicy === v6GeminiPolicy) {
+      assert.throws(() => resolveCiPolicy(withAddition, 'main'), /Gemini supports ordinary enforced review only/);
+    } else {
+      assert.equal(resolveCiPolicy(withAddition, 'main').ownerAdditionVersion, 2);
+    }
     assert.throws(() => resolveCiPolicy({
       ...basePolicy,
       branches: {
@@ -406,7 +411,7 @@ test('Policy v6 ordinary Gemini and Codex selection excludes governance routes a
           },
         },
       },
-    }, 'main'), /Unknown CI policy branch main field: ownerAmendment/);
+    }, 'main'), /Gemini supports ordinary enforced review only|Unknown CI policy branch main owner amendment field: triggerProfiles/);
     assert.throws(() => resolveCiPolicy({
       ...basePolicy,
       branches: {
@@ -419,13 +424,13 @@ test('Policy v6 ordinary Gemini and Codex selection excludes governance routes a
           },
         },
       },
-    }, 'main'), /Unknown CI policy branch main field: adoptionEvidence/);
+    }, 'main'), /Gemini supports ordinary enforced review only|Unknown CI policy branch main field: adoptionEvidence/);
     assert.throws(() => resolveCiPolicy({
       ...basePolicy,
       branches: {
         main: { ...basePolicy.branches.main, mode: 'procedural' },
       },
-    }, 'main'), /v6 supports only enforced or local-only mode/);
+    }, 'main'), /Gemini supports ordinary enforced review only|requires explicit multi-document owner addition/);
   }
 
   const providersWorkflow = parseWorkflow(

@@ -70,9 +70,10 @@ test('complete finalizer body and CLI retain all risk-corrected operations and f
     '../github-owner-addition-provenance.mjs', '../github-owner-addition-readback.mjs',
     '../owner-decision-addition.mjs', '../authority-set.mjs', './owner-addition-finalize.mjs',
   ], 'preserve original compatibility-module imports and their existing guards');
-  // Immutable 1e0c04d3 is the corrected complete flat body, including all three
-  // resource corrections. Its bytes must also match the adopted fix baseline.
-  assert.equal(digest(operations), 'd0956fece07eee028a3c4495e2dfeb55fca9d0a3d5d28cb62398970d75189deb');
+  // Retain the corrected 1e0c04d3 operations plus explicit v6 procedural
+  // selection. Real finalizer composition tests cover both v5/v6 and reject
+  // wrong producer, workflow, exact-B parents, evidence and readback bindings.
+  assert.equal(digest(operations), 'be84324ec4977a0db25424c708590cd5147ea77f7f72221f0a71ba4511f6f77b');
   assert.equal(digest(cli.declaration.body), '0d2ffb2f37822955123277d51db1e35e3ad1f4d31e61acd1cc7ca985101f06e6');
   const facade = runtimeAst(join(root, 'src/owner-addition-finalize.mjs'));
   assert.deepEqual(facade, runtimeAst(join(root, 'dist/owner-addition-finalize.mjs')));

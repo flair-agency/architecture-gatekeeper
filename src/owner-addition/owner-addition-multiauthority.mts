@@ -28,10 +28,11 @@ export async function prepareMultiAuthorityAddition(env: NodeJS.ProcessEnv, sele
   const { GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: repository, BASE_SHA: baseSha, HEAD_SHA: headSha,
     OWNER_AUTHORITY_PATH: authorityPath, OWNER_PROMPT_PATH: promptPath, OWNER_SCHEMA_PATH: schemaPath,
     ORDINARY_SCHEMA_PATH: ordinarySchemaPath, ORDINARY_DECISION: ordinaryRaw, OUTPUT_DIR: outputDir } = env;
-  if (![4, 5].includes(selected.policyVersion as number) || selected.ownerAdditionVersion !== 2 ||
+  if (![4, 5, 6].includes(selected.policyVersion as number) || selected.ownerAdditionVersion !== 2 ||
       selected.authorityProfile !== MULTI_AUTHORITY_PROFILE ||
+      !['enforced', 'procedural'].includes(selected.mode as string) ||
       (selected.policyVersion === 5 && selected.mode !== 'procedural')) {
-    throw new Error('Multi-document owner addition requires a selected previous-base policy v4 or procedural v5.');
+    throw new Error('Multi-document owner addition requires a selected previous-base v4/v5/v6 policy and explicit version-2 addition.');
   }
   const limits = decodeLimits(selected.authorityLimitsBase64, MULTI_AUTHORITY_PROFILE);
   const read = (revision: unknown, path: unknown, maxBytes = 65_536): Buffer => readCommittedAuthorityFile(root as string, revision as string, path as string, maxBytes);

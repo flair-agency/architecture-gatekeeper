@@ -133,6 +133,15 @@ and workflow output is appended through the runner-provided `GITHUB_OUTPUT`.
 The [artifact I/O checks](docs/development.md#artifact-file-io-checks) describe
 the remaining filesystem concurrency limits. This design was approved in
 [PR #591](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
+CI Policy v6 can explicitly select the existing Codex OWNER_ADDITION,
+OWNER_AMENDMENT and procedural addition routes, as well as ordinary provider
+review. Existing policy and evidence versions keep their meanings; upgrading
+the format enables no Owner procedure automatically. See the
+[selection and compatibility table](docs/integration-reference.md#policy-v6-compatibility-and-explicit-owner-selections)
+for supported combinations and predecessor-governed migration. This source
+extension requires a compatible runtime/workflow pin; older published pins
+retain their original behavior.
+
 For a complete consumer-owned local v2 configuration and CI policy v4 example,
 including the separate optional G0 selection, see
 [examples/consumer-v4](examples/consumer-v4/README.md).

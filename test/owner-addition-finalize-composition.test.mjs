@@ -3,10 +3,11 @@ import test from 'node:test';
 import { finalizeOwnerAddition } from '../dist/owner-addition-finalize.mjs';
 import { ownerAdditionFinalizeFixture } from './fixtures/owner-addition-finalize-composition.mjs';
 
-test('real finalizer composes selected policy, producer evidence, immutable workflow, merge and readback', async () => {
-  const fixture = ownerAdditionFinalizeFixture();
+for (const policyVersion of [5, 6]) test(`v${policyVersion} real finalizer composes selected policy, producer evidence, immutable workflow, merge and readback`, async () => {
+  const fixture = ownerAdditionFinalizeFixture({ policyVersion });
   const record = await finalizeOwnerAddition(fixture.args);
   const { expected, requests } = fixture;
+  assert.equal(record.selectedPolicy.version, policyVersion);
   assert.equal(record.outcome.adoption, 'valid');
   assert.equal(record.outcome.canonical, 'verified');
   assert.equal(record.candidate.repository, expected.repository);
@@ -96,9 +97,9 @@ const invalidCases = [
   ['readback-ancestry', /target ancestry response does not prove/, /\/compare\/c{40}\.\.\.d{40}\?per_page=250$/],
 ];
 
-for (const [scenario, expectedError, lastRequest] of invalidCases) {
-  test(`real finalizer fails closed for ${scenario} without returning a success-shaped record`, async () => {
-    const fixture = ownerAdditionFinalizeFixture({ scenario });
+for (const policyVersion of [5, 6]) for (const [scenario, expectedError, lastRequest] of invalidCases) {
+  test(`v${policyVersion} real finalizer fails closed for ${scenario} without returning a success-shaped record`, async () => {
+    const fixture = ownerAdditionFinalizeFixture({ scenario, policyVersion });
     let record;
     await assert.rejects((async () => { record = await finalizeOwnerAddition(fixture.args); })(), expectedError);
     assert.equal(record, undefined);

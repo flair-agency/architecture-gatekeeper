@@ -138,7 +138,7 @@ export function assertWorkflowStructure({ consumer, self, caller }) {
   assert.match(selfAddition.if, /needs\.review\.outputs\.decision_kind == 'OWNER_DECISION'/);
   for (const workflowJob of [consumerAddition, selfAddition]) {
     const evidenceStep = namedStep(workflowJob, 'Preserve exact v5 pre-merge eligibility evidence');
-    assert.equal(evidenceStep.if, "needs.policy.outputs.policy_version == '5' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'");
+    assert.equal(evidenceStep.if, "needs.policy.outputs.mode == 'procedural' && needs.policy.outputs.adoption_evidence_producer == 'github-actions' && steps.eligibility.outputs.eligibility == 'ELIGIBLE'");
   }
   for (const reviewJob of [consumerReview, selfReview]) {
     const materializeLegacy = namedStep(reviewJob, 'Materialize recorded-base legacy authority before review');

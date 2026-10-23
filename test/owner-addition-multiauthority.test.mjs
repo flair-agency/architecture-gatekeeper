@@ -129,7 +129,7 @@ test('v4 selects new limits and record version without expanding existing policy
   }
 });
 
-test('real Git CLI path includes the complete base set and reports bound v2 procedure', async t => {
+for (const policyVersion of [4, 6]) test(`v${policyVersion} real Git CLI path includes the complete base set and reports bound v2 procedure`, async t => {
   const f = await fixture(t, { other: `# Migration\n${'x'.repeat(153_920)}\n` });
   execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.runnerTemp, env: f.env });
   const prompt = readFileSync(join(f.env.OUTPUT_DIR, 'eligibility-prompt.md'), 'utf8');
@@ -261,14 +261,15 @@ test('report truncation preserves complete G0 and Authority Set evidence ahead o
   assert.ok(report.endsWith('<!-- architecture-gatekeeper:result:v1 -->\n'));
 });
 
-test('procedural v5 emits exact raw pre-merge evidence for the selected producer', async t => {
+for (const policyVersion of [5, 6]) test(`procedural v${policyVersion} emits exact raw pre-merge evidence for the selected producer`, async t => {
   const f = await fixture(t, { policy: p => {
-    p.version = 5;
+    p.version = policyVersion;
+    if (policyVersion === 6) p.branches.main.provider = 'codex';
     p.branches.main.mode = 'procedural';
     p.branches.main.adoptionEvidence = { producer: 'github-actions',
       workflowPath: '.github/workflows/architecture-gate.yml', jobName: 'Architecture Gate / owner-addition' };
   } });
-  const env = { ...f.env, PR_NUMBER: '42', POLICY_VERSION: '5', GITHUB_RUN_ID: '1234', GITHUB_RUN_ATTEMPT: '2' };
+  const env = { ...f.env, PR_NUMBER: '42', POLICY_VERSION: String(policyVersion), MODE: 'procedural', GITHUB_RUN_ID: '1234', GITHUB_RUN_ATTEMPT: '2' };
   execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'prepare'], { cwd: f.runnerTemp, env });
   const decision = JSON.stringify(eligible(f));
   execFileSync(process.execPath, [join(sourceRoot, 'dist/owner-addition-ci.mjs'), 'validate'],
@@ -407,4 +408,18 @@ test('schema and report reject mixed legacy/new versions and incomplete provenan
   assert.throws(() => parseOwnerAdditionProcedure(encode({ ...procedure, version: 1 }), true));
   assert.throws(() => parseOwnerAdditionProcedure(encode({ ...procedure, legacyAcceptance: true }), true));
   assert.throws(() => parseOwnerAdditionProcedure(encode({ ...procedure, authoritySet: { ...f.provenance, members: f.provenance.members.slice(0, 1) } }), true));
+});
+
+test('v6 multi-document addition preserves exact evidence rejection and cannot be selected from the candidate', async t => {
+  const useV6 = p => { p.version = 6; p.branches.main.provider = 'codex'; };
+  for (const mutate of [r => r.headSha = 'd'.repeat(40), r => r.policySha256 = 'd'.repeat(64),
+    r => r.authoritySet.setDigest = 'd'.repeat(64), r => r.missingDecision.id = 'other-owner']) {
+    const f = await fixture(t, { policy: useV6, record: mutate });
+    await assert.rejects(f.prepare());
+  }
+  const f = await fixture(t, { policy: useV6, extraChanges: { '.gate/policy.json': 'candidate route selection' } });
+  await assert.rejects(f.prepare(), /exactly its one existing/);
+  const unselected = await fixture(t, { policy: useV6 });
+  delete unselected.selected.ownerAdditionVersion;
+  await assert.rejects(unselected.prepare(), /explicit version-2 addition/);
 });

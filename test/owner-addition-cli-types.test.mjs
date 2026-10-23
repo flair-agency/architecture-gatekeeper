@@ -47,14 +47,16 @@ function declaration(body, name) {
 function guard(body) { return body.find(node => node.type === 'IfStatement' && node.test?.type === 'LogicalExpression'); }
 
 // Complete operation pins from owner-approved fixed-boundary baseline 821c3ea.
-// See #591 comment6235948030; these pins include the approved runtime changes.
+// See #591 comment6235948030. The prepare/validate/multiPrepare pins below
+// include the explicit v6 selection extension, covered by the v2/v4/v5/v6
+// real-Git CLI, exact-evidence negative and procedural composition tests.
 const expected = {
   directRunTest: '37898c466f4c3a32fc0d2e4cc9284078762934545bb846b52fd75a2d8bb97049',
-  prepare: '9c8b94713afc4a620d31c64a1850d7f24c7f81135d17e8b39539ff5545ff5be5',
+  prepare: '9bde9480d6434a82a8a5ed85d292ca99b17509cf86eaf14bd958f3855bf18329',
   resolver: '76a4f0ff851fc6301213eee8735b5db34138e44c72b0ff6319aea1fc01831af6',
-  validate: 'ba8a8cbc0b567444ea477b58f9ebf4c4e856e1313e320c0ca853cd014793a8c7',
+  validate: '87c7ceb0751835aa97f300c1dcf1dbe102f6158c44b0f1ee5afb2e4b8208120c',
   // Includes the approved bounded publication follow-up from JS91c4e24.
-  multiPrepare: '4baa9b9e89623e4155372af40272c70cb5c8cef0ca789b4772345a7b431a17ed',
+  multiPrepare: '48f49cf127d1f95e4981a9bceefe56ce9135f152feb41363ab913af150e388ee',
 };
 
 test('owner-addition CI retains the original direct-run condition and complete operation AST', async () => {
@@ -80,13 +82,13 @@ test('owner-addition CI retains the original direct-run condition and complete o
   for (const [name, pin] of [['prepare', expected.prepare],
     ['resolveSingleOwnerAdditionAuthorityId', expected.resolver]]) {
     assert.deepEqual(canonical(declaration(source, name).body), canonical(declaration(emitted, name).body), `${name} source/emitted AST`);
-    assert.equal(digest(declaration(source, name).body), pin, `${name} retains 821c3ea operations`);
+    assert.equal(digest(declaration(source, name).body), pin, `${name} matches the retained operation snapshot`);
   }
   const sourceValidate = declaration(source, 'validateOwnerAdditionCiCli');
   const emittedValidate = declaration(emitted, 'validateOwnerAdditionCiCli');
   assert.deepEqual(canonical(sourceValidate.body), canonical(emittedValidate.body));
   assert.equal(digest(sourceValidate.body.body), expected.validate,
-    'the extracted inline validate branch retains its complete original operations');
+    'the validate branch matches the retained operation snapshot');
 });
 
 test('multi-authority API retains its full operation AST and flat exports are identity re-exports', async () => {

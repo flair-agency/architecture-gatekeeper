@@ -103,3 +103,14 @@ test('reusable workflow wires protected-base authority comparison to the procedu
   assert.match(workflow, /node \.architecture-gatekeeper-runtime\/dist\/ci-procedural-acceptance\.mjs/);
   assert.match(workflow, /if: needs\.policy\.outputs\.mode == 'procedural' \|\| needs\.policy\.outputs\.mode == 'enforced'\n        uses: actions\/checkout@v5\n        with:\n          repository: \$\{\{ job\.workflow_repository \}\}\n          ref: \$\{\{ job\.workflow_sha \}\}/);
 });
+
+for (const policyVersion of ['5', '6']) test(`v${policyVersion} procedural acceptance preserves decision and explicit eligibility boundaries`, () => {
+  const input = { ...common, policyVersion };
+  assert.deepEqual(assertProceduralV5Acceptance({ ...input, selectedAuthorityChanged: 'false', conclusion: 'PASS' }), { route: 'ordinary-pass' });
+  assert.deepEqual(assertProceduralV5Acceptance({ ...input, selectedAuthorityChanged: 'true', conclusion: 'OWNER_ADDITION_G0_PENDING' }), { route: 'owner-addition-pending' });
+  for (const changed of ['true', '', undefined]) assert.throws(() => assertProceduralV5Acceptance({ ...input, selectedAuthorityChanged: changed, conclusion: 'PASS' }));
+  for (const conclusion of ['BLOCK', 'OWNER_DECISION', 'UNVERIFIED', 'OWNER_AMENDMENT']) assert.throws(() => assertProceduralV5Acceptance({ ...input, selectedAuthorityChanged: 'false', conclusion }));
+  for (const missing of ['evidenceProducer', 'reviewResult', 'ownerAdditionSelected', 'ownerAdditionResult', 'ownerAdditionEligibility']) {
+    assert.throws(() => assertProceduralV5Acceptance({ ...input, [missing]: undefined, selectedAuthorityChanged: 'true', conclusion: 'OWNER_ADDITION_G0_PENDING' }));
+  }
+});

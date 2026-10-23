@@ -286,7 +286,7 @@ function validatePolicy({ policyBytes, policyRevision, baseSha, baseBranch, trig
     parsed = parseCiPolicyJson(source as string);
     selected = resolveCiPolicy(parsed, baseBranch as string);
   } catch (error) { fail(`previous protected policy cannot be resolved: ${(error as { message?: unknown }).message}`); }
-  if ((parsed as { version?: unknown }).version !== 2 || selected.mode !== 'enforced' ||
+  if (![2, 6].includes((parsed as { version?: unknown }).version as number) || selected.mode !== 'enforced' ||
       selected.ownerAmendmentVersion !== 1 || selected.ownerAmendmentGrade !== 'G0' ||
       selected.ownerAmendmentScope !== 'authority-only' || selected.ownerAmendmentTriggerProfile !== triggerProfile ||
       selected.ownerAmendmentEvidenceProducer !== 'github-actions-attestation' ||

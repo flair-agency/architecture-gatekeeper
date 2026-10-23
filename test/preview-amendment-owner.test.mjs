@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -110,4 +110,40 @@ test('owner amendment rejects wrong trigger profile/result, record target, mixed
   const mixedRequest = await prepareOwnerAmendment(f, mixedDecision, mixedB);
   const rejected = await completePreviewLifecycle(mixedRequest.request, response('INELIGIBLE', { triggerMissingDecision: true, triggerExistingDecision: false, targetDecisionOnly: false }), f.root);
   assert.equal(rejected.eligibility, 'INELIGIBLE'); await assert.rejects(observePreviewLifecycle(rejected, mixedB, f.root), /eligible selected B procedure/);
+});
+
+// The CI format does not opt into or authenticate the separate Git-only Preview.
+test('v6 ordinary policy preserves the independently selected UNVERIFIED Git amendment cycle', async t => {
+  const f = fixture(t);
+  const manifestPath = '.codex/gatekeeper/authorities.json';
+  put(f.root, manifestPath, { version: 1, authorities: [authority, governance].map((path, index) => ({
+    id: index ? 'governance' : 'architecture', repository: 'self', revision: 'authority-revision', path,
+  })) });
+  for (const path of [f.selection.schemaPath, f.selection.eligibilitySchemaPath]) {
+    const schema = JSON.parse(readFileSync(join(f.root, path), 'utf8'));
+    schema.required.push('authorityIds');
+    schema.properties.authorityIds = { type: 'array', items: { type: 'string' } };
+    put(f.root, path, schema);
+  }
+  put(f.root, f.selection.policyPath, { version: 6, default: { mode: 'local-only' }, branches: { main: {
+    mode: 'enforced', provider: 'codex', model: 'gpt-6-luna', reasoningEffort: 'low',
+    authorityManifestPath: manifestPath, authorityLimits: { maxManifestBytes: 16384, maxMembers: 16,
+      maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 },
+  } } });
+  git(f.root, 'add', '.'); git(f.root, 'commit', '-m', 'Synthetic preselected v6 consumer');
+  f.base = git(f.root, 'rev-parse', 'HEAD');
+  const withIds = value => ({ ...value, semanticDecision: { ...value.semanticDecision, authorityIds: ['architecture', 'governance'] } });
+  const a = commit(f, { 'app.txt': 'Actual Git candidate A\n' });
+  const aRequest = await preparePreviewLifecycle(spec(f, 'review', a), f.root);
+  const aReceipt = await completePreviewLifecycle(aRequest, withIds(ordinaryResponse(decision('OWNER_DECISION', 'Existing rule requires revision.'))), f.root);
+  const b = commit(f, { [authority]: 'Existing decision existing-rule-1: amended rule.\n' });
+  const { request } = await prepareOwnerAmendment(f, { a, receipt: aReceipt }, b);
+  const receipt = await completePreviewLifecycle(request, withIds(response()), f.root);
+  const final = await observePreviewLifecycle(receipt, integrate(f, b, receipt), f.root);
+  assert.equal(final.adoption, 'OBSERVED'); assert.equal(final.canonical, 'VERIFIED');
+  assert.equal(final.assurance.custody, 'UNVERIFIED');
+  const freshHead = commit(f, { 'app.txt': 'Fresh A\n' }, final.targetSha);
+  const fresh = await prepareFreshPreviewReview(final, freshHead, f.root);
+  const done = await completePreviewLifecycle(fresh, withIds(ordinaryResponse(decision('PASS', 'Fresh A result.'))), f.root);
+  assert.equal(done.decision.decision, 'PASS');
 });
