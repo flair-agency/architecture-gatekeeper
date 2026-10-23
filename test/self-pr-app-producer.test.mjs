@@ -43,9 +43,9 @@ function reporterFixture() {
     if (url.includes('/access_tokens')) return response(url, { token: 'synthetic-token',
       expires_at: new Date(now + 60_000).toISOString(), permissions: { checks: 'write', metadata: 'read' },
       repositories: [{ id: repositoryId, full_name: repository }] }, 201);
-    if (options.method === 'POST') return response(url, { id: 909, name: 'architecture-gate / accept', head_sha: subjectSha,
+    if (options.method === 'POST') return response(url, { id: 909, name: 'architecture-gate / protected-accept', head_sha: subjectSha,
       status: 'in_progress', conclusion: null, app: { id: app.appId } }, 201);
-    return response(url, { id: 909, name: 'architecture-gate / accept', head_sha: subjectSha,
+    return response(url, { id: 909, name: 'architecture-gate / protected-accept', head_sha: subjectSha,
       status: 'completed', conclusion: JSON.parse(options.body).conclusion, app: { id: app.appId } });
   };
   return { fetchImpl, calls };
@@ -194,8 +194,8 @@ const result=spawnSync('${realGit}',args,{stdio:'inherit'}); process.exit(result
     globalThis.fetch=async (input, init={})=>{
       const url=String(input); let status=200, payload;
       if(url.includes('/access_tokens')) { writeFileSync(process.env.TEST_TOKEN_MARKER,'requested'); status=201; payload={token:'synthetic',expires_at:new Date(Date.now()+60000).toISOString(),permissions:{checks:'write',metadata:'read'},repositories:[{id:rid,full_name:repo}]}; }
-      else if(url.endsWith('/check-runs')&&init.method==='POST') { status=201; payload={id:909,name:'architecture-gate / accept',head_sha:checkSha,status:'in_progress',conclusion:null,app:{id:${app.appId}}}; }
-      else if(url.endsWith('/check-runs/909')&&init.method==='PATCH') { const update=JSON.parse(init.body); payload={id:909,name:'architecture-gate / accept',head_sha:checkSha,status:'completed',conclusion:update.conclusion,app:{id:${app.appId}}}; writeFileSync(process.env.TEST_PATCH_MARKER,JSON.stringify(update)); }
+      else if(url.endsWith('/check-runs')&&init.method==='POST') { status=201; payload={id:909,name:'architecture-gate / protected-accept',head_sha:checkSha,status:'in_progress',conclusion:null,app:{id:${app.appId}}}; }
+      else if(url.endsWith('/check-runs/909')&&init.method==='PATCH') { const update=JSON.parse(init.body); payload={id:909,name:'architecture-gate / protected-accept',head_sha:checkSha,status:'completed',conclusion:update.conclusion,app:{id:${app.appId}}}; writeFileSync(process.env.TEST_PATCH_MARKER,JSON.stringify(update)); }
       else if(url.endsWith('/git/ref/heads/main')) payload={ref:'refs/heads/main',object:{type:'commit',sha:contextInvalid?'d'.repeat(40):base}};
       else if(url.endsWith('/pulls/42')) payload={number:42,state:'open',draft:false,merge_commit_sha:subject,base:{ref:'main',sha:base,repo:{full_name:repo,id:rid}},head:{sha:head,repo:{full_name:repo,id:rid}}};
       else if(url.endsWith('/commits/refs/pull/42/merge')) payload={sha:subject,parents:[{sha:base},{sha:head}]};

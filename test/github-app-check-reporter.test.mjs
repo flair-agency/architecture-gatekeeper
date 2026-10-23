@@ -39,7 +39,7 @@ function grantedToken(overrides = {}) {
 function checkRun(overrides = {}) {
   return {
     id: 2468,
-    name: 'architecture-gate / accept',
+    name: 'architecture-gate / protected-accept',
     head_sha: headSha,
     status: 'completed',
     conclusion: 'success',
@@ -68,7 +68,7 @@ test('publishes the protected result at its exact SHA using a self-only checks g
 
   assert.deepEqual(published, {
     id: 2468,
-    name: 'architecture-gate / accept',
+    name: 'architecture-gate / protected-accept',
     repository: 'flair-agency/architecture-gatekeeper',
     headSha,
     conclusion: 'success',
@@ -94,7 +94,7 @@ test('publishes the protected result at its exact SHA using a self-only checks g
   assert.equal(calls[1].url, 'https://api.github.com/repos/flair-agency/architecture-gatekeeper/check-runs');
   assert.equal(calls[1].options.headers.authorization, 'Bearer synthetic-installation-token');
   assert.deepEqual(JSON.parse(calls[1].options.body), {
-    name: 'architecture-gate / accept',
+    name: 'architecture-gate / protected-accept',
     head_sha: headSha,
     status: 'completed',
     conclusion: 'success',
@@ -239,7 +239,7 @@ const selfToken = {
   permissions: { checks: 'write', metadata: 'read' },
   repositories: [{ id: 1379218762, full_name: 'flair-agency/architecture-gatekeeper' }],
 };
-const lifecycleCheck = ({ id = 777, name = 'architecture-gate / accept', sha = headSha, status = 'in_progress', conclusion = null, appValue = appId } = {}) => ({
+const lifecycleCheck = ({ id = 777, name = 'architecture-gate / protected-accept', sha = headSha, status = 'in_progress', conclusion = null, appValue = appId } = {}) => ({
   id, name, head_sha: sha, status, conclusion, app: { id: appValue },
 });
 
@@ -253,7 +253,7 @@ test('App lifecycle creates in_progress before validation and finalizes the same
     return nativeResponse(lifecycleCheck({ status: 'completed', conclusion: 'success' }), 200);
   };
   const started = await beginSelfArchitectureCheck({ app: selfApp, headSha, fetchImpl, now });
-  assert.deepEqual(started, { id: 777, name: 'architecture-gate / accept', repository: 'flair-agency/architecture-gatekeeper', headSha, appId });
+  assert.deepEqual(started, { id: 777, name: 'architecture-gate / protected-accept', repository: 'flair-agency/architecture-gatekeeper', headSha, appId });
   assert.equal(JSON.parse(calls[1].options.body).status, 'in_progress');
   assert.equal(calls[1].options.headers.authorization, 'Bearer synthetic-lifecycle-token');
   const finalized = await finalizeSelfArchitectureCheck({ app: selfApp, check: started, conclusion: 'success', fetchImpl, now });
@@ -325,11 +325,12 @@ test('Queue completeness reporter rejects wrong Actions App, SHA, name, and fail
 });
 
 test('finalizers reject API responses that changed the check identity or did not complete the requested outcome', async t => {
-  const appHandle = { id: 777, name: 'architecture-gate / accept', repository: 'flair-agency/architecture-gatekeeper', headSha, appId };
+  const appHandle = { id: 777, name: 'architecture-gate / protected-accept', repository: 'flair-agency/architecture-gatekeeper', headSha, appId };
   const queueHandle = { id: 888, name: 'completeness', repository: 'flair-agency/architecture-gatekeeper', headSha, appId: 15368 };
   const appMismatches = [
     lifecycleCheck({ id: 778, status: 'completed', conclusion: 'success' }),
     lifecycleCheck({ name: 'other', status: 'completed', conclusion: 'success' }),
+    lifecycleCheck({ name: 'architecture-gate / accept', status: 'completed', conclusion: 'success' }),
     lifecycleCheck({ sha: 'b'.repeat(40), status: 'completed', conclusion: 'success' }),
     lifecycleCheck({ appValue: appId + 1, status: 'completed', conclusion: 'success' }),
     lifecycleCheck({ status: 'completed', conclusion: 'failure' }),

@@ -213,7 +213,7 @@ async function main() {
     if (!/^[1-9]\d*$/.test(env.AGK_CHECK_ID || '') || !Number.isSafeInteger(Number(env.AGK_CHECK_ID)) ||
         !SHA.test(env.AGK_CHECK_SHA || '')) fail('exact protected begin-check identity is unavailable.');
     const app = getApp(env);
-    const check = { id: Number(env.AGK_CHECK_ID), name: 'architecture-gate / accept', repository: SELF,
+    const check = { id: Number(env.AGK_CHECK_ID), name: 'architecture-gate / protected-accept', repository: SELF,
       headSha: env.AGK_CHECK_SHA, appId: app.appId };
     const finalized = await finalizeSelfArchitectureCheck({ app, check, conclusion: 'failure' });
     if (finalized.conclusion !== 'failure' || finalized.id !== check.id || finalized.headSha !== check.headSha) fail('exact begun App check did not finalize as failure.');
@@ -225,7 +225,7 @@ async function main() {
   const begun = { status: 'BEGUN_SELF_PR_APP_CHECK', context: {
     status: 'SELECTED_SELF_PR_CONTEXT', repository: SELF, repositoryId: SELF_ID, prNumber: env.PR_NUMBER,
     baseSha: env.BASE_SHA, headSha: env.HEAD_SHA, subjectSha: env.AGK_CHECK_SHA },
-    check: { id: Number(env.AGK_CHECK_ID), name: 'architecture-gate / accept', repository: SELF,
+    check: { id: Number(env.AGK_CHECK_ID), name: 'architecture-gate / protected-accept', repository: SELF,
       headSha: env.AGK_CHECK_SHA, appId: Number(env.AGK_APP_ID) } };
   const result = await finishProtectedSelfPrCheck({ ...producerInput, begun,
     validateProtectedResult: async selected => {

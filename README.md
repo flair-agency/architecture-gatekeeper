@@ -226,5 +226,7 @@ OWNER_AMENDMENT or replace its existing tag guard and evidence requirements.
 The self-only dedicated-App PR and Queue adapters are shipped disabled. Their
 protected workflows reuse previous-Policy classification, amendment eligibility
 receipts and ordinary review, and publish explicit success/failure on the exact
-PR test merge or Queue SHA. Adoption of this code does not configure an App or
+PR test merge or Queue SHA under the same `architecture-gate / protected-accept`
+check name. Actions `architecture-gate / accept` and `completeness` retain their
+existing names and sources. Adoption of this code does not configure an App or
 change required checks. See the [activation and verification boundaries](docs/investigations/2026-10-22-self-protected-connection.md).

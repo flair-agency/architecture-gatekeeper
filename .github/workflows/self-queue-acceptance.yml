@@ -463,7 +463,7 @@ jobs:
           const conclusion = passed ? 'success' : 'failure';
           const outcomes = await Promise.allSettled([
             finalizeSelfArchitectureCheck({ app,
-              check: { id: appId, name: 'architecture-gate / accept', repository: 'flair-agency/architecture-gatekeeper', headSha: process.env.QUEUE_SHA, appId: app.appId },
+              check: { id: appId, name: 'architecture-gate / protected-accept', repository: 'flair-agency/architecture-gatekeeper', headSha: process.env.QUEUE_SHA, appId: app.appId },
               conclusion }),
             finalizeSelfQueueCompletenessCheck({ token: process.env.GITHUB_TOKEN,
             check: { id: completenessId, name: 'completeness', repository: 'flair-agency/architecture-gatekeeper', headSha: process.env.QUEUE_SHA, appId: 15368 },

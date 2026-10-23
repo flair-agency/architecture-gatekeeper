@@ -27,7 +27,7 @@ export interface GitHubAppReporterOptions {
 }
 export interface GitHubAppReporterResult {
   readonly id: unknown;
-  readonly name: 'architecture-gate / accept';
+  readonly name: 'architecture-gate / protected-accept';
   readonly repository: 'flair-agency/architecture-gatekeeper';
   readonly headSha: unknown;
   readonly conclusion: unknown;
@@ -35,7 +35,7 @@ export interface GitHubAppReporterResult {
 }
 export interface GitHubAppCheckHandle {
   readonly id: number;
-  readonly name: 'architecture-gate / accept';
+  readonly name: 'architecture-gate / protected-accept';
   readonly repository: 'flair-agency/architecture-gatekeeper';
   readonly headSha: string;
   readonly appId: number;
@@ -79,7 +79,7 @@ type LifecycleCheckView = { id?: unknown; name?: unknown; repository?: unknown; 
 const API_BASE = 'https://api.github.com';
 const API_VERSION = '2022-11-28';
 const SELF_REPOSITORY = 'flair-agency/architecture-gatekeeper';
-const CHECK_NAME = 'architecture-gate / accept';
+const CHECK_NAME = 'architecture-gate / protected-accept';
 const QUEUE_CHECK_NAME = 'completeness';
 const ACTIONS_APP_ID = 15368;
 const MAX_API_RESPONSE_BYTES = 65_536;
