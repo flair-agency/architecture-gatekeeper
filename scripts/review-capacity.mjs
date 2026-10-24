@@ -64,6 +64,7 @@ const FORMAT_FILES = [SELF_WORKFLOW, CALLED_WORKFLOW,
   'src/authority-validation/preflight-authority-set-review.mts',
   'src/review-inputs/prepare-review-context.mts'];
 
+const PRE_OWNER_INITIATED_RESOLVER_SHA256 = '1a129f664e590dd82e2d5e081a84347efec3f977d4c8489e480d43da0ee38d7b';
 const CURRENT_FORMAT_SHA256 = {
   ".github/workflows/self-architecture-gate.yml": "f9970a3a2ab510b07665cdc0aed4da7cb323668e6a9c7a59febec4105e300eea",
   ".github/workflows/architecture-gate.yml": "0ed7dc06d31a96f6466c3b33016cd222188f74850e65a4176ced4f4ada3926a6",
@@ -73,7 +74,7 @@ const CURRENT_FORMAT_SHA256 = {
   "src/preflight-authority-set-review.mjs": "f26f35ca6386e1ecfb0e6bfd51b239f8a8e49be3ab8dc1616c6e7b34781ae514",
   "src/prepare-review-context.mjs": "6b5af63dc0fb077482c843ee0937e9c1a26633b593fad9f435f182b97e7051a8",
   "src/authority-validation/authority-set.mts": "4463bace8ba83303a83257acbd36dc05e19cfe3a834b2d4b56eb7206a3c20341",
-  "src/authority-validation/resolve-ci-policy.mts": "1a129f664e590dd82e2d5e081a84347efec3f977d4c8489e480d43da0ee38d7b",
+  "src/authority-validation/resolve-ci-policy.mts": "4da765a06f1d3dcf6363f907dda6949c8dcb968c69fe929cdf9832a333238c74",
   [PREPARER]: "cc4e499e2226cde84f2e5588078706a4ac62443ca78a06f0bfbad0c099eebb74",
   [DESCRIPTOR_READER]: "1be7f9c9f48dbe576b76bc2e69de815b3f30e928ea63c715163a1e54114d772c",
   "src/authority-validation/preflight-authority-set-review.mts": "0d63bd79613598af3d8e4d75bc9bdbbaf7ada600e41ba0b65625c0e1014bc495",
@@ -85,7 +86,7 @@ export function supportsPreparationFormatDigest(path, baseDigest, toolDigest) {
   return baseDigest === toolDigest ||
     (path === SELF_WORKFLOW && baseDigest === PRE_CONNECTION_SELF_SHA256) ||
     (path === CALLED_WORKFLOW && [PRE_V6_OWNER_CALLED_SHA256, PRE_CONNECTION_CALLED_SHA256, PRE_GUARD_CALLED_WORKFLOW_SHA256, PREVIOUS_CALLED_WORKFLOW_SHA256, EARLIER_CALLED_WORKFLOW_SHA256, OLDER_CALLED_WORKFLOW_SHA256, OLDEST_CALLED_WORKFLOW_SHA256].includes(baseDigest)) ||
-    (path === 'src/authority-validation/resolve-ci-policy.mts' && baseDigest === PRE_V6_OWNER_RESOLVER_SHA256) ||
+    (path === 'src/authority-validation/resolve-ci-policy.mts' && [PRE_V6_OWNER_RESOLVER_SHA256, PRE_OWNER_INITIATED_RESOLVER_SHA256].includes(baseDigest)) ||
     (path === 'src/review-inputs/prepare-review-context.mts' && baseDigest === PREVIOUS_CONTEXT_SHA256) ||
     (path === PREPARER && baseDigest === PREVIOUS_PREPARER_SHA256);
 }
