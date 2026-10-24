@@ -20,7 +20,7 @@
         "version": 1,
         "grade": "G0",
         "scope": "authority-only",
-        "triggerProfile": "completed-owner-decision-self-v1",
+        "triggerProfile": "owner-initiated-self-v1",
         "authorityId": "architecture-contract",
         "authorityPath": "docs/architecture.md",
         "evidenceProducer": "github-actions-attestation",

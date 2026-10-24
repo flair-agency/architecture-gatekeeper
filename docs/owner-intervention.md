@@ -98,11 +98,17 @@ accept the change.
 3. Determine whether B adds a missing decision or changes an existing one,
    then check whether B can proceed under the repository's existing policy. A
    separate B is not automatically eligible for `PASS`. The v0.6.0 self
-   reference contract defines separate `completed-block-v1` and
-   `completed-owner-decision-self-v1` amendment trigger profiles; the committed
-   `main` policy selects the latter. Each profile has its own bound trigger
-   evidence and previous-policy selection, and profile selection alone does
-   not establish a completed amendment acceptance cycle. Issue #147 separately
+   reference contract defines `completed-block-v1`,
+   `completed-owner-decision-self-v1`, and `owner-initiated-self-v1` amendment
+   trigger profiles; the committed `main` policy selects `owner-initiated-self-v1`.
+   For an owner-initiated revision, use its [declared target/purpose and evidence
+   formats](architecture/owner-amendment.md#owner-initiated-self-evidence-formats),
+   without inventing a historical ReviewRecord. Completed BLOCK and
+   OWNER_DECISION profiles retain their required evidence and need their own
+   previous-policy selection; their results cannot be relabeled as owner-initiated.
+   Profile selection alone enables neither App/Queue reporting nor a completed
+   protected adoption cycle. Issue #211's two completed-review E2Es remain
+   separate. Issue #147 separately
    authorizes a procedural BLOCK amendment profile, but its versioned wire
    formats and trusted backend remain unselected. The package's
    `preview-unverified-procedure-v1` is a distinct consumer-selected procedure
