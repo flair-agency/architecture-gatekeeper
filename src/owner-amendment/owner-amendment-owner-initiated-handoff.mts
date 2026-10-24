@@ -50,7 +50,7 @@ export async function handoffOwnerAmendmentOwnerInitiated({ repository, selfRoot
       headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`,
         'x-github-api-version': '2022-11-28' },
     };
-    const response = await fetchImpl(`https://api.github.com/repos/${repository}/git/ref/heads/main`, mainRequest);
+    const response = await fetchImpl('https://api.github.com/repos/flair-agency/architecture-gatekeeper/git/ref/heads/main', mainRequest);
     if (!response.ok) fail('protected main readback failed.');
     const main = await response.json() as {ref?: unknown;object?: {type?: unknown;sha?: unknown}};
     if (main?.ref !== 'refs/heads/main' || main.object?.type !== 'commit' || main.object.sha !== baseSha) fail('live protected main differs from the selected previous base.');

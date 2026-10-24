@@ -67,10 +67,11 @@ test('semantic eligibility callback results require every field consumed by runt
     [2322, 256, 'resultingAuthoritySetDigest'], [2322, 260, 'changes'],
     [2322, 264, 'targetValidated'], [2322, 268, 'purpose'],
     [2741, 274, 'status'], [2741, 278, 'repository'], [2741, 282, 'baseSha'], [2741, 286, 'bSha'],
-    [2741, 290, 'triggerProfile'], [2741, 294, 'triggerReviewRecordSha256'],
+    [2741, 290, 'triggerProfile'], // Tag digest is profile-dependent; runtime tests enforce historical-profile evidence.
     [2741, 298, 'amendmentRecordSha256'], [2741, 302, 'tagRef'],
     [2741, 306, 'tagObjectOid'], [2741, 310, 'observedTagRefOid'],
     [2322, 316, 'authorityId'], [2322, 320, 'authorityPath'],
+    [2322, 327, 'historicalTrigger'], [2322, 330, 'authorityId'], [2322, 333, 'authorityPath'],
   ];
   assert.deepEqual(negative.map(({ code, line }) => [code, line]), [
     [2322, 16], [2740, 18], [2322, 20], [2739, 22], [2322, 24], [2740, 26],
@@ -81,7 +82,7 @@ test('semantic eligibility callback results require every field consumed by runt
   ]);
   const resultTypes = ['ProtectedInputResult', 'ProtectedAuthoritySetResult', 'ProtectedAuthorityMemberResult',
     'ProtectedChangeResult', 'ProtectedSelectionResult', 'SelectedGatekeeperResult', 'SelectedGatekeeperPackageResult',
-    'TriggerProvenanceResult', 'AmendmentRecordResult', 'AmendmentRecordResultBase', 'TagValidationResult'];
+    'TriggerProvenanceResult', 'AmendmentResult', 'AmendmentRecordResultBase', 'TagValidationResult'];
   resultTypes.forEach((name, index) => {
     assert.match(negative[index * 2].message, /Type 'null' is not assignable/);
     assert.match(negative[index * 2].message, new RegExp(name));

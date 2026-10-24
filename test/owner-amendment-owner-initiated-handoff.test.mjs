@@ -36,6 +36,7 @@ const input=f=>({repository,selfRoot:f.root,baseSha:f.baseSha,bSha:f.bSha,purpos
 test('owner initiated operator path derives real Git bytes and exercises actual protected tag transport/readback',async()=>{
  const f=fixture();try{const api=transport(f);const result=await handoff({...input(f),fetchImpl:api.fetchImpl});assert.equal(result.status,'OWNER_INITIATED_TAG_TRANSPORTED_AND_READ_BACK');
  assert.equal(api.calls.filter(c=>c.init.method==='POST').length,2);
+ assert.equal(api.calls[0].url,'https://api.github.com/repos/flair-agency/architecture-gatekeeper/git/ref/heads/main');
  assert.equal(api.calls[0].init.redirect,'error');
  const tag=api.getTag();const tagRef=`${namespace}/${f.bSha}`;
  const parsed=parseOwnerAmendmentSemanticTagObject(Buffer.from(`object ${f.bSha}\ntype commit\ntag ${tagRef.slice(10)}\ntagger Test <test@example.test> 1 +0000\n\n${tag.message}`),{bSha:f.bSha,tagRef,triggerProfile:'owner-initiated-self-v1'});
@@ -50,4 +51,16 @@ test('stale protected base cannot mutate remote tags',async()=>{
 });
 test('prior completed-review profile cannot select owner initiated evidence creation',async()=>{
  const f=fixture('completed-owner-decision-self-v1');try{const api=transport(f);const result=await handoff({...input(f),fetchImpl:api.fetchImpl});assert.equal(result.status,'INCOMPLETE');assert.equal(api.calls.length,0);}finally{f.cleanup();}
+});
+
+
+test('caller repository values cannot alter the fixed GitHub destination', async () => {
+ const f=fixture();try {
+  for(const repository of ['https://attacker.invalid','flair-agency/architecture-gatekeeper/../../attacker','other/repository']) {
+   const api=transport(f);
+   const result=await handoff({...input(f),repository,fetchImpl:api.fetchImpl});
+   assert.equal(result.status,'INCOMPLETE');
+   assert.equal(api.calls.length,0);
+  }
+ }finally{f.cleanup();}
 });
