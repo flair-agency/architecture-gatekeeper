@@ -54,7 +54,7 @@ const OWNER_SCHEMA_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.json$/;
 const ADOPTION_WORKFLOW_PATH = /^\.github\/workflows\/[A-Za-z0-9._-]+\.ya?ml$/;
 const ADOPTION_JOB_NAME = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63} \/ [A-Za-z0-9_][A-Za-z0-9 ._-]{0,63}$/;
 const AMENDMENT_TAG_NAMESPACE = 'refs/tags/architecture-gatekeeper/amendments';
-const OWNER_AMENDMENT_TRIGGER_PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1']);
+const OWNER_AMENDMENT_TRIGGER_PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1', 'owner-initiated-self-v1']);
 const LEGACY_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
 const REVIEW_JOB_TIMEOUT_MAX = 360;
 const REVIEW_STEP_TIMEOUT_MAX = 359;
@@ -246,7 +246,7 @@ function validateBranch(branch: PolicyBranchView, label: string, version: number
         typeof amendment.authorityPath !== 'string' || (amendment.authorityPath as string).length > 240 ||
         !OWNER_AUTHORITY_PATH.test(amendment.authorityPath as string) || (amendment.authorityPath as string).split('/').some(part => part === '.' || part === '..') ||
         amendment.evidenceProducer !== 'github-actions-attestation' || amendment.tagNamespace !== AMENDMENT_TAG_NAMESPACE ||
-        (amendment.triggerProfile === 'completed-owner-decision-self-v1' && !Object.hasOwn(amendment, 'maxPromptBytes')) ||
+        (['completed-owner-decision-self-v1', 'owner-initiated-self-v1'].includes(amendment.triggerProfile as string) && !Object.hasOwn(amendment, 'maxPromptBytes')) ||
         (Object.hasOwn(amendment, 'maxPromptBytes') && (!Number.isSafeInteger(amendment.maxPromptBytes) ||
           (amendment.maxPromptBytes as number) < 1 || (amendment.maxPromptBytes as number) > 1_048_576))) {
       throw new Error(`Invalid ${label} owner amendment selection`);

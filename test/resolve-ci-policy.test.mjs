@@ -341,3 +341,12 @@ test('v6 keeps Owner routes opt-in and rejects only unsupported or incomplete co
     ...amendment, triggerProfile: 'completed-owner-decision-self-v1', maxPromptBytes: 262144,
   } }), 'main').ownerAmendmentTriggerProfile, 'completed-owner-decision-self-v1');
 });
+
+
+test('owner-initiated profile is explicit and requires its protected prompt ceiling', () => {
+  const selected = resolveCiPolicy(policy({...amendment, triggerProfile:'owner-initiated-self-v1',maxPromptBytes:262144}), 'main');
+  assert.equal(selected.ownerAmendmentTriggerProfile,'owner-initiated-self-v1');
+  assert.equal(selected.ownerAmendmentMaxPromptBytes,262144);
+  assert.throws(()=>resolveCiPolicy(policy({...amendment,triggerProfile:'owner-initiated-self-v1'}),'main'));
+  assert.equal(Object.hasOwn(resolveCiPolicy(policy(),'main'),'ownerAmendmentTriggerProfile'),false);
+});

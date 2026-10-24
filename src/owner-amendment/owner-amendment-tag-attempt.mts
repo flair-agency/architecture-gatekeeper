@@ -3,7 +3,7 @@ import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from './o
 
 const SELF_REPOSITORY = 'flair-agency/architecture-gatekeeper';
 const SHA1 = /^[a-f0-9]{40}$/;
-const TRIGGER_PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1']);
+const TRIGGER_PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1', 'owner-initiated-self-v1']);
 
 export type Awaitable<T> = T | PromiseLike<T>;
 export type OwnerAmendmentTagRefRequest = {

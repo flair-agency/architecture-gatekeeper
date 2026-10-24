@@ -62,8 +62,14 @@ async function observe(value: Promise<OwnerAmendmentMergeGroupEvidenceResult>): 
   if (state.status === 'VERIFIED_OWNER_AMENDMENT_MERGE_GROUP_EVIDENCE') {
     const digest: string = state.policySha256;
     const arbitraryProducerValue: unknown = state.producerRunId;
-    const decision: 'OWNER_DECISION' | 'BLOCK' = state.triggerDecision;
-    void [digest, arbitraryProducerValue, decision];
+    if (state.historicalTrigger === 'none') {
+      const absent: 'none' = state.historicalTrigger;
+      void absent;
+    } else {
+      const decision: 'OWNER_DECISION' | 'BLOCK' = state.triggerDecision;
+      void decision;
+    }
+    void [digest, arbitraryProducerValue];
   } else {
     const reason: unknown = state.reason;
     void reason;

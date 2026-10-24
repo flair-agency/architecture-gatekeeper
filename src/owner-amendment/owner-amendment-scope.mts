@@ -6,7 +6,7 @@ export type OwnerAmendmentSelfScopeResult = Readonly<{ baseSha: unknown; headSha
 const SHA = /^[a-f0-9]{40}$/;
 const ID = /^[a-z][a-z0-9-]{0,63}$/;
 const PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
-const TRIGGER_PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1']);
+const TRIGGER_PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1', 'owner-initiated-self-v1']);
 // Access views preserve original property reads and coercions; they are not source validation.
 type PolicyView = { ownerAmendmentVersion: unknown; ownerAmendmentGrade: unknown; ownerAmendmentScope: unknown; ownerAmendmentTriggerProfile: unknown; ownerAmendmentAuthorityId: unknown; ownerAmendmentAuthorityPath: unknown };
 type ManifestView = { version: unknown; authorities: unknown };

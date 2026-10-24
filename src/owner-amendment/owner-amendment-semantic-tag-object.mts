@@ -1,3 +1,4 @@
+import { rejectDuplicateJsonKeys } from '../authority-set.mjs';
 import { createHash } from 'node:crypto';
 
 const sha256 = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
@@ -11,8 +12,8 @@ export type OwnerAmendmentSemanticTagBinding = {
 export type OwnerAmendmentSemanticTagEnvelope = Record<string, unknown>;
 export type OwnerAmendmentSemanticTagObject = {
   envelope: OwnerAmendmentSemanticTagEnvelope;
-  reviewRecordBytes: Buffer;
-  attestationBundleBytes: Buffer;
+  reviewRecordBytes?: Buffer;
+  attestationBundleBytes?: Buffer;
   amendmentRecordBytes: Buffer;
 };
 
@@ -21,7 +22,7 @@ export function parseOwnerAmendmentSemanticTagObject(objectBytes: unknown, bindi
 export function parseOwnerAmendmentSemanticTagObject(objectBytes: unknown, { bSha, triggerProfile, tagRef }: OwnerAmendmentSemanticTagBinding = {} as OwnerAmendmentSemanticTagBinding): OwnerAmendmentSemanticTagObject {
   if (!Buffer.isBuffer(objectBytes) || !objectBytes.length || objectBytes.length > 262_144 ||
       !/^[a-f0-9]{40}$/.test((bSha ?? '') as string) ||
-      !['completed-block-v1', 'completed-owner-decision-self-v1'].includes(triggerProfile as string) ||
+      !['completed-block-v1', 'completed-owner-decision-self-v1', 'owner-initiated-self-v1'].includes(triggerProfile as string) ||
       tagRef !== `refs/tags/architecture-gatekeeper/amendments/${bSha}`) {
     fail('tag object or exact protected profile binding is invalid.');
   }
@@ -34,17 +35,22 @@ export function parseOwnerAmendmentSemanticTagObject(objectBytes: unknown, { bSh
   const message = text.slice(split + 2);
   if (!message.endsWith('\n') || message.slice(0, -1).includes('\n')) fail('tag message is not a single JSON line.');
   // JSON.parse is unchecked external data; this view permits property reads without narrowing its values.
+  if (triggerProfile === 'owner-initiated-self-v1') rejectDuplicateJsonKeys(message.slice(0, -1), 'owner-initiated tag');
   const envelope = JSON.parse(message.slice(0, -1)) as OwnerAmendmentSemanticTagEnvelope | null;
   const expectedKeys = ['version','profile','bSha','reviewRecordBase64','reviewRecordSha256','attestationBundleBase64',
     'attestationBundleSha256','amendmentRecordBase64','amendmentRecordSha256'];
   const ownerDecisionKeys = [...expectedKeys.slice(0, 2), 'triggerProfile', ...expectedKeys.slice(2)];
-  const keys = triggerProfile === 'completed-block-v1' ? expectedKeys : ownerDecisionKeys;
+  const initiated = triggerProfile === 'owner-initiated-self-v1';
+  const keys = initiated ? ['version','profile','triggerProfile','historicalTrigger','bSha','amendmentRecordBase64','amendmentRecordSha256'] : triggerProfile === 'completed-block-v1' ? expectedKeys : ownerDecisionKeys;
   if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope) ||
       Object.keys(envelope).length !== keys.length || keys.some(key => !Object.hasOwn(envelope, key)) ||
       envelope.profile !== 'self-g0' || envelope.bSha !== bSha ||
-      envelope.version !== (triggerProfile === 'completed-block-v1' ? 2 : 3) ||
+      envelope.version !== (initiated ? 4 : triggerProfile === 'completed-block-v1' ? 2 : 3) ||
       (triggerProfile !== 'completed-block-v1' && envelope.triggerProfile !== triggerProfile)) {
     fail('tag envelope does not select the previous-base trigger profile.');
+  }
+  if (initiated && (envelope.historicalTrigger !== 'none' || message !== `${JSON.stringify(Object.fromEntries(Object.keys(envelope).sort().map(key => [key, envelope[key]])))}\n`)) {
+    fail('owner-initiated tag is not the canonical absent-history envelope.');
   }
   const decode = (field: string, digestField: string, label: string, max: number): Buffer => {
     const value = envelope[field];
@@ -57,6 +63,7 @@ export function parseOwnerAmendmentSemanticTagObject(objectBytes: unknown, { bSh
     }
     return bytes;
   };
+  if (initiated) return { envelope, amendmentRecordBytes: decode('amendmentRecordBase64', 'amendmentRecordSha256', 'AmendmentRecord', 8_192) };
   return { envelope, reviewRecordBytes: decode('reviewRecordBase64', 'reviewRecordSha256', 'ReviewRecord', 131_072),
     attestationBundleBytes: decode('attestationBundleBase64', 'attestationBundleSha256', 'attestation bundle', 65_536),
     amendmentRecordBytes: decode('amendmentRecordBase64', 'amendmentRecordSha256', 'AmendmentRecord', 8_192) };

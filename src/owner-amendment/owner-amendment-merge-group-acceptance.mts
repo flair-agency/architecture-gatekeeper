@@ -8,7 +8,7 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const MAX_REVIEW_INPUT_BYTES = 1_048_576;
 const MAX_OWNER_PROMPT_BYTES = 1_048_576;
 const EFFORTS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
-const PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1']);
+const PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1', 'owner-initiated-self-v1']);
 const DECISION_BY_PROFILE = Object.freeze({
   'completed-block-v1': 'BLOCK',
   'completed-owner-decision-self-v1': 'OWNER_DECISION',
@@ -80,14 +80,14 @@ function validatePolicy(value: PolicyView, selection: SelectionView): PolicyView
 }
 
 function validateReviewInputs(value: ReviewInputsView, policy: PolicyView, selection: SelectionView, trigger: ValueView, tag: TagView): ValidatedReviewInputsView {
-  exact(value, ['status', 'repository', 'baseSha', 'bSha', 'triggerProfile', 'triggerReviewRecordSha256',
+  exact(value, ['status', 'repository', 'baseSha', 'bSha', 'triggerProfile', policy.triggerProfile === 'owner-initiated-self-v1' ? 'historicalTrigger' : 'triggerReviewRecordSha256',
     'amendmentRecordSha256', 'policySha256', 'authoritySetDigest', 'priorAuthoritySetDigest',
     'resultingAuthoritySetDigest', 'authorityIds', 'changes', 'diffSha256',
     'promptSha256', 'schemaSha256', 'model', 'reasoningEffort', 'diffBytes', 'promptBytes', 'schemaBytes'],
   'exact protected eligibility review inputs');
   if (value.status !== 'RESOLVED_PROTECTED_OWNER_AMENDMENT_REVIEW_INPUTS' ||
       value.repository !== selection.repository || value.baseSha !== selection.bBaseSha || value.bSha !== selection.bHeadSha ||
-      value.triggerProfile !== policy.triggerProfile || value.triggerReviewRecordSha256 !== trigger.reviewRecordSha256 ||
+      value.triggerProfile !== policy.triggerProfile || (policy.triggerProfile === 'owner-initiated-self-v1' ? value.historicalTrigger !== 'none' : value.triggerReviewRecordSha256 !== trigger.reviewRecordSha256) ||
       value.amendmentRecordSha256 !== tag.amendmentRecordSha256 || value.policySha256 !== policy.policySha256 ||
       value.authoritySetDigest !== policy.authoritySetDigest || value.priorAuthoritySetDigest !== policy.authoritySetDigest ||
       value.resultingAuthoritySetDigest !== tag.resultingAuthoritySetDigest || !Array.isArray(value.authorityIds) ||
@@ -126,6 +126,14 @@ function validateReviewInputs(value: ReviewInputsView, policy: PolicyView, selec
 }
 
 function validateTrigger(value: ValueView, policy: PolicyView, selection: SelectionView): ValueView {
+  if (policy.triggerProfile === 'owner-initiated-self-v1') {
+    exact(value, ['status', 'repository', 'baseSha', 'triggerProfile', 'historicalTrigger'], 'owner-initiated trigger selection');
+    if (value.status !== 'VERIFIED_OWNER_AMENDMENT_TRIGGER' || value.repository !== selection.repository ||
+        value.baseSha !== selection.bBaseSha || value.triggerProfile !== policy.triggerProfile || value.historicalTrigger !== 'none') {
+      fail('owner-initiated trigger does not match previous protected policy.');
+    }
+    return Object.freeze({ ...value });
+  }
   exact(value, ['status', 'repository', 'baseSha', 'triggerProfile', 'decision', 'reviewRecordSha256',
     'producerWorkflowPath', 'producerWorkflowSha', 'producerWorkflowRef', 'producerRunId', 'producerRunAttempt', 'provenanceVerified'], 'verified trigger evidence');
   const expectedDecision = DECISION_BY_PROFILE[policy.triggerProfile as keyof typeof DECISION_BY_PROFILE];
@@ -142,13 +150,13 @@ function validateTrigger(value: ValueView, policy: PolicyView, selection: Select
 }
 
 function validateTag(value: TagView, policy: PolicyView, selection: SelectionView, trigger: ValueView): TagView {
-  exact(value, ['status', 'repository', 'baseSha', 'bSha', 'triggerProfile', 'triggerReviewRecordSha256',
+  exact(value, ['status', 'repository', 'baseSha', 'bSha', 'triggerProfile', policy.triggerProfile === 'owner-initiated-self-v1' ? 'historicalTrigger' : 'triggerReviewRecordSha256',
     'amendmentRecordSha256', 'authorityId', 'authorityPath', 'previousAuthoritySha256', 'amendedAuthoritySha256',
     'priorAuthoritySetDigest', 'resultingAuthoritySetDigest', 'changes', 'purpose', 'targetValidated', 'tagRef', 'tagObjectOid',
     'observedTagRefOid', 'protectedAgainstUpdateAndDeletion'], 'verified protected tag');
   if (value.status !== 'VERIFIED_OWNER_AMENDMENT_TAG' || value.repository !== selection.repository ||
       value.baseSha !== selection.bBaseSha || value.bSha !== selection.bHeadSha || value.triggerProfile !== policy.triggerProfile ||
-      value.triggerReviewRecordSha256 !== trigger.reviewRecordSha256 || !SHA256.test((value.amendmentRecordSha256 ?? '') as string) ||
+      (policy.triggerProfile === 'owner-initiated-self-v1' ? value.historicalTrigger !== 'none' : value.triggerReviewRecordSha256 !== trigger.reviewRecordSha256) || !SHA256.test((value.amendmentRecordSha256 ?? '') as string) ||
       value.authorityId !== policy.authorityId || value.authorityPath !== policy.authorityPath ||
       value.previousAuthoritySha256 !== policy.authoritySha256 || !SHA256.test((value.amendedAuthoritySha256 ?? '') as string) ||
       value.priorAuthoritySetDigest !== policy.authoritySetDigest || !SHA256.test((value.resultingAuthoritySetDigest ?? '') as string) ||
@@ -186,7 +194,7 @@ function validateEligibility(value: ValueView, policy: PolicyView, selection: Se
       receiptValidation.status !== 'VERIFIED_OWNER_AMENDMENT_SEMANTIC_ELIGIBILITY_RECEIPT' ||
       receiptValidation.eligibility !== 'ELIGIBLE' ||
       receipt.repository !== selection.repository || receipt.baseSha !== selection.bBaseSha || receipt.bSha !== selection.bHeadSha ||
-      receipt.triggerProfile !== policy.triggerProfile || receipt.triggerReviewRecordSha256 !== trigger.reviewRecordSha256 ||
+      receipt.triggerProfile !== policy.triggerProfile || (policy.triggerProfile === 'owner-initiated-self-v1' ? receipt.historicalTrigger !== 'none' : receipt.triggerReviewRecordSha256 !== trigger.reviewRecordSha256) ||
       receipt.amendmentRecordSha256 !== tag.amendmentRecordSha256 || receipt.policyRevision !== selection.bBaseSha ||
       receipt.policySha256 !== policy.policySha256 || receipt.authoritySetDigest !== policy.authoritySetDigest ||
       !Array.isArray(receipt.authorityIds) || (receipt.authorityIds as unknown[]).length !== policy.authorityIds.length ||
@@ -232,8 +240,8 @@ export type OwnerAmendmentMergeGroupAcceptanceAdapters = Readonly<{
 }>;
 type VerifiedAcceptanceResult = Readonly<{
   status: 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION'; repository: unknown; eligibility: 'eligible'; adoption: 'pending'; canonical: 'pending';
-  baseSha: unknown; bSha: unknown; mergeGroupHeadSha: unknown; bPrNumber: unknown; triggerProfile: unknown; triggerDecision: unknown;
-  triggerReviewRecordSha256: unknown; amendmentRecordSha256: unknown; authoritySetDigest: unknown; resultingAuthoritySetDigest: unknown;
+  baseSha: unknown; bSha: unknown; mergeGroupHeadSha: unknown; bPrNumber: unknown; triggerProfile: unknown; historicalTrigger?: 'none'; triggerDecision?: unknown;
+  triggerReviewRecordSha256?: unknown; amendmentRecordSha256: unknown; authoritySetDigest: unknown; resultingAuthoritySetDigest: unknown;
   changes: unknown; eligibilityReceiptSha256: unknown; eligibilityArtifactId: unknown;
   eligibilityProducerRunId: unknown; eligibilityProducerRunAttempt: unknown; eligibilityProducerJobId: unknown;
   eligibilityCompletedAt: unknown; queueEnteredAt: unknown; tagRef: unknown; tagObjectOid: unknown;
@@ -243,7 +251,7 @@ type VerifiedAcceptanceResult = Readonly<{
 type IncompleteAcceptanceResult = Readonly<{
   status: 'INCOMPLETE'; reason: unknown;
   repository?: never; eligibility?: never; adoption?: never; canonical?: never; baseSha?: never; bSha?: never;
-  mergeGroupHeadSha?: never; bPrNumber?: never; triggerProfile?: never; triggerDecision?: never; triggerReviewRecordSha256?: never;
+  mergeGroupHeadSha?: never; bPrNumber?: never; triggerProfile?: never; historicalTrigger?: never; triggerDecision?: never; triggerReviewRecordSha256?: never;
   amendmentRecordSha256?: never; authoritySetDigest?: never; resultingAuthoritySetDigest?: never; changes?: never;
   eligibilityReceiptSha256?: never; eligibilityArtifactId?: never; eligibilityProducerRunId?: never;
   eligibilityProducerRunAttempt?: never; eligibilityProducerJobId?: never; eligibilityCompletedAt?: never;
@@ -291,7 +299,8 @@ export function createOwnerAmendmentMergeGroupAcceptanceVerifier({ selectBContex
           eligibility: 'eligible', adoption: 'pending', canonical: 'pending',
           baseSha: selection.bBaseSha, bSha: selection.bHeadSha, mergeGroupHeadSha: selection.mergeGroupHeadSha,
           bPrNumber: selection.bPrNumber, triggerProfile: policy.triggerProfile,
-          triggerDecision: trigger.decision, triggerReviewRecordSha256: trigger.reviewRecordSha256,
+          ...(policy.triggerProfile === 'owner-initiated-self-v1' ? { historicalTrigger: 'none' as const } :
+            { triggerDecision: trigger.decision, triggerReviewRecordSha256: trigger.reviewRecordSha256 }),
           amendmentRecordSha256: tag.amendmentRecordSha256, authoritySetDigest: policy.authoritySetDigest,
           resultingAuthoritySetDigest: tag.resultingAuthoritySetDigest, changes: reviewInputs.changes,
           eligibilityReceiptSha256: eligibility.receiptSha256, eligibilityArtifactId: eligibility.artifactId,
