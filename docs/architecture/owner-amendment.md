@@ -19,8 +19,9 @@ until B becomes canonical and A receives a fresh review where A exists.
 The procedures below are versioned trigger profiles: BLOCK evidence is
 specific to its profile and is not required for all amendments. The supported
 v0.6.0 self profiles are `completed-block-v1` for a completed BLOCK and
-`completed-owner-decision-self-v1` for a completed OWNER_DECISION. Each profile
-must specify exact completed review evidence, predecessor binding, owner
+`completed-owner-decision-self-v1` for a completed OWNER_DECISION, and
+`owner-initiated-self-v1` for an owner-initiated change to an existing decision.
+Each profile specifies its own trigger evidence, predecessor binding, owner
 procedure, protected producer and transition checks. A tag or candidate claim
 cannot infer or enable a profile; B cannot select its route or authorize its
 adoption through proposed policy.
@@ -43,8 +44,8 @@ changes, implementation/workflow/executable-policy edits and unsupported
 completion claims, and leave resulting authority coherent. Assess resulting
 rules without requiring agreement with superseded rules. This does not impose
 a universal one-file limit or decision ID. Before merge, a trusted producer must
-issue versioned eligibility evidence binding exact B, trigger profile and
-ReviewRecord digest, AmendmentRecord, and previous policy/Set; validate record
+issue versioned eligibility evidence binding exact B, trigger profile and its
+profile-specific evidence, AmendmentRecord, and previous policy/Set; validate record
 bytes and producer provenance. `merge_group` deterministically revalidates
 eligibility, trigger evidence, protected tag and transition, failing closed on
 missing, stale, mismatched or unverifiable evidence. The profiles retain their
@@ -53,6 +54,142 @@ the historical `OWNER_DECISION` and assesses resolution of its escalation;
 the BLOCK profile below requires a completed BLOCK and assesses resolution of
 the identified conflict. Only previous-base policy opts in and scopes a route;
 B cannot self-authorize. Bootstrap is limited by [B1–B8](../architecture.md#canonical-authority-lifecycle); contract entry alone enables no route.
+
+#### Owner-initiated self amendment
+
+The owner authorizes `owner-initiated-self-v1` as an additional self amendment
+trigger. It is available only when selected by the previous protected-base
+Policy before B is reviewed for amendment eligibility. It is not inferred from
+an ordinary PASS, an authority diff, a pull-request comment, or candidate Policy.
+Its availability does not activate it or change the currently selected profile.
+
+The profile-specific AmendmentRecord defined below supplies the declaration of the target
+existing decision and the proposed change's purpose, binding exact repository,
+base/B, prior Policy, complete prior/resulting Authority Sets and changed bytes.
+The protected annotated tag binds that exact record and B. These are declared
+claims under the selected owner procedure, not authenticated owner identity or
+proof that a human rather than an agent used a repository credential.
+
+This profile needs no historical BLOCK or OWNER_DECISION ReviewRecord. Its
+profile-discriminated evidence explicitly records that no historical trigger
+review or trigger-producer attestation is claimed; it must not fabricate either
+or accept an omitted required record for a completed-review profile. Existing
+completed-review profiles and their evidence formats remain unchanged.
+
+B must modify the previous Policy's selected target and may modify only
+previously selected self Authority members, under the existing authority-only,
+target-decision and full-Set coherence restrictions. B cannot modify executable
+Policy, the manifest, workflows or implementation. The protected producer reviews
+exact B against the complete previous Policy and Authority Set and the declared
+target/purpose. For this profile, materially addressing the trigger means
+implementing that declared revision; it does not mean resolving an invented
+model escalation. All other existing semantic eligibility checks still apply.
+
+The existing protected producer must attest exact-B eligibility and bind the
+profile-specific record and tag. The dedicated-App PR/Queue separation, exact
+candidate and evidence validation, protected tag through transition, merge
+commit with exact B as second parent, and Canonical Readback remain required.
+An eligible receipt permits Queue entry, not canonical adoption. Ordinary PASS
+still cannot adopt an Authority change. Existing OWNER_ADDITION is unchanged.
+If an original A exists, preserve its actual result and review it afresh after
+adoption; no artificial A or escalation is required when the owner initiated B.
+This profile's success does not satisfy the separate completed BLOCK and
+OWNER_DECISION E2E obligations. The completed-review input/receipt clauses below
+remain applicable to those profiles; they do not impose a historical review on
+this separately selected owner-initiated profile.
+
+#### Owner-initiated self evidence formats
+
+For `owner-initiated-self-v1`, the following closed formats are the only
+accepted combination: AmendmentRecord kind
+`owner-amendment-owner-initiated-amendment-record` version 1, `self-g0`
+annotated-tag envelope version 4, and
+`owner-amendment-semantic-eligibility-receipt` version 2. These are evidence
+format versions, not Policy versions or assurance grades. Select this combination
+only from the previous protected-base Policy; supplied record fields cannot
+select a profile or cause fallback. Completed BLOCK and OWNER_DECISION profiles
+keep their existing formats and all required review/provenance checks unchanged.
+
+Each new format requires `triggerProfile="owner-initiated-self-v1"` and
+`historicalTrigger="none"`. The latter means this procedure uses no historical
+ReviewRecord or trigger-producer attestation; it is neither unknown evidence nor
+a claim that no earlier review exists. Historical review/provenance fields are
+not members of these formats. Reject missing, duplicate, extra, malformed or
+mixed-profile fields and unsupported version/profile combinations; do not use
+nulls, empty bytes or placeholder digests to satisfy a completed-review format.
+The new JSON records use the canonical UTF-8 encoding defined below: recursively
+sorted object keys, preserved array order, compact separators and one final LF.
+All digests hash the identified exact bytes using SHA-256. Existing applicable
+size, Policy and Authority limits remain in force; overflow fails closed.
+
+The AmendmentRecord has exactly:
+
+```text
+version,kind,triggerProfile,historicalTrigger,repository,baseSha,headSha,
+policyRevision,authority,changes,priorAuthoritySetDigest,
+resultingAuthoritySetDigest,purpose
+```
+
+`version=1`; `kind="owner-amendment-owner-initiated-amendment-record"`;
+`headSha` is exact B and `policyRevision=baseSha` is the previous protected base.
+`authority` is exactly `{id,path,previousSha256,newSha256}`, identifying the
+previous Policy's selected target and its exact before/after bytes. `changes`
+is the complete ordered array of `{path,beforeSha256,afterSha256}` for B's diff.
+The protected producer reconstructs these bindings from exact Git contents,
+requires the selected target to change, and recomputes both complete ordered
+Authority Set digests using the existing Set algorithm. `purpose` is a nonempty
+declaration identifying the existing decision and intended revision; semantic
+eligibility assesses that declaration against B. All unchanged field meanings,
+scope and byte-binding checks are retained. The declaration does not assert a
+review result, authenticated owner identity, or authenticated record producer.
+
+The annotated-tag message has exactly:
+
+```text
+version,profile,triggerProfile,historicalTrigger,bSha,
+amendmentRecordBase64,amendmentRecordSha256
+```
+
+`version=4`, `profile="self-g0"`, and `bSha` is exact B. Its Git object must be
+an annotated tag targeting that commit, under the previous Policy's amendment
+namespace and exact-B ref. `amendmentRecordBase64` is canonical padded Base64
+of the nonempty exact AmendmentRecord bytes; decode and validate those bytes,
+their SHA-256 and every repository/base/B/Policy/Set/target binding. The tag's
+object identity, live ref binding, update/deletion protection and validity
+through transition retain the existing checks. A lightweight tag is not this
+format. Tagger or record declarations still do not authenticate an owner.
+
+The version-2 eligibility receipt has the same exact field set and validation
+as the version-1 receipt below, except that `version=2` and
+`triggerReviewRecordSha256` is replaced by `historicalTrigger="none"`.
+`kind` remains `owner-amendment-semantic-eligibility-receipt`; the new profile
+is mandatory. No historical trigger digest or attestation field is admitted.
+The unchanged fields bind exact B, the exact AmendmentRecord, prior Policy
+revision and bytes, full prior Set and changes, diff, prompt, schema, decision,
+selected model/effort, Gatekeeper runtime, tag object/ref, and protected producer.
+The AmendmentRecord digest also binds the recomputed resulting Set and purpose.
+
+The protected eligibility input replaces the historical ReviewRecord and its
+provenance with the validated new AmendmentRecord and explicit absence marker;
+all other existing raw-input and protected-selection checks remain. The prompt
+includes the decoded declaration as untrusted data. Reuse the existing
+version-1 semantic decision shape and seven checks with this selected profile;
+`materiallyAddressesTrigger` assesses the declared revision as specified above.
+Only a complete validated decision can produce the receipt. The selected
+protected producer must still attest the exact receipt bytes, and PR/Queue
+verifiers must authenticate that producer separately; removal of historical
+trigger provenance never removes eligibility-producer provenance.
+
+Construct B, then its AmendmentRecord and tag, then the exact-B eligibility
+receipt and its attestation. Neither the record nor tag contains the later
+receipt or its attestation, avoiding circular digests. PR admission and Queue
+acceptance revalidate this same selected combination and all existing live
+base/B, evidence, producer and transition bindings. Carry the new profile and
+absence claim through reporting without inventing historical results. Retain
+exact-B protected merge, Canonical Readback and fresh A review where applicable.
+These formats enable no route by themselves and change no completed-review,
+OWNER_ADDITION or UNVERIFIED Preview format.
+
 
 #### Self-v1 semantic eligibility input and receipt (owner decision)
 
