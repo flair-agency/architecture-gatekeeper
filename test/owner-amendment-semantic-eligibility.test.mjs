@@ -592,10 +592,10 @@ test('enforces prompt and byte limits and requires trusted validators at produce
   assert.throws(() => createOwnerAmendmentSemanticEligibilityProducer({}), /trusted resolveProtectedInputs dependency/);
 });
 
-test('real v2 resolver selects the OWNER_DECISION profile and explicit prompt limit; producer fails closed when a prior policy omits that limit', () => {
+test('real v2 resolver selects the configured self profile and explicit prompt limit; completed OWNER_DECISION producer rejects a prior policy missing that limit', () => {
   const selectedPolicyBytes = readFileSync(join(root, '.codex/gatekeeper/ci-policy.json'));
   const selected = resolveCiPolicy(parseCiPolicyJson(selectedPolicyBytes.toString('utf8')), 'main');
-  assert.equal(selected.ownerAmendmentTriggerProfile, 'completed-owner-decision-self-v1');
+  assert.equal(selected.ownerAmendmentTriggerProfile, 'owner-initiated-self-v1');
   assert.equal(selected.ownerAmendmentAuthorityId, 'architecture-contract');
   assert.equal(selected.ownerAmendmentAuthorityPath, 'docs/architecture.md');
   assert.equal(JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64')).maxPromptBytes, 524_288);
