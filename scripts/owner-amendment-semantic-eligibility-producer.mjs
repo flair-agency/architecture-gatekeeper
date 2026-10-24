@@ -11,6 +11,7 @@ import { verifyOwnerAmendmentBlockEvidence } from '../dist/owner-amendment-attes
 import { verifyOwnerAmendmentBlockContext } from '../dist/owner-amendment-block-context-verifier.mjs';
 import { verifyOwnerAmendmentOwnerDecisionContext } from '../dist/owner-amendment-owner-decision-context-verifier.mjs';
 import { validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../dist/owner-amendment-owner-decision-amendment-record.mjs';
+import { validateOwnerAmendmentOwnerInitiatedAmendmentRecord } from '../dist/owner-amendment-owner-initiated-record.mjs';
 import { materializeAuthoritySet } from '../dist/authority-set.mjs';
 import { createGitHubAuthoritySource } from '../dist/github-authority-source.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
@@ -37,7 +38,9 @@ const gitBlob = (revision, path) => {
 
 function preparedContext(prepared) {
   return { repository: prepared.repository, baseSha: prepared.baseSha, bSha: prepared.bSha,
-    triggerProfile: prepared.triggerProfile, triggerReviewRecordSha256: prepared.triggerReviewRecordSha256,
+    triggerProfile: prepared.triggerProfile,
+    ...(prepared.triggerProfile === 'owner-initiated-self-v1' ? { historicalTrigger: prepared.historicalTrigger }
+      : { triggerReviewRecordSha256: prepared.triggerReviewRecordSha256 }),
     amendmentRecordSha256: prepared.amendmentRecordSha256, policyRevision: prepared.policyRevision,
     policySha256: prepared.policySha256, authoritySetDigest: prepared.authoritySetDigest,
     priorAuthoritySetDigest: prepared.authoritySetDigest, resultingAuthoritySetDigest: prepared.resultingAuthoritySetDigest,
@@ -49,7 +52,7 @@ function preparedContext(prepared) {
 }
 
 async function prepare() {
-  if (repository !== 'flair-agency/architecture-gatekeeper' || !token || !['completed-block-v1','completed-owner-decision-self-v1'].includes(triggerProfile) ||
+  if (repository !== 'flair-agency/architecture-gatekeeper' || !token || !['completed-block-v1','completed-owner-decision-self-v1','owner-initiated-self-v1'].includes(triggerProfile) ||
       !/^[a-f0-9]{40}$/.test(baseSha ?? '') || !/^[a-f0-9]{40}$/.test(bSha ?? '') || baseBranch !== 'main') fail('protected self profile, exact revisions, or GitHub token is invalid.');
   let policyBytes;
   try { policyBytes = gitBlob(baseSha, '.codex/gatekeeper/ci-policy.json'); }
@@ -80,13 +83,16 @@ async function prepare() {
     rulesetId: Number(process.env.OWNER_AMENDMENT_TAG_RULESET_ID), token });
   if (tag.status !== 'READ_BACK_OWNER_AMENDMENT_TAG') fail('exact protected tag could not be read back.');
   const embedded = parseOwnerAmendmentSemanticTagObject(tag.tag.objectBytes, { bSha, triggerProfile, tagRef });
-  const trigger = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(embedded.reviewRecordBytes));
-  const { producer: triggerProducer, expected: expectedProvenance } = selectSelfSemanticTrigger({
-    record: trigger, repository, baseSha, triggerProfile,
-  });
-  const provenance = verifyOwnerAmendmentBlockEvidence({ recordBytes: embedded.reviewRecordBytes,
-    bundleBytes: embedded.attestationBundleBytes, expected: expectedProvenance });
-  if (provenance.status !== 'VERIFIED_PRODUCER_ATTESTATION') fail(provenance.reason ?? 'trigger attestation is unverified.');
+  const ownerInitiated = triggerProfile === 'owner-initiated-self-v1';
+  let triggerProducer;
+  if (!ownerInitiated) {
+    const trigger = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(embedded.reviewRecordBytes));
+    const selected = selectSelfSemanticTrigger({ record: trigger, repository, baseSha, triggerProfile });
+    triggerProducer = selected.producer;
+    const provenance = verifyOwnerAmendmentBlockEvidence({ recordBytes: embedded.reviewRecordBytes,
+      bundleBytes: embedded.attestationBundleBytes, expected: selected.expected });
+    if (provenance.status !== 'VERIFIED_PRODUCER_ATTESTATION') fail(provenance.reason ?? 'trigger attestation is unverified.');
+  }
   const selectedTarget = git.manifest.authorities.filter(member => member.repository === 'self' &&
     member.id === authority.authorityId && member.path === authority.authorityPath);
   if (selectedTarget.length !== 1) fail('previous protected Authority Set must contain the selected self target exactly once.');
@@ -99,9 +105,9 @@ async function prepare() {
     runGit, readBlob: gitBlob });
   const resultingSet = computeOwnerAmendmentResultingAuthoritySet({ members: materialized.members,
     changes: gitChanges.changes, repository, baseSha,
-    expectedPriorDigest: triggerProfile === 'completed-owner-decision-self-v1' ? git.priorAuthoritySetDigest : undefined,
-    expectedResultingDigest: triggerProfile === 'completed-owner-decision-self-v1' ? git.resultingAuthoritySetDigest : undefined });
-  if (triggerProfile === 'completed-owner-decision-self-v1' &&
+    expectedPriorDigest: triggerProfile !== 'completed-block-v1' ? git.priorAuthoritySetDigest : undefined,
+    expectedResultingDigest: triggerProfile !== 'completed-block-v1' ? git.resultingAuthoritySetDigest : undefined });
+  if (triggerProfile !== 'completed-block-v1' &&
       (git.priorAuthoritySetDigest !== resultingSet.priorDigest || git.resultingAuthoritySetDigest !== resultingSet.resultingDigest)) {
     fail('protected OWNER_DECISION Git context lacks full Authority Set digests.');
   }
@@ -113,12 +119,14 @@ async function prepare() {
   const tagRefOid = tag.tag.objectOid;
   const tagIdentity = { tagRef, tagObjectOid: tagRefOid, observedTagRefOid: tag.observedTagRefOid };
   const validateTriggerProvenance = ({ bytes, expected }) => {
+    if (ownerInitiated) fail('owner-initiated profile has no historical trigger provenance.');
     if (!bytes.equals(embedded.reviewRecordBytes) || expected.triggerReviewRecordSha256 !== sha256(bytes)) fail('trigger record differs from exact tagged bytes.');
     return { status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER', repository, baseSha, triggerProfile,
       triggerReviewRecordSha256: sha256(bytes), workflowPath: expected.workflowPath, workflowSha: expected.workflowSha,
       workflowRef: expected.workflowRef, runId: expected.runId, runAttempt: expected.runAttempt };
   };
   const validateAmendmentRecord = ({ bytes, expected }) => {
+    if (ownerInitiated) return validateOwnerAmendmentOwnerInitiatedAmendmentRecord({ bytes, expected });
     if (triggerProfile === 'completed-owner-decision-self-v1') {
       const result = validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes, expected });
       if (result.status !== 'VERIFIED_OWNER_AMENDMENT_RECORD') fail(result.reason);
@@ -128,7 +136,8 @@ async function prepare() {
       attestationBundleSha256: sha256(embedded.attestationBundleBytes), resultingAuthoritySetDigest: resultingSet.resultingDigest });
   };
   const validateTag = ({ expected }) => ({ status: 'VERIFIED_OWNER_AMENDMENT_TAG', repository, baseSha, bSha,
-    triggerProfile, triggerReviewRecordSha256: expected.triggerReviewRecordSha256,
+    triggerProfile, ...(ownerInitiated ? { historicalTrigger: 'none' }
+      : { triggerReviewRecordSha256: expected.triggerReviewRecordSha256 }),
     amendmentRecordSha256: expected.amendmentRecordSha256, tagRef, tagObjectOid: tagRefOid, observedTagRefOid: tag.observedTagRefOid });
   const resolveProtectedInputs = () => ({ baseBranch, policyBytes, manifestBytes: git.manifestBytes, authoritySet,
     changes, diffBytes });
@@ -141,10 +150,12 @@ async function prepare() {
   const resolveProtectedSelection = () => ({ selectedProducer, selectedGatekeeper });
   const producer = createOwnerAmendmentSemanticEligibilityProducer({ resolveProtectedInputs, resolveExactGitDiff,
     resolveExactBFiles, resolveProtectedSelection, validateTriggerProvenance, validateAmendmentRecord, validateTag });
-  const prepared = producer.prepare({ repository, baseSha, bSha, baseBranch, triggerProfile, policyRevision: baseSha,
-    triggerReviewRecordBytes: embedded.reviewRecordBytes, triggerProducer, amendmentRecordBytes: embedded.amendmentRecordBytes,
+  const prepared = producer.prepare({ repository, baseSha, bSha, triggerProfile, policyRevision: baseSha,
+    ...(ownerInitiated ? { historicalTrigger: 'none' }
+      : { triggerReviewRecordBytes: embedded.reviewRecordBytes, triggerProducer }),
+    amendmentRecordBytes: embedded.amendmentRecordBytes,
     tag: tagIdentity, tagObjectBytes: tag.tag.objectBytes, producer: selectedProducer,
-    selectedProducer, gatekeeper: selectedGatekeeper, selectedGatekeeper, reviewModel: git.policy.model,
+    gatekeeper: selectedGatekeeper, reviewModel: git.policy.model,
     reviewReasoningEffort: git.policy.reasoningEffort });
   return { prepared, producer };
 }

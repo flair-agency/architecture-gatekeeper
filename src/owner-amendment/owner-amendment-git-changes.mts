@@ -19,7 +19,7 @@ export type OwnerAmendmentResultingAuthoritySet = Readonly<{
   resultingDigest: string;
   descriptors: readonly OwnerAmendmentAuthorityDescriptor[];
 }>;
-export type OwnerAmendmentGitProfile = 'completed-block-v1' | 'completed-owner-decision-self-v1';
+export type OwnerAmendmentGitProfile = 'completed-block-v1' | 'completed-owner-decision-self-v1' | 'owner-initiated-self-v1';
 export type SynchronousGitCommand = (args: string[]) => Buffer;
 export type SynchronousGitBlobReader = (revision: string, path: string) => Buffer;
 type DeriveOwnerAmendmentGitChangesCommonInput = Readonly<{
@@ -33,7 +33,7 @@ type DeriveOwnerAmendmentGitChangesCommonInput = Readonly<{
 }>;
 export type DeriveOwnerAmendmentGitChangesInput = DeriveOwnerAmendmentGitChangesCommonInput & (
   | Readonly<{ profile: 'completed-block-v1'; changedFiles?: unknown; authorityChanges?: unknown }>
-  | Readonly<{ profile: 'completed-owner-decision-self-v1'; changedFiles: unknown; authorityChanges: unknown }>
+  | Readonly<{ profile: 'completed-owner-decision-self-v1' | 'owner-initiated-self-v1'; changedFiles: unknown; authorityChanges: unknown }>
 );
 export type OwnerAmendmentAuthorityMemberInput = Readonly<{
   id: string;
@@ -53,7 +53,7 @@ export type ComputeOwnerAmendmentResultingAuthoritySetInput = Readonly<{
   expectedResultingDigest?: unknown;
 }>;
 
-const PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1']);
+const PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1', 'owner-initiated-self-v1']);
 const MAX_CHANGES = 32;
 const MAX_DIFF_BYTES = 1_048_576;
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');

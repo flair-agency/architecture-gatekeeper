@@ -141,7 +141,8 @@ function eligibilityReviewInputs({ selection, policy, trigger, tag, context }) {
   try {
     prepared = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(preparedBytes));
   } catch { fail('protected semantic preparation context is invalid.'); }
-  const preparedKeys = ['repository', 'baseSha', 'bSha', 'triggerProfile', 'triggerReviewRecordSha256',
+  const ownerInitiated = policy.triggerProfile === 'owner-initiated-self-v1';
+  const preparedKeys = ['repository', 'baseSha', 'bSha', 'triggerProfile', ownerInitiated ? 'historicalTrigger' : 'triggerReviewRecordSha256',
     'amendmentRecordSha256', 'policyRevision', 'policySha256', 'authoritySetDigest', 'priorAuthoritySetDigest', 'resultingAuthoritySetDigest',
     'authorityIds', 'changes', 'diffSha256', 'promptSha256', 'schemaSha256', 'model', 'reasoningEffort',
     'gatekeeper', 'tag', 'producer'];
@@ -153,7 +154,9 @@ function eligibilityReviewInputs({ selection, policy, trigger, tag, context }) {
       summary.schemaSha256 !== prepared.schemaSha256 || summary.model !== prepared.model ||
       summary.reasoningEffort !== prepared.reasoningEffort || prepared.repository !== selection.repository ||
       prepared.baseSha !== selection.bBaseSha || prepared.bSha !== selection.bHeadSha ||
-      prepared.triggerProfile !== policy.triggerProfile || prepared.triggerReviewRecordSha256 !== trigger.reviewRecordSha256 ||
+      prepared.triggerProfile !== policy.triggerProfile ||
+      (ownerInitiated ? prepared.historicalTrigger !== 'none' || trigger.historicalTrigger !== 'none'
+        : prepared.triggerReviewRecordSha256 !== trigger.reviewRecordSha256) ||
       prepared.amendmentRecordSha256 !== tag.amendmentRecordSha256 || prepared.policyRevision !== selection.bBaseSha ||
       prepared.policySha256 !== policy.policySha256 || prepared.authoritySetDigest !== policy.authoritySetDigest ||
       prepared.priorAuthoritySetDigest !== policy.authoritySetDigest ||
@@ -173,7 +176,8 @@ function eligibilityReviewInputs({ selection, policy, trigger, tag, context }) {
   }
   return { status: 'RESOLVED_PROTECTED_OWNER_AMENDMENT_REVIEW_INPUTS', repository: prepared.repository,
     baseSha: prepared.baseSha, bSha: prepared.bSha, triggerProfile: prepared.triggerProfile,
-    triggerReviewRecordSha256: prepared.triggerReviewRecordSha256, amendmentRecordSha256: prepared.amendmentRecordSha256,
+    ...(ownerInitiated ? { historicalTrigger: 'none' } : { triggerReviewRecordSha256: prepared.triggerReviewRecordSha256 }),
+    amendmentRecordSha256: prepared.amendmentRecordSha256,
     policySha256: prepared.policySha256, authoritySetDigest: prepared.authoritySetDigest,
     priorAuthoritySetDigest: prepared.authoritySetDigest, resultingAuthoritySetDigest: prepared.resultingAuthoritySetDigest,
     authorityIds: prepared.authorityIds, changes: prepared.changes, diffSha256: prepared.diffSha256,
@@ -233,7 +237,7 @@ async function main() {
   let producerAttempts = null;
   let tagResponse = null;
   if (selectedPolicy.ownerAmendmentGrade === 'G0') {
-    if (!['completed-block-v1', 'completed-owner-decision-self-v1'].includes(selectedPolicy.ownerAmendmentTriggerProfile)) {
+    if (!['completed-block-v1', 'completed-owner-decision-self-v1', 'owner-initiated-self-v1'].includes(selectedPolicy.ownerAmendmentTriggerProfile)) {
       fail('previous-base policy selected an unsupported trigger profile.');
     }
     producerAttempts = await inspectProducerAttempts(selection);
@@ -256,9 +260,9 @@ async function main() {
     readBlob: (revision, path) => git(['--no-replace-objects', 'show', `${revision}:${path}`]) });
   const resultingSet = computeOwnerAmendmentResultingAuthoritySet({ members: materialized.members,
     changes: exactChanges.changes, repository, baseSha: selection.bBaseSha,
-    expectedPriorDigest: context.policy.ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1' ? context.priorAuthoritySetDigest : undefined,
-    expectedResultingDigest: context.policy.ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1' ? context.resultingAuthoritySetDigest : undefined });
-  if (context.policy.ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1' &&
+    expectedPriorDigest: context.policy.ownerAmendmentTriggerProfile !== 'completed-block-v1' ? context.priorAuthoritySetDigest : undefined,
+    expectedResultingDigest: context.policy.ownerAmendmentTriggerProfile !== 'completed-block-v1' ? context.resultingAuthoritySetDigest : undefined });
+  if (context.policy.ownerAmendmentTriggerProfile !== 'completed-block-v1' &&
       (context.priorAuthoritySetDigest !== resultingSet.priorDigest || context.resultingAuthoritySetDigest !== resultingSet.resultingDigest)) {
     fail('protected OWNER_DECISION full Authority Set digests differ from exact B changes.');
   }
@@ -284,13 +288,16 @@ async function main() {
       maxPromptBytes: context.policy.ownerAmendmentMaxPromptBytes }),
     verifyTrigger: async () => { const value = await verify(); return { status: 'VERIFIED_OWNER_AMENDMENT_TRIGGER',
       repository, baseSha: selection.bBaseSha, triggerProfile: value.triggerProfile,
-      decision: value.triggerDecision,
-      reviewRecordSha256: value.reviewRecordSha256, producerWorkflowPath: '.github/workflows/self-architecture-gate.yml',
-      producerWorkflowSha: selection.bBaseSha, producerWorkflowRef: 'refs/heads/main',
-      producerRunId: value.producerRunId, producerRunAttempt: value.producerRunAttempt, provenanceVerified: true }; },
+      ...(value.triggerProfile === 'owner-initiated-self-v1' ? { historicalTrigger: value.historicalTrigger }
+        : { decision: value.triggerDecision, reviewRecordSha256: value.reviewRecordSha256,
+          producerWorkflowPath: '.github/workflows/self-architecture-gate.yml',
+          producerWorkflowSha: selection.bBaseSha, producerWorkflowRef: 'refs/heads/main',
+          producerRunId: value.producerRunId, producerRunAttempt: value.producerRunAttempt, provenanceVerified: true }) }; },
     verifyTag: async () => { const value = await verify(); return { status: 'VERIFIED_OWNER_AMENDMENT_TAG',
       repository, baseSha: selection.bBaseSha, bSha: selection.bHeadSha, triggerProfile: value.triggerProfile,
-      triggerReviewRecordSha256: value.reviewRecordSha256, amendmentRecordSha256: value.amendmentRecordSha256,
+      ...(value.triggerProfile === 'owner-initiated-self-v1' ? { historicalTrigger: value.historicalTrigger }
+        : { triggerReviewRecordSha256: value.reviewRecordSha256 }),
+      amendmentRecordSha256: value.amendmentRecordSha256,
       authorityId: value.authorityId, authorityPath: context.scope.authorityPath,
       previousAuthoritySha256: value.previousAuthoritySha256, amendedAuthoritySha256: value.proposedAuthoritySha256,
       priorAuthoritySetDigest: value.priorAuthoritySetDigest ?? resultingSet.priorDigest,

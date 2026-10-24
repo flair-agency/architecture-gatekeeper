@@ -1,3 +1,4 @@
+import { validateOwnerAmendmentOwnerInitiatedAmendmentRecord } from '../owner-amendment-owner-initiated-record.mjs';
 import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
 import { rejectDuplicateJsonKeys } from '../authority-set.mjs';
@@ -45,21 +46,26 @@ type EvidenceView = { status?: unknown; reason?: unknown; repository?: unknown; 
 type AttestationResultView = { status?: unknown; reason?: unknown; recordSha256?: unknown };
 type ErrorMessageView = { message: unknown };
 
+type HistoricalBinding =
+  | Readonly<{ historicalTrigger: 'none'; triggerDecision?: never; reviewRecordSha256?: never;
+      attestationBundleSha256?: never; producerRunId?: never; producerRunAttempt?: never }>
+  | Readonly<{ historicalTrigger?: never; triggerDecision: 'OWNER_DECISION' | 'BLOCK'; reviewRecordSha256: unknown;
+      attestationBundleSha256: unknown; producerRunId: unknown; producerRunAttempt: unknown }>;
+
 export type OwnerAmendmentMergeGroupEvidenceResult =
   | Readonly<{
       status: 'VERIFIED_OWNER_AMENDMENT_MERGE_GROUP_EVIDENCE';
       repository: unknown; baseSha: unknown; bSha: unknown; policyRevision: unknown; policySha256: string;
-      triggerProfile: unknown; triggerDecision: 'OWNER_DECISION' | 'BLOCK'; authorityId: unknown;
+      triggerProfile: unknown; authorityId: unknown;
       previousAuthoritySha256: unknown; proposedAuthoritySha256: unknown; purpose: unknown; targetValidated: true;
       priorAuthoritySetDigest: unknown; resultingAuthoritySetDigest: unknown; changes: unknown;
-      reviewRecordSha256: unknown; amendmentRecordSha256: unknown; attestationBundleSha256: unknown;
-      tagObjectOid: unknown; observedTagRefOid: unknown; producerRunId: unknown; producerRunAttempt: unknown;
+      amendmentRecordSha256: unknown; tagObjectOid: unknown; observedTagRefOid: unknown;
       reason?: never;
-    }>
+    } & HistoricalBinding>
   | Readonly<{
       status: 'INCOMPLETE'; reason: unknown;
       repository?: never; baseSha?: never; bSha?: never; policyRevision?: never; policySha256?: never;
-      triggerProfile?: never; triggerDecision?: never; authorityId?: never; previousAuthoritySha256?: never;
+      triggerProfile?: never; historicalTrigger?: never; triggerDecision?: never; authorityId?: never; previousAuthoritySha256?: never;
       proposedAuthoritySha256?: never; purpose?: never; targetValidated?: never; priorAuthoritySetDigest?: never;
       resultingAuthoritySetDigest?: never; changes?: never; reviewRecordSha256?: never; amendmentRecordSha256?: never;
       attestationBundleSha256?: never; tagObjectOid?: never; observedTagRefOid?: never;
@@ -106,7 +112,7 @@ function canonical(value: unknown): unknown {
 }
 
 function parseTagEnvelope(tag: unknown, bSha: unknown): {
-  triggerProfile: unknown; reviewRecordBytes: Buffer; attestationBundleBytes: Buffer; amendmentRecordBytes: Buffer;
+  triggerProfile: unknown; historicalTrigger?: 'none'; reviewRecordBytes?: Buffer; attestationBundleBytes?: Buffer; amendmentRecordBytes: Buffer;
 } {
   const bytes = (tag as TagReadbackView | null | undefined)?.tag?.objectBytes;
   if (!Buffer.isBuffer(bytes) || bytes.length > 262_144) fail('exact protected tag bytes are absent or oversized.');
@@ -122,12 +128,13 @@ function parseTagEnvelope(tag: unknown, bSha: unknown): {
   catch { fail('tag evidence envelope JSON is invalid.'); }
   const block = (envelope as JsonRecord | null | undefined)?.version === 2 && (envelope as JsonRecord | null | undefined)?.triggerProfile === undefined;
   const ownerDecision = (envelope as JsonRecord | null | undefined)?.version === 3 && (envelope as JsonRecord | null | undefined)?.triggerProfile === 'completed-owner-decision-self-v1';
-  const keys = block
+  const initiated = (envelope as JsonRecord | null | undefined)?.version === 4 && (envelope as JsonRecord | null | undefined)?.triggerProfile === 'owner-initiated-self-v1' && (envelope as JsonRecord | null | undefined)?.historicalTrigger === 'none';
+  const keys = initiated ? ['version', 'profile', 'triggerProfile', 'historicalTrigger', 'bSha', 'amendmentRecordBase64', 'amendmentRecordSha256'] : block
     ? ['version', 'profile', 'bSha', 'reviewRecordBase64', 'reviewRecordSha256', 'attestationBundleBase64', 'attestationBundleSha256', 'amendmentRecordBase64', 'amendmentRecordSha256']
     : ['version', 'profile', 'triggerProfile', 'bSha', 'reviewRecordBase64', 'reviewRecordSha256', 'attestationBundleBase64', 'attestationBundleSha256', 'amendmentRecordBase64', 'amendmentRecordSha256'];
   if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope) || Object.keys(envelope).length !== keys.length ||
       keys.some(key => !Object.hasOwn(envelope as object, key)) || JSON.stringify(canonical(envelope)) !== json ||
-      (!block && !ownerDecision) || (envelope as JsonRecord).profile !== 'self-g0' || (envelope as JsonRecord).bSha !== bSha) {
+      (!block && !ownerDecision && !initiated) || (envelope as JsonRecord).profile !== 'self-g0' || (envelope as JsonRecord).bSha !== bSha) {
     fail('tag evidence envelope is noncanonical or does not identify exact B.');
   }
   const decode = (encoded: unknown, digest: unknown, label: string, maximum: number): Buffer => {
@@ -136,6 +143,8 @@ function parseTagEnvelope(tag: unknown, bSha: unknown): {
     if (!data.length || data.length > maximum || data.toString('base64') !== encoded || !SHA256.test((digest ?? '') as string) || hash(data) !== digest) fail(`${label} bytes or digest are invalid.`);
     return data;
   };
+  if (initiated) return { triggerProfile: 'owner-initiated-self-v1', historicalTrigger: 'none',
+    amendmentRecordBytes: decode((envelope as JsonRecord).amendmentRecordBase64, (envelope as JsonRecord).amendmentRecordSha256, 'AmendmentRecord', 8_192) };
   return { triggerProfile: block ? 'completed-block-v1' : (envelope as JsonRecord).triggerProfile,
     reviewRecordBytes: decode((envelope as JsonRecord).reviewRecordBase64, (envelope as JsonRecord).reviewRecordSha256, 'ReviewRecord', 131_072),
     attestationBundleBytes: decode((envelope as JsonRecord).attestationBundleBase64, (envelope as JsonRecord).attestationBundleSha256, 'attestation bundle', 65_536),
@@ -145,7 +154,7 @@ function parseTagEnvelope(tag: unknown, bSha: unknown): {
 function trustedContextFromGit(context: unknown, verifiedChanges: unknown): unknown {
   const bytes = (context as GitContextView | null | undefined)?.authorityBytes;
   if (!Buffer.isBuffer((context as GitContextView | null | undefined)?.policyBytes) || !Buffer.isBuffer(bytes?.base) || !Buffer.isBuffer(bytes?.head)) fail('resolved Git context lacks exact policy or authority bytes.');
-  const decision = (context as GitContextView).policy!.ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1';
+  const decision = ['completed-owner-decision-self-v1', 'owner-initiated-self-v1'].includes((context as GitContextView).policy!.ownerAmendmentTriggerProfile as string);
   const changes = decision ? (verifiedChanges as { map: (callback: (change: VerifiedChangeView) => unknown) => unknown } | null | undefined)?.map(change => Object.freeze({ path: change.path,
     beforeSha256: hash(change.beforeBytes as Uint8Array), afterSha256: hash(change.afterBytes as Uint8Array) })) : undefined;
   return Object.freeze({ repository: (context as GitContextView).repository, baseSha: (context as GitContextView).baseSha, bSha: (context as GitContextView).headSha,
@@ -191,7 +200,7 @@ export async function composeOwnerAmendmentMergeGroupEvidence({ repository, base
     if (!SHA1.test((baseSha ?? '') as string) || !SHA1.test((bSha ?? '') as string) || baseSha === bSha) fail('exact protected base and B commits are required.');
     if (tagRef !== `${tagNamespace}/${bSha}`) fail('tag ref does not identify exact B.');
     const gitContext = resolveGitContext({ repository, baseSha, headSha: bSha, runGit });
-    const verifiedGitChanges = (gitContext as GitContextView).policy?.ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1'
+    const verifiedGitChanges = ['completed-owner-decision-self-v1', 'owner-initiated-self-v1'].includes((gitContext as GitContextView).policy?.ownerAmendmentTriggerProfile as string)
       ? deriveOwnerAmendmentGitChanges({ profile: (gitContext as GitContextView).policy!.ownerAmendmentTriggerProfile as DeriveOwnerAmendmentGitChangesInput['profile'], repository: repository as string, baseSha: baseSha as string, bSha: bSha as string,
         targetPath: (gitContext as GitContextView).scope?.authorityPath as string, selectedAuthorityBytes: (gitContext as GitContextView).authorityBytes,
         changedFiles: (gitContext as GitContextView).changedFiles, authorityChanges: (gitContext as GitContextView).authorityChanges, runGit: runGit as SynchronousGitCommand,
@@ -202,7 +211,31 @@ export async function composeOwnerAmendmentMergeGroupEvidence({ repository, base
     if ((tag as TagReadbackView).status !== 'READ_BACK_OWNER_AMENDMENT_TAG' || (tag as TagReadbackView).repository !== repository || (tag as TagReadbackView).bSha !== bSha || (tag as TagReadbackView).tagRef !== tagRef) fail('protected tag readback does not bind this repository and exact B.');
     const tagEnvelope = { headSha: bSha, tag: (tag as TagReadbackView).tag, tagRef, observedTagRefOid: (tag as TagReadbackView).observedTagRefOid,
       ...parseTagEnvelope(tag, bSha) };
-    const producerContext = producerFromRecord(tagEnvelope.reviewRecordBytes,
+    if (tagEnvelope.triggerProfile !== (trustedContext as TrustedContextView).policy!.triggerProfile) fail('tag envelope trigger profile differs from previous protected policy.');
+    if (tagEnvelope.triggerProfile === 'owner-initiated-self-v1') {
+      const context = trustedContext as TrustedContextView & { changes: unknown; priorAuthoritySetDigest: unknown; resultingAuthoritySetDigest: unknown };
+      if (context.policy!.grade !== 'G0' || context.policy!.scope !== 'authority-only' ||
+          context.repository !== repository || context.baseSha !== baseSha || context.bSha !== bSha || context.policyRevision !== baseSha) {
+        fail('owner-initiated evidence does not bind the previous protected G0 authority-only selection.');
+      }
+      if ((tag as TagReadbackView).observedTagRefOid !== (tag as TagReadbackView).tag?.objectOid ||
+          !SHA1.test(((tag as TagReadbackView).observedTagRefOid ?? '') as string)) fail('protected tag object and live ref differ.');
+      const record = validateOwnerAmendmentOwnerInitiatedAmendmentRecord({ bytes: tagEnvelope.amendmentRecordBytes,
+        expected: { repository, baseSha, bSha, policyRevision: baseSha, triggerProfile: 'owner-initiated-self-v1', historicalTrigger: 'none',
+          authoritySetDigest: context.priorAuthoritySetDigest, resultingAuthoritySetDigest: context.resultingAuthoritySetDigest,
+          authorityId: context.authority!.id, authorityPath: context.authority!.path, changes: context.changes } });
+      if (record.status !== 'VERIFIED_OWNER_AMENDMENT_RECORD') fail(record.reason ?? 'owner-initiated AmendmentRecord did not verify.');
+      const amendment = JSON.parse(decoder.decode(tagEnvelope.amendmentRecordBytes)) as JsonRecord;
+      return Object.freeze({ status: 'VERIFIED_OWNER_AMENDMENT_MERGE_GROUP_EVIDENCE', repository, baseSha, bSha,
+        policyRevision: baseSha, policySha256: hash((gitContext as GitContextView).policyBytes as Uint8Array),
+        triggerProfile: 'owner-initiated-self-v1', historicalTrigger: 'none', authorityId: context.authority!.id,
+        previousAuthoritySha256: context.authority!.previousSha256, proposedAuthoritySha256: context.authority!.newSha256,
+        purpose: amendment.purpose, targetValidated: true, priorAuthoritySetDigest: context.priorAuthoritySetDigest,
+        resultingAuthoritySetDigest: context.resultingAuthoritySetDigest, changes: context.changes,
+        amendmentRecordSha256: hash(tagEnvelope.amendmentRecordBytes), tagObjectOid: (tag as TagReadbackView).tag!.objectOid,
+        observedTagRefOid: (tag as TagReadbackView).observedTagRefOid });
+    }
+    const producerContext = producerFromRecord(tagEnvelope.reviewRecordBytes!,
       { ...(trustedContext as object), policySha256: hash((gitContext as GitContextView).policyBytes as Uint8Array) });
     if ((tagEnvelope as TagEnvelopeView).triggerProfile !== (trustedContext as TrustedContextView).policy!.triggerProfile) fail('tag envelope trigger profile differs from previous protected policy.');
     if ((trustedContext as TrustedContextView).policy!.triggerProfile === 'completed-owner-decision-self-v1') {
@@ -223,7 +256,7 @@ export async function composeOwnerAmendmentMergeGroupEvidence({ repository, base
     const amendmentRecord = JSON.parse(decoder.decode((tagEnvelope as TagEnvelopeView).amendmentRecordBytes as Uint8Array)) as unknown;
     return Object.freeze({ status: 'VERIFIED_OWNER_AMENDMENT_MERGE_GROUP_EVIDENCE', repository, baseSha, bSha,
       policyRevision: baseSha, policySha256: hash((gitContext as GitContextView).policyBytes as Uint8Array),
-      triggerProfile: (trustedContext as TrustedContextView).policy!.triggerProfile, triggerDecision: (trustedContext as TrustedContextView).policy!.triggerProfile === 'completed-owner-decision-self-v1' ? 'OWNER_DECISION' : 'BLOCK',
+      triggerProfile: (trustedContext as TrustedContextView).policy!.triggerProfile, triggerDecision: (trustedContext as TrustedContextView).policy!.triggerProfile === 'completed-owner-decision-self-v1' ? 'OWNER_DECISION' as const : 'BLOCK' as const,
       authorityId: (evidence as EvidenceView).authorityId ?? (trustedContext as TrustedContextView).authority!.id, previousAuthoritySha256: (evidence as EvidenceView).previousAuthoritySha256 ?? (trustedContext as TrustedContextView).authority!.previousSha256,
       proposedAuthoritySha256: (evidence as EvidenceView).proposedAuthoritySha256 ?? (trustedContext as TrustedContextView).authority!.newSha256,
       purpose: (evidence as EvidenceView).purpose ?? (amendmentRecord as JsonRecord).purpose, targetValidated: true,

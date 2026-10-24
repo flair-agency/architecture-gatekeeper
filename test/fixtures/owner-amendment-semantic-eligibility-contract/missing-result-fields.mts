@@ -7,8 +7,8 @@ type ProtectedChange = ProtectedInputs['changes'][number];
 type ProtectedSelection = ReturnType<Dependencies['resolveProtectedSelection']>;
 type SelectedGatekeeper = ProtectedSelection['selectedGatekeeper'];
 type GatekeeperPackage = NonNullable<SelectedGatekeeper['package']>;
-type TriggerResult = ReturnType<Dependencies['validateTriggerProvenance']>;
-type AmendmentResult = ReturnType<Dependencies['validateAmendmentRecord']>;
+type TriggerResult = ReturnType<NonNullable<Dependencies['validateTriggerProvenance']>>;
+type AmendmentResult = Exclude<ReturnType<Dependencies['validateAmendmentRecord']>, { triggerProfile: 'owner-initiated-self-v1' }>;
 type SelfAmendment = Extract<AmendmentResult, { triggerProfile: 'completed-owner-decision-self-v1' }>;
 type TagResult = ReturnType<Dependencies['validateTag']>;
 
@@ -318,3 +318,16 @@ const { authorityPath: omittedAuthorityPathFromSelfAmendment, ...withoutAuthorit
 void omittedAuthorityPathFromSelfAmendment;
 // authorityPath is required for the self-amendment result profile.
 const missingAuthorityPathFromSelfAmendment: SelfAmendment = withoutAuthorityPathFromSelfAmendment;
+
+// The new profile requires explicit absence and retains the selected-target binding.
+type OwnerInitiatedAmendment = Extract<ReturnType<Dependencies['validateAmendmentRecord']>, { triggerProfile: 'owner-initiated-self-v1' }>;
+declare const ownerInitiated: OwnerInitiatedAmendment;
+const { historicalTrigger: omittedhistoricalTrigger, ...withouthistoricalTrigger } = ownerInitiated;
+void omittedhistoricalTrigger;
+const missinghistoricalTrigger: OwnerInitiatedAmendment = withouthistoricalTrigger;
+const { authorityId: omittedauthorityId, ...withoutauthorityId } = ownerInitiated;
+void omittedauthorityId;
+const missingauthorityId: OwnerInitiatedAmendment = withoutauthorityId;
+const { authorityPath: omittedauthorityPath, ...withoutauthorityPath } = ownerInitiated;
+void omittedauthorityPath;
+const missingauthorityPath: OwnerInitiatedAmendment = withoutauthorityPath;

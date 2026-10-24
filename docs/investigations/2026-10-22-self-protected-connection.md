@@ -90,3 +90,57 @@ consumer behavior is unchanged and is not routed into the self amendment path.
 trigger cases, protected merge, Canonical Readback, fresh A review when needed,
 and subsequent ordinary development succeed without administrator exception.
 B0 and local/synthetic fixtures do not satisfy those conditions or v0.6.0 final.
+
+## Owner-initiated extension after #633
+
+#633 was adopted at `1b3e67858ae1e9b4ba8602622e5baecb95321eef` by the
+Owner-authorized one-time external T2 exception. That event is neither T0/T7
+bootstrap nor ordinary OWNER_AMENDMENT acceptance, and does not complete #211.
+The implementation adds the already adopted `owner-initiated-self-v1` selection;
+it does not change the repository's selected Policy or activate reporting.
+
+The new record and version 4 tag explicitly use `historicalTrigger: "none"`.
+No historical ReviewRecord, attestation bundle or invented change A is supplied.
+Semantic decision version 1 retains its seven checks with the new profile's
+actual schema bytes/digest. The version 2 eligibility receipt replaces the
+historical ReviewRecord digest with the absence marker. The protected producer
+still attests the eligibility receipt; PR and Queue verify that provenance.
+Completed BLOCK/OWNER_DECISION record, tag, receipt and schema formats remain
+unchanged. An absent historical trigger is not an exemption from exact B,
+old Policy/complete Set, selected target, semantic eligibility, tag protection,
+Queue adoption or Canonical Readback.
+
+After this implementation is adopted, a separately approved configuration-only
+PR can select `owner-initiated-self-v1` in the existing enforced v2 (or supported
+v6 Codex) Policy. Keep the selected target, complete Set and limits; do not bundle
+Authority changes into that configuration PR. B must be prepared against the
+subsequently adopted Policy, not a candidate's own selection.
+
+For that future selected route, the source-checkout handoff command is:
+
+```sh
+GITHUB_REPOSITORY=flair-agency/architecture-gatekeeper \
+AMENDMENT_BASE_SHA=<adopted-protected-base> \
+AMENDMENT_B_SHA=<exact-B-head> \
+AMENDMENT_PURPOSE='<Owner-authorized revision purpose>' \
+OWNER_AMENDMENT_TAG_RULESET_ID=<existing-protected-tag-ruleset-id> \
+node scripts/owner-amendment-owner-initiated-handoff.mjs
+```
+
+Run from an adopted checkout with locked dependencies/build and `GH_TOKEN`
+supplied through the existing authorized operator environment. This command
+writes the exact-B annotated tag and reads it back; it checks live main against
+the supplied base first. Do not invoke it before approval for that operation.
+Its result is evidence transport, not owner identity verification or acceptance.
+No new package command, credential, workflow or automatic activation is added.
+
+The remaining order is code adoption, prior-Policy selection, then the separately
+approved shadow/required-check/Queue sequence above. The existing K tag guard is
+retained, including for the new profile. The attempt classifier recognizes the
+new preselection so the existing semantic signer can run; recognition never
+makes K accept a tagged amendment. After host commissioning, rebase and prepare
+an independently approved B (for example #632), perform normal N/Queue adoption
+and Readback, then verify subsequent ordinary C. No additional exception is part
+of this plan. Local tests use real Git objects and production CLI composition
+with synthetic external API/attestation/model responses; they are not hosted E2E
+or proof of through-transition host protection.

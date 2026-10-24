@@ -138,3 +138,16 @@ test('tag reader accepts immediate, Promise and minimal thenable responses', asy
     assert.deepEqual(seen[0], seen[1]);
   }
 });
+
+
+test('owner-initiated preselection reaches semantic scheduling while existing K tag guard still rejects', async () => {
+  const selected = structuredClone(policy);
+  selected.branches.main.ownerAmendment.triggerProfile = 'owner-initiated-self-v1';
+  const input = { ...context, triggerProfile: 'owner-initiated-self-v1',
+    policyBytes: Buffer.from(JSON.stringify(selected)),
+    readTagRef: async request => ({ status: 200, requestedUrl: request.expectedUrl }) };
+  const classified = await classifyOwnerAmendmentTagAttempt(input);
+  assert.equal(classified.attempted, true);
+  await assert.rejects(assertOwnerAmendmentTagAbsentAtAcceptance(input), /tag is present at final acceptance/);
+  await assert.rejects(classifyOwnerAmendmentTagAttempt({ ...input, policyBytes }), /does not select the exact/);
+});

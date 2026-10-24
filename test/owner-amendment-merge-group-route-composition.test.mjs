@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { buildOwnerAmendmentBlockRecord } from '../dist/owner-amendment-block-record.mjs';
 import { buildOwnerAmendmentOwnerDecisionRecord } from '../dist/owner-amendment-owner-decision-record.mjs';
 import { validateOwnerAmendmentOwnerDecisionAmendmentRecord } from '../dist/owner-amendment-owner-decision-amendment-record.mjs';
+import { buildOwnerAmendmentOwnerInitiatedAmendmentRecord, validateOwnerAmendmentOwnerInitiatedAmendmentRecord } from '../dist/owner-amendment-owner-initiated-record.mjs';
 import { orchestrateOwnerAmendmentBlockHandoff } from '../dist/owner-amendment-block-handoff-orchestrator.mjs';
 import { handoffOwnerAmendmentOwnerDecision } from '../dist/owner-amendment-owner-decision-handoff.mjs';
 import { discoverOwnerAmendmentBlockArtifact } from '../dist/owner-amendment-artifact-discovery.mjs';
@@ -264,7 +265,7 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false,
       evidenceProducer: 'github-actions-attestation', tagNamespace, maxPromptBytes: 350_000 },
   } } };
   let members = [{ id: 'architecture-contract', repository: 'self', revision: 'authority-revision', path: 'docs/architecture.md' }];
-  if (profile === 'completed-owner-decision-self-v1') members.push({ id: 'ownership-charter', repository: 'self',
+  if (profile !== 'completed-block-v1') members.push({ id: 'ownership-charter', repository: 'self',
     revision: 'authority-revision', path: 'docs/ownership.md' });
   for (let index = members.length; index < 6; index++) members.push({ id: `authority-${index}`, repository: 'self',
     revision: 'authority-revision', path: `docs/authority-${index}.md` });
@@ -319,7 +320,7 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false,
   if (ordinary) put(repoPath, 'ordinary.txt', Buffer.from('ordinary code change\n'));
   else {
     put(repoPath, 'docs/architecture.md', newArchitecture);
-    if (profile === 'completed-owner-decision-self-v1' && !currentSelfCycle) put(repoPath, 'docs/ownership.md', newOwnership);
+    if (profile !== 'completed-block-v1' && !currentSelfCycle) put(repoPath, 'docs/ownership.md', newOwnership);
   }
   const bSha = commit(repoPath, candidateOnlyOptIn || previousPolicyLocalOnly ? 'candidate policy opt-in B' : 'authority-only B');
   const groupCommit = git(repoPath, ['commit-tree', `${bSha}^{tree}`, '-p', baseSha, '-p', bSha, '-m', 'merge group']);
@@ -399,6 +400,7 @@ function eligibilityDecision(prepared) {
 
 function makeSemanticPipeline(fixture, resolved, trigger, evidence, api, gitChanges) {
   const profile = fixture.profile;
+  const ownerInitiated = profile === 'owner-initiated-self-v1';
   const manifest = resolved.manifest;
   const policyBytes = Buffer.from(resolved.policyBytes), manifestBytes = Buffer.from(resolved.manifestBytes);
   const members = manifest.authorities.map(member => {
@@ -432,7 +434,7 @@ function makeSemanticPipeline(fixture, resolved, trigger, evidence, api, gitChan
         workflowPath: expected.workflowPath, workflowSha: expected.workflowSha, workflowRef: expected.workflowRef,
         runId: expected.runId, runAttempt: expected.runAttempt };
     },
-    validateAmendmentRecord: input => profile === 'completed-block-v1'
+    validateAmendmentRecord: input => ownerInitiated ? validateOwnerAmendmentOwnerInitiatedAmendmentRecord(input) : profile === 'completed-block-v1'
       ? validateOwnerAmendmentBlockSemanticRecord({ bytes: input.bytes,
         expected: { ...input.expected, changes: input.expected.changes }, repository, baseSha: fixture.baseSha,
         bSha: fixture.bSha, triggerProfile: profile,
@@ -444,10 +446,10 @@ function makeSemanticPipeline(fixture, resolved, trigger, evidence, api, gitChan
       const parsed = parseOwnerAmendmentSemanticTagObject(tagObjectBytes, { bSha: fixture.bSha,
         triggerProfile: profile, tagRef: expected.tagRef });
       const amendmentExpected = { repository, baseSha: fixture.baseSha, bSha: fixture.bSha, policyRevision: fixture.baseSha,
-        triggerProfile: profile, triggerReviewRecordSha256: expected.triggerReviewRecordSha256,
+        triggerProfile: profile, ...(ownerInitiated ? { historicalTrigger: 'none' } : { triggerReviewRecordSha256: expected.triggerReviewRecordSha256 }),
         authoritySetDigest: authoritySet.digest, resultingAuthoritySetDigest: evidence.resultingAuthoritySetDigest,
         changes: changes.map(change => ({ path: change.path, beforeSha256: hash(change.beforeBytes), afterSha256: hash(change.afterBytes) })) };
-      if (profile === 'completed-owner-decision-self-v1') {
+      if (profile !== 'completed-block-v1') {
         amendmentExpected.authorityId = resolved.scope.authorityId;
         amendmentExpected.authorityPath = resolved.scope.authorityPath;
       }
@@ -455,21 +457,21 @@ function makeSemanticPipeline(fixture, resolved, trigger, evidence, api, gitChan
         expected: amendmentExpected });
       assert.equal(amendment.status, 'VERIFIED_OWNER_AMENDMENT_RECORD');
       return { status: 'VERIFIED_OWNER_AMENDMENT_TAG', repository, baseSha: fixture.baseSha,
-        bSha: fixture.bSha, triggerProfile: profile, triggerReviewRecordSha256: expected.triggerReviewRecordSha256,
+        bSha: fixture.bSha, triggerProfile: profile, ...(ownerInitiated ? { historicalTrigger: 'none' } : { triggerReviewRecordSha256: expected.triggerReviewRecordSha256 }),
         amendmentRecordSha256: hash(parsed.amendmentRecordBytes), tagRef: expected.tagRef,
         tagObjectOid: expected.tagObjectOid, observedTagRefOid: expected.observedTagRefOid };
     },
   };
   const semantic = createOwnerAmendmentSemanticEligibilityProducer(validators);
   const prepared = semantic.prepare({ repository, baseSha: fixture.baseSha, bSha: fixture.bSha,
-    triggerProfile: profile, policyRevision: fixture.baseSha, policyBytes, manifestBytes, authoritySet,
-    changes, diffBytes: gitChanges.diffBytes, triggerReviewRecordBytes: trigger.recordBytes,
-    triggerProducer: { workflowPath, workflowSha: fixture.baseSha, workflowRef: 'refs/heads/main',
-      runId: '101', runAttempt: '2', jobId: profile === 'completed-block-v1' ? 'block' : 'owner decision' },
+    triggerProfile: profile, policyRevision: fixture.baseSha,
+    ...(ownerInitiated ? { historicalTrigger: 'none' } : { triggerReviewRecordBytes: trigger.recordBytes,
+      triggerProducer: { workflowPath, workflowSha: fixture.baseSha, workflowRef: 'refs/heads/main',
+        runId: '101', runAttempt: '2', jobId: profile === 'completed-block-v1' ? 'block' : 'owner decision' } }),
     amendmentRecordBytes: parseOwnerAmendmentSemanticTagObject(tagObjectBytes, { bSha: fixture.bSha,
       triggerProfile: profile, tagRef: tag.tagRef }).amendmentRecordBytes,
-    tag, tagObjectBytes, producer: producerIdentity, selectedProducer: producerIdentity,
-    gatekeeper, selectedGatekeeper: gatekeeper, reviewModel: resolved.policy.model,
+    tag, tagObjectBytes, producer: producerIdentity,
+    gatekeeper, reviewModel: resolved.policy.model,
     reviewReasoningEffort: resolved.policy.reasoningEffort });
   const rawDecision = eligibilityDecision(prepared);
   const runner = realpathSync(mkdtempSync(join(tmpdir(), 'agk-semantic-output-')));
@@ -488,7 +490,8 @@ function makeSemanticPipeline(fixture, resolved, trigger, evidence, api, gitChan
 // Only external GitHub/gh responses are synthetic; no model or cryptographic
 // verification runs, and this does not prove live host enforcement or adoption.
 async function exerciseProductionGate(fixture, api, event, receiptBytes) {
-  const expectedTriggerDecision = fixture.profile === 'completed-block-v1' ? 'BLOCK' : 'OWNER_DECISION';
+  const ownerInitiated = fixture.profile === 'owner-initiated-self-v1';
+  const expectedTriggerDecision = ownerInitiated ? undefined : fixture.profile === 'completed-block-v1' ? 'BLOCK' : 'OWNER_DECISION';
   const temporary = mkdtempSync(join(tmpdir(), 'agk-production-gate-'));
   try {
     const tag = api.selectedTag();
@@ -563,6 +566,10 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     const result = JSON.parse(output.slice(output.indexOf(': ') + 2));
     assert.equal(result.status, 'VERIFIED_OWNER_AMENDMENT_G0_FOR_TRANSITION');
     assert.equal(result.triggerDecision, expectedTriggerDecision);
+    if (ownerInitiated) {
+      assert.equal(result.historicalTrigger, 'none');
+      assert.equal(Object.hasOwn(result, 'triggerReviewRecordSha256'), false);
+    }
     assert.equal(result.adoption, 'pending');
     assert.equal(result.canonical, 'pending');
     assert.equal(result.bSha, fixture.bSha);
@@ -571,7 +578,8 @@ if (args[0] === 'api' && args[1] === '--include' && args[2] === ${JSON.stringify
     assert.equal(prepared.bSha, fixture.bSha);
     const trace = readFileSync(tracePath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
     assert.ok(trace.some(item => item.gh?.[0] === 'api'), 'nested production prepare executed gh preflight');
-    assert.ok(trace.filter(item => item.gh?.[0] === 'attestation').length >= 3, 'trigger, nested prepare and eligibility provenance ran');
+    if (ownerInitiated) assert.equal(trace.filter(item => item.gh?.[0] === 'attestation').length, 1, 'only eligibility producer provenance runs; no historical trigger exists');
+    else assert.ok(trace.filter(item => item.gh?.[0] === 'attestation').length >= 3, 'trigger, nested prepare and eligibility provenance ran');
     assert.ok(trace.some(item => item.fetch === `${prefix}/actions/artifacts/555/zip`), 'eligibility artifact downloaded');
 
     // Exercise failures through the production child CLI. Each case starts
@@ -1144,3 +1152,59 @@ for (const profile of ['completed-block-v1', 'completed-owner-decision-self-v1']
     await exerciseCandidateOnlyOptInGate(fixture, api, event, 'enforced', true);
   });
 }
+
+
+test('owner-initiated exact Git B reaches production Queue verification without a historical trigger', async t => {
+  const profile = 'owner-initiated-self-v1';
+  const fixture = makeRepo(profile, { includeRuntime: true });
+  t.after(fixture.cleanup);
+  const resolved = resolveOwnerAmendmentHandoffGitContext({ repository, baseSha: fixture.baseSha,
+    headSha: fixture.bSha, runGit: fixture.runGit });
+  const materialized = await materializeAuthoritySet({ manifestBytes: resolved.manifestBytes,
+    limits: resolved.limits, selfRepository: repository, selfRoot: fixture.repoPath, authorityRevision: fixture.baseSha });
+  const authority = { version: 1, selfRepository: repository, authorityRevision: fixture.baseSha,
+    manifestSha256: materialized.manifestSha256, setDigest: materialized.setDigest,
+    members: materialized.members.map(({ content, ...member }) => member) };
+  assert.equal(authority.members.length, 6);
+  const built = buildOwnerAmendmentOwnerInitiatedAmendmentRecord({ authority, repository,
+    baseSha: fixture.baseSha, bSha: fixture.bSha, authorityId: resolved.scope.authorityId,
+    authorityPath: resolved.scope.authorityPath, previousAuthorityBytes: resolved.authorityBytes.base,
+    amendedAuthorityBytes: resolved.authorityBytes.head, authorityChanges: resolved.authorityChanges,
+    priorAuthoritySetDigest: resolved.priorAuthoritySetDigest, resultingAuthoritySetDigest: resolved.resultingAuthoritySetDigest,
+    purpose: 'Owner revises the existing architecture decision and its ownership wording.' });
+  // Shared transport fixture has unused historical endpoints; no trigger record
+  // or model response is requested or fabricated for this profile.
+  const api = apiFixture({ ...fixture, triggerRecordBytes: Buffer.from('{}'), bundleBytes: Buffer.from('{}') });
+  const envelope = { version: 4, profile: 'self-g0', triggerProfile: profile, historicalTrigger: 'none',
+    bSha: fixture.bSha, amendmentRecordBase64: built.bytes.toString('base64'), amendmentRecordSha256: hash(built.bytes) };
+  const tagName = `${tagNamespace.slice('refs/tags/'.length)}/${fixture.bSha}`;
+  const tagged = await (await api.fetchImpl(`https://api.github.com/repos/${repository}/git/tags`, {
+    method: 'POST', body: JSON.stringify({ object: fixture.bSha, type: 'commit', tag: tagName,
+      tagger, message: canonicalBytes(envelope).toString('utf8') }),
+  })).json();
+  await api.fetchImpl(`https://api.github.com/repos/${repository}/git/refs`, { method: 'POST',
+    body: JSON.stringify({ ref: `refs/tags/${tagName}`, sha: tagged.sha }) });
+  const evidence = await composeOwnerAmendmentMergeGroupEvidence({ repository, baseSha: fixture.baseSha,
+    bSha: fixture.bSha, runGit: fixture.runGit, tagNamespace, tagRef: `${tagNamespace}/${fixture.bSha}`,
+    rulesetId: tagRulesetId, token: 'fixture-token', fetchImpl: api.fetchImpl, readTagObject: api.readTagObject,
+    runGh: () => { throw new Error('Historical trigger attestation must not be requested.'); } });
+  assert.equal(evidence.status, 'VERIFIED_OWNER_AMENDMENT_MERGE_GROUP_EVIDENCE', evidence.reason);
+  assert.equal(evidence.historicalTrigger, 'none');
+  assert.equal(Object.hasOwn(evidence, 'reviewRecordSha256'), false);
+  const gitChanges = deriveOwnerAmendmentGitChanges({ profile, repository, baseSha: fixture.baseSha,
+    bSha: fixture.bSha, targetPath: resolved.scope.authorityPath, selectedAuthorityBytes: resolved.authorityBytes,
+    changedFiles: resolved.changedFiles, authorityChanges: resolved.authorityChanges, runGit: fixture.runGit,
+    readBlob: (revision, path) => fixture.runGit(['--no-replace-objects', 'show', `${revision}:${path}`]) });
+  const pipeline = makeSemanticPipeline(fixture, resolved, null, evidence, api, gitChanges);
+  assert.equal(pipeline.completed.receipt.version, 2);
+  assert.equal(pipeline.completed.receipt.historicalTrigger, 'none');
+  const receiptBytes = pipeline.completed.receiptBytes;
+  const zip = makeZip([{ name: 'eligibility-receipt.json', bytes: receiptBytes },
+    { name: 'attestation-bundle.json', bytes: Buffer.from('{"synthetic":true}\n') }]);
+  api.setEligibilityZip(zip, { id: 555, name: `owner-amendment-eligibility-${fixture.baseSha}-${fixture.bSha}-202-1`,
+    expired: false, size_in_bytes: zip.length, digest: `sha256:${hash(zip)}`, expires_at: '2099-09-30T10:00:00Z',
+    workflow_run: { id: 202, repository_id: api.repositoryId, head_repository_id: api.repositoryId, head_sha: fixture.baseSha } });
+  const event = { action: 'checks_requested', repository: { full_name: repository }, merge_group: {
+    base_ref: 'refs/heads/main', base_sha: fixture.baseSha, head_sha: fixture.groupSha } };
+  await exerciseProductionGate(fixture, api, event, receiptBytes);
+});

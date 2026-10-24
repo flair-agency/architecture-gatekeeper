@@ -85,3 +85,25 @@ test('completed BLOCK validates a multi-member prior set and retains its one-tar
   assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid,
     manifest: multiManifest, changedFiles: [{ path: 'docs/security.md', status: 'modified' }] }), /exactly the selected/);
 });
+
+test('owner-initiated permits multiple changed members from the previous set while requiring the selected target', () => {
+  const otherPath = 'docs/security.md';
+  const multiManifest = { version: 1, authorities: [
+    ...manifest.authorities,
+    { id: 'security-contract', repository: 'self', revision: 'authority-revision', path: otherPath },
+    { id: 'upstream-contract', repository: 'example/authority', revision: 'f'.repeat(40), path: 'docs/upstream.md' },
+  ] };
+  const ownerDecisionPolicy = { ...policy, ownerAmendmentTriggerProfile: 'owner-initiated-self-v1' };
+  const changedFiles = [{ path, status: 'modified' }, { path: otherPath, status: 'modified' }];
+  const result = inspectOwnerAmendmentSelfScope({ ...valid, policy: ownerDecisionPolicy,
+    manifest: multiManifest, changedFiles });
+  assert.equal(result.authorityPath, path);
+  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid, policy: ownerDecisionPolicy,
+    manifest: multiManifest, changedFiles: [{ path: otherPath, status: 'modified' }] }), /selected target/);
+  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid, policy: ownerDecisionPolicy,
+    manifest: multiManifest, changedFiles: [...changedFiles, { path: 'src/implementation.mjs', status: 'modified' }] }), /previous self authority/);
+  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid, policy: ownerDecisionPolicy,
+    manifest: multiManifest, changedFiles: [...changedFiles, { path: 'docs/upstream.md', status: 'modified' }] }), /previous self authority/);
+  assert.throws(() => inspectOwnerAmendmentSelfScope({ ...valid, policy: ownerDecisionPolicy,
+    manifest: multiManifest, changedFiles: [...changedFiles, { path: otherPath, status: 'modified' }] }), /previous self authority/);
+});

@@ -153,7 +153,7 @@ async function validateAmendmentEligibility(env, context) {
       env.AGK_AMENDMENT_ELIGIBILITY !== 'ELIGIBLE' || !/^[1-9]\d*$/.test(env.AGK_AMENDMENT_ARTIFACT_ID || '') ||
       !/^[a-f0-9]{64}$/.test(env.AGK_AMENDMENT_ARTIFACT_DIGEST || '')) fail('protected amendment signer result is not complete and eligible.');
   const old = await validateOldReviewInputs(env, context);
-  if (!old.oldSelection.changed || !['completed-block-v1','completed-owner-decision-self-v1'].includes(old.policy.ownerAmendmentTriggerProfile) ||
+  if (!old.oldSelection.changed || !['completed-block-v1','completed-owner-decision-self-v1','owner-initiated-self-v1'].includes(old.policy.ownerAmendmentTriggerProfile) ||
       old.policy.ownerAmendmentGrade !== 'G0' || !old.provenance || !old.classified ||
       !['PASS','BLOCK','OWNER_DECISION'].includes(old.classified.conclusion) ||
       ((old.classified.conclusion === 'PASS') !== Boolean(old.pass))) fail('old selected Policy does not route this changed Authority to OWNER_AMENDMENT.');
@@ -182,9 +182,11 @@ async function validateAmendmentEligibility(env, context) {
       workflowRef: 'refs/heads/main', runId: env.GITHUB_RUN_ID, runAttempt: env.GITHUB_RUN_ATTEMPT } });
   if (attested.status !== 'VERIFIED_PRODUCER_ATTESTATION') fail('eligibility receipt attestation is not from the exact protected workflow run.');
   const receipt = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(extracted.eligibilityReceiptBytes));
-  const expectedReceipt = { ...receipt, version: 1, kind: 'owner-amendment-semantic-eligibility-receipt',
+  const expectedReceipt = { ...receipt, version: prepared.triggerProfile === 'owner-initiated-self-v1' ? 2 : 1, kind: 'owner-amendment-semantic-eligibility-receipt',
     eligibility: env.AGK_AMENDMENT_ELIGIBILITY, repository: prepared.repository, baseSha: prepared.baseSha, bSha: prepared.bSha,
-    triggerProfile: prepared.triggerProfile, triggerReviewRecordSha256: prepared.triggerReviewRecordSha256,
+    triggerProfile: prepared.triggerProfile,
+    ...(prepared.triggerProfile === 'owner-initiated-self-v1' ? { historicalTrigger: prepared.historicalTrigger }
+      : { triggerReviewRecordSha256: prepared.triggerReviewRecordSha256 }),
     amendmentRecordSha256: prepared.amendmentRecordSha256, policyRevision: prepared.policyRevision,
     policySha256: prepared.policySha256, authoritySetDigest: prepared.authoritySetDigest,
     authorityIds: prepared.authorityIds, changes: prepared.changes, diffSha256: prepared.diffSha256,

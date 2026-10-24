@@ -144,7 +144,7 @@ export function resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, he
   // Access view for fields established by the existing policy parser/resolver checks.
   if ((policy as PolicyView).mode !== 'enforced' || (policy as PolicyView).ownerAmendmentVersion !== 1 ||
       (policy as PolicyView).ownerAmendmentGrade !== 'G0' || (policy as PolicyView).ownerAmendmentScope !== 'authority-only' ||
-      !['completed-block-v1', 'completed-owner-decision-self-v1'].includes((policy as PolicyView).ownerAmendmentTriggerProfile as string) ||
+      !['completed-block-v1', 'completed-owner-decision-self-v1', 'owner-initiated-self-v1'].includes((policy as PolicyView).ownerAmendmentTriggerProfile as string) ||
       !(policy as PolicyView).authorityManifestPath || !(policy as PolicyView).authorityLimitsBase64 ||
       !(policy as PolicyView).ownerAmendmentAuthorityId || !(policy as PolicyView).ownerAmendmentAuthorityPath) {
     fail('previous protected main policy does not select a supported self G0 amendment trigger profile.');
@@ -171,7 +171,7 @@ export function resolveOwnerAmendmentHandoffGitContext({ repository, baseSha, he
   let authorityChanges: AuthorityChangeObservation[] | undefined;
   let priorAuthoritySetDigest: string | undefined;
   let resultingAuthoritySetDigest: string | undefined;
-  if ((policy as PolicyView).ownerAmendmentTriggerProfile === 'completed-owner-decision-self-v1') {
+  if ((policy as PolicyView).ownerAmendmentTriggerProfile !== 'completed-block-v1') {
     const members: { beforeBytes: Buffer; afterBytes: Buffer; descriptor: (bytes: Buffer) => object }[] = [];
     const changesByPath = new Map<string, AuthorityChangeObservation>();
     let previousTotal = 0;
