@@ -5,6 +5,36 @@ The normative architecture and assurance contract is in
 [`architecture.md`](architecture.md) and its five required normative members;
 this guide does not amend that Set.
 
+## Information placement
+
+Choose the destination from what the information governs and how long it
+applies, not merely because the Owner stated it.
+
+| Information | Existing destination |
+| --- | --- |
+| Lasting product responsibilities, trust boundaries, route/assurance conditions and compatibility semantics | Relevant member of the complete Canonical Authority Set, through its predecessor-authorized adoption process |
+| Actual consumer/runtime selection | Relevant Policy/configuration, under its existing authorization and compatibility rules |
+| Release scope, date, order and milestone | Release planning Issue; reusable publication steps belong in `docs/release.md` |
+| Bounded operation approval and exact PR/run identities | Existing operational approval, PR or investigation record with the required access and evidence controls |
+| Rationale, investigation, benchmarks and observed run/readback history | Issue/PR comments or non-normative evidence documentation, as appropriate |
+| Current Issue problem, outcome, scope and acceptance criteria | Issue Description; decisions, reasoning, progress and chronological history belong in comments |
+
+Before adding normative text, distinguish a lasting rule from a planned or
+observed action. Would it remain a requirement if the release/date/PR/run
+changed? Does it define a capability's conditions, or only when work should
+finish? Check the existing owner document before duplicating or overriding it.
+Versioned formats, legacy evidence meanings and incident-specific security
+constraints can be normative; do not relocate them just because they name a
+version or past event.
+
+When an Issue's work definition changes, reconcile its current fields and
+preserve the rationale/history in comments instead of prepending a running log.
+This guidance neither amends existing Canonical obligations (including current
+release conditions) nor waives their adoption process. Relocation must preserve
+required evidence and access controls; never move private approvals or secrets
+into a public or less-protected record. Use the existing
+[PR review guidance](issue-pr-workflow.md#prepare-a-pull-request) to review placement.
+
 ## Repository layout
 
 This is a Node.js ES module package. Its supported Node version is declared by

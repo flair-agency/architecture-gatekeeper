@@ -7,6 +7,11 @@ or approve a route, consumer policy, security claim, or release.
 
 ## Create and refine an issue
 
+Keep the Description focused on the current problem, outcome, scope and
+acceptance criteria. Record decisions, rationale and progress in comments;
+reconcile changed requirements in place. Follow the
+[information placement guide](development.md#information-placement).
+
 Choose the Bug report, Feature request, or Task form. The forms require a
 problem and outcome, scope, and acceptance criteria with a verification method
 for each criterion. Bug reports also retain the release/commit, affected route,
@@ -138,3 +143,12 @@ Reviewers must assess the actual diff and evidence against the architecture,
 issue criteria, and applicable protected policy. An automated structure pass,
 project status, issue closure, and an individual review do not replace an owner
 decision or protected acceptance result.
+
+Code Review also checks document responsibility and information lifetime, not
+only technical accuracy. For normative additions containing release gates,
+one-off PR/run identities, progress, obsolete TODOs or speculative mechanisms,
+ask the author to justify the lasting contractual role or use the appropriate
+existing record. Preserve real security and compatibility requirements and
+required approval/evidence controls; placement review cannot waive currently
+binding clauses before an authorized Canonical revision is adopted. This is
+part of the existing review, not a new required check or approval stage.
