@@ -590,6 +590,20 @@ test('a disabled provider guard and inherited workflow-level signer permissions 
   }
 });
 
+test('the self reusable-call permission ceiling covers selected Gemini WIF without widening other jobs', () => {
+  const withoutOidc = workflows();
+  delete withoutOidc.caller.jobs['architecture-gate'].permissions['id-token'];
+  assert.throws(() => assertWorkflowStructure(withoutOidc), /caller permission ceiling must cover nested gemini-review id-token:write/);
+
+  const unscopedMeasurement = workflows();
+  delete unscopedMeasurement.self.jobs.measurement.permissions;
+  assert.throws(() => assertWorkflowStructure(unscopedMeasurement), /self measurement must explicitly declare job permissions/);
+
+  const widenedOrdinaryReview = workflows();
+  widenedOrdinaryReview.self.jobs.review.permissions['id-token'] = 'write';
+  assert.throws(() => assertWorkflowStructure(widenedOrdinaryReview), /self review permissions/);
+});
+
 test('provider and consumer amendment guards retain the selected condition, not just failure keywords', () => {
   const providerMutations = [
     ['removed condition', `echo 'Selected reviewer provider is not wired into this workflow; review is incomplete.' >&2\nexit 1`],

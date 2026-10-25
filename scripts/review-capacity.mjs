@@ -39,6 +39,7 @@ class CapacityExceeded extends Error {
 const PRE_V6_OWNER_CALLED_SHA256 = '49554405ef79fbca9e85e7719189462594998bdb47b2b04d25cafd28b093e159';
 const PRE_V6_OWNER_RESOLVER_SHA256 = 'cdaae106b4ff0e10b39cb5831b32a590ff5c94f32dcccd9c1ccf96064a652ae2';
 const PRE_CONNECTION_SELF_SHA256 = 'b3cd229184f6a90e4edd78ccc15d7a1c527c5c71ac99eb13030298eeba9e6412';
+const ADOPTED_BASE_SELF_SHA256 = 'ac9db4d9fe85aca79d48ee7d51fffc1ddb658b8a510cbf6dd96ef860dc0cb654';
 const PRE_CONNECTION_CALLED_SHA256 = 'b0411a1b5d21741e9c1233f1c4dd9163c27436caf415acb15b1eed9866f92fe0';
 const PREVIOUS_CONTEXT_SHA256 = '510b197070f8f12a15567409cf8e92e6da365bbd96e17ef4917cd8c21b38acf0';
 const PREVIOUS_PREPARER_SHA256 = '9bce34d75aa8b4d414a089f042616cabb2dd1ac331fcfbe70a43afff304e9dae';
@@ -61,7 +62,7 @@ const FORMAT_FILES = [SELF_WORKFLOW, CALLED_WORKFLOW,
 
 const PRE_OWNER_INITIATED_RESOLVER_SHA256 = '1a129f664e590dd82e2d5e081a84347efec3f977d4c8489e480d43da0ee38d7b';
 const CURRENT_FORMAT_SHA256 = {
-  ".github/workflows/self-architecture-gate.yml": "ac9db4d9fe85aca79d48ee7d51fffc1ddb658b8a510cbf6dd96ef860dc0cb654",
+  ".github/workflows/self-architecture-gate.yml": "a2cf546e9eb9e606bab39dd7432d9b01c46816490b76831a5ebf1ec9222259a1",
   ".github/workflows/architecture-gate.yml": "c221566493c2959546723a57b3004fcee9bd8d8a806ca5893a8efe61afc4bfd9",
   "src/authority-set.mjs": "d086de4acf4783b47901c3111760f6659bae111b53d4679261dccd6aa91586fa",
   "src/resolve-ci-policy.mjs": "01243736b030f1776d3de55454c450855324cd42f2c5542b3be5512efbd8aae7",
@@ -79,7 +80,7 @@ const CURRENT_FORMAT_SHA256 = {
 export function supportsPreparationFormatDigest(path, baseDigest, toolDigest) {
   if (toolDigest !== CURRENT_FORMAT_SHA256[path]) return false;
   return baseDigest === toolDigest ||
-    (path === SELF_WORKFLOW && baseDigest === PRE_CONNECTION_SELF_SHA256) ||
+    (path === SELF_WORKFLOW && [PRE_CONNECTION_SELF_SHA256, ADOPTED_BASE_SELF_SHA256].includes(baseDigest)) ||
     (path === CALLED_WORKFLOW && [PRE_V6_OWNER_CALLED_SHA256, PRE_CONNECTION_CALLED_SHA256, PRE_GUARD_CALLED_WORKFLOW_SHA256, PREVIOUS_CALLED_WORKFLOW_SHA256, EARLIER_CALLED_WORKFLOW_SHA256, OLDER_CALLED_WORKFLOW_SHA256, OLDEST_CALLED_WORKFLOW_SHA256].includes(baseDigest)) ||
     (path === 'src/authority-validation/resolve-ci-policy.mts' && [PRE_V6_OWNER_RESOLVER_SHA256, PRE_OWNER_INITIATED_RESOLVER_SHA256].includes(baseDigest)) ||
     (path === 'src/review-inputs/prepare-review-context.mts' && baseDigest === PREVIOUS_CONTEXT_SHA256) ||

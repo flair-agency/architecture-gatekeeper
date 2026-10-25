@@ -28,6 +28,9 @@ const previousCalledWorkflowSha256 = '237e6a6ba0baebc4a70e8190911bac60044636c2c9
 const earlierCalledWorkflowSha256 = 'ecf6a70d7bffb73f152143dacd5d44a09a57a54c616fa4e3ed94117c89abb046';
 const olderCalledWorkflowSha256 = '3bd669043e677fed4f79d43f8fbe40778aa5b82a4ebd95e50e31d949f00076f2';
 const oldestCalledWorkflowSha256 = '65af7366c7cd8493ab836d1bf5a8b259e02d4fad71426e7c16b158693e64eebf';
+const currentSelfWorkflowSha256 = 'a2cf546e9eb9e606bab39dd7432d9b01c46816490b76831a5ebf1ec9222259a1';
+const adoptedBaseSelfWorkflowSha256 = 'ac9db4d9fe85aca79d48ee7d51fffc1ddb658b8a510cbf6dd96ef860dc0cb654';
+const preConnectionSelfWorkflowSha256 = 'b3cd229184f6a90e4edd78ccc15d7a1c527c5c71ac99eb13030298eeba9e6412';
 const git = (root, ...args) => execFileSync('git', ['--no-replace-objects', '-C', root, ...args], {
   encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env,
     GIT_AUTHOR_NAME: 'Capacity test', GIT_AUTHOR_EMAIL: 'capacity@example.invalid',
@@ -84,7 +87,13 @@ test('supports current and exact predecessor called-workflow fingerprints and re
     createHash('sha256').update(readFileSync(join(toolRoot, 'src/authority-validation/resolve-ci-policy.mts'))).digest('hex')), true);
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, preGuardCalledWorkflowSha256, currentCalledWorkflowSha256), true);
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, 'b0411a1b5d21741e9c1233f1c4dd9163c27436caf415acb15b1eed9866f92fe0', currentCalledWorkflowSha256), true);
-  assert.equal(supportsPreparationFormatDigest('.github/workflows/self-architecture-gate.yml', 'b3cd229184f6a90e4edd78ccc15d7a1c527c5c71ac99eb13030298eeba9e6412', 'ac9db4d9fe85aca79d48ee7d51fffc1ddb658b8a510cbf6dd96ef860dc0cb654'), true);
+  const selfWorkflow = '.github/workflows/self-architecture-gate.yml';
+  assert.equal(createHash('sha256').update(readFileSync(join(toolRoot, selfWorkflow))).digest('hex'), currentSelfWorkflowSha256);
+  assert.equal(supportsPreparationFormatDigest(selfWorkflow, currentSelfWorkflowSha256, currentSelfWorkflowSha256), true);
+  assert.equal(supportsPreparationFormatDigest(selfWorkflow, adoptedBaseSelfWorkflowSha256, currentSelfWorkflowSha256), true);
+  assert.equal(supportsPreparationFormatDigest(selfWorkflow, preConnectionSelfWorkflowSha256, currentSelfWorkflowSha256), true);
+  assert.equal(supportsPreparationFormatDigest(selfWorkflow, 'f'.repeat(64), currentSelfWorkflowSha256), false);
+  assert.equal(supportsPreparationFormatDigest(selfWorkflow, adoptedBaseSelfWorkflowSha256, 'f'.repeat(64)), false);
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, currentCalledWorkflowSha256,
     currentCalledWorkflowSha256), true);
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, previousCalledWorkflowSha256,
@@ -98,8 +107,8 @@ test('supports current and exact predecessor called-workflow fingerprints and re
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, 'f'.repeat(64), currentCalledWorkflowSha256), false);
   assert.equal(supportsPreparationFormatDigest(calledWorkflow, earlierCalledWorkflowSha256,
     'f'.repeat(64)), false);
-  assert.equal(supportsPreparationFormatDigest('.github/workflows/self-architecture-gate.yml',
-    earlierCalledWorkflowSha256, currentCalledWorkflowSha256), false);
+  assert.equal(supportsPreparationFormatDigest(selfWorkflow,
+    earlierCalledWorkflowSha256, currentSelfWorkflowSha256), false);
 });
 
 test('preparation fingerprints pin the preparer and helper while retaining the exact pre-helper format', () => {
