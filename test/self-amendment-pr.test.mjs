@@ -34,6 +34,18 @@ const decision = prepared => ({ version: 1, kind: 'owner-amendment-semantic-elig
   checks: Object.fromEntries(JSON.parse(prepared.schemaBytes).properties.checks.required.map(key => [key, true])) });
 const validate = (prepared, object) => validateSelfAmendmentPrDecision({ prepared, decisionBytes: Buffer.from(JSON.stringify(object)) });
 
+test('generated amendment schema declares explicit types for structured output constants and enum', async t => {
+  const prepared = await prepareSelfAmendmentPr(await fixture(t));
+  const schema = JSON.parse(prepared.schemaBytes);
+  // GitHub run 40186957521 was rejected by the provider before review because
+  // properties.kind had no type. Validate the actual emitted provider schema,
+  // not just the separate deterministic decision validator.
+  for (const [name, type] of Object.entries({ version: 'integer', kind: 'string',
+    eligibility: 'string', triggerProfile: 'string' })) {
+    assert.equal(schema.properties[name].type, type, `${name} must declare its provider output type`);
+  }
+});
+
 test('any selected member alone is eligible input without root target, tag or historical review', async t => {
   for (const path of paths) {
     const f = await fixture(t, root => write(root, path, '# Revised\n'));
