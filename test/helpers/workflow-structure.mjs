@@ -33,7 +33,7 @@ const PROVIDER_GUARD_SCRIPT = `if test -n "$SELECTED_PROVIDER" && test "$SELECTE
   echo 'Selected reviewer provider is not wired into this workflow; review is incomplete.' >&2
   exit 1
 fi`;
-const CONSUMER_AMENDMENT_GUARD_SCRIPT = `if test "$OWNER_AMENDMENT_GRADE" = G0; then
+const CONSUMER_AMENDMENT_GUARD_SCRIPT = `if test -n "$OWNER_AMENDMENT_ACCEPTANCE"; then
   echo 'OWNER_AMENDMENT is supported only by the protected self workflow.' >&2
   exit 1
 fi`;
@@ -47,6 +47,8 @@ export function assertWorkflowStructure({ consumer, self, caller }) {
   const selfPolicy = job(self, 'policy');
   const selfReview = job(self, 'review');
   const selfAddition = job(self, 'owner-addition');
+  const selfAmendment = job(self, 'owner-amendment');
+  const selfAccept = job(self, 'accept');
   const consumerPolicyGuard = namedStep(consumerPolicy, 'Reject unwired reviewer providers');
   const selfPolicyGuard = namedStep(selfPolicy, 'Reject unwired reviewer providers');
   for (const [guard, expected] of [[consumerPolicyGuard, PROVIDER_GUARD_SCRIPT], [selfPolicyGuard, PROVIDER_GUARD_SCRIPT.replace('!= codex; then', '!= codex && test \"$SELECTED_PROVIDER\" != gemini; then')]]) {
@@ -75,14 +77,10 @@ export function assertWorkflowStructure({ consumer, self, caller }) {
 
   assert.deepEqual(selfPolicy.permissions, { contents: 'read' }, 'self policy permissions');
   assert.deepEqual(selfReview.permissions, { contents: 'read' }, 'self review permissions');
-  for (const name of ['block-review-record', 'owner-amendment-owner-decision-record', 'owner-amendment-semantic-eligibility-signer']) {
-    const signer = job(self, name);
-    assert.equal(signer.permissions['id-token'], 'write', `${name} OIDC permission`);
-    assert.equal(signer.permissions.attestations, 'write', `${name} attestation permission`);
-  }
+  assert.deepEqual(selfAmendment.permissions, { contents: 'read' }, 'self amendment reviewer is read-only');
   for (const name of ['block-review-record', 'owner-amendment-owner-decision-record',
     'owner-amendment-attempt-classifier', 'owner-amendment-semantic-eligibility',
-    'owner-amendment-semantic-eligibility-signer']) {
+    'owner-amendment-semantic-eligibility-signer', 'self-app-start', 'self-app-report']) {
     assert.ok(!(name in consumer.jobs), `self-only job ${name} must be absent from consumer workflow`);
     for (const [consumerJobName, consumerJob] of Object.entries(consumer.jobs)) {
       assert.ok(!hasNeeds(consumerJob, name), `consumer job ${consumerJobName} must not depend on self-only ${name}`);
@@ -90,8 +88,8 @@ export function assertWorkflowStructure({ consumer, self, caller }) {
   }
   const consumerAmendmentGuard = namedStep(consumerPolicy, 'Reject self-only OWNER_AMENDMENT policy on the consumer workflow');
   assert.equal(consumerAmendmentGuard.if, undefined, 'consumer OWNER_AMENDMENT guard must always run');
-  assert.equal(consumerAmendmentGuard.env.OWNER_AMENDMENT_GRADE, '${{ steps.resolve.outputs.ownerAmendmentGrade }}');
-  assert.equal(consumerAmendmentGuard.run.trim(), CONSUMER_AMENDMENT_GUARD_SCRIPT, 'consumer amendment guard must retain its G0 condition and failure behavior');
+  assert.equal(consumerAmendmentGuard.env.OWNER_AMENDMENT_ACCEPTANCE, '${{ steps.resolve.outputs.ownerAmendmentAcceptance }}');
+  assert.equal(consumerAmendmentGuard.run.trim(), CONSUMER_AMENDMENT_GUARD_SCRIPT, 'consumer amendment guard must reject the self-only selection');
   assert.equal(consumerPolicy.outputs.owner_addition_grade, '${{ steps.resolve.outputs.ownerAdditionGrade }}');
   assert.ok(!('self-flex-probe' in (consumer.on.workflow_call.inputs ?? {})), 'consumer workflow must not expose self flex input');
   const consumerStructure = JSON.stringify(consumer);
@@ -105,10 +103,42 @@ export function assertWorkflowStructure({ consumer, self, caller }) {
   assert.ok(hasNeeds(consumerAccept, 'policy') && hasNeeds(consumerAccept, 'review') && hasNeeds(consumerAccept, 'owner-addition') && hasNeeds(consumerAccept, 'report'), 'consumer accept must depend on policy, review, owner-addition, and report');
   assert.ok(hasNeeds(job(self, 'review'), 'policy'), 'self review must depend on policy');
   assert.ok(hasNeeds(selfAddition, 'policy') && hasNeeds(selfAddition, 'review'), 'self owner-addition must depend on policy and review');
-  assert.ok(hasNeeds(job(self, 'owner-amendment-owner-decision-record'), 'policy') && hasNeeds(job(self, 'owner-amendment-owner-decision-record'), 'review'), 'owner-decision record must depend on policy and review');
-  assert.ok(hasNeeds(job(self, 'owner-amendment-attempt-classifier'), 'policy'), 'amendment attempt classifier must depend on policy');
-  assert.ok(hasNeeds(job(self, 'owner-amendment-semantic-eligibility'), 'policy') && hasNeeds(job(self, 'owner-amendment-semantic-eligibility'), 'owner-amendment-attempt-classifier'), 'amendment semantic eligibility must depend on policy and attempt classifier');
-  assert.ok(hasNeeds(job(self, 'owner-amendment-semantic-eligibility-signer'), 'owner-amendment-semantic-eligibility'), 'amendment signer must depend on semantic eligibility');
+  assert.deepEqual(selfAmendment.needs, ['policy', 'review', 'owner-addition'], 'one amendment job follows policy, ordinary review, and optional addition');
+  assert.match(selfAmendment.if, /^always\(\) &&/);
+  assert.match(selfAmendment.if, /needs\['owner-addition'\]\.outputs\.eligibility != 'ELIGIBLE'/,
+    'always() must let the amendment route handle a skipped OWNER_ADDITION job');
+  assert.match(selfAmendment.if, /needs\.review\.result == 'success'/);
+  assert.equal(selfAccept.if, 'always()', 'K acceptance must run after skipped or failed optional routes');
+  assert.ok(hasNeeds(selfAccept, 'owner-amendment'), 'K acceptance must depend on same-run amendment eligibility');
+  const baseCheckout = namedStep(selfAmendment, 'Check out the adopted base runtime');
+  assert.equal(baseCheckout.with.ref, '${{ github.event.pull_request.base.sha }}');
+  assert.equal(baseCheckout.with['persist-credentials'], false);
+  const prepareAmendment = namedStep(selfAmendment, 'Prepare amendment review from the complete old Authority Set');
+  assert.equal(prepareAmendment.env.BASE_SHA, '${{ github.event.pull_request.base.sha }}');
+  assert.equal(prepareAmendment.env.REVIEWED_SHA, '${{ needs.review.outputs.reviewed_sha }}');
+  assert.match(prepareAmendment.run, /self-amendment-pr\.mjs" prepare/);
+  const amendmentModel = namedStep(selfAmendment, 'Review amendment eligibility');
+  assert.equal(amendmentModel.uses, 'openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e');
+  assert.equal(amendmentModel.with['openai-api-key'], '${{ secrets.OPENAI_API_KEY }}');
+  assert.equal(amendmentModel.with.sandbox, 'read-only');
+  assert.equal(selfAmendment.steps.filter(step => step !== amendmentModel)
+    .some(step => Object.values(step.env ?? {}).some(value => String(value).includes('secrets.OPENAI_API_KEY'))), false,
+  'the OpenAI key is confined to the model review step');
+  const completeAmendment = namedStep(selfAmendment, 'Validate the decision against the exact same-run inputs');
+  assert.equal(completeAmendment.env.DECISION, '${{ steps.codex.outputs.final-message }}');
+  assert.match(completeAmendment.run, /self-amendment-pr\.mjs" complete/);
+  assert.equal(selfAmendment.outputs.context_sha256, '${{ steps.complete.outputs.context_sha256 }}');
+  assert.equal(selfAmendment.outputs.decision_base64, '${{ steps.complete.outputs.decision_base64 }}');
+  const verifyAmendment = namedStep(selfAccept, 'Verify amendment decision and current PR context');
+  assert.match(verifyAmendment.run, /self-amendment-pr\.mjs" verify/);
+  assert.equal(verifyAmendment.env.CONTEXT_SHA256, "${{ needs['owner-amendment'].outputs.context_sha256 }}");
+  assert.equal(verifyAmendment.env.DECISION_BASE64, "${{ needs['owner-amendment'].outputs.decision_base64 }}");
+  assert.ok(selfAccept.steps.indexOf(verifyAmendment) < selfAccept.steps.findIndex(step => step.name === 'Require ordinary PASS or the selected verified Owner procedure'));
+  const selfWorkflowText = JSON.stringify(self);
+  for (const retiredPath of ['owner-amendment-attempt-classifier', 'owner-amendment-semantic-eligibility-signer',
+    'owner-amendment-block-producer', 'owner-amendment-owner-decision-producer', 'self-app-', 'self-queue-', 'merge_group:']) {
+    assert.ok(!selfWorkflowText.includes(retiredPath), `self workflow must not retain retired connector ${retiredPath}`);
+  }
 
   const consumerResolve = namedStep(consumerPolicy, 'Resolve policy from protected base revision');
   const selfResolve = namedStep(selfPolicy, 'Resolve policy from protected base revision');
@@ -128,12 +158,8 @@ export function assertWorkflowStructure({ consumer, self, caller }) {
     assert.ok(workflowJob.steps.some(step => step.uses === 'openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e'));
   }
   assert.equal(self.name, 'Architecture Gate', 'self reusable workflow name');
-  const ownerDecisionRecord = job(self, 'owner-amendment-owner-decision-record');
-  assert.ok(ownerDecisionRecord.steps.some(step => step.env?.WORKFLOW_PATH === '.github/workflows/self-architecture-gate.yml'), 'owner-decision evidence must bind the self caller workflow path');
   assert.equal(consumerAddition.environment, undefined, 'consumer owner-addition must not bind self-only environment');
-  const selfAdditionWithoutSelfEnvironment = structuredClone(selfAddition);
-  delete selfAdditionWithoutSelfEnvironment.environment;
-  assert.deepEqual(consumerAddition, selfAdditionWithoutSelfEnvironment, 'consumer and self owner-addition must match except for self environment binding');
+  assert.deepEqual(consumerAddition, selfAddition, 'consumer and self owner-addition behavior remains aligned');
   assert.match(selfAddition.if, /needs\.policy\.outputs\.owner_addition_grade == 'G0'/);
   assert.match(selfAddition.if, /needs\.review\.outputs\.decision_kind == 'OWNER_DECISION'/);
   for (const workflowJob of [consumerAddition, selfAddition]) {

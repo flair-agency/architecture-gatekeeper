@@ -55,170 +55,25 @@ jobs:
           appendFileSync(process.env.GITHUB_OUTPUT, `classification=${classification}\n`);
           NODE
 
-  # Default off: host activation and expected-App migration require separate approval.
-  self-app-start:
-    needs: classify-self-repository
-    if: vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true' && needs.classify-self-repository.outputs.classification == 'same-repository' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    timeout-minutes: 4
-    environment: architecture-gate-self-app-report
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      check_id: ${{ steps.begin.outputs.check_id }}
-      check_sha: ${{ steps.begin.outputs.check_sha }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          ref: ${{ github.workflow_sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
-        with:
-          node-version: 22
-      - name: Build adopted protected runtime
-        run: |
-          npm ci --ignore-scripts
-          npm run build
-      - name: Start pending dedicated-App check on the current test merge
-        id: begin
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GITHUB_EVENT_PATH: ${{ github.event_path }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
-          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-          RUNNER_TEMP: ${{ runner.temp }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_BRANCH: main
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          GATEKEEPER_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
-          GATEKEEPER_WORKFLOW_SHA: ${{ job.workflow_sha }}
-          GATEKEEPER_WORKFLOW_REF: ${{ job.workflow_ref }}
-          AGK_APP_ID: ${{ vars.ARCHITECTURE_GATE_SELF_APP_ID }}
-          AGK_APP_INSTALLATION_ID: ${{ vars.ARCHITECTURE_GATE_SELF_APP_INSTALLATION_ID }}
-          AGK_APP_PRIVATE_KEY: ${{ secrets.ARCHITECTURE_GATE_SELF_APP_PRIVATE_KEY }}
-        working-directory: ${{ runner.temp }}
-        run: node "$GITHUB_WORKSPACE/scripts/self-pr-app-report.mjs" begin
-
   architecture-gate:
     name: architecture-gate
-    needs: [classify-self-repository, self-app-start]
-    if: always() && !cancelled() && (vars.ARCHITECTURE_GATE_SELF_APP_ENABLED != 'true' || needs.self-app-start.result == 'success') && needs.classify-self-repository.outputs.classification == 'same-repository' && github.event_name == 'pull_request_target' && github.event.pull_request.draft == false
+    needs: [classify-self-repository]
+    if: always() && !cancelled() && needs.classify-self-repository.outputs.classification == 'same-repository' && github.event_name == 'pull_request_target' && github.event.pull_request.draft == false
     permissions:
       contents: read
       pull-requests: write
       actions: read
-      # The reusable workflow downscopes each job. Only its separate BLOCK
-      # evidence signer receives these capabilities; the model reviewer does not.
-      id-token: write
-      attestations: write
     uses: ./.github/workflows/architecture-gate.yml
     with:
       protected-review-instructions: true
-      self-app-projection: ${{ vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true' }}
       measurement-enabled: ${{ vars.ARCHITECTURE_GATE_MEASUREMENT == 'true' }}
       # Off by default. Enable only for a bounded self-review cost experiment.
       self-flex-probe: ${{ vars.ARCHITECTURE_GATE_SELF_FLEX == 'true' && vars.ARCHITECTURE_GATE_SELF_FLEX_PR == format('{0}', github.event.pull_request.number) && vars.ARCHITECTURE_GATE_SELF_FLEX_HEAD == github.event.pull_request.head.sha }}
       review-job-timeout-minutes: ${{ fromJSON(vars.ARCHITECTURE_GATE_REVIEW_JOB_TIMEOUT_MINUTES || '7') }}
-      # Opt in only after the architecture-gate-review Environment is provisioned.
-      self-review-environment: ${{ vars.ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT == 'true' }}
       schema-path: .codex/gatekeeper/ci-decision.schema.json
       validation-path: .codex/gatekeeper/decision.validation.json
     secrets:
-      # Empty on opt-in so a missing Environment secret cannot silently use the
-      # legacy repository secret. The called reviewer jobs then require their
-      # Environment-scoped OPENAI_API_KEY.
-      OPENAI_API_KEY: ${{ vars.ARCHITECTURE_GATE_SELF_REVIEW_ENVIRONMENT != 'true' && secrets.OPENAI_API_KEY || '' }}
-
-  self-app-report:
-    needs: [classify-self-repository, self-app-start, architecture-gate]
-    if: always() && vars.ARCHITECTURE_GATE_SELF_APP_ENABLED == 'true' && needs.self-app-start.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
-    environment: architecture-gate-self-app-report
-    permissions:
-      contents: read
-      pull-requests: read
-      actions: read
-      attestations: read
-    steps:
-      - id: checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          ref: ${{ github.workflow_sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - id: setup-node
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
-        with:
-          node-version: 22
-      - id: build
-        name: Build adopted protected runtime
-        run: |
-          npm ci --ignore-scripts
-          npm run build
-      - id: report
-        if: always() && steps.checkout.outcome == 'success' && steps.setup-node.outcome == 'success'
-        name: Validate result or finalize after runtime build failure
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GITHUB_EVENT_PATH: ${{ github.event_path }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
-          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-          RUNNER_TEMP: ${{ runner.temp }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_BRANCH: main
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          GATEKEEPER_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
-          GATEKEEPER_WORKFLOW_SHA: ${{ job.workflow_sha }}
-          GATEKEEPER_WORKFLOW_REF: ${{ job.workflow_ref }}
-          AGK_APP_ID: ${{ vars.ARCHITECTURE_GATE_SELF_APP_ID }}
-          AGK_APP_INSTALLATION_ID: ${{ vars.ARCHITECTURE_GATE_SELF_APP_INSTALLATION_ID }}
-          AGK_APP_PRIVATE_KEY: ${{ secrets.ARCHITECTURE_GATE_SELF_APP_PRIVATE_KEY }}
-          OWNER_AMENDMENT_TAG_RULESET_ID: ${{ vars.OWNER_AMENDMENT_TAG_RULESET_ID }}
-          AGK_CHECK_ID: ${{ needs.self-app-start.outputs.check_id }}
-          AGK_CHECK_SHA: ${{ needs.self-app-start.outputs.check_sha }}
-          AGK_REVIEW_WORKFLOW_REPOSITORY: ${{ needs.architecture-gate.outputs.review_workflow_repository }}
-          AGK_REVIEW_WORKFLOW_SHA: ${{ needs.architecture-gate.outputs.review_workflow_sha }}
-          AGK_REVIEW_WORKFLOW_REF: ${{ needs.architecture-gate.outputs.review_workflow_ref }}
-          AGK_POLICY_RESULT: ${{ needs.architecture-gate.outputs.policy_result }}
-          AGK_MODE: ${{ needs.architecture-gate.outputs.mode }}
-          AGK_POLICY_SHA256: ${{ needs.architecture-gate.outputs.policy_sha256 }}
-          AGK_REVIEW_RESULT: ${{ needs.architecture-gate.outputs.review_result }}
-          AGK_DECISION_BASE64: ${{ needs.architecture-gate.outputs.decision_base64 }}
-          AGK_REVIEWED_SHA: ${{ needs.architecture-gate.outputs.reviewed_sha }}
-          AGK_AUTHORITY_PROVENANCE_BASE64: ${{ needs.architecture-gate.outputs.authority_provenance_base64 }}
-          AGK_SELECTED_AUTHORITY_CHANGED: ${{ needs.architecture-gate.outputs.selected_authority_changed }}
-          AGK_AMENDMENT_SIGNER_RESULT: ${{ needs.architecture-gate.outputs.amendment_signer_result }}
-          AGK_AMENDMENT_SIGNER_STATUS: ${{ needs.architecture-gate.outputs.amendment_signer_status }}
-          AGK_AMENDMENT_ELIGIBILITY: ${{ needs.architecture-gate.outputs.amendment_eligibility }}
-          AGK_AMENDMENT_ARTIFACT_ID: ${{ needs.architecture-gate.outputs.amendment_artifact_id }}
-          AGK_AMENDMENT_ARTIFACT_DIGEST: ${{ needs.architecture-gate.outputs.amendment_artifact_digest }}
-          AGK_AMENDMENT_COMPLETED_AT: ${{ needs.architecture-gate.outputs.amendment_completed_at }}
-        working-directory: ${{ runner.temp }}
-        run: |
-          if [ "${{ steps.build.outcome }}" = "success" ]; then
-            node "$GITHUB_WORKSPACE/scripts/self-pr-app-report.mjs" report
-          else
-            node "$GITHUB_WORKSPACE/scripts/self-pr-app-report.mjs" report-setup-failure
-          fi
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
   deny-unreviewed-fork:
     name: architecture-gate / accept

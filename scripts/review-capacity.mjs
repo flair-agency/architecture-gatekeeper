@@ -29,18 +29,13 @@ class CapacityExceeded extends Error {
   }
 }
 
-// These are preparation-format checks, not a new consumer policy selector.
-// The default-off App projections and failure-only report branch add no prompt
-// input or serialization change.
-// Keep the exact pre-connection caller/callee pair for local adoption previews.
-// The called-workflow fingerprint includes the Self authority comparison.
-// That same-run classifier does not change Codex prompt/task serialization
-// or preparation inputs; Gemini remains outside this diagnostic. The exact
-// predecessor fingerprints retain the documented pre-merge preview
-// path from the older protected base. Other base/runtime drift must be
-// explicitly reviewed before this diagnostic can measure it.
-// The explicit v6 Owner-route extension retains the ordinary self input
-// serializer and limits. Retain its exact predecessor workflow/resolver too.
+// These exact preparation-format fingerprints are diagnostic compatibility checks,
+// not a Policy selector. Normalizing the protected amendment route removes the
+// App/Queue jobs and changes governance selection; ordinary Codex preparation
+// still uses the same complete-Set/context assembler, input selectors and limits.
+// Other base/runtime drift remains unsupported until separately inspected.
+// Exact previously inspected ordinary formats below retain their existing scope;
+// their Policy must independently resolve under the supported current parser.
 const PRE_V6_OWNER_CALLED_SHA256 = '49554405ef79fbca9e85e7719189462594998bdb47b2b04d25cafd28b093e159';
 const PRE_V6_OWNER_RESOLVER_SHA256 = 'cdaae106b4ff0e10b39cb5831b32a590ff5c94f32dcccd9c1ccf96064a652ae2';
 const PRE_CONNECTION_SELF_SHA256 = 'b3cd229184f6a90e4edd78ccc15d7a1c527c5c71ac99eb13030298eeba9e6412';
@@ -66,15 +61,15 @@ const FORMAT_FILES = [SELF_WORKFLOW, CALLED_WORKFLOW,
 
 const PRE_OWNER_INITIATED_RESOLVER_SHA256 = '1a129f664e590dd82e2d5e081a84347efec3f977d4c8489e480d43da0ee38d7b';
 const CURRENT_FORMAT_SHA256 = {
-  ".github/workflows/self-architecture-gate.yml": "f9970a3a2ab510b07665cdc0aed4da7cb323668e6a9c7a59febec4105e300eea",
-  ".github/workflows/architecture-gate.yml": "0ed7dc06d31a96f6466c3b33016cd222188f74850e65a4176ced4f4ada3926a6",
+  ".github/workflows/self-architecture-gate.yml": "97bf336a0f717ec121caee6cca96909e6fab4c48fbd3a91ef92501aa726717cf",
+  ".github/workflows/architecture-gate.yml": "12966c9be8759890aad7690493981d9ef38e11ddb11dc1535a45a1779b9fc3a7",
   "src/authority-set.mjs": "d086de4acf4783b47901c3111760f6659bae111b53d4679261dccd6aa91586fa",
   "src/resolve-ci-policy.mjs": "01243736b030f1776d3de55454c450855324cd42f2c5542b3be5512efbd8aae7",
   "src/prepare-authority-set.mjs": "9141969e86b817f4b68819ee597f505840bf5f85d260bdffd39f61f7a19ce688",
   "src/preflight-authority-set-review.mjs": "f26f35ca6386e1ecfb0e6bfd51b239f8a8e49be3ab8dc1616c6e7b34781ae514",
   "src/prepare-review-context.mjs": "6b5af63dc0fb077482c843ee0937e9c1a26633b593fad9f435f182b97e7051a8",
   "src/authority-validation/authority-set.mts": "4463bace8ba83303a83257acbd36dc05e19cfe3a834b2d4b56eb7206a3c20341",
-  "src/authority-validation/resolve-ci-policy.mts": "4da765a06f1d3dcf6363f907dda6949c8dcb968c69fe929cdf9832a333238c74",
+  "src/authority-validation/resolve-ci-policy.mts": "96fc365ed57b39962c3d854ac3f10397eb0cb81a3d4d5295eafc06d3155578ba",
   [PREPARER]: "cc4e499e2226cde84f2e5588078706a4ac62443ca78a06f0bfbad0c099eebb74",
   [DESCRIPTOR_READER]: "1be7f9c9f48dbe576b76bc2e69de815b3f30e928ea63c715163a1e54114d772c",
   "src/authority-validation/preflight-authority-set-review.mts": "0d63bd79613598af3d8e4d75bc9bdbbaf7ada600e41ba0b65625c0e1014bc495",

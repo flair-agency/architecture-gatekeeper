@@ -251,6 +251,11 @@ emitted AST and retain both providers' publication and negative cases.
 
 ### Earlier implementation checkpoints
 
+These are historical implementation checkpoints. Self App/Queue, tag handoff,
+attestation and portable amendment-evidence modules described below have been
+retired; they are not current APIs or instructions to restore that mechanism.
+The current self procedure is documented in [owner-intervention.md](owner-intervention.md).
+
 Earlier slice statuses and counts are historical; the current inventory below supersedes them.
 
 The integrated #419 slices type OWNER_ADDITION validation, execution-result
@@ -649,24 +654,15 @@ Execution-result types distinguish completed observations with bounded response
 bytes from incomplete observations without those bytes. General host outcomes
 remain unknown because an accepted accessor may change across the original two
 reads; the completed branch narrows only its captured success/available facts.
-Tag-readback callback types preserve existing synchronous, Promise and thenable
-returns; API and observed OID values stay unknown. Readonly observations leave
-Buffer contents mutable. Tag-attempt results distinguish absence from a present amendment attempt; the
-final absence check narrows the result after its existing re-read. Reader
-callbacks accept synchronous values, Promises and thenables. Parsing a tag
-envelope checks its existing key/profile bindings and decodes bounded evidence
-bytes; unchecked envelope fields remain unknown and do not establish semantic
-eligibility. Artifact discovery and fetching preserve exact-attempt metadata, pagination,
-compressed-byte limits and digest checks. Their result types distinguish
-successful observations from incomplete observations without artifact bytes or
-identity fields; repeatedly read external fields remain unknown. Attestation
-inspection assumes verified CLI output and trusted expectations; it does not
-establish those preconditions. The synchronous CLI invocation leaves returned
-output unknown until its existing JSON parsing and inspection. Its type does
-not exclude asynchronous callbacks, which still fail as malformed output at
-runtime. Other callback contracts remain with their owning modules. The authority-source
-fetch contract preserves sync, Promise and thenable responses and reader results,
-optional signal/headers, bounded decoding, request counts and existing timeouts.
+The retired self G0 tag-attempt, tagged-envelope, artifact/attestation and
+GitHub App ruleset-readback implementations described in earlier checkpoints
+are not present in the current source tree. The current protected-PR amendment
+helper is `src/ci-review/self-amendment-pr.mts`, reached through
+`src/self-amendment-pr.mjs`; it is not a public package export or standalone CLI.
+
+The authority-source fetch contract preserves synchronous, Promise and thenable
+responses and reader results, optional signal/headers, bounded decoding, request
+counts and existing timeouts.
 Captured validated request strings and computed Buffer output are typed; parsed
 JSON stays unknown. The readback callback composes that streaming response with
 its JSON operation; standard fetch and direct shared callback composition are
@@ -683,16 +679,6 @@ constants and computed digests are typed. Publishing assumes a protected caller
 already validated the result and does not authenticate that precondition.
 Neither result type supplies owner authorization, producer provenance or route
 activation. Focused accessor regressions retain existing observable rereads.
-
-Ruleset readback retains the fixed protected-main workflow context, App
-installation binding, single-repository administration grant and token
-revocation in `finally` before a snapshot is returned. Storage remains anchored
-to the real checkout, with private regular-file modes and same-run/base/freshness
-checks. Environment fields and API JSON are unknown; the captured workflow and
-fixed constants are typed, while context fields read again remain unknown.
-Readonly annotations prevent typed reassignment but do not freeze returned
-objects. A local snapshot is same-job launcher input, not a portable receipt or
-proof of host enforcement; the unchanged runtime validators still own its use.
 
 Runtime coverage follows the emitted and executed `dist/**/*.mjs` files. Report
 those exact paths without counting source files as runtime coverage. CodeQL
@@ -760,7 +746,7 @@ authority.
 Record any required owner decision in the complete selected architecture Set
 (the relevant normative member) before changing
 architecture or assurance responsibilities. Follow its
-[dogfooding and change discipline](architecture/self-profile.md#dogfooding-and-change-discipline)
+[dogfooding and change discipline](architecture/self-profile.md#development-sequence-and-dogfooding)
 for local/manual, packaged and CI paths as applicable before broader rollout.
 
 ## Local CodeQL

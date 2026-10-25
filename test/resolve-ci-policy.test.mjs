@@ -3,16 +3,7 @@ import assert from 'node:assert/strict';
 import { resolveCiPolicy } from '../dist/resolve-ci-policy.mjs';
 
 const limits = { maxManifestBytes: 16384, maxMembers: 16, maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 };
-const amendment = {
-  version: 1,
-  grade: 'G0',
-  scope: 'authority-only',
-  triggerProfile: 'completed-block-v1',
-  authorityId: 'architecture',
-  authorityPath: 'docs/architecture.md',
-  evidenceProducer: 'github-actions-attestation',
-  tagNamespace: 'refs/tags/architecture-gatekeeper/amendments',
-};
+const amendment = { version: 1, acceptance: 'protected-pr', scope: 'authority-only', maxPromptBytes: 262_144 };
 
 function policy(ownerAmendment) {
   const branch = {
@@ -23,57 +14,34 @@ function policy(ownerAmendment) {
   return { version: 2, default: { mode: 'local-only' }, branches: { main: branch } };
 }
 
-test('v2 enforced self policy exposes optional previous-policy OWNER_AMENDMENT G0 selection for the adapter', () => {
+test('v2 resolves only the explicit protected-pr amendment selection', () => {
   const selected = resolveCiPolicy(policy(amendment), 'main');
   assert.equal(selected.ownerAmendmentVersion, 1);
-  assert.equal(selected.ownerAmendmentGrade, 'G0');
+  assert.equal(selected.ownerAmendmentAcceptance, 'protected-pr');
   assert.equal(selected.ownerAmendmentScope, 'authority-only');
-  assert.equal(selected.ownerAmendmentTriggerProfile, 'completed-block-v1');
-  assert.equal(selected.ownerAmendmentAuthorityId, 'architecture');
-  assert.equal(selected.ownerAmendmentAuthorityPath, 'docs/architecture.md');
-  assert.equal(selected.ownerAmendmentEvidenceProducer, 'github-actions-attestation');
-  assert.equal(selected.ownerAmendmentTagNamespace, 'refs/tags/architecture-gatekeeper/amendments');
-  assert.equal(Object.hasOwn(selected, 'ownerAmendmentMaxPromptBytes'), false);
-  assert.equal(Object.hasOwn(resolveCiPolicy(policy(), 'main'), 'ownerAmendmentGrade'), false);
-  assert.equal(Object.hasOwn(resolveCiPolicy(policy(amendment), 'preview'), 'ownerAmendmentGrade'), false);
+  assert.equal(selected.ownerAmendmentMaxPromptBytes, 262_144);
+  for (const key of ['ownerAmendmentGrade', 'ownerAmendmentTriggerProfile', 'ownerAmendmentAuthorityId',
+    'ownerAmendmentAuthorityPath', 'ownerAmendmentEvidenceProducer', 'ownerAmendmentTagNamespace']) {
+    assert.equal(Object.hasOwn(selected, key), false);
+  }
+  assert.equal(Object.hasOwn(resolveCiPolicy(policy(), 'main'), 'ownerAmendmentAcceptance'), false);
+  assert.equal(Object.hasOwn(resolveCiPolicy(policy(amendment), 'preview'), 'ownerAmendmentAcceptance'), false);
 });
 
-test('keeps the BLOCK prompt limit optional and requires it for OWNER_DECISION', () => {
-  const selected = resolveCiPolicy(policy({ ...amendment, triggerProfile: 'completed-block-v1', maxPromptBytes: 262_144 }), 'main');
-  assert.equal(selected.ownerAmendmentTriggerProfile, 'completed-block-v1');
-  assert.equal(selected.ownerAmendmentMaxPromptBytes, 262_144);
-  assert.equal(JSON.parse(Buffer.from(selected.authorityLimitsBase64, 'base64')).maxPromptBytes, limits.maxPromptBytes);
-  const ownerDecision = resolveCiPolicy(policy({ ...amendment,
-    triggerProfile: 'completed-owner-decision-self-v1', maxPromptBytes: 262_144 }), 'main');
-  assert.equal(ownerDecision.ownerAmendmentTriggerProfile, 'completed-owner-decision-self-v1');
-  assert.equal(ownerDecision.ownerAmendmentGrade, 'G0');
-  assert.equal(ownerDecision.ownerAmendmentMaxPromptBytes, 262_144);
-  assert.throws(() => resolveCiPolicy(policy({ ...amendment,
-    triggerProfile: 'completed-owner-decision-self-v1' }), 'main'), /Invalid CI policy branch main owner amendment selection/);
-  const blockWithoutLimit = resolveCiPolicy(policy(amendment), 'main');
-  assert.equal(blockWithoutLimit.ownerAmendmentTriggerProfile, 'completed-block-v1');
-  assert.equal(Object.hasOwn(blockWithoutLimit, 'ownerAmendmentMaxPromptBytes'), false);
+test('protected-pr requires a bounded prompt ceiling and closed version/acceptance/scope shape', () => {
+  for (const key of Object.keys(amendment)) {
+    const missing = { ...amendment }; delete missing[key];
+    assert.throws(() => resolveCiPolicy(policy(missing), 'main'));
+  }
   for (const maxPromptBytes of [0, -1, 1.5, '262144', 1_048_577, Number.MAX_SAFE_INTEGER + 1]) {
     assert.throws(() => resolveCiPolicy(policy({ ...amendment, maxPromptBytes }), 'main'));
   }
-  for (const triggerProfile of ['completed-block-self-v1', 'completed-owner-decision-v1', 'completed-block-v2']) {
-    assert.throws(() => resolveCiPolicy(policy({ ...amendment, triggerProfile }), 'main'));
+  for (const value of [{ ...amendment, version: 2 }, { ...amendment, acceptance: 'queue' },
+    { ...amendment, scope: 'any' }, ...['grade', 'triggerProfile', 'authorityId', 'authorityPath',
+      'evidenceProducer', 'tagNamespace', 'extra'].map(key => ({ ...amendment, [key]: 'obsolete' }))]) {
+    assert.throws(() => resolveCiPolicy(policy(value), 'main'));
   }
-});
-
-test('owner amendment selection rejects malformed scope, authority, producer, namespace and unknown fields', () => {
-  for (const invalid of [
-    { ...amendment, grade: 'G1' },
-    { ...amendment, scope: 'any' },
-    { ...amendment, triggerProfile: 'completed-owner-decision-v1' },
-    { ...amendment, authorityId: '../architecture' },
-    { ...amendment, authorityPath: '../docs/architecture.md' },
-    { ...amendment, authorityPath: 'docs/architecture.json' },
-    { ...amendment, evidenceProducer: 'github-actions' },
-    { ...amendment, tagNamespace: 'refs/tags/other' },
-    { ...amendment, extra: true },
-    { ...amendment, version: 2 },
-  ]) assert.throws(() => resolveCiPolicy(policy(invalid), 'main'));
+  assert.equal(resolveCiPolicy(policy({ ...amendment, maxPromptBytes: 1_048_576 }), 'main').ownerAmendmentMaxPromptBytes, 1_048_576);
 });
 
 test('owner amendment selection is limited to v2 enforced branches with a selected Authority Set', () => {
@@ -251,11 +219,11 @@ test('execution selection preserves v2 owner amendment outputs and is absent fro
   assert.equal(Object.hasOwn(legacy, 'reviewJobTimeoutMinutes'), false);
   assert.equal(Object.hasOwn(legacy, 'codexArgs'), false);
   assert.equal(legacy.ownerAmendmentVersion, 1);
-  assert.equal(legacy.ownerAmendmentAuthorityId, 'architecture');
+  assert.equal(legacy.ownerAmendmentAcceptance, 'protected-pr');
 
   const selected = resolveCiPolicy(policyForVersion(2, codexBranchForVersion(2)), 'main');
   assert.equal(selected.ownerAmendmentVersion, 1);
-  assert.equal(selected.ownerAmendmentAuthorityId, 'architecture');
+  assert.equal(selected.ownerAmendmentAcceptance, 'protected-pr');
   assert.deepEqual({
     executionSelection: selected.executionSelection,
     reviewJobTimeoutMinutes: selected.reviewJobTimeoutMinutes,
@@ -338,15 +306,11 @@ test('v6 keeps Owner routes opt-in and rejects only unsupported or incomplete co
     assert.throws(() => resolveCiPolicy(policyForVersion(6, selection), 'main'), /Gemini supports ordinary enforced review only/);
   }
   assert.equal(resolveCiPolicy(policyForVersion(6, { ...plain, ownerAmendment: {
-    ...amendment, triggerProfile: 'completed-owner-decision-self-v1', maxPromptBytes: 262144,
-  } }), 'main').ownerAmendmentTriggerProfile, 'completed-owner-decision-self-v1');
+    ...amendment, maxPromptBytes: 262144,
+  } }), 'main').ownerAmendmentAcceptance, 'protected-pr');
 });
 
 
-test('owner-initiated profile is explicit and requires its protected prompt ceiling', () => {
-  const selected = resolveCiPolicy(policy({...amendment, triggerProfile:'owner-initiated-self-v1',maxPromptBytes:262144}), 'main');
-  assert.equal(selected.ownerAmendmentTriggerProfile,'owner-initiated-self-v1');
-  assert.equal(selected.ownerAmendmentMaxPromptBytes,262144);
-  assert.throws(()=>resolveCiPolicy(policy({...amendment,triggerProfile:'owner-initiated-self-v1'}),'main'));
-  assert.equal(Object.hasOwn(resolveCiPolicy(policy(),'main'),'ownerAmendmentTriggerProfile'),false);
+test('obsolete owner-initiated tag selection is rejected rather than retained for compatibility', () => {
+  assert.throws(() => resolveCiPolicy(policy({ ...amendment, triggerProfile: 'owner-initiated-self-v1' }), 'main'));
 });

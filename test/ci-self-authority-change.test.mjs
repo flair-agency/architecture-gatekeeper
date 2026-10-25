@@ -137,7 +137,7 @@ test('selected OWNER_ADDITION keeps its verified route; generic consumer accepta
     reviewResult: 'success', conclusion, selfAuthorityCheckRequired: 'true', selectedAuthorityChanged: 'false' }));
 });
 
-test('protected workflow carries the comparison to final Self acceptance and retains the tag guard', () => {
+test('protected workflow carries the comparison to final Self acceptance and verifies the selected amendment separately', () => {
   const yaml = readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8');
   const workflow = parseWorkflow(yaml, 'architecture-gate.yml');
   const step = workflow.jobs.review.steps.find(step => step.id === 'self-authority-change');
@@ -154,7 +154,9 @@ test('protected workflow carries the comparison to final Self acceptance and ret
   assert.equal(geminiCheck.env.REVIEWED_SHA, '${{ steps.gemini.outputs.reviewed_sha }}');
   assert.equal(gemini.outputs.self_authority_changed, '${{ steps.self-authority-change.outputs.changed }}');
   assert.equal(acceptStep.env.SELF_AUTHORITY_CHECK_REQUIRED, "${{ github.repository == 'flair-agency/architecture-gatekeeper' }}");
-  assert.ok(workflow.jobs.accept.steps.some(step => step.run?.includes('attempt-classifier.mjs acceptance-guard')));
+  assert.equal(acceptStep.env.OWNER_AMENDMENT_VERIFICATION, '${{ steps.verify-amendment.outcome }}');
+  assert.ok(workflow.jobs.accept.steps.some(step => step.run?.includes('self-amendment-pr.mjs\" verify')));
+  assert.ok(!workflow.jobs.accept.steps.some(step => step.run?.includes('attempt-classifier')));
 });
 
 test('the same comparison supports Self Gemini v6 without changing consumer provider selection', async t => {

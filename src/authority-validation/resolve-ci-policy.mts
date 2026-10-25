@@ -28,13 +28,8 @@ export interface ResolvedCiPolicy {
   adoptionEvidenceWorkflowPath?: unknown;
   adoptionEvidenceJobName?: unknown;
   ownerAmendmentVersion?: unknown;
-  ownerAmendmentGrade?: unknown;
+  ownerAmendmentAcceptance?: unknown;
   ownerAmendmentScope?: unknown;
-  ownerAmendmentTriggerProfile?: unknown;
-  ownerAmendmentAuthorityId?: unknown;
-  ownerAmendmentAuthorityPath?: unknown;
-  ownerAmendmentEvidenceProducer?: unknown;
-  ownerAmendmentTagNamespace?: unknown;
   ownerAmendmentMaxPromptBytes?: unknown;
   provider?: unknown;
   thinkingLevel?: unknown;
@@ -53,8 +48,6 @@ const OWNER_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.md$/;
 const OWNER_SCHEMA_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.json$/;
 const ADOPTION_WORKFLOW_PATH = /^\.github\/workflows\/[A-Za-z0-9._-]+\.ya?ml$/;
 const ADOPTION_JOB_NAME = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63} \/ [A-Za-z0-9_][A-Za-z0-9 ._-]{0,63}$/;
-const AMENDMENT_TAG_NAMESPACE = 'refs/tags/architecture-gatekeeper/amendments';
-const OWNER_AMENDMENT_TRIGGER_PROFILES = new Set(['completed-block-v1', 'completed-owner-decision-self-v1', 'owner-initiated-self-v1']);
 const LEGACY_AUTHORITY_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
 const REVIEW_JOB_TIMEOUT_MAX = 360;
 const REVIEW_STEP_TIMEOUT_MAX = 359;
@@ -239,16 +232,11 @@ function validateBranch(branch: PolicyBranchView, label: string, version: number
   }
   if (Object.hasOwn(branch, 'ownerAmendment')) {
     const amendment = (branch as PolicyBranchView).ownerAmendment as PolicyBranchView;
-    requireOnlyKeys(amendment, new Set(['version', 'grade', 'scope', 'triggerProfile', 'authorityId', 'authorityPath', 'evidenceProducer', 'tagNamespace', 'maxPromptBytes']), `${label} owner amendment`);
-    if (version !== 2 || (branch as PolicyBranchView).mode !== 'enforced' || !Object.hasOwn(branch, 'authorityManifestPath') || amendment.version !== 1 || amendment.grade !== 'G0' ||
-        amendment.scope !== 'authority-only' || !OWNER_AMENDMENT_TRIGGER_PROFILES.has(amendment.triggerProfile as string) ||
-        !/^[a-z][a-z0-9-]{0,63}$/.test(((amendment.authorityId || '') as string)) ||
-        typeof amendment.authorityPath !== 'string' || (amendment.authorityPath as string).length > 240 ||
-        !OWNER_AUTHORITY_PATH.test(amendment.authorityPath as string) || (amendment.authorityPath as string).split('/').some(part => part === '.' || part === '..') ||
-        amendment.evidenceProducer !== 'github-actions-attestation' || amendment.tagNamespace !== AMENDMENT_TAG_NAMESPACE ||
-        (['completed-owner-decision-self-v1', 'owner-initiated-self-v1'].includes(amendment.triggerProfile as string) && !Object.hasOwn(amendment, 'maxPromptBytes')) ||
-        (Object.hasOwn(amendment, 'maxPromptBytes') && (!Number.isSafeInteger(amendment.maxPromptBytes) ||
-          (amendment.maxPromptBytes as number) < 1 || (amendment.maxPromptBytes as number) > 1_048_576))) {
+    requireOnlyKeys(amendment, new Set(['version', 'acceptance', 'scope', 'maxPromptBytes']), `${label} owner amendment`);
+    if (version !== 2 || branch.mode !== 'enforced' || !Object.hasOwn(branch, 'authorityManifestPath') ||
+        amendment.version !== 1 || amendment.acceptance !== 'protected-pr' || amendment.scope !== 'authority-only' ||
+        !Number.isSafeInteger(amendment.maxPromptBytes) || (amendment.maxPromptBytes as number) < 1 ||
+        (amendment.maxPromptBytes as number) > 1_048_576) {
       throw new Error(`Invalid ${label} owner amendment selection`);
     }
   }
@@ -317,16 +305,9 @@ export function resolveCiPolicy(policy: unknown, baseBranch: string): ResolvedCi
   }
   if (selected.ownerAmendment) {
     result.ownerAmendmentVersion = (selected.ownerAmendment as PolicyBranchView).version;
-    result.ownerAmendmentGrade = (selected.ownerAmendment as PolicyBranchView).grade;
+    result.ownerAmendmentAcceptance = (selected.ownerAmendment as PolicyBranchView).acceptance;
     result.ownerAmendmentScope = (selected.ownerAmendment as PolicyBranchView).scope;
-    result.ownerAmendmentTriggerProfile = (selected.ownerAmendment as PolicyBranchView).triggerProfile;
-    result.ownerAmendmentAuthorityId = (selected.ownerAmendment as PolicyBranchView).authorityId;
-    result.ownerAmendmentAuthorityPath = (selected.ownerAmendment as PolicyBranchView).authorityPath;
-    result.ownerAmendmentEvidenceProducer = (selected.ownerAmendment as PolicyBranchView).evidenceProducer;
-    result.ownerAmendmentTagNamespace = (selected.ownerAmendment as PolicyBranchView).tagNamespace;
-    if (Object.hasOwn(selected.ownerAmendment, 'maxPromptBytes')) {
-      result.ownerAmendmentMaxPromptBytes = (selected.ownerAmendment as PolicyBranchView).maxPromptBytes;
-    }
+    result.ownerAmendmentMaxPromptBytes = (selected.ownerAmendment as PolicyBranchView).maxPromptBytes;
   }
   if (selected.mode !== 'local-only') Object.assign(result, resolvedCodexExecutionSelection(selected.execution as PolicyBranchView, selected.reasoningEffort));
   return result;

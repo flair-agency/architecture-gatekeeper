@@ -151,9 +151,9 @@ jobs:
           fi
       - name: Reject self-only OWNER_AMENDMENT policy on the consumer workflow
         env:
-          OWNER_AMENDMENT_GRADE: ${{ steps.resolve.outputs.ownerAmendmentGrade }}
+          OWNER_AMENDMENT_ACCEPTANCE: ${{ steps.resolve.outputs.ownerAmendmentAcceptance }}
         run: |
-          if test "$OWNER_AMENDMENT_GRADE" = G0; then
+          if test -n "$OWNER_AMENDMENT_ACCEPTANCE"; then
             echo 'OWNER_AMENDMENT is supported only by the protected self workflow.' >&2
             exit 1
           fi

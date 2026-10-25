@@ -45,8 +45,8 @@ test('self local and CI preparation supply all six complete committed contract m
   assert.deepEqual(manifest.authorities.map(member => member.id), expectedIds);
   assert.deepEqual(config.authorityLimits, limits);
   assert.equal(selected.authorityManifestPath, config.authorityManifestPath);
-  assert.equal(selected.ownerAmendmentAuthorityId, 'architecture-contract');
-  assert.equal(selected.ownerAmendmentAuthorityPath, 'docs/architecture.md');
+  assert.equal(selected.ownerAmendmentAcceptance, 'protected-pr');
+  assert.equal(selected.ownerAmendmentScope, 'authority-only');
   const f = fixture(t);
   // A working-tree replacement must not replace a committed normative module.
   writeFileSync(join(f.root, manifest.authorities[1].path), '# Unadopted replacement\n');

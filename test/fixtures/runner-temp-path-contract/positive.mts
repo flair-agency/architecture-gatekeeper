@@ -1,6 +1,5 @@
 import {
   appendGitHubOutput,
-  ownerAmendmentTagApiRoute,
   readRunnerTempFile,
   resolveRunnerTempDirectory,
   resolveRunnerTempFile,
@@ -12,18 +11,13 @@ import { readRunnerTempFile as readGrouped } from '../../../src/runner-paths/run
 
 const unknownDirectory: unknown = { untrusted: true };
 const unknownFile: unknown = 42;
-const path: string = resolveRunnerTempDirectory('owner-amendment-eligibility');
-const relativeFile: string = resolveRunnerTempFile(path, 'eligibility-prompt.md');
+const path: string = resolveRunnerTempDirectory('self-amendment-pr');
+const relativeFile: string = resolveRunnerTempFile(path, 'prompt.md');
 const computedPath: string = validateRepositoryTreePath('docs/architecture.md');
-const route: string = ownerAmendmentTagApiRoute(
-  'flair-agency/architecture-gatekeeper',
-  'refs/tags/architecture-gatekeeper/amendments',
-  'a'.repeat(40),
-);
-const bytes: Buffer = readRunnerTempFile(path, 'eligibility-receipt.json');
-const groupedBytes: Buffer = readGrouped(path, 'eligibility-receipt.json', 2048);
-const writtenPath: string = writeRunnerTempFile(path, 'eligibility-receipt.json', bytes, { overwrite: true });
-const defaultOptionsPath: string = writeRunnerTempFile(path, 'eligibility-receipt.json', '{}');
+const bytes: Buffer = readRunnerTempFile(path, 'schema.json');
+const groupedBytes: Buffer = readGrouped(path, 'schema.json', 2048);
+const writtenPath: string = writeRunnerTempFile(path, 'schema.json', bytes, { overwrite: true });
+const defaultOptionsPath: string = writeRunnerTempFile(path, 'schema.json', '{}');
 const observedManifest: unknown = validateSelfAuthorityManifest({
   authorities: [{ id: 'architecture', repository: 'self', path: 'docs/architecture.md' }],
 });
@@ -34,7 +28,6 @@ void unknownDirectory;
 void unknownFile;
 void relativeFile;
 void computedPath;
-void route;
 void bytes;
 void groupedBytes;
 void writtenPath;
