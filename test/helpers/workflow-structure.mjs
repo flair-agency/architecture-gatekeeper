@@ -79,6 +79,29 @@ export function assertWorkflowStructure({ consumer, self, caller, providers }) {
   assert.deepEqual(selfPolicy.permissions, { contents: 'read' }, 'self policy permissions');
   assert.deepEqual(selfReview.permissions, { contents: 'read' }, 'self review permissions');
   assert.deepEqual(selfAmendment.permissions, { contents: 'read' }, 'self amendment reviewer is read-only');
+  const selfGeminiReview = job(self, 'gemini-review');
+  assert.deepEqual(selfGeminiReview.permissions, { contents: 'read', 'id-token': 'write' },
+    'the selected Gemini WIF job alone requires OIDC');
+  for (const name of ['policy', 'review', 'owner-addition', 'owner-amendment', 'report', 'accept']) {
+    const workflowJob = job(self, name);
+    assert.equal(workflowJob.permissions?.contents, 'read', `self ${name} retains contents:read`);
+    assert.notEqual(workflowJob.permissions?.['id-token'], 'write', `self ${name} does not receive OIDC`);
+  }
+  const callJob = job(caller, 'architecture-gate');
+  const levels = { none: 0, read: 1, write: 2 };
+  for (const [name, workflowJob] of Object.entries(self.jobs)) {
+    for (const [permission, level] of Object.entries(workflowJob.permissions ?? {})) {
+      assert.ok(levels[callJob.permissions?.[permission] ?? 'none'] >= levels[level],
+        `caller permission ceiling must cover nested ${name} ${permission}:${level}`);
+    }
+  }
+  assert.deepEqual(callJob.permissions, {
+    contents: 'read', 'pull-requests': 'write', actions: 'read', 'id-token': 'write',
+  }, 'the protected reusable call grants only its required bounded capabilities');
+  assert.deepEqual(job(caller, 'classify-self-repository').permissions, { contents: 'none', 'id-token': 'none' },
+    'self repository classifier remains unprivileged');
+  assert.deepEqual(job(caller, 'deny-unreviewed-fork').permissions, { contents: 'none', 'id-token': 'none' },
+    'Fork denial remains unprivileged');
   for (const name of ['block-review-record', 'owner-amendment-owner-decision-record',
     'owner-amendment-attempt-classifier', 'owner-amendment-semantic-eligibility',
     'owner-amendment-semantic-eligibility-signer', 'self-app-start', 'self-app-report']) {
@@ -153,7 +176,7 @@ export function assertWorkflowStructure({ consumer, self, caller, providers }) {
   assert.match(consumerResolve.run, /materialize-regular-git-snapshot\.mjs/);
   assert.match(consumerResolve.run, /resolve-ci-policy\.mjs/);
 
-  assert.equal(caller.jobs['architecture-gate'].uses, './.github/workflows/architecture-gate.yml', 'self caller reusable workflow source');
+  assert.equal(callJob.uses, './.github/workflows/architecture-gate.yml', 'self caller reusable workflow source');
   const consumerReviewStep = namedStep(consumerReview, 'Run read-only architecture review');
   const selfReviewStep = namedStep(selfReview, 'Run read-only architecture review');
   assert.equal(consumerReviewStep.uses, 'openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e', 'consumer reviewer action exact pin');
