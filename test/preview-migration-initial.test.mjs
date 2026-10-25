@@ -88,7 +88,7 @@ function migratedPolicy(f, { version = 2, model = 'gpt-6-luna', manifest = manif
   maxMembers = 16 } = {}) {
   const branch = { mode: 'enforced', model, reasoningEffort: 'low', authorityManifestPath: manifest,
     authorityLimits: { maxManifestBytes: 16384, maxMembers, maxFileBytes: 65536, maxTotalBytes: 262144, maxPromptBytes: 524288 } };
-  if (trustedRoute) branch.ownerAmendment = { version: 1, grade: 'G0' };
+  if (trustedRoute) branch.ownerAmendment = { version: 1, acceptance: 'protected-pr', scope: 'authority-only', maxPromptBytes: 524288 };
   return { version, default: structuredClone(f.legacyDefault), branches: { ...structuredClone(f.legacyOtherBranches), main: branch } };
 }
 function migrationHead(f, { policy = migratedPolicy(f), selection = f.selection, caller = 'uses: fixture/reviewer@new-pin\n', extra = {} } = {}) {

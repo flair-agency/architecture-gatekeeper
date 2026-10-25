@@ -78,7 +78,7 @@ test('nonPASS and nested BLOCK governance classification retains original route 
   assert.throws(()=>createPassDisplay(context,{decision:'BLOCK'},'f'.repeat(64)));
 });
 
-test('runner masking affects structured display only, while canonical original digest and selected G0 guards persist',async()=>{
+test('runner masking affects structured display only, while canonical original digest and Authority-change refusal persist',async()=>{
   const d=decision();d.summary='synthetic-mask-marker';const p=validateCodexPass(input(d));
   const masked=frame(p).replaceAll('synthetic-mask-marker','***');
   const {fetchImpl,calls}=host(p,()=>{},{log:masked});
@@ -87,10 +87,10 @@ test('runner masking affects structured display only, while canonical original d
   assert.notEqual(digestDecision(report.decision),report.decisionDigest);
   const rendered=renderReport({conclusion:'PASS',summary:report.decision.summary,decision:report.decision},{decisionDigest:report.decisionDigest});
   assert.match(rendered,/\*\*\*/);assert.ok(rendered.includes(report.decisionDigest));
-  assert.equal(assertEnforcedAcceptance({reviewResult:'success',conclusion:'PASS',ownerAmendmentSelected:'G0',
-    ownerAmendmentAttemptResult:'success',ownerAmendmentAttempted:'false',selectedAuthorityChanged:'false'}).route,'ordinary-pass');
-  for(const attempted of ['true',undefined])assert.throws(()=>assertEnforcedAcceptance({reviewResult:'success',conclusion:'PASS',
-    ownerAmendmentSelected:'G0',ownerAmendmentAttemptResult:'success',ownerAmendmentAttempted:attempted}));
+  assert.equal(assertEnforcedAcceptance({reviewResult:'success',conclusion:'PASS',ownerAmendmentSelected:'protected-pr',
+    selectedAuthorityChanged:'false'}).route,'ordinary-pass');
+  for(const changed of ['true',undefined])assert.throws(()=>assertEnforcedAcceptance({reviewResult:'success',conclusion:'PASS',
+    ownerAmendmentSelected:'protected-pr',selectedAuthorityChanged:changed}));
   assert.ok(calls.every(x=>x.url.startsWith('https://api.github.com/')));
 });
 

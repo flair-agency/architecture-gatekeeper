@@ -231,17 +231,9 @@ See the [full normative section](architecture/owner-addition.md#target-multi-doc
 
 See the [full normative section](architecture/owner-addition.md#v051-public-fixture-full-cycle-release-gate-owner-decision).
 
-### Target owner-amendment governance (Issue #75 owner decision)
+### Self owner amendment through a protected ordinary PR
 
-See the [full normative section](architecture/owner-amendment.md#target-owner-amendment-governance-issue-75-owner-decision).
-
-#### Self-v1 semantic eligibility input and receipt (owner decision)
-
-See the [full normative section](architecture/owner-amendment.md#self-v1-semantic-eligibility-input-and-receipt-owner-decision).
-
-### Separate exact-claim authorization and revocation (owner decision)
-
-See the [full normative section](architecture/owner-amendment.md#separate-exact-claim-authorization-and-revocation-owner-decision).
+See the [self owner-amendment procedure](architecture/owner-amendment.md#self-owner-amendment-through-an-ordinary-protected-pr).
 
 ### OWNER_ADDITION adoption and assurance dimensions ([Issue #121](https://github.com/flair-agency/architecture-gatekeeper/issues/121) owner decision)
 
@@ -316,42 +308,15 @@ See the [full normative section](architecture/review-execution.md#target-bounded
 
 See the [full normative section](architecture/review-execution.md#github-step-output-sink-owner-decision-2026-10-03).
 
-#### GitHub self-repository ruleset-readback capability (owner decision, 2026-10-04)
+#### Self repository amendment profile
 
-For `flair-agency/architecture-gatekeeper` only, the owner selects a separate
-GitHub App with repository `administration:write` and mandatory `metadata:read`
-to obtain complete readback of the selected amendment-tag ruleset. Install it
-only on this repository; reduced installation tokens must select only this
-repository and these permissions. This is a GitHub-specific host capability,
-not a shared Core requirement or a requirement for consumer UNVERIFIED preview.
-
-Administration write technically permits ruleset and other repository
-administration mutations. The owner permits this producer only to verify the
-selected repository installation, mint its reduced token, GET the fixed selected
-ruleset, and revoke the token. This dispatch constraint does not make the
-credential read-only or eliminate its compromise blast radius. Issue #326
-tracks future privilege reduction without weakening complete readback checks.
-
-The App private key, JWT and installation token remain inside a separate
-protected-main readback process selected by committed protected source and a
-`main`-only Environment. They must not reach candidate code, package lifecycle
-scripts, ordinary PR/artifact/attestation/tag processing, or queue jobs. Ordinary
-handoff operations retain their ordinary token. No dispatch input may choose an
-arbitrary privileged destination, repository, capability or filesystem sink.
-Complete restriction validation and successful token revocation precede release
-of a nonsecret snapshot; failures stop the selected operation without fallback.
-
-A local snapshot may be consumed only in the same protected job, with exact
-repository, workflow/revision, run/attempt, ruleset and namespace bindings and
-bounded freshness. It is not portable authenticated evidence. Provisioning and
-Environment protection remain host/admin responsibilities; recording this target
-does not establish configuration, host enforcement or adoption. Queue transport
-and its protected receiver remain separate work under Issue #210; this capability
-grants no queue acceptance authority and does not activate an amendment route.
-
-#### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
-
-See the [full normative section](architecture/self-profile.md#target-self-only-github-freepublic-reporter-issue-210-a-owner-decision).
+The self repository uses one protected ordinary Actions PR for amendments to
+existing decisions. Its previous Policy selects `acceptance: "protected-pr"`,
+`scope: "authority-only"`, and `maxPromptBytes`. The workflow validates the
+complete old Authority Set and exact base/head/test-merge diff. The owner merges
+under existing controls; canonical readback verifies the resulting bytes and
+parent/tree relationship. No separate App/Queue route or portable evidence
+custody is selected. See the [self profile](architecture/self-profile.md#self-amendment-route).
 
 #### Target: legacy v1 CI authority repair (Issue #120 owner decision)
 
@@ -391,12 +356,10 @@ failure cannot activate a weaker route dynamically.
 
 `Architecture Gate / accept` is an authoritative required check only where
 the host applies it to the target branch. The current enforced route verifies
-its same-run result. A successful pre-merge check on the separately selected
-Issue #121 procedural route reports exact-B eligibility but is not described
-as host-required unless that requirement is independently verified. A final
-G0 adoption record also needs the separate pre-merge and post-merge evidence
-specified above. If Issue #20 adds other evidence routes, each must verify
-its selected policy and evidence explicitly. No route silently reinterprets
+its same-run result. A successful pre-merge check alone does not prove host
+enforcement. The self amendment procedure checks eligibility before merge and
+canonical Authority bytes after merge. Other evidence routes verify their
+selected policy and evidence explicitly. No route silently reinterprets
 `BLOCK`, accepts A's `OWNER_DECISION`, or treats report delivery as adoption.
 
 ### Canonical authority lifecycle
@@ -659,17 +622,13 @@ for this explicitly unverified profile. Actual consumer selection and use remain
 consumer-owned; this decision authorizes implementation of that preview path,
 not automatic selection, existing-route activation or readiness claims.
 
-For this repository, numbered previews may provide preview.3 with usable
-consumer UNVERIFIED addition, amendment and compatible-migration procedures,
-including those new preview routes, after implementation review, a real consumer
-fixture exercises every advertised path with negative verification for each
-path, and package/release gates pass. This specifically refines the
-existing-supported-path numbered-preview restriction in the self reference
-profile for this separate UNVERIFIED procedure only. This limited preview scope
-does not satisfy or waive the trusted/enforced acceptance and lifecycle gates:
-Issue #210/App trusted reporting and formal Issues #272, #211 and #137 remain
-required for their respective claims, as do the lifecycle-v1 `ACTIVE` criteria.
-It makes no claim that those formal cases are complete.
+The `preview-unverified-procedure-v1` route is distinct from protected
+or trusted adoption. Its prior consumer selection, complete inputs, exact
+eligibility/adoption/readback rules and explicit UNVERIFIED reports remain
+required. Publication scope and sequencing belong to release planning.
+Package publication and ordinary fixture success do not establish protected
+amendment adoption, verified host enforcement or lifecycle-v1 `ACTIVE`.
+Each stronger claim remains subject to its applicable contract and proof.
 
 ## Normative invariants
 
@@ -701,10 +660,11 @@ Every implementation and rollout must preserve these invariants:
    reviewed change. If a decision is missing, a separate addition may become
    canonical through an explicitly enabled protected route or the versioned
    Issue #121 recorded-base route with its stated assurance. If an existing
-   decision must change, an amendment may become canonical through a separately
-   enabled and verified trigger profile, including a completed
-   `OWNER_DECISION` profile once defined. The original reviewed change still
-   requires a fresh review and acceptable evidence where applicable. A
+   decision must change, the self repository uses the predecessor-selected
+   protected ordinary-PR amendment procedure in
+   [owner-amendment.md](architecture/owner-amendment.md); other consumers
+   require their own authorized amendment procedure. The original reviewed
+   change still requires a fresh review under resulting authority. A
    separately versioned, consumer-governed UNVERIFIED preview may provide its
    own addition or amendment procedure only when selected by predecessor
    governance before the governed change, as specified in Explicit unverified
@@ -751,7 +711,7 @@ misrepresented as an Architecture Gatekeeper guarantee.
 
 ## Dogfooding and change discipline
 
-See the [full normative section](architecture/self-profile.md#dogfooding-and-change-discipline).
+See the [full normative section](architecture/self-profile.md#development-sequence-and-v060-self-reference-profile-owner-decision).
 
 ### Development sequence and v0.6.0 self reference profile (owner decision)
 
@@ -759,17 +719,17 @@ See the [full normative section](architecture/self-profile.md#development-sequen
 
 ## Canonical document organization (owner direction, 2026-10-04)
 
-The self contract may be split, preserving meaning, into `docs/architecture.md`
-and `docs/architecture/{authority-set,owner-addition,owner-amendment,review-execution,self-profile}.md`.
+The self contract consists of `docs/architecture.md` and
+`docs/architecture/{authority-set,owner-addition,owner-amendment,review-execution,self-profile}.md`.
 All six are required selected authority, with stable IDs and no implicit
-precedence. Adopt this migration authorization before moving binding clauses.
-Then review the complete move, manifest, prompts, references and distribution
-under the predecessor selection; the new selection applies only after adoption.
-Preserve every requirement, exception, applicability, affected-member scope,
-assurance, freshness, compatibility and historical result. Verify clause
-coverage and complete local/CI inputs. Existing lifecycle T3/T5/T6 and acceptance
-govern each stage. This permits no limit increase, route activation or fallback;
-splitting does not extend the policy-selected self amendment target.
+precedence. Reorganization must preserve every requirement, exception,
+applicability, affected-member scope, assurance, freshness, compatibility and
+historical-result meaning. Review changes, manifest, prompts, references and
+distribution under the predecessor selection, with complete clause coverage
+and local/CI inputs; a new selection applies only after authorized adoption.
+Existing lifecycle T3/T5/T6 and acceptance govern these changes. Document
+organization permits no limit increase, route activation or fallback and does
+not extend the Policy-selected self amendment target.
 
 ## Relationship to tracked work
 

@@ -17,6 +17,6 @@ grouped({});
 const result = assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'PASS' });
 // The returned route is readonly because the runtime freezes it.
 result.route = 'owner-addition-pending';
-// The route union contains only the two emitted routes.
+// The route union contains only emitted acceptance routes.
 const unsupported: 'blocked' = result.route;
 void unsupported;

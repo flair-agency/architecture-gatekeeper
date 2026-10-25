@@ -143,7 +143,7 @@ rewrite a published artifact or skip a gate because the change is urgent.
 ### Checkpoints and retrospective
 
 At planning, scope agreement, each preview or material feedback event,
-candidate freeze, publication and follow-up, update the issue with date,
+candidate freeze, publication and follow-up, add an issue comment with date,
 version/channel/SHA when known, completed and remaining criteria, estimate
 changes, evidence links, blockers and decisions. If a required field is not
 known, leave it explicitly unknown with an owner and next checkpoint. For
@@ -152,6 +152,10 @@ must include the same sections. Maintainers review completeness during triage
 and at each checkpoint, request missing evidence, and keep dates proposed
 until an owner agreement is recorded. This is a coordination practice, not a
 new required acceptance check.
+
+Keep the Description's current scope, criteria/checkmarks, agreement, estimates,
+next checkpoints and blockers accurate, with links to the supporting comments.
+Do not accumulate decision or execution history in the Description.
 
 After the release, compare each scenario with actual active effort and elapsed
 time. Attribute variance to implementation, test category, package work,
@@ -164,7 +168,7 @@ improve intake, update and recovery instructions separately. Turn demonstrated
 improvements into owned issues and record in the next release whether they
 changed the measured cost or result.
 
-Use this retrospective record in the planning issue (or a later issue edit):
+Use this retrospective record in a planning-issue comment:
 
 ```markdown
 ## Release retrospective
@@ -238,7 +242,7 @@ rollout completion, enforcement, or completion of new `OWNER_AMENDMENT` or App
 routes. A preview is not a substitute for the formal v0.6.0 gates.
 
 Formal v0.6.0 requires both protected self `OWNER_AMENDMENT / G0` cycles in the
-canonical [architecture contract](architecture/self-profile.md#development-sequence-and-v060-self-reference-profile-owner-decision):
+canonical [architecture contract](architecture/self-profile.md#development-sequence-and-dogfooding):
 the completed-`BLOCK` case and the completed-`OWNER_DECISION` case, including
 the Issue #137 contract change. Each applicable cycle must bind exact B and
 protected evidence, pass its protected queue transition, read back canonical

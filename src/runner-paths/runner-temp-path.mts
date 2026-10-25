@@ -5,10 +5,7 @@ import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 
 const fail: (message: string) => never = message => { throw new Error(`Runner temporary path: ${message}`); };
 const CHILD_PATHS: Readonly<Record<string, string>> = Object.freeze({
-  'architecture-gate-owner-decision-record-input': 'architecture-gate-owner-decision-record-input',
-  'owner-amendment-semantic-reviewer-output': 'owner-amendment-semantic-reviewer-output',
-  'owner-amendment-eligibility': 'owner-amendment-eligibility',
-  'owner-amendment-merge-group': 'owner-amendment-merge-group',
+  'self-amendment-pr': 'self-amendment-pr',
   'architecture-gate-owner-addition': 'architecture-gate-owner-addition',
 });
 
@@ -51,6 +48,8 @@ function fixedRelativePath(directory: unknown, fileName: unknown): string {
   if (child !== '.' && resolve(directory) !== resolve(root, CHILD_PATHS[child] ?? 'invalid')) fail('directory is not a fixed runner temp child.');
   // Every path reaching fs APIs below is a literal selected from this closed table.
   switch (`${child}/${fileName as string}`) {
+    case 'self-amendment-pr/prompt.md': return 'self-amendment-pr/prompt.md';
+    case 'self-amendment-pr/schema.json': return 'self-amendment-pr/schema.json';
     case './architecture-gate-prompt.md': return 'architecture-gate-prompt.md';
     case './architecture-gate-decision.schema.json': return 'architecture-gate-decision.schema.json';
     case './architecture-gate-decision.validation.json': return 'architecture-gate-decision.validation.json';
@@ -61,22 +60,6 @@ function fixedRelativePath(directory: unknown, fileName: unknown): string {
     case 'architecture-gate-owner-addition/procedure.json': return 'architecture-gate-owner-addition/procedure.json';
     case 'architecture-gate-owner-addition/evidence-context.json': return 'architecture-gate-owner-addition/evidence-context.json';
     case 'architecture-gate-owner-addition/eligibility-evidence.json': return 'architecture-gate-owner-addition/eligibility-evidence.json';
-    case 'architecture-gate-owner-decision-record-input/authority-provenance.json': return 'architecture-gate-owner-decision-record-input/authority-provenance.json';
-    case 'architecture-gate-owner-decision-record-input/decision.json': return 'architecture-gate-owner-decision-record-input/decision.json';
-    case 'architecture-gate-owner-decision-record-input/event.json': return 'architecture-gate-owner-decision-record-input/event.json';
-    case 'architecture-gate-owner-decision-record-input/recorded-context.json': return 'architecture-gate-owner-decision-record-input/recorded-context.json';
-    case 'architecture-gate-owner-decision-record-input/review-record.json': return 'architecture-gate-owner-decision-record-input/review-record.json';
-    case 'owner-amendment-semantic-reviewer-output/decision.json': return 'owner-amendment-semantic-reviewer-output/decision.json';
-    case 'owner-amendment-eligibility/eligibility-prompt.md': return 'owner-amendment-eligibility/eligibility-prompt.md';
-    case 'owner-amendment-eligibility/eligibility.schema.json': return 'owner-amendment-eligibility/eligibility.schema.json';
-    case 'owner-amendment-eligibility/prepared-context.json': return 'owner-amendment-eligibility/prepared-context.json';
-    case 'owner-amendment-eligibility/eligibility-receipt.json': return 'owner-amendment-eligibility/eligibility-receipt.json';
-    case 'owner-amendment-merge-group/event.json': return 'owner-amendment-merge-group/event.json';
-    case 'owner-amendment-merge-group/ordinary-prompt.md': return 'owner-amendment-merge-group/ordinary-prompt.md';
-    case 'owner-amendment-merge-group/ordinary-schema.json': return 'owner-amendment-merge-group/ordinary-schema.json';
-    case 'owner-amendment-merge-group/ordinary-validation.json': return 'owner-amendment-merge-group/ordinary-validation.json';
-    case 'owner-amendment-merge-group/ordinary-authority.json': return 'owner-amendment-merge-group/ordinary-authority.json';
-    case 'owner-amendment-merge-group/ordinary-context.json': return 'owner-amendment-merge-group/ordinary-context.json';
     default: fail('file is not an approved fixed runner temp path.');
   }
 }
@@ -161,14 +144,4 @@ export function validateSelfAuthorityManifest(manifest: unknown): unknown {
     validateRepositoryTreePath((member as { path?: unknown }).path);
   }
   return manifest;
-}
-
-/** Build a GitHub REST ref URL only for the fixed self repository and namespace. */
-export function ownerAmendmentTagApiRoute(repository: unknown, tagNamespace: unknown, bSha: unknown): string {
-  if (repository !== 'flair-agency/architecture-gatekeeper' ||
-      tagNamespace !== 'refs/tags/architecture-gatekeeper/amendments' ||
-      typeof bSha !== 'string' || !/^[a-f0-9]{40}$/.test(bSha)) {
-    fail('tag lookup must name the fixed self repository, protected namespace, and exact commit SHA.');
-  }
-  return `repos/flair-agency/architecture-gatekeeper/git/ref/tags/architecture-gatekeeper/amendments/${bSha}`;
 }

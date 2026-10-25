@@ -45,14 +45,13 @@ normal consumer acceptance policy; BLOCK or another OWNER_DECISION remains
 possible. G0 does not accept A. Owner-authorized administrative exceptions stay
 outside this result under existing consumer governance.
 
-The deterministic verifier and protected reporter are implemented, but the
-route requires prior protected-policy selection and all verifier requirements.
-This repository's policy does not select it: self-review remains inactive.
+The route requires its deterministic verifier and protected reporter, prior
+protected-policy selection and all verifier requirements. Implementation alone
+does not establish selection or activation.
 First-time policy adoption may use the existing governance's one-time
 owner-controlled administrative exception after code review and the fixture
 full-cycle E2E below; that exception is neither Gatekeeper acceptance nor route
-activation for a review. v0.5.1 release requires the public fixture E2E and
-package release checks. Fixture success activates no self or real-consumer
+activation for a review. Fixture success activates no self or real-consumer
 route and settles no consumer architecture or migration status. Work completion
 is not a missing decision; owners establish required completion evidence
 separately.
@@ -134,16 +133,18 @@ historical results retain their original single-member interpretation and
 limits; a verifier must reject ambiguous version mixing rather than upgrade
 them by reinterpretation.
 
-This target requires implementation, focused negative verification and the
-synthetic fixture E2E below for v0.5.1 package release. It does not activate a
-real consumer; representative LIVE Agency E2E remains a separate prerequisite.
-Issue #120 owns legacy PR-head authority repair; consumer-specific decision
-classification and rule amendments cannot replace the fixture A/B lifecycle.
+Demonstrating this target requires implementation, focused negative verification
+and the synthetic full-cycle qualification below. It does not activate a real
+consumer; representative LIVE Agency E2E remains a separate prerequisite.
+Consumer-specific decision classification and rule amendments cannot replace
+the fixture A/B lifecycle. The legacy authority-repair contract remains
+independently applicable.
 
-#### v0.5.1 public fixture full-cycle release gate (owner decision)
+<a id="v051-public-fixture-full-cycle-release-gate-owner-decision"></a>
 
-The public `flair-agency/architecture-gatekeeper-v05-fixture` is the v0.5.1
-release E2E. With synthetic data it must demonstrate:
+#### Synthetic full-cycle qualification (owner decision)
+
+The existing synthetic qualification case must demonstrate:
 
 1. Change A receives an ordinary `OWNER_DECISION` with its exact
    `ownerDecisionId`.
@@ -158,7 +159,7 @@ release E2E. With synthetic data it must demonstrate:
 5. A is reviewed freshly against the resulting canonical authority and returns
    `PASS` under the fixture's normal review policy.
 
-Issues #119/#121 conditions still apply. A's earlier `OWNER_DECISION` remains
+All applicable route conditions still apply. A's earlier `OWNER_DECISION` remains
 historical; fresh `PASS` is new. Fixture success proves no real consumer's
 readiness, policy, owner authorization or host enforcement.
 
@@ -266,9 +267,9 @@ behavior and historical results keep their original meanings; a verifier must
 reject ambiguous version mixing and must not upgrade historical G0 results by
 reinterpretation. This Issue #121 contract is limited to OWNER_ADDITION and
 does not generalize to OWNER_AMENDMENT or other routes. It defines the target
-contract, not an active route. Implementation, focused negative verification,
-and the public fixture full-cycle E2E specified in the Issue #119 release gate
-are required for the v0.5.1 package release. Passing that fixture does not
+contract, not an active route. Implementation, focused negative verification
+and the synthetic full-cycle qualification above remain required to demonstrate
+that target. Passing that fixture does not
 prove readiness or adoption for a real consumer or replace the protected
 representative LIVE Agency end-to-end prerequisite for route activation. Each
 consumer must separately select and verify the route under its own base policy
@@ -279,13 +280,12 @@ observes the mutable tag-ref mapping to the bound tag object at verification
 time and makes no promise that the ref remains unchanged through a later
 transition. This point-in-time semantics applies to historical v0.5 artifacts
 and is not strengthened or weakened by the versioned Issue #121 route.
-`OWNER_AMENDMENT` continues to require its bound evidence to remain valid
-through the protected
-canonical transition; its freshness requirement cannot be reduced to G0's
-verification-time observation.
+That `OWNER_ADDITION` behavior does not govern the self repository's current
+`OWNER_AMENDMENT` procedure, which is the ordinary protected-PR procedure in
+the [owner amendment contract](owner-amendment.md#self-owner-amendment-through-an-ordinary-protected-pr).
+It does not change a separately selected consumer's own amendment contract.
 
-Issue #119 (complete multi-document Authority Set support) and Issue #120
-(legacy PR-head authority failure) remain independent blockers for a LIVE
-Agency consumer trial. Those trial-specific blockers are not part of the
-v0.5.1 public-fixture release gate above. This assurance decision does not
-resolve either issue or authorize a consumer-specific architecture.
+A LIVE Agency consumer trial requires applicable complete-Set support and
+legacy authority-repair behavior, independently of synthetic qualification.
+Their implementation and trial status belong in consumer/work records. This
+assurance contract does not authorize a consumer-specific architecture.

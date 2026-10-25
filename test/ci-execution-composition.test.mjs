@@ -127,7 +127,7 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
     assert.match(acceptJob, /CONCLUSION: \$\{\{ needs\.report\.outputs\.conclusion \}\}/);
   }
 
-  const temp = mkdtempSync(join(tmpdir(), 'agk-failed-handoff-'));
+  const temp = realpathSync(mkdtempSync(join(tmpdir(), 'agk-failed-handoff-')));
   t.after(() => rmSync(temp, { recursive: true, force: true }));
   const baseEnv = { PATH: process.env.PATH };
   let serial = 0;
@@ -201,7 +201,7 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
         ? /protected review did not complete successfully/i
         : /requires its selected policy, producer and completed review/i);
     } else if (acceptCli === enforced) {
-      assert.match(result.stderr, /requires model-backed PASS or verified selected G0 eligibility/i);
+      assert.match(result.stderr, /requires model-backed PASS or a verified selected Owner procedure/i);
     } else {
       assert.match(result.stderr, /selected authority requires successful OWNER_ADDITION/i);
     }
@@ -251,7 +251,7 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
   deny(procedural, { reviewResult: 'success', conclusion: malformedReport.conclusion });
 });
 
-test('self selects existing effective Codex limits without changing governance selection', () => {
+test('self selects existing effective Codex limits and the configured amendment profile', () => {
   const policy = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/ci-policy.json', import.meta.url), 'utf8'));
   const resolved = resolveCiPolicy(policy, 'main');
   assert.equal(policy.version, 2);
@@ -260,7 +260,9 @@ test('self selects existing effective Codex limits without changing governance s
   });
   assert.equal(resolved.executionSelection, 'policy');
   assert.equal(resolved.ownerAmendmentVersion, 1);
-  assert.equal(resolved.ownerAmendmentTriggerProfile, 'completed-owner-decision-self-v1');
+  assert.equal(resolved.ownerAmendmentAcceptance, 'protected-pr');
+  assert.equal(resolved.ownerAmendmentScope, 'authority-only');
+  assert.equal(resolved.ownerAmendmentMaxPromptBytes, 524288);
   assert.equal(resolved.model, 'gpt-6.1-sol');
   assert.equal(resolved.reasoningEffort, 'medium');
 });
@@ -347,7 +349,7 @@ test('Policy v6 keeps ordinary providers separate from supported explicit Owner 
   assert.equal(resolvedGemini.thinkingLevel, 'MEDIUM');
   assert.equal(resolvedGemini.reasoningEffort, undefined);
   assert.equal(resolvedGemini.ownerAdditionGrade, undefined);
-  assert.equal(resolvedGemini.ownerAmendmentGrade, undefined);
+  assert.equal(resolvedGemini.ownerAmendmentAcceptance, undefined);
 
   const resolvedCodex = resolveCiPolicy(v6CodexPolicy, 'main');
   assert.equal(resolvedCodex.policyVersion, 6);
@@ -356,7 +358,7 @@ test('Policy v6 keeps ordinary providers separate from supported explicit Owner 
   assert.equal(resolvedCodex.reasoningEffort, 'medium');
   assert.equal(resolvedCodex.thinkingLevel, undefined);
   assert.equal(resolvedCodex.ownerAdditionGrade, undefined);
-  assert.equal(resolvedCodex.ownerAmendmentGrade, undefined);
+  assert.equal(resolvedCodex.ownerAmendmentAcceptance, undefined);
 
   const resolvedLocalOnly = resolveCiPolicy(v6GeminiPolicy, 'feature-branch');
   assert.equal(resolvedLocalOnly.policyVersion, 6);
@@ -411,7 +413,7 @@ test('Policy v6 keeps ordinary providers separate from supported explicit Owner 
           },
         },
       },
-    }, 'main'), /Gemini supports ordinary enforced review only|Unknown CI policy branch main owner amendment field: triggerProfiles/);
+    }, 'main'), /Gemini supports ordinary enforced review only|Unknown CI policy branch main owner amendment field: grade/);
     assert.throws(() => resolveCiPolicy({
       ...basePolicy,
       branches: {
@@ -534,7 +536,7 @@ test('Policy v6 keeps ordinary providers separate from supported explicit Owner 
     if (expectedStatus === 0) {
       assert.match(acceptResult.stdout, /Enforced CI acceptance route: ordinary-pass/);
     } else {
-      assert.match(acceptResult.stderr, /requires model-backed PASS or verified selected G0 eligibility/i);
+      assert.match(acceptResult.stderr, /requires model-backed PASS or a verified selected Owner procedure/i);
     }
   }
 

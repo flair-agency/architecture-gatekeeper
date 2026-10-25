@@ -18,13 +18,8 @@
       },
       "ownerAmendment": {
         "version": 1,
-        "grade": "G0",
+        "acceptance": "protected-pr",
         "scope": "authority-only",
-        "triggerProfile": "completed-owner-decision-self-v1",
-        "authorityId": "architecture-contract",
-        "authorityPath": "docs/architecture.md",
-        "evidenceProducer": "github-actions-attestation",
-        "tagNamespace": "refs/tags/architecture-gatekeeper/amendments",
         "maxPromptBytes": 524288
       },
       "execution": {

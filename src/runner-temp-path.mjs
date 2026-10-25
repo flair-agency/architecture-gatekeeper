@@ -6,5 +6,4 @@ export {
   appendGitHubOutput,
   validateRepositoryTreePath,
   validateSelfAuthorityManifest,
-  ownerAmendmentTagApiRoute,
 } from './runner-paths/runner-temp-path.mts';

@@ -5,6 +5,37 @@ The normative architecture and assurance contract is in
 [`architecture.md`](architecture.md) and its five required normative members;
 this guide does not amend that Set.
 
+## Information placement
+
+Choose the destination from what the information governs and how long it
+applies, not merely because the Owner stated it.
+
+| Information | Existing destination |
+| --- | --- |
+| Lasting product responsibilities, trust boundaries, route/assurance conditions and compatibility semantics | Relevant member of the complete Canonical Authority Set, through its predecessor-authorized adoption process |
+| Actual consumer/runtime selection | Relevant Policy/configuration, under its existing authorization and compatibility rules |
+| Release scope, date, order and milestone | Release planning Issue; reusable publication steps belong in `docs/release.md` |
+| Bounded operation approval and exact PR/run identities | Existing operational approval, PR or investigation record with the required access and evidence controls |
+| Rationale, investigation, benchmarks and observed run/readback history | Issue/PR comments or non-normative evidence documentation, as appropriate |
+| Current Issue problem, outcome, scope, acceptance criteria and completion state | Issue Description, including current checkboxes and evidence links; dated decisions, reasoning, execution updates and history belong in comments |
+
+Before adding normative text, distinguish a lasting rule from a planned or
+observed action. Would it remain a requirement if the release/date/PR/run
+changed? Does it define a capability's conditions, or only when work should
+finish? Check the existing owner document before duplicating or overriding it.
+Versioned formats, legacy evidence meanings and incident-specific security
+constraints can be normative; do not relocate them just because they name a
+version or past event.
+
+Keep current Issue fields and completion checkboxes accurate as work changes;
+link the supporting decision/checkpoint comments rather than copying their
+chronology into the Description. Reconcile changed work definitions in place.
+This guidance neither amends existing Canonical obligations (including current
+release conditions) nor waives their adoption process. Relocation must preserve
+required evidence and access controls; never move private approvals or secrets
+into a public or less-protected record. Use the existing
+[PR review guidance](issue-pr-workflow.md#prepare-a-pull-request) to review placement.
+
 ## Repository layout
 
 This is a Node.js ES module package. Its supported Node version is declared by
@@ -219,6 +250,11 @@ emitted AST and retain both providers' publication and negative cases.
 ## TypeScript source and runtime distribution
 
 ### Earlier implementation checkpoints
+
+These are historical implementation checkpoints. Self App/Queue, tag handoff,
+attestation and portable amendment-evidence modules described below have been
+retired; they are not current APIs or instructions to restore that mechanism.
+The current self procedure is documented in [owner-intervention.md](owner-intervention.md).
 
 Earlier slice statuses and counts are historical; the current inventory below supersedes them.
 
@@ -618,24 +654,15 @@ Execution-result types distinguish completed observations with bounded response
 bytes from incomplete observations without those bytes. General host outcomes
 remain unknown because an accepted accessor may change across the original two
 reads; the completed branch narrows only its captured success/available facts.
-Tag-readback callback types preserve existing synchronous, Promise and thenable
-returns; API and observed OID values stay unknown. Readonly observations leave
-Buffer contents mutable. Tag-attempt results distinguish absence from a present amendment attempt; the
-final absence check narrows the result after its existing re-read. Reader
-callbacks accept synchronous values, Promises and thenables. Parsing a tag
-envelope checks its existing key/profile bindings and decodes bounded evidence
-bytes; unchecked envelope fields remain unknown and do not establish semantic
-eligibility. Artifact discovery and fetching preserve exact-attempt metadata, pagination,
-compressed-byte limits and digest checks. Their result types distinguish
-successful observations from incomplete observations without artifact bytes or
-identity fields; repeatedly read external fields remain unknown. Attestation
-inspection assumes verified CLI output and trusted expectations; it does not
-establish those preconditions. The synchronous CLI invocation leaves returned
-output unknown until its existing JSON parsing and inspection. Its type does
-not exclude asynchronous callbacks, which still fail as malformed output at
-runtime. Other callback contracts remain with their owning modules. The authority-source
-fetch contract preserves sync, Promise and thenable responses and reader results,
-optional signal/headers, bounded decoding, request counts and existing timeouts.
+The retired self G0 tag-attempt, tagged-envelope, artifact/attestation and
+GitHub App ruleset-readback implementations described in earlier checkpoints
+are not present in the current source tree. The current protected-PR amendment
+helper is `src/ci-review/self-amendment-pr.mts`, reached through
+`src/self-amendment-pr.mjs`; it is not a public package export or standalone CLI.
+
+The authority-source fetch contract preserves synchronous, Promise and thenable
+responses and reader results, optional signal/headers, bounded decoding, request
+counts and existing timeouts.
 Captured validated request strings and computed Buffer output are typed; parsed
 JSON stays unknown. The readback callback composes that streaming response with
 its JSON operation; standard fetch and direct shared callback composition are
@@ -652,16 +679,6 @@ constants and computed digests are typed. Publishing assumes a protected caller
 already validated the result and does not authenticate that precondition.
 Neither result type supplies owner authorization, producer provenance or route
 activation. Focused accessor regressions retain existing observable rereads.
-
-Ruleset readback retains the fixed protected-main workflow context, App
-installation binding, single-repository administration grant and token
-revocation in `finally` before a snapshot is returned. Storage remains anchored
-to the real checkout, with private regular-file modes and same-run/base/freshness
-checks. Environment fields and API JSON are unknown; the captured workflow and
-fixed constants are typed, while context fields read again remain unknown.
-Readonly annotations prevent typed reassignment but do not freeze returned
-objects. A local snapshot is same-job launcher input, not a portable receipt or
-proof of host enforcement; the unchanged runtime validators still own its use.
 
 Runtime coverage follows the emitted and executed `dist/**/*.mjs` files. Report
 those exact paths without counting source files as runtime coverage. CodeQL
@@ -729,7 +746,7 @@ authority.
 Record any required owner decision in the complete selected architecture Set
 (the relevant normative member) before changing
 architecture or assurance responsibilities. Follow its
-[dogfooding and change discipline](architecture/self-profile.md#dogfooding-and-change-discipline)
+[dogfooding and change discipline](architecture/self-profile.md#development-sequence-and-dogfooding)
 for local/manual, packaged and CI paths as applicable before broader rollout.
 
 ## Local CodeQL
