@@ -271,6 +271,8 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false,
     revision: 'authority-revision', path: `docs/authority-${index}.md` });
   if (currentSelfCycle) {
     policy = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/ci-policy.json')));
+    // Pin this isolated legacy cycle before committing its base; production selection is independent.
+    policy.branches.main.ownerAmendment.triggerProfile = profile;
     members = JSON.parse(readFileSync(join(root, '.codex/gatekeeper/authorities.json'))).authorities;
   }
   const basePolicy = structuredClone(policy);
@@ -291,8 +293,8 @@ function makeRepo(profile, { includeRuntime = false, candidateOnlyOptIn = false,
     for (const member of members.slice(1)) put(repoPath, member.path, oldOwnership);
   }
   if (currentSelfCycle) {
-    for (const name of ['ci-policy.json', 'authorities.json']) put(repoPath, `.codex/gatekeeper/${name}`,
-      readFileSync(join(root, '.codex/gatekeeper', name)));
+    put(repoPath, '.codex/gatekeeper/authorities.json',
+      readFileSync(join(root, '.codex/gatekeeper/authorities.json')));
     for (const member of members) put(repoPath, member.path, readFileSync(join(root, member.path)));
     const fixtureRule = '\n## Isolated functional fixture: report-mode choice\n\n' +
       'This clause governs only the local synthetic fixture file fixture-mode.json. It changes no AGK production responsibility. ' +
@@ -886,7 +888,7 @@ async function localCanonicalReadback(fixture, canonicalSha) {
 }
 
 for (const [profile, currentSelfCycle] of [['completed-block-v1', false], ['completed-owner-decision-self-v1', false], ['completed-owner-decision-self-v1', true]]) {
-  test(`exercises production route components with test adapter projections for ${profile}${currentSelfCycle ? ' current-self-cycle' : ''}`, async t => {
+  test(`exercises production route components with test adapter projections for ${profile}${currentSelfCycle ? ' six-member-self-cycle with explicit prior selection' : ''}`, async t => {
     const fixture = makeRepo(profile, { includeRuntime: true, currentSelfCycle });
     t.after(fixture.cleanup);
     const resolved = resolveOwnerAmendmentHandoffGitContext({ repository, baseSha: fixture.baseSha,

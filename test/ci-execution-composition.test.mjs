@@ -251,7 +251,7 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
   deny(procedural, { reviewResult: 'success', conclusion: malformedReport.conclusion });
 });
 
-test('self selects existing effective Codex limits without changing governance selection', () => {
+test('self selects existing effective Codex limits and the configured amendment profile', () => {
   const policy = JSON.parse(readFileSync(new URL('../.codex/gatekeeper/ci-policy.json', import.meta.url), 'utf8'));
   const resolved = resolveCiPolicy(policy, 'main');
   assert.equal(policy.version, 2);
@@ -260,7 +260,7 @@ test('self selects existing effective Codex limits without changing governance s
   });
   assert.equal(resolved.executionSelection, 'policy');
   assert.equal(resolved.ownerAmendmentVersion, 1);
-  assert.equal(resolved.ownerAmendmentTriggerProfile, 'completed-owner-decision-self-v1');
+  assert.equal(resolved.ownerAmendmentTriggerProfile, 'owner-initiated-self-v1');
   assert.equal(resolved.model, 'gpt-6.1-sol');
   assert.equal(resolved.reasoningEffort, 'medium');
 });
