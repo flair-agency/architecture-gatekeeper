@@ -385,7 +385,7 @@ consistency; determinism is not promised.
 #### Bounded ordinary Gemini caller safeguards
 
 The bounded ordinary caller's historical deployment selection and single-session
-record are preserved in the [planning and execution history](../investigations/2026-10-25-canonical-planning-history.md).
+record are preserved in the [planning and execution history](https://github.com/flair-agency/architecture-gatekeeper/blob/d1c8d21389c43f3beb20fe7978006703e9405b24/docs/investigations/2026-10-25-canonical-planning-history.md).
 That record is not an instruction to execute. Historical approval cannot be
 reused for a future execution, including a session that was never run or did
 not complete. It grants no second session, workflow rerun, repeated READY
