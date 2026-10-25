@@ -7,9 +7,10 @@ or approve a route, consumer policy, security claim, or release.
 
 ## Create and refine an issue
 
-Keep the Description focused on the current problem, outcome, scope and
-acceptance criteria. Record decisions, rationale and progress in comments;
-reconcile changed requirements in place. Follow the
+Keep the Description focused on the current problem, outcome, scope,
+acceptance criteria and completion state. Update checkboxes and current fields
+in place, linking evidence; record dated decisions, rationale and execution
+history in comments. Follow the
 [information placement guide](development.md#information-placement).
 
 Choose the Bug report, Feature request, or Task form. The forms require a

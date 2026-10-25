@@ -17,7 +17,7 @@ applies, not merely because the Owner stated it.
 | Release scope, date, order and milestone | Release planning Issue; reusable publication steps belong in `docs/release.md` |
 | Bounded operation approval and exact PR/run identities | Existing operational approval, PR or investigation record with the required access and evidence controls |
 | Rationale, investigation, benchmarks and observed run/readback history | Issue/PR comments or non-normative evidence documentation, as appropriate |
-| Current Issue problem, outcome, scope and acceptance criteria | Issue Description; decisions, reasoning, progress and chronological history belong in comments |
+| Current Issue problem, outcome, scope, acceptance criteria and completion state | Issue Description, including current checkboxes and evidence links; dated decisions, reasoning, execution updates and history belong in comments |
 
 Before adding normative text, distinguish a lasting rule from a planned or
 observed action. Would it remain a requirement if the release/date/PR/run
@@ -27,8 +27,9 @@ Versioned formats, legacy evidence meanings and incident-specific security
 constraints can be normative; do not relocate them just because they name a
 version or past event.
 
-When an Issue's work definition changes, reconcile its current fields and
-preserve the rationale/history in comments instead of prepending a running log.
+Keep current Issue fields and completion checkboxes accurate as work changes;
+link the supporting decision/checkpoint comments rather than copying their
+chronology into the Description. Reconcile changed work definitions in place.
 This guidance neither amends existing Canonical obligations (including current
 release conditions) nor waives their adoption process. Relocation must preserve
 required evidence and access controls; never move private approvals or secrets
