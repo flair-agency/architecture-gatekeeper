@@ -21,44 +21,19 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const f = fixture(t);
   const head = commitOn(f, 'runtime-identity-nested-module', { 'app.txt': 'Runtime identity fixture\n' });
   const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-  const nestedPaths = ['owner-addition/owner-addition-validation.mjs', 'ci-execution/ci-execution-result.mjs', 'owner-amendment/owner-amendment-tag-readback.mjs',
-    'owner-amendment/owner-amendment-tag-api.mjs', 'owner-amendment/owner-amendment-tag-attempt.mjs',
-    'owner-amendment/owner-amendment-semantic-tag-object.mjs',
-    'owner-amendment/owner-amendment-artifact.mjs', 'owner-amendment/owner-amendment-artifact-discovery.mjs',
-    'owner-amendment/owner-amendment-attestation.mjs', 'owner-amendment/owner-amendment-artifact-zip.mjs',
+  const nestedPaths = ['owner-addition/owner-addition-validation.mjs', 'ci-execution/ci-execution-result.mjs',
     'github/github-associated-repository.mjs', 'github/github-cli-runner.mjs',
-    'owner-amendment/owner-amendment-handoff-pr-run-context.mjs',
-    'owner-amendment/owner-amendment-workflow-run-merge-group-context.mjs', 'owner-amendment/owner-amendment-scope.mjs',
-    'github/github-authority-source.mjs', 'github/github-merge-group-event.mjs', 'github/github-owner-amendment-readback.mjs',
-    'github/github-owner-addition-readback.mjs', 'github/github-app-check-reporter.mjs',
-    'github/github-ruleset-readback.mjs', 'github/github-ruleset-readback-cli.mjs', 'review-inputs/review-input-path.mjs',
+    'github/github-authority-source.mjs',
+    'github/github-owner-addition-readback.mjs',
+    'review-inputs/review-input-path.mjs',
     'authority-validation/legacy-git-snapshot.mjs', 'git/buffered-git.mjs', 'authority-validation/json-schema.mjs',
-    'authority-validation/multi-authority-provenance.mjs', 'ci-review/legacy-authority-decision.mjs', 'ci-review/prepared-ci-decision.mjs', 'ci-review/ci-decision-kind.mjs', 'ci-review/verify-legacy-validation-selection.mjs', 'ci-execution/ci-execution-observation.mjs', 'owner-amendment/owner-amendment-block-semantic-record.mjs', 'owner-amendment/owner-amendment-block-context-verifier.mjs', 'owner-amendment/owner-amendment-block-evidence-composer.mjs', 'authority-validation/validate-decision.mjs', 'authority-validation/validate-authority-set-decision.mjs', 'authority-validation/preflight-authority-set-review.mjs', 'review-inputs/prepare-review-file-context.mjs', 'review-inputs/prepare-review-context.mjs', 'review-inputs/materialize-review-workspace.mjs', 'review-inputs/review-security-proxy.mjs', 'review-contract/review-contract.mjs', 'authority-validation/resolve-ci-policy.mjs', 'authority-validation/prepare-authority-set.mjs', 'owner-addition/owner-addition-adoption.mjs', 'owner-addition/owner-decision-addition.mjs'];
-  nestedPaths.push('owner-amendment/owner-amendment-block-handoff.mjs',
-    'owner-amendment/owner-amendment-block-handoff-compose.mjs',
-    'owner-amendment/owner-amendment-block-handoff-orchestrator.mjs',
-    'owner-amendment/owner-amendment-owner-decision-handoff.mjs',
-    'owner-amendment/owner-amendment-owner-decision-handoff-cli.mjs',
-    'owner-amendment/owner-amendment-handoff-cli.mjs',
-    'owner-amendment/owner-amendment-owner-decision-record.mjs',
-    'owner-amendment/owner-amendment-owner-decision-amendment-record.mjs',
-    'owner-amendment/owner-amendment-owner-decision-context-verifier.mjs',
-    'owner-amendment/owner-amendment-block-record.mjs',
-    'owner-amendment/owner-amendment-record-builder.mjs',
-    'owner-amendment/owner-amendment-merge-group-block-bridge.mjs',
-    'owner-amendment/owner-amendment-merge-group-b-context.mjs',
-    'owner-amendment/owner-amendment-merge-group-evidence.mjs',
-    'owner-amendment/owner-amendment-merge-group-ordinary-review.mjs',
-    'owner-amendment/owner-amendment-merge-group-acceptance.mjs',
-    'owner-amendment/owner-amendment-semantic-eligibility.mjs',
-    'owner-amendment/owner-amendment-semantic-producer-attempts.mjs',
-    'authority-validation/authority-set.mjs',
+    'authority-validation/multi-authority-provenance.mjs', 'ci-review/legacy-authority-decision.mjs', 'ci-review/prepared-ci-decision.mjs', 'ci-review/ci-decision-kind.mjs', 'ci-review/verify-legacy-validation-selection.mjs', 'ci-execution/ci-execution-observation.mjs', 'authority-validation/validate-decision.mjs', 'authority-validation/validate-authority-set-decision.mjs', 'authority-validation/preflight-authority-set-review.mjs', 'review-inputs/prepare-review-file-context.mjs', 'review-inputs/prepare-review-context.mjs', 'review-inputs/materialize-review-workspace.mjs', 'review-inputs/review-security-proxy.mjs', 'review-contract/review-contract.mjs', 'authority-validation/resolve-ci-policy.mjs', 'authority-validation/prepare-authority-set.mjs', 'owner-addition/owner-addition-adoption.mjs', 'owner-addition/owner-decision-addition.mjs'];
+  nestedPaths.push('authority-validation/authority-set.mjs',
     'ci-review/ci-enforced-acceptance.mjs',
     'ci-review/ci-procedural-authority-change.mjs',
     'ci-review/ci-procedural-acceptance.mjs',
     'ci-review/ci-report.mjs',
     'ci-review/ci-report-entrypoint.mjs',
-    'owner-amendment/owner-amendment.mjs',
     'gemini-cli/gemini-cli-response.mjs',
     'gemini-cli/gemini-cli-process.mjs',
     'gemini-cli/gemini-cli-proxy-session.mjs',
@@ -231,54 +206,12 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-validation.mjs')));
   writeFileSync(join(flatRoot, 'dist/ci-execution-result.mjs'),
     readFileSync(join(flatRoot, 'dist/ci-execution/ci-execution-result.mjs')));
-  writeFileSync(join(flatRoot, 'dist/owner-amendment-tag-readback.mjs'),
-    readFileSync(join(flatRoot, 'dist/owner-amendment/owner-amendment-tag-readback.mjs')));
-  for (const file of ['owner-amendment-tag-api.mjs', 'owner-amendment-tag-attempt.mjs',
-    'owner-amendment-semantic-tag-object.mjs', 'owner-amendment-artifact.mjs',
-    'owner-amendment-artifact-discovery.mjs', 'owner-amendment-attestation.mjs', 'owner-amendment-artifact-zip.mjs',
-    'owner-amendment-handoff-pr-run-context.mjs', 'owner-amendment-workflow-run-merge-group-context.mjs', 'owner-amendment-scope.mjs']) {
-    // Restore the former flat dependency paths only in this synthetic legacy copy.
-    writeFileSync(join(flatRoot, 'dist', file),
-      readFileSync(join(flatRoot, 'dist/owner-amendment', file), 'utf8').replace(/from '\.\.\//g, "from './"));
-  }
   for (const file of ['github-associated-repository.mjs', 'github-cli-runner.mjs',
-    'github-authority-source.mjs', 'github-merge-group-event.mjs', 'github-owner-amendment-readback.mjs',
+    'github-authority-source.mjs',
     'github-runner-env.mjs',
-    'github-owner-addition-readback.mjs', 'github-app-check-reporter.mjs', 'github-ruleset-readback.mjs']) {
+    'github-owner-addition-readback.mjs']) {
     writeFileSync(join(flatRoot, 'dist', file), readFileSync(join(flatRoot, 'dist/github', file)));
   }
-  // The legacy CLI was an unconditional flat side effect, not a re-exporting facade.
-  // Restore its exact original bytes before removing the grouped directory so the
-  // synthetic predecessor exercises the old collection layout without importing it.
-  const legacyRulesetCli = [
-    "import { writeFileSync, mkdirSync } from 'node:fs';",
-    "import { join } from 'node:path';",
-    "import { produceRulesetReadback, rulesetStorageDirectory } from './github-ruleset-readback.mjs';",
-    '',
-    '// Only this step inherits the App key. No JWT or installation token is output,',
-    '// written to disk, placed in workflow outputs, or passed to normal handoff code.',
-    'try {',
-    '  const directory = rulesetStorageDirectory(process.env);',
-    "  if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) throw new Error('Ordinary credentials must not enter the isolated process.');",
-    '  const result = await produceRulesetReadback({ env: process.env });',
-    '  mkdirSync(directory, { mode: 0o700 });',
-    "  if (Buffer.byteLength(JSON.stringify(result)) > 65_536) throw new Error('Local readback exceeds bounds.');",
-    "  writeFileSync(join(directory, 'snapshot.json'), `${JSON.stringify(result)}\\n`, { mode: 0o600, flag: 'wx' });",
-    "  process.stdout.write('Complete local ruleset readback stored after installation-token revocation.\\n');",
-    '} catch {',
-    "  process.stderr.write('Isolated ruleset readback incomplete; no handoff authorization or credential output.\\n');",
-    '  process.exitCode = 1;',
-    '}',
-    '',
-  ].join('\n');
-  writeFileSync(join(flatRoot, 'dist/github-ruleset-readback-cli.mjs'), legacyRulesetCli);
-  const flatRulesetResult = spawnSync(process.execPath, [join(flatRoot, 'dist/github-ruleset-readback-cli.mjs')], {
-    cwd: flatRoot, env: { PATH: process.env.PATH ?? '' }, encoding: 'utf8', timeout: 10_000,
-  });
-  assert.equal(flatRulesetResult.error, undefined);
-  assert.equal(flatRulesetResult.status, 1);
-  assert.equal(flatRulesetResult.stdout, '');
-  assert.equal(flatRulesetResult.stderr, 'Isolated ruleset readback incomplete; no handoff authorization or credential output.\n');
   writeFileSync(join(flatRoot, 'dist/review-input-path.mjs'),
     readFileSync(join(flatRoot, 'dist/review-inputs/review-input-path.mjs')));
   const bufferedGitDirectory = join(flatRoot, 'dist/git');
@@ -316,12 +249,6 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     readFileSync(join(flatRoot, 'dist/ci-review/verify-legacy-validation-selection.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/ci-execution-observation.mjs'),
     readFileSync(join(flatRoot, 'dist/ci-execution/ci-execution-observation.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
-  writeFileSync(join(flatRoot, 'dist/owner-amendment-block-semantic-record.mjs'),
-    readFileSync(join(flatRoot, 'dist/owner-amendment/owner-amendment-block-semantic-record.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
-  writeFileSync(join(flatRoot, 'dist/owner-amendment-block-context-verifier.mjs'),
-    readFileSync(join(flatRoot, 'dist/owner-amendment/owner-amendment-block-context-verifier.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
-  writeFileSync(join(flatRoot, 'dist/owner-amendment-block-evidence-composer.mjs'),
-    readFileSync(join(flatRoot, 'dist/owner-amendment/owner-amendment-block-evidence-composer.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/validate-decision.mjs'),
     readFileSync(join(flatRoot, 'dist/authority-validation/validate-decision.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
   writeFileSync(join(flatRoot, 'dist/validate-authority-set-decision.mjs'),
@@ -398,20 +325,6 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   writeFileSync(githubOwnerAdditionProvenancePath, githubOwnerAdditionProvenanceSource
     .replace(/from '\.\.\//g, "from './")
     .replace(/from (["'])\.\/owner-addition-evidence-zip\.mjs\1/, "from './owner-addition-evidence-zip-helper.mjs'"));
-  for (const file of ['owner-amendment-block-handoff.mjs',
-    'owner-amendment-block-handoff-compose.mjs', 'owner-amendment-block-handoff-orchestrator.mjs',
-    'owner-amendment-owner-decision-handoff.mjs', 'owner-amendment-owner-decision-handoff-cli.mjs',
-    'owner-amendment-handoff-cli.mjs', 'owner-amendment-owner-decision-record.mjs',
-    'owner-amendment-owner-decision-amendment-record.mjs',
-    'owner-amendment-owner-decision-context-verifier.mjs', 'owner-amendment-block-record.mjs',
-    'owner-amendment-record-builder.mjs', 'owner-amendment-merge-group-block-bridge.mjs',
-    'owner-amendment-merge-group-b-context.mjs', 'owner-amendment-merge-group-evidence.mjs',
-    'owner-amendment-merge-group-ordinary-review.mjs', 'owner-amendment-merge-group-acceptance.mjs',
-    'owner-amendment-semantic-eligibility.mjs', 'owner-amendment-semantic-producer-attempts.mjs',
-    'owner-amendment.mjs']) {
-    writeFileSync(join(flatRoot, 'dist', file),
-      readFileSync(join(flatRoot, 'dist/owner-amendment', file), 'utf8').replace(/from '\.\.\//g, "from './"));
-  }
   for (const file of ['gemini-cli-response.mjs', 'gemini-cli-process.mjs', 'gemini-cli-proxy-session.mjs',
     'gemini-cli-session.mjs', 'prepared-gemini-ci-review.mjs']) {
     writeFileSync(join(flatRoot, 'dist', file),
@@ -484,7 +397,6 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   rmSync(join(flatRoot, 'dist/authority-validation'), { recursive: true });
   rmSync(join(flatRoot, 'dist/review-inputs'), { recursive: true });
   rmSync(join(flatRoot, 'dist/github'), { recursive: true });
-  rmSync(join(flatRoot, 'dist/owner-amendment'), { recursive: true });
   rmSync(join(flatRoot, 'dist/owner-addition'), { recursive: true });
   rmSync(join(flatRoot, 'dist/ci-execution'), { recursive: true });
   rmSync(bufferedGitDirectory, { recursive: true });
@@ -532,7 +444,6 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   assert.equal(flatRequest.runtime.nodeVersion, process.version);
   assert.deepEqual(Object.keys(flatRequest.runtime.files).filter(file => file !== '../package.json').sort(), expectedFlatPaths);
   assert.equal(flatRequest.runtime.files['../package.json'], packageBefore);
-  assert.equal(flatRequest.runtime.files['github-ruleset-readback-cli.mjs'], createHash('sha256').update(legacyRulesetCli).digest('hex'));
   assert.equal(flatRequest.runtime.files['legacy-authority-decision-helpers.mjs'], createHash('sha256')
     .update(readFileSync(join(flatRoot, 'dist/legacy-authority-decision-helpers.mjs'))).digest('hex'));
   assert.equal(flatRequest.runtime.files['buffered-git.mjs'], createHash('sha256')
@@ -558,51 +469,4 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   assert.equal(flatOwnerAdditionCi.resolveSingleOwnerAdditionAuthorityId(f.root, authorityCommit, selected, authorityPath), member.id);
   assert.throws(() => flatOwnerAdditionCi.resolveSingleOwnerAdditionAuthorityId(f.root, authorityCommit, selected, 'docs/other.md'),
     /only its affected self member/);
-});
-
-
-test('ruleset CLI source and emitted entrypoint fail closed before external access without RUNNER_TEMP', () => {
-  const safeEnv = { PATH: process.env.PATH ?? '' };
-  for (const name of Object.keys(process.env)) {
-    if (name.startsWith('GITHUB_') || name.startsWith('OWNER_AMENDMENT_') || name.startsWith('RULESET_READBACK_') || name === 'GH_TOKEN' || name === 'RUNNER_TEMP') {
-      delete safeEnv[name];
-    }
-  }
-  const packageRoot = dirname(dirname(fileURLToPath(import.meta.resolve('@flair-agency/architecture-gatekeeper/preview-lifecycle'))));
-  const entrypoints = [
-    ...(existsSync(join(repositoryRoot, 'src/github-ruleset-readback-cli.mjs'))
-      ? [join(repositoryRoot, 'src/github-ruleset-readback-cli.mjs')]
-      : []),
-    join(packageRoot, 'dist/github-ruleset-readback-cli.mjs'),
-  ];
-  for (const entrypoint of entrypoints) {
-    const result = spawnSync(process.execPath, [entrypoint], {
-      cwd: repositoryRoot,
-      env: safeEnv,
-      encoding: 'utf8',
-      timeout: 10_000,
-    });
-    assert.equal(result.error, undefined, `${entrypoint} must exit without spawn errors`);
-    assert.equal(result.status, 1, `${entrypoint} must reject a missing RUNNER_TEMP`);
-    assert.equal(result.stdout, '');
-    assert.equal(result.stderr, 'Isolated ruleset readback incomplete; no handoff authorization or credential output.\n');
-  }
-});
-
-
-test('stale runtime rejects before Git but a matching runtime still requires immutable Git verification', async t => {
-  const packageRoot = dirname(dirname(fileURLToPath(import.meta.resolve('@flair-agency/architecture-gatekeeper/preview-lifecycle'))));
-  const isolated = mkdtempSync(join(tmpdir(), 'preview-fast-rejection-')); t.after(() => rmSync(isolated, { recursive: true, force: true }));
-  cpSync(join(packageRoot, 'dist'), join(isolated, 'dist'), { recursive: true }); copyFileSync(join(packageRoot, 'package.json'), join(isolated, 'package.json'));
-  const runtime = await import(pathToFileURL(join(isolated, 'dist/preview-lifecycle.mjs')).href);
-  const f = fixture(t); const head = commitOn(f, 'stale-fast-rejection', { 'app.txt': 'candidate\n' });
-  const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-  const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
-  const fakeGit = join(isolated, 'git'); writeFileSync(fakeGit, '#!/bin/sh\nexit 77\n'); chmodSync(fakeGit, 0o700);
-  const priorPath = process.env.PATH; process.env.PATH = `${isolated}:${priorPath}`;
-  t.after(() => { process.env.PATH = priorPath; });
-  await assert.rejects(runtime.completePreviewLifecycle(request, ordinary(decision()), f.root), /Command failed: git/);
-  appendFileSync(join(isolated, 'dist/measurement.mjs'), '\n// isolated runtime change\n');
-  await assert.rejects(runtime.completePreviewLifecycle(request, ordinary(decision()), f.root), /request differs from immutable predecessor inputs/);
-  await assert.rejects(runtime.validatePreviewReceipt(receipt, f.root), /request differs from immutable predecessor inputs/);
 });

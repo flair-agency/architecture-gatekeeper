@@ -3,10 +3,9 @@ import assert from 'node:assert/strict';
 import { linkSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ownerAmendmentTagApiRoute, readRunnerTempFile,
+import { readRunnerTempFile,
   appendGitHubOutput, resolveRunnerTempDirectory, resolveRunnerTempFile, validateRepositoryTreePath, validateSelfAuthorityManifest,
   writeRunnerTempFile } from '../dist/runner-temp-path.mjs';
-import { classifyOwnerAmendmentTagApiStatus, ownerAmendmentTagApiUrl } from '../dist/owner-amendment-tag-api.mjs';
 
 function fixture(fn) {
   const root = mkdtempSync(join(tmpdir(), 'agk-runner-temp-'));
@@ -19,40 +18,42 @@ function fixture(fn) {
 }
 
 test('confines temporary directories and files to fixed direct children', () => fixture((root, runnerTemp) => {
-  const dir = resolveRunnerTempDirectory('owner-amendment-eligibility');
-  assert.equal(realpathSync(dir), join(runnerTemp, 'owner-amendment-eligibility'));
-  assert.equal(resolveRunnerTempFile(dir, 'eligibility-prompt.md'), 'owner-amendment-eligibility/eligibility-prompt.md');
+  const dir = resolveRunnerTempDirectory('architecture-gate-owner-addition');
+  assert.equal(realpathSync(dir), join(runnerTemp, 'architecture-gate-owner-addition'));
+  assert.equal(resolveRunnerTempFile(dir, 'eligibility-prompt.md'), 'architecture-gate-owner-addition/eligibility-prompt.md');
   assert.throws(() => resolveRunnerTempDirectory('../outside'), /fixed runner temp child name/);
   assert.throws(() => resolveRunnerTempFile(dir, '../outside'), /fixed runner temp path/);
   const outside = join(root, 'outside'); mkdirSync(outside);
-  symlinkSync(outside, join(runnerTemp, 'owner-amendment-semantic-reviewer-output'), 'dir');
-  assert.throws(() => resolveRunnerTempDirectory('owner-amendment-semantic-reviewer-output'), /real direct directory/);
+  rmSync(dir, { recursive: true });
+  symlinkSync(outside, join(runnerTemp, 'architecture-gate-owner-addition'), 'dir');
+  assert.throws(() => resolveRunnerTempDirectory('architecture-gate-owner-addition'), /real direct directory/);
 }));
 
 test('uses no-follow bounded regular-file I/O beneath the fixed runner directory', () => fixture((root, runnerTemp) => {
-  const dir = resolveRunnerTempDirectory('architecture-gate-owner-decision-record-input');
-  writeRunnerTempFile(dir, 'decision.json', '{"ok":true}');
-  assert.equal(readRunnerTempFile(dir, 'decision.json').toString(), '{"ok":true}');
-  assert.throws(() => writeRunnerTempFile(dir, 'decision.json', 'overwrite'), /EEXIST/);
+  const dir = resolveRunnerTempDirectory('self-amendment-pr');
+  writeRunnerTempFile(dir, 'prompt.md', '{"ok":true}');
+  assert.equal(readRunnerTempFile(dir, 'prompt.md').toString(), '{"ok":true}');
+  assert.throws(() => writeRunnerTempFile(dir, 'prompt.md', 'overwrite'), /EEXIST/);
   const outside = join(root, 'outside.txt'); writeFileSync(outside, 'outside');
-  symlinkSync(outside, join(dir, 'event.json'));
-  assert.throws(() => readRunnerTempFile(dir, 'event.json'), /ELOOP|symbolic link|too many levels/i);
+  symlinkSync(outside, join(dir, 'schema.json'));
+  assert.throws(() => readRunnerTempFile(dir, 'schema.json'), /ELOOP|symbolic link|too many levels/i);
   assert.throws(() => readRunnerTempFile(dir, 'outside.txt'), /fixed runner temp path/);
   assert.throws(() => resolveRunnerTempDirectory('not-allowlisted'), /fixed runner temp child name/);
   process.chdir(root);
-  assert.throws(() => resolveRunnerTempDirectory('owner-amendment-eligibility'), /runner temp directory/);
+  assert.throws(() => resolveRunnerTempDirectory('architecture-gate-owner-addition'), /runner temp directory/);
 }));
 
-test('legacy and owner-addition artifacts use only their approved fixed names', () => fixture((root, runnerTemp) => {
+test('legacy, owner-addition and self-amendment artifacts use only their approved fixed names', () => fixture((root, runnerTemp) => {
   const owner = resolveRunnerTempDirectory('architecture-gate-owner-addition');
+  const amendment = resolveRunnerTempDirectory('self-amendment-pr');
   for (const [directory, names] of [[runnerTemp, ['architecture-gate-prompt.md',
     'architecture-gate-decision.schema.json', 'architecture-gate-decision.validation.json',
     'architecture-gate-legacy-prompt.md', 'architecture-gate-legacy-provenance.json']],
   [owner, ['eligibility-prompt.md', 'eligibility.schema.json', 'procedure.json',
-    'evidence-context.json', 'eligibility-evidence.json']]]) {
+    'evidence-context.json', 'eligibility-evidence.json']], [amendment, ['prompt.md', 'schema.json']]]) {
     for (const name of names) {
       const target = writeRunnerTempFile(directory, name, 'initial long contents');
-      assert.equal(target, directory === runnerTemp ? name : `architecture-gate-owner-addition/${name}`);
+      assert.equal(target, directory === runnerTemp ? name : `${directory === owner ? 'architecture-gate-owner-addition' : 'self-amendment-pr'}/${name}`);
       assert.equal(statSync(target).mode & 0o777, 0o600);
       assert.throws(() => writeRunnerTempFile(directory, name, 'exclusive'), /EEXIST/);
       writeRunnerTempFile(directory, name, Buffer.from('retry'), { overwrite: true });
@@ -97,26 +98,6 @@ test('appends to trusted GITHUB_OUTPUT independently of RUNNER_TEMP and cwd', ()
   process.env.GITHUB_OUTPUT = outputPath;
   assert.throws(() => appendGitHubOutput('x'.repeat(16_385)), /bounded text/);
 }));
-
-test('fixes the GitHub API origin, repository and owner-amendment tag namespace', () => {
-  assert.equal(ownerAmendmentTagApiRoute('flair-agency/architecture-gatekeeper',
-    'refs/tags/architecture-gatekeeper/amendments', 'a'.repeat(40),),
-  `repos/flair-agency/architecture-gatekeeper/git/ref/tags/architecture-gatekeeper/amendments/${'a'.repeat(40)}`);
-  assert.throws(() => ownerAmendmentTagApiRoute('attacker/repo', 'refs/tags/architecture-gatekeeper/amendments', 'a'.repeat(40)), /fixed self repository/);
-  assert.throws(() => ownerAmendmentTagApiRoute('flair-agency/architecture-gatekeeper', 'refs/tags/other', 'a'.repeat(40)), /fixed self repository/);
-  assert.throws(() => ownerAmendmentTagApiRoute('flair-agency/architecture-gatekeeper',
-    'refs/tags/architecture-gatekeeper/amendments', 'https://example.invalid'), /exact commit SHA/);
-  const expectedUrl = `https://api.github.com/repos/flair-agency/architecture-gatekeeper/git/ref/tags/architecture-gatekeeper/amendments/${'a'.repeat(40)}`;
-  assert.equal(ownerAmendmentTagApiUrl('flair-agency/architecture-gatekeeper',
-    'refs/tags/architecture-gatekeeper/amendments', 'a'.repeat(40)), expectedUrl);
-  assert.equal(classifyOwnerAmendmentTagApiStatus({ status: 404, requestedUrl: expectedUrl, expectedUrl }), 'OWNER_AMENDMENT_TAG_NOT_FOUND');
-  assert.equal(classifyOwnerAmendmentTagApiStatus({ status: 200, requestedUrl: expectedUrl, expectedUrl }), 'OWNER_AMENDMENT_TAG_FOUND');
-  assert.throws(() => classifyOwnerAmendmentTagApiStatus({ status: 404,
-    requestedUrl: 'https://api.github.com/repos/attacker/repo/git/ref/tags/x', expectedUrl }), /exact protected self ref request/);
-  assert.throws(() => classifyOwnerAmendmentTagApiStatus({ status: 404,
-    requestedUrl: expectedUrl, expectedUrl: 'https://api.github.com/repos/flair-agency/architecture-gatekeeper/git/ref/tags/architecture-gatekeeper/amendments/not-a-sha' }), /exact protected self ref request/);
-  assert.throws(() => classifyOwnerAmendmentTagApiStatus({ status: 403, requestedUrl: expectedUrl, expectedUrl }), /unexpected HTTP status 403/);
-});
 
 test('rejects unsafe Git tree paths before constructing Git revision:path arguments', () => {
   for (const value of ['', '/etc/passwd', '../secret', 'docs/../../secret', 'docs\\secret', 'docs/file:evil', 'docs//file.md']) {

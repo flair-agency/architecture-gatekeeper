@@ -77,20 +77,10 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   mkdirSync(join(fixtureRoot, 'src/ci-execution'), { recursive: true });
   cpSync(join(root, 'src/ci-execution/ci-execution-result.mts'), join(fixtureRoot, 'src/ci-execution/ci-execution-result.mts'));
   cpSync(join(root, 'src/ci-execution-result.mjs'), join(fixtureRoot, 'src/ci-execution-result.mjs'));
-  mkdirSync(join(fixtureRoot, 'src/owner-amendment'), { recursive: true });
-  cpSync(join(root, 'src/owner-amendment/owner-amendment-tag-readback.mts'), join(fixtureRoot, 'src/owner-amendment/owner-amendment-tag-readback.mts'));
-  cpSync(join(root, 'src/owner-amendment-tag-readback.mjs'), join(fixtureRoot, 'src/owner-amendment-tag-readback.mjs'));
-  for (const module of ['owner-amendment-tag-api', 'owner-amendment-tag-attempt',
-    'owner-amendment-semantic-tag-object', 'owner-amendment-artifact',
-    'owner-amendment-artifact-discovery', 'owner-amendment-attestation', 'owner-amendment-artifact-zip',
-    'owner-amendment-handoff-pr-run-context', 'owner-amendment-workflow-run-merge-group-context', 'owner-amendment-scope']) {
-    cpSync(join(root, `src/owner-amendment/${module}.mts`), join(fixtureRoot, `src/owner-amendment/${module}.mts`));
-    cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
-  }
   mkdirSync(join(fixtureRoot, 'src/github'), { recursive: true });
   for (const module of ['github-associated-repository', 'github-cli-runner',
-    'github-authority-source', 'github-merge-group-event', 'github-owner-amendment-readback',
-    'github-owner-addition-readback', 'github-app-check-reporter', 'github-ruleset-readback', 'github-runner-env',
+    'github-authority-source',
+    'github-owner-addition-readback', 'github-runner-env',
     'github-owner-addition-provenance']) {
     cpSync(join(root, `src/github/${module}.mts`), join(fixtureRoot, `src/github/${module}.mts`));
     cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
@@ -123,25 +113,17 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'authority-validation/resolve-ci-policy.mjs',
     'ci-execution-result.mjs',
     'ci-execution/ci-execution-result.mjs',
-    'github-app-check-reporter.mjs',
     'github-associated-repository.mjs',
     'github-authority-source.mjs',
     'github-cli-runner.mjs',
-    'github-merge-group-event.mjs',
     'github-owner-addition-provenance.mjs',
     'github-owner-addition-readback.mjs',
-    'github-owner-amendment-readback.mjs',
-    'github-ruleset-readback.mjs',
     'github-runner-env.mjs',
-    'github/github-app-check-reporter.mjs',
     'github/github-associated-repository.mjs',
     'github/github-authority-source.mjs',
     'github/github-cli-runner.mjs',
-    'github/github-merge-group-event.mjs',
     'github/github-owner-addition-provenance.mjs',
     'github/github-owner-addition-readback.mjs',
-    'github/github-owner-amendment-readback.mjs',
-    'github/github-ruleset-readback.mjs',
     'github/github-runner-env.mjs',
     'github/owner-addition-evidence-zip.mjs',
     'legacy.mjs',
@@ -149,28 +131,6 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
     'owner-addition-validation.mjs',
     'owner-addition/owner-addition-validation.mjs',
     'owner-addition/peer.mjs',
-    'owner-amendment-artifact-discovery.mjs',
-    'owner-amendment-artifact-zip.mjs',
-    'owner-amendment-artifact.mjs',
-    'owner-amendment-attestation.mjs',
-    'owner-amendment-handoff-pr-run-context.mjs',
-    'owner-amendment-scope.mjs',
-    'owner-amendment-semantic-tag-object.mjs',
-    'owner-amendment-tag-api.mjs',
-    'owner-amendment-tag-attempt.mjs',
-    'owner-amendment-tag-readback.mjs',
-    'owner-amendment-workflow-run-merge-group-context.mjs',
-    'owner-amendment/owner-amendment-artifact-discovery.mjs',
-    'owner-amendment/owner-amendment-artifact-zip.mjs',
-    'owner-amendment/owner-amendment-artifact.mjs',
-    'owner-amendment/owner-amendment-attestation.mjs',
-    'owner-amendment/owner-amendment-handoff-pr-run-context.mjs',
-    'owner-amendment/owner-amendment-scope.mjs',
-    'owner-amendment/owner-amendment-semantic-tag-object.mjs',
-    'owner-amendment/owner-amendment-tag-api.mjs',
-    'owner-amendment/owner-amendment-tag-attempt.mjs',
-    'owner-amendment/owner-amendment-tag-readback.mjs',
-    'owner-amendment/owner-amendment-workflow-run-merge-group-context.mjs',
     'resolve-ci-policy.mjs',
     'runner-paths/runner-temp-path.mjs',
     'runner-temp-path.mjs',
@@ -180,8 +140,6 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   assert.deepEqual(reExportTargets(join(dist, 'owner-addition-validation.mjs')), ['./owner-addition/owner-addition-validation.mjs']);
   assert.deepEqual(reExportTargets(join(dist, 'ci-execution-result.mjs')), ['./ci-execution/ci-execution-result.mjs']);
   assert.match(readFileSync(join(dist, 'ci-execution/ci-execution-result.mjs'), 'utf8'), /export function normalizeCiExecutionResult/);
-  assert.deepEqual(reExportTargets(join(dist, 'owner-amendment-tag-readback.mjs')), ['./owner-amendment/owner-amendment-tag-readback.mjs']);
-  assert.match(readFileSync(join(dist, 'owner-amendment/owner-amendment-tag-readback.mjs'), 'utf8'), /export async function readOwnerAmendmentTagForMergeGroup/);
   assert.doesNotMatch(emittedFiles(dist).join('\n'), /stale/);
   assert.equal(runBuild(fixtureRoot).status, 0, 'a second clean build should be deterministic');
 

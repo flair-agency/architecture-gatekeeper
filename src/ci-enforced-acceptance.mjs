@@ -13,11 +13,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     ownerAdditionResult: process.env.OWNER_ADDITION_RESULT,
     ownerAdditionEligibility: process.env.OWNER_ADDITION_ELIGIBILITY,
     ownerAmendmentSelected: process.env.OWNER_AMENDMENT_SELECTED,
-    ownerAmendmentAttemptResult: process.env.OWNER_AMENDMENT_ATTEMPT_RESULT,
-    ownerAmendmentAttempted: process.env.OWNER_AMENDMENT_ATTEMPTED,
-    ownerAmendmentSignerResult: process.env.OWNER_AMENDMENT_SIGNER_RESULT,
-    ownerAmendmentSignerStatus: process.env.OWNER_AMENDMENT_SIGNER_STATUS,
-    ownerAmendmentEligibility: process.env.OWNER_AMENDMENT_ELIGIBILITY,
+    ownerAmendmentResult: process.env.OWNER_AMENDMENT_RESULT,
+    ownerAmendmentVerification: process.env.OWNER_AMENDMENT_VERIFICATION,
   });
   console.log(`Enforced CI acceptance route: ${result.route}`);
 }

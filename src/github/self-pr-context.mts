@@ -20,23 +20,31 @@ const REPOSITORY = 'flair-agency/architecture-gatekeeper' as const;
 const REPOSITORY_ID = 1379218762 as const;
 const API = 'https://api.github.com';
 const SHA = /^[a-f0-9]{40}$/;
-const ACTIONS = new Set(['opened', 'synchronize', 'reopened', 'ready_for_review']);
+const ACTIONS = new Set(['opened', 'synchronize', 'reopened', 'ready_for_review', 'edited']);
 const MAX_RESPONSE_BYTES = 64 * 1024;
 const MAX_REQUEST_MS = 10_000;
 const MAX_TOTAL_MS = 25_000;
 function fail(message: string): never { throw new Error(`Self PR context: ${message}`); }
 type EventView = { action?: unknown; repository?: { full_name?: unknown; id?: unknown }; pull_request?: {
+  title?: unknown; body?: unknown;
   number?: unknown; draft?: unknown; state?: unknown; base?: { ref?: unknown; sha?: unknown; repo?: { full_name?: unknown; id?: unknown } };
   head?: { sha?: unknown; repo?: { full_name?: unknown; id?: unknown } };
 } };
 type MainRefView = { ref?: unknown; object?: { sha?: unknown; type?: unknown } };
 type CommitView = { sha?: unknown; parents?: unknown };
 type PullRequestView = { number?: unknown; state?: unknown; draft?: unknown; merge_commit_sha?: unknown;
+  title?: unknown; body?: unknown;
   base?: { ref?: unknown; sha?: unknown; repo?: { full_name?: unknown; id?: unknown } };
   head?: { sha?: unknown; repo?: { full_name?: unknown; id?: unknown } } };
 
 function validId(value: unknown): boolean { return Number.isSafeInteger(value) && value === REPOSITORY_ID; }
 function isObject(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
+function purpose(pr: { title?: unknown; body?: unknown }): string {
+  if (typeof pr.title !== 'string' || !pr.title.trim() || (pr.body !== null && typeof pr.body !== 'string')) fail('PR purpose is missing or malformed.');
+  const value = `${pr.title}\n\n${pr.body ?? ''}`;
+  if (value.includes('\0') || Buffer.byteLength(value) > 16_384) fail('PR purpose exceeds the amendment input bound.');
+  return value;
+}
 function validateEvent(value: unknown) {
   if (!isObject(value)) fail('event payload is missing or malformed.');
   const event = value as EventView;
@@ -57,6 +65,7 @@ export async function selectSelfPrContext(input: SelfPrContextInput): Promise<Se
         typeof input.token !== 'string' || input.token.length < 1 || input.token.length > 4_096 ||
         /[\u0000\r\n]/.test(input.token) || !SHA.test(input.sourceBaseSha as string) || !SHA.test(input.runtimeBaseSha as string)) fail('trusted producer bindings or invocation are invalid.');
     const { pr: eventPr, number } = validateEvent(input.event);
+    const reviewedPurpose = purpose(eventPr);
     const event = input.event as EventView;
     if (typeof event.action !== 'string' || !ACTIONS.has(event.action)) fail('event action is not an admitted open-PR action.');
     const fetchImpl = input.fetchImpl ?? fetch;
@@ -112,6 +121,7 @@ export async function selectSelfPrContext(input: SelfPrContextInput): Promise<Se
       if (mainRef.ref !== 'refs/heads/main' || mainRef.object?.type !== 'commit' || !SHA.test(mainSha as string) ||
           mainSha !== input.sourceBaseSha || mainSha !== input.runtimeBaseSha) fail('protected source/runtime binding does not match current main.');
       const lp = livePrValue as PullRequestView;
+      if (purpose(lp) !== reviewedPurpose) fail('live PR purpose differs from the reviewed event.');
       if (String(lp.number) !== number || lp.state !== 'open' || lp.draft !== false || lp.base?.ref !== 'main' ||
           lp.base?.repo?.full_name !== REPOSITORY || !validId(lp.base.repo.id) || lp.head?.repo?.full_name !== REPOSITORY || !validId(lp.head.repo.id) ||
           lp.base?.sha !== mainSha || lp.base.sha !== eventPr.base?.sha || lp.head?.sha !== eventPr.head?.sha || !SHA.test(lp.merge_commit_sha as string)) fail('live PR does not match exact same-repository event tuple and current main.');
@@ -132,6 +142,7 @@ export async function selectSelfPrContext(input: SelfPrContextInput): Promise<Se
       if (!isObject(finalMainValue) || !isObject(finalPrValue)) fail('final GitHub API readback is malformed.');
       const finalMain = finalMainValue as MainRefView;
       const finalPr = finalPrValue as PullRequestView;
+      if (purpose(finalPr) !== reviewedPurpose) fail('PR purpose changed during context selection.');
       if (finalMain.ref !== 'refs/heads/main' || finalMain.object?.type !== 'commit' || finalMain.object?.sha !== mainSha ||
           String(finalPr.number) !== number || finalPr.state !== 'open' || finalPr.draft !== false || finalPr.base?.ref !== 'main' ||
           finalPr.base?.repo?.full_name !== REPOSITORY || !validId(finalPr.base?.repo?.id) ||

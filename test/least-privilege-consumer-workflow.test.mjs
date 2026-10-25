@@ -5,6 +5,7 @@ import { readWorkflow } from './helpers/workflow-structure.mjs';
 const consumer = readWorkflow('../../.github/workflows/architecture-gate-consumer.yml').workflow;
 const self = readWorkflow('../../.github/workflows/architecture-gate.yml').workflow;
 const caller = readWorkflow('../../.github/workflows/self-architecture-gate.yml').workflow;
+const providers = readWorkflow('../../.github/workflows/architecture-gate-providers.yml').workflow;
 
 // Coverage map: consumer policy/review/addition permission invariants; self-only
 // signer permission and consumer absence invariants; policy->review->addition->
@@ -14,5 +15,5 @@ const caller = readWorkflow('../../.github/workflows/self-architecture-gate.yml'
 import { assertWorkflowStructure } from './helpers/workflow-structure.mjs';
 
 test('parsed target jobs preserve least privilege, protected policy, and selected route wiring', () => {
-  assertWorkflowStructure({ consumer, self, caller });
+  assertWorkflowStructure({ consumer, self, caller, providers });
 });
