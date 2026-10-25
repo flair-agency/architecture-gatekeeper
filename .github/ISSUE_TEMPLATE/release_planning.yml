@@ -71,25 +71,25 @@ body:
     id: agreement_checkpoints
     attributes:
       label: Owner agreement and checkpoints
-      description: A proposed date is not an agreed goal. Record owner and agreement date before setting a milestone; update history at scope agreement, previews/feedback, freeze, publish and follow-up.
+      description: A proposed date is not an agreed goal. Keep current scope, agreement, checkpoints and blockers here; record dated decisions and checkpoint history in comments and link them. Record owner agreement before setting a milestone.
       placeholder: |
         Proposed target date and assumptions:
         Owner agreement (owner/date/scope/target/capacity) — leave pending until agreed:
         Milestone URL/date (only after agreement):
         Checkpoints/evidence/blockers/reforecast triggers:
-        Change history (date, reason, scope/estimate/date impact, renewed agreement):
+        Links to decision/checkpoint comments (date, reason, scope/estimate/date impact, renewed agreement):
     validations:
       required: true
   - type: textarea
     id: hotfix_learning
     attributes:
       label: Hotfix and learning
-      description: Complete hotfix fields when applicable; otherwise state not applicable. Include a retrospective after publication and owned next-release effectiveness check.
+      description: Complete current hotfix fields when applicable; otherwise state not applicable. Link the post-publication retrospective comment and keep the owned next-release effectiveness check current.
       placeholder: |
         Hotfix: impact/urgency evidence, affected supported version/channel, minimal fix and regression coverage:
         Expedited reviews/approvals/checks, update/recovery, communication/monitoring, forward-ports:
         Planned release interruption and reforecast:
-        Retrospective: plan versus actual; causes by implementation/test/package/review/wait/manual/feedback/recovery:
+        Retrospective comment link (plan versus actual and causes):
         Improvement issue/owner and how the next release will measure effect:
         Candidate SHA, run links, package/version, registry and GitHub readbacks (fill when available):
     validations:
