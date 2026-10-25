@@ -10,8 +10,8 @@ const CHECKS = ['materiallyAddressesTrigger', 'amendsOnlyTargetDecision', 'exclu
   'resultingAuthorityIsCoherent', 'assessesResultingRulesWithoutRequiringAgreementWithSupersededRules'];
 const SCHEMA = { type: 'object', additionalProperties: false,
   required: ['version', 'kind', 'eligibility', 'triggerProfile', 'authorityIds', 'authoritySetDigest', 'checks'],
-  properties: { version: { const: 1 }, kind: { const: 'owner-amendment-semantic-eligibility-decision' },
-    eligibility: { enum: ['ELIGIBLE', 'INELIGIBLE'] }, triggerProfile: { const: 'owner-initiated-self-v1' },
+  properties: { version: { type: 'integer', const: 1 }, kind: { type: 'string', const: 'owner-amendment-semantic-eligibility-decision' },
+    eligibility: { type: 'string', enum: ['ELIGIBLE', 'INELIGIBLE'] }, triggerProfile: { type: 'string', const: 'owner-initiated-self-v1' },
     authorityIds: { type: 'array', items: { type: 'string', minLength: 1 } },
     authoritySetDigest: { type: 'string', pattern: '^[a-f0-9]{64}$' },
     checks: { type: 'object', additionalProperties: false, required: CHECKS,
