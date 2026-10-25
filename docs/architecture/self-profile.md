@@ -7,7 +7,7 @@ activation. Setup and operating guidance are in the [documentation map](../READM
 
 #### Target self-only GitHub Free/public reporter (Issue #210 A; owner decision)
 
-Owner-adopted target A is for this public GitHub Free self-repository; it is not implemented/enforced and needs no hosted server, ChatGPT Cloud or WIF. For queued changes, only an unprivileged candidate `merge_group` job relays/wakes the protected-default-branch `workflow_run` receiver. It independently resolves live queue SHA/state, current protected base, exact queued PR/B, prior-base policy, full Authority Set and exact evidence, runs existing ordinary semantic, B/G0 and deterministic validators. Candidate workflows, success, artifacts and policy confer no authority. Only protected producers receive the review API and GitHub App private keys via a `main`-only Environment; the self-repository App has only `checks:write`. Reports bind verified results to exact queue SHA and App identity; host config expects that App as check source.
+Owner-adopted target A is for this public GitHub Free self-repository; its selection alone establishes neither implementation nor enforcement. It needs no hosted server, ChatGPT Cloud or WIF. For queued changes, only an unprivileged candidate `merge_group` job relays/wakes the protected-default-branch `workflow_run` receiver. It independently resolves live queue SHA/state, current protected base, exact queued PR/B, prior-base policy, full Authority Set and exact evidence, runs existing ordinary semantic, B/G0 and deterministic validators. Candidate workflows, success, artifacts and policy confer no authority. Only protected producers receive the review API and GitHub App private keys via a `main`-only Environment; the self-repository App has only `checks:write`. Reports bind verified results to exact queue SHA and App identity; host config expects that App as check source.
 
 The same dedicated self-repository App also reports normal-PR results through a protected `pull_request_target` producer selected from the adopted protected base. It independently resolves the current base, exact PR head and test-merge subject, and reviews under the previous Policy and complete Authority Set. Ordinary acceptance requires unchanged old-selected Authority and a validated PASS. Both PR and Queue required checks expect the same dedicated App, and candidate/reviewer execution cannot receive its credentials.
 
@@ -15,31 +15,32 @@ Changes to old-selected Authority cannot use ordinary PASS; they require a gover
 
 Route classification uses the previous Policy and immutable base/candidate contents. A later tag cannot convert ordinary contents into an amendment or invalidate ordinary contents. Tags remain mandatory exact-B evidence for OWNER_AMENDMENT, with all existing producer, content, update/deletion protection and through-transition requirements. Tag absence and future non-creation are not ordinary acceptance guarantees. Policy/manifest configuration changes remain reviewed under the previous selection and cannot exempt changes to its selected Authority.
 
-This document activates no route. Reviewed profile/policy adoption precedes staged activation. Before rollout-completion, verified-host-enforcement or release claims, require exact-context spoof rejection and both protected BLOCK/OWNER_DECISION E2Es: exact B, evidence/tag handoff, queue transition, canonical readback, fresh A review. Current `pull_request_target`-only route remains until reviewed adoption.
+This document activates no route. Reviewed profile/policy adoption precedes staged activation. Before rollout-completion or verified-host-enforcement claims for this self profile, require exact-context spoof rejection and both protected BLOCK/OWNER_DECISION E2Es: exact B, evidence/tag handoff, queue transition, canonical readback, fresh A review. Existing protection remains until an authorized, verified migration. Publishing code does not establish these claims.
 
 ## Dogfooding and change discipline
 
-### Development sequence and v0.6.0 self reference profile (owner decision)
+<a id="development-sequence-and-v060-self-reference-profile-owner-decision"></a>
 
-First, establish and dogfood the smallest complete self-workflow; derive later
-capabilities from concrete consumer use cases and required assurance. Do not
+### Self reference profile and claim boundaries (owner decision)
+
+Derive capabilities from concrete consumer use cases and required assurance;
+dogfood the smallest complete workflow applicable to those uses. Do not
 prebuild universal host, repository-plan, provenance, or Git-merge adapters for
 speculative OSS use. This sequence neither weakens existing consumer policy nor
 turns self-only results into general support claims.
 
-This repository (public GitHub Free) is the v0.6.0 reference: its previous-base
-policy may select v0.5.x `OWNER_ADDITION` for missing decisions or protected
-`OWNER_AMENDMENT / G0` adoption for changing existing ones, without routine
-admin bypass. Final v0.6.0 must prove completed `BLOCK` and `OWNER_DECISION`
-amendment cases, including the Issue #137 self contract change under prior
-protected-base policy. Both preserve historical semantic results and establish
-exact B, protected evidence, canonical readback, and fresh review where
-applicable. A numbered preview may distribute improvements to existing
-supported paths for feedback with new `OWNER_AMENDMENT` and App routes inactive;
-it makes no rollout, enforcement, or completion claims for those new targets.
-Final v0.6.0 still requires both cases. The first BLOCK-triggered deployment selects the
-following existing host primitives, subject to the validation requirements
-above and an explicit previous-base policy opt-in:
+This public GitHub Free self profile uses only predecessor-selected governance
+routes. Its previous-base policy may select the existing `OWNER_ADDITION`
+route for missing decisions or protected `OWNER_AMENDMENT / G0` for changing
+existing ones, without routine administrator bypass. Claims of completed self
+protected amendment support require both completed `BLOCK` and
+`OWNER_DECISION` cases. Both preserve historical semantic results and establish
+exact B, protected evidence, canonical readback and fresh review where
+applicable. Published versions must distinguish supported, inactive and
+unverified paths; publishing a version neither activates a route nor proves
+those stronger claims. The BLOCK-triggered profile uses the following host
+primitives, subject to the validation requirements above and explicit
+previous-base policy opt-in:
 
 | Concern | Self reference selection |
 | --- | --- |
@@ -79,7 +80,8 @@ completed `BLOCK` requires B's AmendmentRecord and tag to be rebound to that
 new evidence. The first BLOCK-triggered deployment must demonstrate the
 complete A → BLOCK → tag handoff → B → canonical → A fresh-review cycle before
 reporting `OWNER_AMENDMENT / G0` for that case. This is necessary but
-insufficient for v0.6.0: the OWNER_DECISION-triggered self contract-update
+insufficient for completed self protected amendment support: the
+OWNER_DECISION-triggered self contract-update
 case must also complete the protected path. This profile selects no
 private-repository provenance adapter, linear-history rewrite binding, or
 squash/rebase adoption route. G0 still reports principal authentication as

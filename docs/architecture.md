@@ -627,17 +627,13 @@ for this explicitly unverified profile. Actual consumer selection and use remain
 consumer-owned; this decision authorizes implementation of that preview path,
 not automatic selection, existing-route activation or readiness claims.
 
-For this repository, numbered previews may provide preview.3 with usable
-consumer UNVERIFIED addition, amendment and compatible-migration procedures,
-including those new preview routes, after implementation review, a real consumer
-fixture exercises every advertised path with negative verification for each
-path, and package/release gates pass. This specifically refines the
-existing-supported-path numbered-preview restriction in the self reference
-profile for this separate UNVERIFIED procedure only. This limited preview scope
-does not satisfy or waive the trusted/enforced acceptance and lifecycle gates:
-Issue #210/App trusted reporting and formal Issues #272, #211 and #137 remain
-required for their respective claims, as do the lifecycle-v1 `ACTIVE` criteria.
-It makes no claim that those formal cases are complete.
+The `preview-unverified-procedure-v1` route is distinct from protected
+or trusted adoption. Its prior consumer selection, complete inputs, exact
+eligibility/adoption/readback rules and explicit UNVERIFIED reports remain
+required. Publication scope and sequencing belong to release planning.
+Package publication and ordinary fixture success do not establish protected
+amendment adoption, verified host enforcement or lifecycle-v1 `ACTIVE`.
+Each stronger claim remains subject to its applicable contract and proof.
 
 ## Normative invariants
 
@@ -727,17 +723,17 @@ See the [full normative section](architecture/self-profile.md#development-sequen
 
 ## Canonical document organization (owner direction, 2026-10-04)
 
-The self contract may be split, preserving meaning, into `docs/architecture.md`
-and `docs/architecture/{authority-set,owner-addition,owner-amendment,review-execution,self-profile}.md`.
+The self contract consists of `docs/architecture.md` and
+`docs/architecture/{authority-set,owner-addition,owner-amendment,review-execution,self-profile}.md`.
 All six are required selected authority, with stable IDs and no implicit
-precedence. Adopt this migration authorization before moving binding clauses.
-Then review the complete move, manifest, prompts, references and distribution
-under the predecessor selection; the new selection applies only after adoption.
-Preserve every requirement, exception, applicability, affected-member scope,
-assurance, freshness, compatibility and historical result. Verify clause
-coverage and complete local/CI inputs. Existing lifecycle T3/T5/T6 and acceptance
-govern each stage. This permits no limit increase, route activation or fallback;
-splitting does not extend the policy-selected self amendment target.
+precedence. Reorganization must preserve every requirement, exception,
+applicability, affected-member scope, assurance, freshness, compatibility and
+historical-result meaning. Review changes, manifest, prompts, references and
+distribution under the predecessor selection, with complete clause coverage
+and local/CI inputs; a new selection applies only after authorized adoption.
+Existing lifecycle T3/T5/T6 and acceptance govern these changes. Document
+organization permits no limit increase, route activation or fallback and does
+not extend the Policy-selected self amendment target.
 
 ## Relationship to tracked work
 

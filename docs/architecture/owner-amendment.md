@@ -17,14 +17,15 @@ belongs to `OWNER_ADDITION`. The originally reviewed Change A remains rejected
 until B becomes canonical and A receives a fresh review where A exists.
 
 The procedures below are versioned trigger profiles: BLOCK evidence is
-specific to its profile and is not required for all amendments. The supported
-v0.6.0 self profiles are `completed-block-v1` for a completed BLOCK and
+specific to its profile and is not required for all amendments. The defined
+self profiles are `completed-block-v1` for a completed BLOCK and
 `completed-owner-decision-self-v1` for a completed OWNER_DECISION, and
 `owner-initiated-self-v1` for an owner-initiated change to an existing decision.
 Each profile specifies its own trigger evidence, predecessor binding, owner
 procedure, protected producer and transition checks. A tag or candidate claim
 cannot infer or enable a profile; B cannot select its route or authorize its
-adoption through proposed policy.
+adoption through proposed policy. Definition, implementation and publication
+do not establish prior selection, protected adoption or lifecycle `ACTIVE`.
 
 The owner adopts profile `completed-owner-decision-self-v1`. The exact
 completed ReviewRecord digest identifies escalation/revision, not human choice
