@@ -63,6 +63,8 @@ jobs:
       contents: read
       pull-requests: write
       actions: read
+      # The protected nested Gemini review needs OIDC for its selected Vertex WIF route.
+      id-token: write
     uses: ./.github/workflows/architecture-gate.yml
     with:
       protected-review-instructions: true
