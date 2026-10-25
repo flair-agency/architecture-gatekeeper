@@ -45,6 +45,38 @@ local review into a security claim it cannot support. It must also permit a
 repository to require an independent CI boundary when that stronger assurance
 is justified.
 
+### Product value and design choices
+
+AGK exists to help consumers make architecture decisions and move real
+development forward. Implementation, maintenance, verification and assurance
+mechanisms are means to that end, not product outcomes in themselves.
+
+Within binding canonical, safety and selected assurance requirements, prefer
+the simplest practical design that serves actual consumer workflows. Compare
+what users can do, what they lose and the effort required, as well as conformity
+and verification results. Implementation convenience or green tests alone do
+not justify a loss of supported user capabilities.
+
+When an existing canonical requirement itself creates disproportionate complexity
+or impairs practical consumer use, propose an owner-authorized revision rather
+than treating its preservation as a product goal. Until revised, the requirement
+remains binding.
+
+Product extensions and new configuration formats must not unnecessarily make
+existing supported capabilities unavailable. Preserve their explicit selection
+where the existing applicability and assurance conditions can be met.
+Availability does not imply automatic activation or support for every
+combination: predecessor authorization and route-specific scope and evidence
+requirements remain binding. Necessary restrictions or added complexity must
+have a concrete rationale and an explanation of their user impact.
+
+Ask whether a change makes AGK more useful or easier to use, or at least avoids
+unnecessarily impairing existing use. Security, correctness, reliability and
+maintenance improvements can provide value without adding features or improving
+usability. This principle creates no new review stage, mandatory checklist or
+release gate, and authorizes no weaker guarantee or change to consumer-owned
+decisions.
+
 ## What
 
 ### Consumer authority
