@@ -38,12 +38,13 @@ const CONSUMER_AMENDMENT_GUARD_SCRIPT = `if test -n "$OWNER_AMENDMENT_ACCEPTANCE
   exit 1
 fi`;
 
-export function assertWorkflowStructure({ consumer, self, caller }) {
+export function assertWorkflowStructure({ consumer, self, caller, providers }) {
   const consumerPolicy = job(consumer, 'policy');
   const consumerReview = job(consumer, 'review');
   const consumerAddition = job(consumer, 'owner-addition');
   const consumerReport = job(consumer, 'report');
   const consumerAccept = job(consumer, 'accept');
+  const providersPolicy = job(providers, 'policy');
   const selfPolicy = job(self, 'policy');
   const selfReview = job(self, 'review');
   const selfAddition = job(self, 'owner-addition');
@@ -90,6 +91,11 @@ export function assertWorkflowStructure({ consumer, self, caller }) {
   assert.equal(consumerAmendmentGuard.if, undefined, 'consumer OWNER_AMENDMENT guard must always run');
   assert.equal(consumerAmendmentGuard.env.OWNER_AMENDMENT_ACCEPTANCE, '${{ steps.resolve.outputs.ownerAmendmentAcceptance }}');
   assert.equal(consumerAmendmentGuard.run.trim(), CONSUMER_AMENDMENT_GUARD_SCRIPT, 'consumer amendment guard must reject the self-only selection');
+  const providersAmendmentGuard = namedStep(providersPolicy, 'Reject self-only OWNER_AMENDMENT policy on the consumer workflow');
+  assert.equal(providersAmendmentGuard.if, undefined, 'provider-workflow OWNER_AMENDMENT guard must always run');
+  assert.equal(providersAmendmentGuard.env.OWNER_AMENDMENT_ACCEPTANCE, '${{ steps.resolve.outputs.ownerAmendmentAcceptance }}');
+  assert.equal(providersAmendmentGuard.run.trim(), CONSUMER_AMENDMENT_GUARD_SCRIPT,
+    'provider-workflow amendment guard must reject the self-only selection');
   assert.equal(consumerPolicy.outputs.owner_addition_grade, '${{ steps.resolve.outputs.ownerAdditionGrade }}');
   assert.ok(!('self-flex-probe' in (consumer.on.workflow_call.inputs ?? {})), 'consumer workflow must not expose self flex input');
   const consumerStructure = JSON.stringify(consumer);

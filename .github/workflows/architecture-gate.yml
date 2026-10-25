@@ -908,7 +908,7 @@ jobs:
           GATEKEEPER_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
           GATEKEEPER_WORKFLOW_SHA: ${{ job.workflow_sha }}
           GATEKEEPER_WORKFLOW_REF: ${{ job.workflow_ref }}
-        run: node "$GITHUB_WORKSPACE/scripts/self-amendment-pr.mjs" prepare
+        run: node "$GITHUB_WORKSPACE/scripts/self-amendment-pr.mjs" prepare < "$GITHUB_EVENT_PATH"
       - name: Review amendment eligibility
         id: codex
         timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_step_timeout_minutes) }}
@@ -936,7 +936,7 @@ jobs:
           GATEKEEPER_WORKFLOW_SHA: ${{ job.workflow_sha }}
           GATEKEEPER_WORKFLOW_REF: ${{ job.workflow_ref }}
           DECISION: ${{ steps.codex.outputs.final-message }}
-        run: node "$GITHUB_WORKSPACE/scripts/self-amendment-pr.mjs" complete
+        run: node "$GITHUB_WORKSPACE/scripts/self-amendment-pr.mjs" complete < "$GITHUB_EVENT_PATH"
       - name: Show amendment eligibility separately from ordinary review
         env:
           ELIGIBILITY: ${{ steps.complete.outputs.eligibility }}
@@ -1093,11 +1093,10 @@ jobs:
           GATEKEEPER_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
           GATEKEEPER_WORKFLOW_SHA: ${{ job.workflow_sha }}
           GATEKEEPER_WORKFLOW_REF: ${{ job.workflow_ref }}
-          SELF_AMENDMENT_GIT_ROOT: ${{ github.workspace }}/.architecture-gatekeeper-runtime
           CONTEXT_SHA256: ${{ needs['owner-amendment'].outputs.context_sha256 }}
           DECISION_BASE64: ${{ needs['owner-amendment'].outputs.decision_base64 }}
           GH_TOKEN: ${{ github.token }}
-        run: node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/scripts/self-amendment-pr.mjs" verify
+        run: node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/scripts/self-amendment-pr.mjs" verify < "$GITHUB_EVENT_PATH"
       - name: Require ordinary PASS or the selected verified Owner procedure
         if: needs.policy.outputs.mode == 'enforced'
         env:

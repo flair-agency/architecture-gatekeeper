@@ -116,11 +116,16 @@ export function validateSelfAmendmentPrDecision({ prepared, decisionBytes }: { p
   if (keys.some(key => typeof checks[key] !== 'boolean') || (decision.eligibility === 'ELIGIBLE') !== keys.every(key => checks[key] === true)) fail('eligibility disagrees with required checks.');
   return Object.freeze({ eligibility: decision.eligibility as 'ELIGIBLE' | 'INELIGIBLE', decisionBase64: canonicalBytes.toString('base64') });
 }
-/** Readback proves exact squash placement and adopted bytes, not host enforcement. */
+/** Resolve the freshly fetched origin/main; local Git readback is not host enforcement. */
 export function verifySelfAmendmentSquashReadback({ prepared, cwd, adoptedSha }: { prepared: PreparedSelfAmendmentPr; cwd: string; adoptedSha: string }) {
   if (!/^[a-f0-9]{40}$/.test(adoptedSha)) fail('exact adopted SHA required.');
   const git = gitFor(cwd);
+  const canonicalSha = decode(git(['rev-parse', '--verify', 'refs/remotes/origin/main^{commit}'])).trim();
+  if (!/^[a-f0-9]{40}$/.test(canonicalSha)) fail('canonical main ref is unavailable.');
+  // An unattached commit with matching bytes is not adoption. The caller must
+  // first fetch origin/main from the fixed self repository and record that read.
+  git(['merge-base', '--is-ancestor', adoptedSha, canonicalSha]);
   if (decode(git(['rev-list', '--parents', '-n', '1', adoptedSha])).trim() !== `${adoptedSha} ${prepared.baseSha}` ||
       !git(['rev-parse', `${adoptedSha}^{tree}`]).equals(git(['rev-parse', `${prepared.reviewedSha}^{tree}`]))) fail('adopted squash parent/tree differs from reviewed merge.');
-  return Object.freeze({ status: 'VERIFIED_SQUASH_PLACEMENT', adoptedSha, reviewedSha: prepared.reviewedSha });
+  return Object.freeze({ status: 'VERIFIED_SQUASH_PLACEMENT', adoptedSha, canonicalSha, reviewedSha: prepared.reviewedSha });
 }

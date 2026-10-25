@@ -61,8 +61,8 @@ const FORMAT_FILES = [SELF_WORKFLOW, CALLED_WORKFLOW,
 
 const PRE_OWNER_INITIATED_RESOLVER_SHA256 = '1a129f664e590dd82e2d5e081a84347efec3f977d4c8489e480d43da0ee38d7b';
 const CURRENT_FORMAT_SHA256 = {
-  ".github/workflows/self-architecture-gate.yml": "97bf336a0f717ec121caee6cca96909e6fab4c48fbd3a91ef92501aa726717cf",
-  ".github/workflows/architecture-gate.yml": "12966c9be8759890aad7690493981d9ef38e11ddb11dc1535a45a1779b9fc3a7",
+  ".github/workflows/self-architecture-gate.yml": "ac9db4d9fe85aca79d48ee7d51fffc1ddb658b8a510cbf6dd96ef860dc0cb654",
+  ".github/workflows/architecture-gate.yml": "c221566493c2959546723a57b3004fcee9bd8d8a806ca5893a8efe61afc4bfd9",
   "src/authority-set.mjs": "d086de4acf4783b47901c3111760f6659bae111b53d4679261dccd6aa91586fa",
   "src/resolve-ci-policy.mjs": "01243736b030f1776d3de55454c450855324cd42f2c5542b3be5512efbd8aae7",
   "src/prepare-authority-set.mjs": "9141969e86b817f4b68819ee597f505840bf5f85d260bdffd39f61f7a19ce688",

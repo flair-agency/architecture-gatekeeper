@@ -39,6 +39,9 @@ and exact PR revisions as described in the owner amendment contract.
 After eligibility, the owner approves and merges the ordinary PR using the
 repository's existing controls. Post-merge canonical readback verifies the
 actual target, resulting authority bytes, and merge parent/tree relationship.
+A fresh fetch of the fixed repository's `main` must precede readback; confirm
+that `refs/remotes/origin/main` contains the adopted commit. An unattached
+commit with matching bytes is not canonical adoption.
 A squash merge qualifies when the adopted commit has the expected base parent
 and its tree matches the reviewed test-merge. Record the merge and readback;
 report adoption only after they verify. Review A afresh if one exists.

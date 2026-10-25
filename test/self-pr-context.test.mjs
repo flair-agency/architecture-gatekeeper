@@ -6,6 +6,7 @@ const repository = 'flair-agency/architecture-gatekeeper';
 const repoId = 1379218762;
 const base = 'a'.repeat(40), head = 'b'.repeat(40), merge = 'c'.repeat(40);
 const event = () => ({ action: 'synchronize', repository: { full_name: repository, id: repoId }, pull_request: {
+  title: 'Revise existing decision', body: 'Owner-proposed amendment',
   number: 42, state: 'open', draft: false, base: { ref: 'main', sha: base, repo: { full_name: repository, id: repoId } },
   head: { sha: head, repo: { full_name: repository, id: repoId } },
 } });
@@ -46,9 +47,21 @@ test('selects fresh same-repository PR context and exact test-merge subject', as
 
 test('requires the protected pull_request_target invocation and admitted open-PR actions', async t => {
   for (const changes of [{ eventName: 'pull_request' }, { eventName: 'workflow_dispatch' }, { event: { ...event(), action: 'closed' } },
-    { event: { ...event(), action: 'edited' } }]) await t.test(JSON.stringify(changes), async () => {
+    { event: { ...event(), action: 'deleted' } }]) await t.test(JSON.stringify(changes), async () => {
     const f = fixture(); assert.equal((await select(f, changes)).status, 'INCOMPLETE'); assert.equal(f.calls.length, 0);
   });
+});
+
+test('edited proposals are re-evaluated and stale or missing purposes fail closed', async () => {
+  assert.equal((await select(fixture(), { event: { ...event(), action: 'edited' } })).status, 'SELECTED_SELF_PR_CONTEXT');
+  for (const field of ['title', 'body']) {
+    const f = fixture(); f.values['/pulls/42'][field] = 'Different proposed amendment';
+    assert.equal((await select(f)).status, 'INCOMPLETE');
+    const changing = fixture(); changing.setFinalMutation(values => { values['/pulls/42'][field] = 'Changed after first read'; });
+    assert.equal((await select(changing)).status, 'INCOMPLETE');
+  }
+  const malformed = event(); delete malformed.pull_request.title;
+  assert.equal((await select(fixture(), { event: malformed })).status, 'INCOMPLETE');
 });
 
 test('rejects stale source or runtime protected-base binding', async t => {

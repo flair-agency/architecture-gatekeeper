@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { constants, openSync, closeSync, fstatSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { readDescriptorBytes } from '../src/io/read-descriptor.mts';
 import { rejectDuplicateJsonKeys } from '../src/authority-set.mjs';
 import { selectSelfPrContext } from '../src/self-pr-context.mjs';
@@ -20,15 +20,8 @@ async function main() {
       env.GATEKEEPER_WORKFLOW_REF !== `${repository}/.github/workflows/architecture-gate.yml@refs/heads/main` ||
       env.GATEKEEPER_WORKFLOW_SHA !== env.BASE_SHA || !/^[1-9][0-9]*$/.test(env.GITHUB_RUN_ID ?? '') ||
       !/^[1-9][0-9]*$/.test(env.GITHUB_RUN_ATTEMPT ?? '') || !env.GITHUB_JOB) fail('protected self caller metadata mismatch.');
-  let descriptor;
-  let eventBytes;
-  try {
-    descriptor = openSync(env.GITHUB_EVENT_PATH, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
-    const stat = fstatSync(descriptor);
-    if (!stat.isFile() || stat.size < 1 || stat.size > 1_048_576) fail('event missing or oversized.');
-    eventBytes = readDescriptorBytes(descriptor, Buffer.alloc(1_048_577));
-    if (eventBytes.length > 1_048_576) fail('event oversized.');
-  } finally { if (descriptor !== undefined) closeSync(descriptor); }
+  const eventBytes = readDescriptorBytes(0, Buffer.alloc(1_048_577));
+  if (!eventBytes.length || eventBytes.length > 1_048_576) fail('event missing or oversized.');
   const eventSource = new TextDecoder('utf-8', { fatal: true }).decode(eventBytes);
   rejectDuplicateJsonKeys(eventSource, 'protected event', { maxDepth: 64 });
   const event = JSON.parse(eventSource);
@@ -39,7 +32,7 @@ async function main() {
       pr.base.sha !== env.BASE_SHA || pr.head.sha !== env.HEAD_SHA) fail('event PR tuple mismatch.');
   const purpose = `${pr.title ?? ''}\n\n${pr.body ?? ''}`;
   if (env.PURPOSE !== undefined && env.PURPOSE !== purpose) fail('purpose differs from event proposal.');
-  const prepared = await prepareSelfAmendmentPr({ repository, cwd: env.SELF_AMENDMENT_GIT_ROOT ?? env.GITHUB_WORKSPACE, baseSha: env.BASE_SHA,
+  const prepared = await prepareSelfAmendmentPr({ repository, cwd: fileURLToPath(new URL('../', import.meta.url)), baseSha: env.BASE_SHA,
     headSha: env.HEAD_SHA, reviewedSha: env.REVIEWED_SHA, baseBranch: env.BASE_BRANCH ?? 'main',
     policyPath: env.POLICY_PATH, policySha256: env.POLICY_SHA256, purpose });
   if (mode === 'prepare') {

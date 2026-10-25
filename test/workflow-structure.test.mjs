@@ -572,6 +572,10 @@ test('a disabled provider guard and inherited workflow-level signer permissions 
     const amendmentGuardDisabled = workflows();
     amendmentGuardDisabled.consumer.jobs.policy.steps.find(candidate => candidate.name === 'Reject self-only OWNER_AMENDMENT policy on the consumer workflow').if = disabledValue;
     assert.throws(() => assertWorkflowStructure(amendmentGuardDisabled), /consumer OWNER_AMENDMENT guard must always run/);
+
+    const providerAmendmentGuardDisabled = workflows();
+    providerAmendmentGuardDisabled.providers.jobs.policy.steps.find(candidate => candidate.name === 'Reject self-only OWNER_AMENDMENT policy on the consumer workflow').if = disabledValue;
+    assert.throws(() => assertWorkflowStructure(providerAmendmentGuardDisabled), /provider-workflow OWNER_AMENDMENT guard must always run/);
   }
 
   const broadPermissions = workflows();
@@ -607,10 +611,12 @@ test('provider and consumer amendment guards retain the selected condition, not 
     ['unconditional fake', `echo 'OWNER_AMENDMENT_ACCEPTANCE protected-pr'\necho 'OWNER_AMENDMENT is supported only by the protected self workflow'\nexit 1`],
     ['comment only', `# if test -n "$OWNER_AMENDMENT_ACCEPTANCE"; then\n#   echo 'OWNER_AMENDMENT is supported only by the protected self workflow.' >&2\n#   exit 1\n# fi`],
   ];
-  for (const [label, run] of amendmentMutations) {
-    const data = workflows();
-    data.consumer.jobs.policy.steps.find(step => step.name === 'Reject self-only OWNER_AMENDMENT policy on the consumer workflow').run = run;
-    assert.throws(() => assertWorkflowStructure(data), /consumer amendment guard must reject the self-only selection/, `consumer amendment guard accepted ${label}`);
+  for (const profile of ['consumer', 'providers']) {
+    for (const [label, run] of amendmentMutations) {
+      const data = workflows();
+      data[profile].jobs.policy.steps.find(step => step.name === 'Reject self-only OWNER_AMENDMENT policy on the consumer workflow').run = run;
+      assert.throws(() => assertWorkflowStructure(data), /amendment guard must reject the self-only selection/, `${profile} amendment guard accepted ${label}`);
+    }
   }
 });
 

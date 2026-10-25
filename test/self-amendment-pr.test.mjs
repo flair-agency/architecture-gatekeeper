@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { parseWorkflow } from './helpers/workflow-structure.mjs';
 import { prepareSelfAmendmentPr, validateSelfAmendmentPrDecision, verifySelfAmendmentSquashReadback } from '../dist/self-amendment-pr.mjs';
 const repository = 'flair-agency/architecture-gatekeeper';
 const policyPath = '.codex/gatekeeper/ci-policy.json';
@@ -78,7 +79,14 @@ test('squash readback requires exact base parent and reviewed tree', async t => 
   const f = await fixture(t); const prepared = await prepareSelfAmendmentPr(f);
   const tree = git(f.cwd, 'rev-parse', `${f.reviewedSha}^{tree}`);
   const adoptedSha = git(f.cwd, 'commit-tree', tree, '-p', f.baseSha, '-m', 'squash');
+  assert.throws(() => verifySelfAmendmentSquashReadback({ prepared, cwd: f.cwd, adoptedSha }));
+  git(f.cwd, 'update-ref', 'refs/remotes/origin/main', f.baseSha);
+  assert.throws(() => verifySelfAmendmentSquashReadback({ prepared, cwd: f.cwd, adoptedSha }));
+  git(f.cwd, 'update-ref', 'refs/remotes/origin/main', adoptedSha);
   assert.equal(verifySelfAmendmentSquashReadback({ prepared, cwd: f.cwd, adoptedSha }).status, 'VERIFIED_SQUASH_PLACEMENT');
+  const subsequentSha = git(f.cwd, 'commit-tree', tree, '-p', adoptedSha, '-m', 'subsequent change');
+  git(f.cwd, 'update-ref', 'refs/remotes/origin/main', subsequentSha);
+  assert.equal(verifySelfAmendmentSquashReadback({ prepared, cwd: f.cwd, adoptedSha }).canonicalSha, subsequentSha);
   assert.throws(() => verifySelfAmendmentSquashReadback({ prepared, cwd: f.cwd, adoptedSha: f.reviewedSha }));
 });
 
@@ -109,8 +117,17 @@ test('protected same-run CLI prepares/completes and rejects verification before 
     GATEKEEPER_WORKFLOW_REPOSITORY: repository,
     GATEKEEPER_WORKFLOW_REF: `${repository}/.github/workflows/architecture-gate.yml@refs/heads/main`, GATEKEEPER_WORKFLOW_SHA: f.baseSha,
     BASE_SHA: f.baseSha, HEAD_SHA: f.headSha, REVIEWED_SHA: f.reviewedSha, POLICY_PATH: policyPath, POLICY_SHA256: prepared.policySha256 };
-  const script = new URL('../scripts/self-amendment-pr.mjs', import.meta.url).pathname;
-  const run = (mode, extra = {}) => spawnSync(process.execPath, [script, mode], { cwd: runner, env: { ...env, ...extra }, encoding: 'utf8' });
+  // Execute the real protected CLI at its deployed relative layout. Only the
+  // unchanged source modules are linked; there is no injectable production root.
+  const script = join(f.cwd, 'scripts/self-amendment-pr.mjs');
+  write(f.cwd, 'scripts/self-amendment-pr.mjs', readFileSync(new URL('../scripts/self-amendment-pr.mjs', import.meta.url)));
+  symlinkSync(new URL('../src', import.meta.url).pathname, join(f.cwd, 'src'), 'dir');
+  const run = (mode, extra = {}, input = JSON.stringify(event)) => spawnSync(process.execPath, [script, mode], {
+    cwd: runner, env: { ...env, ...extra }, input, encoding: 'utf8' });
+  // These former path inputs must not replace stdin or the protected script's repository.
+  env.GITHUB_EVENT_PATH = join(runner, 'missing-event-file');
+  env.GITHUB_WORKSPACE = join(runner, 'missing-workspace');
+  env.SELF_AMENDMENT_GIT_ROOT = join(runner, 'missing-git-root');
   const prepare = run('prepare'); assert.equal(prepare.status, 0, prepare.stderr);
   assert.equal(readFileSync(join(runner, 'self-amendment-pr/prompt.md')).equals(prepared.promptBytes), true);
   assert.equal(readFileSync(join(runner, 'self-amendment-pr/schema.json')).equals(prepared.schemaBytes), true);
@@ -128,6 +145,14 @@ test('protected same-run CLI prepares/completes and rejects verification before 
   assert.equal(ineligible.status, 1); assert.match(ineligible.stderr, /amendment is ineligible/);
   assert.equal(run('verify', { ...verifyEnv, GITHUB_WORKFLOW_SHA: f.headSha }).status, 1);
   assert.equal(run('verify', { ...verifyEnv, PURPOSE: 'different claim' }).status, 1);
+  for (const input of ['', Buffer.alloc(1_048_577, 32), Buffer.from([0xff]),
+    '{"number":42,"number":43}', JSON.stringify({ ...event, number: 43 })]) {
+    const before = readFileSync(outputPath);
+    const rejected = run('complete', { DECISION: JSON.stringify(decision(prepared)) }, input);
+    assert.equal(rejected.status, 1);
+    assert.equal(rejected.stdout, '');
+    assert.equal(readFileSync(outputPath).equals(before), true);
+  }
 });
 
 test('resulting complete Set rejects aggregate overflow even when each file and potential prompt fit', async t => {
@@ -137,4 +162,21 @@ test('resulting complete Set rejects aggregate overflow even when each file and 
   // and the old Set plus changed before/after bytes plus small diff is below 512 KiB.
   // The new complete Set exceeds the independently selected 256 KiB aggregate bound.
   await assert.rejects(prepareSelfAmendmentPr(f), /maxTotalBytes|total bytes|total byte|total.*limit|total size/i);
+});
+
+test('protected workflow supplies runner event on stdin and uses each fixed runtime script location', () => {
+  const caller = parseWorkflow(readFileSync(new URL('../.github/workflows/self-architecture-gate.yml', import.meta.url), 'utf8'));
+  assert.ok(caller.on.pull_request_target.types.includes('edited'));
+  const workflow = parseWorkflow(readFileSync(new URL('../.github/workflows/architecture-gate.yml', import.meta.url), 'utf8'));
+  const amendment = workflow.jobs['owner-amendment'];
+  for (const mode of ['prepare', 'complete']) {
+    const step = amendment.steps.find(step => step.run?.includes(`self-amendment-pr.mjs" ${mode}`));
+    assert.equal(step.run, `node "$GITHUB_WORKSPACE/scripts/self-amendment-pr.mjs" ${mode} < "$GITHUB_EVENT_PATH"`);
+    assert.equal(Object.hasOwn(step.env, 'SELF_AMENDMENT_GIT_ROOT'), false);
+    assert.equal(Object.hasOwn(step.env, 'GITHUB_WORKSPACE'), false);
+  }
+  const verify = workflow.jobs.accept.steps.find(step => step.id === 'verify-amendment');
+  assert.equal(verify.run, 'node "$GITHUB_WORKSPACE/.architecture-gatekeeper-runtime/scripts/self-amendment-pr.mjs" verify < "$GITHUB_EVENT_PATH"');
+  assert.equal(Object.hasOwn(verify.env, 'SELF_AMENDMENT_GIT_ROOT'), false);
+  assert.equal(Object.hasOwn(verify.env, 'GITHUB_WORKSPACE'), false);
 });
