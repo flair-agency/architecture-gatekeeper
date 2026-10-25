@@ -595,6 +595,10 @@ test('the self reusable-call permission ceiling covers selected Gemini WIF witho
   delete withoutOidc.caller.jobs['architecture-gate'].permissions['id-token'];
   assert.throws(() => assertWorkflowStructure(withoutOidc), /caller permission ceiling must cover nested gemini-review id-token:write/);
 
+  const unscopedMeasurement = workflows();
+  delete unscopedMeasurement.self.jobs.measurement.permissions;
+  assert.throws(() => assertWorkflowStructure(unscopedMeasurement), /self measurement must explicitly declare job permissions/);
+
   const widenedOrdinaryReview = workflows();
   widenedOrdinaryReview.self.jobs.review.permissions['id-token'] = 'write';
   assert.throws(() => assertWorkflowStructure(widenedOrdinaryReview), /self review permissions/);

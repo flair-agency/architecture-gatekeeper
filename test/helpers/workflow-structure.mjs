@@ -82,10 +82,16 @@ export function assertWorkflowStructure({ consumer, self, caller, providers }) {
   const selfGeminiReview = job(self, 'gemini-review');
   assert.deepEqual(selfGeminiReview.permissions, { contents: 'read', 'id-token': 'write' },
     'the selected Gemini WIF job alone requires OIDC');
+  for (const [name, workflowJob] of Object.entries(self.jobs)) {
+    assert.ok(workflowJob.permissions && typeof workflowJob.permissions === 'object' && !Array.isArray(workflowJob.permissions),
+      `self ${name} must explicitly declare job permissions`);
+    if (name !== 'gemini-review') {
+      assert.notEqual(workflowJob.permissions['id-token'], 'write', `only self gemini-review may request OIDC`);
+    }
+  }
   for (const name of ['policy', 'review', 'owner-addition', 'owner-amendment', 'report', 'accept']) {
     const workflowJob = job(self, name);
     assert.equal(workflowJob.permissions?.contents, 'read', `self ${name} retains contents:read`);
-    assert.notEqual(workflowJob.permissions?.['id-token'], 'write', `self ${name} does not receive OIDC`);
   }
   const callJob = job(caller, 'architecture-gate');
   const levels = { none: 0, read: 1, write: 2 };
