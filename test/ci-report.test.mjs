@@ -134,7 +134,7 @@ test('reports absent decision input distinctly without accepting selected G0 eli
     if (mode === 'enforced') {
       assert.throws(() => assertEnforcedAcceptance({ reviewResult: 'success', conclusion: classified.conclusion,
         ownerAdditionSelected: 'G0', ownerAdditionResult: 'success', ownerAdditionEligibility: 'ELIGIBLE' }),
-      /requires model-backed PASS or verified selected G0 eligibility/);
+      /requires model-backed PASS or a verified selected Owner procedure/);
     } else {
       assert.throws(() => assertProceduralV5Acceptance({ policyVersion: '5', evidenceProducer: 'github-actions',
         reviewResult: 'success', conclusion: classified.conclusion, selectedAuthorityChanged: 'true',

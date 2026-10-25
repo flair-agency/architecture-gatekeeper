@@ -27,7 +27,6 @@ test('the shared validator terminates on malformed JSON and representative produ
     import { loadConfig } from './dist/review-contract.mjs';
     import { decodeLimits } from './dist/prepare-authority-set.mjs';
     import { validateMultiAuthorityEligibility } from './dist/owner-addition-multiauthority.mjs';
-    import { validateOwnerAmendmentOwnerDecisionAmendmentRecord } from './dist/owner-amendment-owner-decision-amendment-record.mjs';
     import { validatePreparedCiDecision } from './dist/prepared-ci-decision.mjs';
 
     const malformed = [
@@ -126,7 +125,6 @@ test('the shared validator terminates on malformed JSON and representative produ
     const provenance = { version: 2, selfRepository: 'example/project', authorityRevision: 'a'.repeat(40),
       manifestSha256: 'c'.repeat(64), setDigest, members };
     assert.throws(() => validateMultiAuthorityEligibility('{"version":2,"authorityIds":[', schema, provenance));
-    assert.equal(validateOwnerAmendmentOwnerDecisionAmendmentRecord({ bytes: Buffer.from('{"a":[') }).status, 'INCOMPLETE');
 
     const prepared = { responseBytes: Buffer.from('{"decision":"PASS","authorityIds":[['),
       schemaBytes: Buffer.from('{}'), authorityProvenance: null, validationRules: null,

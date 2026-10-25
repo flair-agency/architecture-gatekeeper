@@ -225,17 +225,21 @@ Sponsorship does not change the project's authority or acceptance boundaries.
 Licensed under the [MIT License](LICENSE).
 Copyright © 2026 Flair Agency.
 
-The Self Enforced workflow compares the exact candidate against the complete
-Authority Set selected by its recorded base. Ordinary `PASS` cannot accept a
-change to those members, even when the model returns `PASS`; missing or
-mismatched comparison inputs fail closed. Configuration-only migrations remain
-reviewed under the old Policy and selection. This does not activate
-OWNER_AMENDMENT or replace its existing tag guard and evidence requirements.
+## Self Canonical changes
 
-The self-only dedicated-App PR and Queue adapters are shipped disabled. Their
-protected workflows reuse previous-Policy classification, amendment eligibility
-receipts and ordinary review, and publish explicit success/failure on the exact
-PR test merge or Queue SHA under the same `architecture-gate / protected-accept`
-check name. Actions `architecture-gate / accept` and `completeness` retain their
-existing names and sources. Adoption of this code does not configure an App or
-change required checks. See the [activation and verification boundaries](docs/investigations/2026-10-22-self-protected-connection.md).
+The self workflow compares each candidate against the complete Authority Set
+selected by its recorded base. Ordinary `PASS` cannot authorize a change to
+those members, including an erroneous model `PASS`.
+
+When the old Policy explicitly selects `ownerAmendment.acceptance: "protected-pr"`,
+an authority-only PR receives a separate eligibility review against the full old
+Set. The existing Actions acceptance job verifies that result and the current
+PR base/head/test-merge before permitting an Owner-approved normal merge.
+Squash readback confirms the adopted tree; the next review uses the new Authority.
+See the [procedure and limits](docs/owner-intervention.md).
+
+The retired self App/Queue, tag handoff and attestation producers are not shipped.
+No App or Queue is needed for this procedure. Existing GitHub required checks and
+Owner merge permissions remain the host boundary; code adoption does not change
+host settings. Local/native review, Git-based Preview lifecycle and
+OWNER_ADDITION remain available for a clean installation.

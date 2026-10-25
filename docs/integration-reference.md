@@ -647,34 +647,36 @@ and branch entries retain the bare `{ "mode": "local-only" }` waiver form
 
 #### Policy v6 compatibility and explicit Owner selections
 
-Policy format version is separate from route selection and evidence version.
-The current source extends v6 without changing old v1/v2/v4/v5 policy meanings.
-Use a runtime/workflow containing this extension; already published older pins
-that reject these v6 fields do not gain support automatically.
+Policy format version is separate from route selection. The current parser
+supports the self owner-amendment selection below. The previous self G0
+trigger-profile, tag, and attestation selections are retired; this path does
+not migrate or accept those formats.
 
-| Existing selection | Earlier CI format | Explicit selection in v6 |
+| Selection | CI policy format | Current v6 selection |
 | --- | --- | --- |
 | Ordinary Authority Set review | v2 | `mode: "enforced"`, provider/model/settings, manifest and limits; no Owner fields |
 | Initial single-member OWNER_ADDITION / G0 | v2 | `provider: "codex"`, `mode: "enforced"`, unchanged unversioned `ownerAddition` object |
 | Multi-document OWNER_ADDITION / G0 | v4 | `provider: "codex"`, `mode: "enforced"`, unchanged `ownerAddition.version: 2` object with affected member ID |
 | Procedural multi-document OWNER_ADDITION / G0 | v5 | `provider: "codex"`, `mode: "procedural"`, `ownerAddition.version: 2` and unchanged `adoptionEvidence` producer selection |
-| Existing self OWNER_AMENDMENT / G0 profiles | v2 | `provider: "codex"`, `mode: "enforced"`, unchanged `ownerAmendment` object and exact trigger profile |
+| Self owner amendment through a protected PR | v2 | `provider: "codex"`, `mode: "enforced"`, and `ownerAmendment: { version: 1, acceptance: "protected-pr", scope: "authority-only", maxPromptBytes: <positive bounded integer> }` |
 | Local-only waiver | v1/v2/v4/v5/v6 | Bare `{ "mode": "local-only" }`; no provider or Owner fields |
 
-To represent an existing v2/v4/v5 selection in v6, preserve its route fields,
-model, effort, paths, limits, producer and execution settings, set the document
-`version` to `6`, and add `provider: "codex"` to each non-local-only branch and
-default. This is a proposed configuration migration, not permission to change a
-consumer: adopt it under that consumer's previous policy and governance. Pin a
-compatible runtime first; candidate policy never selects its own review.
+For a supported v2/v4/v5 selection in v6, preserve the route fields accepted by
+the current parser, model, effort, paths, limits, producer and execution
+settings; set the document `version` to `6`; and add `provider: "codex"` to
+each non-local-only branch and default. This is configuration guidance, not
+permission to change a consumer. The retired self G0 amendment selection is
+not converted by these steps. Candidate policy never selects its own review.
 
 The `ownerAddition.version: 2` selection retains the existing multi-document
 schema, complete-set digest, single affected-file scope and 256 KiB file ceiling.
 The unversioned addition retains its single-member constraint and original
-limits. Amendment retains both supported trigger profiles, complete previous
-Set, exact-B evidence, producer validation and protected transition requirements;
-selecting v6 does not enable the self App/Queue route. Ordinary review without
-Owner fields does not select either procedure or raise its limits.
+limits. The self `ownerAmendment` selection requires the old Policy, complete
+Authority Set, exact authority-only PR diff, bounded prompt and semantic
+eligibility described in the
+[owner amendment contract](architecture/owner-amendment.md).
+It does not select the retired G0 trigger, tag, or attestation route. Ordinary
+review without Owner fields does not select either procedure or raise its limits.
 
 Existing single-member addition and amendment may be selected together, as in
 v2. Combining multi-document addition (including its expanded ordinary review
@@ -682,8 +684,7 @@ profile) with amendment, or combining procedural addition with amendment, is
 not a supported composition and is rejected. No existing format supported those
 combinations. `adoptionEvidence` is required for procedural addition and rejected
 for enforced review. Missing or malformed selections never fall back to another
-route or provider. Reports retain the actual v6 policy revision/digest and the
-original route-specific evidence versions.
+route or provider. Reports retain the actual v6 policy revision and digest.
 
 `preview-unverified-procedure-v1` remains a separate, predecessor-selected
 Git-based procedure. Its selection is not an `ownerAmendment` CI opt-in or the
@@ -1173,58 +1174,13 @@ limit accommodates JSON expansion beyond prompt bytes; it does not truncate inpu
 or replace configured prompt limits. It is not a whole-process memory guarantee.
 
 
-### Self GitHub complete-ruleset readback isolation
+### Self Canonical changes
 
-The owner approved a repository-limited GitHub App with `Administration: write`
-only because GitHub omits `bypass_actors` unless the requester can write the
-ruleset. This is a GitHub-specific host readback capability, not a universal
-Gatekeeper or unverified consumer-preview requirement. Its Administration write
-token technically permits ruleset and other repository administration mutations. Owner-permitted operations and code dispatch are
-limited to the selected ruleset GET and token revocation; this constraint does
-not make the credential read-only or remove its compromise blast radius.
-The JWT is used only to verify the selected repository installation and mint
-its reduced token. No installation token, JWT or App key is written to disk,
-workflow output, ordinary handoff environment, PR code or package lifecycle.
-
-This implementation supports only the two protected-main repository-dispatch
-handoff workflows. Configure the `github-ruleset-readback` Environment with an
-explicit deployment branch restriction to `main`, and place
-`RULESET_READBACK_PRIVATE_KEY` only in that Environment. Select
-`RULESET_READBACK_APP_ID` and `RULESET_READBACK_INSTALLATION_ID` as Environment
-variables. Install the App only on this repository, with Administration write
-and no additional repository capabilities beyond mandatory metadata read.
-The token request further selects only this repository and that permission;
-the producer rejects broader returned permissions or repositories.
-`OWNER_AMENDMENT_TAG_RULESET_ID` remains the existing selected ruleset variable.
-App registration, installation, key provisioning and Environment protections
-are owner/admin operations after independent review, and are not configured or
-verified merely by this document or workflow declaration.
-
-The App key exists only in the isolated readback step. It releases a private,
-nonsecret local snapshot only after complete restriction validation and successful
-revocation. Storage is the fixed private snapshot below the hosted runner `_temp`
-directory derived from the actual checkout, rather than an arbitrary environment
-path. The launcher requires a matching real nonsymlink RUNNER_TEMP; the consumer
-requires a regular nonsymlink 0600 file in its nonsymlink 0700 directory. Outside
-paths and unsafe storage reject before use. Subsequent same-job handoff processing
-requires the exact repository,
-protected workflow/revision, run/attempt, ruleset and namespace and a readback no
-older than five minutes. It validates explicit empty bypass actors again; an
-omitted field never means empty. A snapshot is a trusted local launcher input,
-not a portable authenticated receipt, and cannot be reused across runs. PR,
-artifact, attestation-verification and tag calls retain the ordinary GITHUB_TOKEN.
-Failures stop handoff; no privileged-token fallback or rule bypass exists.
-Actions step/runner debug settings do not justify logging credentials: this CLI
-prints only fixed status/error text and never prints raw token-bearing responses.
-
-This fixes the handoff's complete ruleset-readback boundary only. Semantic
-eligibility preparation/signing and actual queue verification still require a
-fresh complete ruleset readback. A main-only secret cannot be handed to a queue
-job; protected producer/receiver and authenticated per-transition transport are
-separate work tracked by #210. This slice does not establish full amendment
-adoption, queue acceptance, host enforcement, or preview activation. #326 tracks
-future reduction of GitHub write privilege required for readback; it does not
-relax the current fail-closed restriction checks.
+Use the [ordinary protected-PR procedure](owner-intervention.md). The previous
+Policy selects the route, and the previous complete Authority Set evaluates the
+candidate; ordinary PASS cannot approve its own Authority change. No dedicated
+App, Queue, tag handoff or readback credential is required. The public Git-based
+Preview procedure below remains distinct from protected PR acceptance.
 
 ## Unverified preview lifecycle API
 

@@ -9,53 +9,40 @@ export interface AssertEnforcedAcceptanceInput {
   ownerAdditionResult?: unknown;
   ownerAdditionEligibility?: unknown;
   ownerAmendmentSelected?: unknown;
-  ownerAmendmentAttemptResult?: unknown;
-  ownerAmendmentAttempted?: unknown;
-  ownerAmendmentSignerResult?: unknown;
-  ownerAmendmentSignerStatus?: unknown;
-  ownerAmendmentEligibility?: unknown;
+  ownerAmendmentResult?: unknown;
+  ownerAmendmentVerification?: unknown;
 }
 
 export type EnforcedAcceptanceRoute =
   | Readonly<{ route: 'ordinary-pass' }>
-  | Readonly<{ route: 'owner-addition-pending' }>;
+  | Readonly<{ route: 'owner-addition-pending' }>
+  | Readonly<{ route: 'owner-amendment-eligible' }>;
 
-/** Preserve ordinary PASS, but do not let a tagged amendment attempt bypass its eligibility verifier. */
-export function assertEnforcedAcceptance(input: AssertEnforcedAcceptanceInput): EnforcedAcceptanceRoute;
+/** Inputs are outputs/outcomes of the adopted workflow, never candidate-supplied evidence. */
 export function assertEnforcedAcceptance({ reviewResult, conclusion, ownerAdditionSelected,
-  ownerAdditionResult, ownerAdditionEligibility, ownerAmendmentSelected, ownerAmendmentAttemptResult,
-  ownerAmendmentAttempted, ownerAmendmentSignerResult, ownerAmendmentSignerStatus,
-  ownerAmendmentEligibility, selfAuthorityCheckRequired, selectedAuthorityChanged }: AssertEnforcedAcceptanceInput = {} as AssertEnforcedAcceptanceInput): EnforcedAcceptanceRoute {
+  ownerAdditionResult, ownerAdditionEligibility, ownerAmendmentSelected, ownerAmendmentResult,
+  ownerAmendmentVerification, selfAuthorityCheckRequired, selectedAuthorityChanged }: AssertEnforcedAcceptanceInput): EnforcedAcceptanceRoute {
   if (reviewResult !== 'success') fail('the protected review did not complete successfully.');
-  if (ownerAmendmentSelected === 'G0' &&
-      (ownerAmendmentAttemptResult !== 'success' || !['true', 'false'].includes(ownerAmendmentAttempted as string))) {
-    fail('the protected exact-B amendment-attempt classification is unavailable.');
+  if (!['PASS', 'BLOCK', 'OWNER_DECISION', 'OWNER_ADDITION_G0'].includes(conclusion as string)) {
+    fail('enforced acceptance requires model-backed PASS or a verified selected Owner procedure.');
   }
-  const amendmentEligible = ownerAmendmentSignerResult === 'success' &&
-    ownerAmendmentSignerStatus === 'prepared' && ownerAmendmentEligibility === 'ELIGIBLE';
-  if (ownerAmendmentSelected === 'G0' && ownerAmendmentAttempted === 'true') {
-    if (!amendmentEligible) {
-      fail('a tagged OWNER_AMENDMENT attempt requires successful exact-B G0 eligibility before ordinary acceptance.');
-    }
-    fail('eligible tagged OWNER_AMENDMENT requires a separately implemented protected transition route; no accepting route is available.');
-  }
-  if (ownerAmendmentSelected === 'G0' && ownerAmendmentSignerResult === 'success') {
-    fail('semantic eligibility signer success conflicts with the protected no-tag classification.');
-  }
-  // The protected caller selects this guard; candidate Policy or model output cannot waive it.
-  const requireAuthorityCheck = selfAuthorityCheckRequired === 'true' || ownerAmendmentSelected === 'G0';
+  const requireAuthorityCheck = selfAuthorityCheckRequired === 'true' || ownerAmendmentSelected === 'protected-pr';
   if (requireAuthorityCheck && !['true', 'false'].includes(selectedAuthorityChanged as string)) {
     fail('the protected selected-Authority change comparison is unavailable.');
   }
-  if (conclusion === 'PASS') {
-    if (requireAuthorityCheck && selectedAuthorityChanged !== 'false') {
-      fail('ordinary PASS cannot accept a change to the previous selected Authority Set.');
-    }
-    return Object.freeze({ route: 'ordinary-pass' as const });
-  }
+  // Addition retains its independently validated, monotonic procedure. It is not an ordinary PASS.
   if (conclusion === 'OWNER_ADDITION_G0' && ownerAdditionSelected === 'G0' &&
       ownerAdditionResult === 'success' && ownerAdditionEligibility === 'ELIGIBLE') {
     return Object.freeze({ route: 'owner-addition-pending' as const });
   }
-  fail('enforced acceptance requires model-backed PASS or verified selected G0 eligibility.');
+  if (selectedAuthorityChanged === 'true' && requireAuthorityCheck) {
+    if (ownerAmendmentSelected !== 'protected-pr' || ownerAmendmentResult !== 'success' ||
+        ownerAmendmentVerification !== 'success') {
+      fail('ordinary PASS cannot accept a change to the previous selected Authority Set; the selected amendment review and exact current-PR verification are required.');
+    }
+    return Object.freeze({ route: 'owner-amendment-eligible' as const });
+  }
+  if (ownerAmendmentVerification === 'success') fail('amendment verification conflicts with an unchanged Authority Set.');
+  if (conclusion === 'PASS') return Object.freeze({ route: 'ordinary-pass' as const });
+  fail('enforced acceptance requires model-backed PASS or a verified selected Owner procedure.');
 }

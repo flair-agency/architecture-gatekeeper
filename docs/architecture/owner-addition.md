@@ -279,10 +279,10 @@ observes the mutable tag-ref mapping to the bound tag object at verification
 time and makes no promise that the ref remains unchanged through a later
 transition. This point-in-time semantics applies to historical v0.5 artifacts
 and is not strengthened or weakened by the versioned Issue #121 route.
-`OWNER_AMENDMENT` continues to require its bound evidence to remain valid
-through the protected
-canonical transition; its freshness requirement cannot be reduced to G0's
-verification-time observation.
+That `OWNER_ADDITION` behavior does not govern the self repository's current
+`OWNER_AMENDMENT` procedure, which is the ordinary protected-PR procedure in
+the [owner amendment contract](owner-amendment.md#self-owner-amendment-through-an-ordinary-protected-pr).
+It does not change a separately selected consumer's own amendment contract.
 
 Issue #119 (complete multi-document Authority Set support) and Issue #120
 (legacy PR-head authority failure) remain independent blockers for a LIVE
