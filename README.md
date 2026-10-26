@@ -159,10 +159,8 @@ shared target.
 
 #### Self-review credential migration
 
-Environment-backed credentials and receiver rollout are repository-specific
-operations. Follow the [self-review credential migration procedure](docs/github-assurance.md#self-review-credential-migration)
-and current [GitHub assurance guide](docs/github-assurance.md); these self-only
-settings do not apply to ordinary consumers.
+This legacy section remains as a public anchor. Current self-repository PR
+operations are documented in the [self repository amendment operation](docs/owner-intervention.md#self-repository-amendment-operation).
 
 
 ## Assurance boundary

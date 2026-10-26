@@ -466,9 +466,8 @@ unavailable for cost attribution.
 
 #### Self-review credential migration
 
-This repository-only procedure now lives in [GitHub assurance](github-assurance.md#self-review-credential-migration).
-It describes self-review Environment credential selection; ordinary consumers
-are unaffected.
+This legacy section remains as a public anchor. Current self-repository PR
+operations are documented in the [self repository amendment operation](owner-intervention.md#self-repository-amendment-operation).
 
 ### Gemini CI Review Runner
 
