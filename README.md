@@ -106,7 +106,7 @@ masked, full-detail report handoff. It remains inactive until a consumer adopts
 that workflow and selects Gemini in protected-base policy. This separate
 adoption does not select Gemini for the existing Codex-only consumer workflow
 or this repository's self policy, and does not establish broader consumer
-support or acceptance. See the [caller authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
+support or acceptance. See the [responsibility boundary](docs/github-assurance.md#responsibility-boundary).
 
 The CI reporter confines its projection and summary files to the invoking
 GitHub runner's per-step file-command layout and rejects linked or substituted

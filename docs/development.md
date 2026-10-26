@@ -746,7 +746,7 @@ authority.
 Record any required owner decision in the complete selected architecture Set
 (the relevant normative member) before changing
 architecture or assurance responsibilities. Follow its
-[dogfooding and change discipline](architecture/self-profile.md#development-sequence-and-dogfooding)
+[dogfooding and change discipline](architecture/self-profile.md#dogfooding-and-change-discipline)
 for local/manual, packaged and CI paths as applicable before broader rollout.
 
 ## Local CodeQL

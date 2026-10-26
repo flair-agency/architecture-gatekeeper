@@ -211,9 +211,10 @@ unavailable pinned objects fail closed.
 
 ## Upgrading legacy v1 consumers
 
-The operator procedure now lives in [Owner intervention](owner-intervention.md#legacy-v1-consumer-upgrade).
-This reference retains the old heading and subsection fragments for links from
-release and consumer documentation.
+This section preserves its historical fragments for existing links. The
+[preview.5 legacy v1 guidance](https://github.com/flair-agency/architecture-gatekeeper/blob/d6f0b6dccaab967a1c885615d2253b902e47f684/docs/owner-intervention.md#upgrading-legacy-v1-consumers)
+is historical and is not a validated upgrade procedure for the current runtime.
+For a clean installation, follow [Manual review](#manual-review).
 
 ## Local integration
 
@@ -887,7 +888,7 @@ out or executing pull-request code.
 
 A caller initiating secret-bearing work follows the consumer's adopted
 authorization policy and preserves credential isolation. See the
-[caller authorization boundary](github-assurance.md#caller-authorization-and-host-integration-boundary)
+[responsibility boundary](github-assurance.md#responsibility-boundary)
 for the division of responsibility; host-specific identity signals and
 consumer authorization recipes are not selected by Gatekeeper.
 
