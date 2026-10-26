@@ -64,7 +64,7 @@ Each consumer owns its architecture, review inputs and acceptance policy.
 
 Follow the complete [first manual review walkthrough](docs/integration-reference.md#manual-review),
 which creates and commits a small consumer fixture, installs
-`@flair-agency/architecture-gatekeeper@0.6.0-preview.3`, and shows the command
+`@flair-agency/architecture-gatekeeper@0.6.0`, and shows the command
 and observable outcomes. Its sample result is review evidence, not repository
 acceptance or implementation authority.
 

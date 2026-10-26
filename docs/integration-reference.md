@@ -34,7 +34,7 @@ Before starting, use Node.js 22 or later and Git. Authenticate npm to GitHub
 Packages with `read:packages` outside the project, and sign in to the local
 Codex CLI with `codex login`; configure a Git author identity so the consumer
 inputs can be committed. Do not put a package token in the repository.
-The package entrypoint below is pinned to `0.6.0-preview.3`.
+The package entrypoint below is pinned to `0.6.0`.
 This walkthrough uses local configuration v2. Its `selfRepository` value,
 `example/architecture-review-demo`, is an example identity for this local
 fixture; replace it with the consumer's actual `OWNER/REPOSITORY` when using
@@ -138,7 +138,7 @@ cat > .gitignore <<'EOF'
 node_modules/
 EOF
 
-npm install --package-lock-only --save-exact @flair-agency/architecture-gatekeeper@0.6.0-preview.3 --registry=https://npm.pkg.github.com
+npm install --package-lock-only --save-exact @flair-agency/architecture-gatekeeper@0.6.0 --registry=https://npm.pkg.github.com
 git add package.json package-lock.json docs/architecture.md .codex/gatekeeper .gitignore
 git commit -m "Add consumer architecture review inputs"
 npm ci
