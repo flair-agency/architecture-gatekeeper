@@ -34,7 +34,7 @@ Before starting, use Node.js 22 or later and Git. Authenticate npm to GitHub
 Packages with `read:packages` outside the project, and sign in to the local
 Codex CLI with `codex login`; configure a Git author identity so the consumer
 inputs can be committed. Do not put a package token in the repository.
-The package entrypoint below is pinned to `0.6.0-preview.3`.
+The package entrypoint below is pinned to `0.6.0`.
 This walkthrough uses local configuration v2. Its `selfRepository` value,
 `example/architecture-review-demo`, is an example identity for this local
 fixture; replace it with the consumer's actual `OWNER/REPOSITORY` when using
@@ -138,7 +138,7 @@ cat > .gitignore <<'EOF'
 node_modules/
 EOF
 
-npm install --package-lock-only --save-exact @flair-agency/architecture-gatekeeper@0.6.0-preview.3 --registry=https://npm.pkg.github.com
+npm install --package-lock-only --save-exact @flair-agency/architecture-gatekeeper@0.6.0 --registry=https://npm.pkg.github.com
 git add package.json package-lock.json docs/architecture.md .codex/gatekeeper .gitignore
 git commit -m "Add consumer architecture review inputs"
 npm ci
@@ -211,9 +211,10 @@ unavailable pinned objects fail closed.
 
 ## Upgrading legacy v1 consumers
 
-The operator procedure now lives in [Owner intervention](owner-intervention.md#legacy-v1-consumer-upgrade).
-This reference retains the old heading and subsection fragments for links from
-release and consumer documentation.
+This section preserves its historical fragments for existing links. The
+[preview.5 legacy v1 guidance](https://github.com/flair-agency/architecture-gatekeeper/blob/d6f0b6dccaab967a1c885615d2253b902e47f684/docs/owner-intervention.md#upgrading-legacy-v1-consumers)
+is historical and is not a validated upgrade procedure for the current runtime.
+For a clean installation, follow [Manual review](#manual-review).
 
 ## Local integration
 
@@ -466,9 +467,8 @@ unavailable for cost attribution.
 
 #### Self-review credential migration
 
-This repository-only procedure now lives in [GitHub assurance](github-assurance.md#self-review-credential-migration).
-It describes self-review Environment credential selection; ordinary consumers
-are unaffected.
+This legacy section remains as a public anchor. Current self-repository PR
+operations are documented in the [self repository amendment operation](owner-intervention.md#self-repository-amendment-operation).
 
 ### Gemini CI Review Runner
 
@@ -888,7 +888,7 @@ out or executing pull-request code.
 
 A caller initiating secret-bearing work follows the consumer's adopted
 authorization policy and preserves credential isolation. See the
-[caller authorization boundary](github-assurance.md#caller-authorization-and-host-integration-boundary)
+[responsibility boundary](github-assurance.md#responsibility-boundary)
 for the division of responsibility; host-specific identity signals and
 consumer authorization recipes are not selected by Gatekeeper.
 

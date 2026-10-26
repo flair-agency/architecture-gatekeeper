@@ -8,7 +8,7 @@ import { parseWorkflow } from './helpers/workflow-structure.mjs';
 
 test('declares separate installed adapters', () => {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  assert.equal(manifest.version, '0.6.0-preview.5');
+  assert.equal(manifest.version, '0.6.0');
   assert.equal(manifest.bin['architecture-gatekeeper'], 'dist/local-gate.mjs');
   assert.equal(manifest.bin['architecture-review'], 'dist/manual-review.mjs');
   assert.equal(manifest.bin['architecture-review-native'], 'dist/native-review.mjs');

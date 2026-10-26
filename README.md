@@ -64,7 +64,7 @@ Each consumer owns its architecture, review inputs and acceptance policy.
 
 Follow the complete [first manual review walkthrough](docs/integration-reference.md#manual-review),
 which creates and commits a small consumer fixture, installs
-`@flair-agency/architecture-gatekeeper@0.6.0-preview.3`, and shows the command
+`@flair-agency/architecture-gatekeeper@0.6.0`, and shows the command
 and observable outcomes. Its sample result is review evidence, not repository
 acceptance or implementation authority.
 
@@ -106,7 +106,7 @@ masked, full-detail report handoff. It remains inactive until a consumer adopts
 that workflow and selects Gemini in protected-base policy. This separate
 adoption does not select Gemini for the existing Codex-only consumer workflow
 or this repository's self policy, and does not establish broader consumer
-support or acceptance. See the [caller authorization boundary](docs/github-assurance.md#caller-authorization-and-host-integration-boundary).
+support or acceptance. See the [responsibility boundary](docs/github-assurance.md#responsibility-boundary).
 
 The CI reporter confines its projection and summary files to the invoking
 GitHub runner's per-step file-command layout and rejects linked or substituted
@@ -159,10 +159,8 @@ shared target.
 
 #### Self-review credential migration
 
-Environment-backed credentials and receiver rollout are repository-specific
-operations. Follow the [self-review credential migration procedure](docs/github-assurance.md#self-review-credential-migration)
-and current [GitHub assurance guide](docs/github-assurance.md); these self-only
-settings do not apply to ordinary consumers.
+This legacy section remains as a public anchor. Current self-repository PR
+operations are documented in the [self repository amendment operation](docs/owner-intervention.md#self-repository-amendment-operation).
 
 
 ## Assurance boundary
