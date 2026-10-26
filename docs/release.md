@@ -182,28 +182,12 @@ Use this retrospective record in a planning-issue comment:
 - Improvement issue, owner and verification in the next release:
 ```
 
-Illustrative planning examples below are explicitly hypothetical unless linked
-to a dated issue record. For historical estimates, #116 and #212 are examples
-to reassess from their linked tasks and evidence; their old estimates do not
-set current scope or a release date. Current records show #116's two protected
-E2E cases remain the formal objective; #210 has host wiring/readback work,
-#211 depends on that rollout, and #272 remains open. #212's 1–2 active-hour
-estimate and #211's 2–4 hours are dated estimates, not current elapsed-date
-bounds. #215 records one review deadline near 240 seconds and an outer delay
-around 12 minutes, not a normal review duration. A separate normal observation
-is [CI run 36975276625](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/36975276625),
-attempt 1, SHA `f9e1f06a32d618e8dcb95d410e8cbe1e27ba7c92`: job `test`
-ran 2026-10-02 06:47:44–06:48:05 UTC (21 seconds); its test step took
-10 seconds and pack/install/smoke took 5 seconds, included in that 21 seconds.
-This single successful observation measures neither human effort nor queue
-waiting, failed reviews or recovery. The #276 rehearsal did not run the full
-suite and is not equivalent candidate-readiness evidence.
-The earlier 6–12-hour preview overhead proposal therefore has no measured basis
-in these records. Do not reuse it as a buffer or claim shortest/longest dates
-from it. After this planning change is merged, prepare the v0.6.0 formal
-release plan afresh from current evidence and owner agreement. This resets
-planning assumptions only; canonical architecture and existing release gates
-remain in force until the owner changes them through canonical authority.
+Keep release-specific scope, estimates, scenario assumptions, and owner
+agreement in the active release planning issue. Historical estimates and
+rehearsal observations are retained in the [Issue #276 history](https://github.com/flair-agency/architecture-gatekeeper/issues/276#issuecomment-6401131958);
+they do not set current scope, dates, or reusable release gates. Reassess
+release choices against the current agreed scope and applicable canonical
+authority before each candidate freeze.
 
 **Hypothetical preview exercise (not a v0.6.0 plan):** the initial proposal
 includes feature F in `0.8.0-preview.1`, channel `preview`, with an agreed target
@@ -236,25 +220,16 @@ gate and proves no completed recovery.
 
 ## Choose the release channel
 
-Numbered previews may distribute improvements to paths already supported by
-the package. They must use the preview channel and must not claim adoption,
-rollout completion, enforcement, or completion of new `OWNER_AMENDMENT` or App
-routes. A preview is not a substitute for the formal v0.6.0 gates.
-
-Formal v0.6.0 requires both protected self `OWNER_AMENDMENT / G0` cycles in the
-canonical [architecture contract](architecture/self-profile.md#development-sequence-and-dogfooding):
-the completed-`BLOCK` case and the completed-`OWNER_DECISION` case, including
-the Issue #137 contract change. Each applicable cycle must bind exact B and
-protected evidence, pass its protected queue transition, read back canonical
-authority, and freshly review A. Also require the readiness and documentation
-work tracked by [Issue #272](https://github.com/flair-agency/architecture-gatekeeper/issues/272)
-to be complete. Missing any item means stop at preview; a numbered version or
-successful ordinary `PASS` cannot be described as formal v0.6.0 readiness.
-
-The existing `v0.6.0-preview.2` record cites source `c6c45da24d755ddd51b3a595e614242f869ec3ad`,
-fixture PR 16, and run `36955785162`. That is an ordinary `PASS` fixture
-observation. It does not demonstrate legacy-v1 adoption or either protected
-amendment cycle. Keep those gaps visible in release and issue tracking.
+Choose the channel and release claims from the active plan and the current
+canonical authority. Numbered previews use the `preview` channel and may
+distribute improvements to supported paths;
+describe its limitations accurately and do not claim consumer adoption or
+rollout without evidence. Apply only the assurance and publication conditions
+that govern the selected release scope. Satisfy the Owner-approved publication
+prerequisites in that plan, including its applicable final-candidate
+documentation/readback requirement tracked separately by
+[Issue #272](https://github.com/flair-agency/architecture-gatekeeper/issues/272).
+Do not turn a past release's acceptance cases into reusable prerequisites.
 
 ## Freeze and review a candidate
 
@@ -282,18 +257,18 @@ amendment cycle. Keep those gaps visible in release and issue tracking.
    `OWNER_DECISION`, report, and failing acceptance result; never coerce the
    semantic result to make the run green. Close synthetic PRs without merging
    unless the fixture procedure explicitly requires a protected transition.
-4. Record the legacy upgrade/adoption gap for each affected consumer. Package
-   installation does not change a consumer's protected policy. Follow
+4. Package installation does not change a consumer's protected policy.
+   For each affected consumer, record whether the release includes a legacy
+   upgrade or adoption path. If it does, follow
    [legacy v1 adoption](integration-reference.md#upgrading-legacy-v1-consumers)
-   before relying on the repaired enforced route; inventory the protected-base
-   authority, instructions, schema, validation selection, and immutable caller
-   pin. Stop if the consumer has not adopted the required selection under its
-   prior policy.
+   and verify the consumer's applicable prior-policy adoption requirements.
+   A clean installation may satisfy a selected use case when that is the
+   agreed scope; do not make backward-upgrade evidence a blanket condition.
 5. Run the read-only preflight and local package rehearsal below without
    creating or pushing a tag. The rehearsal must not call `npm publish`, create
    a GitHub release, or claim registry verification. Save command output and
    archive identity with the candidate evidence. A local rehearsal cannot
-   stand in for the actual synthetic consumer PR or protected self E2Es.
+   stand in for the actual synthetic consumer PR.
 
 ### Non-publishing preflight and rehearsal
 
@@ -455,34 +430,17 @@ readback disagrees. Preserve logs and observed registry state; fix the cause on
 a new reviewed commit and use a new version when an immutable version may
 already have been published. Keep the old tag and evidence intact for audit.
 
-For formal v0.6.0, missing either protected amendment cycle or Issue #272
-readiness is a release blocker even if the package and registry checks pass.
-Preview notes must state which gates remain open and must not present
-distribution or fixture smoke as protected adoption or acceptance.
+Do not describe distribution, fixture smoke, or package installation as
+consumer adoption or acceptance without the corresponding evidence. Apply
+additional criteria only when required by the selected release scope or
+canonical authority.
 
-## Issue #276 rehearsal record — 2026-10-02
+<a id="issue-276-rehearsal-record--2026-10-02"></a>
 
-The non-publishing archive check ran from worktree base
-`09afd0a7fc2412f41ca38eda609303db49ad2b90` on branch `codex/release-runbook`
-with an uncommitted documentation change. It packed version
-`0.6.0-preview.2` into
-`flair-agency-architecture-gatekeeper-0.6.0-preview.2.tgz`, included
-`docs/release.md` among 88 files, installed offline with lifecycle scripts
-disabled, and passed `test/installed-smoke.mjs`. The temporary archive
-integrity was computed during the check, but it is not recorded here: this
-guide is itself in the package, so embedding a digest of that archive would
-change the bytes being described. The tag workflow's output is the durable
-archive-integrity evidence for a release.
+## Historical rehearsal
 
-This was a package/archive rehearsal only. It did not run `npm test`, tag
-identity validation, native reviews, native CI readback, a new synthetic
-consumer PR, legacy adoption, either formal amendment E2E, registry readback,
-or GitHub release readback. The current package version is the existing
-preview.2 release whose recorded source is
-`c6c45da24d755ddd51b3a595e614242f869ec3ad`; the fixture PR 16 / run
-`36955785162` is only the ordinary `PASS` observation described above. The
-rehearsal used the same version from a modified tree based on a newer commit,
-so it is not a frozen or publication-ready candidate. Stop before creating or
-pushing a tag. GitHub issue API access was unavailable during this rehearsal;
-Issue #272 and #276 state/project fields still require readback and update by
-the coordinator. Formal v0.6.0 gates remain open until separately evidenced.
+The dated Issue #276 rehearsal and CI timing observations are preserved in the
+[Issue #276 history](https://github.com/flair-agency/architecture-gatekeeper/issues/276#issuecomment-6401131958).
+They describe those dated observations only; they are not current candidate
+evidence or instructions to stop a later release. Evaluate each new
+candidate using the applicable steps above and its active planning record.
