@@ -1,0 +1,3194 @@
+{
+  "version": 1,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "cutoffUtc": "2026-10-27T14:19:23Z",
+  "attempts": [
+    {
+      "runId": 39249858695,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 118050714445,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 118050746271,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 118050746446,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39204950667,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117905643813,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117905663155,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117905663511,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39125433848,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117669462095,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117669476109,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117669476152,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39123624684,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117664114081,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117664130524,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117664130636,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39121280816,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117657233391,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117657248072,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117657248152,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39118888525,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117650228198,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117650246243,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117650246318,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39107056354,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117615097818,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117615115004,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117615115171,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40495620430,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 122160187268,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 122160237246,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 122160238965,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40494696664,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 122157069255,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 122157135521,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 122157135806,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40291966808,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121468898709,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121468943141,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121468943249,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40204306580,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121201846384,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121201870906,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121201871207,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40204287324,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121201787609,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121201804688,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121201804979,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40202409003,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121196171826,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121196192252,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121196192392,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40202405568,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121196160565,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121196185605,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121196185632,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40200269586,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121189768766,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121189787333,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121189787561,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40200130884,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121189370761,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121189394832,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121189395335,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39105995728,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117611844256,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117611858025,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117611858109,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39104237746,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117606595358,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117606615499,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117606615593,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39100653197,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117596061400,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117596079008,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117596079071,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39100373156,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117595240916,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117595253443,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117595253555,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39099966723,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117594043567,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117594064037,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117594064150,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39099606817,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117592991168,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117593013319,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117593013694,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39099341952,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117592210684,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117592229620,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117592229926,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39098876491,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117590861848,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117590874862,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117590875048,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39098467462,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117589673507,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117589689485,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117589689590,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39098136263,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117588720787,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117588740074,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117588740297,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39097648726,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117587303327,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117587321819,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117587321980,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39097306490,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117586306970,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117586322917,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117586323099,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39096145113,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117582895944,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117582909108,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117582909114,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39095890189,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117582122808,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117582138191,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117582138225,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39095327199,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117580459487,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117580472367,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117580472725,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39094155045,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117576960817,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117576975714,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117576975773,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39094063686,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117576687956,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117576708335,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117576708345,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39093253267,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117574266764,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117574284232,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117574284807,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39093036209,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117573613512,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117573635189,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117573635425,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39090185887,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117565095546,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117565108578,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117565108813,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39088320658,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117559470987,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117559485598,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117559485618,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39085288224,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117550423237,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117550436423,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117550436507,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39078339831,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117530028337,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117530041422,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117530041804,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39077413971,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117527339607,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117527352654,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117527352878,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39075902284,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117522875600,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117522895545,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117522895642,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39075147704,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117520647285,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117520668334,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117520668812,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39074016302,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117517315000,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117517338326,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117517338832,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39071296913,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117509300792,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117509320262,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117509320352,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39071007214,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117508429582,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117508451618,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117508451949,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39069180283,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117503024619,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117503044416,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117503044625,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39068116841,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117499896302,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117499913814,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117499914080,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39062561404,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117483357688,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117483376950,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117483377194,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39061665462,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117480716492,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117480743131,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117480743718,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39058737131,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117472072885,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117472098591,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117472098707,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39057743487,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117469106298,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117469122376,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117469122734,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39054302935,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117459012662,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117459036334,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117459036590,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39054247651,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 117458848662,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117458870910,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 117458871143,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38786551302,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 116599904073,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 116599950084,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 116599950885,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38582079654,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115914295776,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115914356624,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115914357556,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38577884113,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115899689247,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115899734242,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115899734829,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38571264233,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115876770351,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115876821155,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115876821864,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38565358439,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115856529033,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115856574544,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115856575208,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38562613662,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115847192111,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115847228725,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115847229239,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38560605985,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115840445364,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115840479463,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115840479723,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38558852428,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115834630748,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115834671023,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115834671850,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38554907849,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115821526399,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115821569093,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115821569215,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38551134485,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115809087947,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115809119665,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115809120147,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38546363012,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115793303093,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115793346679,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115793347439,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38545487639,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115790365974,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115790410577,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115790410722,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38537459625,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115763718081,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115763756396,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115763756755,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38537440630,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115763654808,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115763699120,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115763699434,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38536708335,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115761237324,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115761281265,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115761281641,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38536691544,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115761180419,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115761209254,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115761209620,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38536201084,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115759564333,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115759597531,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115759598913,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38531639275,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115744653028,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115744693067,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115744693984,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38529301028,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115737030491,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115737063463,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115737064559,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38522543822,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115715344115,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115715367703,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115715367812,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38473334693,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 13,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115557741539,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115557776123,
+          "name": "architecture-gate / policy",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115557777151,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115557888379,
+          "name": "architecture-gate / owner-amendment-attempt-classifier",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115557888574,
+          "name": "architecture-gate / review",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115557996656,
+          "name": "architecture-gate / owner-amendment-semantic-eligibility",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115558116237,
+          "name": "architecture-gate / owner-amendment-semantic-eligibility-signer",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115558669887,
+          "name": "architecture-gate / report",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "id": 115558670817,
+          "name": "architecture-gate / owner-addition",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115558671360,
+          "name": "architecture-gate / block-review-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115558671457,
+          "name": "architecture-gate / owner-amendment-owner-decision-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115558762856,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "id": 115558807256,
+          "name": "architecture-gate / measurement",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "runId": 38473334693,
+      "runAttempt": 2,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 13,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115568291991,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115568292606,
+          "name": "architecture-gate / report",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "id": 115568293214,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115568293366,
+          "name": "architecture-gate / policy",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115568293439,
+          "name": "architecture-gate / owner-addition",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115568293442,
+          "name": "architecture-gate / owner-amendment-attempt-classifier",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115568293755,
+          "name": "architecture-gate / review",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115568294015,
+          "name": "architecture-gate / owner-amendment-semantic-eligibility",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115568294114,
+          "name": "architecture-gate / owner-amendment-semantic-eligibility-signer",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115568294372,
+          "name": "architecture-gate / block-review-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115568295042,
+          "name": "architecture-gate / owner-amendment-owner-decision-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115568448357,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "id": 115568516011,
+          "name": "architecture-gate / measurement",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "runId": 38473334693,
+      "runAttempt": 3,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 13,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115568701556,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115568739963,
+          "name": "architecture-gate / policy",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115568741475,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115568865046,
+          "name": "architecture-gate / review",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115568865214,
+          "name": "architecture-gate / owner-amendment-attempt-classifier",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115568994582,
+          "name": "architecture-gate / owner-amendment-semantic-eligibility",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115569156714,
+          "name": "architecture-gate / owner-amendment-semantic-eligibility-signer",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115569809183,
+          "name": "architecture-gate / report",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "id": 115569809221,
+          "name": "architecture-gate / owner-amendment-owner-decision-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115569809360,
+          "name": "architecture-gate / owner-addition",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115569809372,
+          "name": "architecture-gate / block-review-record",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115569893656,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "id": 115569961802,
+          "name": "architecture-gate / measurement",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "runId": 38466757198,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115535419077,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115535452679,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115535453323,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38460381995,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115513702989,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115513775759,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115513776006,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38452967283,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115488315239,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115488418756,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115488420897,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38448483439,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115473003530,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115473042548,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115473043419,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38440796070,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115446530268,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115446638271,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115446639059,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 38413732177,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 115352497524,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 115352541321,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 115352541861,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40186937132,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121149631819,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121149651136,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121149651266,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40186934105,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121149622608,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121149646261,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121149646663,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40185611901,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 0,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": []
+    },
+    {
+      "runId": 40185549858,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 0,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": []
+    },
+    {
+      "runId": 40185052237,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 0,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": []
+    },
+    {
+      "runId": 40184113003,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 0,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": []
+    },
+    {
+      "runId": 40184099130,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 0,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": []
+    },
+    {
+      "runId": 40184095348,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 0,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": []
+    },
+    {
+      "runId": 40172011162,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 5,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121104644431,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121104662128,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121104662359,
+          "name": "self-app-start",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121104662731,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121104662889,
+          "name": "self-app-report",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40170349284,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 5,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121099742334,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121099756019,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121099756411,
+          "name": "self-app-report",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121099756602,
+          "name": "self-app-start",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121099756662,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40169176206,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 5,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 121096354082,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121096366994,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121096367083,
+          "name": "self-app-start",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121096367175,
+          "name": "self-app-report",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 121096367215,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 40074320532,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 5,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 120814333434,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 120814349766,
+          "name": "self-app-start",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 120814350270,
+          "name": "self-app-report",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 120814350281,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 120814350508,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39774298872,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 119809253680,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 119809387453,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 119809387688,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    {
+      "runId": 39763265017,
+      "runAttempt": 1,
+      "artifactCount": 0,
+      "missingRoutes": [
+        "review",
+        "outcome"
+      ],
+      "totalCount": 3,
+      "pagesRead": 1,
+      "terminalShortPage": true,
+      "jobs": [
+        {
+          "id": 119772402612,
+          "name": "classify-self-repository",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 119772445220,
+          "name": "architecture-gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 119772445338,
+          "name": "architecture-gate / accept",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    }
+  ],
+  "interpretation": "Absent artifacts remain unknown measurement; job success or skipped work does not supply a semantic result. Three observed successful measurement jobs still have no retained exports."
+}
