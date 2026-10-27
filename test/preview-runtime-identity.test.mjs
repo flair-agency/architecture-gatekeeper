@@ -138,7 +138,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     }
     let body = implementation.replace(/^#![^\n]*\n/, '')
       .replace(/from (["'])\.\.\//g, 'from $1./');
-    const guardStart = facade.indexOf('if (process.argv[1]');
+    const guardStart = facade.search(/^if \(\(*process\.argv\[1\]/m);
     if (inlineRunner) {
       const marker = `export function ${inlineRunner}()`;
       const runnerStart = body.lastIndexOf(marker);
