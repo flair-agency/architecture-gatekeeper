@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "recordKind": "scheduled-weekly-pilot-harvest",
+  "issue": 537,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "snapshotCutoffUtc": "2026-10-27T14:19:23Z",
+  "collectionCompletedAtUtc": "2026-10-27T14:29:36.084510+00:00",
+  "window": {
+    "start": "2026-10-13T22:43:35+09:00",
+    "endExclusive": "2026-11-10T22:43:35+09:00",
+    "durationDays": 28,
+    "timezone": "Asia/Tokyo"
+  },
+  "windowComplete": false,
+  "auditSeed": "pilot537-103c45b7b73d076caa81e7ab0651e010",
+  "sampleMembershipFrozen": false,
+  "newArtifacts": 124,
+  "newWorkflowAttemptPairs": 62,
+  "newRecords": 310,
+  "priorDisjointDistinctPhaseRecords": 563,
+  "unionDistinctPhaseRecords": 873,
+  "newEnvelopeGaps": 0,
+  "newDeclaredFixtureRecords": 0,
+  "reviewTerminalObservations": {
+    "PASS": 31,
+    "BLOCK": 8,
+    "incomplete": 23
+  },
+  "recordChunking": "Whole run/attempt groups, production-validated bounded dataset chunks of 120/120/70 records; each JSON file <=200 KiB. No combined over-limit dataset.",
+  "captureScope": "124 new real ZIPs recovered; all 224 previously archived source digest/size receipts reconcile unchanged. No old record, cutoff or unknown field is rewritten.",
+  "counts": {
+    "createdInWindowRepositoryRuns": 1179,
+    "createdInWindowSelfWorkflowRuns": 263,
+    "selfWorkflowAttempts": 270,
+    "listedMeasurementArtifacts": 348,
+    "sourceArtifactCollections": 263,
+    "attemptsWithoutMeasurementPairs": 96,
+    "withoutListedOrdinaryReviewJob": 93,
+    "selectedPRs": 82,
+    "eventPages": 83,
+    "receivedEventRows": 1539
+  },
+  "eligibilityProjection": {
+    "eligible-observed": 60,
+    "uncertain": 14,
+    "eligible-initial": 6,
+    "fixture-excluded": 1,
+    "not-newly-eligible": 1
+  },
+  "missingness": {
+    "olderCreatedRunQueryComplete": false,
+    "olderCreatedReportedTotal": 2500,
+    "olderCreatedReceivedRows": 1000,
+    "olderCreatedPage11Rows": 0,
+    "olderCreatedPage11Total": 0,
+    "successfulMeasurementWithoutExports": [
+      "38473334693/1",
+      "38473334693/2",
+      "38473334693/3"
+    ],
+    "scope": "Unseen originally pre-window in-window reruns and missing artifacts remain unknown; skipped/job success is not semantic PASS."
+  },
+  "priorArchiveReferences": [
+    {
+      "revision": "fe1c512c4bd56f621096f61a210be566b8a10be8",
+      "directory": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z",
+      "records": 535,
+      "artifacts": 214
+    },
+    {
+      "revision": "3f6632ef24f952950583b380de6a030e3c799860",
+      "directory": "pilot-evidence/537/late-pair-checkpoint-20261019",
+      "records": 5,
+      "artifacts": 2
+    },
+    {
+      "revision": "57561f846b25a1bbd3838ef38e5f04dc49832ba9",
+      "directory": "pilot-evidence/537/native-development-checkpoint-20261019",
+      "records": 3,
+      "artifacts": 0
+    },
+    {
+      "revision": "ca14a4795f11071e4f0f71026e04beb153699d56",
+      "directory": "pilot-evidence/537/scheduled-harvest-20261020T144339Z",
+      "records": 20,
+      "artifacts": 8
+    }
+  ],
+  "files": [
+    {
+      "path": "collection-summary.json",
+      "bytes": 5293,
+      "sha256": "845b6f8c3043343780088d43006fd1363e8968fd198f7519f9e080127491cd7d"
+    },
+    {
+      "path": "missing-artifact-attempts.json",
+      "bytes": 75892,
+      "sha256": "8efda8d9c028d7ddbda479405bd72f3c57311ae72e11536dbcbbe6eb5c48ef99"
+    },
+    {
+      "path": "new-artifact-inventory.json",
+      "bytes": 124014,
+      "sha256": "c3dae9c3c879a8f05ce6c5c4404743c16ce4b5aba3c235616d3d7c6488dc11d3"
+    },
+    {
+      "path": "pr-eligibility-inventory.json",
+      "bytes": 108232,
+      "sha256": "bdbba300334fb00b7774cfaf37dcf2c498d105c853a4ed9ec60b43c0bc7aea90"
+    },
+    {
+      "path": "records-001.json",
+      "bytes": 203257,
+      "sha256": "f7154f51417741f3d935189aefb5ccbaf1506d2f379bbb57490deeeebab13cd1"
+    },
+    {
+      "path": "records-002.json",
+      "bytes": 203149,
+      "sha256": "7c36741fab0b235a286d54bbd3bbeceb3fb2aa6d2ad99ee12819adfd6da61e87"
+    },
+    {
+      "path": "records-003.json",
+      "bytes": 117401,
+      "sha256": "b8d7d60b8bf6c493734917f62731483851854349865a8516065558fb02b13145"
+    },
+    {
+      "path": "run-inventory.json",
+      "bytes": 119931,
+      "sha256": "2d5830c59e788763eec544c761c8e553c33a739420e73670a38605fa46e103b0"
+    },
+    {
+      "path": "validation-report.json",
+      "bytes": 15390,
+      "sha256": "ab4cc870e10d824f8fb1c5e40f2502db401b65afc33d986aae3e2412807e254a"
+    }
+  ],
+  "validationSummary": {
+    "priorHashesVerified": 8,
+    "productionVersion": "0.6.0-preview.4",
+    "productionSourceRevision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+    "newDuplicatePhaseIdentities": 0,
+    "allUnionRunAttemptGroupsProductionValidated": true,
+    "newDatasetChunks": [
+      {
+        "path": "records-001.json",
+        "records": 120
+      },
+      {
+        "path": "records-002.json",
+        "records": 120
+      },
+      {
+        "path": "records-003.json",
+        "records": 70
+      }
+    ]
+  },
+  "privacy": "Only unchanged production-whitelisted exported records and projected public PR/run/attempt/artifact inventory. No prompt/task/diff, narratives/findings, credentials, personal data, private authority or raw local record.",
+  "limits": [
+    "Observed BLOCK attempts are not distinct or adjudicated defects; no correction, prevention, acceptance or effectiveness is inferred.",
+    "Current API PR bindings and exported ci.pr remain separate; missing binding is unresolved.",
+    "No full-window population, metric denominator or independent audit sample is frozen before window end.",
+    "No new review/model call, CI rerun, PR creation, external-assessor message or main/runtime/authority/reviewer/Hook/credential/acceptance change.",
+    "Issue remains open and existing AC status is unchanged.",
+    "Private raw backup remains unverified; this archive does not supply missing private findings."
+  ]
+}
