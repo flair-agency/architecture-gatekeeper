@@ -16,7 +16,7 @@ export {
   classifyReview,
   renderReport,
   upsertPullRequestComment,
-  loadCodexPassReport,
+  loadCodexReviewReport,
   main,
 } from './ci-review/ci-report-entrypoint.mts';
 

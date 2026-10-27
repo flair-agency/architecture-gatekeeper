@@ -28,13 +28,13 @@ test('synthetic handoff fixture is confined to its one repository, branch, and w
 test('producer validates the real consumer inputs before emitting only a masked display', () => {
   const producer = workflow.jobs.producer;
   const validation = namedStep(producer, 'Validate synthetic PASS against the original consumer contract');
-  const publication = namedStep(producer, 'Publish validated ordinary Codex PASS display');
-  assert.match(validation.run, /validateCodexPass/);
+  const publication = namedStep(producer, 'Publish validated ordinary Codex review display');
+  assert.match(validation.run, /validateCodexReview/);
   assert.match(validation.run, /ci-decision\.schema\.json/);
   assert.match(validation.run, /decision\.validation\.json/);
   assert.match(validation.run, /authorities\.json/);
   assert.match(publication.run, /::add-mask::/);
-  assert.match(publication.run, /emitPassDisplay/);
+  assert.match(publication.run, /emitReviewDisplay/);
   assert.deepEqual(Object.keys(producer.outputs), ['expected']);
   assert.equal(producer.outputs.expected, '${{ steps.validate.outputs.expected }}');
 });
@@ -42,10 +42,12 @@ test('producer validates the real consumer inputs before emitting only a masked 
 test('reporter retrieves the completed same-run log, renders masked data, and preserves G0 fail-closed checks', () => {
   const reporter = workflow.jobs.reporter;
   const step = namedStep(reporter, 'Retrieve masked display and verify the original acceptance boundary');
-  assert.match(step.run, /retrievePassDisplay/);
+  assert.match(step.run, /retrieveReviewDisplay/);
   assert.match(step.run, /renderReport/);
   assert.match(step.run, /assertEnforcedAcceptance/);
-  assert.match(step.run, /ownerAmendmentSelected: 'G0'/);
+  assert.match(step.run, /ownerAmendmentSelected: 'protected-pr'/);
+  assert.match(step.run, /ownerAmendmentVerification: 'failure'/);
+  assert.match(step.run, /expected.conclusion !== process.env.SYNTHETIC_DECISION/);
   assert.match(step.run, /\['true', undefined\]/);
   assert.match(step.env.EXPECTED_JSON, /needs\.producer\.outputs\.expected/);
 });

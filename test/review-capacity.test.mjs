@@ -22,7 +22,7 @@ const runtimeFiles = [
 ];
 const sentinel = 'PRIVATE_CAPACITY_CONTENT_SENTINEL';
 const calledWorkflow = '.github/workflows/architecture-gate.yml';
-const currentCalledWorkflowSha256 = 'c221566493c2959546723a57b3004fcee9bd8d8a806ca5893a8efe61afc4bfd9';
+const currentCalledWorkflowSha256 = 'b43e548e66bd3aeaeacc56e611f96301faab21c7605d43d0e088a19aa6ea80db';
 const preGuardCalledWorkflowSha256 = 'e0ba804c39a8ad52b875084c3f2c9a77edda261af1583558f08d74472ddd5906';
 const previousCalledWorkflowSha256 = '237e6a6ba0baebc4a70e8190911bac60044636c2c9d5cf675aa253b5e5095b45';
 const earlierCalledWorkflowSha256 = 'ecf6a70d7bffb73f152143dacd5d44a09a57a54c616fa4e3ed94117c89abb046';

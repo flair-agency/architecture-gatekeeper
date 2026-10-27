@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import { assertSameMultiAuthorityProvenance, validateMultiAuthorityDecision,
   validateMultiAuthorityProvenance } from '../authority-validation/multi-authority-provenance.mts';
 
-import { expectedOf, requireSelfPassContext } from './codex-pass-publication.mts';
-import { retrievePassDisplay } from '../github/codex-pass-log.mts';
+import { expectedOf, requireSelfReviewContext } from './codex-pass-publication.mts';
+import { retrieveReviewDisplay } from '../github/codex-pass-log.mts';
 
 export const COMMENT_MARKER = '<!-- architecture-gatekeeper:result:v1 -->';
 const OWNER_INTERVENTION_URL = 'https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/owner-intervention.md';
@@ -672,24 +672,28 @@ export async function upsertPullRequestComment({ fetchImpl = fetch, apiUrl, repo
   return { status: existing ? 'updated' : 'created' };
 }
 
-/** Ordinary self PASS only; never use masked display as governance evidence. */
-export async function loadCodexPassReport(env: NodeJS.ProcessEnv, fetchImpl: typeof fetch = fetch) {
+/** Ordinary self display only; never use masked data as governance evidence. */
+export async function loadCodexReviewReport(env: NodeJS.ProcessEnv, fetchImpl: typeof fetch = fetch) {
   const raw = classifyReview({ mode: env.MODE, policyResult: env.POLICY_RESULT,
     reviewResult: env.REVIEW_RESULT, rawDecision: env.DECISION || '' });
-  const hasMetadata = Boolean(env.CODEX_PASS_CONCLUSION || env.CODEX_PASS_DIGEST || env.CODEX_PASS_NONCE);
-  const selected = env.CODEX_PASS_SELECTED === 'true' || hasMetadata ||
-    env.CODEX_PASS_ELIGIBLE === 'true' && raw.conclusion === 'PASS';
+  const hasMetadata = Boolean(env.CODEX_REVIEW_CONCLUSION || env.CODEX_REVIEW_DIGEST || env.CODEX_REVIEW_NONCE);
+  const selected = env.CODEX_REVIEW_SELECTED === 'true' || hasMetadata ||
+    env.CODEX_REVIEW_ELIGIBLE === 'true' && raw.conclusion === 'PASS';
   if (!selected) return null;
-  if (env.CODEX_PASS_ELIGIBLE !== 'true' || env.MODE !== 'enforced' || env.POLICY_RESULT !== 'success' ||
-      env.REVIEW_RESULT !== 'success' || env.CODEX_PASS_KIND !== 'PASS' || env.GITHUB_EVENT_NAME !== 'pull_request_target' ||
-      env.BASE_BRANCH !== 'main') throw new Error('Selected protected Codex PASS reporting context is incomplete.');
+  if (env.CODEX_REVIEW_ELIGIBLE !== 'true' || env.MODE !== 'enforced' || env.POLICY_RESULT !== 'success' ||
+      env.REVIEW_RESULT !== 'success' || !DECISIONS.has(env.CODEX_REVIEW_KIND || '') || env.GITHUB_EVENT_NAME !== 'pull_request_target' ||
+      env.BASE_BRANCH !== 'main') throw new Error('Selected protected Codex review reporting context is incomplete.');
+  if (env.CODEX_REVIEW_KIND !== 'PASS' && (env.POLICY_VERSION !== '2' || env.OWNER_ADDITION_SELECTED !== 'false')) {
+    throw new Error('Masked Codex rejecting outcomes require the self ordinary v2 route without Owner addition.');
+  }
   const expected = expectedOf({ repository:env.GITHUB_REPOSITORY, runId:env.GITHUB_RUN_ID, runAttempt:env.GITHUB_RUN_ATTEMPT,
     eventSha:env.GITHUB_SHA, callerWorkflowSha:env.GITHUB_WORKFLOW_SHA, callerWorkflowRef:env.GITHUB_WORKFLOW_REF,
     workflowRepository:env.GATEKEEPER_WORKFLOW_REPOSITORY, workflowSha:env.GATEKEEPER_WORKFLOW_SHA,
     workflowRef:env.GATEKEEPER_WORKFLOW_REF, baseSha:env.BASE_SHA, headSha:env.HEAD_SHA, reviewedSha:env.REVIEWED_SHA,
-    nonce:env.CODEX_PASS_NONCE, conclusion:env.CODEX_PASS_CONCLUSION, decisionDigest:env.CODEX_PASS_DIGEST });
+    nonce:env.CODEX_REVIEW_NONCE, conclusion:env.CODEX_REVIEW_CONCLUSION, decisionDigest:env.CODEX_REVIEW_DIGEST });
   const { nonce, conclusion, decisionDigest, ...context } = expected;
-  requireSelfPassContext(context);
-  const decision = await retrievePassDisplay(expected,env.GITHUB_TOKEN as string,fetchImpl);
+  if (conclusion !== env.CODEX_REVIEW_KIND) throw new Error('Codex review display disagrees with the completed decision.');
+  requireSelfReviewContext(context);
+  const decision = await retrieveReviewDisplay(expected,env.GITHUB_TOKEN as string,fetchImpl);
   return { decision, decisionDigest:expected.decisionDigest };
 }

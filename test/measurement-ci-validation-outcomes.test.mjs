@@ -207,7 +207,7 @@ test('all required post-model stages retain validation and reporting order with 
     const steps = parseWorkflow(readFileSync(new URL(`../.github/workflows/${filename}`, import.meta.url), 'utf8')).jobs.review.steps;
     const codex = steps.findIndex(step => step.id === 'codex');
     assert.deepEqual(steps.slice(codex + 1).filter(step => step['continue-on-error'] !== true).map(step => step.id),
-      ['execution', 'decision', undefined, undefined, undefined, ...(filename === 'architecture-gate.yml' ? ['pass-display'] : [])]);
+      ['execution', 'decision', undefined, undefined, undefined, ...(filename === 'architecture-gate.yml' ? ['review-display'] : [])]);
     assert.ok(!steps.some(step => /measurement-(?:ci|cli)\.mjs/.test(step.run || '')));
   }
 });

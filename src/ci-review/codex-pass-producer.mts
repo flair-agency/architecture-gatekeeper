@@ -10,7 +10,7 @@ import { validateLegacyAuthorityDecision } from '../prepare-legacy-ci-authority.
 import { classifyReview, digestDecision, parseAuthorityProvenance, parseLegacyAuthorityProvenance } from '../ci-report.mts';
 import { appendGitHubOutput } from '../runner-temp-path.mts';
 import { readDescriptorBytes } from '../io/read-descriptor.mts';
-import { contextOf, requireSelfPassContext, createPassDisplay, emitPassDisplay, fail, type PassContext } from './codex-pass-publication.mts';
+import { contextOf, requireSelfReviewContext, createReviewDisplay, emitReviewDisplay, fail, type ReviewContext } from './codex-pass-publication.mts';
 
 /** Fixed job-local inputs; no destination or filename comes from reviewer output. */
 export function readCodexInput(name: 'decision'|'schema'|'rules'|'authority'|'legacy'): string {
@@ -34,10 +34,11 @@ export function readCodexInput(name: 'decision'|'schema'|'rules'|'authority'|'le
 function json(text: string, label: string, depth = 256): unknown {
   rejectDuplicateJsonKeys(text,label,{maxDepth:depth}); return JSON.parse(text);
 }
-export function validateCodexPass(input: {
-  context: PassContext; decisionText: string; schemaText: string; rulesText: string | null;
+export function validateCodexReview(input: {
+  context: ReviewContext; decisionText: string; schemaText: string; rulesText: string | null;
   authorityText: string | null; legacyText: string | null; authorityEncoded: string; legacyEncoded: string;
   policyVersion: string; mode: string; policyResult: string; reviewResult: string;
+  allowNonPass?: boolean;
 }) {
   contextOf(input.context);
   if (input.mode !== 'enforced' || input.policyResult !== 'success' || input.reviewResult !== 'success') fail();
@@ -61,9 +62,11 @@ export function validateCodexPass(input: {
     validateLegacyAuthorityDecision(input.decisionText,provenance);
   }
   const classified = classifyReview({mode:input.mode,policyResult:input.policyResult,reviewResult:input.reviewResult,rawDecision:input.decisionText});
-  // Non-PASS routes continue using their ORIGINAL raw cross-job inputs.
-  if (classified.conclusion !== 'PASS') return null;
-  return createPassDisplay(input.context,decision,digestDecision(classified.decision));
+  // Only the current self ordinary v2 route may project rejecting outcomes.
+  // G0 and other consumers still require their ORIGINAL decision evidence.
+  if (classified.conclusion !== 'PASS' && !(input.allowNonPass === true && input.policyVersion === '2' &&
+      ['BLOCK', 'OWNER_DECISION'].includes(classified.conclusion))) return null;
+  return createReviewDisplay(input.context,decision,digestDecision(classified.decision));
 }
 function main(): void {
   const env = process.env;
@@ -73,15 +76,16 @@ function main(): void {
     eventSha:env.GITHUB_SHA,callerWorkflowSha:env.GITHUB_WORKFLOW_SHA,callerWorkflowRef:env.GITHUB_WORKFLOW_REF,
     workflowRepository:env.GATEKEEPER_WORKFLOW_REPOSITORY,workflowSha:env.GATEKEEPER_WORKFLOW_SHA,workflowRef:env.GATEKEEPER_WORKFLOW_REF,
     baseSha:env.BASE_SHA,headSha:env.HEAD_SHA,reviewedSha:env.REVIEWED_SHA});
-  requireSelfPassContext(context);
-  const result = validateCodexPass({context,decisionText:readCodexInput('decision'),schemaText:readCodexInput('schema'),
+  requireSelfReviewContext(context);
+  const result = validateCodexReview({context,decisionText:readCodexInput('decision'),schemaText:readCodexInput('schema'),
     rulesText:env.VALIDATION_SELECTED === 'true' ? readCodexInput('rules') : null,
     authorityText:env.AUTHORITY_ROUTE_SELECTED === 'true' ? readCodexInput('authority') : null,
     legacyText:env.POLICY_VERSION === '1' ? readCodexInput('legacy') : null,
     authorityEncoded:env.AUTHORITY_PROVENANCE_BASE64 || '',legacyEncoded:env.LEGACY_AUTHORITY_PROVENANCE_BASE64 || '',
-    policyVersion:env.POLICY_VERSION || '',mode:env.MODE || '',policyResult:env.POLICY_RESULT || '',reviewResult:env.REVIEW_RESULT || ''});
+    policyVersion:env.POLICY_VERSION || '',mode:env.MODE || '',policyResult:env.POLICY_RESULT || '',reviewResult:env.REVIEW_RESULT || '',
+    allowNonPass:env.POLICY_VERSION === '2' && env.OWNER_ADDITION_SELECTED === 'false'});
   if (!result) return;
-  emitPassDisplay(result.projection);
-  appendGitHubOutput(`pass_conclusion=PASS\npass_digest=${result.expected.decisionDigest}\npass_nonce=${result.expected.nonce}\n`);
+  emitReviewDisplay(result.projection);
+  appendGitHubOutput(`review_conclusion=${result.expected.conclusion}\nreview_digest=${result.expected.decisionDigest}\nreview_nonce=${result.expected.nonce}\n`);
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) main();
