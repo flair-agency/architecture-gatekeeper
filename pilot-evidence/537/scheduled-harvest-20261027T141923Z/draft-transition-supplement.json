@@ -1,0 +1,406 @@
+{
+  "version": 1,
+  "recordKind": "state-transition-projection-supplement",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "cutoffUtc": "2026-10-27T14:19:23Z",
+  "eventCount": 56,
+  "eventType": "convert_to_draft",
+  "events": [
+    {
+      "pr": 322,
+      "id": 32492513958,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-05T09:05:15Z",
+      "commitId": null
+    },
+    {
+      "pr": 517,
+      "id": 33006547360,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-11T22:27:47Z",
+      "commitId": null
+    },
+    {
+      "pr": 520,
+      "id": 32988153043,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-11T13:58:41Z",
+      "commitId": null
+    },
+    {
+      "pr": 579,
+      "id": 33166898046,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-13T19:50:58Z",
+      "commitId": null
+    },
+    {
+      "pr": 581,
+      "id": 33199944922,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T06:24:15Z",
+      "commitId": null
+    },
+    {
+      "pr": 582,
+      "id": 33178994736,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-13T23:02:07Z",
+      "commitId": null
+    },
+    {
+      "pr": 582,
+      "id": 33180148620,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-13T23:24:00Z",
+      "commitId": null
+    },
+    {
+      "pr": 582,
+      "id": 33180640435,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-13T23:34:03Z",
+      "commitId": null
+    },
+    {
+      "pr": 583,
+      "id": 33181780999,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-13T23:57:24Z",
+      "commitId": null
+    },
+    {
+      "pr": 583,
+      "id": 33182190829,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T00:06:05Z",
+      "commitId": null
+    },
+    {
+      "pr": 583,
+      "id": 33183132153,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T00:25:59Z",
+      "commitId": null
+    },
+    {
+      "pr": 583,
+      "id": 33183819417,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T00:40:34Z",
+      "commitId": null
+    },
+    {
+      "pr": 583,
+      "id": 33184927543,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T01:04:55Z",
+      "commitId": null
+    },
+    {
+      "pr": 584,
+      "id": 33207541370,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T08:22:48Z",
+      "commitId": null
+    },
+    {
+      "pr": 584,
+      "id": 33208321644,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T08:34:05Z",
+      "commitId": null
+    },
+    {
+      "pr": 584,
+      "id": 33218750090,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T10:59:00Z",
+      "commitId": null
+    },
+    {
+      "pr": 584,
+      "id": 33219206726,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T11:05:38Z",
+      "commitId": null
+    },
+    {
+      "pr": 587,
+      "id": 33238804753,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T15:06:38Z",
+      "commitId": null
+    },
+    {
+      "pr": 587,
+      "id": 33532012762,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-17T17:29:52Z",
+      "commitId": null
+    },
+    {
+      "pr": 587,
+      "id": 33534092417,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-17T18:21:00Z",
+      "commitId": null
+    },
+    {
+      "pr": 588,
+      "id": 33221555119,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T11:40:09Z",
+      "commitId": null
+    },
+    {
+      "pr": 589,
+      "id": 33224411241,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T12:19:23Z",
+      "commitId": null
+    },
+    {
+      "pr": 589,
+      "id": 33228402353,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T13:08:34Z",
+      "commitId": null
+    },
+    {
+      "pr": 589,
+      "id": 33231407214,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-14T13:43:32Z",
+      "commitId": null
+    },
+    {
+      "pr": 591,
+      "id": 33532008170,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-17T17:29:45Z",
+      "commitId": null
+    },
+    {
+      "pr": 596,
+      "id": 33541136380,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-17T21:13:37Z",
+      "commitId": null
+    },
+    {
+      "pr": 597,
+      "id": 33541743406,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-17T21:29:20Z",
+      "commitId": null
+    },
+    {
+      "pr": 599,
+      "id": 33544293490,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-17T22:38:26Z",
+      "commitId": null
+    },
+    {
+      "pr": 603,
+      "id": 33551690112,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T02:27:56Z",
+      "commitId": null
+    },
+    {
+      "pr": 603,
+      "id": 33553211212,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T03:19:45Z",
+      "commitId": null
+    },
+    {
+      "pr": 603,
+      "id": 33553566011,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T03:32:33Z",
+      "commitId": null
+    },
+    {
+      "pr": 603,
+      "id": 33555351180,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T04:35:09Z",
+      "commitId": null
+    },
+    {
+      "pr": 603,
+      "id": 33555489026,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T04:40:19Z",
+      "commitId": null
+    },
+    {
+      "pr": 603,
+      "id": 33555903029,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T04:55:09Z",
+      "commitId": null
+    },
+    {
+      "pr": 603,
+      "id": 33556441404,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T05:13:47Z",
+      "commitId": null
+    },
+    {
+      "pr": 603,
+      "id": 33556690453,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T05:21:33Z",
+      "commitId": null
+    },
+    {
+      "pr": 604,
+      "id": 33551048590,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T02:07:00Z",
+      "commitId": null
+    },
+    {
+      "pr": 607,
+      "id": 33554504559,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T04:05:18Z",
+      "commitId": null
+    },
+    {
+      "pr": 607,
+      "id": 33554647054,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T04:09:46Z",
+      "commitId": null
+    },
+    {
+      "pr": 610,
+      "id": 33556226113,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T05:06:20Z",
+      "commitId": null
+    },
+    {
+      "pr": 611,
+      "id": 33558413459,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T06:20:37Z",
+      "commitId": null
+    },
+    {
+      "pr": 619,
+      "id": 33572906124,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-18T13:17:57Z",
+      "commitId": null
+    },
+    {
+      "pr": 622,
+      "id": 33920407265,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-22T06:22:02Z",
+      "commitId": null
+    },
+    {
+      "pr": 626,
+      "id": 34038341762,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-23T09:46:15Z",
+      "commitId": null
+    },
+    {
+      "pr": 627,
+      "id": 34044708533,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-23T11:15:21Z",
+      "commitId": null
+    },
+    {
+      "pr": 628,
+      "id": 34056794972,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-23T13:48:48Z",
+      "commitId": null
+    },
+    {
+      "pr": 630,
+      "id": 34068412762,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-23T15:58:43Z",
+      "commitId": null
+    },
+    {
+      "pr": 632,
+      "id": 34187424343,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-25T14:51:45Z",
+      "commitId": null
+    },
+    {
+      "pr": 633,
+      "id": 34118675169,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-24T08:21:29Z",
+      "commitId": null
+    },
+    {
+      "pr": 636,
+      "id": 34145780901,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-24T19:34:11Z",
+      "commitId": null
+    },
+    {
+      "pr": 640,
+      "id": 34165110743,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-25T04:39:21Z",
+      "commitId": null
+    },
+    {
+      "pr": 642,
+      "id": 34169759840,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-25T07:13:24Z",
+      "commitId": null
+    },
+    {
+      "pr": 642,
+      "id": 34176212386,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-25T10:12:34Z",
+      "commitId": null
+    },
+    {
+      "pr": 642,
+      "id": 34177909654,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-25T10:57:34Z",
+      "commitId": null
+    },
+    {
+      "pr": 642,
+      "id": 34186433880,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-25T14:27:48Z",
+      "commitId": null
+    },
+    {
+      "pr": 651,
+      "id": 34367668842,
+      "event": "convert_to_draft",
+      "createdAt": "2026-10-27T13:01:58Z",
+      "commitId": null
+    }
+  ],
+  "correction": "GitHub issue-events uses convert_to_draft. The earlier projection included converted_to_draft and consequently omitted this event type from retained transition arrays. Source event pages were fully fetched; this supplement preserves the omitted transitions without changing original archives, review records or cutoff.",
+  "scope": "Supplement to pr-eligibility-inventory.json in this checkpoint. Combine by exact PR/event id; source events prior to pilot start remain historical context, not in-window outcomes.",
+  "eligibilityImpact": "No eligibility classification or count changed: explicit ready events and frozen initial entries supplied positive evidence; no current Draft flag was substituted for history.",
+  "remainingLimits": "Projection completeness within received selected-PR histories is separate from global eligibility and whole-pilot coverage."
+}
