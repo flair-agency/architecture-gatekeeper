@@ -3,7 +3,7 @@ name: Issue 329 synthetic Codex ordinary handoff
 on:
   push:
     branches:
-      - codex/issue329-codex-pass-handoff-fixture
+      - codex/issue329-ordinary-display-fixture-654
     paths:
       - .github/workflows/issue329-codex-pass-handoff-fixture.yml
 
@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   producer:
-    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/codex/issue329-codex-pass-handoff-fixture' && github.event_name == 'push'
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/codex/issue329-ordinary-display-fixture-654' && github.event_name == 'push'
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -44,7 +44,7 @@ jobs:
           const workflowPath = '.github/workflows/issue329-codex-pass-handoff-fixture.yml';
           const fail = () => { console.error('Fixture trigger guard failed.'); process.exit(1); };
           if (process.env.REPOSITORY !== 'flair-agency/architecture-gatekeeper' ||
-              process.env.REF !== 'refs/heads/codex/issue329-codex-pass-handoff-fixture' ||
+              process.env.REF !== 'refs/heads/codex/issue329-ordinary-display-fixture-654' ||
               process.env.EVENT_NAME !== 'push') fail();
           const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
           const sha = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
@@ -171,7 +171,7 @@ jobs:
 
   reporter:
     needs: [producer]
-    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/codex/issue329-codex-pass-handoff-fixture' && github.event_name == 'push'
+    if: github.repository == 'flair-agency/architecture-gatekeeper' && github.ref == 'refs/heads/codex/issue329-ordinary-display-fixture-654' && github.event_name == 'push'
     permissions:
       contents: read
       actions: read
@@ -195,7 +195,7 @@ jobs:
           const workflowPath = '.github/workflows/issue329-codex-pass-handoff-fixture.yml';
           const fail = () => { console.error('Fixture trigger guard failed.'); process.exit(1); };
           if (process.env.REPOSITORY !== 'flair-agency/architecture-gatekeeper' ||
-              process.env.REF !== 'refs/heads/codex/issue329-codex-pass-handoff-fixture' ||
+              process.env.REF !== 'refs/heads/codex/issue329-ordinary-display-fixture-654' ||
               process.env.EVENT_NAME !== 'push') fail();
           const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
           const sha = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
