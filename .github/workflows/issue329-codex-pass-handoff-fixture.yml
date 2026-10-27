@@ -11,7 +11,7 @@ permissions: {}
 
 # Change only this synthetic enum for a bounded, non-model hosted observation.
 env:
-  SYNTHETIC_DECISION: BLOCK
+  SYNTHETIC_DECISION: OWNER_DECISION
 
 concurrency:
   group: issue329-codex-pass-handoff-fixture-${{ github.ref }}
