@@ -46,7 +46,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
 test('complete source and emitted lifecycle retain immutable f451c0c operations and flat identities', async () => {
   const file = join(root, 'src/preview-lifecycle-runtime.mts');
   const compiled = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: parsed.options, fileName: file });
-  // f451c0c:src/preview-lifecycle.mts, all imports and runtime statements.
+  // f451c0c:src/preview-lifecycle.mjs, all imports and runtime statements.
   const operationHash = '81e77354f66e85de0d5759c4c1882a8c0bb860523c10c779f8d8b11e79ac64ce';
   for (const source of [compiled.outputText, readFileSync(join(root, 'dist/preview-lifecycle-runtime.mjs'), 'utf8')]) {
     assert.equal(digest(body(source)), operationHash);

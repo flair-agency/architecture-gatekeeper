@@ -63,7 +63,7 @@ test('typed getter retains the complete original runtime operations behind the m
   const path = join(root, 'src/github/github-runner-env.mts');
   const source = readFileSync(path, 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: tsconfig.options, fileName: path });
-  // Baseline f9edd72:src/github-runner-env.mts. Normalize only coordinates and
+  // Baseline f9edd72:src/github-runner-env.mjs. Normalize only coordinates and
   // literal spelling, after erasing types; exports, all reads and checks remain.
   const baseline = 'ae7c44bc1042e5282df04a0a1c0e3a0de18983d854e5bcc732aa185c0d1005d8';
   for (const text of [compiled.outputText, readFileSync(join(root, 'dist/github/github-runner-env.mjs'), 'utf8')]) {

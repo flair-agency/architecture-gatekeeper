@@ -126,7 +126,7 @@ const hash = value => createHash('sha256').update(JSON.stringify(canonical(value
 // Owner-authorized #591 baseline: commit 821c3eade2d4a48c28e75393bb80ec8ff0184719,
 // blob b2890ae8195db3dcff47010125f7f15b7c27f716. The digest covers the full
 // operation AST: SHA-256(JSON.stringify(canonical(operationNodes(runtimeAst(
-// `git show 821c3ea:src/prepare-legacy-ci-authority.mts`))))) after extracting
+// `git show 821c3ea:src/prepare-legacy-ci-authority.mjs`))))) after extracting
 // the direct CLI guard body into the same operation list used for the typed leaf.
 const authorized821c3eaOperationAst = '91192065e743f701f8056c00874d7e621ad04202cb1b744e66365ad89829b3fa';
 
@@ -153,7 +153,10 @@ test('complete legacy preparer implementation and flat guard retain their pinned
   const facadeGuard = facadeBody.find(node => node.type === 'IfStatement');
   const emittedGuard = emittedFacadeBody.find(node => node.type === 'IfStatement');
   assert.ok(facadeGuard);
-  assert.equal(hash(facadeGuard.test), '4cedd42e70e8f91b92b42a017900b344703c2540d125d3956bf26acbb707c159');
+  assert.equal(facadeGuard.test.operator, '||');
+  assert.equal(hash(facadeGuard.test.left), '4cedd42e70e8f91b92b42a017900b344703c2540d125d3956bf26acbb707c159');
+  const authoredGuard = runtimeAst("if (process.argv[1]?.endsWith('/prepare-legacy-ci-authority.mts')) {}", facadePath)[0];
+  assert.deepEqual(facadeGuard.test.right, authoredGuard.test, 'the added branch permits the physical authored entrypoint');
   assert.equal(hash(emittedGuard.test), hash(facadeGuard.test));
   assert.equal(facadeGuard.consequent.type, 'ExpressionStatement');
   assert.equal(facadeGuard.consequent.expression.type, 'CallExpression');
