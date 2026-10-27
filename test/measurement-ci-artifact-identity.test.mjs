@@ -173,7 +173,7 @@ test('optional outcome job bootstrap and collection cannot fail required review,
     assert.equal(
       independent.env.REVIEW_PASS_CONCLUSION,
       filename === 'architecture-gate.yml'
-        ? "${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.pass_conclusion }}"
+        ? "${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.review_conclusion }}"
         : undefined,
     );
     const reviewUpload = measurement.steps.find(step => step.name === 'Retain optional review attempt metadata');

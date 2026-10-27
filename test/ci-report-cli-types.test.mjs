@@ -110,8 +110,12 @@ test('complete report source and emitted CLI preserve adopted operations, import
   assert.deepEqual(facade, runtimeAst(readFileSync(emittedFacadePath, 'utf8'), emittedFacadePath));
   const operations = [...physical.filter(node => node.type !== 'ImportDeclaration'), facade.at(-1)];
   // Immutable adopted51215db9: all original helper and complete main operations.
+  // #329 renames only the display loader/local binding in this orchestration;
+  // normalize those two identifiers, retaining every operation and literal.
+  const renamedOperations = JSON.stringify(operations, (key, value) => key === 'name'
+    ? value === 'loadCodexReviewReport' ? 'loadCodexPassReport' : value === 'reviewDisplay' ? 'passReport' : value : value);
   // The former whole-program hash0e7aa8c1 includes imports before relocation.
-  assert.equal(createHash('sha256').update(JSON.stringify(operations)).digest('hex'),
+  assert.equal(createHash('sha256').update(renamedOperations).digest('hex'),
     '4085b9db0adbbd0900f612f86e9478d4c081cc67da2d44c3151cfda5b5ce3970');
   assert.equal(createHash('sha256').update(JSON.stringify(facade.at(-1))).digest('hex'),
     '18585ceaab740b5908703195f247a312667f7383aecc08fb18f86e8406c0e46e');
@@ -125,7 +129,7 @@ test('complete report source and emitted CLI preserve adopted operations, import
   const names = ['COMMENT_MARKER', 'sanitizeReportApiContext', 'digestDecision', 'validateInlineFindings',
     'formatInlineFindingHeading', 'postInlineReview', 'parseAuthorityProvenance',
     'parseLegacyAuthorityProvenance', 'parseOwnerAdditionProcedure', 'classifyReview',
-    'renderReport', 'upsertPullRequestComment', 'loadCodexPassReport', 'main'];
+    'renderReport', 'upsertPullRequestComment', 'loadCodexReviewReport', 'main'];
   assert.deepEqual(Object.keys(flat).sort(), [...names].sort());
   for (const name of names) assert.equal(flat[name], group[name], name);
 });

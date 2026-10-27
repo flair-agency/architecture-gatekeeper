@@ -191,10 +191,10 @@ jobs:
     # Policy-selected limits take precedence; legacy inputs are separately range-checked.
     timeout-minutes: ${{ fromJSON(needs.policy.outputs.review_job_timeout_minutes) }}
     outputs:
-      final_message: ${{ steps.pass-display.outputs.pass_conclusion != 'PASS' && ((needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message) || '' }}
-      pass_conclusion: ${{ steps.pass-display.outputs.pass_conclusion }}
-      pass_digest: ${{ steps.pass-display.outputs.pass_digest }}
-      pass_nonce: ${{ steps.pass-display.outputs.pass_nonce }}
+      final_message: ${{ steps.review-display.outputs.review_conclusion == '' && ((needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message) || '' }}
+      review_conclusion: ${{ steps.review-display.outputs.review_conclusion }}
+      review_digest: ${{ steps.review-display.outputs.review_digest }}
+      review_nonce: ${{ steps.review-display.outputs.review_nonce }}
       decision_kind: ${{ steps.decision.outputs.kind }}
       reviewed_sha: ${{ steps.revision.outputs.sha }}
       authority_provenance: ${{ steps.authority.outputs.provenance }}
@@ -634,9 +634,9 @@ jobs:
           GATEKEEPER_RUNTIME_ROOT: ${{ steps.validation_runtime_location.outputs.root }}
         run: printf '%s' "$DECISION" | node "$GATEKEEPER_RUNTIME_ROOT/dist/validate-authority-set-decision.mjs" "$RUNNER_TEMP/architecture-gate-authority-set/authority-provenance.json"
 
-      - name: Publish validated ordinary Codex PASS display
-        id: pass-display
-        if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && needs.policy.outputs.mode == 'enforced' && inputs.protected-review-instructions && steps.decision.outputs.kind == 'PASS'
+      - name: Publish validated ordinary Codex review display
+        id: review-display
+        if: github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && needs.policy.outputs.mode == 'enforced' && inputs.protected-review-instructions && (steps.decision.outputs.kind == 'PASS' || (needs.policy.outputs.policy_version == '2' && needs.policy.outputs.owner_addition_grade != 'G0' && (steps.decision.outputs.kind == 'BLOCK' || steps.decision.outputs.kind == 'OWNER_DECISION')))
         working-directory: ${{ runner.temp }}
         env:
           BASE_BRANCH: ${{ github.base_ref }}
@@ -648,6 +648,7 @@ jobs:
           REVIEW_RESULT: ${{ steps.codex.outcome }}
           MODE: ${{ needs.policy.outputs.mode }}
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
+          OWNER_ADDITION_SELECTED: ${{ needs.policy.outputs.owner_addition_grade == 'G0' }}
           VALIDATION_SELECTED: ${{ (needs.policy.outputs.policy_version == '1' && needs.policy.outputs.legacy_validation_path != '') || (needs.policy.outputs.policy_version != '1' && inputs.validation-path != '') }}
           AUTHORITY_ROUTE_SELECTED: ${{ needs.policy.outputs.authority_manifest_path != '' }}
           AUTHORITY_PROVENANCE_BASE64: ${{ steps.authority.outputs.provenance }}
@@ -1005,12 +1006,12 @@ jobs:
           MODE: ${{ needs.policy.outputs.mode }}
           POLICY_VERSION: ${{ needs.policy.outputs.policy_version }}
           DECISION: ${{ needs.review.outputs.final_message }}
-          CODEX_PASS_ELIGIBLE: ${{ github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && needs.policy.outputs.mode == 'enforced' && inputs.protected-review-instructions }}
-          CODEX_PASS_SELECTED: ${{ needs.review.outputs.decision_kind == 'PASS' && github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && needs.policy.outputs.mode == 'enforced' && inputs.protected-review-instructions }}
-          CODEX_PASS_KIND: ${{ needs.review.outputs.decision_kind }}
-          CODEX_PASS_CONCLUSION: ${{ needs.review.outputs.pass_conclusion }}
-          CODEX_PASS_DIGEST: ${{ needs.review.outputs.pass_digest }}
-          CODEX_PASS_NONCE: ${{ needs.review.outputs.pass_nonce }}
+          CODEX_REVIEW_ELIGIBLE: ${{ github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && needs.policy.outputs.mode == 'enforced' && inputs.protected-review-instructions }}
+          CODEX_REVIEW_SELECTED: ${{ (needs.review.outputs.decision_kind == 'PASS' || (needs.policy.outputs.policy_version == '2' && needs.policy.outputs.owner_addition_grade != 'G0' && (needs.review.outputs.decision_kind == 'BLOCK' || needs.review.outputs.decision_kind == 'OWNER_DECISION'))) && github.repository == 'flair-agency/architecture-gatekeeper' && github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && needs.policy.outputs.mode == 'enforced' && inputs.protected-review-instructions }}
+          CODEX_REVIEW_KIND: ${{ needs.review.outputs.decision_kind }}
+          CODEX_REVIEW_CONCLUSION: ${{ needs.review.outputs.review_conclusion }}
+          CODEX_REVIEW_DIGEST: ${{ needs.review.outputs.review_digest }}
+          CODEX_REVIEW_NONCE: ${{ needs.review.outputs.review_nonce }}
           BASE_BRANCH: ${{ github.base_ref }}
           REVIEWED_SHA: ${{ needs[needs.policy.outputs.provider == 'gemini' && 'gemini-review' || 'review'].outputs.reviewed_sha }}
           AUTHORITY_PROVENANCE_BASE64: ${{ needs.review.outputs.authority_provenance }}
@@ -1179,7 +1180,7 @@ jobs:
           REVIEW_DECISION_KIND: ${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.decision_kind }}
           REVIEW_PUBLISHED_DECISION: ${{ needs.policy.outputs.provider == 'gemini' && '' || needs.review.outputs.final_message }}
           REVIEW_JOB_NAME: ${{ inputs.measurement-review-job-name }}
-          REVIEW_PASS_CONCLUSION: ${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.pass_conclusion }}
+          REVIEW_PASS_CONCLUSION: ${{ needs.policy.outputs.provider == 'gemini' && needs['gemini-review'].outputs.conclusion || needs.review.outputs.review_conclusion }}
         run: |
           node dist/measurement-ci.mjs collect
           node dist/measurement-cli.mjs export "$AGK_MEASUREMENT_DIR" > "$RUNNER_TEMP/agk-review-measurement-export.json"

@@ -1,8 +1,8 @@
-import { CODEX_PASS_STEP, MAX_CODEX_LOG_BYTES, expectedOf, fail, parsePassLog, record,
-  workflowReference, type PassExpected, type RecordValue } from '../ci-review/codex-pass-publication.mts';
+import { CODEX_REVIEW_STEP, MAX_CODEX_LOG_BYTES, expectedOf, fail, parseReviewLog, record,
+  workflowReference, type ReviewExpected, type RecordValue } from '../ci-review/codex-pass-publication.mts';
 
 /** Read the masked display only from the successful exact protected run attempt/job. */
-export async function retrievePassDisplay(expected: PassExpected, token: string,
+export async function retrieveReviewDisplay(expected: ReviewExpected, token: string,
   fetchImpl: typeof fetch = fetch, timeoutMs = 30_000): Promise<RecordValue> {
   expectedOf(expected);
   if (typeof token !== 'string' || !token || !Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) fail();
@@ -62,13 +62,13 @@ export async function retrievePassDisplay(expected: PassExpected, token: string,
     const jobs: unknown = JSON.parse(await body(await api('jobs'),131_072));
     if (!record(jobs) || !Array.isArray(jobs.jobs) || jobs.jobs.length > 100 || jobs.total_count !== jobs.jobs.length) fail();
     const candidates = jobs.jobs.filter((job: unknown) => record(job) && Array.isArray(job.steps) &&
-      job.steps.some((step: unknown) => record(step) && step.name === CODEX_PASS_STEP));
+      job.steps.some((step: unknown) => record(step) && step.name === CODEX_REVIEW_STEP));
     if (candidates.length !== 1 || !record(candidates[0])) fail();
     const job = candidates[0];
     if (!Number.isSafeInteger(job.id) || Number(job.id) < 1 || String(job.run_id) !== expected.runId ||
         String(job.run_attempt) !== expected.runAttempt || job.head_sha !== expected.headSha || job.status !== 'completed' || job.conclusion !== 'success' ||
         !Array.isArray(job.steps)) fail();
-    const steps = job.steps.filter((s: unknown) => record(s) && s.name === CODEX_PASS_STEP);
+    const steps = job.steps.filter((s: unknown) => record(s) && s.name === CODEX_REVIEW_STEP);
     if (steps.length !== 1 || steps[0].status !== 'completed' || steps[0].conclusion !== 'success') fail();
     let response = await api('log',Number(job.id));
     if (response.status === 302) {
@@ -77,6 +77,6 @@ export async function retrievePassDisplay(expected: PassExpected, token: string,
           !/^[a-z0-9-]+\.blob\.core\.windows\.net$/.test(url.hostname) || ++requests > 4) fail();
       response = await wait(fetchImpl(url,{redirect:'manual',signal:controller.signal,headers:{}}));
     }
-    return parsePassLog(await body(response,MAX_CODEX_LOG_BYTES),expected);
+    return parseReviewLog(await body(response,MAX_CODEX_LOG_BYTES),expected);
   } catch { fail(); } finally { clearTimeout(timer); controller.abort(); }
 }

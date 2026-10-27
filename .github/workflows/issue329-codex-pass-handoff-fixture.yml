@@ -1,4 +1,4 @@
-name: Issue 329 synthetic Codex PASS handoff
+name: Issue 329 synthetic Codex ordinary handoff
 
 on:
   push:
@@ -8,6 +8,10 @@ on:
       - .github/workflows/issue329-codex-pass-handoff-fixture.yml
 
 permissions: {}
+
+# Change only this synthetic enum for a bounded, non-model hosted observation.
+env:
+  SYNTHETIC_DECISION: PASS
 
 concurrency:
   group: issue329-codex-pass-handoff-fixture-${{ github.ref }}
@@ -76,7 +80,7 @@ jobs:
           node --input-type=module <<'NODE'
           import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
           import { join } from 'node:path';
-          import { validateCodexPass } from './dist/ci-review/codex-pass-producer.mjs';
+          import { validateCodexReview } from './dist/ci-review/codex-pass-producer.mjs';
           import { digestDecision } from './dist/ci-report.mjs';
 
           const fail = () => { console.error('Synthetic PASS validation failed.'); process.exit(1); };
@@ -126,10 +130,12 @@ jobs:
             return 'bounded synthetic claim';
           };
           const decision = valueFor(schema);
+          if (!['PASS', 'BLOCK', 'OWNER_DECISION'].includes(process.env.SYNTHETIC_DECISION)) fail();
+          decision.decision = process.env.SYNTHETIC_DECISION;
           decision.authorityIds = authorityIds;
           decision.summary = `Synthetic hosted handoff masking check: issue329-marker-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`;
           const authorityText = JSON.stringify(provenance);
-          const result = validateCodexPass({
+          const result = validateCodexReview({
             context,
             decisionText: JSON.stringify(decision),
             schemaText: JSON.stringify(schema),
@@ -142,12 +148,13 @@ jobs:
             mode: 'enforced',
             policyResult: 'success',
             reviewResult: 'success',
+            allowNonPass: true,
           });
           if (!result || result.expected.decisionDigest !== digestDecision(decision)) fail();
           writeFileSync(join(process.env.RUNNER_TEMP, 'issue329-pass-projection.json'), JSON.stringify(result.projection), { flag: 'wx', mode: 0o600 });
           appendFileSync(process.env.GITHUB_OUTPUT, `expected=${JSON.stringify(result.expected)}\n`);
           NODE
-      - name: Publish validated ordinary Codex PASS display
+      - name: Publish validated ordinary Codex review display
         env:
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
@@ -158,8 +165,8 @@ jobs:
           node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs';
           import { join } from 'node:path';
-          import { emitPassDisplay } from './dist/ci-review/codex-pass-publication.mjs';
-          emitPassDisplay(JSON.parse(readFileSync(join(process.env.RUNNER_TEMP, 'issue329-pass-projection.json'), 'utf8')));
+          import { emitReviewDisplay } from './dist/ci-review/codex-pass-publication.mjs';
+          emitReviewDisplay(JSON.parse(readFileSync(join(process.env.RUNNER_TEMP, 'issue329-pass-projection.json'), 'utf8')));
           NODE
 
   reporter:
@@ -218,28 +225,35 @@ jobs:
           RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           node --input-type=module <<'NODE'
-          import { retrievePassDisplay } from './dist/github/codex-pass-log.mjs';
+          import { retrieveReviewDisplay } from './dist/github/codex-pass-log.mjs';
           import { digestDecision, renderReport } from './dist/ci-report.mjs';
           import { assertEnforcedAcceptance } from './dist/ci-enforced-acceptance.mjs';
           const fail = () => { console.error('Synthetic hosted handoff verification failed.'); process.exit(1); };
           const expected = JSON.parse(process.env.EXPECTED_JSON);
-          if (expected.runId !== process.env.RUN_ID || expected.runAttempt !== process.env.RUN_ATTEMPT) fail();
-          const decision = await retrievePassDisplay(expected, process.env.GITHUB_TOKEN);
+          if (expected.runId !== process.env.RUN_ID || expected.runAttempt !== process.env.RUN_ATTEMPT ||
+              expected.conclusion !== process.env.SYNTHETIC_DECISION) fail();
+          const decision = await retrieveReviewDisplay(expected, process.env.GITHUB_TOKEN);
           const marker = `issue329-marker-${process.env.RUN_ID}-${process.env.RUN_ATTEMPT}`;
           if (typeof decision.summary !== 'string' || !decision.summary.includes('***') || decision.summary.includes(marker) ||
               digestDecision(decision) === expected.decisionDigest) fail();
-          const report = renderReport({ conclusion: 'PASS', summary: decision.summary, decision },
+          const report = renderReport({ conclusion: expected.conclusion, summary: decision.summary, decision },
             { decisionDigest: expected.decisionDigest, reviewedSha: expected.reviewedSha });
           if (!report.includes('***') || !report.includes(expected.decisionDigest) || report.includes(marker)) fail();
-          const accepted = assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'PASS', ownerAmendmentSelected: 'G0',
-            ownerAmendmentAttemptResult: 'success', ownerAmendmentAttempted: 'false', selectedAuthorityChanged: 'false' });
-          if (accepted.route !== 'ordinary-pass') fail();
-          for (const attempted of ['true', undefined]) {
+          const acceptance = { reviewResult: 'success', conclusion: expected.conclusion, ownerAmendmentSelected: 'protected-pr',
+            selectedAuthorityChanged: 'false' };
+          if (expected.conclusion === 'PASS') {
+            if (assertEnforcedAcceptance(acceptance).route !== 'ordinary-pass') fail();
+          } else {
             let rejected = false;
-            try { assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'PASS', ownerAmendmentSelected: 'G0',
-              ownerAmendmentAttemptResult: 'success', ownerAmendmentAttempted: attempted }); } catch { rejected = true; }
+            try { assertEnforcedAcceptance(acceptance); } catch { rejected = true; }
+            if (!rejected) fail();
+          }
+          for (const changed of ['true', undefined]) {
+            let rejected = false;
+            try { assertEnforcedAcceptance({ ...acceptance, selectedAuthorityChanged: changed,
+              ownerAmendmentResult: 'success', ownerAmendmentVerification: 'failure' }); } catch { rejected = true; }
             if (!rejected) fail();
           }
           console.log(report);
-          console.log('Synthetic display-only PASS handoff reached the existing ordinary acceptance predicate; no model review or acceptance authority was exercised.');
+          console.log('Synthetic display-only handoff preserved the ordinary and current Owner acceptance predicates; no model review or acceptance authority was exercised.');
           NODE

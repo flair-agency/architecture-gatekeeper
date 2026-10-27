@@ -21,7 +21,7 @@ import {
   classifyReview,
   renderReport,
   upsertPullRequestComment,
-  loadCodexPassReport,
+  loadCodexReviewReport,
 } from './ci-report.mts';
 
 // Erased views retain existing unchecked reads, boxed values and native failures.
@@ -49,7 +49,7 @@ export {
   classifyReview,
   renderReport,
   upsertPullRequestComment,
-  loadCodexPassReport,
+  loadCodexReviewReport,
 };
 
 const reportFileFail: () => never = () => { throw new Error('Architecture Gate report filesystem boundary rejected its input.'); };
@@ -156,8 +156,8 @@ export async function main(fetchImpl: ReportFetch = fetch): Promise<void> {
     throw new Error('Selected Gemini report has no masked publication projection.');
   }
   const env = suppliedEnv.REPORT_PROJECTION_PATH ? await readOrdinaryGeminiProjection(suppliedEnv) : suppliedEnv;
-  const passReport = env.REPORT_PROJECTION_PATH ? null : await loadCodexPassReport(env);
-  const reportDecision = passReport ? JSON.stringify(passReport.decision) : env.DECISION || '';
+  const reviewDisplay = env.REPORT_PROJECTION_PATH ? null : await loadCodexReviewReport(env);
+  const reportDecision = reviewDisplay ? JSON.stringify(reviewDisplay.decision) : env.DECISION || '';
   let summaryHandle: import('node:fs/promises').FileHandle | undefined;
   if (env.GITHUB_STEP_SUMMARY) {
     const paths = await runnerReportPaths();
@@ -248,7 +248,7 @@ export async function main(fetchImpl: ReportFetch = fetch): Promise<void> {
       console.log(`Architecture Gate inline review: ${inlineDelivery.status}${inlineDelivery.count ? ` (${inlineDelivery.count} finding(s))` : ''}${inlineDelivery.reason ? ` (${inlineDelivery.reason})` : ''}`);
     }
     if (inlineDelivery?.linkWarning) console.warn(`::warning title=Architecture Gate inline comment links unavailable::${cleanText(inlineDelivery.linkWarning, 500)}`);
-    const decisionDigest = env.REPORT_PROJECTION_PATH ? env.REPORT_EXPECTED_DECISION_DIGEST : passReport?.decisionDigest || digestDecision(classified.decision);
+    const decisionDigest = env.REPORT_PROJECTION_PATH ? env.REPORT_EXPECTED_DECISION_DIGEST : reviewDisplay?.decisionDigest || digestDecision(classified.decision);
     const report = renderReport(classified, {
       reviewedSha: env.REVIEWED_SHA,
       headSha: env.HEAD_SHA,

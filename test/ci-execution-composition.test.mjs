@@ -112,7 +112,7 @@ test('ordinary execution handoff failures reach report and deny both acceptance 
     assert.doesNotMatch(observe, /continue-on-error/);
     const ordinaryOutput = "(needs.policy.outputs.execution_selection != 'policy' && steps.codex.outputs.final-message) || steps.execution.outputs.final_message";
     assert.equal(parsed.jobs.review.outputs.final_message, file === '.github/workflows/architecture-gate.yml'
-      ? "${{ steps.pass-display.outputs.pass_conclusion != 'PASS' && (" + ordinaryOutput + ") || '' }}"
+      ? "${{ steps.review-display.outputs.review_conclusion == '' && (" + ordinaryOutput + ") || '' }}"
       : '${{ ' + ordinaryOutput + ' }}');
     const reportJob = text.match(/  report:\n([\s\S]*?)\n  accept:/)?.[1];
     const acceptJob = text.match(/  accept:\n([\s\S]*)$/)?.[1];
