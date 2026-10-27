@@ -1,0 +1,527 @@
+{
+  "version": 1,
+  "nodeVersion": "v24.19.0",
+  "productionRuntimeVersion": "0.6.0-preview.4",
+  "productionRuntimeSourceRevision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+  "priorFileHashesVerified": true,
+  "priorDistinctPhaseRecords": 563,
+  "newArtifacts": 124,
+  "newRecords": 310,
+  "newEnvelopeGaps": 0,
+  "priorNewDuplicatePhaseIdentities": 0,
+  "unionDistinctPhaseRecords": 873,
+  "unionAttemptGroupsValidated": 175,
+  "chunkFiles": [
+    {
+      "path": "records-001.json",
+      "records": 120
+    },
+    {
+      "path": "records-002.json",
+      "records": 120
+    },
+    {
+      "path": "records-003.json",
+      "records": 70
+    }
+  ],
+  "newReviewTerminals": [
+    {
+      "runId": "40508592151",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "651",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40507491405",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "651",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40507485104",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "651",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40497149482",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "650",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40496543107",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "650",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40294836007",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "647",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40294823648",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "647",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40293180234",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "647",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40293175080",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "647",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40292605669",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "647",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40292597011",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "647",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40292009607",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "647",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40219695232",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "646",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40219458077",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "646",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40204323773",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "BLOCK",
+      "declaredPr": "632",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40202422689",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "BLOCK",
+      "declaredPr": "642",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40200273890",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "645",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40186957521",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "BLOCK",
+      "declaredPr": "642",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40180978028",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "643",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40180323811",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "643",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40172063682",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "BLOCK",
+      "declaredPr": "642",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40170793428",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "BLOCK",
+      "declaredPr": "642",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40170380940",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "BLOCK",
+      "declaredPr": "642",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40169851378",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "640",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40169223059",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "641",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40163450958",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "640",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40162695139",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "640",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40162515278",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "640",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40137580015",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "637",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40131727167",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "637",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40126984640",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "634",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40125912786",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "636",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40123411606",
+      "runAttempt": "2",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "636",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40123411606",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "636",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40112278784",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "634",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40111820798",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "634",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40108281765",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "BLOCK",
+      "declaredPr": "633",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40077743949",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "BLOCK",
+      "declaredPr": "633",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40077581521",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "633",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "40074351667",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "632",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39982947373",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "630",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39982358280",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "630",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39964689838",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "628",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39964322595",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "628",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39963362702",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "628",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39945177007",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "627",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39944809026",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "627",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39944399009",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "627",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39934284776",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "626",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39933805168",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "626",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39922538750",
+      "runAttempt": "2",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "625",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39922538750",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "625",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39921231172",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "625",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39919501562",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "625",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39917881713",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "625",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39792149569",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "625",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39791569611",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "625",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39789770976",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "625",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39774424869",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "624",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39763301661",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "623",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39733495280",
+      "runAttempt": "1",
+      "state": "completed",
+      "decision": "PASS",
+      "declaredPr": "622",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    },
+    {
+      "runId": "39733219520",
+      "runAttempt": "1",
+      "state": "incomplete",
+      "decision": null,
+      "declaredPr": "622",
+      "cohort": "natural-candidate; association unresolved where API binding empty"
+    }
+  ],
+  "interpretation": "Record consistency and allowlist only; no producer authentication, case adjudication, acceptance or efficacy claim. Existing archives remain unchanged; do not sum overlapping history. Chunks retain whole run/attempt groups within production limits."
+}
