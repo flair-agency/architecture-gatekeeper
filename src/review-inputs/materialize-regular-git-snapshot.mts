@@ -1,10 +1,10 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { resolveSafePath } from '../review-input-path.mjs';
-import { appendGitHubOutput } from '../runner-temp-path.mjs';
-import { readRegularGitSnapshot } from '../legacy-git-snapshot.mjs';
+import { resolveSafePath } from '../review-input-path.mts';
+import { appendGitHubOutput } from '../runner-temp-path.mts';
+import { readRegularGitSnapshot } from '../legacy-git-snapshot.mts';
 import type { GitSnapshotOptions } from '../authority-validation/legacy-git-snapshot.mts';
-import { trustedGitHubWorkspaceRoot } from '../github-runner-workspace.mjs';
+import { trustedGitHubWorkspaceRoot } from '../github-runner-workspace.mts';
 
 export interface MaterializeRegularGitSnapshotInput {
   root: unknown;

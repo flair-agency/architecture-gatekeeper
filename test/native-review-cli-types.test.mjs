@@ -57,7 +57,7 @@ test('native CLI rejects incompatible caller inputs and return claims', () => {
 });
 
 test('complete typed native CLI retains adopted operations, modeled origins and flat direct-run guard', async () => {
-  const sourcePath = join(root, 'src/native-review.mjs');
+  const sourcePath = join(root, 'src/native-review.mts');
   const emittedPath = join(root, 'dist/native-review.mjs');
   const source = readFileSync(sourcePath, 'utf8');
   const emitted = readFileSync(emittedPath, 'utf8');

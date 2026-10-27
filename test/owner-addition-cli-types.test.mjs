@@ -60,7 +60,7 @@ const expected = {
 };
 
 test('owner-addition CI retains the original direct-run condition and complete operation AST', async () => {
-  const facadePath = join(root, 'src/owner-addition-ci.mjs');
+  const facadePath = join(root, 'src/owner-addition-ci.mts');
   const sourceFacade = sourceAst(facadePath);
   const emittedFacade = sourceAst(join(root, 'dist/owner-addition-ci.mjs'));
   assert.deepEqual(canonical(guard(sourceFacade)), canonical(guard(emittedFacade)), 'source/emitted direct-run guard and dispatch');
@@ -98,9 +98,9 @@ test('multi-authority API retains its full operation AST and flat exports are id
     canonical(declaration(emitted, 'prepareMultiAuthorityAddition').body));
   assert.equal(digest(declaration(source, 'prepareMultiAuthorityAddition').body), expected.multiPrepare);
 
-  const sourceFlatCi = await import('../src/owner-addition-ci.mjs');
+  const sourceFlatCi = await import('../src/owner-addition-ci.mts');
   const sourceCiOperations = await import('../src/owner-addition/owner-addition-ci-operations.mts');
-  const sourceFlatMulti = await import('../src/owner-addition-multiauthority.mjs');
+  const sourceFlatMulti = await import('../src/owner-addition-multiauthority.mts');
   const sourceMultiOperations = await import('../src/owner-addition/owner-addition-multiauthority.mts');
   const flatCi = await import('../dist/owner-addition-ci.mjs');
   const ciOperations = await import('../dist/owner-addition/owner-addition-ci-operations.mjs');

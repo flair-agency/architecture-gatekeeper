@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { compileFixtureDiagnostics, summarizeDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
-import { evaluateOwnerAdditionAdoption } from '../src/owner-addition-adoption.mjs';
+import { evaluateOwnerAdditionAdoption } from '../src/owner-addition-adoption.mts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/owner-decision-addition-contract');

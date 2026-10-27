@@ -1,6 +1,6 @@
 /** Build the fixed ordinary Gemini CI decision call from trusted prepared inputs. */
 import { types } from 'node:util';
-import { snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mjs';
+import { snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mts';
 import { snapshotPreparedReviewData } from './prepared-review-data.mts';
 import type { PreparedGeminiCiInput } from './prepare-gemini-ci-input.mts';
 import type { PreparedGeminiCiReviewInput } from './gemini-cli/prepared-gemini-ci-review.mts';

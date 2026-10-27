@@ -65,7 +65,9 @@ test('strict TypeScript rewrites authored module references to distributable Jav
   assert.equal(config.options.rewriteRelativeImportExtensions, true,
     'the adopted tsconfig must rewrite relative TypeScript extensions during emit');
 
-  const sourceFiles = [...filesUnder(sourceRoot, '.mjs'), ...filesUnder(sourceRoot, '.mts')];
+  assert.equal(config.options.allowJs ?? false, false, 'production JavaScript must not bypass strict checking');
+  assert.deepEqual(filesUnder(sourceRoot, '.mjs'), [], 'all authored runtime modules must be TypeScript');
+  const sourceFiles = filesUnder(sourceRoot, '.mts');
   assert.ok(sourceFiles.some(path => path.endsWith('.mts')), 'authored TypeScript modules must be present');
 
   for (const sourcePath of sourceFiles) {

@@ -3,7 +3,7 @@ import {
   resolveRunnerTempDirectory,
   validateRepositoryTreePath,
   validateSelfAuthorityManifest,
-} from '../../../src/runner-temp-path.mjs';
+} from '../../../src/runner-temp-path.mts';
 
 const bytesAsText: string = readRunnerTempFile('self-amendment-pr', 'schema.json');
 const invalidPathAsNumber: number = validateRepositoryTreePath('docs/architecture.md');

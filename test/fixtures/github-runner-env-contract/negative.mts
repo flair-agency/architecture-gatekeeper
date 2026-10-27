@@ -1,4 +1,4 @@
-import { trustedGitHubOutputPath } from '../../../src/github-runner-env.mjs';
+import { trustedGitHubOutputPath } from '../../../src/github-runner-env.mts';
 
 const path = trustedGitHubOutputPath('/tmp/attacker-selected-output');
 const wrongReturn: number = trustedGitHubOutputPath();

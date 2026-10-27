@@ -24,7 +24,7 @@ test('new owner-addition leaves bind actual runtime requests and receipts in emi
     t.after(() => rmSync(root, { recursive: true, force: true }));
     cpSync(join(packageRoot, layout), join(root, layout), { recursive: true });
     copyFileSync(join(packageRoot, 'package.json'), join(root, 'package.json'));
-    const runtimePath = join(root, layout, 'preview-lifecycle.mjs');
+    const runtimePath = join(root, layout, `preview-lifecycle.${layout === 'src' ? 'mts' : 'mjs'}`);
     const runtime = await import(`${pathToFileURL(runtimePath).href}?owner-addition-${layout}`);
     const suffix = extensionIndex === 0 ? 0 : 1;
     const leaves = operations.map(paths => paths[suffix]);

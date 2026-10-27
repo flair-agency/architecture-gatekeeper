@@ -1,4 +1,4 @@
-import { validateJsonSchema, validateJsonSchemaDefinition } from '../../../src/json-schema.mjs';
+import { validateJsonSchema, validateJsonSchemaDefinition } from '../../../src/json-schema.mts';
 import type { JsonSchemaValidationOptions, validateJsonSchema as TypedValidator } from '../../../src/authority-validation/json-schema.mts';
 
 const known: { count: number } = { count: 2 };

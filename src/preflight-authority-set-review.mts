@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, statSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { decodeLimits } from './prepare-authority-set.mjs';
+import { decodeLimits } from './prepare-authority-set.mts';
 import { validateAuthorityReviewSchema } from './authority-validation/preflight-authority-set-review.mts';
 export { validateAuthorityReviewSchema };
 

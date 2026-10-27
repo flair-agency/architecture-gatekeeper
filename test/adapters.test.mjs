@@ -75,7 +75,7 @@ test('CI and publish archive guards require the installed preview lifecycle CLI'
 });
 
 test('keeps child Codex execution out of the shared contract and Skill adapter', () => {
-  const contract = readFileSync(new URL('../src/review-contract.mjs', import.meta.url), 'utf8');
+  const contract = readFileSync(new URL('../src/review-contract.mts', import.meta.url), 'utf8');
   const skill = readFileSync(new URL('../skills/architecture-review/SKILL.md', import.meta.url), 'utf8');
   const transport = readFileSync(new URL('../dist/reviewer-transports/codex-transport.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(contract, /['"]exec['"]/);

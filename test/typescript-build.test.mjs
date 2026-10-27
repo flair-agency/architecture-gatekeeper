@@ -11,7 +11,7 @@ import ts from 'typescript';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 function copyEntrypointModules(fixtureRoot) {
-  const pending = [join(root, 'src/native-review.mjs'), join(root, 'src/owner-addition-finalize.mjs'), join(root, 'src/ci-report.mjs')];
+  const pending = [join(root, 'src/native-review.mts'), join(root, 'src/owner-addition-finalize.mts'), join(root, 'src/ci-report.mts')];
   const copied = new Set();
   while (pending.length) {
     const path = pending.pop();
@@ -62,7 +62,7 @@ function reExportTargets(file) {
     .map(node => node.source.value);
 }
 
-test('standard tsc build cleans only dist, copies legacy JavaScript, and emits mixed source paths', { timeout: 240_000 }, t => {
+test('standard tsc build cleans only dist, checks authored TypeScript and emits runtime JavaScript paths', { timeout: 240_000 }, t => {
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'architecture-gatekeeper-typescript-build-'));
   const externalRoot = mkdtempSync(join(tmpdir(), 'architecture-gatekeeper-typescript-external-'));
   t.after(() => rmSync(fixtureRoot, { recursive: true, force: true }));
@@ -73,32 +73,32 @@ test('standard tsc build cleans only dist, copies legacy JavaScript, and emits m
   cpSync(join(root, 'package.json'), join(fixtureRoot, 'package.json'));
   mkdirSync(join(fixtureRoot, 'src/owner-addition'), { recursive: true });
   cpSync(join(root, 'src/owner-addition/owner-addition-validation.mts'), join(fixtureRoot, 'src/owner-addition/owner-addition-validation.mts'));
-  cpSync(join(root, 'src/owner-addition-validation.mjs'), join(fixtureRoot, 'src/owner-addition-validation.mjs'));
+  cpSync(join(root, 'src/owner-addition-validation.mts'), join(fixtureRoot, 'src/owner-addition-validation.mts'));
   mkdirSync(join(fixtureRoot, 'src/ci-execution'), { recursive: true });
   cpSync(join(root, 'src/ci-execution/ci-execution-result.mts'), join(fixtureRoot, 'src/ci-execution/ci-execution-result.mts'));
-  cpSync(join(root, 'src/ci-execution-result.mjs'), join(fixtureRoot, 'src/ci-execution-result.mjs'));
+  cpSync(join(root, 'src/ci-execution-result.mts'), join(fixtureRoot, 'src/ci-execution-result.mts'));
   mkdirSync(join(fixtureRoot, 'src/github'), { recursive: true });
   for (const module of ['github-associated-repository', 'github-cli-runner',
     'github-authority-source',
     'github-owner-addition-readback', 'github-runner-env',
     'github-owner-addition-provenance']) {
     cpSync(join(root, `src/github/${module}.mts`), join(fixtureRoot, `src/github/${module}.mts`));
-    cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
+    cpSync(join(root, `src/${module}.mts`), join(fixtureRoot, `src/${module}.mts`));
   }
   for (const module of ['runner-temp-path', 'resolve-ci-policy', 'authority-set']) {
-    cpSync(join(root, `src/${module}.mjs`), join(fixtureRoot, `src/${module}.mjs`));
+    cpSync(join(root, `src/${module}.mts`), join(fixtureRoot, `src/${module}.mts`));
   }
   mkdirSync(join(fixtureRoot, 'src/runner-paths'), { recursive: true });
   cpSync(join(root, 'src/runner-paths/runner-temp-path.mts'), join(fixtureRoot, 'src/runner-paths/runner-temp-path.mts'));
   mkdirSync(join(fixtureRoot, 'src/authority-validation'), { recursive: true });
   cpSync(join(root, 'src/github/owner-addition-evidence-zip.mts'), join(fixtureRoot, 'src/github/owner-addition-evidence-zip.mts'));
-  cpSync(join(root, 'src/multi-authority-provenance.mjs'), join(fixtureRoot, 'src/multi-authority-provenance.mjs'));
+  cpSync(join(root, 'src/multi-authority-provenance.mts'), join(fixtureRoot, 'src/multi-authority-provenance.mts'));
   cpSync(join(root, 'src/authority-validation/multi-authority-provenance.mts'), join(fixtureRoot, 'src/authority-validation/multi-authority-provenance.mts'));
   cpSync(join(root, 'src/authority-validation/authority-set.mts'), join(fixtureRoot, 'src/authority-validation/authority-set.mts'));
   cpSync(join(root, 'src/authority-validation/resolve-ci-policy.mts'), join(fixtureRoot, 'src/authority-validation/resolve-ci-policy.mts'));
   const entrypointModules = copyEntrypointModules(fixtureRoot);
-  writeFileSync(join(fixtureRoot, 'src/legacy.mjs'), 'export const legacyValue = 7;\n');
-  writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), "import { legacyValue } from '../legacy.mjs';\nexport const answer: number = legacyValue + 35;\n");
+  writeFileSync(join(fixtureRoot, 'src/legacy.mts'), 'export const legacyValue: number = 7;\n');
+  writeFileSync(join(fixtureRoot, 'src/owner-addition/peer.mts'), "import { legacyValue } from '../legacy.mts';\nexport const answer: number = legacyValue + 35;\n");
   symlinkSync(join(root, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
 
   const dist = join(fixtureRoot, 'dist');

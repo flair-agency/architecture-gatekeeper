@@ -1,5 +1,5 @@
 import { prepareReviewFileContext } from '../../../src/review-inputs/prepare-review-file-context.mts';
-import { prepareReviewContext as prepareReviewContextFlat } from '../../../src/prepare-review-context.mjs';
+import { prepareReviewContext as prepareReviewContextFlat } from '../../../src/prepare-review-context.mts';
 import { prepareReviewContext } from '../../../src/review-inputs/prepare-review-context.mts';
 
 const fileContext = prepareReviewFileContext({

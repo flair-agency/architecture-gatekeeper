@@ -1,4 +1,4 @@
-import { extractGeminiCliResponseText, validateGeminiCliResponse } from '../../../src/gemini-cli-response.mjs';
+import { extractGeminiCliResponseText, validateGeminiCliResponse } from '../../../src/gemini-cli-response.mts';
 
 declare const externalProcessResult: unknown;
 declare const request: unknown;

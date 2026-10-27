@@ -6,7 +6,7 @@ canonical authority on main at
 preserves its original `GITHUB_WORKSPACE` and selects the intended checkout and
 recorded revisions. The model adds only a `path-injection` barrier on the return
 value of `trustedGitHubWorkspaceRoot()` in
-`src/github-runner-workspace.mjs`. It does not authenticate an arbitrary
+`src/github-runner-workspace.mts`. It does not authenticate an arbitrary
 environment, establish checkout origin, protect Git or its object store, or
 establish same-user filesystem isolation. Hosted model loading and host
 verification remain pending.

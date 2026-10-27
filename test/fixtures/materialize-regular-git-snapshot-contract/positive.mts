@@ -1,4 +1,4 @@
-import { materializeRegularGitSnapshot } from '../../../src/materialize-regular-git-snapshot.mjs';
+import { materializeRegularGitSnapshot } from '../../../src/materialize-regular-git-snapshot.mts';
 
 declare const inputFields: {
   root: unknown;

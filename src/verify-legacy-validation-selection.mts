@@ -4,7 +4,7 @@ import { verifyLegacyValidationSelection } from './ci-review/verify-legacy-valid
 
 export { verifyLegacyValidationSelection };
 
-if (process.argv[1]?.endsWith('/verify-legacy-validation-selection.mjs')) {
+if ((process.argv[1]?.endsWith('/verify-legacy-validation-selection.mjs') || process.argv[1]?.endsWith('/verify-legacy-validation-selection.mts'))) {
   const [, , baseValidationPath, callerValidationPath] = process.argv;
   if (baseValidationPath === undefined || callerValidationPath === undefined) {
     throw new Error('Usage: verify-legacy-validation-selection.mjs <base-path-or-empty> <caller-path-or-empty>');

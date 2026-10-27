@@ -1,4 +1,4 @@
-import * as flat from '../../../src/owner-addition-finalize.mjs';
+import * as flat from '../../../src/owner-addition-finalize.mts';
 import * as physical from '../../../src/owner-addition/finalize-owner-addition.mts';
 import type { OwnerAdditionFinalizerInput, OwnerAdditionFinalizerFetch, OwnerAdditionTagRefReadback } from '../../../src/owner-addition/finalize-owner-addition.mts';
 import type { OwnerAdditionFinalRecord } from '../../../src/owner-addition/owner-addition-finalize.mts';

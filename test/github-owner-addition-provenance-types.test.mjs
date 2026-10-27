@@ -79,7 +79,7 @@ test('complete typed provenance implementation preserves original operations and
     assert.equal(createHash('sha256').update(JSON.stringify(body(source))).digest('hex'), baseline);
   }
   const facade = "export { verifyOwnerAdditionEligibilityProvenance } from './github/github-owner-addition-provenance.mjs';";
-  assert.deepEqual(body(readFileSync(join(root, 'src/github-owner-addition-provenance.mjs'), 'utf8')
+  assert.deepEqual(body(readFileSync(join(root, 'src/github-owner-addition-provenance.mts'), 'utf8')
     .replace("'./github/github-owner-addition-provenance.mts'", "'./github/github-owner-addition-provenance.mjs'"), true), body(facade, true));
   assert.deepEqual(body(readFileSync(join(root, 'dist/github-owner-addition-provenance.mjs'), 'utf8'), true), body(facade, true));
   const flat = await import('../dist/github-owner-addition-provenance.mjs');

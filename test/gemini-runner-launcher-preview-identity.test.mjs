@@ -14,7 +14,7 @@ for (const layout of ['src', 'dist']) test(`${layout} preview identity binds all
   t.after(() => rmSync(sourceRoot, { recursive: true, force: true }));
   cpSync(new URL(`../${layout}`, import.meta.url), join(sourceRoot, layout), { recursive: true });
   copyFileSync(new URL('../package.json', import.meta.url), join(sourceRoot, 'package.json'));
-  const runtime = await import(pathToFileURL(join(sourceRoot, layout, 'preview-lifecycle.mjs')).href);
+  const runtime = await import(pathToFileURL(join(sourceRoot, layout, `preview-lifecycle.${layout === 'src' ? 'mts' : 'mjs'}`)).href);
   const f = fixture(t);
   const head = commitOn(f, 'gemini-runner-launcher-runtime-identity', { 'app.txt': 'Changed application\n' });
   const requestSpec = spec(f, 'review', head);

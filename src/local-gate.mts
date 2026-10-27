@@ -12,6 +12,6 @@ export {
   runHookCli,
   validate,
 } from './local-review/local-gate.mts';
-export { runPostToolScreenHook, runPostToolScreenHookCli } from './local-post-tool-screen.mjs';
+export { runPostToolScreenHook, runPostToolScreenHookCli } from './local-post-tool-screen.mts';
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) runHookCli();

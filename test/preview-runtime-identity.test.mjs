@@ -134,11 +134,11 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
       assert.match(implementation, /import \{ selectSingleOwnerAdditionMember \} from (["'])\.\/single-authority-member\.mjs\1/);
     }
     if (groupedName === 'gemini-cli/launcher-entrypoint.mjs') {
-      assert.ok(implementation.includes("dirname(fileURLToPath(import.meta.url)), '..', 'gemini-ci-runner.mjs'"));
+      assert.ok(implementation.includes("dirname(fileURLToPath(import.meta.url)), '..', import.meta.url.endsWith('.mts') ? 'gemini-ci-runner.mts' : 'gemini-ci-runner.mjs'"));
     }
     let body = implementation.replace(/^#![^\n]*\n/, '')
       .replace(/from (["'])\.\.\//g, 'from $1./');
-    const guardStart = facade.indexOf('if (process.argv[1]');
+    const guardStart = facade.search(/^if \(\(*process\.argv\[1\]/m);
     if (inlineRunner) {
       const marker = `export function ${inlineRunner}()`;
       const runnerStart = body.lastIndexOf(marker);
@@ -193,7 +193,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
       imports: flatName === 'gemini-ci-runner.mjs' ? "import { fileURLToPath } from 'node:url';\n"
         : flatName === 'gemini-launcher.mjs' ? "import { realpathSync } from 'node:fs';\n" : '',
       remap: text => flatName === 'gemini-launcher.mjs'
-        ? text.replace("dirname(fileURLToPath(import.meta.url)), '..', 'gemini-ci-runner.mjs'", "dirname(fileURLToPath(import.meta.url)), '.', 'gemini-ci-runner.mjs'") : text,
+        ? text.replace("dirname(fileURLToPath(import.meta.url)), '..', import.meta.url.endsWith('.mts') ? 'gemini-ci-runner.mts' : 'gemini-ci-runner.mjs'", "dirname(fileURLToPath(import.meta.url)), '.', import.meta.url.endsWith('.mts') ? 'gemini-ci-runner.mts' : 'gemini-ci-runner.mjs'") : text,
     });
   }
   if (restoreFlatImplementation('preview-lifecycle.mjs', 'preview-lifecycle-runtime.mjs')) {
@@ -235,48 +235,48 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   writeFileSync(join(flatRoot, 'dist/json-schema.mjs'),
     readFileSync(join(flatRoot, 'dist/authority-validation/json-schema.mjs')));
   writeFileSync(join(flatRoot, 'dist/multi-authority-provenance.mjs'),
-    readFileSync(join(flatRoot, 'dist/authority-validation/multi-authority-provenance.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/authority-validation/multi-authority-provenance.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/legacy-authority-decision-helpers.mjs'),
     readFileSync(join(flatRoot, 'dist/ci-review/legacy-authority-decision.mjs'), 'utf8'));
   const legacyAuthorityCliPath = join(flatRoot, 'dist/prepare-legacy-ci-authority.mjs');
   writeFileSync(legacyAuthorityCliPath, readFileSync(legacyAuthorityCliPath, 'utf8')
     .replace(/from ["']\.\/ci-review\/legacy-authority-decision\.mjs["']/, "from './legacy-authority-decision-helpers.mjs'"));
   writeFileSync(join(flatRoot, 'dist/prepared-ci-decision.mjs'),
-    readFileSync(join(flatRoot, 'dist/ci-review/prepared-ci-decision.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/ci-review/prepared-ci-decision.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/ci-decision-kind.mjs'),
-    readFileSync(join(flatRoot, 'dist/ci-review/ci-decision-kind.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/ci-review/ci-decision-kind.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/verify-legacy-validation-selection.mjs'),
-    readFileSync(join(flatRoot, 'dist/ci-review/verify-legacy-validation-selection.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/ci-review/verify-legacy-validation-selection.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/ci-execution-observation.mjs'),
-    readFileSync(join(flatRoot, 'dist/ci-execution/ci-execution-observation.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/ci-execution/ci-execution-observation.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/validate-decision.mjs'),
-    readFileSync(join(flatRoot, 'dist/authority-validation/validate-decision.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/authority-validation/validate-decision.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/validate-authority-set-decision.mjs'),
-    readFileSync(join(flatRoot, 'dist/authority-validation/validate-authority-set-decision.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/authority-validation/validate-authority-set-decision.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/preflight-authority-set-review.mjs'),
-    readFileSync(join(flatRoot, 'dist/authority-validation/preflight-authority-set-review.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/authority-validation/preflight-authority-set-review.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/prepare-review-file-context.mjs'),
-    readFileSync(join(flatRoot, 'dist/review-inputs/prepare-review-file-context.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/review-inputs/prepare-review-file-context.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/prepare-review-context.mjs'),
-    readFileSync(join(flatRoot, 'dist/review-inputs/prepare-review-context.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/review-inputs/prepare-review-context.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/materialize-review-workspace.mjs'),
-    readFileSync(join(flatRoot, 'dist/review-inputs/materialize-review-workspace.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/review-inputs/materialize-review-workspace.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/review-security-proxy.mjs'),
-    readFileSync(join(flatRoot, 'dist/review-inputs/review-security-proxy.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/review-inputs/review-security-proxy.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/review-contract.mjs'),
-    readFileSync(join(flatRoot, 'dist/review-contract/review-contract.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/review-contract/review-contract.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/resolve-ci-policy.mjs'),
-    readFileSync(join(flatRoot, 'dist/authority-validation/resolve-ci-policy.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/authority-validation/resolve-ci-policy.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   const flatPreparerSource = readFileSync(join(flatRoot, 'dist/authority-validation/prepare-authority-set.mjs'), 'utf8');
   assert.equal((flatPreparerSource.match(/from (["'])\.\.\/io\/read-descriptor\.mjs\1/g) ?? []).length, 1,
     'the reconstructed flat preparer has one import of the shared descriptor helper');
   writeFileSync(join(flatRoot, 'dist/prepare-authority-set.mjs'), flatPreparerSource
     .replace(/from (["'])\.\.\/io\/read-descriptor\.mjs\1/, "from './read-descriptor.mjs'")
-    .replace(/from '\.\.\//g, "from './"));
+    .replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/owner-addition-adoption.mjs'),
-    readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-adoption.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-adoption.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/owner-decision-addition.mjs'),
-    readFileSync(join(flatRoot, 'dist/owner-addition/owner-decision-addition.mjs'), 'utf8').replace(/from '\.\.\//g, "from './"));
+    readFileSync(join(flatRoot, 'dist/owner-addition/owner-decision-addition.mjs'), 'utf8').replace(/from (["'])\.\.\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/owner-addition-finalize-helper.mjs'),
     readFileSync(join(flatRoot, 'dist/owner-addition/owner-addition-finalize.mjs'), 'utf8')
       .replace(/from (["'])\.\.\/authority-validation\//g, "from $1./"));
@@ -323,31 +323,31 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   const githubOwnerAdditionProvenanceSource = readFileSync(join(flatRoot, 'dist/github/github-owner-addition-provenance.mjs'), 'utf8');
   assert.match(githubOwnerAdditionProvenanceSource, /from (["'])\.\/owner-addition-evidence-zip\.mjs\1/);
   writeFileSync(githubOwnerAdditionProvenancePath, githubOwnerAdditionProvenanceSource
-    .replace(/from '\.\.\//g, "from './")
+    .replace(/from (["'])\.\.\//g, "from $1./")
     .replace(/from (["'])\.\/owner-addition-evidence-zip\.mjs\1/, "from './owner-addition-evidence-zip-helper.mjs'"));
   for (const file of ['gemini-cli-response.mjs', 'gemini-cli-process.mjs', 'gemini-cli-proxy-session.mjs',
     'gemini-cli-session.mjs', 'prepared-gemini-ci-review.mjs']) {
     writeFileSync(join(flatRoot, 'dist', file),
       readFileSync(join(flatRoot, 'dist/gemini-cli', file), 'utf8')
-        .replace(/from '\.\.\/review-contract\//g, "from './")
-        .replace(/from '\.\.\/review-inputs\//g, "from './")
-        .replace(/from '\.\.\/authority-validation\//g, "from './")
-        .replace(/from '\.\.\//g, "from './"));
+        .replace(/from (["'])\.\.\/review-contract\//g, "from $1./")
+        .replace(/from (["'])\.\.\/review-inputs\//g, "from $1./")
+        .replace(/from (["'])\.\.\/authority-validation\//g, "from $1./")
+        .replace(/from (["'])\.\.\//g, "from $1./"));
   }
   writeFileSync(join(flatRoot, 'dist/codex-transport.mjs'),
     readFileSync(join(flatRoot, 'dist/reviewer-transports/codex-transport.mjs'), 'utf8'));
   writeFileSync(join(flatRoot, 'dist/local-reviewer-execution.mjs'),
     readFileSync(join(flatRoot, 'dist/reviewer-transports/local-reviewer-execution.mjs'), 'utf8')
-      .replace("from '../gemini-transport.mjs'", "from './gemini-transport.mjs'"));
+      .replace(/from ["']\.\.\/gemini-transport\.mjs["']/, "from './gemini-transport.mjs'"));
   writeFileSync(join(flatRoot, 'dist/runner-temp-path.mjs'),
     readFileSync(join(flatRoot, 'dist/runner-paths/runner-temp-path.mjs'), 'utf8')
-      .replace(/from '\.\.\//g, "from './"));
+      .replace(/from (["'])\.\.\//g, "from $1./"));
   for (const file of ['local-gate.mjs', 'local-post-tool-screen.mjs', 'manual-review.mjs']) {
     writeFileSync(join(flatRoot, 'dist', file),
       readFileSync(join(flatRoot, 'dist/local-review', file), 'utf8')
-        .replace(/from '\.\.\/review-contract\//g, "from './")
-        .replace(/from '\.\.\/reviewer-transports\//g, "from './")
-        .replace(/from '\.\.\//g, "from './"));
+        .replace(/from (["'])\.\.\/review-contract\//g, "from $1./")
+        .replace(/from (["'])\.\.\/reviewer-transports\//g, "from $1./")
+        .replace(/from (["'])\.\.\//g, "from $1./"));
   }
   // Restore the complete former flat native body and its original guard before
   // deleting grouped modules. Importing the restored API remains non-dispatching.
@@ -368,12 +368,12 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   for (const file of ['ci-enforced-acceptance.mjs', 'ci-procedural-authority-change.mjs']) {
     writeFileSync(join(flatRoot, 'dist', file),
       readFileSync(join(flatRoot, 'dist/ci-review', file), 'utf8')
-        .replace(/from '\.\.\/authority-validation\//g, "from './"));
+        .replace(/from (["'])\.\.\/authority-validation\//g, "from $1./"));
   }
   writeFileSync(join(flatRoot, 'dist/ci-report-helpers.mjs'),
     readFileSync(join(flatRoot, 'dist/ci-review/ci-report.mjs'), 'utf8')
-      .replace(/from '\.\.\/authority-validation\//g, "from './")
-      .replace(/from '\.\.\/github\//g, "from './"));
+      .replace(/from (["'])\.\.\/authority-validation\//g, "from $1./")
+      .replace(/from (["'])\.\.\/github\//g, "from $1./"));
   writeFileSync(join(flatRoot, 'dist/ci-procedural-acceptance-helpers.mjs'),
     readFileSync(join(flatRoot, 'dist/ci-review/ci-procedural-acceptance.mjs'), 'utf8'));
   const proceduralAcceptanceCliPath = join(flatRoot, 'dist/ci-procedural-acceptance.mjs');
@@ -381,15 +381,15 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     .replace(/from ["']\.\/ci-review\/ci-procedural-acceptance\.mjs["']/, "from './ci-procedural-acceptance-helpers.mjs'"));
   writeFileSync(join(flatRoot, 'dist/codex-pass-publication.mjs'),
     readFileSync(join(flatRoot, 'dist/ci-review/codex-pass-publication.mjs'), 'utf8')
-      .replace(/from '\.\.\/authority-set\.mjs'/g, "from './authority-set.mjs'"));
+      .replace(/from (["'])\.\.\/authority-set\.mjs\1/g, "from './authority-set.mjs'"));
   writeFileSync(join(flatRoot, 'dist/codex-pass-log.mjs'),
     readFileSync(join(flatRoot, 'dist/github/codex-pass-log.mjs'), 'utf8')
-      .replace(/from '\.\.\/ci-review\/codex-pass-publication\.mjs'/g, "from './codex-pass-publication.mjs'"));
+      .replace(/from (["'])\.\.\/ci-review\/codex-pass-publication\.mjs\1/g, "from './codex-pass-publication.mjs'"));
   const reportCliPath = join(flatRoot, 'dist/ci-report.mjs');
   const reportFacade = readFileSync(reportCliPath, 'utf8');
   const reportBody = readFileSync(join(flatRoot, 'dist/ci-review/ci-report-entrypoint.mjs'), 'utf8')
-    .replace(/from '\.\.\//g, "from './")
-    .replace(/from '\.\/ci-report\.mjs'/, "from './ci-report-helpers.mjs'");
+    .replace(/from (["'])\.\.\//g, "from $1./")
+    .replace(/from (["'])\.\/ci-report\.mjs\1/, "from './ci-report-helpers.mjs'");
   const reportGuard = reportFacade.slice(reportFacade.lastIndexOf('\nif (process.argv[1]'));
   // Reconstruct the complete former flat CLI, including its public main and guard.
   writeFileSync(reportCliPath, "import { fileURLToPath } from 'node:url';\n" + reportBody + reportGuard);

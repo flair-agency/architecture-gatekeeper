@@ -71,7 +71,7 @@ test('typed getter retains the complete original runtime operations behind the m
   }
   const wrapper = "import { trustedGitHubOutputPath as readGitHubOutputPath } from './github/github-runner-env.mjs';\n" +
     'export function trustedGitHubOutputPath() { return readGitHubOutputPath(); }';
-  assert.deepEqual(runtimeBody(readFileSync(join(root, 'src/github-runner-env.mjs'), 'utf8')
+  assert.deepEqual(runtimeBody(readFileSync(join(root, 'src/github-runner-env.mts'), 'utf8')
     .replace("'./github/github-runner-env.mts'", "'./github/github-runner-env.mjs'")), runtimeBody(wrapper));
   assert.deepEqual(runtimeBody(readFileSync(join(root, 'dist/github-runner-env.mjs'), 'utf8')), runtimeBody(wrapper));
 });

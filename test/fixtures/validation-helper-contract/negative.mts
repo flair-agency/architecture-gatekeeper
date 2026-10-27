@@ -1,5 +1,5 @@
-import { validateDecisionRules as decisionFlat } from '../../../src/validate-decision.mjs';
-import { validatePreparedAuthorityDecision as preparedFlat } from '../../../src/validate-authority-set-decision.mjs';
+import { validateDecisionRules as decisionFlat } from '../../../src/validate-decision.mts';
+import { validatePreparedAuthorityDecision as preparedFlat } from '../../../src/validate-authority-set-decision.mts';
 import { validateAuthorityReviewSchema as schemaPhysical } from '../../../src/authority-validation/preflight-authority-set-review.mts';
 
 const external: unknown = JSON.parse('{}');

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { realpathSync } from 'node:fs';
 import { preparePreviewLifecycle, completePreviewLifecycle, observePreviewLifecycle,
-  prepareFreshPreviewReview, previewReceiptBytes } from './preview-lifecycle.mjs';
-import { rejectDuplicateJsonKeys } from './authority-set.mjs';
+  prepareFreshPreviewReview, previewReceiptBytes } from './preview-lifecycle.mts';
+import { rejectDuplicateJsonKeys } from './authority-set.mts';
 
 type CliCommand = 'prepare' | 'complete' | 'finalize' | 'fresh';
 type CliFailureCode = 'usage' | 'input' | 'input-too-large' | 'invalid-utf8' | 'duplicate-json' |

@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 for (const layout of ['src', 'dist']) test(`${layout} default launcher starts the actual flat runner and reaches its missing-prompt validation`, () => {
-  const launcher = new URL(`../${layout}/gemini-launcher.mjs`, import.meta.url).href;
-  const intended = fileURLToPath(new URL(`../${layout}/gemini-ci-runner.mjs`, import.meta.url));
+  const launcher = new URL(`../${layout}/gemini-launcher.${layout === 'src' ? 'mts' : 'mjs'}`, import.meta.url).href;
+  const intended = fileURLToPath(new URL(`../${layout}/gemini-ci-runner.${layout === 'src' ? 'mts' : 'mjs'}`, import.meta.url));
   const code = `
     import childProcess from 'node:child_process';
     import { syncBuiltinESMExports } from 'node:module';

@@ -1,4 +1,4 @@
-import { executeLocalReviewer, executeLocalReviewerSync } from '../../../src/local-reviewer-execution.mjs';
+import { executeLocalReviewer, executeLocalReviewerSync } from '../../../src/local-reviewer-execution.mts';
 import type { CodexReviewRequest } from '../../../src/reviewer-transports/codex-transport.mts';
 import type { ReviewRequest } from '../../../src/review-contract/review-contract.mts';
 import type { LocalReviewerAsyncRequest, LocalReviewerControls, LocalReviewerSyncRequest } from '../../../src/reviewer-transports/local-reviewer-execution.mts';

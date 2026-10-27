@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { materializeAuthoritySet, readCommittedAuthorityFile, rejectDuplicateJsonKeys } from '../authority-set.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mjs';
-import { decodeLimits } from '../prepare-authority-set.mjs';
-import { validateRepositoryTreePath } from '../runner-temp-path.mjs';
+import { materializeAuthoritySet, readCommittedAuthorityFile, rejectDuplicateJsonKeys } from '../authority-set.mts';
+import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mts';
+import { decodeLimits } from '../prepare-authority-set.mts';
+import { validateRepositoryTreePath } from '../runner-temp-path.mts';
 import { inspectSelfAuthorityChanges } from './ci-self-authority-change.mts';
 const CHECKS = ['materiallyAddressesTrigger', 'amendsOnlyTargetDecision', 'excludesUnrelatedChanges',
   'excludesImplementationWorkflowAndExecutablePolicyEdits', 'excludesUnsupportedCompletionClaims',

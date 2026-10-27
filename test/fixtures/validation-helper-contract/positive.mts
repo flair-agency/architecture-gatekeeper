@@ -1,8 +1,8 @@
-import * as decisionFlat from '../../../src/validate-decision.mjs';
+import * as decisionFlat from '../../../src/validate-decision.mts';
 import * as decisionPhysical from '../../../src/authority-validation/validate-decision.mts';
-import * as preparedFlat from '../../../src/validate-authority-set-decision.mjs';
+import * as preparedFlat from '../../../src/validate-authority-set-decision.mts';
 import * as preparedPhysical from '../../../src/authority-validation/validate-authority-set-decision.mts';
-import * as schemaFlat from '../../../src/preflight-authority-set-review.mjs';
+import * as schemaFlat from '../../../src/preflight-authority-set-review.mts';
 import * as schemaPhysical from '../../../src/authority-validation/preflight-authority-set-review.mts';
 
 const decision = { decision: 'PASS' as const };

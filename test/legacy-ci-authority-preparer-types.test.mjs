@@ -131,7 +131,7 @@ const hash = value => createHash('sha256').update(JSON.stringify(canonical(value
 const authorized821c3eaOperationAst = '91192065e743f701f8056c00874d7e621ad04202cb1b744e66365ad89829b3fa';
 
 test('complete legacy preparer implementation and flat guard retain their pinned runtime AST', async () => {
-  const facadePath = join(root, 'src/prepare-legacy-ci-authority.mjs');
+  const facadePath = join(root, 'src/prepare-legacy-ci-authority.mts');
   const leafPath = join(root, 'src/ci-review/legacy-ci-authority-preparer.mts');
   const emittedFacadePath = join(root, 'dist/prepare-legacy-ci-authority.mjs');
   const emittedLeafPath = join(root, 'dist/ci-review/legacy-ci-authority-preparer.mjs');
@@ -153,7 +153,10 @@ test('complete legacy preparer implementation and flat guard retain their pinned
   const facadeGuard = facadeBody.find(node => node.type === 'IfStatement');
   const emittedGuard = emittedFacadeBody.find(node => node.type === 'IfStatement');
   assert.ok(facadeGuard);
-  assert.equal(hash(facadeGuard.test), '4cedd42e70e8f91b92b42a017900b344703c2540d125d3956bf26acbb707c159');
+  assert.equal(facadeGuard.test.operator, '||');
+  assert.equal(hash(facadeGuard.test.left), '4cedd42e70e8f91b92b42a017900b344703c2540d125d3956bf26acbb707c159');
+  const authoredGuard = runtimeAst("if (process.argv[1]?.endsWith('/prepare-legacy-ci-authority.mts')) {}", facadePath)[0];
+  assert.deepEqual(facadeGuard.test.right, authoredGuard.test, 'the added branch permits the physical authored entrypoint');
   assert.equal(hash(emittedGuard.test), hash(facadeGuard.test));
   assert.equal(facadeGuard.consequent.type, 'ExpressionStatement');
   assert.equal(facadeGuard.consequent.expression.type, 'CallExpression');
@@ -166,8 +169,8 @@ test('complete legacy preparer implementation and flat guard retain their pinned
   const emittedImports = parse(emittedLeafSource, { ecmaVersion: 'latest', sourceType: 'module' }).body
     .filter(node => node.type === 'ImportDeclaration').map(node => node.source.value);
   assert.deepEqual(sourceImports, [
-    'node:path', 'node:util', '../git/buffered-git.mts', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
-    '../legacy-git-snapshot.mjs', '../github-runner-workspace.mjs', './legacy-authority-decision.mts',
+    'node:path', 'node:util', '../git/buffered-git.mts', '../runner-temp-path.mts', '../resolve-ci-policy.mts',
+    '../legacy-git-snapshot.mts', '../github-runner-workspace.mts', './legacy-authority-decision.mts',
   ]);
   assert.deepEqual(emittedImports, [
     'node:path', 'node:util', '../git/buffered-git.mjs', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
@@ -264,7 +267,7 @@ async function assertIdentityInvalidation(layout, runtimeDirectory, runtimeFile,
 }
 
 test('source and emitted preview identity bind the actual legacy preparer leaf and reject stale requests and receipts', async t => {
-  await assertIdentityInvalidation('source', 'src', 'src/preview-lifecycle.mjs',
+  await assertIdentityInvalidation('source', 'src', 'src/preview-lifecycle.mts',
     'src/ci-review/legacy-ci-authority-preparer.mts', t);
   await assertIdentityInvalidation('emitted', 'dist', 'dist/preview-lifecycle.mjs',
     'dist/ci-review/legacy-ci-authority-preparer.mjs', t);

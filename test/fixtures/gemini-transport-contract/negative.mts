@@ -1,4 +1,4 @@
-import { executeGeminiReviewer, prepareGeminiRequestBody, resolveAuthCredentials, runGeminiReviewer } from '../../../src/gemini-transport.mjs';
+import { executeGeminiReviewer, prepareGeminiRequestBody, resolveAuthCredentials, runGeminiReviewer } from '../../../src/gemini-transport.mts';
 import type { GeminiReviewRequest } from '../../../src/reviewer-transports/gemini-transport.mts';
 import type { ReviewRequest } from '../../../src/review-contract/review-contract.mts';
 

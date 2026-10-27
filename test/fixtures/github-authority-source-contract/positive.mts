@@ -6,7 +6,7 @@ import {
   type GitHubAuthorityRequest,
   type GitHubAuthorityResult,
   type GitHubAuthoritySource,
-} from '../../../src/github/github-authority-source.mjs';
+} from '../../../src/github/github-authority-source.mts';
 
 const defaultSource = createGitHubAuthoritySource({ token: 'test-token' });
 const standardFetchSource = createGitHubAuthoritySource({ token: 'test-token', fetchImpl: globalThis.fetch });

@@ -1,4 +1,4 @@
-import { runNativeReviewCli } from '../../../src/native-review.mjs';
+import { runNativeReviewCli } from '../../../src/native-review.mts';
 import { runNativeReviewCli as groupedCli } from '../../../src/local-review/native-review.mts';
 
 const callable: (argv?: string[], cwd?: string) => Promise<void> = runNativeReviewCli;

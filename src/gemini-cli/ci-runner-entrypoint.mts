@@ -8,12 +8,12 @@ import { constants, existsSync, lstatSync, mkdtempSync, readFileSync, realpathSy
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { GeminiReviewRequest, GeminiTransportOptions } from '../reviewer-transports/gemini-transport.mts';
-import { runGeminiReviewer } from '../gemini-transport.mjs';
-import { validateJsonSchema } from '../json-schema.mjs';
-import { preflightReviewRequest, repositoryRoot, validateReviewResponse } from '../review-contract.mjs';
-import { appendGitHubOutput } from '../runner-temp-path.mjs';
+import { runGeminiReviewer } from '../gemini-transport.mts';
+import { validateJsonSchema } from '../json-schema.mts';
+import { preflightReviewRequest, repositoryRoot, validateReviewResponse } from '../review-contract.mts';
+import { appendGitHubOutput } from '../runner-temp-path.mts';
 
-import { containsPath, resolveSafePath } from '../review-input-path.mjs';
+import { containsPath, resolveSafePath } from '../review-input-path.mts';
 export { resolveSafePath };
 
 type RunnerOptions = Record<string, string>;

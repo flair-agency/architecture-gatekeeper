@@ -1,4 +1,4 @@
-import { runPreparedGeminiCiReview } from '../../../src/prepared-gemini-ci-review.mjs';
+import { runPreparedGeminiCiReview } from '../../../src/prepared-gemini-ci-review.mts';
 
 const limits = { maxFiles: 2, maxFileBytes: 2048, maxTotalBytes: 4096 };
 const packet = {

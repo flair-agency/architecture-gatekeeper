@@ -1,5 +1,5 @@
 import { assertProceduralV5Acceptance, type ProceduralV5AcceptanceInput, type ProceduralV5AcceptanceRoute } from '../../../src/ci-review/ci-procedural-acceptance.mts';
-import { assertProceduralV5Acceptance as flat } from '../../../src/ci-procedural-acceptance.mjs';
+import { assertProceduralV5Acceptance as flat } from '../../../src/ci-procedural-acceptance.mts';
 
 const ordinary: ProceduralV5AcceptanceInput = {
   policyVersion: '5', evidenceProducer: 'github-actions', reviewResult: 'success',

@@ -1,4 +1,4 @@
-import { validateJsonSchema, validateJsonSchemaDefinition } from '../../../src/json-schema.mjs';
+import { validateJsonSchema, validateJsonSchemaDefinition } from '../../../src/json-schema.mts';
 
 const wrongBudget = validateJsonSchema('value', {}, { maxOperations: '8' });
 const wrongDepth = validateJsonSchema('value', {}, { maxDepth: false });

@@ -1,5 +1,5 @@
-import { validateAuthoritySetDecision } from '../authority-set.mjs';
-import { validateMultiAuthorityDecision } from '../multi-authority-provenance.mjs';
+import { validateAuthoritySetDecision } from '../authority-set.mts';
+import { validateMultiAuthorityDecision } from '../multi-authority-provenance.mts';
 
 /** Dispatch existing v1/v2 prepared decision validation without refining external JSON. */
 export function validatePreparedAuthorityDecision(decision: unknown, provenance: unknown): unknown {

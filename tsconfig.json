@@ -8,11 +8,13 @@
     "noEmitOnError": true,
     "rootDir": "src",
     "skipLibCheck": false,
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "outDir": "dist",
-    "allowJs": true,
-    "checkJs": false,
     "rewriteRelativeImportExtensions": true
   },
-  "include": ["src/**/*.mjs", "src/**/*.mts"]
+  "include": [
+    "src/**/*.mts"
+  ]
 }

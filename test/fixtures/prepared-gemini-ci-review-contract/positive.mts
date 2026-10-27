@@ -1,8 +1,8 @@
-import { runPreparedGeminiCiReview as runFlat } from '../../../src/prepared-gemini-ci-review.mjs';
+import { runPreparedGeminiCiReview as runFlat } from '../../../src/prepared-gemini-ci-review.mts';
 import { runPreparedGeminiCiReview as runGrouped, type PreparedGeminiCiReviewInput } from '../../../src/gemini-cli/prepared-gemini-ci-review.mts';
-import { runGeminiCliProxySession } from '../../../src/gemini-cli-proxy-session.mjs';
-import { runGeminiCliProcess } from '../../../src/gemini-cli-process.mjs';
-import { validateJsonSchemaDefinition } from '../../../src/json-schema.mjs';
+import { runGeminiCliProxySession } from '../../../src/gemini-cli-proxy-session.mts';
+import { runGeminiCliProcess } from '../../../src/gemini-cli-process.mts';
+import { validateJsonSchemaDefinition } from '../../../src/json-schema.mts';
 
 const limits = { maxFiles: 2, maxFileBytes: 2048, maxTotalBytes: 4096 };
 const packet = {

@@ -1,4 +1,4 @@
-import { runGeminiCliSession as runFlat } from '../../../src/gemini-cli-session.mjs';
+import { runGeminiCliSession as runFlat } from '../../../src/gemini-cli-session.mts';
 import {
   runGeminiCliSession,
   type GeminiCliSessionInput,

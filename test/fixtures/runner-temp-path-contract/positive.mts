@@ -6,7 +6,7 @@ import {
   validateRepositoryTreePath,
   validateSelfAuthorityManifest,
   writeRunnerTempFile,
-} from '../../../src/runner-temp-path.mjs';
+} from '../../../src/runner-temp-path.mts';
 import { readRunnerTempFile as readGrouped } from '../../../src/runner-paths/runner-temp-path.mts';
 
 const unknownDirectory: unknown = { untrusted: true };

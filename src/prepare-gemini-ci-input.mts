@@ -5,11 +5,11 @@ import type { ReviewFileContextLimits, ReviewFileContextPacket } from './review-
 import {
   parseAuthorityManifest,
   readCommittedAuthorityFile,
-} from './authority-set.mjs';
-import { decodeLimits } from './prepare-authority-set.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
-import { composePreparedGeminiCiPrompt } from './prepared-gemini-ci-review.mjs';
-import { encodeGeminiCliPromptForTransport } from './gemini-cli-process.mjs';
+} from './authority-set.mts';
+import { decodeLimits } from './prepare-authority-set.mts';
+import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mts';
+import { composePreparedGeminiCiPrompt } from './prepared-gemini-ci-review.mts';
+import { encodeGeminiCliPromptForTransport } from './gemini-cli-process.mts';
 import { snapshotPreparedReviewData } from './prepared-review-data.mts';
 import { prepareProtectedCiInput, type ProtectedCiInputBinding, type ProtectedCiSelection, type PreparedProtectedCiInput } from './prepare-protected-ci-input.mts';
 

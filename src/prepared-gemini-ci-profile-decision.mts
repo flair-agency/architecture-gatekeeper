@@ -1,6 +1,6 @@
 /** Internal composition for the adopted ordinary Gemini session profile. */
 import { types } from 'node:util';
-import { snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mjs';
+import { snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mts';
 import { snapshotPreparedReviewData } from './prepared-review-data.mts';
 import { runPreparedGeminiCiDecision } from './prepared-gemini-ci-decision.mts';
 import { createVertexVerificationReservation } from './vertex-verification-reservation.mts';

@@ -1,21 +1,21 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { materializeAuthoritySet, readCommittedAuthorityFile } from '../authority-set.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mjs';
-import { validateRepositoryTreePath } from '../runner-temp-path.mjs';
+import { materializeAuthoritySet, readCommittedAuthorityFile } from '../authority-set.mts';
+import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mts';
+import { validateRepositoryTreePath } from '../runner-temp-path.mts';
 import { changedSelectedAuthorityPaths } from './ci-procedural-authority-change.mts';
 
 const SHA = /^[a-f0-9]{40}$/;
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 const fail: (message: string) => never = message => { throw new Error(`Self Authority comparison: ${message}`); };
 export interface SelfAuthorityChangeInput {
-  repository: string;
-  baseSha: string;
-  headSha: string;
-  reviewedSha: string;
-  baseBranch: string;
-  policyPath: string;
-  policySha256: string;
+  repository: string | undefined;
+  baseSha: string | undefined;
+  headSha: string | undefined;
+  reviewedSha: string | undefined;
+  baseBranch: string | undefined;
+  policyPath: string | undefined;
+  policySha256: string | undefined;
   provenance: unknown;
   cwd: string;
 }
@@ -24,9 +24,10 @@ export interface SelfAuthorityChangeInput {
 export async function inspectSelfAuthorityChanges(input: SelfAuthorityChangeInput) {
   const { repository, baseSha, headSha, reviewedSha, baseBranch, policyPath, policySha256, cwd } = input;
   if (repository !== 'flair-agency/architecture-gatekeeper' || baseBranch !== 'main' ||
-      ![baseSha, headSha, reviewedSha].every(value => typeof value === 'string' && SHA.test(value)) ||
+      typeof baseSha !== 'string' || !SHA.test(baseSha) || typeof headSha !== 'string' || !SHA.test(headSha) ||
+      typeof reviewedSha !== 'string' || !SHA.test(reviewedSha) ||
       typeof policySha256 !== 'string' || !/^[a-f0-9]{64}$/.test(policySha256)) fail('exact protected self input is required.');
-  validateRepositoryTreePath(policyPath);
+  const validatedPolicyPath = validateRepositoryTreePath(policyPath);
   const git = (args: readonly string[]) => execFileSync('git', ['--no-replace-objects', ...args],
     { cwd, encoding: 'buffer', maxBuffer: 1_000_000, timeout: 10_000, stdio: ['ignore', 'pipe', 'pipe'] });
   for (const sha of [baseSha, headSha, reviewedSha]) {
@@ -36,7 +37,7 @@ export async function inspectSelfAuthorityChanges(input: SelfAuthorityChangeInpu
   if (parents.length !== 3 || parents[0] !== reviewedSha || parents[1] !== baseSha || parents[2] !== headSha) {
     fail('reviewed merge does not match the exact ordered base/head parents.');
   }
-  const policyBytes = readCommittedAuthorityFile(cwd, baseSha, policyPath, 65_536);
+  const policyBytes = readCommittedAuthorityFile(cwd, baseSha, validatedPolicyPath, 65_536);
   if (hash(policyBytes) !== policySha256) fail('recorded-base policy digest mismatch.');
   const policy = resolveCiPolicy(parseCiPolicyJson(policyBytes.toString('utf8')), baseBranch);
   if (policy.mode !== 'enforced' || typeof policy.authorityManifestPath !== 'string' || !policy.authorityLimitsBase64) {
@@ -62,7 +63,7 @@ export async function inspectSelfAuthorityChanges(input: SelfAuthorityChangeInpu
       return bytes;
     } });
   // A config-only migration is reviewed under the OLD selection. This diagnostic is not migration authorization.
-  const configurationPaths = [policyPath, policy.authorityManifestPath].filter(path =>
+  const configurationPaths = [validatedPolicyPath, policy.authorityManifestPath].filter(path =>
     git(['diff', '--name-only', '-z', '--no-renames', baseSha, headSha, '--', path]).length > 0);
   return Object.freeze({ changed: paths.length > 0, paths: Object.freeze(paths),
     configurationPaths: Object.freeze(configurationPaths) });

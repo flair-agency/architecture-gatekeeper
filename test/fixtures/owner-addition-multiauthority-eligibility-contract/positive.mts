@@ -1,7 +1,7 @@
 import { validateMultiAuthorityEligibility as groupedValidate,
   validateMultiAuthorityEligibilitySchema as groupedValidateSchema } from '../../../src/owner-addition/multi-authority-eligibility.mts';
 import { validateMultiAuthorityEligibility as flatValidate,
-  validateMultiAuthorityEligibilitySchema as flatValidateSchema } from '../../../src/owner-addition-multiauthority.mjs';
+  validateMultiAuthorityEligibilitySchema as flatValidateSchema } from '../../../src/owner-addition-multiauthority.mts';
 
 declare const rawDecisionJson: unknown;
 declare const selectedSchema: unknown;

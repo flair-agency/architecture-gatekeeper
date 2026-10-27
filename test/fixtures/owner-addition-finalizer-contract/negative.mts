@@ -1,4 +1,4 @@
-import { finalizeOwnerAddition, verifyG0TagObjectEvidence, verifyMergeAncestorComparison, summarizeG0TagRefReadback, readG0TagObjectReadback } from '../../../src/owner-addition-finalize.mjs';
+import { finalizeOwnerAddition, verifyG0TagObjectEvidence, verifyMergeAncestorComparison, summarizeG0TagRefReadback, readG0TagObjectReadback } from '../../../src/owner-addition-finalize.mts';
 import { runOwnerAdditionFinalizeCli, type OwnerAdditionFinalizerInput, type OwnerAdditionFinalizerFetch } from '../../../src/owner-addition/finalize-owner-addition.mts';
 
 finalizeOwnerAddition({ repository: 'example/repo' });

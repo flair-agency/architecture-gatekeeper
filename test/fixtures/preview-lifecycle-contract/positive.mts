@@ -1,5 +1,5 @@
 import { preparePreviewLifecycle, completePreviewLifecycle, validatePreviewReceipt,
-  observePreviewLifecycle, prepareFreshPreviewReview, previewReceiptBytes } from '../../../src/preview-lifecycle.mjs';
+  observePreviewLifecycle, prepareFreshPreviewReview, previewReceiptBytes } from '../../../src/preview-lifecycle.mts';
 declare const json: unknown;
 const request = await preparePreviewLifecycle(json, '/synthetic');
 const spec: unknown = request.spec;

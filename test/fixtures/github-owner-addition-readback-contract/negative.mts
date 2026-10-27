@@ -1,4 +1,4 @@
-import type { GitHubOwnerAdditionReadbackResult } from '../../../src/github/github-owner-addition-readback.mjs';
+import type { GitHubOwnerAdditionReadbackResult } from '../../../src/github/github-owner-addition-readback.mts';
 declare const result: GitHubOwnerAdditionReadbackResult;
 const trustedSha: string = result.targetReadback.targetSha;
 result.targetReadback.authorityDigest = 'changed';

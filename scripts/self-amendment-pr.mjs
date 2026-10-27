@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { fileURLToPath } from 'node:url';
 import { readDescriptorBytes } from '../src/io/read-descriptor.mts';
-import { rejectDuplicateJsonKeys } from '../src/authority-set.mjs';
-import { selectSelfPrContext } from '../src/self-pr-context.mjs';
-import { prepareSelfAmendmentPr, validateSelfAmendmentPrDecision } from '../src/self-amendment-pr.mjs';
-import { resolveRunnerTempDirectory, writeRunnerTempFile, appendGitHubOutput } from '../src/runner-temp-path.mjs';
+import { rejectDuplicateJsonKeys } from '../src/authority-set.mts';
+import { selectSelfPrContext } from '../src/self-pr-context.mts';
+import { prepareSelfAmendmentPr, validateSelfAmendmentPrDecision } from '../src/self-amendment-pr.mts';
+import { resolveRunnerTempDirectory, writeRunnerTempFile, appendGitHubOutput } from '../src/runner-temp-path.mts';
 const fail = message => { throw new Error(`Self amendment CLI: ${message}`); };
 const env = process.env;
 async function main() {

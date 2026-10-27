@@ -1,6 +1,6 @@
-import { validateOwnerDecisionAdditionG0Procedure } from '../../../src/owner-decision-addition.mjs';
+import { validateOwnerDecisionAdditionG0Procedure } from '../../../src/owner-decision-addition.mts';
 import type { OwnerDecisionAdditionProcedureInput } from '../../../src/owner-addition/owner-decision-addition.mts';
-import { evaluateOwnerAdditionAdoption } from '../../../src/owner-addition-adoption.mjs';
+import { evaluateOwnerAdditionAdoption } from '../../../src/owner-addition-adoption.mts';
 import type { OwnerAdditionAdoptionInput } from '../../../src/owner-addition/owner-addition-adoption.mts';
 
 const incomplete: OwnerDecisionAdditionProcedureInput = {

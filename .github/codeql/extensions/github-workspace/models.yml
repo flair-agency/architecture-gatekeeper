@@ -5,4 +5,4 @@ extensions:
       pack: codeql/javascript-all
       extensible: barrierModel
     data:
-      - ['file:src/github-runner-workspace.mjs', 'Member[trustedGitHubWorkspaceRoot].ReturnValue', 'path-injection']
+      - ['file:src/github-runner-workspace.mts', 'Member[trustedGitHubWorkspaceRoot].ReturnValue', 'path-injection']

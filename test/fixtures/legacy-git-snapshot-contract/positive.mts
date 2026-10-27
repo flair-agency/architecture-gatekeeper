@@ -1,5 +1,5 @@
-import { isCanonicalRepositoryPath, readRegularGitSnapshot } from '../../../src/legacy-git-snapshot.mjs';
-import type { RegularGitSnapshot } from '../../../src/authority-validation/legacy-git-snapshot.mjs';
+import { isCanonicalRepositoryPath, readRegularGitSnapshot } from '../../../src/legacy-git-snapshot.mts';
+import type { RegularGitSnapshot } from '../../../src/authority-validation/legacy-git-snapshot.mts';
 
 const validPath: boolean = isCanonicalRepositoryPath('docs/architecture.md');
 const unknownPath: boolean = isCanonicalRepositoryPath({ path: 'docs/architecture.md' });

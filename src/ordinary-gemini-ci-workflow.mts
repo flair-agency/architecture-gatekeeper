@@ -2,8 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { types } from 'node:util';
-import { appendGitHubOutput } from './runner-temp-path.mjs';
-import { digestDecision } from './ci-report.mjs';
+import { appendGitHubOutput } from './runner-temp-path.mts';
+import { digestDecision } from './ci-report.mts';
 import { prepareOrdinaryGeminiCiRuntime, runOrdinaryGeminiCiLauncher } from './ordinary-gemini-ci-launcher.mts';
 import { createOrdinaryGeminiPublication, emitOrdinaryGeminiPublication } from './ordinary-gemini-ci-publication.mts';
 

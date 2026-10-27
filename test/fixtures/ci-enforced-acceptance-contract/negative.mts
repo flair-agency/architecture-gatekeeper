@@ -1,5 +1,5 @@
-import { assertEnforcedAcceptance } from '../../../src/ci-enforced-acceptance.mjs';
-import { assertEnforcedAcceptance as grouped } from '../../../src/ci-review/ci-enforced-acceptance.mjs';
+import { assertEnforcedAcceptance } from '../../../src/ci-enforced-acceptance.mts';
+import { assertEnforcedAcceptance as grouped } from '../../../src/ci-review/ci-enforced-acceptance.mts';
 
 // Review status and conclusion are mandatory on every accepting path.
 assertEnforcedAcceptance();

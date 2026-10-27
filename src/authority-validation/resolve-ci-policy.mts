@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { MULTI_AUTHORITY_PROFILE, rejectDuplicateJsonKeys, validateAuthorityLimits } from '../authority-set.mjs';
+import { MULTI_AUTHORITY_PROFILE, rejectDuplicateJsonKeys, validateAuthorityLimits } from '../authority-set.mts';
 
 type PolicyBranchView = Record<string, unknown>;
 type PolicyView = { version: unknown; default: unknown; branches: unknown };

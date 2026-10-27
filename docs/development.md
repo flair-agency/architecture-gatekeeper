@@ -39,8 +39,8 @@ into a public or less-protected record. Use the existing
 ## Repository layout
 
 This is a Node.js ES module package. Its supported Node version is declared by
-`package.json#engines`. Editable runtime source is in `src/`; TypeScript modules
-use `.mts` and JavaScript modules use `.mjs`. `npm run build` emits the runtime
+`package.json#engines`. Editable runtime source is in `src/`; all production modules and entrypoints
+are authored in `.mts` and checked by the strict TypeScript project. `npm run build` emits the runtime
 package into ignored `dist/`. Tests are in `test/`, the
 separately distributed Codex Skill is in `skills/architecture-review/`, and
 reusable and self-review workflows are in `.github/workflows/`.
@@ -590,30 +590,31 @@ Historical evidence for the earlier `6eedd95c00799d8958537114aea6f1fde8cf33f5` s
 
 Historical verification for `6eedd95` includes strict/build/cycles, 104 focused compiler/runtime/identity checks, byte identity of 230 emitted files to archive `290ce96d1ebb6c8cc9ee3d3b37d12f90bb7ad94aceabcadbd51a74dfc1f1dd47`, and the 2052-test full run at `6ab7076`. Those results are tied to their original revisions. Subsequent fixed-boundary evidence is revision-bound: `7db3b05` passed strict/build/cycles and 55 focused compiler/CLI/identity checks; `49873f5` passed source-only official CodeQL and the unchanged three-model regressions (733 JS-family files, 12 workflows, 16 unchanged JS findings, zero Actions findings). Integration head `014085e`, with identical src/test/script/workflow bytes, passed strict/cycles and a fresh full suite of 2056/2056, zero failures/skips/cancellations, in 483.9 seconds. All 230 emitted files match its actual 252-entry archive and offline installation; installed smoke passed in 109.2 seconds. The archive SHA-256 is `ba2e7d0200ca92e06c03af2fbdb553bbd512df9dfe3b133750ec1dabc2347f19`, identifying that earlier package. Its protected review stopped at the exact event base/head merge-parent guard, so that run established no acceptance. The later bounded-output correction, final verification and normal adoption are recorded separately in the [final integration index](investigations/2026-10-18-quality-program-final-integration.md); the earlier results are not relabeled. Six normative members and selected model packs remain unchanged. #566's native stream/persistence proposal remains unapproved.
 
-Editable `.mts` and `.mjs` files live under `src/`. Strict NodeNext compilation
-uses `rootDir: src`, `outDir: dist`, `allowJs: true`, `checkJs: false`, and
-`rewriteRelativeImportExtensions: true`. Relative imports and re-exports name
-the physical source file: `.mts` for typed modules and `.mjs` for JavaScript.
-The standard compiler rewrites relative `.mts` references to `.mjs` on emit,
-including references in JavaScript compatibility facades. This keeps source
-module resolution explicit for analysis tools and preserves runtime paths.
-The source-import regression checks physical source targets, type-only erasure,
-and emitted static module references and targets across both source extensions.
-`npm run check:typescript` runs `tsc --noEmit --project tsconfig.json`.
-`npm run build` clears ignored `dist/` and runs the same project compiler to
-emit `.mjs`. The `allowJs` and `checkJs: false` settings include JavaScript in
-the build; `.mjs` files opt into strict checking with `// @ts-check`. Keep established flat
-`src/*.mjs` facades and package aliases and
-bins; their runtime targets are in `dist/`. Source-location-sensitive modules
-such as preview lifecycle retain their flat emitted path. Audit `import.meta.url`,
-relative resources and child-script locations before moving implementations.
+Editable runtime modules, including flat API facades and CLI/native entrypoints,
+use `.mts` under `src/`. Strict NodeNext compilation uses `rootDir: src`,
+`outDir: dist`, and `rewriteRelativeImportExtensions: true`; the project includes
+only `src/**/*.mts` and does not enable `allowJs`. Relative imports and
+re-exports name their physical `.mts` source. The compiler erases types and
+rewrites these references to `.mjs` in the generated runtime distribution.
+Tests and development scripts outside `src/` may remain JavaScript.
 
-Direct execution or import from `src/` requires native TypeScript loading,
-including JavaScript facades that transitively import `.mts`. Use Node 22.18
-or newer on the Node 22 line for default type stripping; earlier supported
-Node 22 versions should run the emitted `dist/` tree for development commands.
-This is a source-development requirement, not a change to the installed
-package engine: installed runtime files are compiled JavaScript.
+`npm run check:typescript` checks the same strict project without emitting.
+`npm run build` clears ignored `dist/` and emits `.mjs`; package aliases,
+exports, bins and their flat emitted paths remain unchanged. The existing
+source-import regression checks the complete authored tree, rejects production
+JavaScript, and verifies type-only erasure and emitted module targets. Audit
+`import.meta.url`, relative resources and child-script locations when changing
+source paths; the Gemini launcher selects the sibling `.mts` runner for direct
+source execution and the sibling `.mjs` runner in the emitted package.
+The [remaining-source migration inventory](investigations/2026-10-27-remaining-source-typescript.md)
+accounts for the implementation baseline separately from the historical
+original96 migration.
+
+Direct execution or import from `src/` requires native TypeScript loading.
+Use Node 22.18 or newer on the Node 22 line for default type stripping; earlier
+supported Node 22 versions should run the emitted `dist/` tree for development
+commands. Installed commands and modules execute JavaScript and require no
+TypeScript compiler.
 The [Node 22.18 TypeScript documentation](https://nodejs.org/download/release/v22.18.0/docs/api/typescript.html)
 describes the native loading behavior.
 
@@ -658,7 +659,7 @@ The retired self G0 tag-attempt, tagged-envelope, artifact/attestation and
 GitHub App ruleset-readback implementations described in earlier checkpoints
 are not present in the current source tree. The current protected-PR amendment
 helper is `src/ci-review/self-amendment-pr.mts`, reached through
-`src/self-amendment-pr.mjs`; it is not a public package export or standalone CLI.
+`src/self-amendment-pr.mts`; it is not a public package export or standalone CLI.
 
 The authority-source fetch contract preserves synchronous, Promise and thenable
 responses and reader results, optional signal/headers, bounded decoding, request
@@ -682,7 +683,8 @@ activation. Focused accessor regressions retain existing observable rereads.
 
 Runtime coverage follows the emitted and executed `dist/**/*.mjs` files. Report
 those exact paths without counting source files as runtime coverage. CodeQL
-analyzes authored `.mts`, compatibility `.mjs`, and Actions source. Generated
+analyzes authored `.mts` and Actions source, including the existing JavaScript
+tests and development scripts. Generated
 `dist/` is git-ignored; confirm its treatment from the actual CodeQL extraction
 before making a coverage claim about emitted files. Review authored and emitted
 locations as corresponding evidence, not independent coverage; retain hosted
@@ -719,16 +721,10 @@ filesystem concurrently may still race between checks and filesystem operations.
 The design does not claim isolation from hostile same-user concurrency or
 artifact custody. See the owner-approved [PR #591 decision](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
 
-The ordinary protected-CI input producers, Gemini adapters/runtime and their
-shared completion/snapshot/reservation helpers are authored in strict `.mts`.
-Their emitted flat `dist/*.mjs` paths are unchanged. Remaining flat JavaScript
-entrypoints are tracked separately in #649; this slice does not remove the
-project’s mixed-source allowance or complete whole-source TypeScript coverage.
-
 ## Static source import cycles
 
 `node scripts/check-source-cycles.mjs` checks the fixed `src/` tree containing
-editable runtime `.mjs` and authored `.mts` files. Acorn parses runtime ESM; the
+authored runtime `.mts` files. Acorn parses runtime ESM; the
 pinned TypeScript compiler API parses authored syntax. Neither parser loads or
 evaluates candidate modules. Value-bearing relative imports and re-exports
 contribute graph edges. An authored `.mjs` specifier resolves to a sibling

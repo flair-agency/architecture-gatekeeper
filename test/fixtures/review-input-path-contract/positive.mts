@@ -1,6 +1,6 @@
 import { win32, posix } from 'node:path';
-import { containsPath, resolveSafePath } from '../../../src/review-input-path.mjs';
-import type { PathOperations } from '../../../src/review-input-path.mjs';
+import { containsPath, resolveSafePath } from '../../../src/review-input-path.mts';
+import type { PathOperations } from '../../../src/review-input-path.mts';
 
 const standard: boolean = containsPath('/repo', '/repo/file');
 const windows: boolean = containsPath('C:\\repo', 'C:\\repo\\file', win32);

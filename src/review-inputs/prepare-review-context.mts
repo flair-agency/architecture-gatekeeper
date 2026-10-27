@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { TextDecoder } from 'node:util';
-import { decodeLimits } from '../prepare-authority-set.mjs';
+import { decodeLimits } from '../prepare-authority-set.mts';
 
 const MAX_RUNTIME_PROMPT_BYTES = 1_048_576;
 const MAX_LEGACY_PROMPT_BYTES = 524_288;
@@ -49,11 +49,11 @@ function effectivePromptLimit({ authorityRouteSelected, authorityLimitsBase64, a
 }
 
 export interface PrepareReviewContextInput {
-  root: string;
-  baseSha: string;
-  headSha: string;
-  reviewedSha: string;
-  repository: string;
+  root: string | undefined;
+  baseSha: string | undefined;
+  headSha: string | undefined;
+  reviewedSha: string | undefined;
+  repository: string | undefined;
   promptPath: string;
   outputPath: string;
   authorityRouteSelected?: string;

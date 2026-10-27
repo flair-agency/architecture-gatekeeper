@@ -1,4 +1,4 @@
-import { runGeminiCliProxySession as runFlat } from '../../../src/gemini-cli-proxy-session.mjs';
+import { runGeminiCliProxySession as runFlat } from '../../../src/gemini-cli-proxy-session.mts';
 import {
   runGeminiCliProxySession,
   type GeminiCliProxySessionInput,

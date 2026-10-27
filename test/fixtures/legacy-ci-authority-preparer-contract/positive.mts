@@ -1,5 +1,5 @@
 import { prepareLegacyAuthority, type LegacyAuthorityPreparationInput, type LegacyAuthorityProvenance } from '../../../src/ci-review/legacy-ci-authority-preparer.mts';
-import { prepareLegacyAuthority as flatPrepare } from '../../../src/prepare-legacy-ci-authority.mjs';
+import { prepareLegacyAuthority as flatPrepare } from '../../../src/prepare-legacy-ci-authority.mts';
 
 declare const input: LegacyAuthorityPreparationInput;
 const externalRoot: unknown = input.root;

@@ -9,7 +9,7 @@ test('source and emitted observer entrypoints retain stdin, argument and import 
     hostStepOutcome: 'success', rawResponse: 'opaque non-JSON response', maxResponseBytes: 65_536,
   };
   for (const directory of ['src', 'dist']) {
-    const url = new URL(`../${directory}/ci-execution-observation.mjs`, import.meta.url);
+    const url = new URL(`../${directory}/ci-execution-observation.${directory === 'src' ? 'mts' : 'mjs'}`, import.meta.url);
     const cli = fileURLToPath(url);
     const run = (args, input) => spawnSync(process.execPath, [cli, ...args], {
       input, encoding: 'utf8', timeout: 5_000,

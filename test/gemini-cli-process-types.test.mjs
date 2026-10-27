@@ -30,7 +30,7 @@ function diagnosticsFor(name) { return diagnosticsForFixture(join(fixtureRoot, n
 
 const generatedSources = new Map([
   ['union-negative.mts', `
-import { runGeminiCliProcess } from '../../src/gemini-cli-process.mjs';
+import { runGeminiCliProcess } from '../../src/gemini-cli-process.mts';
 import type { GeminiCliProcessOptions } from '../../src/gemini-cli/gemini-cli-process.mts';
 const common = { cliEntrypoint: '/opt/gemini/cli.mjs', workspaceDirectory: '/work', privateParentDirectory: '/tmp/private', prompt: 'Review.', project: 'review', region: 'us', proxyUrl: 'http://127.0.0.1:45678/', timeoutMs: 60_000, maxPromptBytes: 4096, maxStdoutBytes: 2048, maxStderrBytes: 1024 };
 declare const model: 'gemini-3.8-flash' | 'gemini-2.5-flash';
@@ -41,7 +41,7 @@ const inferredOther = runGeminiCliProcess({ ...common, model: 'gemini-2.5-flash'
 void [explicitUnion, inferredUnion, inferredFlash, inferredOther];
 `],
   ['union-positive.mts', `
-import { runGeminiCliProcess } from '../../src/gemini-cli-process.mjs';
+import { runGeminiCliProcess } from '../../src/gemini-cli-process.mts';
 import type { GeminiCliProcessOptions } from '../../src/gemini-cli/gemini-cli-process.mts';
 const common = { cliEntrypoint: '/opt/gemini/cli.mjs', workspaceDirectory: '/work', privateParentDirectory: '/tmp/private', prompt: 'Review.', project: 'review', region: 'us', proxyUrl: 'http://127.0.0.1:45678/', timeoutMs: 60_000, maxPromptBytes: 4096, maxStdoutBytes: 2048, maxStderrBytes: 1024 };
 type SupportedModel = 'gemini-3.8-flash' | 'gemini-2.5-flash';

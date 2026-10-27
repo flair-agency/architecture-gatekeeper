@@ -1,16 +1,16 @@
 import { createHash, type BinaryLike } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest,
-  readCommittedAuthorityFile, rejectDuplicateJsonKeys } from '../authority-set.mjs';
-import { createGitHubAuthoritySource } from '../github-authority-source.mjs';
-import { decodeLimits } from '../prepare-authority-set.mjs';
-import { validateAuthorityReviewSchema } from '../preflight-authority-set-review.mjs';
-import { validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema } from '../owner-addition-validation.mjs';
-import { validateMultiAuthorityAdditionG0Procedure } from '../owner-decision-addition.mjs';
+  readCommittedAuthorityFile, rejectDuplicateJsonKeys } from '../authority-set.mts';
+import { createGitHubAuthoritySource } from '../github-authority-source.mts';
+import { decodeLimits } from '../prepare-authority-set.mts';
+import { validateAuthorityReviewSchema } from '../preflight-authority-set-review.mts';
+import { validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema } from '../owner-addition-validation.mts';
+import { validateMultiAuthorityAdditionG0Procedure } from '../owner-decision-addition.mts';
 import { assertSameMultiAuthorityProvenance, multiAuthorityProvenance,
-  validateMultiAuthorityDecision } from '../multi-authority-provenance.mjs';
+  validateMultiAuthorityDecision } from '../multi-authority-provenance.mts';
 import { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema } from './multi-authority-eligibility.mts';
-import { appendGitHubOutput, resolveRunnerTempDirectory, writeRunnerTempFile } from '../runner-temp-path.mjs';
+import { appendGitHubOutput, resolveRunnerTempDirectory, writeRunnerTempFile } from '../runner-temp-path.mts';
 export { validateMultiAuthorityEligibility, validateMultiAuthorityEligibilitySchema };
 
 const digest = (bytes: BinaryLike): string => createHash('sha256').update(bytes).digest('hex');
@@ -21,7 +21,7 @@ function git(root: unknown, ...args: unknown[]): Buffer {
     env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' } });
 }
 /** All materialization is completed here; source credentials are not reviewer inputs. */
-type MultiAuthorityPolicy = ReturnType<typeof import('../resolve-ci-policy.mjs').resolveCiPolicy>;
+type MultiAuthorityPolicy = ReturnType<typeof import('../resolve-ci-policy.mts').resolveCiPolicy>;
 // Assertions below retain the values and failure behavior of the existing helper/API calls; they do not add validation or trusted snapshots.
 export async function prepareMultiAuthorityAddition(env: NodeJS.ProcessEnv, selected: MultiAuthorityPolicy,
   policyBytes: BinaryLike, { fetchExternal }: { fetchExternal?: Parameters<typeof materializeAuthoritySet>[0]['fetchExternal'] } = {}) {

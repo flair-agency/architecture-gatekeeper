@@ -1,3 +1,3 @@
-import { runManualReviewCli } from '../local-gate.mjs';
+import { runManualReviewCli } from '../local-gate.mts';
 
 runManualReviewCli();

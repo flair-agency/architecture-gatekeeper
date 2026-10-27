@@ -1,5 +1,5 @@
 import { constants } from 'node:fs';
-import { trustedGitHubOutputPath } from '../github-runner-env.mjs';
+import { trustedGitHubOutputPath } from '../github-runner-env.mts';
 import { closeSync, fstatSync, ftruncateSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 

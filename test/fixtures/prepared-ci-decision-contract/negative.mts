@@ -1,4 +1,4 @@
-import { validatePreparedCiDecision } from '../../../src/prepared-ci-decision.mjs';
+import { validatePreparedCiDecision } from '../../../src/prepared-ci-decision.mts';
 import type { PreparedCiDecisionInput } from '../../../src/ci-review/prepared-ci-decision.mts';
 
 declare const external: unknown;

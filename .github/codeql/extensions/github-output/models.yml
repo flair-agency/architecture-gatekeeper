@@ -6,4 +6,4 @@ extensions:
       pack: codeql/javascript-all
       extensible: barrierModel
     data:
-      - ['file:src/github-runner-env.mjs', 'Member[trustedGitHubOutputPath].ReturnValue', 'path-injection']
+      - ['file:src/github-runner-env.mts', 'Member[trustedGitHubOutputPath].ReturnValue', 'path-injection']

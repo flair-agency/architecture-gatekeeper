@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { retrieveCiReviewJob } from './measurement-ci-jobs.mts';
 import { existsSync, mkdirSync, realpathSync } from 'node:fs';
-import { appendGitHubOutput } from './runner-temp-path.mjs';
+import { appendGitHubOutput } from './runner-temp-path.mts';
 import { fileURLToPath } from 'node:url';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { beginMeasurement, measurementDigest, warnMeasurementGap, parseMeasurementJson, readMeasurementJson, resumeMeasurement, resolveMeasurementWorkingRoot } from './measurement.mts';

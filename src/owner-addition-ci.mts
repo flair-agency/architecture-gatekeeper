@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { trustedGitHubWorkspaceRoot } from './github-runner-workspace.mjs';
+import { trustedGitHubWorkspaceRoot } from './github-runner-workspace.mts';
 import { prepare, resolveSingleOwnerAdditionAuthorityId, validateOwnerAdditionCiCli } from './owner-addition/owner-addition-ci-operations.mts';
 import { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema,
-  validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema } from './owner-addition-validation.mjs';
+  validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema } from './owner-addition-validation.mts';
 export { resolveSingleOwnerAdditionAuthorityId, validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema,
   validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema };
 

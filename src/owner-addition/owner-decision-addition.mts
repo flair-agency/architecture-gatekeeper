@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
-import { validateMultiAuthorityProvenance } from '../multi-authority-provenance.mjs';
+import { validateMultiAuthorityProvenance } from '../multi-authority-provenance.mts';
 
 type JsonRecord = Record<string, unknown>;
 // These are operation views only. Every external leaf stays unknown; exact-key

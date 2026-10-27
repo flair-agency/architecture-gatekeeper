@@ -2,10 +2,10 @@ import type { ReportFetch } from './ci-report.mts';
 import { lstat, open, realpath } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
-import { appendGitHubOutput } from '../runner-temp-path.mjs';
-import { trustedGitHubOutputPath } from '../github-runner-env.mjs';
+import { appendGitHubOutput } from '../runner-temp-path.mts';
+import { trustedGitHubOutputPath } from '../github-runner-env.mts';
 import { MAX_ORDINARY_GEMINI_PROJECTION_BYTES } from '../ordinary-gemini-ci-publication.mts';
-import { assertSameMultiAuthorityProvenance } from '../multi-authority-provenance.mjs';
+import { assertSameMultiAuthorityProvenance } from '../multi-authority-provenance.mts';
 import {
   COMMENT_MARKER,
   GITHUB_COM_API,

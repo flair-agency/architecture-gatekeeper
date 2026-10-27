@@ -1,5 +1,5 @@
 import { validateLegacyAuthorityDecision } from '../../../src/ci-review/legacy-authority-decision.mts';
-import { validateLegacyAuthorityDecision as flat } from '../../../src/prepare-legacy-ci-authority.mjs';
+import { validateLegacyAuthorityDecision as flat } from '../../../src/prepare-legacy-ci-authority.mts';
 // @ts-expect-error Both existing arguments are required.
 validateLegacyAuthorityDecision('{}');
 // @ts-expect-error Unsupported argument arity.

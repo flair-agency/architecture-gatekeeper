@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, unlinkSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,8 +12,8 @@ const toolRoot = fileURLToPath(new URL('../', import.meta.url));
 const cli = join(toolRoot, 'scripts/review-capacity.mjs');
 const runtimeFiles = [
   '.github/workflows/self-architecture-gate.yml', '.github/workflows/architecture-gate.yml',
-  'src/authority-set.mjs', 'src/resolve-ci-policy.mjs', 'src/prepare-authority-set.mjs',
-  'src/preflight-authority-set-review.mjs', 'src/prepare-review-context.mjs',
+  'src/authority-set.mts', 'src/resolve-ci-policy.mts', 'src/prepare-authority-set.mts',
+  'src/preflight-authority-set-review.mts', 'src/prepare-review-context.mts',
   'src/authority-validation/authority-set.mts', 'src/authority-validation/resolve-ci-policy.mts',
   'src/authority-validation/prepare-authority-set.mts',
   'src/io/read-descriptor.mts',
@@ -495,4 +495,17 @@ globalThis.fetch=deny;syncBuiltinESMExports();`;
   const invalid = run(['--limit', '999999999']);
   assert.equal(invalid.status, 2);
   assert.equal(JSON.parse(invalid.stdout).reason, 'invalid-arguments');
+});
+
+
+test('capacity recognizes the same preparation with pre-migration source facades', async t => {
+  const facades = JSON.parse(readFileSync(join(toolRoot, 'test/fixtures/review-capacity/pre-typescript-facades.json'), 'utf8'));
+  const f = fixture(t, { amendBase({ root }) {
+    for (const [path, source] of Object.entries(facades)) {
+      unlinkSync(join(root, path.replace(/\.mjs$/, '.mts')));
+      put(root, path, source);
+    }
+  } });
+  const report = await checkReviewCapacity(candidate(f));
+  assert.equal(report.state, 'fit', JSON.stringify(report));
 });

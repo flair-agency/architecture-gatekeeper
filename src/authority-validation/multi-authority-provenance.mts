@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { validateAuthoritySetDecision } from '../authority-set.mjs';
+import { validateAuthoritySetDecision } from '../authority-set.mts';
 
 const SHA = /^[a-f0-9]{40}$/;
 const DIGEST = /^[a-f0-9]{64}$/;

@@ -1,4 +1,4 @@
-import { runManualReview, runManualReviewAsync, runHook, runHookAsync } from '../../../src/local-gate.mjs';
+import { runManualReview, runManualReviewAsync, runHook, runHookAsync } from '../../../src/local-gate.mts';
 import { runManualReview as groupedReview, runManualReviewAsync as groupedReviewAsync,
   type ManualReviewAsyncOptions, type ManualReviewOutcome, type ManualReviewSyncOptions } from '../../../src/local-review/local-gate.mts';
 import type { CodexReasoningEffort, PreparedCodexReviewRequest, PreparedReviewRequest,

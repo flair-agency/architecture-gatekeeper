@@ -1,7 +1,7 @@
 /** Internal orchestration; protected input production and acceptance remain external. */
 import { types } from 'node:util';
 import { snapshotPreparedReviewData } from './prepared-review-data.mts';
-import { runPreparedGeminiCiReview, snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mjs';
+import { runPreparedGeminiCiReview, snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mts';
 import { completePreparedCiReview } from './complete-prepared-ci-review.mts';
 
 const KEYS = ['reviewInput', 'authorityProvenance', 'validationRules', 'maxResponseBytes', 'maxSchemaBytes'];

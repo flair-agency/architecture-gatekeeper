@@ -3,6 +3,6 @@
 import { runMaterializeRegularGitSnapshotCli } from './review-inputs/materialize-regular-git-snapshot.mts';
 export { materializeRegularGitSnapshot } from './review-inputs/materialize-regular-git-snapshot.mts';
 
-if (process.argv[1]?.endsWith('/materialize-regular-git-snapshot.mjs')) {
+if ((process.argv[1]?.endsWith('/materialize-regular-git-snapshot.mjs') || process.argv[1]?.endsWith('/materialize-regular-git-snapshot.mts'))) {
   runMaterializeRegularGitSnapshotCli();
 }

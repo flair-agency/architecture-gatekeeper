@@ -1,8 +1,8 @@
-import { prepareMultiAuthorityAddition } from '../../../src/owner-addition-multiauthority.mjs';
-import { resolveSingleOwnerAdditionAuthorityId } from '../../../src/owner-addition-ci.mjs';
+import { prepareMultiAuthorityAddition } from '../../../src/owner-addition-multiauthority.mts';
+import { resolveSingleOwnerAdditionAuthorityId } from '../../../src/owner-addition-ci.mts';
 import { validateOwnerAdditionCiCli } from '../../../src/owner-addition/owner-addition-ci-operations.mts';
 import type { AuthorityFetchRequest } from '../../../src/authority-validation/authority-set.mts';
-import { resolveCiPolicy } from '../../../src/resolve-ci-policy.mjs';
+import { resolveCiPolicy } from '../../../src/resolve-ci-policy.mts';
 
 declare const env: NodeJS.ProcessEnv;
 declare const policyBytes: Buffer;

@@ -1,4 +1,4 @@
-import { isCanonicalRepositoryPath, readRegularGitSnapshot } from '../../../src/legacy-git-snapshot.mjs';
+import { isCanonicalRepositoryPath, readRegularGitSnapshot } from '../../../src/legacy-git-snapshot.mts';
 
 const missingPath = readRegularGitSnapshot({ root: '/repo', commit: 'a'.repeat(40) });
 const numericRoot = readRegularGitSnapshot({ root: 1, commit: 'a'.repeat(40), path: 'file' });

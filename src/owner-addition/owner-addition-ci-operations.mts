@@ -2,15 +2,15 @@
 import { createHash } from 'node:crypto';
 import { runBufferedGit } from '../git/buffered-git.mts';
 import { appendGitHubOutput, readRunnerTempFile, resolveRunnerTempDirectory,
-  writeRunnerTempFile } from '../runner-temp-path.mjs';
+  writeRunnerTempFile } from '../runner-temp-path.mts';
 import { TextDecoder } from 'node:util';
-import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mjs';
-import { parseAuthorityManifest } from '../authority-set.mjs';
+import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mts';
+import { parseAuthorityManifest } from '../authority-set.mts';
 import { selectSingleOwnerAdditionMember } from './single-authority-member.mts';
-import { validateOwnerDecisionAdditionG0Procedure } from '../owner-decision-addition.mjs';
+import { validateOwnerDecisionAdditionG0Procedure } from '../owner-decision-addition.mts';
 import { prepareMultiAuthorityAddition, validateMultiAuthorityEligibility } from './owner-addition-multiauthority.mts';
 import { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema,
-  validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema } from '../owner-addition-validation.mjs';
+  validateOrdinaryOwnerDecision, validateOrdinaryOwnerDecisionSchema } from '../owner-addition-validation.mts';
 
 type OwnerAdditionAuthorityLimits = { maxFileBytes: number; maxTotalBytes: number; maxPromptBytes: number };
 // Assertions below only bridge the original unvalidated values into Node's string-only APIs. They add no runtime checks or evidence validation.

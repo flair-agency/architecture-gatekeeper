@@ -4,5 +4,5 @@ extensions:
       pack: codeql/javascript-all
       extensible: barrierModel
     data:
-      - ['file:src/native-session-paths.mjs', 'Member[trustedNativeRequestPath].ReturnValue', 'path-injection']
-      - ['file:src/native-session-paths.mjs', 'Member[trustedNativeDecisionPath].ReturnValue', 'path-injection']
+      - ['file:src/native-session-paths.mts', 'Member[trustedNativeRequestPath].ReturnValue', 'path-injection']
+      - ['file:src/native-session-paths.mts', 'Member[trustedNativeDecisionPath].ReturnValue', 'path-injection']

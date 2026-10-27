@@ -5,8 +5,8 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { observePreviewLifecycle, previewReceiptBytes } from '../src/preview-lifecycle.mjs';
-import { rejectDuplicateJsonKeys } from '../src/authority-set.mjs';
+import { observePreviewLifecycle, previewReceiptBytes } from '../src/preview-lifecycle.mts';
+import { rejectDuplicateJsonKeys } from '../src/authority-set.mts';
 import { decision, fixture, ordinary, spec, selectionPath, commitOn, put } from './fixtures/preview-lifecycle-runtime.mjs';
 
 const cli = new URL('../src/preview-lifecycle-cli.mts', import.meta.url);

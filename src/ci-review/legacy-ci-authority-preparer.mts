@@ -1,10 +1,10 @@
 import { resolve as resolvePath } from 'node:path';
 import { TextDecoder } from 'node:util';
 import { runBufferedGit } from '../git/buffered-git.mts';
-import { appendGitHubOutput, readRunnerTempFile, writeRunnerTempFile } from '../runner-temp-path.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mjs';
-import { readRegularGitSnapshot } from '../legacy-git-snapshot.mjs';
-import { trustedGitHubWorkspaceRoot } from '../github-runner-workspace.mjs';
+import { appendGitHubOutput, readRunnerTempFile, writeRunnerTempFile } from '../runner-temp-path.mts';
+import { parseCiPolicyJson, resolveCiPolicy } from '../resolve-ci-policy.mts';
+import { readRegularGitSnapshot } from '../legacy-git-snapshot.mts';
+import { trustedGitHubWorkspaceRoot } from '../github-runner-workspace.mts';
 import { validateLegacyAuthorityDecision } from './legacy-authority-decision.mts';
 
 export { validateLegacyAuthorityDecision };

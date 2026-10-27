@@ -55,14 +55,14 @@ function sha(value) { return createHash('sha256').update(JSON.stringify(value)).
 
 const migrationCases = [
   {
-    flatSource: join(root, 'src/gemini-ci-runner.mjs'), flatEmitted: join(root, 'dist/gemini-ci-runner.mjs'),
+    flatSource: join(root, 'src/gemini-ci-runner.mts'), flatEmitted: join(root, 'dist/gemini-ci-runner.mjs'),
     source: join(root, 'src/gemini-cli/ci-runner-entrypoint.mts'), emitted: join(root, 'dist/gemini-cli/ci-runner-entrypoint.mjs'),
     operationNames: ['parseArgs', 'resolveReviewRequest', 'formatGitHubReviewOutputs', 'runGeminiCiReview'],
     cliName: 'runGeminiCiReviewCli', operationsHash: '462f33ec697247d5a6722716a4250d6c1db141283e77816b793a0a86d74368a1',
     exports: ['formatGitHubReviewOutputs', 'parseArgs', 'resolveReviewRequest', 'resolveSafePath', 'runGeminiCiReview'],
   },
   {
-    flatSource: join(root, 'src/gemini-launcher.mjs'), flatEmitted: join(root, 'dist/gemini-launcher.mjs'),
+    flatSource: join(root, 'src/gemini-launcher.mts'), flatEmitted: join(root, 'dist/gemini-launcher.mjs'),
     source: join(root, 'src/gemini-cli/launcher-entrypoint.mts'), emitted: join(root, 'dist/gemini-cli/launcher-entrypoint.mjs'),
     operationNames: ['buildIsolatedRunnerEnv', 'runIsolatedGeminiSession'],
     cliName: 'runGeminiLauncherCli', operationsHash: 'bb66bb7d482b97a2878e0fc92cf200ca113e6db6dc381b733b1eb73486f75e1a',
@@ -96,7 +96,10 @@ test('typed operations preserve complete original bodies and direct-run guard co
       const runner = launcher.body.body.find(node => node.type === 'VariableDeclaration' && node.declarations[0].id.name === 'runnerPath');
       const relocation = runner.declarations[0].init.right.arguments;
       assert.equal(relocation.length, 3);
-      assert.deepEqual(relocation.slice(1), [{ type: 'Literal', value: '..' }, { type: 'Literal', value: 'gemini-ci-runner.mjs' }]);
+      assert.deepEqual(relocation[1], { type: 'Literal', value: '..' });
+      const selector = parse("import.meta.url.endsWith('.mts') ? 'gemini-ci-runner.mts' : 'gemini-ci-runner.mjs'", { ecmaVersion: 'latest', sourceType: 'module' }).body[0].expression;
+      assert.deepEqual(relocation[2], canonical(selector), 'source and emitted launchers select their physical sibling runner');
+      relocation[2] = { type: 'Literal', value: 'gemini-ci-runner.mjs' }; // Normalize the separately asserted extension selection.
       relocation.splice(1, 1); // Normalize only the asserted package-relative relocation for the baseline pin.
     }
     assert.equal(sha(newOperations), item.operationsHash, 'original operations retain only the asserted flat-child relocation');

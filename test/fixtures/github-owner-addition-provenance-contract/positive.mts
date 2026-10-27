@@ -1,4 +1,4 @@
-import { verifyOwnerAdditionEligibilityProvenance } from '../../../src/github-owner-addition-provenance.mjs';
+import { verifyOwnerAdditionEligibilityProvenance } from '../../../src/github-owner-addition-provenance.mts';
 import { verifyOwnerAdditionEligibilityProvenance as groupedVerifier,
   type GitHubOwnerAdditionProvenanceInput, type GitHubOwnerAdditionProvenanceResult,
   type GitHubOwnerAdditionProvenanceFetch } from '../../../src/github/github-owner-addition-provenance.mts';

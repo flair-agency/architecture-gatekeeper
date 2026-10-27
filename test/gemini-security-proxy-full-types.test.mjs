@@ -55,7 +55,7 @@ test('typed proxy contract rejects incompatible scopes and callback signatures',
   assert.match(negative[3].message, /Promise.*not assignable.*string/i);
 });
 test('complete proxy runtime operations retain adopted AST and flat export identities', async () => {
-  const sourceFacade = ast(join(root, 'src/gemini-security-proxy.mjs'));
+  const sourceFacade = ast(join(root, 'src/gemini-security-proxy.mts'));
   const emittedFacade = ast(join(root, 'dist/gemini-security-proxy.mjs'));
   assert.deepEqual(sourceFacade, emittedFacade);
   assert.equal(digest(sourceFacade), 'f7d8bf1792f1954a8e5f1d8198fa35b17d12a1e6711a50251a82438147cdd743');
@@ -82,7 +82,7 @@ for (const kind of ['source', 'emitted']) test(`${kind} runtime identity invalid
   const treeDir = kind === 'source' ? 'src' : 'dist';
   cpSync(join(root, treeDir), join(layout, treeDir), { recursive: true });
   copyFileSync(join(root, 'package.json'), join(layout, 'package.json'));
-  const runtime = await import(pathToFileURL(join(layout, treeDir, 'preview-lifecycle.mjs')).href);
+  const runtime = await import(pathToFileURL(join(layout, treeDir, `preview-lifecycle.${treeDir === 'src' ? 'mts' : 'mjs'}`)).href);
   const f = fixture(t);
   const head = commitOn(f, `proxy-${kind}-identity`, { 'app.txt': `Synthetic ${kind} identity\n` });
   const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);

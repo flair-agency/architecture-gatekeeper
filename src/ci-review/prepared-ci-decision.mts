@@ -1,10 +1,10 @@
 /** Internal validation for one decision returned by an already-prepared CI review. */
 import { TextDecoder } from 'node:util';
-import { rejectDuplicateJsonKeys, MULTI_AUTHORITY_PROFILE } from '../authority-set.mjs';
-import { validateAuthorityReviewSchema } from '../preflight-authority-set-review.mjs';
-import { validatePreparedAuthorityDecision } from '../validate-authority-set-decision.mjs';
-import { validateDecisionRules } from '../validate-decision.mjs';
-import { validateJsonSchema } from '../json-schema.mjs';
+import { rejectDuplicateJsonKeys, MULTI_AUTHORITY_PROFILE } from '../authority-set.mts';
+import { validateAuthorityReviewSchema } from '../preflight-authority-set-review.mts';
+import { validatePreparedAuthorityDecision } from '../validate-authority-set-decision.mts';
+import { validateDecisionRules } from '../validate-decision.mts';
+import { validateJsonSchema } from '../json-schema.mts';
 
 const INPUT_KEYS = new Set([
   'responseBytes', 'schemaBytes', 'authorityProvenance', 'validationRules', 'maxResponseBytes', 'maxSchemaBytes',
