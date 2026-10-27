@@ -91,7 +91,7 @@ updated to their physical `.mts` targets.
 
 The removal also deletes `src/github/pr-description-completeness.mts`.
 Tracked reference inspection found only the two removed files; the active
-PR-description workflow uses `scripts/check-pr-description.mjs` and remains
+PR-description workflow keeps its inline metadata-only checker and remains
 covered by its existing tests. This satisfies the overlapping unused-code
 removal in #648 without restoring Queue.
 

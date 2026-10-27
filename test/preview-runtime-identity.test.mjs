@@ -134,7 +134,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
       assert.match(implementation, /import \{ selectSingleOwnerAdditionMember \} from (["'])\.\/single-authority-member\.mjs\1/);
     }
     if (groupedName === 'gemini-cli/launcher-entrypoint.mjs') {
-      assert.ok(implementation.includes("dirname(fileURLToPath(import.meta.url)), '..', 'gemini-ci-runner.mjs'"));
+      assert.ok(implementation.includes("dirname(fileURLToPath(import.meta.url)), '..', import.meta.url.endsWith('.mts') ? 'gemini-ci-runner.mts' : 'gemini-ci-runner.mjs'"));
     }
     let body = implementation.replace(/^#![^\n]*\n/, '')
       .replace(/from (["'])\.\.\//g, 'from $1./');
@@ -193,7 +193,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
       imports: flatName === 'gemini-ci-runner.mjs' ? "import { fileURLToPath } from 'node:url';\n"
         : flatName === 'gemini-launcher.mjs' ? "import { realpathSync } from 'node:fs';\n" : '',
       remap: text => flatName === 'gemini-launcher.mjs'
-        ? text.replace("dirname(fileURLToPath(import.meta.url)), '..', 'gemini-ci-runner.mjs'", "dirname(fileURLToPath(import.meta.url)), '.', 'gemini-ci-runner.mjs'") : text,
+        ? text.replace("dirname(fileURLToPath(import.meta.url)), '..', import.meta.url.endsWith('.mts') ? 'gemini-ci-runner.mts' : 'gemini-ci-runner.mjs'", "dirname(fileURLToPath(import.meta.url)), '.', import.meta.url.endsWith('.mts') ? 'gemini-ci-runner.mts' : 'gemini-ci-runner.mjs'") : text,
     });
   }
   if (restoreFlatImplementation('preview-lifecycle.mjs', 'preview-lifecycle-runtime.mjs')) {
