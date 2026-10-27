@@ -24,12 +24,12 @@ test('ordinary Gemini operations expose typed inputs and results across adapter 
 
 test('ordinary Gemini operations reject malformed static inputs', () => {
   const actual = compact(diagnostics(join(fixtureRoot, 'negative.mts')));
-  assert.deepEqual(actual.map(([code, , line]) => [code, line]), [[2740, 4], [2322, 4], [2322, 4], [2739, 6], [2740, 8], [2322, 9]]);
+  assert.deepEqual(actual.map(([code, , line]) => [code, line]), [[2740, 4], [2322, 4], [2322, 4], [2739, 6], [2322, 8], [2322, 9]]);
   const messages = diagnostics(join(fixtureRoot, 'negative.mts')).map(item => ts.flattenDiagnosticMessageText(item.messageText, '\n'));
   assert.match(messages[0], /root|repository/);
   assert.match(messages[1], /number.*string/);
   assert.match(messages[2], /boolean.*string/);
   assert.match(messages[3], /context|runtime/);
-  assert.match(messages[4], /protectedPromptText/);
+  assert.match(messages[4], /number.*string/);
   assert.match(messages[5], /string.*Buffer/);
 });

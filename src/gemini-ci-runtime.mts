@@ -24,10 +24,9 @@ export function validatePinnedGeminiCiRuntimeLock(lockBytes: Buffer): RuntimeLoc
   if (!Buffer.isBuffer(lockBytes) || sha256(lockBytes) !== LOCK_SHA256) {
     fail('runtime package lock does not match the pinned complete dependency graph.');
   }
-  let lock: RuntimeLock | undefined;
+  let lock: RuntimeLock;
   try { lock = JSON.parse(lockBytes.toString('utf8')) as RuntimeLock; }
   catch { fail('pinned runtime package lock is invalid JSON.'); }
-  if (!lock || typeof lock !== 'object') throw new GeminiCiRuntimeError('pinned runtime package lock is invalid JSON.');
   const checkedLock = lock;
   const dependencies = checkedLock.packages?.['']?.dependencies;
   const packages = checkedLock.packages;

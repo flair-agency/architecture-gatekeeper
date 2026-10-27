@@ -118,7 +118,7 @@ function snapshotInput(supplied: PrepareProtectedCiInput): ProtectedCiSnapshotSt
         !Object.hasOwn(Object.getOwnPropertyDescriptor(supplied.snapshots, key) ?? {}, 'value')))) {
     fail('protected snapshots must be a dense plain data array.');
   }
-  const byPath = new Map();
+  const byPath = new Map<string, { revision: string; bytes: Buffer }>();
   for (let index = 0; index < supplied.snapshots.length; index += 1) {
     if (!Object.hasOwn(supplied.snapshots, index)) fail('protected snapshots must be a dense plain data array.');
     const item = supplied.snapshots[index];
@@ -139,7 +139,7 @@ function snapshotInput(supplied: PrepareProtectedCiInput): ProtectedCiSnapshotSt
       [...byPath.values()].some(snapshot => snapshot.revision !== data.selection.baseSha)) {
     fail('protected snapshots must exactly match selected paths at the selected base revision.');
   }
-  return { selection: data.selection as unknown as ProtectedCiSelection, limits: data.limits as unknown as ProtectedCiLimits, snapshots: byPath,
+  return { selection: data.selection, limits: data.limits, snapshots: byPath,
     fetchExternal: supplied.fetchExternal };
 }
 
