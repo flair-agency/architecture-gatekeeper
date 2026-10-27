@@ -1,0 +1,227 @@
+{
+  "version": 1,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "cutoffUtc": "2026-10-27T14:19:23Z",
+  "window": {
+    "start": "2026-10-13T22:43:35+09:00",
+    "endExclusive": "2026-11-10T22:43:35+09:00",
+    "durationDays": 28,
+    "timezone": "Asia/Tokyo"
+  },
+  "apiBounds": {
+    "maxPagesPerCollection": 20,
+    "perPage": 100,
+    "runQueryTotalObserved": 1179,
+    "createdInWindowPartitionPages": [
+      {
+        "partition": 0,
+        "page": 1,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": 1,
+        "page": 1,
+        "rows": 100,
+        "total": 371
+      },
+      {
+        "partition": 0,
+        "page": 2,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": 0,
+        "page": 3,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": 0,
+        "page": 4,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": 0,
+        "page": 5,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": 0,
+        "page": 6,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": 0,
+        "page": 7,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": 0,
+        "page": 8,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": 0,
+        "page": 9,
+        "rows": 8,
+        "total": 808
+      },
+      {
+        "partition": 1,
+        "page": 2,
+        "rows": 100,
+        "total": 371
+      },
+      {
+        "partition": 1,
+        "page": 3,
+        "rows": 100,
+        "total": 371
+      },
+      {
+        "partition": 1,
+        "page": 4,
+        "rows": 71,
+        "total": 371
+      }
+    ],
+    "broadQueryPages": 1,
+    "partitionRunRows": 1179,
+    "uniqueRunRows": 1179,
+    "selfWorkflowRuns": 263,
+    "selfWorkflowAttempts": 270,
+    "sourceArtifactCollections": 263,
+    "artifactPages": 263,
+    "recoveredArtifactListReadFailures": 1,
+    "remainingArtifactListGaps": [],
+    "eventPages": 83,
+    "receivedEventRows": 1539,
+    "eventGaps": []
+  },
+  "artifactCounts": {
+    "allListed": 355,
+    "measurementListed": 348,
+    "nonMeasurementExcluded": 7,
+    "previouslyArchivedMetadataReconciled": 224,
+    "priorMetadataConflicts": [],
+    "newSelected": 124,
+    "newZIPsDownloaded": 124,
+    "downloadErrors": [],
+    "expiredNew": [],
+    "earliestNewExpiry": "2026-11-21T06:21:17Z"
+  },
+  "olderCreatedRunQuery": {
+    "pages": [
+      {
+        "page": 1,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 2,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 3,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 4,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 5,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 6,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 7,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 8,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 9,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 10,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 11,
+        "rows": 0,
+        "total": 0
+      }
+    ],
+    "receivedRows": 1000,
+    "reportedTotal": 2500,
+    "terminalReportedTotal": 0,
+    "complete": false,
+    "observedInWindowUpdatedRerunCandidates": [],
+    "limitation": "Page 11 returns zero rows and total zero after 1000 rows from a reported total of 2500; unseen older-created in-window reruns remain a coverage gap."
+  },
+  "missingness": {
+    "attemptsWithoutPairs": 96,
+    "withoutListedOrdinaryReviewJob": 93,
+    "successfulMeasurementWithoutExports": [
+      "38473334693/1",
+      "38473334693/2",
+      "38473334693/3"
+    ]
+  },
+  "priorArchives": [
+    {
+      "revision": "fe1c512c4bd56f621096f61a210be566b8a10be8",
+      "directory": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z",
+      "records": 535,
+      "artifacts": 214
+    },
+    {
+      "revision": "3f6632ef24f952950583b380de6a030e3c799860",
+      "directory": "pilot-evidence/537/late-pair-checkpoint-20261019",
+      "records": 5,
+      "artifacts": 2
+    },
+    {
+      "revision": "57561f846b25a1bbd3838ef38e5f04dc49832ba9",
+      "directory": "pilot-evidence/537/native-development-checkpoint-20261019",
+      "records": 3,
+      "artifacts": 0
+    },
+    {
+      "revision": "ca14a4795f11071e4f0f71026e04beb153699d56",
+      "directory": "pilot-evidence/537/scheduled-harvest-20261020T144339Z",
+      "records": 20,
+      "artifacts": 8
+    }
+  ],
+  "limits": [
+    "Prior archives remain unchanged. No overlapping history is summed twice.",
+    "Exact run API PR bindings remain unresolved when empty; exported ci.pr is a declaration, not authenticated association.",
+    "No independent audit, case adjudication, correction, prevention or acceptance is inferred.",
+    "The window remains open; sample and denominator remain unfrozen; Issue #537 stays open.",
+    "No new model review, CI rerun, PR creation, other-assessor message, or main/runtime/authority/reviewer/Hook/credential/acceptance change."
+  ]
+}
