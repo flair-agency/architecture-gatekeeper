@@ -68,14 +68,14 @@ test('source runtime identity binds authored .mts and invalidates stale requests
   t.after(() => rmSync(sourceRoot, { recursive: true, force: true }));
   cpSync(new URL('../src', import.meta.url), join(sourceRoot, 'src'), { recursive: true });
   copyFileSync(new URL('../package.json', import.meta.url), join(sourceRoot, 'package.json'));
-  const runtime = await import(pathToFileURL(join(sourceRoot, 'src/preview-lifecycle.mjs')).href);
+  const runtime = await import(pathToFileURL(join(sourceRoot, 'src/preview-lifecycle.mts')).href);
   const f = fixture();
   t.after(() => rmSync(f.root, { recursive: true, force: true }));
   const spec = { version: 1, repository: 'fixture/example', targetBranch: 'main', mode: 'review',
     baseSha: f.baseSha, headSha: f.headSha, selectionPath, trigger: null, record: null };
   const request = await runtime.preparePreviewLifecycle(spec, f.root);
   assert.ok(request.runtime.files['authority-validation/authority-set.mts']);
-  assert.ok(request.runtime.files['authority-set.mjs']);
+  assert.ok(request.runtime.files['authority-set.mts']);
   assert.equal(request.runtime.files['authority-validation/authority-set.mts'],
     sha256(readFileSync(join(sourceRoot, 'src/authority-validation/authority-set.mts'))));
   assert.equal(request.runtime.files['github/github-owner-addition-provenance.mts'],

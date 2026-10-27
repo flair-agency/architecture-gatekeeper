@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { ordinaryDecisionKind } from '../dist/ci-decision-kind.mjs';
-import { ordinaryDecisionKind as sourceOrdinaryDecisionKind } from '../src/ci-decision-kind.mjs';
+import { ordinaryDecisionKind as sourceOrdinaryDecisionKind } from '../src/ci-decision-kind.mts';
 
 test('routes only a bounded completed ordinary decision kind', () => {
   for (const kind of ['PASS', 'BLOCK', 'OWNER_DECISION']) {
@@ -41,7 +41,7 @@ test('flat facade import is inert and source/emitted direct paths append the sam
     writeFileSync(output, 'existing=true\n');
     const modulePath = new URL('../dist/ci-decision-kind.mjs', import.meta.url).pathname;
     const scripts = [
-      new URL('../src/ci-decision-kind.mjs', import.meta.url).pathname,
+      new URL('../src/ci-decision-kind.mts', import.meta.url).pathname,
       modulePath,
     ];
     for (const script of scripts) {

@@ -1,6 +1,6 @@
 /** Internal shared completion boundary; no provider dispatch or acceptance authority. */
-import { normalizeCiExecutionResult } from './ci-execution-result.mjs';
-import { validatePreparedCiDecision } from './prepared-ci-decision.mjs';
+import { normalizeCiExecutionResult } from './ci-execution-result.mts';
+import { validatePreparedCiDecision } from './prepared-ci-decision.mts';
 
 const KEYS = ['executionInput', 'schemaBytes', 'authorityProvenance', 'validationRules', 'maxSchemaBytes'];
 interface PreparedCiCompletionInput {

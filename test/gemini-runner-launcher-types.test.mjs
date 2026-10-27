@@ -55,14 +55,14 @@ function sha(value) { return createHash('sha256').update(JSON.stringify(value)).
 
 const migrationCases = [
   {
-    flatSource: join(root, 'src/gemini-ci-runner.mjs'), flatEmitted: join(root, 'dist/gemini-ci-runner.mjs'),
+    flatSource: join(root, 'src/gemini-ci-runner.mts'), flatEmitted: join(root, 'dist/gemini-ci-runner.mjs'),
     source: join(root, 'src/gemini-cli/ci-runner-entrypoint.mts'), emitted: join(root, 'dist/gemini-cli/ci-runner-entrypoint.mjs'),
     operationNames: ['parseArgs', 'resolveReviewRequest', 'formatGitHubReviewOutputs', 'runGeminiCiReview'],
     cliName: 'runGeminiCiReviewCli', operationsHash: '462f33ec697247d5a6722716a4250d6c1db141283e77816b793a0a86d74368a1',
     exports: ['formatGitHubReviewOutputs', 'parseArgs', 'resolveReviewRequest', 'resolveSafePath', 'runGeminiCiReview'],
   },
   {
-    flatSource: join(root, 'src/gemini-launcher.mjs'), flatEmitted: join(root, 'dist/gemini-launcher.mjs'),
+    flatSource: join(root, 'src/gemini-launcher.mts'), flatEmitted: join(root, 'dist/gemini-launcher.mjs'),
     source: join(root, 'src/gemini-cli/launcher-entrypoint.mts'), emitted: join(root, 'dist/gemini-cli/launcher-entrypoint.mjs'),
     operationNames: ['buildIsolatedRunnerEnv', 'runIsolatedGeminiSession'],
     cliName: 'runGeminiLauncherCli', operationsHash: 'bb66bb7d482b97a2878e0fc92cf200ca113e6db6dc381b733b1eb73486f75e1a',

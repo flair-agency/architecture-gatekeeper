@@ -1,5 +1,5 @@
-import { prepareAuthoritySet } from '../../../src/prepare-authority-set.mjs';
-import { decodeLimits } from '../../../src/prepare-authority-set.mjs';
+import { prepareAuthoritySet } from '../../../src/prepare-authority-set.mts';
+import { decodeLimits } from '../../../src/prepare-authority-set.mts';
 import type { AuthorityFetchRequest, AuthorityFetcher } from '../../../src/authority-validation/prepare-authority-set.mts';
 
 prepareAuthoritySet({ selfRepository: 'owner/repo', selfRoot: 42, authorityRevision: 'a'.repeat(40), outputDir: '/tmp/out' });

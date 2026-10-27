@@ -1,4 +1,4 @@
-import { runCodexReviewer } from '../../../src/codex-transport.mjs';
+import { runCodexReviewer } from '../../../src/codex-transport.mts';
 import type { ReviewRequestV1, ValidatedReviewDecision } from '../../../src/review-contract/review-contract.mts';
 import type { CodexReviewRequest } from '../../../src/reviewer-transports/codex-transport.mts';
 

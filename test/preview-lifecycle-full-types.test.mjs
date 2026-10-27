@@ -46,7 +46,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
 test('complete source and emitted lifecycle retain immutable f451c0c operations and flat identities', async () => {
   const file = join(root, 'src/preview-lifecycle-runtime.mts');
   const compiled = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: parsed.options, fileName: file });
-  // f451c0c:src/preview-lifecycle.mjs, all imports and runtime statements.
+  // f451c0c:src/preview-lifecycle.mts, all imports and runtime statements.
   const operationHash = '81e77354f66e85de0d5759c4c1882a8c0bb860523c10c779f8d8b11e79ac64ce';
   for (const source of [compiled.outputText, readFileSync(join(root, 'dist/preview-lifecycle-runtime.mjs'), 'utf8')]) {
     assert.equal(digest(body(source)), operationHash);
@@ -54,11 +54,11 @@ test('complete source and emitted lifecycle retain immutable f451c0c operations 
   const expectedFacade = `export { PREVIEW_PROFILE, previewReceiptBytes, preparePreviewLifecycle,
     completePreviewLifecycle, validatePreviewReceipt, observePreviewLifecycle,
     prepareFreshPreviewReview } from './preview-lifecycle-runtime.mjs';`;
-  assert.deepEqual(body(readFileSync(join(root, 'src/preview-lifecycle.mjs'), 'utf8')
+  assert.deepEqual(body(readFileSync(join(root, 'src/preview-lifecycle.mts'), 'utf8')
     .replace('./preview-lifecycle-runtime.mts', './preview-lifecycle-runtime.mjs')), body(expectedFacade));
   assert.deepEqual(body(readFileSync(join(root, 'dist/preview-lifecycle.mjs'), 'utf8')), body(expectedFacade));
   for (const layout of ['src', 'dist']) {
-    const flat = await import(`../${layout}/preview-lifecycle.mjs`);
+    const flat = await import(`../${layout}/preview-lifecycle.${layout === 'src' ? 'mts' : 'mjs'}`);
     const physical = await import(`../${layout}/preview-lifecycle-runtime.${layout === 'src' ? 'mts' : 'mjs'}`);
     assert.deepEqual(Object.keys(flat).sort(), Object.keys(physical).sort());
     for (const key of Object.keys(flat)) assert.equal(flat[key], physical[key]);

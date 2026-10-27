@@ -4,10 +4,10 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { realpathSync, readFileSync, readdirSync } from 'node:fs';
 import { readCommittedAuthorityFile, materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys,
-  validateAuthoritySetDecision } from './authority-set.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
-import { validateJsonSchema, validateJsonSchemaDefinition } from './json-schema.mjs';
-import { validateDecisionRules } from './validate-decision.mjs';
+  validateAuthoritySetDecision } from './authority-set.mts';
+import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mts';
+import { validateJsonSchema, validateJsonSchemaDefinition } from './json-schema.mts';
+import { validateDecisionRules } from './validate-decision.mts';
 
 export type PreviewReceiptInput = WithImplicitCoercion<ArrayLike<number> | string> | WithImplicitCoercion<ArrayBufferLike> | WithImplicitCoercion<ReturnType<Buffer['toJSON']>>;
 

@@ -8,9 +8,9 @@
  */
 import { randomUUID } from 'node:crypto';
 import { TextDecoder } from 'node:util';
-import { rejectDuplicateJsonKeys } from '../authority-set.mjs';
+import { rejectDuplicateJsonKeys } from '../authority-set.mts';
 import { normalizeCiExecutionResult } from './ci-execution-result.mts';
-import { appendGitHubOutput } from '../runner-temp-path.mjs';
+import { appendGitHubOutput } from '../runner-temp-path.mts';
 
 const MAX_STDIN_BYTES = 512 * 1024;
 const MAX_RESPONSE_BYTES = 65_536;

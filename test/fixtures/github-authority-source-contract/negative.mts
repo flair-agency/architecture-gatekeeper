@@ -1,4 +1,4 @@
-import { createGitHubAuthoritySource } from '../../../src/github/github-authority-source.mjs';
+import { createGitHubAuthoritySource } from '../../../src/github/github-authority-source.mts';
 
 createGitHubAuthoritySource({ token: 'test-token', fetchImpl: 42 });
 
@@ -11,7 +11,7 @@ async function inspect(request: Parameters<typeof fetchExternal>[0]) {
 }
 void inspect;
 
-import type { GitHubAuthorityFetch } from '../../../src/github/github-authority-source.mjs';
+import type { GitHubAuthorityFetch } from '../../../src/github/github-authority-source.mts';
 const wrongUrl: GitHubAuthorityFetch = (_url: number, _options) => new Response('{}');
 const wrongBody: GitHubAuthorityFetch = () => ({ status: 200, body: { getReader: 'not callable' } });
 void [wrongUrl, wrongBody];

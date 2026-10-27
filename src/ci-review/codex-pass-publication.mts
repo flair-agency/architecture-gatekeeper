@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { rejectDuplicateJsonKeys } from '../authority-set.mjs';
+import { rejectDuplicateJsonKeys } from '../authority-set.mts';
 
 export const CODEX_PASS_FRAME = 'AGK_CODEX_PASS_DISPLAY_V1 ';
 export const CODEX_PASS_STEP = 'Publish validated ordinary Codex PASS display';

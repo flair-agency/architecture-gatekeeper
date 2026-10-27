@@ -1,5 +1,5 @@
-import { containsPath, resolveSafePath } from '../../../src/review-input-path.mjs';
-import type { PathOperations } from '../../../src/review-input-path.mjs';
+import { containsPath, resolveSafePath } from '../../../src/review-input-path.mts';
+import type { PathOperations } from '../../../src/review-input-path.mts';
 
 const wrongArguments = containsPath('/repo');
 const wrongCallback: PathOperations = { relative: (_from: string, _to: string) => 1, isAbsolute: (_path: string) => false, sep: '/' };

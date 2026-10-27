@@ -2,11 +2,11 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { resolveCiPolicy, parseCiPolicyJson } from '../resolve-ci-policy.mjs';
-import { verifyOwnerAdditionEligibilityProvenance } from '../github-owner-addition-provenance.mjs';
-import { verifyOwnerAdditionReadback } from '../github-owner-addition-readback.mjs';
-import { digestOwnerDecisionAddition } from '../owner-decision-addition.mjs';
-import { rejectDuplicateJsonKeys } from '../authority-set.mjs';
+import { resolveCiPolicy, parseCiPolicyJson } from '../resolve-ci-policy.mts';
+import { verifyOwnerAdditionEligibilityProvenance } from '../github-owner-addition-provenance.mts';
+import { verifyOwnerAdditionReadback } from '../github-owner-addition-readback.mts';
+import { digestOwnerDecisionAddition } from '../owner-decision-addition.mts';
+import { rejectDuplicateJsonKeys } from '../authority-set.mts';
 import { buildOwnerAdditionFinalRecord, type OwnerAdditionFinalRecordInput } from './owner-addition-finalize.mts';
 export { buildOwnerAdditionFinalRecord };
 

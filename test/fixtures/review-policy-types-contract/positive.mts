@@ -1,6 +1,6 @@
-import { validateReviewResponse } from '../../../src/review-contract.mjs';
-import type { ReviewRequestV1, ReviewRequestV2 } from '../../../src/review-contract.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../../../src/resolve-ci-policy.mjs';
+import { validateReviewResponse } from '../../../src/review-contract.mts';
+import type { ReviewRequestV1, ReviewRequestV2 } from '../../../src/review-contract.mts';
+import { parseCiPolicyJson, resolveCiPolicy } from '../../../src/resolve-ci-policy.mts';
 
 const decision: unknown = JSON.parse('{"decision":"PASS"}');
 const response: unknown = validateReviewResponse({} as unknown, decision);

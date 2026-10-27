@@ -1,4 +1,4 @@
-import { runManualReview, runManualReviewAsync, runHook as flatRunHook, runHookAsync } from '../../../src/local-gate.mjs';
+import { runManualReview, runManualReviewAsync, runHook as flatRunHook, runHookAsync } from '../../../src/local-gate.mts';
 import { runHook } from '../../../src/local-review/local-gate.mts';
 import type { PreparedGeminiReviewRequest, ReviewRequest } from '../../../src/review-contract/review-contract.mts';
 import type { LocalReviewerSyncRequest } from '../../../src/reviewer-transports/local-reviewer-execution.mts';

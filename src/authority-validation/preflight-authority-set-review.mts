@@ -1,4 +1,4 @@
-import { MULTI_AUTHORITY_PROFILE } from '../authority-set.mjs';
+import { MULTI_AUTHORITY_PROFILE } from '../authority-set.mts';
 
 /** Validate the existing protected output schema checks and return the same schema. */
 export function validateAuthorityReviewSchema<TSchema>(schema: TSchema, profile: unknown = 'v1'): TSchema {

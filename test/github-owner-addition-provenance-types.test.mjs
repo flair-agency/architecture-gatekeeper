@@ -71,7 +71,7 @@ test('complete typed provenance implementation preserves original operations and
   const compiled = ts.transpileModule(readFileSync(path, 'utf8'), {
     compilerOptions: tsconfig.options, fileName: path,
   });
-  // 1054d1ba:src/github-owner-addition-provenance.mjs; erase only types and
+  // 1054d1ba:src/github-owner-addition-provenance.mts; erase only types and
   // import declarations, normalizing coordinates and literal spelling.
   const baseline = '3b6faaaaf990c2d2e7ac05ae6fd4e08bbf94fee1300e728cb2aa5e4fb11f40bd';
   for (const source of [compiled.outputText,
@@ -79,7 +79,7 @@ test('complete typed provenance implementation preserves original operations and
     assert.equal(createHash('sha256').update(JSON.stringify(body(source))).digest('hex'), baseline);
   }
   const facade = "export { verifyOwnerAdditionEligibilityProvenance } from './github/github-owner-addition-provenance.mjs';";
-  assert.deepEqual(body(readFileSync(join(root, 'src/github-owner-addition-provenance.mjs'), 'utf8')
+  assert.deepEqual(body(readFileSync(join(root, 'src/github-owner-addition-provenance.mts'), 'utf8')
     .replace("'./github/github-owner-addition-provenance.mts'", "'./github/github-owner-addition-provenance.mjs'"), true), body(facade, true));
   assert.deepEqual(body(readFileSync(join(root, 'dist/github-owner-addition-provenance.mjs'), 'utf8'), true), body(facade, true));
   const flat = await import('../dist/github-owner-addition-provenance.mjs');

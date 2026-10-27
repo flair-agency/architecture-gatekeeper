@@ -1,4 +1,4 @@
-import { validateMultiAuthorityEligibility } from '../../../src/owner-addition-multiauthority.mjs';
+import { validateMultiAuthorityEligibility } from '../../../src/owner-addition-multiauthority.mts';
 
 declare const rawDecisionJson: unknown;
 declare const selectedSchema: unknown;

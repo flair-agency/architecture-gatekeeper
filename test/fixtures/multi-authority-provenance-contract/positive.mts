@@ -1,4 +1,4 @@
-import * as flat from '../../../src/multi-authority-provenance.mjs';
+import * as flat from '../../../src/multi-authority-provenance.mts';
 import * as physical from '../../../src/authority-validation/multi-authority-provenance.mts';
 import type { MultiAuthorityProvenance } from '../../../src/authority-validation/multi-authority-provenance.mts';
 

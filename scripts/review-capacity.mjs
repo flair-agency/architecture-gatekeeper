@@ -6,10 +6,10 @@ import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parseDocument } from 'yaml';
-import { materializeAuthoritySet, parseAuthorityManifest, readCommittedAuthorityFile } from '../src/authority-set.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mjs';
-import { decodeLimits } from '../src/prepare-authority-set.mjs';
-import { validateAuthorityReviewSchema } from '../src/preflight-authority-set-review.mjs';
+import { materializeAuthoritySet, parseAuthorityManifest, readCommittedAuthorityFile } from '../src/authority-set.mts';
+import { parseCiPolicyJson, resolveCiPolicy } from '../src/resolve-ci-policy.mts';
+import { decodeLimits } from '../src/prepare-authority-set.mts';
+import { validateAuthorityReviewSchema } from '../src/preflight-authority-set-review.mts';
 import { assembleReviewContext } from '../src/review-inputs/prepare-review-context.mts';
 
 const REPOSITORY = 'flair-agency/architecture-gatekeeper';
@@ -51,8 +51,8 @@ const EARLIER_CALLED_WORKFLOW_SHA256 = 'ecf6a70d7bffb73f152143dacd5d44a09a57a54c
 const OLDER_CALLED_WORKFLOW_SHA256 = '3bd669043e677fed4f79d43f8fbe40778aa5b82a4ebd95e50e31d949f00076f2';
 const OLDEST_CALLED_WORKFLOW_SHA256 = '65af7366c7cd8493ab836d1bf5a8b259e02d4fad71426e7c16b158693e64eebf';
 const FORMAT_FILES = [SELF_WORKFLOW, CALLED_WORKFLOW,
-  'src/authority-set.mjs', 'src/resolve-ci-policy.mjs', 'src/prepare-authority-set.mjs',
-  'src/preflight-authority-set-review.mjs', 'src/prepare-review-context.mjs',
+  'src/authority-set.mts', 'src/resolve-ci-policy.mts', 'src/prepare-authority-set.mts',
+  'src/preflight-authority-set-review.mts', 'src/prepare-review-context.mts',
   'src/authority-validation/authority-set.mts',
   'src/authority-validation/resolve-ci-policy.mts',
   PREPARER,
@@ -64,22 +64,48 @@ const PRE_OWNER_INITIATED_RESOLVER_SHA256 = '1a129f664e590dd82e2d5e081a84347efec
 const CURRENT_FORMAT_SHA256 = {
   ".github/workflows/self-architecture-gate.yml": "a2cf546e9eb9e606bab39dd7432d9b01c46816490b76831a5ebf1ec9222259a1",
   ".github/workflows/architecture-gate.yml": "c221566493c2959546723a57b3004fcee9bd8d8a806ca5893a8efe61afc4bfd9",
-  "src/authority-set.mjs": "d086de4acf4783b47901c3111760f6659bae111b53d4679261dccd6aa91586fa",
-  "src/resolve-ci-policy.mjs": "01243736b030f1776d3de55454c450855324cd42f2c5542b3be5512efbd8aae7",
-  "src/prepare-authority-set.mjs": "9141969e86b817f4b68819ee597f505840bf5f85d260bdffd39f61f7a19ce688",
-  "src/preflight-authority-set-review.mjs": "f26f35ca6386e1ecfb0e6bfd51b239f8a8e49be3ab8dc1616c6e7b34781ae514",
-  "src/prepare-review-context.mjs": "6b5af63dc0fb077482c843ee0937e9c1a26633b593fad9f435f182b97e7051a8",
+  "src/authority-set.mts": "d086de4acf4783b47901c3111760f6659bae111b53d4679261dccd6aa91586fa",
+  "src/resolve-ci-policy.mts": "01243736b030f1776d3de55454c450855324cd42f2c5542b3be5512efbd8aae7",
+  "src/prepare-authority-set.mts": "9141969e86b817f4b68819ee597f505840bf5f85d260bdffd39f61f7a19ce688",
+  "src/preflight-authority-set-review.mts": "5fa224cd604fc9019f08127fa50622c451e9822a96de3b7658e8e78bf288f60e",
+  "src/prepare-review-context.mts": "bc105378e068141fc8b306afdbb80f1945f6adbe1d4e968fa2c702b991974ca1",
+  "src/authority-validation/authority-set.mts": "4463bace8ba83303a83257acbd36dc05e19cfe3a834b2d4b56eb7206a3c20341",
+  "src/authority-validation/resolve-ci-policy.mts": "83aaf9ad8ef0e1546e77594f970ac0d480efe2b59176af91136c2c449f207439",
+  "src/authority-validation/prepare-authority-set.mts": "68cf155770c6ebc9c85253753bcec8a61e6931cc54de017fd42dd745700b73fb",
+  "src/io/read-descriptor.mts": "1be7f9c9f48dbe576b76bc2e69de815b3f30e928ea63c715163a1e54114d772c",
+  "src/authority-validation/preflight-authority-set-review.mts": "a629216bd6ad11fdfa6489b229361bffa7a8b24b07cc25fc3028a836e0e5d760",
+  "src/review-inputs/prepare-review-context.mts": "5fc9832a7ac45dd600a137275bae8f197b76d533ae45a666a033de23c3ccdf32"
+};
+
+// Exact fingerprints of the already-supported source format before this migration.
+const PRE_TYPESCRIPT_FORMAT_SHA256 = {
+  ".github/workflows/self-architecture-gate.yml": "a2cf546e9eb9e606bab39dd7432d9b01c46816490b76831a5ebf1ec9222259a1",
+  ".github/workflows/architecture-gate.yml": "c221566493c2959546723a57b3004fcee9bd8d8a806ca5893a8efe61afc4bfd9",
+  "src/authority-set.mts": "d086de4acf4783b47901c3111760f6659bae111b53d4679261dccd6aa91586fa",
+  "src/resolve-ci-policy.mts": "01243736b030f1776d3de55454c450855324cd42f2c5542b3be5512efbd8aae7",
+  "src/prepare-authority-set.mts": "9141969e86b817f4b68819ee597f505840bf5f85d260bdffd39f61f7a19ce688",
+  "src/preflight-authority-set-review.mts": "f26f35ca6386e1ecfb0e6bfd51b239f8a8e49be3ab8dc1616c6e7b34781ae514",
+  "src/prepare-review-context.mts": "6b5af63dc0fb077482c843ee0937e9c1a26633b593fad9f435f182b97e7051a8",
   "src/authority-validation/authority-set.mts": "4463bace8ba83303a83257acbd36dc05e19cfe3a834b2d4b56eb7206a3c20341",
   "src/authority-validation/resolve-ci-policy.mts": "96fc365ed57b39962c3d854ac3f10397eb0cb81a3d4d5295eafc06d3155578ba",
-  [PREPARER]: "cc4e499e2226cde84f2e5588078706a4ac62443ca78a06f0bfbad0c099eebb74",
-  [DESCRIPTOR_READER]: "1be7f9c9f48dbe576b76bc2e69de815b3f30e928ea63c715163a1e54114d772c",
+  "src/authority-validation/prepare-authority-set.mts": "cc4e499e2226cde84f2e5588078706a4ac62443ca78a06f0bfbad0c099eebb74",
+  "src/io/read-descriptor.mts": "1be7f9c9f48dbe576b76bc2e69de815b3f30e928ea63c715163a1e54114d772c",
   "src/authority-validation/preflight-authority-set-review.mts": "0d63bd79613598af3d8e4d75bc9bdbbaf7ada600e41ba0b65625c0e1014bc495",
   "src/review-inputs/prepare-review-context.mts": "581b80bf5a5b3c6bce4e0369e5620605a92cef7080f0b82c1e6ae3d76f17ba02"
 };
 
+// Only the following physical source paths were renamed.
+const PRE_TYPESCRIPT_FACADE_SHA256 = {
+  "src/authority-set.mts": "d086de4acf4783b47901c3111760f6659bae111b53d4679261dccd6aa91586fa",
+  "src/resolve-ci-policy.mts": "01243736b030f1776d3de55454c450855324cd42f2c5542b3be5512efbd8aae7",
+  "src/prepare-authority-set.mts": "9141969e86b817f4b68819ee597f505840bf5f85d260bdffd39f61f7a19ce688",
+  "src/preflight-authority-set-review.mts": "f26f35ca6386e1ecfb0e6bfd51b239f8a8e49be3ab8dc1616c6e7b34781ae514",
+  "src/prepare-review-context.mts": "6b5af63dc0fb077482c843ee0937e9c1a26633b593fad9f435f182b97e7051a8"
+};
+
 export function supportsPreparationFormatDigest(path, baseDigest, toolDigest) {
   if (toolDigest !== CURRENT_FORMAT_SHA256[path]) return false;
-  return baseDigest === toolDigest ||
+  return baseDigest === toolDigest || (Object.hasOwn(PRE_TYPESCRIPT_FORMAT_SHA256, path) && baseDigest === PRE_TYPESCRIPT_FORMAT_SHA256[path]) ||
     (path === SELF_WORKFLOW && [PRE_CONNECTION_SELF_SHA256, ADOPTED_BASE_SELF_SHA256].includes(baseDigest)) ||
     (path === CALLED_WORKFLOW && [PRE_V6_OWNER_CALLED_SHA256, PRE_CONNECTION_CALLED_SHA256, PRE_GUARD_CALLED_WORKFLOW_SHA256, PREVIOUS_CALLED_WORKFLOW_SHA256, EARLIER_CALLED_WORKFLOW_SHA256, OLDER_CALLED_WORKFLOW_SHA256, OLDEST_CALLED_WORKFLOW_SHA256].includes(baseDigest)) ||
     (path === 'src/authority-validation/resolve-ci-policy.mts' && [PRE_V6_OWNER_RESOLVER_SHA256, PRE_OWNER_INITIATED_RESOLVER_SHA256].includes(baseDigest)) ||
@@ -122,11 +148,16 @@ function pathsForSelfRoute(root, baseSha) {
       if (toolDigest !== CURRENT_FORMAT_SHA256[path]) reject('unsupported-preparation-format');
       continue;
     }
-    const bytes = read(root, baseSha, path, 262_144);
+    // Only these fixed renamed facades have a recognized predecessor path.
+    // A present but changed .mts file never falls back to the predecessor.
+    const basePath = Object.hasOwn(PRE_TYPESCRIPT_FACADE_SHA256, path) &&
+      git(root, ['ls-tree', '-z', '--full-tree', baseSha, '--', path], 1024).length === 0
+      ? path.replace(/\.mts$/, '.mjs') : path;
+    const bytes = read(root, baseSha, basePath, 262_144);
     const digest = hash(bytes);
     const toolDigest = hash(readFileSync(new URL(`../${path}`, import.meta.url)));
     if (!supportsPreparationFormatDigest(path, digest, toolDigest)) reject('unsupported-preparation-format');
-    formatDigests[path] = digest;
+    formatDigests[basePath] = digest;
     contents[path] = bytes;
     if (path === PREPARER) basePreparerDigest = digest;
   }

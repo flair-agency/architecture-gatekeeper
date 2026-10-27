@@ -3,7 +3,7 @@ executeGeminiReviewer,
 prepareGeminiRequestBody,
   resolveAuthCredentials,
 runGeminiReviewer,
-} from '../../../src/gemini-transport.mjs';
+} from '../../../src/gemini-transport.mts';
 import type { GeminiReviewRequest, GeminiTransportOptions } from '../../../src/reviewer-transports/gemini-transport.mts';
 import type { GeminiReviewerSettings, ReviewRequest } from '../../../src/review-contract/review-contract.mts';
 

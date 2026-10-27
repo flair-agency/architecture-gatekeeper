@@ -6,8 +6,7 @@ import { prepareReviewContext } from './review-inputs/prepare-review-context.mts
 
 export { prepareReviewContext };
 
-function fail(message) { throw new Error(`Review task context: ${message}`); }
-
+function fail(message: string): never { throw new Error(`Review task context: ${message}`); }
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const runnerTemp = process.env.RUNNER_TEMP;
@@ -27,7 +26,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
       policyVersion });
     process.stdout.write(`${JSON.stringify(result)}\n`);
   } catch (error) {
-    process.stderr.write(`${error.message}\n`);
+    process.stderr.write(`${error instanceof Error ? error.message : 'Unknown error'}\n`);
     process.exitCode = 1;
   }
 }

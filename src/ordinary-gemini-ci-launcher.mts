@@ -2,7 +2,7 @@
 import { types } from 'node:util';
 import { prepareOrdinaryGeminiCiAdapter, executeOrdinaryGeminiCiAdapter, type OrdinaryGeminiAdapterInput } from './ordinary-gemini-ci-adapter.mts';
 import { acquireGitHubVertexWifCredential, type WifFetch, type WifSecretRegistrar } from './github-vertex-wif.mts';
-import { readCommittedAuthorityFile } from './authority-set.mjs';
+import { readCommittedAuthorityFile } from './authority-set.mts';
 import { installPinnedGeminiCiRuntime } from './gemini-ci-runtime.mts';
 
 export interface OrdinaryGeminiLauncherInput extends OrdinaryGeminiAdapterInput { wif: unknown }

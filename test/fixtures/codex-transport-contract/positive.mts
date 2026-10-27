@@ -1,4 +1,4 @@
-import { runCodexReviewer as runFlat } from '../../../src/codex-transport.mjs';
+import { runCodexReviewer as runFlat } from '../../../src/codex-transport.mts';
 import { runCodexReviewer } from '../../../src/reviewer-transports/codex-transport.mts';
 import type { ReviewRequest } from '../../../src/review-contract/review-contract.mts';
 import type { CodexReviewRequest } from '../../../src/reviewer-transports/codex-transport.mts';

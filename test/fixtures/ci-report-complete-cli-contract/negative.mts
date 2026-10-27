@@ -1,4 +1,4 @@
-import { main } from '../../../src/ci-report.mjs';
+import { main } from '../../../src/ci-report.mts';
 import type { ReportFetch } from '../../../src/ci-review/ci-report.mts';
 declare const observation: unknown;
 main(null);

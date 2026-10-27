@@ -2,13 +2,13 @@ import { constants, openSync, closeSync, fstatSync, lstatSync, realpathSync } fr
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
-import { rejectDuplicateJsonKeys } from '../authority-set.mjs';
-import { validateJsonSchema } from '../json-schema.mjs';
-import { validateDecisionRules } from '../validate-decision.mjs';
-import { validatePreparedAuthorityDecision } from '../validate-authority-set-decision.mjs';
-import { validateLegacyAuthorityDecision } from '../prepare-legacy-ci-authority.mjs';
-import { classifyReview, digestDecision, parseAuthorityProvenance, parseLegacyAuthorityProvenance } from '../ci-report.mjs';
-import { appendGitHubOutput } from '../runner-temp-path.mjs';
+import { rejectDuplicateJsonKeys } from '../authority-set.mts';
+import { validateJsonSchema } from '../json-schema.mts';
+import { validateDecisionRules } from '../validate-decision.mts';
+import { validatePreparedAuthorityDecision } from '../validate-authority-set-decision.mts';
+import { validateLegacyAuthorityDecision } from '../prepare-legacy-ci-authority.mts';
+import { classifyReview, digestDecision, parseAuthorityProvenance, parseLegacyAuthorityProvenance } from '../ci-report.mts';
+import { appendGitHubOutput } from '../runner-temp-path.mts';
 import { readDescriptorBytes } from '../io/read-descriptor.mts';
 import { contextOf, requireSelfPassContext, createPassDisplay, emitPassDisplay, fail, type PassContext } from './codex-pass-publication.mts';
 

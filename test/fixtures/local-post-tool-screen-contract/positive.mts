@@ -1,4 +1,4 @@
-import { runPostToolScreenHook as flatRun } from '../../../src/local-post-tool-screen.mjs';
+import { runPostToolScreenHook as flatRun } from '../../../src/local-post-tool-screen.mts';
 import {
   runPostToolScreenHook,
   runPostToolScreenHookCli,

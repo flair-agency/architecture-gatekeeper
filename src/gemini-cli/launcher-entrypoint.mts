@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * src/gemini-launcher.mjs
+ * src/gemini-launcher.mts
  * Trusted Launcher and Supervisor for Gemini CI review execution.
  * Zero external npm dependencies: uses node:child_process and node:path.
  *
@@ -20,9 +20,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import type { GeminiProxyConfig } from './gemini-security-proxy.mts';
-import { startGeminiSecurityProxy } from '../gemini-security-proxy.mjs';
-import { getSupportedEnvironmentCredentialValues, resolveAuthCredentials, resolveVertexProject, resolveVertexRegion } from '../gemini-transport.mjs';
-import { resolveSafePath } from '../review-input-path.mjs';
+import { startGeminiSecurityProxy } from '../gemini-security-proxy.mts';
+import { getSupportedEnvironmentCredentialValues, resolveAuthCredentials, resolveVertexProject, resolveVertexRegion } from '../gemini-transport.mts';
+import { resolveSafePath } from '../review-input-path.mts';
 
 // Forward only the operational inputs consumed by this runner. Names that merely
 // look like GitHub/Google variables are not trusted or forwarded as a group.
@@ -66,7 +66,7 @@ export function buildIsolatedRunnerEnv(env: Record<string, unknown>, proxyUrl: s
  * Executes a credential-isolated Gemini review session.
  * @param {string[]} runnerArgv Arguments to pass directly to gemini-ci-runner
  * @param {object} [options]
- * @param {string} [options.runnerScript] Path to runner script (defaults to src/gemini-ci-runner.mjs)
+ * @param {string} [options.runnerScript] Path to runner script (defaults to the sibling source/emitted Gemini CI runner)
  * @param {object} [options.proxyConfigOverride]
  * @returns {Promise<number>} Exit code of runner process
  */
@@ -168,7 +168,7 @@ export async function runIsolatedGeminiSession(runnerArgv: string[] = process.ar
   if (cliApiKey) credsOptions.apiKey = cliApiKey;
   const credentials = resolveAuthCredentials({ ...credsOptions, resolveGcloudAccessToken: () => null });
   const allowedMode = credentials.type === 'bearer' ? 'vertex' : 'studio';
-  const runnerPath = options.runnerScript || resolve(dirname(fileURLToPath(import.meta.url)), '..', 'gemini-ci-runner.mjs');
+  const runnerPath = options.runnerScript || resolve(dirname(fileURLToPath(import.meta.url)), '..', import.meta.url.endsWith('.mts') ? 'gemini-ci-runner.mts' : 'gemini-ci-runner.mjs');
   const credentialValues = [
     ...getSupportedEnvironmentCredentialValues(process.env),
     credentials.value,

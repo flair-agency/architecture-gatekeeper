@@ -1,5 +1,5 @@
-import { materializeReviewWorkspace } from '../../../src/materialize-review-workspace.mjs';
-import { validateLoopbackEndpoint } from '../../../src/review-security-proxy.mjs';
+import { materializeReviewWorkspace } from '../../../src/materialize-review-workspace.mts';
+import { validateLoopbackEndpoint } from '../../../src/review-security-proxy.mts';
 
 declare const packet: unknown;
 declare const options: { readonly parentDirectory: unknown; readonly limits: unknown };

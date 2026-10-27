@@ -1,5 +1,5 @@
 /** Parent-owned composition of the internal Vertex proxy and Gemini CLI session. */
-import { remainingDeadlineMs, startGeminiSecurityProxy } from '../gemini-security-proxy.mjs';
+import { remainingDeadlineMs, startGeminiSecurityProxy } from '../gemini-security-proxy.mts';
 import { runGeminiCliSession, type GeminiCliSessionProcessOptions } from './gemini-cli-session.mts';
 import type { ReviewFileContextLimits, ReviewFileContextPacket } from '../review-inputs/prepare-review-file-context.mts';
 import type { GeminiCliThinkingOptions } from './gemini-cli-process.mts';

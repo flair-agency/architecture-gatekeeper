@@ -2,7 +2,7 @@ import type {
   CompletedCiExecutionResult,
   IncompleteCiExecutionResult,
   CiExecutionResult,
-} from '../../../src/ci-execution/ci-execution-result.mjs';
+} from '../../../src/ci-execution/ci-execution-result.mts';
 
 declare const result: CiExecutionResult;
 if (result.status === 'completed') {

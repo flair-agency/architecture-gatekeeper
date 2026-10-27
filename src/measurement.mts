@@ -1,6 +1,6 @@
 import { MEASUREMENT_ENVELOPE_FIELDS, validateMeasurementPhases } from './measurement-consistency.mts';
-import { rejectDuplicateJsonKeys, readCommittedAuthorityFile } from './authority-set.mjs';
-import { isCanonicalRepositoryPath } from './legacy-git-snapshot.mjs';
+import { rejectDuplicateJsonKeys, readCommittedAuthorityFile } from './authority-set.mts';
+import { isCanonicalRepositoryPath } from './legacy-git-snapshot.mts';
 import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { createHash, randomUUID } from 'node:crypto';

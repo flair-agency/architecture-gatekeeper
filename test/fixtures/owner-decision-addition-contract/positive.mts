@@ -1,7 +1,7 @@
-import * as flat from '../../../src/owner-decision-addition.mjs';
+import * as flat from '../../../src/owner-decision-addition.mts';
 import * as physical from '../../../src/owner-addition/owner-decision-addition.mts';
 import type { OwnerDecisionAdditionProcedureInput, OwnerDecisionAdditionProcedureResult } from '../../../src/owner-addition/owner-decision-addition.mts';
-import { evaluateOwnerAdditionAdoption } from '../../../src/owner-addition-adoption.mjs';
+import { evaluateOwnerAdditionAdoption } from '../../../src/owner-addition-adoption.mts';
 import type { OwnerAdditionAdoptionInput, OwnerAdditionAdoptionResult } from '../../../src/owner-addition/owner-addition-adoption.mts';
 
 const input: OwnerDecisionAdditionProcedureInput = {

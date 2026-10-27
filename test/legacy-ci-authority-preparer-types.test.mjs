@@ -126,12 +126,12 @@ const hash = value => createHash('sha256').update(JSON.stringify(canonical(value
 // Owner-authorized #591 baseline: commit 821c3eade2d4a48c28e75393bb80ec8ff0184719,
 // blob b2890ae8195db3dcff47010125f7f15b7c27f716. The digest covers the full
 // operation AST: SHA-256(JSON.stringify(canonical(operationNodes(runtimeAst(
-// `git show 821c3ea:src/prepare-legacy-ci-authority.mjs`))))) after extracting
+// `git show 821c3ea:src/prepare-legacy-ci-authority.mts`))))) after extracting
 // the direct CLI guard body into the same operation list used for the typed leaf.
 const authorized821c3eaOperationAst = '91192065e743f701f8056c00874d7e621ad04202cb1b744e66365ad89829b3fa';
 
 test('complete legacy preparer implementation and flat guard retain their pinned runtime AST', async () => {
-  const facadePath = join(root, 'src/prepare-legacy-ci-authority.mjs');
+  const facadePath = join(root, 'src/prepare-legacy-ci-authority.mts');
   const leafPath = join(root, 'src/ci-review/legacy-ci-authority-preparer.mts');
   const emittedFacadePath = join(root, 'dist/prepare-legacy-ci-authority.mjs');
   const emittedLeafPath = join(root, 'dist/ci-review/legacy-ci-authority-preparer.mjs');
@@ -264,7 +264,7 @@ async function assertIdentityInvalidation(layout, runtimeDirectory, runtimeFile,
 }
 
 test('source and emitted preview identity bind the actual legacy preparer leaf and reject stale requests and receipts', async t => {
-  await assertIdentityInvalidation('source', 'src', 'src/preview-lifecycle.mjs',
+  await assertIdentityInvalidation('source', 'src', 'src/preview-lifecycle.mts',
     'src/ci-review/legacy-ci-authority-preparer.mts', t);
   await assertIdentityInvalidation('emitted', 'dist', 'dist/preview-lifecycle.mjs',
     'dist/ci-review/legacy-ci-authority-preparer.mjs', t);

@@ -1,4 +1,4 @@
-import { verifyOwnerAdditionEligibilityProvenance } from '../../../src/github-owner-addition-provenance.mjs';
+import { verifyOwnerAdditionEligibilityProvenance } from '../../../src/github-owner-addition-provenance.mts';
 import type { GitHubOwnerAdditionProvenanceResult, GitHubOwnerAdditionProvenanceFetch } from '../../../src/github/github-owner-addition-provenance.mts';
 declare const result: GitHubOwnerAdditionProvenanceResult;
 verifyOwnerAdditionEligibilityProvenance({});

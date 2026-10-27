@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { createGitHubCliRunner } from '../../../src/github-cli-runner.mjs';
-import { matchesGitHubAssociatedRepository } from '../../../src/github-associated-repository.mjs';
+import { createGitHubCliRunner } from '../../../src/github-cli-runner.mts';
+import { matchesGitHubAssociatedRepository } from '../../../src/github-associated-repository.mts';
 
 declare const repo: unknown;
 declare const expectedRepository: unknown;

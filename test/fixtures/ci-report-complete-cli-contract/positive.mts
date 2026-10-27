@@ -1,4 +1,4 @@
-import { main } from '../../../src/ci-report.mjs';
+import { main } from '../../../src/ci-report.mts';
 import { main as physicalMain } from '../../../src/ci-review/ci-report-entrypoint.mts';
 import type { ReportFetch, ReportFetchReadOptions, ReportFetchWriteOptions, ReportFetchReadSuccess } from '../../../src/ci-review/ci-report.mts';
 declare const observation: unknown;

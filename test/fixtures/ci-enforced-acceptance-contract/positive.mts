@@ -1,4 +1,4 @@
-import { assertEnforcedAcceptance } from '../../../src/ci-enforced-acceptance.mjs';
+import { assertEnforcedAcceptance } from '../../../src/ci-enforced-acceptance.mts';
 
 const ordinary = assertEnforcedAcceptance({ reviewResult: 'success', conclusion: 'PASS' });
 if (ordinary.route === 'ordinary-pass') {

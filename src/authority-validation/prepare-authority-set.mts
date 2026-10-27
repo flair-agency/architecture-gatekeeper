@@ -1,7 +1,7 @@
 import { constants, openSync, closeSync, fstatSync, mkdirSync, writeFileSync, rmSync, lstatSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys, validateAuthorityLimits } from '../authority-set.mjs';
-import { createGitHubAuthoritySource } from '../github-authority-source.mjs';
+import { MULTI_AUTHORITY_PROFILE, materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys, validateAuthorityLimits } from '../authority-set.mts';
+import { createGitHubAuthoritySource } from '../github-authority-source.mts';
 import { readDescriptorBytes } from '../io/read-descriptor.mts';
 const MAX_LIMITS_BYTES = 4 * 1024;
 const MAX_MANIFEST_INPUT_BYTES = 1024 * 1024;

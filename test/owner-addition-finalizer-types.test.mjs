@@ -75,7 +75,7 @@ test('complete finalizer body and CLI retain all risk-corrected operations and f
   // wrong producer, workflow, exact-B parents, evidence and readback bindings.
   assert.equal(digest(operations), 'be84324ec4977a0db25424c708590cd5147ea77f7f72221f0a71ba4511f6f77b');
   assert.equal(digest(cli.declaration.body), '0d2ffb2f37822955123277d51db1e35e3ad1f4d31e61acd1cc7ca985101f06e6');
-  const facade = runtimeAst(join(root, 'src/owner-addition-finalize.mjs'));
+  const facade = runtimeAst(join(root, 'src/owner-addition-finalize.mts'));
   assert.deepEqual(facade, runtimeAst(join(root, 'dist/owner-addition-finalize.mjs')));
   assert.equal(digest(facade.at(-1).test), '9fed90433dea3f8efa9bd315282edbcd920b68170b833132e345d2b4d482a4f5');
   assert.deepEqual(facade.at(-1).consequent.body, [{ type: 'ExpressionStatement', expression: {

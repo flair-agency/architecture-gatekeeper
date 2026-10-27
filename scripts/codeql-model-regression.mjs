@@ -21,10 +21,10 @@ export function verifyGithubOutputModel({ run, source, scan }) {
   const fixture = join(scan, 'model-regression-source');
   cpSync(join(source, 'src'), join(fixture, 'src'), { recursive: true });
   const extraAccessor = `\nexport function otherOutputPath() { return process.env.OTHER_OUTPUT; }\n`;
-  writeFileSync(join(fixture, 'src/github-runner-env.mjs'), readFileSync(join(fixture, 'src/github-runner-env.mjs'), 'utf8') + extraAccessor);
+  writeFileSync(join(fixture, 'src/github-runner-env.mts'), readFileSync(join(fixture, 'src/github-runner-env.mts'), 'utf8') + extraAccessor);
   const probe = `import { writeFileSync, lstatSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
-import { trustedGitHubOutputPath, otherOutputPath } from './src/github-runner-env.mjs';
+import { trustedGitHubOutputPath, otherOutputPath } from './src/github-runner-env.mts';
 import { trustedGitHubOutputPath as implementationOutputPath } from './src/github/github-runner-env.mts';
 writeFileSync(trustedGitHubOutputPath(), 'trusted'); // trusted-output
 writeFileSync(implementationOutputPath(), 'unmodeled implementation'); // implementation-output
@@ -41,16 +41,16 @@ if (isAbsolute(p)) {
 }
 `;
   writeFileSync(join(fixture, 'output-probe.mjs'), probe);
-  const materializerOutputProbe = `import { materializeRegularGitSnapshot } from './src/materialize-regular-git-snapshot.mjs';
+  const materializerOutputProbe = `import { materializeRegularGitSnapshot } from './src/materialize-regular-git-snapshot.mts';
 materializeRegularGitSnapshot({ root: '/repository', commit: 'a'.repeat(40), path: 'file.txt', outputPath: process.argv[2] }); // generic-materializer-output
 `;
   writeFileSync(join(fixture, 'materializer-output-probe.mjs'), materializerOutputProbe);
   const workspaceProbe = `import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { trustedGitHubWorkspaceRoot, otherWorkspaceRoot, callerSelectedRoot } from './src/github-runner-workspace.mjs';
+import { trustedGitHubWorkspaceRoot, otherWorkspaceRoot, callerSelectedRoot } from './src/github-runner-workspace.mts';
 import { trustedGitHubWorkspaceRoot as copiedAccessor } from './src/untrusted-workspace.mjs';
-import { readRegularGitSnapshot } from './src/legacy-git-snapshot.mjs';
-import { prepareLegacyAuthority } from './src/prepare-legacy-ci-authority.mjs';
+import { readRegularGitSnapshot } from './src/legacy-git-snapshot.mts';
+import { prepareLegacyAuthority } from './src/prepare-legacy-ci-authority.mts';
 execFileSync('git', ['status'], { cwd: trustedGitHubWorkspaceRoot() }); // trusted-workspace
 readFileSync(trustedGitHubWorkspaceRoot()); // trusted-workspace-path
 execFileSync('git', ['status'], { cwd: process.env.GITHUB_WORKSPACE }); // direct-workspace
@@ -69,16 +69,16 @@ readRegularGitSnapshot({ root: process.env.GITHUB_WORKSPACE, commit: 'a'.repeat(
 readRegularGitSnapshot({ root: process.argv[2], commit: 'a'.repeat(40), path: 'file.txt' }); // generic-cli-reader
 prepareLegacyAuthority({ root: process.argv[2], baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), reviewedSha: 'c'.repeat(40), baseBranch: 'main', policyPath: 'policy.json', outputPromptPath: 'architecture-gate-prompt.md', outputSchemaPath: 'architecture-gate-decision.schema.json', outputPath: 'architecture-gate-legacy-prompt.md', provenancePath: 'architecture-gate-legacy-provenance.json' }); // generic-prepare-cli
 `;
-  writeFileSync(join(fixture, 'src/github-runner-workspace.mjs'), readFileSync(join(source, 'src/github-runner-workspace.mjs'), 'utf8') +
+  writeFileSync(join(fixture, 'src/github-runner-workspace.mts'), readFileSync(join(source, 'src/github-runner-workspace.mts'), 'utf8') +
     `\nexport function otherWorkspaceRoot() { return process.env.OTHER_WORKSPACE; }\nexport function callerSelectedRoot(root) { return root; }\n`);
-  writeFileSync(join(fixture, 'src/untrusted-workspace.mjs'), readFileSync(join(fixture, 'src/github-runner-workspace.mjs'), 'utf8'));
+  writeFileSync(join(fixture, 'src/untrusted-workspace.mjs'), readFileSync(join(fixture, 'src/github-runner-workspace.mts'), 'utf8'));
   writeFileSync(join(fixture, 'workspace-probe.mjs'), workspaceProbe);
 
   const nativeProbe = `import {readFileSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {trustedNativeRequestPath,trustedNativeDecisionPath} from './src/native-session-paths.mjs';
+import {trustedNativeRequestPath,trustedNativeDecisionPath} from './src/native-session-paths.mts';
 import {trustedNativeRequestPath as copiedPath} from './src/untrusted-native-session-paths.mjs';
-import {runNativeReviewCli} from './src/native-review.mjs';
+import {runNativeReviewCli} from './src/native-review.mts';
 writeFileSync(trustedNativeRequestPath(),'original'); // trusted-native-request
 readFileSync(trustedNativeDecisionPath()); // trusted-native-decision
 readFileSync(process.argv[3]); // direct-native-argv
@@ -92,7 +92,7 @@ readFileSync(reviewer.decisionPath); // reviewer-native-path
 runNativeReviewCli(['prepare',process.argv[7],'task']); // injected-native-prepare
 runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-native-validate
 `;
-  writeFileSync(join(fixture,'src/untrusted-native-session-paths.mjs'),readFileSync(join(source,'src/native-session-paths.mjs'),'utf8'));
+  writeFileSync(join(fixture,'src/untrusted-native-session-paths.mjs'),readFileSync(join(source,'src/native-session-paths.mts'),'utf8'));
   writeFileSync(join(fixture,'native-probe.mjs'),nativeProbe);
 
   const db = join(scan, 'db-model-regression');
@@ -159,7 +159,7 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
     location.physicalLocation.artifactLocation.uri === bufferedGitSinkFile &&
     location.physicalLocation.region.startLine === bufferedGitSinkLine));
   const hasAccessor = (list, callFile, callLine, sinkFile, sinkLine) => threads(list).some(thread =>
-    threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine) && threadHas(thread, callFile, callLine) &&
+    threadHas(thread, 'src/github-runner-workspace.mts', accessorLine) && threadHas(thread, callFile, callLine) &&
     threadHas(thread, sinkFile, sinkLine) && threadHas(thread, bufferedGitSinkFile, bufferedGitSinkLine));
   assert.ok(hasAccessor(results.false, 'src/review-inputs/materialize-regular-git-snapshot.mts', 39, 'src/authority-validation/legacy-git-snapshot.mts', 31),
     'Baseline must trace accessor through materializer into Git snapshot cwd');
@@ -177,7 +177,7 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
     threadHas(thread, 'src/ci-review/legacy-ci-authority-preparer.mts', 101) && threadHas(thread, 'src/authority-validation/legacy-git-snapshot.mts', 34)),
     'Generic preparer CLI root flow to snapshot reader must remain');
 
-  assert.equal(threads(results.true).some(thread => threadHas(thread, 'src/github-runner-workspace.mjs', accessorLine)), false,
+  assert.equal(threads(results.true).some(thread => threadHas(thread, 'src/github-runner-workspace.mts', accessorLine)), false,
     'No modeled flow may retain the dedicated accessor origin');
   for (const sinkLine of [31, 34]) {
     for (const tag of ['generic-env-reader', 'generic-cli-reader', 'generic-prepare-cli']) {
@@ -205,11 +205,11 @@ runNativeReviewCli(['validate',process.argv[8],process.argv[9]]); // injected-na
   const nativeImplementationPath='src/local-review/native-review.mts';
   const nativeSource=readFileSync(join(source,nativeImplementationPath),'utf8');
   const nativeSink=tag=>findLine(nativeSource,tag);
-  const nativeAccessorSource=readFileSync(join(source,'src/native-session-paths.mjs'),'utf8');
+  const nativeAccessorSource=readFileSync(join(source,'src/native-session-paths.mts'),'utf8');
   const nativeOrigin=name=>findLine(nativeAccessorSource,name==='trustedNativeRequestPath'?'native-request-origin':'native-decision-origin');
   for(const [name,sinkTag] of [['trustedNativeRequestPath','native-request-persistence'],['trustedNativeRequestPath','native-request-read'],['trustedNativeDecisionPath','native-decision-read']]) {
     const origin=nativeOrigin(name),sink=nativeSink(sinkTag);assert.ok(origin>0&&sink>0);
-    const flow=list=>threads(list).some(thread=>threadHas(thread,'src/native-session-paths.mjs',origin)&&threadHas(thread,nativeImplementationPath,sink));
+    const flow=list=>threads(list).some(thread=>threadHas(thread,'src/native-session-paths.mts',origin)&&threadHas(thread,nativeImplementationPath,sink));
     assert.ok(flow(results.false),`Baseline must trace original native accessor into production ${sinkTag}`);
     assert.equal(flow(results.true),false,`Model must remove only original accessor flow at ${sinkTag}`);
   }

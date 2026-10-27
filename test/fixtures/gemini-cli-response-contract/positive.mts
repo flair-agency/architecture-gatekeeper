@@ -1,4 +1,4 @@
-import { extractGeminiCliResponseText as extractFlat, validateGeminiCliResponse as validateFlat } from '../../../src/gemini-cli-response.mjs';
+import { extractGeminiCliResponseText as extractFlat, validateGeminiCliResponse as validateFlat } from '../../../src/gemini-cli-response.mts';
 import { extractGeminiCliResponseText, validateGeminiCliResponse, type GeminiCliResponseLimits } from '../../../src/gemini-cli/gemini-cli-response.mts';
 import type { ValidatedReviewDecision } from '../../../src/review-contract/review-contract.mts';
 

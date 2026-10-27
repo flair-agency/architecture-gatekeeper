@@ -2,11 +2,11 @@ import { createHash } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { validateDecisionRules } from '../validate-decision.mjs';
-import { validateJsonSchema } from '../json-schema.mjs';
-import { materializeAuthoritySet, parseAuthorityManifest, readCommittedAuthorityFile, rejectDuplicateJsonKeys, validateAuthorityLimits, validateAuthoritySetDecision } from '../authority-set.mjs';
-import { validateAuthorityReviewSchema } from '../preflight-authority-set-review.mjs';
-import { validateThinkingBudget } from '../gemini-transport.mjs';
+import { validateDecisionRules } from '../validate-decision.mts';
+import { validateJsonSchema } from '../json-schema.mts';
+import { materializeAuthoritySet, parseAuthorityManifest, readCommittedAuthorityFile, rejectDuplicateJsonKeys, validateAuthorityLimits, validateAuthoritySetDecision } from '../authority-set.mts';
+import { validateAuthorityReviewSchema } from '../preflight-authority-set-review.mts';
+import { validateThinkingBudget } from '../gemini-transport.mts';
 
 type ParsedJsonRecord = Record<string, unknown>;
 type SpawnOptionsView = { cwd?: string; timeout?: number };

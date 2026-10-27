@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { rejectDuplicateJsonKeys } from '../authority-set.mjs';
-import { assertSameMultiAuthorityProvenance, validateMultiAuthorityProvenance } from '../multi-authority-provenance.mjs';
+import { rejectDuplicateJsonKeys } from '../authority-set.mts';
+import { assertSameMultiAuthorityProvenance, validateMultiAuthorityProvenance } from '../multi-authority-provenance.mts';
 import { decodeEvidenceZip } from './owner-addition-evidence-zip.mts';
 
 export type GitHubOwnerAdditionProvenanceFetch = (url: string, init: {

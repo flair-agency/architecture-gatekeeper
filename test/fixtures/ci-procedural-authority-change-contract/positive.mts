@@ -3,7 +3,7 @@ import {
   type ChangedSelectedAuthorityPathsInput,
   type GitExecFile,
 } from '../../../src/ci-review/ci-procedural-authority-change.mts';
-import { changedSelectedAuthorityPaths as flat } from '../../../src/ci-procedural-authority-change.mjs';
+import { changedSelectedAuthorityPaths as flat } from '../../../src/ci-procedural-authority-change.mts';
 
 declare const provenance: unknown;
 declare const repository: unknown;

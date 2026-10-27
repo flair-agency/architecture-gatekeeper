@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { appendGitHubOutput } from './runner-temp-path.mjs';
+import { appendGitHubOutput } from './runner-temp-path.mts';
 import { fileURLToPath } from 'node:url';
 import { inspectSelfAuthorityChanges } from './ci-review/ci-self-authority-change.mts';
 export { inspectSelfAuthorityChanges };

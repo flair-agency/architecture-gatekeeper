@@ -5,7 +5,7 @@ in `docs/architecture.md` (GitHub step-output sink). It is not a generic path
 sanitizer or proof that an arbitrary process environment is authentic.
 
 The `path-injection` barrier matches only the return of the no-argument
-`trustedGitHubOutputPath` export imported from `src/github-runner-env.mjs`.
+`trustedGitHubOutputPath` export imported from `src/github-runner-env.mts`.
 It does not model `process.env`, other exports, caller paths, or filesystem
 validation helpers as trusted. Review changes to the accessor and this pack
 together; the invoking runner must preserve its own `GITHUB_OUTPUT` value.

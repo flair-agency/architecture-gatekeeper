@@ -1,5 +1,5 @@
-import { validateReviewResponse } from '../../../src/review-contract.mjs';
-import { parseCiPolicyJson, resolveCiPolicy } from '../../../src/resolve-ci-policy.mjs';
+import { validateReviewResponse } from '../../../src/review-contract.mts';
+import { parseCiPolicyJson, resolveCiPolicy } from '../../../src/resolve-ci-policy.mts';
 
 const result = validateReviewResponse({} as unknown, {});
 const trustedDecision: string = result.decision;

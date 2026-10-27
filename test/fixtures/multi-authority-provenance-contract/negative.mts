@@ -1,4 +1,4 @@
-import { multiAuthorityProvenance, validateMultiAuthorityProvenance } from '../../../src/multi-authority-provenance.mjs';
+import { multiAuthorityProvenance, validateMultiAuthorityProvenance } from '../../../src/multi-authority-provenance.mts';
 
 const missingRepository = multiAuthorityProvenance({ manifestSha256: 'a'.repeat(64), setDigest: 'b'.repeat(64), members: [] }, 'org/repo');
 const numericRepository = multiAuthorityProvenance({ manifestSha256: 'a'.repeat(64), setDigest: 'b'.repeat(64), members: [] }, 42, 'a'.repeat(40));

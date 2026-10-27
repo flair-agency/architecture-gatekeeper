@@ -1,6 +1,6 @@
-import { prepareMultiAuthorityAddition } from '../../../src/owner-addition-multiauthority.mjs';
+import { prepareMultiAuthorityAddition } from '../../../src/owner-addition-multiauthority.mts';
 import { validateOwnerAdditionCiCli } from '../../../src/owner-addition/owner-addition-ci-operations.mts';
-import { resolveCiPolicy } from '../../../src/resolve-ci-policy.mjs';
+import { resolveCiPolicy } from '../../../src/resolve-ci-policy.mts';
 
 declare const env: NodeJS.ProcessEnv;
 const selected = resolveCiPolicy({ version: 1, default: { mode: 'local-only' }, branches: {} }, 'main');

@@ -157,7 +157,7 @@ test('runGeminiReviewer successfully returns parsed JSON on valid API response',
     summary: 'Architecture aligns with canonical authority.',
     authorityFiles: ['docs/architecture.md'],
     responsibility: ['runtime'],
-    reviewedScope: ['src/gemini-transport.mjs'],
+    reviewedScope: ['src/gemini-transport.mts'],
     prohibitedChanges: ['no secret exfiltration'],
   };
 
@@ -437,7 +437,7 @@ test('integrates with review-contract validateReviewResponse for deterministic v
     responsibility: ['runtime'],
     capabilitySurface: ['Gemini transport'],
     qualityGuarantees: ['Fail closed and credential isolation'],
-    reviewedScope: ['src/gemini-transport.mjs'],
+    reviewedScope: ['src/gemini-transport.mts'],
     prohibitedChanges: ['none'],
     findings: [],
     gates: {

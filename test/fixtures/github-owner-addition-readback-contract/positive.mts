@@ -1,5 +1,5 @@
-import { verifyOwnerAdditionReadback } from '../../../src/github-owner-addition-readback.mjs';
-import type { GitHubOwnerAdditionReadbackInput, GitHubOwnerAdditionReadbackResult } from '../../../src/github/github-owner-addition-readback.mjs';
+import { verifyOwnerAdditionReadback } from '../../../src/github-owner-addition-readback.mts';
+import type { GitHubOwnerAdditionReadbackInput, GitHubOwnerAdditionReadbackResult } from '../../../src/github/github-owner-addition-readback.mts';
 const external: unknown = {};
 const input: GitHubOwnerAdditionReadbackInput = { repository: external, expected: external,
   pullRequest: external, mergeCommit: external, targetRef: external, targetCommit: external };

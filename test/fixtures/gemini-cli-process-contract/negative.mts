@@ -1,4 +1,4 @@
-import { encodeGeminiCliPromptForTransport, runGeminiCliProcess } from '../../../src/gemini-cli-process.mjs';
+import { encodeGeminiCliPromptForTransport, runGeminiCliProcess } from '../../../src/gemini-cli-process.mts';
 import type { GeminiCliProcessOptions, GeminiCliProcessResult } from '../../../src/gemini-cli/gemini-cli-process.mts';
 
 const valid: GeminiCliProcessOptions = {

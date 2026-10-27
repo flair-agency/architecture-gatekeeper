@@ -1,6 +1,6 @@
-import { rejectDuplicateJsonKeys, validateAuthoritySetDecision } from '../authority-set.mjs';
-import { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema } from '../owner-addition-validation.mjs';
-import { validateMultiAuthorityProvenance } from '../multi-authority-provenance.mjs';
+import { rejectDuplicateJsonKeys, validateAuthoritySetDecision } from '../authority-set.mts';
+import { validateOwnerAdditionEligibility, validateOwnerAdditionEligibilitySchema } from '../owner-addition-validation.mts';
+import { validateMultiAuthorityProvenance } from '../multi-authority-provenance.mts';
 
 const SPECIAL = ['version', 'authorityIds', 'authoritySetDigest'];
 

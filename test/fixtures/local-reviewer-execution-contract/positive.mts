@@ -1,4 +1,4 @@
-import { executeLocalReviewer, executeLocalReviewerSync } from '../../../src/local-reviewer-execution.mjs';
+import { executeLocalReviewer, executeLocalReviewerSync } from '../../../src/local-reviewer-execution.mts';
 import { executeLocalReviewer as groupedAsync, executeLocalReviewerSync as groupedSync,
   type LocalReviewerAsyncOptions, type LocalReviewerAsyncRequest, type LocalReviewerControls, type LocalReviewerResult, type LocalReviewerSyncOptions } from '../../../src/reviewer-transports/local-reviewer-execution.mts';
 import { createReviewRequest, createReviewRequestAsync } from '../../../src/review-contract/review-contract.mts';

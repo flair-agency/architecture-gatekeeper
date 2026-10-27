@@ -28,7 +28,7 @@ type ResultView = { decision: unknown; execution: unknown; then?: unknown };
 type AsyncOperation = (request: LocalReviewerAsyncRequest, controls: LocalReviewerControls) => unknown;
 
 import { runCodexReviewer } from './codex-transport.mts';
-import { executeGeminiReviewer } from '../gemini-transport.mjs';
+import { executeGeminiReviewer } from '../gemini-transport.mts';
 
 function selectedProvider(request: ReviewRequest): unknown {
   const reviewer = request?.reviewer;

@@ -8,7 +8,7 @@ import { parse } from 'acorn';
 import ts from 'typescript';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const sourcePath = join(root, 'src/ci-report.mjs');
+const sourcePath = join(root, 'src/ci-report.mts');
 const source = readFileSync(sourcePath, 'utf8');
 const configPath = join(root, 'tsconfig.json');
 const config = ts.readConfigFile(configPath, ts.sys.readFile);
@@ -17,20 +17,19 @@ const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root, undefi
 assert.deepEqual(parsed.errors, []);
 assert.equal(parsed.options.strict, true);
 assert.equal(parsed.options.noImplicitAny, true);
-assert.equal(parsed.options.allowJs, true);
-assert.match(source, /^\/\/ @ts-check$/m);
+assert.equal(parsed.options.allowJs ?? false, false);
 
 // Compile independent virtual copies of the actual exported CLI together.
 // They share a directory with the facade, so its relative imports resolve as
 // they do for the physical source. Each probe keeps its own module scope.
 const probes = Object.freeze([
-  '/** @type {Promise<void>} */ const completion = main();',
-  '/** @type {Promise<void>} */ const completion = main(undefined);',
-  '/** @type {import("./ci-review/ci-report.mts").ReportFetch} */ const transport = fetch; /** @type {Promise<void>} */ const completion = main(transport);',
+  'const completion: Promise<void> = main();',
+  'const completion: Promise<void> = main(undefined);',
+  'const transport: import("./ci-review/ci-report.mts").ReportFetch = fetch; const completion: Promise<void> = main(transport);',
   "main(['unused']);",
-  '/** @type {Promise<string>} */ const completion = main();',
+  'const completion: Promise<string> = main();',
 ]);
-const virtualPaths = Object.freeze(probes.map((_, index) => join(dirname(sourcePath), `__ci-report-type-probe-${index}.mjs`)));
+const virtualPaths = Object.freeze(probes.map((_, index) => join(dirname(sourcePath), `__ci-report-type-probe-${index}.mts`)));
 const options = { ...parsed.options, noEmit: true };
 const virtualSources = new Map(virtualPaths.map((file, index) => [file, `${source}\n${probes[index]}\n`]));
 const host = ts.createCompilerHost(options);
@@ -38,7 +37,7 @@ const originalGetSourceFile = host.getSourceFile.bind(host);
 const originalFileExists = host.fileExists.bind(host);
 host.fileExists = file => virtualSources.has(file) || originalFileExists(file);
 host.getSourceFile = (file, languageVersion, ...args) => virtualSources.has(file)
-  ? ts.createSourceFile(file, virtualSources.get(file), languageVersion, true, ts.ScriptKind.JS)
+  ? ts.createSourceFile(file, virtualSources.get(file), languageVersion, true, ts.ScriptKind.TS)
   : originalGetSourceFile(file, languageVersion, ...args);
 const allDiagnostics = ts.getPreEmitDiagnostics(ts.createProgram(virtualPaths, options, host));
 const unexpectedDependencyDiagnostics = allDiagnostics.filter(item => !virtualSources.has(item.file?.fileName));

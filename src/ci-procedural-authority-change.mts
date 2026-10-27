@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { changedSelectedAuthorityPaths } from './ci-review/ci-procedural-authority-change.mts';
 export { changedSelectedAuthorityPaths };
 
-function parseProvenance(encoded) {
+function parseProvenance(encoded: string | undefined) {
   if (typeof encoded !== 'string' || !encoded || encoded.length > 65_536 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
     throw new Error('Missing or invalid protected Authority Set provenance.');
   }

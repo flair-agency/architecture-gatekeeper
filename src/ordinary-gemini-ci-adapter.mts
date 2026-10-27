@@ -1,7 +1,7 @@
 /** Internal host adapter for the adopted ordinary Gemini CI profile. */
 import { execFileSync } from 'node:child_process';
-import { readCommittedAuthorityFile } from './authority-set.mjs';
-import { createGitHubAuthoritySource } from './github-authority-source.mjs';
+import { readCommittedAuthorityFile } from './authority-set.mts';
+import { createGitHubAuthoritySource } from './github-authority-source.mts';
 import { prepareGeminiCiInput } from './prepare-gemini-ci-input.mts';
 import { buildPreparedGeminiCiCall } from './prepared-gemini-ci-call.mts';
 import { runPreparedGeminiCiProfileDecision } from './prepared-gemini-ci-profile-decision.mts';

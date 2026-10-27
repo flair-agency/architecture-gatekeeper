@@ -1,9 +1,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { createReviewRequestAsync as prepareRequest, validateReviewResponse as validateResponse, repositoryRoot } from '../review-contract.mjs';
+import { createReviewRequestAsync as prepareRequest, validateReviewResponse as validateResponse, repositoryRoot } from '../review-contract.mts';
 import { beginMeasurement, measurementDigest, resumeNativeMeasurement, warnMeasurementGap } from '../measurement.mts';
 import { resolve } from 'node:path';
 import { writePublicOutput } from '../public-output.mts';
-import { trustedNativeRequestPath, trustedNativeDecisionPath } from '../native-session-paths.mjs';
+import { trustedNativeRequestPath, trustedNativeDecisionPath } from '../native-session-paths.mts';
 import type { MeasurementAttempt, MeasurementRequest } from '../measurement.mts';
 
 // An erased operational view retains the existing optional-property reads of

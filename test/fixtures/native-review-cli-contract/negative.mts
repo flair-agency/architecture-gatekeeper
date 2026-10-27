@@ -1,4 +1,4 @@
-import { runNativeReviewCli } from '../../../src/native-review.mjs';
+import { runNativeReviewCli } from '../../../src/native-review.mts';
 
 // CLI argument elements are strings.
 runNativeReviewCli(['prepare', 1]);

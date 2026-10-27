@@ -1,4 +1,4 @@
-import { materializeRegularGitSnapshot } from '../../../src/materialize-regular-git-snapshot.mjs';
+import { materializeRegularGitSnapshot } from '../../../src/materialize-regular-git-snapshot.mts';
 import { runMaterializeRegularGitSnapshotCli } from '../../../src/review-inputs/materialize-regular-git-snapshot.mts';
 
 declare const inputFields: {

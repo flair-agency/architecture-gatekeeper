@@ -14,14 +14,14 @@ for (const [layout, extension] of [['src', 'mts'], ['dist', 'mjs']]) {
     cpSync(join(root, layout), join(isolated, layout), { recursive: true });
     copyFileSync(join(root, 'package.json'), join(isolated, 'package.json'));
     symlinkSync(join(root, 'node_modules'), join(isolated, 'node_modules'), 'dir');
-    const runtime = await import(pathToFileURL(join(isolated, layout, 'preview-lifecycle.mjs')).href);
+    const runtime = await import(pathToFileURL(join(isolated, layout, `preview-lifecycle.${layout === 'src' ? 'mts' : 'mjs'}`)).href);
     const f = fixture(t);
     const head = commitOn(f, `full-${layout}`, { 'app.txt': 'Synthetic lifecycle identity change\n' });
     const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
     const leaf = `preview-lifecycle-runtime.${extension}`;
     const digest = file => createHash('sha256').update(readFileSync(file)).digest('hex');
     assert.equal(request.runtime.files[leaf], digest(join(isolated, layout, leaf)));
-    assert.equal(request.runtime.files['preview-lifecycle.mjs'], digest(join(isolated, layout, 'preview-lifecycle.mjs')));
+    assert.equal(request.runtime.files[`preview-lifecycle.${extension}`], digest(join(isolated, layout, `preview-lifecycle.${layout === 'src' ? 'mts' : 'mjs'}`)));
     assert.equal(request.runtime.files['../package.json'], digest(join(isolated, 'package.json')));
     const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
     assert.equal(await runtime.validatePreviewReceipt(receipt, f.root), receipt);

@@ -1,4 +1,4 @@
-import { trustedGitHubOutputPath } from '../../../src/github-runner-env.mjs';
+import { trustedGitHubOutputPath } from '../../../src/github-runner-env.mts';
 
 const path: string = trustedGitHubOutputPath();
 const zeroArgumentOperation: () => string = trustedGitHubOutputPath;

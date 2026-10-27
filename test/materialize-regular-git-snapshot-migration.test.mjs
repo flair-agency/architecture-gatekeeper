@@ -79,7 +79,7 @@ test('source and emitted operations preserve the original materializer and exact
     'a41ee065f5d5203bdec9653f7433a884a7172eecb1d54a3ed66a9fb00d266a46',
   ];
   const expectedGuardTest = 'b2c2410d297b6ec64395eabc4c5552fe9489be5a27ff22720501c89f1473bc09';
-  for (const facadePath of ['src/materialize-regular-git-snapshot.mjs', 'dist/materialize-regular-git-snapshot.mjs']) {
+  for (const facadePath of ['src/materialize-regular-git-snapshot.mts', 'dist/materialize-regular-git-snapshot.mjs']) {
     const guard = parseModule(readFileSync(join(root, facadePath), 'utf8')).body.find(node => node.type === 'IfStatement');
     assert.ok(guard, `${facadePath} retains a flat direct-run guard`);
     assert.equal(nodeHash(guard.test), expectedGuardTest, `${facadePath} keeps the original direct-run guard AST`);
@@ -97,7 +97,7 @@ test('source and emitted operations preserve the original materializer and exact
 test('real source and emitted runtime identities bind the new leaf and reject stale requests and receipts', async t => {
   const f = fixture(t);
   const head = commitOn(f, 'materializer-runtime-identity', { 'app.txt': 'Materializer identity fixture\n' });
-  for (const facadePath of ['src/materialize-regular-git-snapshot.mjs', 'dist/materialize-regular-git-snapshot.mjs']) {
+  for (const facadePath of ['src/materialize-regular-git-snapshot.mts', 'dist/materialize-regular-git-snapshot.mjs']) {
     const facade = await import(pathToFileURL(join(root, facadePath)).href);
     assert.deepEqual(Object.keys(facade), ['materializeRegularGitSnapshot'], `${facadePath} preserves the flat export identity`);
     const outputPath = join(f.root, `materialized-${facadePath.startsWith('src/') ? 'source' : 'emitted'}.txt`);
@@ -107,7 +107,7 @@ test('real source and emitted runtime identities bind the new leaf and reject st
     assert.deepEqual(readFileSync(outputPath), expectedBytes);
   }
   const layouts = [
-    { name: 'source', tree: 'src', runtime: 'src/preview-lifecycle.mjs', leaf: 'src/review-inputs/materialize-regular-git-snapshot.mts', key: 'review-inputs/materialize-regular-git-snapshot.mts' },
+    { name: 'source', tree: 'src', runtime: 'src/preview-lifecycle.mts', leaf: 'src/review-inputs/materialize-regular-git-snapshot.mts', key: 'review-inputs/materialize-regular-git-snapshot.mts' },
     { name: 'emitted', tree: 'dist', runtime: 'dist/preview-lifecycle.mjs', leaf: 'dist/review-inputs/materialize-regular-git-snapshot.mjs', key: 'review-inputs/materialize-regular-git-snapshot.mjs' },
   ];
   for (const layout of layouts) {

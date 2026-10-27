@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT, runGeminiCliProcess } from '../../../src/gemini-cli-process.mjs';
+import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT, runGeminiCliProcess } from '../../../src/gemini-cli-process.mts';
 import { runGeminiCliProcess as groupedRun, type GeminiCliProcessOptions, type GeminiCliProcessResult } from '../../../src/gemini-cli/gemini-cli-process.mts';
 
 const common = {
