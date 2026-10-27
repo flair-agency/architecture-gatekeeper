@@ -67,7 +67,7 @@ test('CLI preserves missing workspace and valid-output reader selection failures
 test('public API retains native descriptors and Buffer/URL destinations in source and emitted layouts', async t => {
   const f = fixture(t);
   for (const layout of ['src', 'dist']) {
-    const { materializeRegularGitSnapshot } = await import(new URL(`../${layout}/materialize-regular-git-snapshot.mjs`, import.meta.url));
+    const { materializeRegularGitSnapshot } = await import(new URL(`../${layout}/materialize-regular-git-snapshot.${layout === 'src' ? 'mts' : 'mjs'}`, import.meta.url));
     const target = join(f.root, `${layout}-fd.out`), fd = openSync(target, 'w');
     try { materializeRegularGitSnapshot({ root: f.root, commit: f.commit, path: 'input.txt', outputPath: fd }); } finally { closeSync(fd); }
     assert.deepEqual(readFileSync(target), f.bytes);

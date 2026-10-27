@@ -82,7 +82,9 @@ test('source and emitted operations preserve the original materializer and exact
   for (const facadePath of ['src/materialize-regular-git-snapshot.mts', 'dist/materialize-regular-git-snapshot.mjs']) {
     const guard = parseModule(readFileSync(join(root, facadePath), 'utf8')).body.find(node => node.type === 'IfStatement');
     assert.ok(guard, `${facadePath} retains a flat direct-run guard`);
-    assert.equal(nodeHash(guard.test), expectedGuardTest, `${facadePath} keeps the original direct-run guard AST`);
+    assert.equal(guard.test.operator, '||');
+    assert.equal(nodeHash(guard.test.left), expectedGuardTest, `${facadePath} keeps the emitted direct-run guard`);
+    assert.equal(nodeHash(guard.test.right), nodeHash(parseModule("process.argv[1]?.endsWith('/materialize-regular-git-snapshot.mts')").body[0].expression), `${facadePath} also permits direct authored-source execution`);
   }
   const sourceLeaf = readFileSync(join(root, 'src/review-inputs/materialize-regular-git-snapshot.mts'), 'utf8');
   const emittedLeaf = readFileSync(join(root, 'dist/review-inputs/materialize-regular-git-snapshot.mjs'), 'utf8');

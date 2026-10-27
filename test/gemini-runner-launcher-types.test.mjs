@@ -96,7 +96,10 @@ test('typed operations preserve complete original bodies and direct-run guard co
       const runner = launcher.body.body.find(node => node.type === 'VariableDeclaration' && node.declarations[0].id.name === 'runnerPath');
       const relocation = runner.declarations[0].init.right.arguments;
       assert.equal(relocation.length, 3);
-      assert.deepEqual(relocation.slice(1), [{ type: 'Literal', value: '..' }, { type: 'Literal', value: 'gemini-ci-runner.mjs' }]);
+      assert.deepEqual(relocation[1], { type: 'Literal', value: '..' });
+      const selector = parse("import.meta.url.endsWith('.mts') ? 'gemini-ci-runner.mts' : 'gemini-ci-runner.mjs'", { ecmaVersion: 'latest', sourceType: 'module' }).body[0].expression;
+      assert.deepEqual(relocation[2], canonical(selector), 'source and emitted launchers select their physical sibling runner');
+      relocation[2] = { type: 'Literal', value: 'gemini-ci-runner.mjs' }; // Normalize the separately asserted extension selection.
       relocation.splice(1, 1); // Normalize only the asserted package-relative relocation for the baseline pin.
     }
     assert.equal(sha(newOperations), item.operationsHash, 'original operations retain only the asserted flat-child relocation');
