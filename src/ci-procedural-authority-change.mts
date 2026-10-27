@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { appendFileSync } from 'node:fs';
+import { appendGitHubOutput } from './runner-temp-path.mts';
 import { fileURLToPath } from 'node:url';
 import { changedSelectedAuthorityPaths } from './ci-review/ci-procedural-authority-change.mts';
 export { changedSelectedAuthorityPaths };
@@ -20,7 +20,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   if (!GITHUB_OUTPUT) throw new Error('GITHUB_OUTPUT is required.');
   const changed = changedSelectedAuthorityPaths({ provenance: parseProvenance(AUTHORITY_PROVENANCE),
     repository: SELF_REPOSITORY, baseSha: BASE_SHA, headSha: HEAD_SHA });
-  appendFileSync(GITHUB_OUTPUT, `changed=${changed.length ? 'true' : 'false'}\n`);
-  appendFileSync(GITHUB_OUTPUT, `paths_base64=${Buffer.from(JSON.stringify(changed)).toString('base64')}\n`);
+  appendGitHubOutput(`changed=${changed.length ? 'true' : 'false'}\n` +
+    `paths_base64=${Buffer.from(JSON.stringify(changed)).toString('base64')}\n`);
   console.log(`Selected same-repository Authority Set changes: ${changed.length ? changed.join(', ') : 'none'}`);
 }
