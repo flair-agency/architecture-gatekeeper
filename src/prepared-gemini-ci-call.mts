@@ -1,14 +1,20 @@
 /** Build the fixed ordinary Gemini CI decision call from trusted prepared inputs. */
 import { types } from 'node:util';
 import { snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mjs';
-import { snapshotPreparedReviewData } from './prepared-review-data.mjs';
+import { snapshotPreparedReviewData } from './prepared-review-data.mts';
+import type { PreparedGeminiCiInput } from './prepare-gemini-ci-input.mts';
+import type { PreparedGeminiCiReviewInput } from './gemini-cli/prepared-gemini-ci-review.mts';
+
+type DataRecord = Record<string, unknown>;
+export interface PreparedGeminiCiCallInput { prepared: PreparedGeminiCiInput; credential: { token: string; project: string; region: string }; runtimeEntry: string; privateParentDirectory: string }
+export interface PreparedGeminiCiCallResult { reviewInput: PreparedGeminiCiReviewInput<'gemini-3.8-flash'>; authorityProvenance: PreparedGeminiCiInput['authorityProvenance']; validationRules: PreparedGeminiCiInput['validationRules']; maxResponseBytes: number; maxSchemaBytes: number }
 
 const PREPARED_KEYS = ['protectedPromptText', 'protectedDecisionSchemaText', 'protectedReviewer', 'packet',
   'workspaceLimits', 'authorityProvenance', 'validationRules', 'maxResponseBytes', 'maxSchemaBytes', 'bindings'];
 const CREDENTIAL_KEYS = ['token', 'project', 'region'];
 const CALL_KEYS = ['prepared', 'credential', 'runtimeEntry', 'privateParentDirectory'];
 
-function exactPlainRecord(value, keys, label) {
+function exactPlainRecord(value: unknown, keys: readonly string[], label: string): DataRecord {
   if (!value || typeof value !== 'object' || Array.isArray(value) || types.isProxy(value) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(value))) {
     throw new Error(`${label} must be a plain data record.`);
@@ -21,7 +27,7 @@ function exactPlainRecord(value, keys, label) {
   return Object.fromEntries(keys.map(key => [key, descriptors[key].value]));
 }
 
-function preparedRecord(value) {
+function preparedRecord(value: unknown): DataRecord {
   if (!value || typeof value !== 'object' || Array.isArray(value) || types.isProxy(value) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(value))) {
     throw new Error('Prepared Gemini CI input must be a plain data record.');
@@ -41,7 +47,7 @@ function preparedRecord(value) {
  * runPreparedGeminiCiProfileDecision. Protected preparation, credential
  * issuance, runtime pinning, producer identity and reporting belong to caller.
  */
-export function buildPreparedGeminiCiCall(supplied) {
+export function buildPreparedGeminiCiCall(supplied: PreparedGeminiCiCallInput): PreparedGeminiCiCallResult {
   const call = exactPlainRecord(supplied, CALL_KEYS, 'Gemini CI call');
   const { prepared, credential, runtimeEntry, privateParentDirectory } = call;
   const preparedData = preparedRecord(prepared);
@@ -85,5 +91,5 @@ export function buildPreparedGeminiCiCall(supplied) {
     },
   });
   return Object.freeze({ reviewInput, authorityProvenance, validationRules,
-    maxResponseBytes: preparedData.maxResponseBytes, maxSchemaBytes: preparedData.maxSchemaBytes });
+    maxResponseBytes: preparedData.maxResponseBytes, maxSchemaBytes: preparedData.maxSchemaBytes }) as PreparedGeminiCiCallResult;
 }

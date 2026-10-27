@@ -2,12 +2,12 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { TextDecoder, types } from 'node:util';
-import { materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys, validateAuthorityLimits } from './authority-set.mjs';
-import { prepareReviewFileContext } from './prepare-review-file-context.mjs';
-import { validateAuthorityReviewSchema } from './preflight-authority-set-review.mjs';
-import { validateJsonSchemaDefinition } from './json-schema.mjs';
-import { validateDecisionRules } from './validate-decision.mjs';
-import { snapshotPreparedReviewData } from './prepared-review-data.mjs';
+import { materializeAuthoritySet, parseAuthorityManifest, rejectDuplicateJsonKeys, validateAuthorityLimits, type AuthorityLimits, type AuthoritySetFetcher, type MaterializedAuthoritySet } from './authority-validation/authority-set.mts';
+import { prepareReviewFileContext, type ReviewFileContextLimits, type ReviewFileContextPacket } from './review-inputs/prepare-review-file-context.mts';
+import { validateAuthorityReviewSchema } from './authority-validation/preflight-authority-set-review.mts';
+import { validateJsonSchemaDefinition } from './authority-validation/json-schema.mts';
+import { validateDecisionRules } from './authority-validation/validate-decision.mts';
+import { snapshotPreparedReviewData } from './prepared-review-data.mts';
 
 const SHA = /^[a-f0-9]{40}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
@@ -17,28 +17,59 @@ const SELECTION_KEYS = ['root', 'repository', 'baseBranch', 'baseSha', 'headSha'
   'policyPath', 'promptPath', 'schemaPath', 'validationPath', 'manifestPath', 'referencePaths'];
 const LIMIT_KEYS = ['workspace', 'authority', 'maxSchemaBytes', 'maxResponseBytes', 'maxDiffBytes'];
 
-function fail(message) { throw new Error(`Protected CI input: ${message}`); }
-function digest(bytes) { return createHash('sha256').update(bytes).digest('hex'); }
+export interface ProtectedCiSelection {
+  root: string; repository: string; baseBranch: string; baseSha: string; headSha: string; reviewedSha: string;
+  policyPath: string; promptPath: string; schemaPath: string; validationPath: string | null;
+  manifestPath: string; referencePaths: readonly string[];
+}
+export interface ProtectedCiLimits {
+  workspace: ReviewFileContextLimits; authority: AuthorityLimits;
+  maxSchemaBytes: number; maxResponseBytes: number; maxDiffBytes: number;
+}
+export interface ProtectedCiSnapshot { path: string; revision: string; bytes: Buffer }
+export interface PrepareProtectedCiInput {
+  selection: ProtectedCiSelection; limits: ProtectedCiLimits; snapshots: readonly ProtectedCiSnapshot[];
+  fetchExternal: AuthoritySetFetcher | null;
+}
+export interface ProtectedCiInputBinding {
+  repository: string; baseBranch: string; baseSha: string; headSha: string; reviewedMergeSha: string;
+  policyPath: string; policySha256: string; promptPath: string; promptSha256: string;
+  schemaPath: string; schemaSha256: string; validationPath: string | null; validationSha256: string | null;
+  authorityManifestPath: string; authorityManifestSha256: string; authoritySetDigest: string;
+  protectedReferenceDigests: Array<{ path: string; sha256: string }>;
+  changedFiles: Array<{ path: string; beforeSha256: string | null; afterSha256: string | null }>;
+}
+export interface PreparedProtectedCiInput {
+  protectedPromptText: string; protectedDecisionSchemaText: string; packet: ReviewFileContextPacket;
+  workspaceLimits: ReviewFileContextLimits;
+  authorityProvenance: { version: 1; selfRepository: string; authorityRevision: string; manifestSha256: string; setDigest: string; members: Array<Omit<MaterializedAuthoritySet['members'][number], 'content'>> };
+  validationRules: unknown; maxResponseBytes: number; maxSchemaBytes: number; bindings: ProtectedCiInputBinding;
+}
 
-function exactObject(value, keys, label) {
+function fail(message: string): never { throw new Error(`Protected CI input: ${message}`); }
+function digest(bytes: Uint8Array): string { return createHash('sha256').update(bytes).digest('hex'); }
+
+function exactObject(value: unknown, keys: readonly string[], label: string): asserts value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || types.isProxy(value) || Array.isArray(value) ||
       Object.getPrototypeOf(value) !== Object.prototype || Object.keys(value).length !== keys.length ||
-      keys.some(key => !Object.hasOwn(value, key) || !Object.getOwnPropertyDescriptor(value, key)?.enumerable ||
-        !Object.hasOwn(Object.getOwnPropertyDescriptor(value, key), 'value')) || Reflect.ownKeys(value).length !== keys.length) {
+      keys.some(key => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return !Object.hasOwn(value, key) || !descriptor?.enumerable || !Object.hasOwn(descriptor, 'value');
+      }) || Reflect.ownKeys(value).length !== keys.length) {
     fail(`${label} must be complete explicit data.`);
   }
 }
 
-function validPath(value) {
+function validPath(value: unknown): value is string {
   return typeof value === 'string' && value.length <= 240 && RELATIVE_PATH.test(value) &&
     !value.split('/').some(part => part === '.' || part === '..');
 }
 
-function decode(bytes, label) {
+function decode(bytes: Uint8Array, label: string): string {
   try { return utf8.decode(bytes); } catch { fail(`${label} is not valid UTF-8.`); }
 }
 
-function git(root, args, maxBuffer) {
+function git(root: string, args: string[], maxBuffer: number): Buffer {
   try {
     return execFileSync('git', ['--no-replace-objects', '-C', root, ...args], {
       encoding: 'buffer', maxBuffer, timeout: 10_000,
@@ -48,7 +79,7 @@ function git(root, args, maxBuffer) {
   } catch { fail('the exact committed base-to-reviewed merge diff is unavailable or exceeds its bound.'); }
 }
 
-function parseJson(bytes, label, maxBytes) {
+function parseJson(bytes: unknown, label: string, maxBytes: number): unknown {
   if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length > maxBytes) fail(`${label} is empty or exceeds its byte limit.`);
   const text = decode(bytes, label);
   try {
@@ -57,7 +88,11 @@ function parseJson(bytes, label, maxBytes) {
   } catch { fail(`${label} is invalid JSON.`); }
 }
 
-function snapshotInput(supplied) {
+interface ProtectedCiSnapshotState {
+  selection: ProtectedCiSelection; limits: ProtectedCiLimits; snapshots: Map<string, { revision: string; bytes: Buffer }>;
+  fetchExternal: AuthoritySetFetcher | null;
+}
+function snapshotInput(supplied: PrepareProtectedCiInput): ProtectedCiSnapshotState {
   exactObject(supplied, ['selection', 'limits', 'snapshots', 'fetchExternal'], 'input');
   if (supplied.fetchExternal !== null && typeof supplied.fetchExternal !== 'function') fail('caller-selected external authority capability is invalid.');
   // Copy all data before the capability can await or otherwise yield.
@@ -80,10 +115,10 @@ function snapshotInput(supplied) {
   if (snapshotKeys.length !== supplied.snapshots.length + 1 || snapshotKeys.some(key => key !== 'length' &&
       (typeof key !== 'string' || !/^(?:0|[1-9][0-9]*)$/.test(key) || Number(key) >= supplied.snapshots.length ||
         !Object.getOwnPropertyDescriptor(supplied.snapshots, key)?.enumerable ||
-        !Object.hasOwn(Object.getOwnPropertyDescriptor(supplied.snapshots, key), 'value')))) {
+        !Object.hasOwn(Object.getOwnPropertyDescriptor(supplied.snapshots, key) ?? {}, 'value')))) {
     fail('protected snapshots must be a dense plain data array.');
   }
-  const byPath = new Map();
+  const byPath = new Map<string, { revision: string; bytes: Buffer }>();
   for (let index = 0; index < supplied.snapshots.length; index += 1) {
     if (!Object.hasOwn(supplied.snapshots, index)) fail('protected snapshots must be a dense plain data array.');
     const item = supplied.snapshots[index];
@@ -108,7 +143,7 @@ function snapshotInput(supplied) {
     fetchExternal: supplied.fetchExternal };
 }
 
-function requireSnapshot(snapshots, path, revision, label) {
+function requireSnapshot(snapshots: Map<string, { revision: string; bytes: Buffer }>, path: string, revision: string, label: string): Buffer {
   const snapshot = snapshots.get(path);
   if (!snapshot || snapshot.revision !== revision || !snapshot.bytes.length) fail(`${label} bytes are unavailable at the selected source revision.`);
   return snapshot.bytes;
@@ -119,21 +154,21 @@ function requireSnapshot(snapshots, path, revision, label) {
  * source snapshots. This helper does not select policy or authenticate the
  * caller's source labels; its materialization capability is explicitly supplied.
  */
-export async function prepareProtectedCiInput(supplied) {
+export async function prepareProtectedCiInput(supplied: PrepareProtectedCiInput): Promise<PreparedProtectedCiInput> {
   const { selection: input, limits, snapshots, fetchExternal } = snapshotInput(supplied);
   const workspaceLimits = limits.workspace;
   if (!workspaceLimits || typeof workspaceLimits !== 'object' || Array.isArray(workspaceLimits)) fail('explicit workspace limits are required.');
-  for (const key of ['maxFiles', 'maxFileBytes', 'maxTotalBytes']) {
+  for (const key of ['maxFiles', 'maxFileBytes', 'maxTotalBytes'] as const) {
     if (!Number.isSafeInteger(workspaceLimits[key]) || workspaceLimits[key] < 1) fail('explicit workspace limits are invalid.');
   }
-  for (const key of ['maxSchemaBytes', 'maxResponseBytes', 'maxDiffBytes']) {
+  for (const key of ['maxSchemaBytes', 'maxResponseBytes', 'maxDiffBytes'] as const) {
     if (!Number.isSafeInteger(limits[key]) || limits[key] < 1 || limits[key] > (key === 'maxResponseBytes' ? 65_536 : 1_048_576)) fail(`explicit ${key} is invalid.`);
   }
   if (typeof input.root !== 'string' || !input.root || !REPOSITORY.test(input.repository || '') ||
       input.repository.endsWith('.git') || input.repository.includes('..') || typeof input.baseBranch !== 'string' || !input.baseBranch ||
       ![input.baseSha, input.headSha, input.reviewedSha].every(value => SHA.test(value || '')) ||
       new Set([input.baseSha, input.headSha, input.reviewedSha]).size !== 3) fail('repository, base branch, and three distinct full commit revisions are required.');
-  for (const name of ['policyPath', 'promptPath', 'schemaPath', 'manifestPath']) if (!validPath(input[name])) fail(`${name} must be a canonical protected repository path.`);
+  for (const name of ['policyPath', 'promptPath', 'schemaPath', 'manifestPath'] as const) if (!validPath(input[name])) fail(`${name} must be a canonical protected repository path.`);
   if (!Object.hasOwn(input, 'validationPath') || (input.validationPath !== null && !validPath(input.validationPath))) fail('validationPath must be an explicit canonical path or null.');
   if (!Array.isArray(input.referencePaths) || input.referencePaths.some(path => !validPath(path))) fail('referencePaths must be an explicit array of canonical protected paths.');
   const selectedPaths = [input.policyPath, input.promptPath, input.schemaPath, input.manifestPath,
@@ -175,7 +210,7 @@ export async function prepareProtectedCiInput(supplied) {
   if (diffBytes.length > limits.maxDiffBytes || diffBytes.includes(0)) fail('exact candidate diff is binary or exceeds the protected prompt byte limit.');
   const exactDiff = decode(diffBytes, 'exact candidate diff');
   const materialized = await materializeAuthoritySet({ manifestBytes, limits: limits.authority,
-    selfRepository: input.repository, selfRoot: input.root, authorityRevision: input.baseSha, fetchExternal });
+    selfRepository: input.repository, selfRoot: input.root, authorityRevision: input.baseSha, fetchExternal: fetchExternal ?? undefined });
   const protectedPromptText = `${decode(promptBytes, 'base review prompt')}${materialized.prompt}`;
   const taskContext = [
     '## Pull request task context (untrusted candidate data)',
@@ -188,12 +223,12 @@ export async function prepareProtectedCiInput(supplied) {
   if (Buffer.byteLength(completeProtectedPrompt, 'utf8') > limits.authority.maxPromptBytes) {
     fail('complete protected prompt exceeds the selected authority prompt byte limit.');
   }
-  const authorityProvenance = {
+  const authorityProvenance: PreparedProtectedCiInput['authorityProvenance'] = {
     version: 1, selfRepository: input.repository, authorityRevision: input.baseSha.toLowerCase(),
     manifestSha256: materialized.manifestSha256, setDigest: materialized.setDigest,
     members: materialized.members.map(({ content, ...member }) => member),
   };
-  const bindings = {
+  const bindings: ProtectedCiInputBinding = {
     repository: input.repository, baseBranch: input.baseBranch, baseSha: input.baseSha, headSha: input.headSha,
     reviewedMergeSha: input.reviewedSha,
     policyPath: input.policyPath, policySha256: digest(policyBytes),

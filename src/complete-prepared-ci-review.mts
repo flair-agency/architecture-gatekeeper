@@ -3,6 +3,18 @@ import { normalizeCiExecutionResult } from './ci-execution-result.mjs';
 import { validatePreparedCiDecision } from './prepared-ci-decision.mjs';
 
 const KEYS = ['executionInput', 'schemaBytes', 'authorityProvenance', 'validationRules', 'maxSchemaBytes'];
+interface PreparedCiCompletionInput {
+  executionInput: {
+    expectedExecution: unknown;
+    hostStepOutcome: unknown;
+    rawResponse: unknown;
+    maxResponseBytes: number;
+  };
+  schemaBytes: unknown;
+  authorityProvenance: unknown;
+  validationRules: unknown;
+  maxSchemaBytes: number;
+}
 
 /**
  * The protected caller owns selection and revision bindings. Host failure or
@@ -11,7 +23,7 @@ const KEYS = ['executionInput', 'schemaBytes', 'authorityProvenance', 'validatio
  * authority and consumer-rule checks regardless of its selected provider.
  * This in-memory result is neither authenticated evidence nor merge acceptance.
  */
-export function completePreparedCiReview(input) {
+export function completePreparedCiReview(input: PreparedCiCompletionInput) {
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
       Object.keys(input).length !== KEYS.length || KEYS.some(key => !Object.hasOwn(input, key))) {
     throw new Error('Prepared CI completion requires the complete explicit input set.');

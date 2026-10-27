@@ -1,12 +1,15 @@
 /** Internal composition for the adopted ordinary Gemini session profile. */
 import { types } from 'node:util';
 import { snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mjs';
-import { snapshotPreparedReviewData } from './prepared-review-data.mjs';
-import { runPreparedGeminiCiDecision } from './prepared-gemini-ci-decision.mjs';
-import { createVertexVerificationReservation } from './vertex-verification-reservation.mjs';
+import { snapshotPreparedReviewData } from './prepared-review-data.mts';
+import { runPreparedGeminiCiDecision } from './prepared-gemini-ci-decision.mts';
+import { createVertexVerificationReservation } from './vertex-verification-reservation.mts';
+import type { ReviewFileContextLimits } from './review-inputs/prepare-review-file-context.mts';
 
 const INPUT_KEYS = ['reviewInput', 'authorityProvenance', 'validationRules', 'maxResponseBytes', 'maxSchemaBytes'];
 const CONTEXT_LIMITS = { maxFiles: 32, maxFileBytes: 131_072, maxTotalBytes: 524_288 };
+export interface PreparedGeminiCiProfileDecisionInput { reviewInput: unknown; authorityProvenance: unknown; validationRules: unknown; maxResponseBytes: number; maxSchemaBytes: number }
+export type GeminiDispatchRecorder = (attempt: number) => boolean;
 
 /**
  * Run one prepared Gemini decision under the fixed ordinary session profile.
@@ -15,7 +18,7 @@ const CONTEXT_LIMITS = { maxFiles: 32, maxFileBytes: 131_072, maxTotalBytes: 524
  * counter is a session circuit breaker, not a cross-session allocation or an
  * acceptance decision.
  */
-export async function runPreparedGeminiCiProfileDecision(input, recordDispatch = () => true) {
+export async function runPreparedGeminiCiProfileDecision(input: PreparedGeminiCiProfileDecisionInput, recordDispatch: GeminiDispatchRecorder = () => true) {
   if (!input || typeof input !== 'object' || Array.isArray(input) || types.isProxy(input) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(input))) {
     throw new Error('Gemini verification requires complete explicit prepared decision inputs.');
@@ -35,11 +38,15 @@ export async function runPreparedGeminiCiProfileDecision(input, recordDispatch =
       options.thinkingLevel !== 'MEDIUM' || options.region !== 'global') {
     throw new Error('Gemini verification settings disagree with the selected Issue334 profile.');
   }
-  const limits = snapshotPreparedReviewData(session.workspaceLimits);
-  if (!limits || Object.keys(limits).length !== 3 || Object.keys(CONTEXT_LIMITS).some(key =>
-    !Object.hasOwn(limits, key) || !Number.isSafeInteger(limits[key]) || limits[key] < 1 || limits[key] > CONTEXT_LIMITS[key])) {
+  const limitsData = snapshotPreparedReviewData(session.workspaceLimits);
+  if (!limitsData || typeof limitsData !== 'object' || Array.isArray(limitsData) || Object.keys(limitsData).length !== 3 ||
+      !Object.hasOwn(limitsData, 'maxFiles') || !Object.hasOwn(limitsData, 'maxFileBytes') || !Object.hasOwn(limitsData, 'maxTotalBytes') ||
+      !Number.isSafeInteger(limitsData.maxFiles) || (limitsData.maxFiles as number) < 1 || (limitsData.maxFiles as number) > CONTEXT_LIMITS.maxFiles ||
+      !Number.isSafeInteger(limitsData.maxFileBytes) || (limitsData.maxFileBytes as number) < 1 || (limitsData.maxFileBytes as number) > CONTEXT_LIMITS.maxFileBytes ||
+      !Number.isSafeInteger(limitsData.maxTotalBytes) || (limitsData.maxTotalBytes as number) < 1 || (limitsData.maxTotalBytes as number) > CONTEXT_LIMITS.maxTotalBytes) {
     throw new Error('Gemini verification context exceeds the selected Issue334 bounds.');
   }
+  const limits: ReviewFileContextLimits = { maxFiles: limitsData.maxFiles as number, maxFileBytes: limitsData.maxFileBytes as number, maxTotalBytes: limitsData.maxTotalBytes as number };
   const counter = createVertexVerificationReservation(recordDispatch);
   const result = await runPreparedGeminiCiDecision({ ...input, reviewInput: { ...reviewInput,
     proxySessionOptions: { ...session, workspaceLimits: limits, reserveDispatch: counter.reserveDispatch } } });

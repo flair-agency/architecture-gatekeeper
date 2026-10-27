@@ -1,5 +1,7 @@
 /** Build the bounded, revision-bound protected inputs for the ordinary Gemini CI profile. */
 import { TextDecoder } from 'node:util';
+import type { AuthoritySetFetcher } from './authority-validation/authority-set.mts';
+import type { ReviewFileContextLimits, ReviewFileContextPacket } from './review-inputs/prepare-review-file-context.mts';
 import {
   parseAuthorityManifest,
   readCommittedAuthorityFile,
@@ -8,8 +10,15 @@ import { decodeLimits } from './prepare-authority-set.mjs';
 import { parseCiPolicyJson, resolveCiPolicy } from './resolve-ci-policy.mjs';
 import { composePreparedGeminiCiPrompt } from './prepared-gemini-ci-review.mjs';
 import { encodeGeminiCliPromptForTransport } from './gemini-cli-process.mjs';
-import { snapshotPreparedReviewData } from './prepared-review-data.mjs';
-import { prepareProtectedCiInput } from './prepare-protected-ci-input.mjs';
+import { snapshotPreparedReviewData } from './prepared-review-data.mts';
+import { prepareProtectedCiInput, type ProtectedCiInputBinding, type ProtectedCiSelection, type PreparedProtectedCiInput } from './prepare-protected-ci-input.mts';
+
+export type PrepareGeminiCiInput = Omit<ProtectedCiSelection, 'manifestPath'>;
+export interface PreparedGeminiCiInput extends Omit<PreparedProtectedCiInput, 'bindings' | 'maxSchemaBytes'> {
+  protectedReviewer: { provider: 'gemini'; model: 'gemini-3.8-flash'; thinkingLevel: 'MEDIUM' };
+  maxSchemaBytes: number;
+  bindings: ProtectedCiInputBinding & { completeEncodedPromptBytes: number; effectivePromptLimit: number };
+}
 
 const MAX_REVIEW_PROMPT_BYTES = 196_608;
 const WORKSPACE_LIMITS = Object.freeze({ maxFiles: 32, maxFileBytes: 131_072, maxTotalBytes: 524_288 });
@@ -19,28 +28,35 @@ const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,
 const RELATIVE_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
 const utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 
-function fail(message) { throw new Error(`Gemini CI protected input: ${message}`); }
-function exactInput(input) {
+function fail(message: string): never { throw new Error(`Gemini CI protected input: ${message}`); }
+function exactInput(input: PrepareGeminiCiInput): PrepareGeminiCiInput {
   const keys = ['root', 'repository', 'baseBranch', 'baseSha', 'headSha', 'reviewedSha',
     'policyPath', 'promptPath', 'schemaPath', 'validationPath', 'referencePaths'];
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
       Object.getPrototypeOf(input) !== Object.prototype || Object.keys(input).length !== keys.length ||
-      keys.some(key => !Object.hasOwn(input, key) || !Object.getOwnPropertyDescriptor(input, key)?.enumerable ||
-        !Object.hasOwn(Object.getOwnPropertyDescriptor(input, key), 'value')) ||
+      keys.some(key => {
+        const descriptor = Object.getOwnPropertyDescriptor(input, key);
+        return !Object.hasOwn(input, key) || !descriptor?.enumerable || !Object.hasOwn(descriptor, 'value');
+      }) ||
       Reflect.ownKeys(input).length !== keys.length) fail('complete explicit trusted selectors are required.');
-  return Object.fromEntries(keys.map(key => [key, input[key]]));
+  return {
+    root: input.root, repository: input.repository, baseBranch: input.baseBranch,
+    baseSha: input.baseSha, headSha: input.headSha, reviewedSha: input.reviewedSha,
+    policyPath: input.policyPath, promptPath: input.promptPath, schemaPath: input.schemaPath,
+    validationPath: input.validationPath, referencePaths: input.referencePaths,
+  };
 }
 
-function validPath(value) {
+function validPath(value: unknown): value is string {
   return typeof value === 'string' && value.length <= 240 && RELATIVE_PATH.test(value) &&
     !value.split('/').some(part => part === '.' || part === '..');
 }
 
-function decode(bytes, label) {
+function decode(bytes: Uint8Array, label: string): string {
   try { return utf8.decode(bytes); } catch { fail(`${label} is not valid UTF-8.`); }
 }
 
-async function prepare(supplied, fetchExternal, allowExternal) {
+async function prepare(supplied: PrepareGeminiCiInput, fetchExternal: AuthoritySetFetcher | null, allowExternal: boolean): Promise<PreparedGeminiCiInput> {
   const input = exactInput(snapshotPreparedReviewData(supplied));
   if (typeof input.root !== 'string' || !input.root || !REPOSITORY.test(input.repository || '') ||
       input.repository.endsWith('.git') || input.repository.includes('..') ||
@@ -49,7 +65,7 @@ async function prepare(supplied, fetchExternal, allowExternal) {
       new Set([input.baseSha, input.headSha, input.reviewedSha]).size !== 3) {
     fail('repository, base branch, and three distinct full commit revisions are required.');
   }
-  for (const name of ['policyPath', 'promptPath', 'schemaPath']) {
+  for (const name of ['policyPath', 'promptPath', 'schemaPath'] as const) {
     if (!validPath(input[name])) fail(`${name} must be a canonical protected repository path.`);
   }
   if (!Object.hasOwn(input, 'validationPath') || (input.validationPath !== null && !validPath(input.validationPath))) {
@@ -96,12 +112,12 @@ async function prepare(supplied, fetchExternal, allowExternal) {
         { path: input.promptPath, revision: input.baseSha, bytes: promptBytes },
         { path: input.schemaPath, revision: input.baseSha, bytes: schemaBytes },
         { path: manifestPath, revision: input.baseSha, bytes: manifestBytes },
-        ...(validationBytes === null ? [] : [{ path: input.validationPath, revision: input.baseSha, bytes: validationBytes }]),
+        ...(validationBytes === null || input.validationPath === null ? [] : [{ path: input.validationPath, revision: input.baseSha, bytes: validationBytes }]),
       ],
       fetchExternal,
     });
   } catch (error) {
-    if (error.message.includes('complete protected prompt exceeds the selected authority prompt byte limit')) {
+    if (error instanceof Error && error.message.includes('complete protected prompt exceeds the selected authority prompt byte limit')) {
       fail('complete encoded stdin prompt exceeds the protected limit.');
     }
     throw error;
@@ -130,12 +146,12 @@ async function prepare(supplied, fetchExternal, allowExternal) {
  * regular-file mode; the shared core checks returned metadata and bounded bytes.
  * This internal helper does not acquire credentials or activate a consumer route.
  */
-export async function prepareGeminiCiInput(supplied, fetchExternal = null) {
+export async function prepareGeminiCiInput(supplied: PrepareGeminiCiInput, fetchExternal: AuthoritySetFetcher | null = null): Promise<PreparedGeminiCiInput> {
   if (fetchExternal !== null && typeof fetchExternal !== 'function') fail('external source capability must be a function or null.');
   return prepare(supplied, fetchExternal, true);
 }
 
 /** Preserve the prior verification profile's self-only Authority Set behavior. */
-export async function prepareGeminiCiVerificationInput(supplied) {
+export async function prepareGeminiCiVerificationInput(supplied: PrepareGeminiCiInput): Promise<PreparedGeminiCiInput> {
   return prepare(supplied, null, false);
 }

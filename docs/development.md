@@ -719,6 +719,12 @@ filesystem concurrently may still race between checks and filesystem operations.
 The design does not claim isolation from hostile same-user concurrency or
 artifact custody. See the owner-approved [PR #591 decision](https://github.com/flair-agency/architecture-gatekeeper/pull/591#issuecomment-6235948030).
 
+The ordinary protected-CI input producers, Gemini adapters/runtime and their
+shared completion/snapshot/reservation helpers are authored in strict `.mts`.
+Their emitted flat `dist/*.mjs` paths are unchanged. Remaining flat JavaScript
+entrypoints are tracked separately in #649; this slice does not remove the
+project’s mixed-source allowance or complete whole-source TypeScript coverage.
+
 ## Static source import cycles
 
 `node scripts/check-source-cycles.mjs` checks the fixed `src/` tree containing

@@ -1,10 +1,11 @@
 /** Internal orchestration; protected input production and acceptance remain external. */
 import { types } from 'node:util';
-import { snapshotPreparedReviewData } from './prepared-review-data.mjs';
+import { snapshotPreparedReviewData } from './prepared-review-data.mts';
 import { runPreparedGeminiCiReview, snapshotPreparedGeminiCiReviewInput } from './prepared-gemini-ci-review.mjs';
-import { completePreparedCiReview } from './complete-prepared-ci-review.mjs';
+import { completePreparedCiReview } from './complete-prepared-ci-review.mts';
 
 const KEYS = ['reviewInput', 'authorityProvenance', 'validationRules', 'maxResponseBytes', 'maxSchemaBytes'];
+export interface PreparedGeminiCiDecisionInput { reviewInput: unknown; authorityProvenance: unknown; validationRules: unknown; maxResponseBytes: number; maxSchemaBytes: number }
 
 /**
  * Connect one caller-prepared Gemini execution to shared completion validation.
@@ -13,11 +14,14 @@ const KEYS = ['reviewInput', 'authorityProvenance', 'validationRules', 'maxRespo
  * backend identity or portable evidence. Failures propagate without a decision
  * or provider fallback; this operation grants no reporting/acceptance authority.
  */
-export async function runPreparedGeminiCiDecision(input) {
+export async function runPreparedGeminiCiDecision(input: PreparedGeminiCiDecisionInput) {
   if (!input || typeof input !== 'object' || Array.isArray(input) || types.isProxy(input) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(input)) ||
-      Reflect.ownKeys(Object.getOwnPropertyDescriptors(input)).some(key => typeof key !== 'string' ||
-        !Object.hasOwn(Object.getOwnPropertyDescriptor(input, key), 'value')) ||
+      Reflect.ownKeys(Object.getOwnPropertyDescriptors(input)).some(key => {
+        if (typeof key !== 'string') return true;
+        const descriptor = Object.getOwnPropertyDescriptor(input, key);
+        return !descriptor || !Object.hasOwn(descriptor, 'value');
+      }) ||
       Object.keys(input).length !== KEYS.length || KEYS.some(key => !Object.hasOwn(input, key))) {
     throw new Error('Prepared Gemini CI decision requires the complete explicit input set.');
   }
