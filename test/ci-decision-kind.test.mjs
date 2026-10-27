@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { linkSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -76,5 +76,26 @@ test('flat facade import is inert and source/emitted direct paths append the sam
     }
   } finally {
     rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('source and emitted decision CLI use the existing runner-output path checks', t => {
+  const directory = mkdtempSync(join(tmpdir(), 'ci-decision-output-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const output = join(directory, 'output');
+  const symlink = join(directory, 'symlink');
+  const hardlink = join(directory, 'hardlink');
+  writeFileSync(output, 'existing=true\n');
+  symlinkSync(output, symlink);
+  linkSync(output, hardlink);
+  for (const layout of ['src/ci-decision-kind.mts', 'dist/ci-decision-kind.mjs']) {
+    const script = new URL(`../${layout}`, import.meta.url).pathname;
+    for (const selected of [symlink, hardlink, join(directory, 'absent'), 'relative-output']) {
+      const result = spawnSync(process.execPath, [script], { cwd: directory, encoding: 'utf8',
+        env: { ...process.env, DECISION: '{"decision":"PASS"}', GITHUB_OUTPUT: selected } });
+      assert.notEqual(result.status, 0, `${layout} rejects ${selected}`);
+      assert.equal(result.stdout, '');
+      assert.equal(readFileSync(output, 'utf8'), 'existing=true\n');
+    }
   }
 });

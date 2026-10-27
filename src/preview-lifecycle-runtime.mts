@@ -189,7 +189,16 @@ function branch(value: unknown) {
   if (typeof value !== 'string' || !/^[A-Za-z0-9._/-]{1,128}$/.test(value) || value.startsWith('refs/') ||
       value.split('/').some(p => !p || p === '.' || p === '..')) fail('invalid target branch.');
 }
-function validateSelection(selection: unknown, spec: unknown) {
+// Selected JSON is parsed locally and checked before these fields cross a phase.
+// Repository/branch bindings and optional externally supplied evidence stay unknown.
+type ValidatedPreviewSelection = {
+  governancePath: string; policyPath: string; promptPath: string; schemaPath: string;
+  callerPath: string; validationPath: string | null;
+  authorityPaths: string[]; migrationPaths: string[]; maxPromptBytes: number;
+  eligibilitySchemaPath?: string | null; eligibilityValidationPath?: string | null;
+  amendmentTriggerProfile?: 'completed-block-v1' | 'completed-owner-decision-v1';
+};
+function validateSelection(selection: unknown, spec: unknown): asserts selection is ValidatedPreviewSelection {
   const optional = ['eligibilitySchemaPath', 'eligibilityValidationPath', 'amendmentTriggerProfile'].filter(key => Object.hasOwn(selection ?? {}, key));
   exact(selection, [...optional, 'version', 'profile', 'repository', 'targetBranch', 'governancePath', 'authorization',
     'policyPath', 'promptPath', 'schemaPath', 'validationPath', 'callerPath', 'authorityPaths', 'migrationPaths', 'maxPromptBytes'], 'selection');
@@ -215,137 +224,140 @@ function validateSpec(spec: unknown) {
   if (['addition', 'amendment'].includes(((spec as { "mode": unknown }).mode as string)) && (!(spec as { "trigger": unknown }).trigger || !(spec as { "record": unknown }).record)) fail('B route requires a completed trigger and external record.');
 }
 
-/** Resolves only committed predecessor inputs. No network or owner-authentication claim. */
-export async function preparePreviewLifecycle(spec: unknown, cwd = process.cwd()) {
-  validateSpec(spec);
+function validatePreviewRevisions(spec: unknown, cwd: string): string {
   const root = realpathSync(git(cwd, 'rev-parse', '--show-toplevel'));
-  revision(root, (spec as { "baseSha": unknown }).baseSha); revision(root, ((spec as { "headSha": unknown }).headSha as string));
+  revision(root, (spec as { "baseSha": unknown }).baseSha);
+  revision(root, (spec as { "headSha": unknown }).headSha);
   if ((spec as { "baseSha": unknown }).baseSha === (spec as { "headSha": unknown }).headSha) fail('change is empty.');
   git(root, 'merge-base', '--is-ancestor', ((spec as { "baseSha": unknown }).baseSha as string), ((spec as { "headSha": unknown }).headSha as string));
-  // Resolve every selected input from the exact committed predecessor.
-  // Candidate bytes cannot select their own review instructions.
+  return root;
+}
+
+function preparePreviewSelection(root: string, spec: unknown) {
   let selection: unknown, successorAuthoritySet: { manifest: { path: unknown; sha256: string; bytesBase64: string } | null; members: Omit<Member, 'content'>[]; setDigest: string | null } | null = null, successorInputs: { path: unknown; sha256: string; bytesBase64: string }[] = [];
-  if ((spec as { "mode": unknown }).mode === 'migration') {
-    const predecessorSelectionBytes = snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (spec as { "selectionPath": unknown }).selectionPath);
-    selection = jsonSnapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (spec as { "selectionPath": unknown }).selectionPath);
-    validateSelection(selection, spec);
-    const policyPath = '.codex/gatekeeper/ci-policy.json';
-    const callerPath = '.github/workflows/architecture-gate.yml';
-    const parsedOldPolicy = parseCiPolicyJson(utf8(snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), policyPath)));
-    const oldPolicy = resolveCiPolicy(parsedOldPolicy, ((spec as { "targetBranch": unknown }).targetBranch as string));
-    if ((parsedOldPolicy as { "version": unknown }).version !== 1 || !oldPolicy.legacyAuthorityFilesBase64 || oldPolicy.ownerAdditionAuthorityPath ||
-        (selection as { "policyPath": unknown }).policyPath !== policyPath || (selection as { "callerPath": unknown }).callerPath !== callerPath ||
-        (selection as { "promptPath": unknown }).promptPath !== oldPolicy.legacyPromptPath || (selection as { "schemaPath": unknown }).schemaPath !== oldPolicy.legacySchemaPath ||
-        (selection as { "validationPath": unknown }).validationPath !== (oldPolicy.legacyValidationPath || null)) fail('initial migration requires a compatible predecessor-recorded v1 preview selection.');
-    const oldPaths: unknown = JSON.parse(Buffer.from(oldPolicy.legacyAuthorityFilesBase64, 'base64').toString());
-    const controlPaths = [(spec as { "selectionPath": unknown }).selectionPath, policyPath, callerPath];
-    if (!(oldPaths as unknown[]).includes((selection as { "governancePath": unknown }).governancePath) || ((selection as { "authorityPaths": unknown }).authorityPaths as unknown[]).some(file => !(oldPaths as unknown[]).includes(file)) ||
-        hash([...((selection as { "migrationPaths": unknown }).migrationPaths as unknown[])].sort()) !== hash([...controlPaths].sort())) fail('predecessor selection does not authorize this exact migration scope.');
-    const proposed = jsonSnapshot(root, ((spec as { "headSha": unknown }).headSha as string), (spec as { "selectionPath": unknown }).selectionPath);
-    validateSelection(proposed, spec);
-    if (!predecessorSelectionBytes.equals(snapshot(root, ((spec as { "headSha": unknown }).headSha as string), (spec as { "selectionPath": unknown }).selectionPath))) fail('migration cannot replace or expand the predecessor-recorded preview selection.');
-    // The predecessor-selected caller must still exist as a regular file at the migration head.
-    snapshot(root, ((spec as { "headSha": unknown }).headSha as string), callerPath);
-    if (!(proposed as { "eligibilitySchemaPath": unknown }).eligibilitySchemaPath || !Object.hasOwn((proposed as object), 'eligibilityValidationPath')) fail('initial migration requires a selected successor B eligibility schema and explicit validator selection.');
-    if (hash([...((proposed as { "migrationPaths": unknown }).migrationPaths as unknown[])].sort()) !== hash([...controlPaths].sort())) fail('initial migration must select only its three control-plane paths.');
-    const selectedSuccessorInputs = [(proposed as { "eligibilitySchemaPath": unknown }).eligibilitySchemaPath, (proposed as { "eligibilityValidationPath": unknown }).eligibilityValidationPath]
-      .filter(file => file !== undefined && file !== null);
-    successorInputs = selectedSuccessorInputs.map(file => {
-      const raw = snapshot(root, ((spec as { "headSha": unknown }).headSha as string), file);
-      return { path: file, sha256: digest(raw), bytesBase64: raw.toString('base64') };
-    });
-    if (((proposed as { "maxPromptBytes": unknown }).maxPromptBytes as number) > 524288) fail('migration raises legacy prompt bounds.');
-    if ((proposed as { "policyPath": unknown }).policyPath !== policyPath || (proposed as { "callerPath": unknown }).callerPath !== callerPath ||
-        (proposed as { "promptPath": unknown }).promptPath !== (selection as { "promptPath": unknown }).promptPath || (proposed as { "schemaPath": unknown }).schemaPath !== (selection as { "schemaPath": unknown }).schemaPath ||
-        (proposed as { "validationPath": unknown }).validationPath !== (selection as { "validationPath": unknown }).validationPath || !(oldPaths as unknown[]).includes((proposed as { "governancePath": unknown }).governancePath) ||
-        ((proposed as { "authorityPaths": unknown }).authorityPaths as unknown[]).some(file => !(oldPaths as unknown[]).includes(file))) fail('migration proposed inputs are incompatible with this predecessor bridge.');
-    const nextPolicyBytes = snapshot(root, ((spec as { "headSha": unknown }).headSha as string), policyPath);
-    const parsedNextPolicy = parseCiPolicyJson(utf8(nextPolicyBytes));
-    if ((parsedNextPolicy as { "version": unknown }).version === 2 && (containsAuthoritySetDigest(jsonSnapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (selection as { "schemaPath": unknown }).schemaPath)) ||
-        ((selection as { "validationPath": unknown }).validationPath !== null && containsAuthoritySetDigest(jsonSnapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (selection as { "validationPath": unknown }).validationPath))))) {
-      fail('initial v1-to-v2 migration does not support digest-coupled predecessor schemas or validators.');
-    }
-    if ((parsedNextPolicy as { "version": unknown }).version === 2) {
-      const enforcedBranches = Object.entries(((parsedOldPolicy as { "branches": unknown }).branches as Record<string, unknown>)).filter(([, branch]) => (branch as { "mode": unknown }).mode === 'enforced');
-      if (((parsedOldPolicy as { "default": unknown }).default as { "mode": unknown }).mode !== 'local-only' || enforcedBranches.length !== 1 ||
-          enforcedBranches[0][0] !== (spec as { "targetBranch": unknown }).targetBranch ||
-          Object.entries(((parsedOldPolicy as { "branches": unknown }).branches as Record<string, unknown>)).some(([name, branch]) => name !== (spec as { "targetBranch": unknown }).targetBranch && (branch as { "mode": unknown }).mode !== 'local-only')) {
-        fail('initial v1-to-v2 migration supports only one named enforced target with an unchanged local-only default and local-only other branches.');
-      }
-    }
-    const nextPolicy = resolveCiPolicy(parsedNextPolicy, ((spec as { "targetBranch": unknown }).targetBranch as string));
-    if (![1, 2].includes(((parsedNextPolicy as { "version": unknown }).version as number)) || hash((parsedNextPolicy as { "default": unknown }).default) !== hash((parsedOldPolicy as { "default": unknown }).default) ||
-        Object.keys(((parsedNextPolicy as { "branches": unknown }).branches as Record<string, unknown>)).sort().join() !== Object.keys(((parsedOldPolicy as { "branches": unknown }).branches as Record<string, unknown>)).sort().join() ||
-        Object.keys(((parsedOldPolicy as { "branches": unknown }).branches as Record<string, unknown>)).some(name => name !== (spec as { "targetBranch": unknown }).targetBranch &&
-          hash(((parsedNextPolicy as { "branches": unknown }).branches as Record<string, unknown>)[name]) !== hash(((parsedOldPolicy as { "branches": unknown }).branches as Record<string, unknown>)[name]))) fail('migration changes unrelated branch acceptance policy.');
-    if (Object.keys(nextPolicy).some(key => key.startsWith('ownerAddition') || key.startsWith('ownerAmendment') || key.startsWith('adoptionEvidence')) ||
-        [(parsedNextPolicy as { "default": unknown }).default, ...Object.values(((parsedNextPolicy as { "branches": unknown }).branches as Record<string, unknown>))]
-          .some(config => ['ownerAddition', 'ownerAmendment', 'adoptionEvidence'].some(key => Object.hasOwn((config as object), key)))) fail('initial migration cannot select or activate a trusted acceptance route.');
-    for (const key of ['mode', 'provider', 'model', 'reasoningEffort', 'executionSettingsBase64', 'executionSelection', 'reviewJobTimeoutMinutes', 'reviewStepTimeoutMinutes']) {
-      if (nextPolicy[key] !== oldPolicy[key]) fail('migration changes selected review assurance or settings.');
-    }
-    let nextMembers: Member[], nextManifest: { path: unknown; sha256: string; bytesBase64: string } | null = null, nextSetDigest: string | null = null;
-    if (nextPolicy.legacyAuthorityFilesBase64) {
-      if (nextPolicy.legacyPromptPath !== oldPolicy.legacyPromptPath || nextPolicy.legacySchemaPath !== oldPolicy.legacySchemaPath ||
-          nextPolicy.legacyValidationPath !== oldPolicy.legacyValidationPath) fail('migration changes predecessor instruction selectors.');
-      const nextPaths: unknown = JSON.parse(Buffer.from(nextPolicy.legacyAuthorityFilesBase64, 'base64').toString());
-      nextMembers = (nextPaths as unknown[]).map(file => {
-        const raw = snapshot(root, ((spec as { "headSha": unknown }).headSha as string), file, 65536);
-        return { repository: (spec as { "repository": unknown }).repository, path: file, byteLength: raw.length, sha256: digest(raw), content: preserveAuthorityText(raw) };
-      });
-    } else {
-      const manifestPath = nextPolicy.authorityManifestPath;
-      const manifestBytes = snapshot(root, ((spec as { "headSha": unknown }).headSha as string), manifestPath);
-      const limits: unknown = JSON.parse(Buffer.from((nextPolicy.authorityLimitsBase64 as string), 'base64').toString());
-      if (((limits as { "maxMembers": unknown }).maxMembers as number) > 16 || ((limits as { "maxFileBytes": unknown }).maxFileBytes as number) > 65536 ||
-          ((limits as { "maxTotalBytes": unknown }).maxTotalBytes as number) > 262144 || ((limits as { "maxPromptBytes": unknown }).maxPromptBytes as number) > 524288) fail('migration raises legacy authority bounds.');
-      if (parseAuthorityManifest(manifestBytes, limits, nextPolicy.authorityProfile ?? 'v1').authorities.some(member => member.repository !== 'self')) fail('migration cannot add external authority.');
-      const nextSet = await materializeAuthoritySet({ manifestBytes, limits, selfRepository: (spec as { "repository": unknown }).repository,
-        selfRoot: root, authorityRevision: (spec as { "headSha": unknown }).headSha, profile: nextPolicy.authorityProfile ?? 'v1' });
-      nextMembers = nextSet.members;
-      nextSetDigest = nextSet.setDigest;
-      nextManifest = { path: manifestPath, sha256: digest(manifestBytes), bytesBase64: manifestBytes.toString('base64') };
-    }
-    const oldMembers = (oldPaths as unknown[]).map(file => {
-      const raw = snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), file, 65536);
-      return { repository: (spec as { "repository": unknown }).repository, path: file, byteLength: raw.length, sha256: digest(raw) };
-    });
-    if (nextMembers.length !== oldMembers.length || oldMembers.some((member, index) =>
-        nextMembers[index].repository !== member.repository || nextMembers[index].path !== member.path ||
-        nextMembers[index].byteLength !== member.byteLength || nextMembers[index].sha256 !== member.sha256)) fail('migration changes, reorders, omits or replaces predecessor authority.');
-    if (nextManifest) {
-      validateInitialSuccessorEligibility(root, ((spec as { "headSha": unknown }).headSha as string), (proposed as { "eligibilitySchemaPath": unknown }).eligibilitySchemaPath,
-        (proposed as { "eligibilityValidationPath": unknown }).eligibilityValidationPath, nextMembers.map(member => member.id));
-    }
-    successorAuthoritySet = { manifest: nextManifest, members: nextMembers.map(({ content, ...member }) => member),
-      setDigest: nextManifest ? nextSetDigest : hash(nextMembers.map(({ content, ...member }) => member)) };
-    for (const [name, value] of [['maxFileBytes', nextPolicy.authorityLimitsBase64 ? (JSON.parse(Buffer.from(nextPolicy.authorityLimitsBase64, 'base64').toString()) as { maxFileBytes: unknown }).maxFileBytes : 65536],
-      ['maxTotalBytes', nextPolicy.authorityLimitsBase64 ? (JSON.parse(Buffer.from(nextPolicy.authorityLimitsBase64, 'base64').toString()) as { maxTotalBytes: unknown }).maxTotalBytes : 262144]]) {
-      const oldLimit = name === 'maxFileBytes' ? 65536 : 262144;
-      if ((value as number) > oldLimit) fail('migration raises legacy authority bounds.');
-    }
-  } else selection = jsonSnapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (spec as { "selectionPath": unknown }).selectionPath);
+  if ((spec as { "mode": unknown }).mode === 'migration') return prepareMigrationSelection(root, spec);
+  selection = jsonSnapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (spec as { "selectionPath": unknown }).selectionPath);
+  return { kind: 'ready' as const, selection, successorAuthoritySet, successorInputs };
+}
+
+function prepareMigrationSelection(root: string, spec: unknown) {
+  let selection: unknown, successorAuthoritySet: { manifest: { path: unknown; sha256: string; bytesBase64: string } | null; members: Omit<Member, 'content'>[]; setDigest: string | null } | null = null, successorInputs: { path: unknown; sha256: string; bytesBase64: string }[] = [];
+  const predecessorSelectionBytes = snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (spec as { "selectionPath": unknown }).selectionPath);
+  selection = jsonSnapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (spec as { "selectionPath": unknown }).selectionPath);
   validateSelection(selection, spec);
-  const policyBytes = snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (selection as { "policyPath": unknown }).policyPath);
-  const policy = resolveCiPolicy(parseCiPolicyJson(utf8(policyBytes)), ((spec as { "targetBranch": unknown }).targetBranch as string));
-  if (policy.mode === 'local-only') fail('preview requires explicit model-backed predecessor inputs.');
-  if (policy.provider && policy.provider !== 'codex') fail('preview does not support this predecessor reviewer provider.');
-  const inputPaths = [(spec as { "selectionPath": unknown }).selectionPath, (selection as { "policyPath": unknown }).policyPath, (selection as { "promptPath": unknown }).promptPath, (selection as { "schemaPath": unknown }).schemaPath, (selection as { "callerPath": unknown }).callerPath];
-  if ((selection as { "validationPath": unknown }).validationPath !== null) inputPaths.push(path((selection as { "validationPath": unknown }).validationPath));
-  const inputs = inputPaths.map(file => ({ path: file, sha256: digest(snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), file)) }));
-  const isMigration = (spec as { "mode": unknown }).mode === 'migration';
-  const isBlockAmendment = (spec as { "mode": unknown }).mode === 'amendment' && (selection as { "amendmentTriggerProfile": unknown }).amendmentTriggerProfile === 'completed-block-v1';
-  const isOwnerAmendment = (spec as { "mode": unknown }).mode === 'amendment' && (selection as { "amendmentTriggerProfile": unknown }).amendmentTriggerProfile === 'completed-owner-decision-v1';
-  const isAddition = (spec as { "mode": unknown }).mode === 'addition';
-  const isEligibility = isBlockAmendment || isOwnerAmendment || isAddition;
-  if (isAddition && (!(selection as { "eligibilitySchemaPath": unknown }).eligibilitySchemaPath || !Object.hasOwn((selection as object), 'eligibilityValidationPath'))) fail('addition requires predecessor-selected B schema/validator selection.');
-  if ((spec as { "mode": unknown }).mode === 'amendment' && !isEligibility) fail('amendment requires a predecessor-selected BLOCK or OWNER_DECISION trigger profile.');
-  if ((spec as { "mode": unknown }).mode === 'amendment' && (!(selection as { "eligibilitySchemaPath": unknown }).eligibilitySchemaPath || !Object.hasOwn((selection as object), 'eligibilityValidationPath'))) fail('amendment requires predecessor-selected B schema/validator selection.');
-  const schema = jsonSnapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), isEligibility ? (selection as { "eligibilitySchemaPath": unknown }).eligibilitySchemaPath : (selection as { "schemaPath": unknown }).schemaPath);
+  const policyPath = '.codex/gatekeeper/ci-policy.json';
+  const callerPath = '.github/workflows/architecture-gate.yml';
+  const parsedOldPolicy = parseCiPolicyJson(utf8(snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), policyPath)));
+  const oldPolicy = resolveCiPolicy(parsedOldPolicy, ((spec as { "targetBranch": unknown }).targetBranch as string));
+  if ((parsedOldPolicy as { "version": unknown }).version !== 1 || !oldPolicy.legacyAuthorityFilesBase64 || oldPolicy.ownerAdditionAuthorityPath ||
+      selection.policyPath !== policyPath || selection.callerPath !== callerPath ||
+      selection.promptPath !== oldPolicy.legacyPromptPath || selection.schemaPath !== oldPolicy.legacySchemaPath ||
+      selection.validationPath !== (oldPolicy.legacyValidationPath || null)) fail('initial migration requires a compatible predecessor-recorded v1 preview selection.');
+  const oldPaths: unknown = JSON.parse(Buffer.from(oldPolicy.legacyAuthorityFilesBase64, 'base64').toString());
+  const controlPaths = [(spec as { "selectionPath": unknown }).selectionPath, policyPath, callerPath];
+  if (!(oldPaths as unknown[]).includes(selection.governancePath) || selection.authorityPaths.some(file => !(oldPaths as unknown[]).includes(file)) ||
+      hash([...selection.migrationPaths].sort()) !== hash([...controlPaths].sort())) fail('predecessor selection does not authorize this exact migration scope.');
+  const proposed = jsonSnapshot(root, ((spec as { "headSha": unknown }).headSha as string), (spec as { "selectionPath": unknown }).selectionPath);
+  validateSelection(proposed, spec);
+  if (!predecessorSelectionBytes.equals(snapshot(root, ((spec as { "headSha": unknown }).headSha as string), (spec as { "selectionPath": unknown }).selectionPath))) fail('migration cannot replace or expand the predecessor-recorded preview selection.');
+  // The predecessor-selected caller must still exist as a regular file at the migration head.
+  snapshot(root, ((spec as { "headSha": unknown }).headSha as string), callerPath);
+  if (!proposed.eligibilitySchemaPath || !Object.hasOwn((proposed as object), 'eligibilityValidationPath')) fail('initial migration requires a selected successor B eligibility schema and explicit validator selection.');
+  if (hash([...proposed.migrationPaths].sort()) !== hash([...controlPaths].sort())) fail('initial migration must select only its three control-plane paths.');
+  const selectedSuccessorInputs = [proposed.eligibilitySchemaPath, proposed.eligibilityValidationPath]
+    .filter(file => file !== undefined && file !== null);
+  successorInputs = selectedSuccessorInputs.map(file => {
+    const raw = snapshot(root, ((spec as { "headSha": unknown }).headSha as string), file);
+    return { path: file, sha256: digest(raw), bytesBase64: raw.toString('base64') };
+  });
+  if ((proposed.maxPromptBytes as number) > 524288) fail('migration raises legacy prompt bounds.');
+  if (proposed.policyPath !== policyPath || proposed.callerPath !== callerPath ||
+      proposed.promptPath !== selection.promptPath || proposed.schemaPath !== selection.schemaPath ||
+      proposed.validationPath !== selection.validationPath || !(oldPaths as unknown[]).includes(proposed.governancePath) ||
+      proposed.authorityPaths.some(file => !(oldPaths as unknown[]).includes(file))) fail('migration proposed inputs are incompatible with this predecessor bridge.');
+  const nextPolicyBytes = snapshot(root, ((spec as { "headSha": unknown }).headSha as string), policyPath);
+  const parsedNextPolicy = parseCiPolicyJson(utf8(nextPolicyBytes));
+  if ((parsedNextPolicy as { "version": unknown }).version === 2 && (containsAuthoritySetDigest(jsonSnapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), selection.schemaPath)) ||
+      (selection.validationPath !== null && containsAuthoritySetDigest(jsonSnapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), selection.validationPath))))) {
+    fail('initial v1-to-v2 migration does not support digest-coupled predecessor schemas or validators.');
+  }
+  if ((parsedNextPolicy as { "version": unknown }).version === 2) {
+    const enforcedBranches = Object.entries(((parsedOldPolicy as { "branches": unknown }).branches as Record<string, unknown>)).filter(([, branch]) => (branch as { "mode": unknown }).mode === 'enforced');
+    if (((parsedOldPolicy as { "default": unknown }).default as { "mode": unknown }).mode !== 'local-only' || enforcedBranches.length !== 1 ||
+        enforcedBranches[0][0] !== (spec as { "targetBranch": unknown }).targetBranch ||
+        Object.entries(((parsedOldPolicy as { "branches": unknown }).branches as Record<string, unknown>)).some(([name, branch]) => name !== (spec as { "targetBranch": unknown }).targetBranch && (branch as { "mode": unknown }).mode !== 'local-only')) {
+      fail('initial v1-to-v2 migration supports only one named enforced target with an unchanged local-only default and local-only other branches.');
+    }
+  }
+  const nextPolicy = resolveCiPolicy(parsedNextPolicy, ((spec as { "targetBranch": unknown }).targetBranch as string));
+  if (![1, 2].includes(((parsedNextPolicy as { "version": unknown }).version as number)) || hash((parsedNextPolicy as { "default": unknown }).default) !== hash((parsedOldPolicy as { "default": unknown }).default) ||
+      Object.keys(((parsedNextPolicy as { "branches": unknown }).branches as Record<string, unknown>)).sort().join() !== Object.keys(((parsedOldPolicy as { "branches": unknown }).branches as Record<string, unknown>)).sort().join() ||
+      Object.keys(((parsedOldPolicy as { "branches": unknown }).branches as Record<string, unknown>)).some(name => name !== (spec as { "targetBranch": unknown }).targetBranch &&
+        hash(((parsedNextPolicy as { "branches": unknown }).branches as Record<string, unknown>)[name]) !== hash(((parsedOldPolicy as { "branches": unknown }).branches as Record<string, unknown>)[name]))) fail('migration changes unrelated branch acceptance policy.');
+  if (Object.keys(nextPolicy).some(key => key.startsWith('ownerAddition') || key.startsWith('ownerAmendment') || key.startsWith('adoptionEvidence')) ||
+      [(parsedNextPolicy as { "default": unknown }).default, ...Object.values(((parsedNextPolicy as { "branches": unknown }).branches as Record<string, unknown>))]
+        .some(config => ['ownerAddition', 'ownerAmendment', 'adoptionEvidence'].some(key => Object.hasOwn((config as object), key)))) fail('initial migration cannot select or activate a trusted acceptance route.');
+  for (const key of ['mode', 'provider', 'model', 'reasoningEffort', 'executionSettingsBase64', 'executionSelection', 'reviewJobTimeoutMinutes', 'reviewStepTimeoutMinutes']) {
+    if (nextPolicy[key] !== oldPolicy[key]) fail('migration changes selected review assurance or settings.');
+  }
+  let nextMembers: Member[], nextManifest: { path: unknown; sha256: string; bytesBase64: string } | null = null, nextSetDigest: string | null = null;
+  if (nextPolicy.legacyAuthorityFilesBase64) {
+    if (nextPolicy.legacyPromptPath !== oldPolicy.legacyPromptPath || nextPolicy.legacySchemaPath !== oldPolicy.legacySchemaPath ||
+        nextPolicy.legacyValidationPath !== oldPolicy.legacyValidationPath) fail('migration changes predecessor instruction selectors.');
+    const nextPaths: unknown = JSON.parse(Buffer.from(nextPolicy.legacyAuthorityFilesBase64, 'base64').toString());
+    nextMembers = (nextPaths as unknown[]).map(file => {
+      const raw = snapshot(root, ((spec as { "headSha": unknown }).headSha as string), file, 65536);
+      return { repository: (spec as { "repository": unknown }).repository, path: file, byteLength: raw.length, sha256: digest(raw), content: preserveAuthorityText(raw) };
+    });
+  } else {
+    const manifestPath = nextPolicy.authorityManifestPath;
+    const manifestBytes = snapshot(root, ((spec as { "headSha": unknown }).headSha as string), manifestPath);
+    const limits: unknown = JSON.parse(Buffer.from((nextPolicy.authorityLimitsBase64 as string), 'base64').toString());
+    if (((limits as { "maxMembers": unknown }).maxMembers as number) > 16 || ((limits as { "maxFileBytes": unknown }).maxFileBytes as number) > 65536 ||
+        ((limits as { "maxTotalBytes": unknown }).maxTotalBytes as number) > 262144 || ((limits as { "maxPromptBytes": unknown }).maxPromptBytes as number) > 524288) fail('migration raises legacy authority bounds.');
+    if (parseAuthorityManifest(manifestBytes, limits, nextPolicy.authorityProfile ?? 'v1').authorities.some(member => member.repository !== 'self')) fail('migration cannot add external authority.');
+    return { kind: 'materialize' as const,
+      materialization: { manifestBytes, limits, selfRepository: (spec as { "repository": unknown }).repository,
+        selfRoot: root, authorityRevision: (spec as { "headSha": unknown }).headSha, profile: nextPolicy.authorityProfile ?? 'v1' },
+      manifestPath, manifestBytes, state: { selection, proposed, oldPaths, nextPolicy, successorInputs } };
+  }
+  return finishMigrationSelection(root, spec, { selection, proposed, oldPaths, nextPolicy, successorInputs }, nextMembers, nextManifest, nextSetDigest);
+}
+
+type MigrationSelectionState = {
+  selection: ValidatedPreviewSelection; proposed: ValidatedPreviewSelection;
+  oldPaths: unknown; nextPolicy: ReturnType<typeof resolveCiPolicy>;
+  successorInputs: { path: unknown; sha256: string; bytesBase64: string }[];
+};
+function finishMigrationSelection(root: string, spec: unknown, state: MigrationSelectionState,
+  nextMembers: Member[], nextManifest: { path: unknown; sha256: string; bytesBase64: string } | null, nextSetDigest: string | null) {
+  const { selection, proposed, oldPaths, nextPolicy, successorInputs } = state;
+  const oldMembers = (oldPaths as unknown[]).map(file => {
+    const raw = snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), file, 65536);
+    return { repository: (spec as { "repository": unknown }).repository, path: file, byteLength: raw.length, sha256: digest(raw) };
+  });
+  if (nextMembers.length !== oldMembers.length || oldMembers.some((member, index) =>
+      nextMembers[index].repository !== member.repository || nextMembers[index].path !== member.path ||
+      nextMembers[index].byteLength !== member.byteLength || nextMembers[index].sha256 !== member.sha256)) fail('migration changes, reorders, omits or replaces predecessor authority.');
+  if (nextManifest) {
+    validateInitialSuccessorEligibility(root, ((spec as { "headSha": unknown }).headSha as string), proposed.eligibilitySchemaPath,
+      proposed.eligibilityValidationPath, nextMembers.map(member => member.id));
+  }
+  const successorAuthoritySet = { manifest: nextManifest, members: nextMembers.map(({ content, ...member }) => member),
+    setDigest: nextManifest ? nextSetDigest : hash(nextMembers.map(({ content, ...member }) => member)) };
+  for (const [name, value] of [['maxFileBytes', nextPolicy.authorityLimitsBase64 ? (JSON.parse(Buffer.from(nextPolicy.authorityLimitsBase64, 'base64').toString()) as { maxFileBytes: unknown }).maxFileBytes : 65536],
+    ['maxTotalBytes', nextPolicy.authorityLimitsBase64 ? (JSON.parse(Buffer.from(nextPolicy.authorityLimitsBase64, 'base64').toString()) as { maxTotalBytes: unknown }).maxTotalBytes : 262144]]) {
+    const oldLimit = name === 'maxFileBytes' ? 65536 : 262144;
+    if ((value as number) > oldLimit) fail('migration raises legacy authority bounds.');
+  }
+  return { kind: 'ready' as const, selection, successorAuthoritySet, successorInputs };
+}
+
+function preparePredecessorAuthority(root: string, spec: unknown, selection: ValidatedPreviewSelection, policy: ReturnType<typeof resolveCiPolicy>) {
   let members: Member[], authorityPrompt: string, setDigest: string, manifestSha256: string | null = null;
   if (policy.legacyAuthorityFilesBase64) {
-    if ((selection as { "promptPath": unknown }).promptPath !== policy.legacyPromptPath || (selection as { "schemaPath": unknown }).schemaPath !== policy.legacySchemaPath ||
-        ((selection as { "validationPath": unknown }).validationPath ?? '') !== policy.legacyValidationPath) fail('legacy predecessor instruction selectors differ.');
+    if (selection.promptPath !== policy.legacyPromptPath || selection.schemaPath !== policy.legacySchemaPath ||
+        (selection.validationPath ?? '') !== policy.legacyValidationPath) fail('legacy predecessor instruction selectors differ.');
     const paths: unknown = JSON.parse(Buffer.from(policy.legacyAuthorityFilesBase64, 'base64').toString());
     members = (paths as unknown[]).map(file => {
       const raw = snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), file, 65536);
@@ -362,25 +374,16 @@ export async function preparePreviewLifecycle(spec: unknown, cwd = process.cwd()
     const limits: unknown = JSON.parse(Buffer.from((policy.authorityLimitsBase64 as string), 'base64').toString());
     if (parseAuthorityManifest(manifestBytes, limits, policy.authorityProfile ?? 'v1').authorities
       .some(member => member.repository !== 'self')) fail('preview supports same-repository authority only; external authority is unsupported.');
-    const materialized = await materializeAuthoritySet({ manifestBytes,
+    return { kind: 'materialize' as const, manifestBytes, materialization: { manifestBytes,
       limits,
       selfRepository: (spec as { "repository": unknown }).repository, selfRoot: root, authorityRevision: (spec as { "baseSha": unknown }).baseSha,
-      profile: policy.authorityProfile ?? 'v1' });
-    ({ members, prompt: authorityPrompt, setDigest, manifestSha256 } = materialized);
-    inputs.push({ path: policy.authorityManifestPath, sha256: digest(manifestBytes) });
+      profile: policy.authorityProfile ?? 'v1' } };
   }
-  const selfPaths = members.filter(m => m.repository === (spec as { "repository": unknown }).repository).map(m => m.path);
-  members.forEach(member => path(member.path));
-  if (!selfPaths.includes((selection as { "governancePath": unknown }).governancePath) || ((selection as { "authorityPaths": unknown }).authorityPaths as unknown[]).some(p => !selfPaths.includes(p))) fail('governance or affected authority is not in the full predecessor set.');
-  const ordinaryInputs = [...inputs];
-  if (isEligibility) {
-    inputPaths.push((selection as { "eligibilitySchemaPath": unknown }).eligibilitySchemaPath);
-    inputs.push({ path: (selection as { "eligibilitySchemaPath": unknown }).eligibilitySchemaPath, sha256: digest(snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (selection as { "eligibilitySchemaPath": unknown }).eligibilitySchemaPath)) });
-    if ((selection as { "eligibilityValidationPath": unknown }).eligibilityValidationPath !== null) {
-      inputPaths.push((selection as { "eligibilityValidationPath": unknown }).eligibilityValidationPath);
-      inputs.push({ path: (selection as { "eligibilityValidationPath": unknown }).eligibilityValidationPath, sha256: digest(snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (selection as { "eligibilityValidationPath": unknown }).eligibilityValidationPath)) });
-    }
-  }
+  return { kind: 'ready' as const, members, authorityPrompt, setDigest, manifestSha256 };
+
+}
+
+function assemblePreviewChanges(root: string, spec: unknown, policy: ReturnType<typeof resolveCiPolicy>, members: Member[], selfPaths: unknown[]) {
   const changedPaths = diffPaths(root, ((spec as { "baseSha": unknown }).baseSha as string), ((spec as { "headSha": unknown }).headSha as string));
   const affectedMaxBytes = policy.authorityLimitsBase64
     ? (JSON.parse(Buffer.from(policy.authorityLimitsBase64, 'base64').toString()) as { maxFileBytes: unknown }).maxFileBytes : 65536;
@@ -403,8 +406,63 @@ export async function preparePreviewLifecycle(spec: unknown, cwd = process.cwd()
   const totalLimit = policy.authorityLimitsBase64
     ? (JSON.parse(Buffer.from(policy.authorityLimitsBase64, 'base64').toString()) as { maxTotalBytes: unknown }).maxTotalBytes : 262144;
   if ((resultingTotal as number) > (totalLimit as number)) fail('resulting full Authority Set exceeds selected bounds.');
+  return { changedPaths, changes };
+}
+
+/** Resolves only committed predecessor inputs. No network or owner-authentication claim. */
+export async function preparePreviewLifecycle(spec: unknown, cwd = process.cwd()) {
+  validateSpec(spec);
+  const root = validatePreviewRevisions(spec, cwd);
+  // Resolve every selected input from the exact committed predecessor.
+  // Candidate bytes cannot select their own review instructions.
+  const preparedSelection = preparePreviewSelection(root, spec);
+  let selected;
+  if (preparedSelection.kind === 'materialize') {
+    const nextSet = await materializeAuthoritySet(preparedSelection.materialization);
+    const nextManifest = { path: preparedSelection.manifestPath, sha256: digest(preparedSelection.manifestBytes), bytesBase64: preparedSelection.manifestBytes.toString('base64') };
+    selected = finishMigrationSelection(root, spec, preparedSelection.state, nextSet.members, nextManifest, nextSet.setDigest);
+  } else selected = preparedSelection;
+  const { selection, successorAuthoritySet, successorInputs } = selected;
+  validateSelection(selection, spec);
+  const policyBytes = snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), selection.policyPath);
+  const policy = resolveCiPolicy(parseCiPolicyJson(utf8(policyBytes)), ((spec as { "targetBranch": unknown }).targetBranch as string));
+  if (policy.mode === 'local-only') fail('preview requires explicit model-backed predecessor inputs.');
+  if (policy.provider && policy.provider !== 'codex') fail('preview does not support this predecessor reviewer provider.');
+  const inputPaths = [(spec as { "selectionPath": unknown }).selectionPath, selection.policyPath, selection.promptPath, selection.schemaPath, selection.callerPath];
+  if (selection.validationPath !== null) inputPaths.push(path(selection.validationPath));
+  const inputs = inputPaths.map(file => ({ path: file, sha256: digest(snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), file)) }));
+  const isMigration = (spec as { "mode": unknown }).mode === 'migration';
+  const isBlockAmendment = (spec as { "mode": unknown }).mode === 'amendment' && selection.amendmentTriggerProfile === 'completed-block-v1';
+  const isOwnerAmendment = (spec as { "mode": unknown }).mode === 'amendment' && selection.amendmentTriggerProfile === 'completed-owner-decision-v1';
+  const isAddition = (spec as { "mode": unknown }).mode === 'addition';
+  const isEligibility = isBlockAmendment || isOwnerAmendment || isAddition;
+  if (isAddition && (!selection.eligibilitySchemaPath || !Object.hasOwn((selection as object), 'eligibilityValidationPath'))) fail('addition requires predecessor-selected B schema/validator selection.');
+  if ((spec as { "mode": unknown }).mode === 'amendment' && !isEligibility) fail('amendment requires a predecessor-selected BLOCK or OWNER_DECISION trigger profile.');
+  if ((spec as { "mode": unknown }).mode === 'amendment' && (!selection.eligibilitySchemaPath || !Object.hasOwn((selection as object), 'eligibilityValidationPath'))) fail('amendment requires predecessor-selected B schema/validator selection.');
+  const schema = jsonSnapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), isEligibility ? selection.eligibilitySchemaPath : selection.schemaPath);
+  const preparedAuthority = preparePredecessorAuthority(root, spec, selection, policy);
+  let predecessorAuthority;
+  if (preparedAuthority.kind === 'materialize') {
+    const materialized = await materializeAuthoritySet(preparedAuthority.materialization);
+    predecessorAuthority = { members: materialized.members, authorityPrompt: materialized.prompt, setDigest: materialized.setDigest, manifestSha256: materialized.manifestSha256 };
+    inputs.push({ path: policy.authorityManifestPath, sha256: digest(preparedAuthority.manifestBytes) });
+  } else predecessorAuthority = preparedAuthority;
+  const { members, authorityPrompt, setDigest, manifestSha256 } = predecessorAuthority;
+  const selfPaths = members.filter(m => m.repository === (spec as { "repository": unknown }).repository).map(m => m.path);
+  members.forEach(member => path(member.path));
+  if (!selfPaths.includes(selection.governancePath) || selection.authorityPaths.some(p => !selfPaths.includes(p))) fail('governance or affected authority is not in the full predecessor set.');
+  const ordinaryInputs = [...inputs];
   if (isEligibility) {
-    if (changedPaths.some(p => !((selection as { "authorityPaths": unknown }).authorityPaths as unknown[]).includes(p) || inputPaths.includes(p))) fail('B procedure is outside selected authority-only scope.');
+    inputPaths.push(selection.eligibilitySchemaPath);
+    inputs.push({ path: selection.eligibilitySchemaPath, sha256: digest(snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), selection.eligibilitySchemaPath)) });
+    if (selection.eligibilityValidationPath !== null) {
+      inputPaths.push(selection.eligibilityValidationPath);
+      inputs.push({ path: selection.eligibilityValidationPath, sha256: digest(snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), selection.eligibilityValidationPath)) });
+    }
+  }
+  const { changedPaths, changes } = assemblePreviewChanges(root, spec, policy, members, selfPaths);
+  if (isEligibility) {
+    if (changedPaths.some(p => !selection.authorityPaths.includes(p) || inputPaths.includes(p))) fail('B procedure is outside selected authority-only scope.');
     const trigger = await validatePreviewReceipt((spec as { "trigger": unknown }).trigger, root);
     if ((((trigger as { "request": unknown }).request as { "spec": unknown }).spec as { "mode": unknown }).mode !== 'review' || (((trigger as { "request": unknown }).request as { "spec": unknown }).spec as { "baseSha": unknown }).baseSha !== (spec as { "baseSha": unknown }).baseSha ||
         (((trigger as { "request": unknown }).request as { "spec": unknown }).spec as { "repository": unknown }).repository !== (spec as { "repository": unknown }).repository || (((trigger as { "request": unknown }).request as { "spec": unknown }).spec as { "targetBranch": unknown }).targetBranch !== (spec as { "targetBranch": unknown }).targetBranch ||
@@ -424,11 +482,11 @@ export async function preparePreviewLifecycle(spec: unknown, cwd = process.cwd()
     if (isAddition && ((spec as { "record": unknown }).record as { "target": unknown }).target !== ((trigger as { "decision": unknown }).decision as { "ownerDecisionId": unknown }).ownerDecisionId) fail('addition target must bind completed ownerDecisionId.');
     if (isAddition && changes.some(change => change.before === null || change.after === null || !change.after.startsWith(change.before))) fail('addition must append to existing authority without replacement or deletion.');
   } else if (isMigration) {
-    if (changedPaths.some(p => !((selection as { "migrationPaths": unknown }).migrationPaths as unknown[]).includes(p) || selfPaths.includes(p))) fail('migration is not selected control-plane-only scope.');
+    if (changedPaths.some(p => !selection.migrationPaths.includes(p) || selfPaths.includes(p))) fail('migration is not selected control-plane-only scope.');
   } else if (policy.legacyAuthorityFilesBase64 && changedPaths.some(p => selfPaths.includes(p))) {
     fail('ordinary v1 review cannot change selected canonical authority.');
   }
-  const priorPrompt = utf8(snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), (selection as { "promptPath": unknown }).promptPath));
+  const priorPrompt = utf8(snapshot(root, ((spec as { "baseSha": unknown }).baseSha as string), selection.promptPath));
   const completeAuthority = members.map(member => `- ${member.id ? `id=${member.id}, ` : ''}path=${member.path}`).join('\n');
   const selectedAuthorityField = members[0].id ? 'authorityIds' : 'authorityFiles';
   const semanticInstructions = isMigration
@@ -458,9 +516,9 @@ export async function preparePreviewLifecycle(spec: unknown, cwd = process.cwd()
     (isAddition ? 'Classify the full bound OWNER_DECISION trigger. It must identify a missing decision, not an owner choice to change an existing decision. B must materially add only the exact missing decision named by ownerDecisionId; preserve all existing authority bytes and unrelated rules. Exclude unrelated authority, implementation, workflow or executable-policy edits and unsupported completion claims. Assess resulting rules coherently without inventing an existing target. triggerMissingDecision must be true, triggerExistingDecision false, and targetDecisionOnly true only for the exact recorded missing ownerDecisionId. All common checks must be true for ELIGIBLE; mixed, replacement, or existing-decision changes are INELIGIBLE.\n' : '') +
     `Bound task:\n${bytes(task).toString()}\nReturn only the supplied structured response schema.`;
   const selectedLimit = policy.authorityLimitsBase64 ? (JSON.parse(Buffer.from(policy.authorityLimitsBase64, 'base64').toString()) as { maxPromptBytes: unknown }).maxPromptBytes : 524288;
-  if (Buffer.byteLength(prompt) > Math.min((selectedLimit as number), ((selection as { "maxPromptBytes": unknown }).maxPromptBytes as number))) fail('complete prompt exceeds selected bounds.');
+  if (Buffer.byteLength(prompt) > Math.min((selectedLimit as number), (selection.maxPromptBytes as number))) fail('complete prompt exceeds selected bounds.');
   return seal({ version: 1, profile: PREVIEW_PROFILE, kind: 'preview-lifecycle-request', root, spec,
-    inputs, selection, policy, ...(isMigration ? { successorAuthoritySet, successorInputs } : {}), runtime: runtimeIdentity(),
+    inputs, selection: selection as unknown, policy, ...(isMigration ? { successorAuthoritySet, successorInputs } : {}), runtime: runtimeIdentity(),
     authoritySet: { members: members.map(({ content, ...m }) => m), setDigest, manifestSha256 },
     schema: responseSchema, prompt, reviewer: { model: policy.model, reasoningEffort: policy.reasoningEffort }, assurance });
 }

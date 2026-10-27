@@ -381,6 +381,141 @@ function resolveProviderBaseUrl(credentials: GeminiCredential, options: GeminiTr
   return 'https://generativelanguage.googleapis.com/v1beta';
 }
 
+/** Resolve credentials and validate the complete dispatch destination before payload construction. */
+function prepareGeminiDispatch(
+  model: string,
+  options: GeminiTransportOptions,
+  gcloudTimeoutMs: number,
+  signal: AbortSignal,
+  timeoutMs: number,
+): { url: string; credentials: GeminiCredential | null } {
+  const proxyUrl = options.proxyUrl || process.env.REVIEW_PROXY_URL;
+  let credentials: GeminiCredential | null = null;
+  let parsedProxyUrl = null;
+
+  if (proxyUrl) {
+    try {
+      parsedProxyUrl = new URL(proxyUrl);
+    } catch {
+      throw new Error(`Architecture gate reviewer failed: invalid proxyUrl: ${proxyUrl}`);
+    }
+    if (!['http:', 'https:'].includes(parsedProxyUrl.protocol) || parsedProxyUrl.username || parsedProxyUrl.password || parsedProxyUrl.search || parsedProxyUrl.hash || !['', '/'].includes(parsedProxyUrl.pathname)) {
+      throw new Error('Architecture gate reviewer failed: proxyUrl must be a plain loopback HTTP endpoint.');
+    }
+    if (parsedProxyUrl.hostname !== '127.0.0.1' && parsedProxyUrl.hostname !== 'localhost') {
+      throw new Error(`Architecture gate reviewer failed: proxyUrl must bind to loopback (127.0.0.1), received: ${parsedProxyUrl.hostname}`);
+    }
+  } else {
+    if (signal.aborted) {
+      throw signal.reason || new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+    }
+    credentials = resolveAuthCredentials({ ...options, gcloudTimeoutMs });
+  }
+
+  if (signal.aborted) {
+    throw signal.reason || new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
+  }
+
+  // Validate endpoint and require HTTPS before transmitting credentials directly
+  let baseUrl: string;
+  let parsedUrl: URL;
+  if (parsedProxyUrl) {
+    const protocol = parsedProxyUrl.protocol === 'https:' ? 'https:' : 'http:';
+    const host = parsedProxyUrl.hostname === 'localhost' ? 'localhost' : '127.0.0.1';
+    const port = parsedProxyUrl.port ? `:${encodeURIComponent(parsedProxyUrl.port)}` : '';
+    let cleanProxyUrl = `${protocol}//${host}${port}`;
+    while (cleanProxyUrl.endsWith('/')) {
+      cleanProxyUrl = cleanProxyUrl.slice(0, -1);
+    }
+    const proxyMode = options.proxyMode ?? process.env.REVIEW_PROXY_MODE;
+    if (proxyMode !== undefined && !['studio', 'vertex'].includes(proxyMode)) throw new Error('Invalid selected proxy mode.');
+    const isVertex = proxyMode === undefined
+      ? Boolean(resolveVertexProject(options))
+      : proxyMode === 'vertex';
+    if (isVertex) {
+      const projectId = resolveVertexProject(options) || 'default';
+      const region = resolveVertexRegion(options);
+      baseUrl = `${cleanProxyUrl}/v1/projects/${encodeURIComponent(projectId)}/locations/${encodeURIComponent(region)}/publishers/google`;
+    } else {
+      baseUrl = `${cleanProxyUrl}/v1beta`;
+    }
+    parsedUrl = new URL(baseUrl);
+  } else {
+    baseUrl = resolveBaseUrl(credentials as GeminiCredential, options);
+    while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+    try {
+      parsedUrl = new URL(baseUrl);
+    } catch {
+      throw new Error(`Architecture gate reviewer failed: invalid baseUrl: ${baseUrl}`);
+    }
+    if (parsedUrl.protocol !== 'https:') {
+      throw new Error(`Architecture gate reviewer failed: insecure endpoint protocol ${parsedUrl.protocol}. HTTPS is required to protect credentials.`);
+    }
+    if (parsedUrl.hostname !== 'generativelanguage.googleapis.com' && !/^[a-z0-9-]+-aiplatform\.googleapis\.com$/.test(parsedUrl.hostname)) {
+      throw new Error('Architecture gate reviewer failed: endpoint must match the selected official provider scope.');
+    }
+    const selectedBase = new URL(resolveProviderBaseUrl(credentials as GeminiCredential, options));
+    if (parsedUrl.origin !== selectedBase.origin || parsedUrl.pathname !== selectedBase.pathname || parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
+      throw new Error('Architecture gate reviewer failed: endpoint must match the selected official provider scope.');
+    }
+    // Dispatch the provider-derived endpoint, never the caller's validated spelling.
+    baseUrl = resolveProviderBaseUrl(credentials as GeminiCredential, options);
+  }
+
+  while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+  const url = `${baseUrl}/models/${encodeURIComponent(model)}:generateContent`;
+  // Validate the complete dispatch URL, not only its base before composition.
+  const dispatchUrl = new URL(url);
+  if (parsedProxyUrl) {
+    if (dispatchUrl.hostname !== '127.0.0.1' && dispatchUrl.hostname !== 'localhost') {
+      throw new Error('Architecture gate reviewer failed: proxy dispatch must remain loopback.');
+    }
+    if (dispatchUrl.origin !== parsedProxyUrl.origin) throw new Error('Architecture gate reviewer failed: proxy dispatch origin changed.');
+  } else if (dispatchUrl.origin !== parsedUrl.origin || dispatchUrl.protocol !== 'https:' ||
+      (dispatchUrl.hostname !== 'generativelanguage.googleapis.com' && !/^[a-z0-9-]+-aiplatform\.googleapis\.com$/.test(dispatchUrl.hostname))) {
+    throw new Error('Architecture gate reviewer failed: dispatch must remain in the selected official provider scope.');
+  }
+  return { url, credentials };
+}
+
+/** Decode answer parts only; provider observations and their original rereads stay unchecked. */
+function decodeGeminiDecision(data: unknown): unknown {
+  const candidate = (data as GeminiProviderResponseObservation | null)?.candidates?.[0];
+  if (!candidate || typeof candidate !== 'object') {
+    throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
+  }
+
+  if ((candidate as GeminiCandidateObservation).finishReason !== 'STOP') {
+    throw new Error(
+      `Architecture gate reviewer candidate completion failed with finishReason: ${(candidate as GeminiCandidateObservation).finishReason ?? 'MISSING'}`
+    );
+  }
+
+  const parts = (candidate as GeminiCandidateObservation).content?.parts;
+  if (!Array.isArray(parts) || parts.length === 0) {
+    throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
+  }
+
+  // The filter observes text before the original later map rereads it.
+  const answerParts = (parts as unknown[]).filter((part: unknown): boolean => !(part as GeminiPartObservation)?.thought && typeof (part as GeminiPartObservation)?.text === 'string');
+  if (answerParts.length === 0) {
+    throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
+  }
+
+  const combinedText = answerParts.map(part => (part as GeminiPartObservation).text).join('').trim();
+  if (!combinedText) {
+    throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
+  }
+
+  let parsedDecision: unknown;
+  try {
+    parsedDecision = JSON.parse(combinedText);
+  } catch {
+    throw new Error('Architecture gate reviewer returned non-JSON candidate content.');
+  }
+  return parsedDecision;
+}
+
 export function executeGeminiReviewer(request: ExplicitGeminiRequest, options?: BudgetOptions): Promise<{ decision: unknown; execution: GeminiExecution }>;
 export function executeGeminiReviewer(request: LegacyEffortRequest, options?: EffortOptions): Promise<{ decision: unknown; execution: GeminiExecution }>;
 export function executeGeminiReviewer(request: LegacyBudgetRequest, options: BudgetOptions & { thinkingBudget: unknown }): Promise<{ decision: unknown; execution: GeminiExecution }>;
@@ -477,92 +612,7 @@ export async function executeGeminiReviewer(
     if (remainingMs <= 0 || signal.aborted) throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
     const gcloudTimeoutMs = Math.min(4000, remainingMs);
 
-    const proxyUrl = options.proxyUrl || process.env.REVIEW_PROXY_URL;
-    let credentials: GeminiCredential | null = null;
-    let parsedProxyUrl = null;
-
-    if (proxyUrl) {
-      try {
-        parsedProxyUrl = new URL(proxyUrl);
-      } catch {
-        throw new Error(`Architecture gate reviewer failed: invalid proxyUrl: ${proxyUrl}`);
-      }
-      if (!['http:', 'https:'].includes(parsedProxyUrl.protocol) || parsedProxyUrl.username || parsedProxyUrl.password || parsedProxyUrl.search || parsedProxyUrl.hash || !['', '/'].includes(parsedProxyUrl.pathname)) {
-        throw new Error('Architecture gate reviewer failed: proxyUrl must be a plain loopback HTTP endpoint.');
-      }
-      if (parsedProxyUrl.hostname !== '127.0.0.1' && parsedProxyUrl.hostname !== 'localhost') {
-        throw new Error(`Architecture gate reviewer failed: proxyUrl must bind to loopback (127.0.0.1), received: ${parsedProxyUrl.hostname}`);
-      }
-    } else {
-      if (signal.aborted) {
-        throw signal.reason || new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
-      }
-      credentials = resolveAuthCredentials({ ...options, gcloudTimeoutMs });
-    }
-
-    if (signal.aborted) {
-      throw signal.reason || new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
-    }
-
-    // Validate endpoint and require HTTPS before transmitting credentials directly
-    let baseUrl: string;
-    let parsedUrl: URL;
-    if (parsedProxyUrl) {
-      const protocol = parsedProxyUrl.protocol === 'https:' ? 'https:' : 'http:';
-      const host = parsedProxyUrl.hostname === 'localhost' ? 'localhost' : '127.0.0.1';
-      const port = parsedProxyUrl.port ? `:${encodeURIComponent(parsedProxyUrl.port)}` : '';
-      let cleanProxyUrl = `${protocol}//${host}${port}`;
-      while (cleanProxyUrl.endsWith('/')) {
-        cleanProxyUrl = cleanProxyUrl.slice(0, -1);
-      }
-      const proxyMode = options.proxyMode ?? process.env.REVIEW_PROXY_MODE;
-      if (proxyMode !== undefined && !['studio', 'vertex'].includes(proxyMode)) throw new Error('Invalid selected proxy mode.');
-      const isVertex = proxyMode === undefined
-        ? Boolean(resolveVertexProject(options))
-        : proxyMode === 'vertex';
-      if (isVertex) {
-        const projectId = resolveVertexProject(options) || 'default';
-        const region = resolveVertexRegion(options);
-        baseUrl = `${cleanProxyUrl}/v1/projects/${encodeURIComponent(projectId)}/locations/${encodeURIComponent(region)}/publishers/google`;
-      } else {
-        baseUrl = `${cleanProxyUrl}/v1beta`;
-      }
-      parsedUrl = new URL(baseUrl);
-    } else {
-      baseUrl = resolveBaseUrl(credentials as GeminiCredential, options);
-      while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
-      try {
-        parsedUrl = new URL(baseUrl);
-      } catch {
-        throw new Error(`Architecture gate reviewer failed: invalid baseUrl: ${baseUrl}`);
-      }
-      if (parsedUrl.protocol !== 'https:') {
-        throw new Error(`Architecture gate reviewer failed: insecure endpoint protocol ${parsedUrl.protocol}. HTTPS is required to protect credentials.`);
-      }
-      if (parsedUrl.hostname !== 'generativelanguage.googleapis.com' && !/^[a-z0-9-]+-aiplatform\.googleapis\.com$/.test(parsedUrl.hostname)) {
-        throw new Error('Architecture gate reviewer failed: endpoint must match the selected official provider scope.');
-      }
-      const selectedBase = new URL(resolveProviderBaseUrl(credentials as GeminiCredential, options));
-      if (parsedUrl.origin !== selectedBase.origin || parsedUrl.pathname !== selectedBase.pathname || parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
-        throw new Error('Architecture gate reviewer failed: endpoint must match the selected official provider scope.');
-      }
-      // Dispatch the provider-derived endpoint, never the caller's validated spelling.
-      baseUrl = resolveProviderBaseUrl(credentials as GeminiCredential, options);
-    }
-
-    while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
-    const url = `${baseUrl}/models/${encodeURIComponent(model)}:generateContent`;
-    // Validate the complete dispatch URL, not only its base before composition.
-    const dispatchUrl = new URL(url);
-    if (parsedProxyUrl) {
-      if (dispatchUrl.hostname !== '127.0.0.1' && dispatchUrl.hostname !== 'localhost') {
-        throw new Error('Architecture gate reviewer failed: proxy dispatch must remain loopback.');
-      }
-      if (dispatchUrl.origin !== parsedProxyUrl.origin) throw new Error('Architecture gate reviewer failed: proxy dispatch origin changed.');
-    } else if (dispatchUrl.origin !== parsedUrl.origin || dispatchUrl.protocol !== 'https:' ||
-        (dispatchUrl.hostname !== 'generativelanguage.googleapis.com' && !/^[a-z0-9-]+-aiplatform\.googleapis\.com$/.test(dispatchUrl.hostname))) {
-      throw new Error('Architecture gate reviewer failed: dispatch must remain in the selected official provider scope.');
-    }
+    const { url, credentials } = prepareGeminiDispatch(model, options, gcloudTimeoutMs, signal, timeoutMs);
 
     const requestBody = (prepareGeminiRequestBody as PrepareGeminiOperation)(request, options);
     const fetchFn: GeminiFetch = options.fetch || globalThis.fetch;
@@ -662,39 +712,7 @@ export async function executeGeminiReviewer(
       throw new Error(`Architecture gate reviewer timed out after ${timeoutMs}ms.`);
     }
 
-    const candidate = (data as GeminiProviderResponseObservation | null)?.candidates?.[0];
-    if (!candidate || typeof candidate !== 'object') {
-      throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
-    }
-
-    if ((candidate as GeminiCandidateObservation).finishReason !== 'STOP') {
-      throw new Error(
-        `Architecture gate reviewer candidate completion failed with finishReason: ${(candidate as GeminiCandidateObservation).finishReason ?? 'MISSING'}`
-      );
-    }
-
-    const parts = (candidate as GeminiCandidateObservation).content?.parts;
-    if (!Array.isArray(parts) || parts.length === 0) {
-      throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
-    }
-
-    // The filter observes text before the original later map rereads it.
-    const answerParts = (parts as unknown[]).filter((part: unknown): boolean => !(part as GeminiPartObservation)?.thought && typeof (part as GeminiPartObservation)?.text === 'string');
-    if (answerParts.length === 0) {
-      throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
-    }
-
-    const combinedText = answerParts.map(part => (part as GeminiPartObservation).text).join('').trim();
-    if (!combinedText) {
-      throw new Error('Architecture gate reviewer returned empty or invalid response candidates.');
-    }
-
-    let parsedDecision: unknown;
-    try {
-      parsedDecision = JSON.parse(combinedText);
-    } catch {
-      throw new Error('Architecture gate reviewer returned non-JSON candidate content.');
-    }
+    const parsedDecision = decodeGeminiDecision(data);
 
     // Build adapter-generated execution metadata
     // Provenance is adapter-generated, independent of model text/identity claims.

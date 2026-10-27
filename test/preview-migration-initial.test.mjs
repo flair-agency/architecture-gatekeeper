@@ -470,3 +470,19 @@ test('migration observation rejects bad receipt trailer and wrong integration pa
   git(f.root, 'branch', '-f', 'main', wrongTree);
   await assert.rejects(observePreviewLifecycle(receipt, wrongTree, f.root), /exact base\/B and B tree/);
 });
+
+
+test('v1-to-v1 migration finishes synchronous preparation before the caller resumes', async t => {
+  const f = fixture(t);
+  const head = migrationHead(f, { policy: f.legacyPolicy });
+  const spec = migrationSpec(f, head);
+  const pending = preparePreviewLifecycle(spec, f.root);
+  spec.targetBranch = 'changed-after-call';
+  const request = await pending;
+  assert.equal(request.selection.targetBranch, 'main');
+  assert.equal(request.policy.policyVersion, 1);
+  assert.equal(request.successorAuthoritySet.manifest, null);
+  // The request retains the caller's object; preparation does not promise immutability.
+  assert.equal(request.spec, spec);
+  assert.equal(request.spec.targetBranch, 'changed-after-call');
+});

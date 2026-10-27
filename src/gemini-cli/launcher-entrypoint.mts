@@ -62,16 +62,8 @@ export function buildIsolatedRunnerEnv(env: Record<string, unknown>, proxyUrl: s
   return cleanEnv;
 }
 
-/**
- * Executes a credential-isolated Gemini review session.
- * @param {string[]} runnerArgv Arguments to pass directly to gemini-ci-runner
- * @param {object} [options]
- * @param {string} [options.runnerScript] Path to runner script (defaults to the sibling source/emitted Gemini CI runner)
- * @param {object} [options.proxyConfigOverride]
- * @returns {Promise<number>} Exit code of runner process
- */
-export async function runIsolatedGeminiSession(runnerArgv: string[] = process.argv.slice(2), options: LauncherOptions = {}): Promise<number> {
-  // 1. Consume credential options: filter credentials out of runner arguments so secrets never appear on child command line
+/** Parse runner arguments and bound the selected session before credential or listener allocation. */
+function prepareSessionInputs(runnerArgv: string[], options: LauncherOptions) {
   let cliApiKey = null;
   let cliAccessToken = null;
   const cliCredentialValues = [];
@@ -133,7 +125,7 @@ export async function runIsolatedGeminiSession(runnerArgv: string[] = process.ar
     filteredRunnerArgv.push(arg);
   }
 
-  // If request-json is provided, inspect it to derive reviewer scope before startup
+  // If request-json is provided, inspect it to derive reviewer scope before startup.
   if (requestJsonPath) {
     const resolvedPath = resolveSafePath(requestJsonPath, process.cwd());
     if (existsSync(resolvedPath)) {
@@ -156,13 +148,33 @@ export async function runIsolatedGeminiSession(runnerArgv: string[] = process.ar
   if (!Number.isInteger(sessionTimeoutMs) || sessionTimeoutMs < 1 || sessionTimeoutMs > 3600000 ||
       (selectedTimeoutMs !== null && sessionTimeoutMs > selectedTimeoutMs)) throw new Error('Launcher requires a bounded session deadline that does not extend selected timeout.');
 
-  // Derive trusted scope constraints
+  // Derive trusted scope constraints from the validated CLI/request observations.
   allowedModel = allowedModel || process.env.MODEL || process.env.REVIEW_MODEL || null;
   // Nullable observations retain the original truthy fallback at these transport calls.
   allowedProject = resolveVertexProject({ projectId: allowedProject } as Parameters<typeof resolveVertexProject>[0]);
   allowedRegion = resolveVertexRegion({ region: allowedRegion } as Parameters<typeof resolveVertexRegion>[0]);
 
-  // Resolve credentials in the privileged supervisor context
+  return {
+    cliApiKey, cliAccessToken, cliCredentialValues, filteredRunnerArgv,
+    startedAt, sessionTimeoutMs, allowedModel, allowedProject, allowedRegion,
+  };
+}
+
+/**
+ * Executes a credential-isolated Gemini review session.
+ * @param {string[]} runnerArgv Arguments to pass directly to gemini-ci-runner
+ * @param {object} [options]
+ * @param {string} [options.runnerScript] Path to runner script (defaults to the sibling source/emitted Gemini CI runner)
+ * @param {object} [options.proxyConfigOverride]
+ * @returns {Promise<number>} Exit code of runner process
+ */
+export async function runIsolatedGeminiSession(runnerArgv: string[] = process.argv.slice(2), options: LauncherOptions = {}): Promise<number> {
+  const {
+    cliApiKey, cliAccessToken, cliCredentialValues, filteredRunnerArgv,
+    startedAt, sessionTimeoutMs, allowedModel, allowedProject, allowedRegion,
+  } = prepareSessionInputs(runnerArgv, options);
+
+  // Resolve credentials only in the supervisor, then check every supplied child input.
   const credsOptions = { ...options.credentialsOptions };
   if (cliAccessToken) credsOptions.accessToken = cliAccessToken;
   if (cliApiKey) credsOptions.apiKey = cliApiKey;
@@ -184,7 +196,6 @@ export async function runIsolatedGeminiSession(runnerArgv: string[] = process.ar
   );
   if (leakedCredentialArg) throw new Error('Runner arguments contain a provider credential.');
 
-  // 2. Start security proxy on loopback with trusted scope constraints
   // Ensure proxyConfigOverride cannot erase or bypass required scope
   const override = options.proxyConfigOverride || {};
   const effectiveProxyConfig: EffectiveProxyConfig = {
@@ -196,7 +207,7 @@ export async function runIsolatedGeminiSession(runnerArgv: string[] = process.ar
     allowedRegion: 'allowedRegion' in override ? (override.allowedRegion ? String(override.allowedRegion).trim() : null) : (allowedRegion || null),
   };
 
-  // Validate the final effective configuration before starting the proxy (fail-closed if scope is missing, invalid, or erased)
+  // Fail closed if scope is missing, invalid, or erased.
   if (!effectiveProxyConfig.allowedModel) {
     throw new Error('Complete review scope required before starting security proxy: missing allowedModel.');
   }
@@ -228,11 +239,11 @@ export async function runIsolatedGeminiSession(runnerArgv: string[] = process.ar
 
   process.stderr.write(`[gemini-launcher] Security proxy active on ${proxy.endpointUrl}\n`);
 
-  // 3. Prepare clean environment for runner
+  // Attach the allocated endpoint to the already isolated environment.
   runnerEnv.REVIEW_PROXY_URL = proxy.endpointUrl;
   runnerEnv.REVIEW_PROXY_MODE = effectiveProxyConfig.allowedMode as string;
 
-  // 4. Spawn runner process with sanitized arguments (no credentials forwarded)
+  // Supervise the sanitized child under the original session deadline.
   const child = spawn(process.execPath, [runnerPath, ...filteredRunnerArgv], {
     env: runnerEnv,
     stdio: ['ignore', 'inherit', 'inherit'],

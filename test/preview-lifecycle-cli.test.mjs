@@ -5,11 +5,12 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { observePreviewLifecycle, previewReceiptBytes } from '../src/preview-lifecycle.mts';
-import { rejectDuplicateJsonKeys } from '../src/authority-set.mts';
+import { observePreviewLifecycle, previewReceiptBytes } from '../dist/preview-lifecycle.mjs';
+import { rejectDuplicateJsonKeys } from '../dist/authority-set.mjs';
 import { decision, fixture, ordinary, spec, selectionPath, commitOn, put } from './fixtures/preview-lifecycle-runtime.mjs';
 
-const cli = new URL('../src/preview-lifecycle-cli.mts', import.meta.url);
+// Exercise the emitted production entrypoint for the lifecycle and failure cases.
+const cli = new URL('../dist/preview-lifecycle-cli.mjs', import.meta.url);
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8' }).trim();
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 function invoke(root, command, input, args = [], entry = cli) {

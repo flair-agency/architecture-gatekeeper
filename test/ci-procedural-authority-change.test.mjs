@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,6 +72,35 @@ test('Git collaborator receives an unchecked late reread of a selected path', as
     execFile: (_file, args) => { receivedArgs = args; return Buffer.from(''); } });
   assert.deepEqual(changed, []);
   assert.equal(receivedArgs[7], 17);
+});
+
+test('source and emitted procedural CLI preserve output bytes through the runner-output adapter', async t => {
+  const f = await gitFixture(t);
+  const output = join(f.root, 'output');
+  const scripts = ['src/ci-procedural-authority-change.mts', 'dist/ci-procedural-authority-change.mjs'];
+  const env = { ...process.env, AUTHORITY_PROVENANCE: Buffer.from(JSON.stringify(f.provenance)).toString('base64'),
+    SELF_REPOSITORY: f.repository, BASE_SHA: f.baseSha, HEAD_SHA: f.baseSha };
+  for (const layout of scripts) {
+    writeFileSync(output, 'existing=true\n');
+    const result = spawnSync(process.execPath, [join(sourceRoot, layout)], { cwd: f.root, encoding: 'utf8',
+      env: { ...env, GITHUB_OUTPUT: output } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(readFileSync(output, 'utf8'), 'existing=true\nchanged=false\npaths_base64=W10=\n');
+  }
+  const symlink = join(f.root, 'output-link');
+  const hardlink = join(f.root, 'output-hardlink');
+  symlinkSync(output, symlink);
+  linkSync(output, hardlink);
+  writeFileSync(output, 'existing=true\n');
+  for (const layout of scripts) {
+    for (const selected of [symlink, hardlink, join(f.root, 'absent'), 'relative-output']) {
+      const result = spawnSync(process.execPath, [join(sourceRoot, layout)], { cwd: f.root, encoding: 'utf8',
+        env: { ...env, GITHUB_OUTPUT: selected } });
+      assert.notEqual(result.status, 0, `${layout} rejects ${selected}`);
+      assert.equal(result.stdout, '');
+      assert.equal(readFileSync(output, 'utf8'), 'existing=true\n');
+    }
+  }
 });
 
 const common = { policyVersion: '5', evidenceProducer: 'github-actions', reviewResult: 'success',
