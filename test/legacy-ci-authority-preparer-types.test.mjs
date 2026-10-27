@@ -169,8 +169,8 @@ test('complete legacy preparer implementation and flat guard retain their pinned
   const emittedImports = parse(emittedLeafSource, { ecmaVersion: 'latest', sourceType: 'module' }).body
     .filter(node => node.type === 'ImportDeclaration').map(node => node.source.value);
   assert.deepEqual(sourceImports, [
-    'node:path', 'node:util', '../git/buffered-git.mts', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
-    '../legacy-git-snapshot.mjs', '../github-runner-workspace.mjs', './legacy-authority-decision.mts',
+    'node:path', 'node:util', '../git/buffered-git.mts', '../runner-temp-path.mts', '../resolve-ci-policy.mts',
+    '../legacy-git-snapshot.mts', '../github-runner-workspace.mts', './legacy-authority-decision.mts',
   ]);
   assert.deepEqual(emittedImports, [
     'node:path', 'node:util', '../git/buffered-git.mjs', '../runner-temp-path.mjs', '../resolve-ci-policy.mjs',
