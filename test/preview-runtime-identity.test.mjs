@@ -381,15 +381,15 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     .replace(/from ["']\.\/ci-review\/ci-procedural-acceptance\.mjs["']/, "from './ci-procedural-acceptance-helpers.mjs'"));
   writeFileSync(join(flatRoot, 'dist/codex-pass-publication.mjs'),
     readFileSync(join(flatRoot, 'dist/ci-review/codex-pass-publication.mjs'), 'utf8')
-      .replace(/from (["'])\.\.\/authority-set\.mjs'/g, "from './authority-set.mjs'"));
+      .replace(/from (["'])\.\.\/authority-set\.mjs\1/g, "from './authority-set.mjs'"));
   writeFileSync(join(flatRoot, 'dist/codex-pass-log.mjs'),
     readFileSync(join(flatRoot, 'dist/github/codex-pass-log.mjs'), 'utf8')
-      .replace(/from (["'])\.\.\/ci-review\/codex-pass-publication\.mjs'/g, "from './codex-pass-publication.mjs'"));
+      .replace(/from (["'])\.\.\/ci-review\/codex-pass-publication\.mjs\1/g, "from './codex-pass-publication.mjs'"));
   const reportCliPath = join(flatRoot, 'dist/ci-report.mjs');
   const reportFacade = readFileSync(reportCliPath, 'utf8');
   const reportBody = readFileSync(join(flatRoot, 'dist/ci-review/ci-report-entrypoint.mjs'), 'utf8')
     .replace(/from (["'])\.\.\//g, "from $1./")
-    .replace(/from (["'])\.\/ci-report\.mjs'/, "from './ci-report-helpers.mjs'");
+    .replace(/from (["'])\.\/ci-report\.mjs\1/, "from './ci-report-helpers.mjs'");
   const reportGuard = reportFacade.slice(reportFacade.lastIndexOf('\nif (process.argv[1]'));
   // Reconstruct the complete former flat CLI, including its public main and guard.
   writeFileSync(reportCliPath, "import { fileURLToPath } from 'node:url';\n" + reportBody + reportGuard);
