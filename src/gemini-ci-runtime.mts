@@ -10,23 +10,28 @@ const VERSION = '0.62.0';
 const ENTRYPOINT = 'bundle/gemini.js';
 const TARBALL_INTEGRITY = 'sha512-A1rw0Tf2sHLpGncfYdaq5WaJIufKAP8il4BmHD5Yw4ewmB/Wo0vRQb2bEvx7OqyaPFPZCh0hVhcMKsICZyIBww==';
 const LOCK_SHA256 = 'ffc6d0296558b2bcd12278f45c48151cf720d4cdfcbdb06a09ee87b24cf97b42';
-const sha256 = value => createHash('sha256').update(value).digest('hex');
+type RuntimeLock = { lockfileVersion: number; packages: Record<string, { version?: string; integrity?: string; resolved?: string; dependencies?: Record<string, string> }> };
+export interface PinnedGeminiCiRuntimeInput { runtimeDirectory: string; lockBytes: Buffer }
+export interface PinnedGeminiCiRuntime { entry: string; privateDirectory: string; version: typeof VERSION; cliTarballIntegrity: typeof TARBALL_INTEGRITY; lockSha256: string; lockDeflateBase64: string; packageJsonSha256: string; entrySha256: string }
+const sha256 = (value: Buffer | string): string => createHash('sha256').update(value).digest('hex');
 export class GeminiCiRuntimeError extends Error {
-  constructor(message) { super(message); this.name = 'GeminiCiRuntimeError'; }
+  constructor(message: string) { super(message); this.name = 'GeminiCiRuntimeError'; }
 }
-const fail = message => { throw new GeminiCiRuntimeError(message); };
+const fail: (message: string) => never = message => { throw new GeminiCiRuntimeError(message); };
 
 /** Validate the complete authorized CLI dependency graph before installation. */
-export function validatePinnedGeminiCiRuntimeLock(lockBytes) {
+export function validatePinnedGeminiCiRuntimeLock(lockBytes: Buffer): RuntimeLock {
   if (!Buffer.isBuffer(lockBytes) || sha256(lockBytes) !== LOCK_SHA256) {
     fail('runtime package lock does not match the pinned complete dependency graph.');
   }
-  let lock;
-  try { lock = JSON.parse(lockBytes.toString('utf8')); }
+  let lock: RuntimeLock | undefined;
+  try { lock = JSON.parse(lockBytes.toString('utf8')) as RuntimeLock; }
   catch { fail('pinned runtime package lock is invalid JSON.'); }
-  const dependencies = lock.packages?.['']?.dependencies;
-  const packages = lock.packages;
-  if (lock.lockfileVersion !== 3 || !packages || Object.keys(packages).length !== 13 ||
+  if (!lock || typeof lock !== 'object') throw new GeminiCiRuntimeError('pinned runtime package lock is invalid JSON.');
+  const checkedLock = lock;
+  const dependencies = checkedLock.packages?.['']?.dependencies;
+  const packages = checkedLock.packages;
+  if (checkedLock.lockfileVersion !== 3 || !packages || Object.keys(packages).length !== 13 ||
       !dependencies || Object.keys(dependencies).length !== 1 || dependencies[PACKAGE] !== VERSION ||
       packages[`node_modules/${PACKAGE}`]?.version !== VERSION ||
       packages[`node_modules/${PACKAGE}`]?.integrity !== TARBALL_INTEGRITY ||
@@ -34,7 +39,7 @@ export function validatePinnedGeminiCiRuntimeLock(lockBytes) {
         /^sha[0-9]+-[A-Za-z0-9+/=]+$/.test(pkg.integrity))) {
     fail('pinned runtime package lock does not contain the verified Gemini CLI dependency graph.');
   }
-  return lock;
+  return checkedLock;
 }
 
 /**
@@ -42,7 +47,8 @@ export function validatePinnedGeminiCiRuntimeLock(lockBytes) {
  * This does not hash every installed transitive file; it relies on the locked
  * installer and private-directory boundary for those package bytes.
  */
-export function inspectPinnedGeminiCiRuntime({ runtimeDirectory, lockBytes } = {}) {
+export function inspectPinnedGeminiCiRuntime(input: PinnedGeminiCiRuntimeInput): PinnedGeminiCiRuntime;
+export function inspectPinnedGeminiCiRuntime({ runtimeDirectory, lockBytes }: Partial<PinnedGeminiCiRuntimeInput> = {}): PinnedGeminiCiRuntime {
   if (typeof runtimeDirectory !== 'string' || !runtimeDirectory || !Buffer.isBuffer(lockBytes)) {
     fail('explicit runtime directory and authorized lock bytes are required.');
   }
@@ -68,13 +74,14 @@ export function inspectPinnedGeminiCiRuntime({ runtimeDirectory, lockBytes } = {
 }
 
 /** Install the fixed package into a new 0700 directory with lifecycle scripts disabled. */
-export function installPinnedGeminiCiRuntime({ runtimeDirectory, lockBytes } = {}) {
+export function installPinnedGeminiCiRuntime(input: PinnedGeminiCiRuntimeInput): PinnedGeminiCiRuntime;
+export function installPinnedGeminiCiRuntime({ runtimeDirectory, lockBytes }: Partial<PinnedGeminiCiRuntimeInput> = {}): PinnedGeminiCiRuntime {
   if (typeof runtimeDirectory !== 'string' || !runtimeDirectory || !Buffer.isBuffer(lockBytes)) {
     fail('explicit runtime directory and authorized lock bytes are required.');
   }
   let targetStat;
   try { targetStat = lstatSync(runtimeDirectory); }
-  catch (error) { if (error?.code !== 'ENOENT') throw error; }
+  catch (error) { if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error; }
   if (targetStat) fail('private runtime target already exists; refusing reuse.');
   mkdirSync(runtimeDirectory, { mode: 0o700 });
   try {

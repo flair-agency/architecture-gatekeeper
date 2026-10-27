@@ -1,9 +1,11 @@
 /** Inactive parent-process composition; the invoking host still owns admission. */
 import { types } from 'node:util';
-import { prepareOrdinaryGeminiCiAdapter, executeOrdinaryGeminiCiAdapter } from './ordinary-gemini-ci-adapter.mjs';
+import { prepareOrdinaryGeminiCiAdapter, executeOrdinaryGeminiCiAdapter, type OrdinaryGeminiAdapterInput } from './ordinary-gemini-ci-adapter.mts';
 import { acquireGitHubVertexWifCredential, type WifFetch, type WifSecretRegistrar } from './github-vertex-wif.mts';
 import { readCommittedAuthorityFile } from './authority-set.mjs';
-import { installPinnedGeminiCiRuntime } from './gemini-ci-runtime.mjs';
+import { installPinnedGeminiCiRuntime } from './gemini-ci-runtime.mts';
+
+export interface OrdinaryGeminiLauncherInput extends OrdinaryGeminiAdapterInput { wif: unknown }
 
 const GEMINI_RUNTIME_LOCK_PATH = '.codex/gatekeeper/gemini-verification-package-lock.json';
 const SHA = /^[a-f0-9]{40}$/;
@@ -46,7 +48,7 @@ export function prepareOrdinaryGeminiCiRuntime(supplied: unknown): ReturnType<ty
  * fetchImpl is the parent-only HTTP implementation, including offline fixtures.
  * registerSecret is a synchronous trusted-host registrar, never candidate data.
  */
-export async function runOrdinaryGeminiCiLauncher(supplied: unknown, fetchImpl: WifFetch = globalThis.fetch, registerSecret?: WifSecretRegistrar): Promise<unknown> {
+export async function runOrdinaryGeminiCiLauncher(supplied: OrdinaryGeminiLauncherInput, fetchImpl: WifFetch = globalThis.fetch, registerSecret?: WifSecretRegistrar): Promise<unknown> {
   const keys = ['host', 'runtime', 'sourceToken', 'wif'];
   if (!supplied || typeof supplied !== 'object' || Array.isArray(supplied) || types.isProxy(supplied) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(supplied))) {
@@ -57,7 +59,10 @@ export async function runOrdinaryGeminiCiLauncher(supplied: unknown, fetchImpl: 
     !Object.hasOwn(descriptors, key) || !Object.hasOwn(descriptors[key], 'value') || !descriptors[key].enumerable)) {
     throw new Error('Ordinary Gemini launcher has unsupported or missing fields.');
   }
-  const input = Object.fromEntries(keys.map(key => [key, descriptors[key].value])) as Record<string, unknown>;
+  // Descriptor checks above preserve the declared caller field types without
+  // invoking accessors. Nested host/runtime values still undergo the adapter's
+  // existing runtime validation; this copy supplies no trust or authenticity.
+  const input = Object.fromEntries(keys.map(key => [key, descriptors[key].value])) as OrdinaryGeminiLauncherInput;
   const preparation = await prepareOrdinaryGeminiCiAdapter({ host: input.host,
     runtime: input.runtime, sourceToken: input.sourceToken });
   const credential = await acquireGitHubVertexWifCredential(input.wif, fetchImpl, registerSecret);

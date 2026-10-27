@@ -1,11 +1,12 @@
 /** Invocation-local defensive circuit breaker for Issue334 upstream dispatches. */
 const DEFENSIVE_SESSION_DISPATCH_CAP = 10;
+export type VertexReservationRecorder = (attempt: number) => boolean;
 
 /**
  * Each prepared verification receives a fresh counter. The count advances
  * before dispatch, including sends that later fail or whose outcome is unknown.
  */
-export function createVertexVerificationReservation(recordReservation = () => true) {
+export function createVertexVerificationReservation(recordReservation: VertexReservationRecorder = () => true) {
   let count = 0;
   const reserveDispatch = () => {
     if (count >= DEFENSIVE_SESSION_DISPATCH_CAP) return false;

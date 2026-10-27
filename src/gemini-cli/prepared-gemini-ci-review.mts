@@ -1,6 +1,6 @@
 /** Internal adapter from caller-prepared protected CI inputs to the CLI proxy session. */
 import { types } from 'node:util';
-import { snapshotPreparedReviewData } from '../prepared-review-data.mjs';
+import { snapshotPreparedReviewData } from '../prepared-review-data.mts';
 import { runGeminiCliProxySession, type GeminiCliProxySessionInput, type GeminiCliProxySessionProcessOptions } from './gemini-cli-proxy-session.mts';
 import { validateJsonSchemaDefinition } from '../authority-validation/json-schema.mts';
 import { encodeGeminiCliPromptForTransport, GEMINI_CLI_STDIN_LIMIT, type GeminiCliThinkingOptions } from './gemini-cli-process.mts';

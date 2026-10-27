@@ -2,12 +2,22 @@
 import { execFileSync } from 'node:child_process';
 import { readCommittedAuthorityFile } from './authority-set.mjs';
 import { createGitHubAuthoritySource } from './github-authority-source.mjs';
-import { prepareGeminiCiInput } from './prepare-gemini-ci-input.mjs';
-import { buildPreparedGeminiCiCall } from './prepared-gemini-ci-call.mjs';
-import { runPreparedGeminiCiProfileDecision } from './prepared-gemini-ci-profile-decision.mjs';
-import { inspectPinnedGeminiCiRuntime } from './gemini-ci-runtime.mjs';
+import { prepareGeminiCiInput } from './prepare-gemini-ci-input.mts';
+import { buildPreparedGeminiCiCall } from './prepared-gemini-ci-call.mts';
+import { runPreparedGeminiCiProfileDecision } from './prepared-gemini-ci-profile-decision.mts';
+import { inspectPinnedGeminiCiRuntime } from './gemini-ci-runtime.mts';
 import { types } from 'node:util';
-import { snapshotPreparedReviewData } from './prepared-review-data.mjs';
+import { snapshotPreparedReviewData } from './prepared-review-data.mts';
+import type { PreparedGeminiCiInput } from './prepare-gemini-ci-input.mts';
+import type { PinnedGeminiCiRuntime } from './gemini-ci-runtime.mts';
+import type { CiExecutionResult } from './ci-execution/ci-execution-result.mts';
+import type { createVertexVerificationReservation } from './vertex-verification-reservation.mts';
+
+export interface OrdinaryGeminiHostContext { root: string; repository: string; baseBranch: string; baseSha: string; headSha: string; reviewedSha: string; runId: string; runAttempt: string; workflowRef: string; policyPath: string; promptPath: string; schemaPath: string; validationPath: string | null; orderedParents: readonly [string, string] }
+export interface OrdinaryGeminiAdapterInput { host: Omit<OrdinaryGeminiHostContext, 'orderedParents'>; runtime: { directory: string }; sourceToken: string | null }
+export interface OrdinaryGeminiPreparation { readonly context: OrdinaryGeminiHostContext; readonly runtime: PinnedGeminiCiRuntime }
+export interface OrdinaryGeminiExecutionInput { preparation: OrdinaryGeminiPreparation; credential: { token: string; project: string; region: string } }
+export interface OrdinaryGeminiExecutionResult { context: OrdinaryGeminiHostContext; bindings: PreparedGeminiCiInput['bindings']; authorityProvenance: PreparedGeminiCiInput['authorityProvenance']; execution: CiExecutionResult; decision?: unknown; dispatchDiagnostics: ReturnType<ReturnType<typeof createVertexVerificationReservation>['snapshot']> }
 
 const SELECTORS = Object.freeze({
   runtimeLockPath: '.codex/gatekeeper/gemini-verification-package-lock.json',
@@ -15,9 +25,12 @@ const SELECTORS = Object.freeze({
 const SHA = /^[a-f0-9]{40}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const RELATIVE_PATH = /^(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/;
-const PREPARATIONS = new WeakMap();
+const PINNED_RUNTIME_KEYS = ['entry', 'privateDirectory', 'version', 'cliTarballIntegrity', 'lockSha256',
+  'lockDeflateBase64', 'packageJsonSha256', 'entrySha256'] as const satisfies readonly (keyof PinnedGeminiCiRuntime)[];
+type PreparationState = { context: OrdinaryGeminiHostContext; prepared: PreparedGeminiCiInput; runtimeDirectory: string; lockBytes: Buffer; pinnedRuntime: PinnedGeminiCiRuntime };
+const preparations = new WeakMap<object, PreparationState>();
 
-function exactRecord(value, keys, label) {
+function exactRecord(value: unknown, keys: readonly string[], label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value) || types.isProxy(value) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(value))) {
     throw new Error(`${label} must be a plain data record.`);
@@ -30,7 +43,7 @@ function exactRecord(value, keys, label) {
   return Object.fromEntries(keys.map(key => [key, descriptors[key].value]));
 }
 
-function git(root, args, maxBuffer = 8_192) {
+function git(root: string, args: string[], maxBuffer = 8_192): string {
   return execFileSync('git', ['--no-replace-objects', '-C', root, ...args], {
     encoding: 'utf8', maxBuffer, timeout: 10_000,
     env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_PAGER: 'cat' },
@@ -38,7 +51,7 @@ function git(root, args, maxBuffer = 8_192) {
   }).trim();
 }
 
-function validateHost(host) {
+function validateHost(host: unknown): OrdinaryGeminiHostContext {
   const context = exactRecord(host, ['root', 'repository', 'baseBranch', 'baseSha', 'headSha', 'reviewedSha',
     'runId', 'runAttempt', 'workflowRef', 'policyPath', 'promptPath', 'schemaPath', 'validationPath'], 'Ordinary Gemini host context');
   if (typeof context.root !== 'string' || !context.root || typeof context.repository !== 'string' ||
@@ -53,12 +66,14 @@ function validateHost(host) {
       (context.validationPath !== null && (typeof context.validationPath !== 'string' || context.validationPath.length > 240 || !RELATIVE_PATH.test(context.validationPath) || context.validationPath.split('/').some(part => part === '.' || part === '..')))) {
     throw new Error('Ordinary Gemini host context is incomplete or malformed.');
   }
-  const head = git(context.root, ['rev-parse', 'HEAD']);
-  const parents = git(context.root, ['rev-list', '--parents', '-n', '1', context.reviewedSha]).split(/\s+/).slice(1);
-  if ((head !== context.baseSha && head !== context.reviewedSha) || parents.length !== 2 || parents[0] !== context.baseSha || parents[1] !== context.headSha) {
+  const checked = context as Omit<OrdinaryGeminiHostContext, 'orderedParents'>;
+  const head = git(checked.root, ['rev-parse', 'HEAD']);
+  const parents = git(checked.root, ['rev-list', '--parents', '-n', '1', checked.reviewedSha]).split(/\s+/).slice(1);
+  if ((head !== checked.baseSha && head !== checked.reviewedSha) || parents.length !== 2 || parents[0] !== checked.baseSha || parents[1] !== checked.headSha) {
     throw new Error('Git input checkout does not match the host base, head, and ordered merge parents.');
   }
-  return Object.freeze({ ...context, orderedParents: Object.freeze([...parents]) });
+  const orderedParents: readonly [string, string] = [parents[0], parents[1]];
+  return Object.freeze({ ...checked, orderedParents: Object.freeze(orderedParents) });
 }
 
 /**
@@ -67,7 +82,7 @@ function validateHost(host) {
  * the runtime location/lock must come from a trusted launcher; this function
  * does not authenticate them or establish producer protection.
  */
-export async function prepareOrdinaryGeminiCiAdapter(supplied) {
+export async function prepareOrdinaryGeminiCiAdapter(supplied: OrdinaryGeminiAdapterInput): Promise<OrdinaryGeminiPreparation> {
   const input = exactRecord(supplied, ['host', 'runtime', 'sourceToken'], 'Ordinary Gemini adapter input');
   if (['AGK_VERTEX_ACCESS_TOKEN', 'AGK_VERTEX_PROJECT', 'AGK_VERTEX_LOCATION'].some(name => Object.hasOwn(process.env, name))) {
     throw new Error('Ordinary Gemini preparation must finish before Vertex credentials are present.');
@@ -96,7 +111,7 @@ export async function prepareOrdinaryGeminiCiAdapter(supplied) {
     referencePaths: [],
   }, fetchExternal);
   const preparation = Object.freeze({ context: host, runtime: pinnedRuntime });
-  PREPARATIONS.set(preparation, { context: host, prepared, runtimeDirectory: runtime.directory, lockBytes, pinnedRuntime });
+  preparations.set(preparation, { context: host, prepared, runtimeDirectory: runtime.directory, lockBytes, pinnedRuntime });
   return preparation;
 }
 
@@ -105,17 +120,21 @@ export async function prepareOrdinaryGeminiCiAdapter(supplied) {
  * The handle is process-local; this is not a serialized cross-step handoff.
  * Returned response bytes are an owned mutable copy, not authenticated evidence.
  */
-export async function executeOrdinaryGeminiCiAdapter(supplied) {
+export async function executeOrdinaryGeminiCiAdapter(supplied: OrdinaryGeminiExecutionInput): Promise<OrdinaryGeminiExecutionResult> {
   const input = exactRecord(supplied, ['preparation', 'credential'], 'Ordinary Gemini execution input');
-  const state = PREPARATIONS.get(input.preparation);
+  const preparation = input.preparation;
+  if (!preparation || typeof preparation !== 'object') throw new Error('Ordinary Gemini preparation must come from the trusted prepare phase.');
+  const state = preparations.get(preparation);
   if (!state) throw new Error('Ordinary Gemini preparation must come from the trusted prepare phase.');
-  PREPARATIONS.delete(input.preparation);
+  preparations.delete(preparation);
   const currentRuntime = inspectPinnedGeminiCiRuntime({ runtimeDirectory: state.runtimeDirectory, lockBytes: state.lockBytes });
-  for (const key of ['entry', 'privateDirectory', 'version', 'cliTarballIntegrity', 'lockSha256',
-    'lockDeflateBase64', 'packageJsonSha256', 'entrySha256']) {
+  for (const key of PINNED_RUNTIME_KEYS) {
     if (currentRuntime[key] !== state.pinnedRuntime[key]) throw new Error('Pinned Gemini runtime changed after preparation.');
   }
-  const call = buildPreparedGeminiCiCall({ prepared: state.prepared, credential: input.credential,
+  // buildPreparedGeminiCiCall performs the credential's closed-record and
+  // primitive-field checks before retaining or using these captured values.
+  const credential = input.credential as OrdinaryGeminiExecutionInput['credential'];
+  const call = buildPreparedGeminiCiCall({ prepared: state.prepared, credential,
     runtimeEntry: currentRuntime.entry, privateParentDirectory: currentRuntime.privateDirectory });
   const result = await runPreparedGeminiCiProfileDecision(call);
   const execution = Object.freeze(result.execution.status === 'completed'
