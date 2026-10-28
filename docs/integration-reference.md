@@ -246,113 +246,28 @@ When `validationPath` is configured, the local and manual review paths apply
 that committed policy after structured generation and fail closed on a rule
 violation or malformed policy.
 
-### Optional asynchronous PostToolUse screen
+<a id="optional-asynchronous-posttooluse-screen"></a>
 
-A consumer may opt into a separate change screen after a supported file-capable
-tool completes. This pilot reviews the bounded tracked working-tree diff and
-returns informational Hook context; it does not block the completed tool,
-change its result, or establish repository acceptance. No consumer is enabled
-by default. Keep the launcher under consumer control, use the exact installed
-package version, and review the hook code and exact command through normal Codex
-project trust. The project-local hook configuration belongs in the consumer
-project.
+### Retired PostToolUse pilot
 
-Create a consumer-owned launcher such as
-`.codex/hooks/architecture-screen.mjs`:
+The optional asynchronous PostToolUse screening adapter is removed from current
+source following the Owner's 2026-10-29 product-scope decision. The public
+`runPostToolScreenHook` and `runPostToolScreenHookCli` exports and their direct
+runtime modules are no longer shipped by a build of this source. There is no
+replacement automatic screen. Manual/native review, UserPromptSubmit and CI
+review retain their existing behavior.
 
-```js
-#!/usr/bin/env node
-import { runPostToolScreenHookCli } from '@flair-agency/architecture-gatekeeper';
-runPostToolScreenHookCli();
-```
+Before adopting a release containing this removal, remove only the consumer's
+AGK PostToolUse command registration from its project/host Hook configuration
+and remove its now-unused launcher. Preserve unrelated PostToolUse handlers
+and UserPromptSubmit configuration. Otherwise an old launcher importing the
+removed export will fail. Existing published packages and exact pins retain
+their original contents; this source change does not update a consumer or
+uninstall a local registration.
 
-Then add this entry to the consumer's project-local `.codex/hooks.json`:
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Bash|exec_command|apply_patch|Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node .codex/hooks/architecture-screen.mjs",
-            "async": true,
-            "timeout": 240
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-The adapter accepts only `PostToolUse` events from `Bash`, `exec_command`,
-`apply_patch`, `Edit`, and `Write`. It screens staged and unstaged tracked
-changes up to 64 KiB. Untracked paths, dirty submodules, a changed `HEAD` during
-capture, and other snapshot failures produce `incomplete`; they do not produce
-a semantic decision. It waits a fixed two seconds from the first event in a
-batch; later events do not extend that delay. It permits one reviewer at a time
-per worktree and retries the latest changed candidate on a later eligible
-event. It does not start a daemon or drain pending work after a review.
-Identical candidates are deduplicated. The serialized Hook
-context is capped at 4,000 UTF-8 bytes and reports status, summary, revision,
-and request/snapshot identity. Optional execution metadata is omitted when
-needed to keep the serialized output within that cap.
-
-This pilot is currently unsupported on native Windows because the current
-single-flight lock implementation excludes `win32` and assumes atomic hard-link
-support. On Windows the adapter returns informational `incomplete` before
-screening. This limitation applies only to the opt-in PostToolUse screen; it
-does not change the existing local review, manual, Skill, or CI paths.
-
-The screen resolves the repository from the hook process's invocation working
-directory and requires the event's `cwd` to match it. The CLI launcher must run
-from the consumer session's working directory. A programmatic caller that
-deliberately invokes the API from another process directory must pass the
-trusted consumer directory as the `cwd` option and provide the same path in the
-event.
-
-The Hook timeout is measured in seconds and must exceed the consumer's
-`reviewTimeoutMs` plus local request preparation and cleanup. For example, a
-180,000 ms reviewer deadline can use a 240-second Hook timeout to leave about a
-minute of headroom. Tune this to the consumer's actual timeout and host startup
-cost.
-
-This is best-effort feedback. Codex may discard an asynchronous hook's output
-when a session ends; delivery can occur during the active turn or on a later
-turn, and the idle host does not start a turn to deliver it. Desktop delivery
-has not been verified. Keep this route opt-in and treat
-`BLOCK`, `OWNER_DECISION`, and `incomplete` as informational warnings after the
-tool has completed.
-
-### First CLI trial in Architecture Gatekeeper
-
-Use the exact installed package version with the consumer-owned launcher and
-project-local `.codex/hooks.json` shown above. For this self-consumer case,
-replace the generic JSON command above with one naming the absolute Node
-executable and an external launcher in the consumer's installed-package
-directory. Node package self-reference can otherwise resolve the launcher's
-bare import to this source checkout's `dist` entrypoint instead of the
-separately installed archive. Verify with `import.meta.resolve()` from the
-launcher's location that it selects the intended installed entrypoint. The
-generic in-project launcher and command remain suitable for ordinary consumers
-whose bare import resolves to their intended installed package. Include the
-exact handler and command in the usual project and handler trust review. Start
-the normal CLI in the project, trust the project and exact hook definition
-through the usual prompts,
-then check `/hooks` for the intended handler with `Installed=1` and `Active=1`.
-Make one tracked edit and continue ordinary verification while the screen
-runs. The result reviews its captured candidate; untracked or unsupported
-content returns `incomplete`, and `queued-latest` leaves the latest candidate
-for consideration on a later eligible event; an unchanged candidate may be
-deduplicated. Read Hook context in the active turn or a later user turn; an
-idle session does not wake to deliver it. Treat all results as after-the-fact
-development feedback and check the revision, request, and snapshot identities
-before relating them to a candidate. The actual ordinary-checkout CLI loop is
-recorded in the [dogfood investigation](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-01-local-screening-adapter-dogfood.md).
-Linked-worktree discovery remains unresolved in [Issue #250](https://github.com/flair-agency/architecture-gatekeeper/issues/250); it does not block an ordinary-checkout trial.
+This is an intentional public-API removal, not a compatible patch or a release
+announcement. Its version/channel and publication require a separate Owner
+release decision. See the [retirement scope and preserved evidence](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-29-posttooluse-retirement.md).
 
 ## Codex Skill installation
 
@@ -1108,8 +1023,8 @@ leases, rollback, local object-store defense or malicious-operator resistance.
 
 ### Local reviewer execution composition
 
-Local manual review, UserPromptSubmit and post-tool screening use the shared
-local execution boundary. Hook event parsing remains specific to the Codex
+Local manual review and UserPromptSubmit use the shared local execution
+boundary. Hook event parsing remains specific to the Codex
 host; reviewer selection is independent of that event format. Configuration,
 selected authority, prompt, schema and reviewer settings come from the same
 recorded Git revision, with deterministic validation shared by both providers.
@@ -1151,7 +1066,7 @@ contains:
 settings do not attest the backend's internals, model quality, or acceptance.
 
 Programmatic manual and UserPromptSubmit calls retain an optional third argument
-`{ reviewer }`; post-tool screening retains its reviewer option. This is a
+`{ reviewer }`. This is a
 trusted adapter injection seam. The adapter receives the revision-bound request
 and, on the async path, an AbortSignal in its second argument. It may return a
 raw structured decision. To return `{ decision, execution }`, explicitly select

@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { runManualReview, runManualReviewAsync, runHookAsync, runPostToolScreenHook } from '../../dist/local-gate.mjs';
+import { runManualReview, runManualReviewAsync, runHookAsync } from '../../dist/local-gate.mjs';
 import { createMeasurementAdapterFixture } from './measurement-adapter-fixture.mjs';
 const [route] = process.argv.slice(2);
 const { root, cleanup } = createMeasurementAdapterFixture();
@@ -16,12 +14,6 @@ if (route === 'manual-async') assert.equal((await runManualReviewAsync('task', r
 if (route === 'hook') {
   const input = JSON.stringify({hook_event_name:'UserPromptSubmit',session_id:'fault',prompt:'task',cwd:root});
   assert.equal((await runHookAsync(input,root,options)).hookSpecificOutput.hookEventName,'UserPromptSubmit');
-}
-if (route === 'PostToolUse') {
-  writeFileSync(join(root,'candidate.md'),'changed\n');
-  const input = {hook_event_name:'PostToolUse',session_id:'fault',tool_name:'Edit',cwd:root};
-  options.cwd = root; options.batchDelayMs = 0;
-  assert.equal((await runPostToolScreenHook(input,options)).result.status,'PASS');
 }
 
 } finally { cleanup(); }

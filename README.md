@@ -78,9 +78,10 @@ tracks the demo work; the broader adoption funnel is tracked in [Issue #390](htt
 
 The local Hook uses the provider selected by committed consumer settings. Codex
 uses a local child process; Gemini's local route uses its asynchronous API
-adapter. The optional `PostToolUse` screen is a separate, after-the-fact pilot
-and is not enabled by default. See [local provider execution](docs/integration-reference.md#local-reviewer-execution-composition)
-and [PostToolUse details](docs/integration-reference.md#optional-asynchronous-posttooluse-screen).
+adapter. See [local provider execution](docs/integration-reference.md#local-reviewer-execution-composition).
+The optional PostToolUse pilot is removed from current source; existing users
+must remove its AGK Hook registration before upgrading to a release containing
+that removal. See the [compatibility notice](docs/integration-reference.md#optional-asynchronous-posttooluse-screen).
 
 ### Manual review
 

@@ -44,7 +44,6 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
     'runner-paths/runner-temp-path.mjs',
     'local-review/local-gate.mjs',
     'local-review/native-review.mjs',
-    'local-review/local-post-tool-screen.mjs',
     'local-review/manual-review.mjs',
     'owner-addition/owner-addition-finalize.mjs',
     'owner-addition/finalize-owner-addition.mjs',
@@ -342,7 +341,7 @@ test('runtime identity binds nested emitted modules and invalidates stale reques
   writeFileSync(join(flatRoot, 'dist/runner-temp-path.mjs'),
     readFileSync(join(flatRoot, 'dist/runner-paths/runner-temp-path.mjs'), 'utf8')
       .replace(/from (["'])\.\.\//g, "from $1./"));
-  for (const file of ['local-gate.mjs', 'local-post-tool-screen.mjs', 'manual-review.mjs']) {
+  for (const file of ['local-gate.mjs', 'manual-review.mjs']) {
     writeFileSync(join(flatRoot, 'dist', file),
       readFileSync(join(flatRoot, 'dist/local-review', file), 'utf8')
         .replace(/from (["'])\.\.\/review-contract\//g, "from $1./")

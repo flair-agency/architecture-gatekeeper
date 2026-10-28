@@ -66,6 +66,8 @@ const MAX_BYTES = 256 * 1024;
 const TERMINAL_RESERVE_BYTES = 1024;
 const MAX_FILES = 4096;
 const MAX_DIRECTORY_READ_BYTES = 4 * 1024 * 1024;
+// PostToolUse remains a historical diagnostic value after its execution adapter
+// is retired. Existing records still use the unchanged reader/export format.
 const ROUTES = new Set(['manual', 'UserPromptSubmit', 'PostToolUse', 'native', 'ci-review', 'ci-outcome']);
 const STATES = new Set(['completed', 'error', 'incomplete', 'unsupported', 'deduplicated', 'unchanged', 'queued', 'cancelled', 'missing']);
 export const measurementDigest = (value: unknown): string => createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');

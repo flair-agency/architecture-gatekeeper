@@ -1,7 +1,7 @@
 # Optional local/native observers (#537, slice 2)
 
-Depends on the diagnostic record core. Adds default-off manual, UserPromptSubmit,
-PostToolUse and native prepare/validate observers; offline ledger/CLI and CI
+Depends on the diagnostic record core. Provides default-off manual, UserPromptSubmit
+and native prepare/validate observers; offline ledger/CLI and CI
 composition follow separately. Consumers own private storage and opt-in via
 AGK_MEASUREMENT_DIR or supported local options. Required native host-managed
 request I/O is preserved; diagnostic storage restrictions do not constrain it.
@@ -15,8 +15,7 @@ these observations cannot satisfy required review or protected acceptance.
 
 Risk → public boundary → verification: adapter-isolation and actual native CLI
 fixtures cover disabled/invalid/throwing capture options, prior transport prompt,
-PostToolUse full findings before rendering and dedup/stale snapshots, early Hook
-input gaps, context/output failure with original exceptions/exit/output, native
+early Hook input gaps, context/output failure with original exceptions/exit/output, native
 prepare retry/resumption and actual native stdout failure. Typed-source and
 emitted identities remain core checks. Static child fixture programs pass data
 as arguments instead of constructing executable Hook source.
@@ -48,7 +47,8 @@ request identity; it cannot safely resume the earlier request's preparation.
 Decision-file reads resume the known preparation first. Stage-specific failures
 retain their required errors, and later retries do not rewrite terminal history.
 
-PostToolUse snapshots its required option fields once in the original read order.
-For object-form events, the observer does not read caller event getters: diagnostic
-session identity stays unknown. Bounded JSON-string events retain their observed
-session identity. The required screen retains its original event reads.
+The PostToolUse execution adapter and its live observers are retired from current
+source. Existing version-1 PostToolUse records still load, export and participate
+in offline analysis under their original semantics. The record reader and route
+value remain unchanged; no replacement producer or compatibility layer is added.
+See the [pilot cutoff and remaining collection scope](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-29-posttooluse-retirement.md).

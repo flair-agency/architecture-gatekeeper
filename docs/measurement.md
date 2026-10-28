@@ -46,10 +46,20 @@ The JS manual/Hook APIs also accept `measurement: { directory, changeId }`.
 
 Recording is default-off. Failed logging emits a fixed warning on stderr and
 preserves verdicts, exceptions, exit behavior and Hook output. Full validated
-findings are saved privately before PostToolUse output truncation. No prompts,
+findings are saved privately before local result publication. No prompts,
 tasks or diffs are stored verbatim; their selected identities are recorded.
 Private findings and scopes can still contain sensitive content. Owners control
 access, exports and deletion; no automatic remote upload is performed locally.
+
+The PostToolUse pilot ended by Owner decision on 2026-10-29 JST. Its execution
+adapter is removed from current source; published pins are not changed. Keep
+its saved records and route-specific limitations. Existing readers/exporters
+still accept the version-1 route without the execution module. Further pilot
+collection uses the remaining CI, manual, native and UserPromptSubmit routes
+where they actually run; missing observations remain unknown. The original
+#537 plan/window is not rewritten. Report the PostToolUse cutoff separately
+and do not count its absence after retirement as success or zero effect.
+See the [retirement record](https://github.com/flair-agency/architecture-gatekeeper/blob/main/docs/investigations/2026-10-29-posttooluse-retirement.md).
 
 ## Version 1 record and supported boundaries
 
@@ -64,8 +74,8 @@ feedback observations and collection gaps. UserPromptSubmit records publication 
 (or CLI output acceptance). Persistence or output failures retain an error with
 unknown publication; a valid blocking verdict remains a completed review with
 unknown result publication. Native CLI publication is finalized after successful stdout output; output failure
-retains the validated decision with unknown publication. Manual and PostToolUse CLI publication similarly
-waits for their output boundary. Delivery remains unknown. These detailed
+retains the validated decision with unknown publication. Manual CLI publication
+similarly waits for its output boundary. Delivery remains unknown. These detailed
 request, full-decision and execution fields describe local/native observations
 or the standalone legacy recorder. The current independent CI collector only
 records published decision metadata and checked public job facts; unavailable
@@ -102,7 +112,7 @@ change their meaning during export.
 | --- | --- | --- |
 | Manual | Committed review inputs and proposed task digest | A task review does not establish that uncommitted implementation was reviewed. |
 | UserPromptSubmit | Proposed task, recorded HEAD, hashed session | Internal result availability is observed; Hook discovery, host delivery and task correction are unknown. Known input-parse/event/root failures remain error observations with unknown request identity. A non-PASS remains blocking under the existing Hook contract. |
-| PostToolUse | Existing tracked patch SHA-256, requestId and recorded HEAD | Queued, unchanged, deduplicated, incomplete and stale-HEAD cases remain separate. Untracked/oversized/unsupported inputs retain the existing incomplete result, including CLI stdin overflow before semantic screening. Inactive Hooks and later working-tree edits are not observed. |
+| PostToolUse (historical records) | Existing tracked patch SHA-256, requestId and recorded HEAD | Queued, unchanged, deduplicated, incomplete and stale-HEAD cases remain separate. Untracked/oversized/unsupported inputs retain the existing incomplete result, including CLI stdin overflow before semantic screening. Inactive Hooks and later working-tree edits are not observed. |
 | Native Skill | Preparation and later validation linked by private request location and requestId | Start/prepared persists without validation. Validation observes a valid response, not actual host settings, execution, delivery or action. Known preparation errors are recorded. Unreadable or structurally invalid request files leave independent error observations with unknown request identity; later retries retain that history. |
 | CI ordinary review | Published decision/reviewed revision and exact public repository/run/attempt/head job metadata | An independent optional job runs after required review/report/accept. Request, prompt, schema, reviewer, execution, finding count and freshness remain unknown. Metadata is limited to two anonymous requests, 256 KiB per response and a shared 10-second deadline. Missing, inconsistent, private or unavailable metadata remains a gap. Whole-run cancellation can leave no record; secondary owner reviews are outside this collector. |
 | CI outcome | Policy/review/report/accept **job outcomes**, separately | Job success does not prove feedback publication or merge. Actual integration requires a population/audit record. |
