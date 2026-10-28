@@ -62,8 +62,9 @@ reader logic and route values; no new record format or measurement layer is adde
 
 The existing measurement CLI regression reads saved historical-format phases,
 exports them with redaction, aggregates them and confirms unchanged readback.
-Installed smoke checks the retired exports/modules are absent while exercising
-the remaining manual, native, UserPromptSubmit, provider and policy entrypoints.
+Fixed-path package tests check the removed modules; installed smoke checks the
+retired exports while exercising the remaining manual, native, UserPromptSubmit,
+provider and policy entrypoints.
 These are deterministic package tests, not new model or effectiveness trials.
 Current PR verification is recorded in the PR; no merge, release, live Hook
 uninstall, host change or broader migration is implied by source verification.

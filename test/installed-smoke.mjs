@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -83,10 +83,8 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   if (v2Native.decision !== 'PASS' || v2Native.authoritySet?.members[0]?.id !== 'architecture') throw new Error('native Authority Set adapter did not pass');
   const installedSrc = dirname(realpathSync(join(installedBin, 'architecture-review-native')));
   const publicApi = await import(pathToFileURL(join(installedSrc, 'local-gate.mjs')).href);
-  if ('runPostToolScreenHook' in publicApi || 'runPostToolScreenHookCli' in publicApi ||
-      existsSync(join(installedSrc, 'local-post-tool-screen.mjs')) ||
-      existsSync(join(installedSrc, 'local-review/local-post-tool-screen.mjs'))) {
-    throw new Error('retired PostToolUse adapter remains in the installed package');
+  if ('runPostToolScreenHook' in publicApi || 'runPostToolScreenHookCli' in publicApi) {
+    throw new Error('retired PostToolUse exports remain in the installed package');
   }
   const policyPath = join(parent, 'policy.json'); writeFileSync(policyPath, JSON.stringify({ version: 1, default: { mode: 'local-only' }, branches: {} }));
   if (!run('architecture-gate-policy', [policyPath, 'main']).includes('mode=local-only')) throw new Error('policy adapter did not pass');
