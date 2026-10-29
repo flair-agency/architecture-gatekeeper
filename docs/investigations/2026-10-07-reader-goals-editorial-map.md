@@ -51,7 +51,7 @@ amend the contract or enable a route.
 | Consumer, install or configure local review | [Local integration](../integration-reference.md#local-integration) | [Local reviewer execution](../integration-reference.md#local-reviewer-execution-composition) |
 | Consumer, use a host-native Skill | [Codex Skill installation](../integration-reference.md#codex-skill-installation) | [Native Skill E2E evidence template](native-skill-e2e-template.md) |
 | Consumer, assess CI or host responsibilities | [CI integration](../integration-reference.md#ci-integration) | [GitHub assurance](../github-assurance.md) and [caller boundary](../github-assurance.md#caller-authorization-and-host-integration-boundary) |
-| Operator, recover an escalation or incomplete result | [Owner intervention](../owner-intervention.md) | [Preview support and recovery status](../integration-reference.md#preview-support-and-recovery-status) |
+| Operator, recover an escalation or incomplete result | [Owner intervention](../owner-intervention.md) | [Preview support and recovery status](https://github.com/flair-agency/architecture-gatekeeper/blob/2b6b2460833ca37d667c099983ee023cc13cc7df/docs/integration-reference.md#preview-support-and-recovery-status) |
 | Maintainer, develop or roll out the package | [Development guide](../development.md) | [Issue and pull request workflow](../issue-pr-workflow.md) |
 | Maintainer, publish or plan a release | [Release runbook](../release.md) | [Release planning form](../../.github/ISSUE_TEMPLATE/release_planning.yml) |
 | Architect or reviewer, find responsibilities and assurance rules | [Normative architecture contract](../architecture.md) | [Six selected members](../architecture.md), indexed by [contract navigation](../README.md#contract-navigation) |
