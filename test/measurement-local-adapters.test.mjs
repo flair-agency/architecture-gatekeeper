@@ -14,8 +14,6 @@ import { beginMeasurement, loadMeasurementDirectory, redactMeasurement, readMeas
 
 import { runManualReview, runManualReviewAsync, runHookAsync } from '../dist/local-gate.mjs';
 
-import { runPostToolScreenHook } from '../dist/local-post-tool-screen.mjs';
-
 import { readDiagnosticText, resolveDiagnosticPath } from '../dist/diagnostic-path.mjs';
 
 function fixture(t) {
@@ -67,31 +65,6 @@ test('manual and UserPromptSubmit preserve verdicts when measurement storage is 
   chmodSync(dir, 0o755);
   assert.equal((await runManualReviewAsync('task', root, { reviewer, measurement })).decision, 'BLOCK');
   assert.equal(calls, 4);
-});
-
-test('full PostToolUse findings survive output truncation; dedup and stale snapshots remain separate', async t => {
-  const { root, dir, measurement } = fixture(t);
-  writeFileSync(join(root, 'candidate.md'), 'modified');
-  const event = { hook_event_name: 'PostToolUse', session_id: 's', tool_name: 'Edit', cwd: root };
-  const verdict = { ...block, summary: 'x'.repeat(12000) };
-  const first = await runPostToolScreenHook(event, { cwd: root, batchDelayMs: 0, reviewer: () => verdict, measurement });
-  assert.equal(first.result.status, 'BLOCK'); assert.ok(Buffer.byteLength(first.output) <= 4000);
-  const repeated = await runPostToolScreenHook(event, { cwd: root, batchDelayMs: 0, reviewer: () => { throw new Error('must not repeat'); }, measurement });
-  assert.equal(repeated.result.status, 'unchanged');
-  const terminals = loadMeasurementDirectory(dir).records.filter(r => r.phase === 'terminal');
-  const completed = terminals.find(r => r.state === 'completed');
-  assert.equal(completed.decision.findings[0].details, 'secret details');
-  assert.equal(completed.request.scope.kind, 'tracked-working-tree');
-  assert.equal(completed.request.scope.snapshotSha256, first.result.snapshotSha256);
-  assert.equal(completed.request.requestId, first.result.requestId);
-  assert.equal(completed.request.reviewedRevision, first.result.reviewedRevision);
-  assert.ok(terminals.some(r => r.state === 'deduplicated'));
-  writeFileSync(join(root, 'candidate.md'), 'new candidate');
-  const stale = await runPostToolScreenHook(event, { cwd: root, batchDelayMs: 0, measurement, reviewer: () => {
-    execFileSync('git', ['commit', '--allow-empty', '-m', 'move'], { cwd: root, stdio: 'ignore' }); return block;
-  } });
-  assert.equal(stale.result.status, 'incomplete');
-  assert.ok(loadMeasurementDirectory(dir).records.some(r => r.state === 'incomplete' && r.decision?.decision === 'BLOCK'));
 });
 
 test('native process pair retains preparation without inferring host execution or delivery', t => {
@@ -275,38 +248,6 @@ test('real native prepare retry cannot hide the original unfinished preparation 
   assert.equal(terminal.state, 'completed'); assert.equal(terminal.decision.decision, 'BLOCK');
 });
 
-for (const payload of ['x'.repeat(256 * 1024 + 1), '終'.repeat(90000)]) {
-  test(`PostToolUse CLI overflow stays byte-identical and records incomplete (${Buffer.byteLength(payload)} bytes)`, t => {
-    const { root, dir } = fixture(t);
-    const script = `import {runPostToolScreenHookCli} from ${JSON.stringify(new URL('../dist/local-post-tool-screen.mjs', import.meta.url).href)};runPostToolScreenHookCli();`;
-    const invoke = directory => spawnSync(process.execPath, ['--input-type=module', '-e', script], { cwd: root, input: payload, env: { ...process.env, AGK_MEASUREMENT_DIR: directory }, encoding: 'utf8' });
-    const disabled = invoke(''); const enabled = invoke(dir);
-    assert.equal(disabled.status, 0); assert.equal(enabled.status, 0, enabled.stderr); assert.equal(enabled.stdout, disabled.stdout);
-    assert.match(enabled.stdout, /PostToolUse payload exceeds the 256 KiB input limit/);
-    const records = loadMeasurementDirectory(dir).records; assert.deepEqual(records.map(r => r.phase).sort(), ['start', 'terminal']);
-    const terminal = records.find(r => r.phase === 'terminal'); assert.equal(terminal.route, 'PostToolUse'); assert.equal(terminal.state, 'incomplete');
-    assert.equal(terminal.decision, null); assert.equal(terminal.request, null); assert.equal(terminal.sessionId, null); assert.deepEqual(terminal.observation, { input: 'oversized' });
-    const invalid = join(root, 'diagnostic-inside-worktree'); mkdirSync(invalid, { mode: 0o700 });
-    const refused = invoke(invalid); assert.equal(refused.status, 0); assert.equal(refused.stdout, disabled.stdout); assert.match(refused.stderr, /AGK measurement gap/); assert.deepEqual(loadMeasurementDirectory(invalid).records, []);
-    assert.equal(existsSync(join(root, '.git/architecture-gatekeeper-post-tool-screen')), false);
-  });
-}
-
-test('PostToolUse CLI exact byte limit follows normal screening and contains unavailable diagnostic cwd', t => {
-  const { root, dir } = fixture(t); const max = 256 * 1024;
-  const event = { hook_event_name: 'unsupported', session_id: 'known', padding: '' };
-  event.padding = 'x'.repeat(max - Buffer.byteLength(JSON.stringify(event))); const input = JSON.stringify(event); assert.equal(Buffer.byteLength(input), max);
-  const module = JSON.stringify(new URL('../dist/local-post-tool-screen.mjs', import.meta.url).href);
-  const script = `import {runPostToolScreenHookCli} from ${module};runPostToolScreenHookCli();`;
-  const invoke = (code, payload, directory) => spawnSync(process.execPath, ['--input-type=module', '-e', code], { cwd: root, input: payload, env: { ...process.env, AGK_MEASUREMENT_DIR: directory }, encoding: 'utf8' });
-  const disabled = invoke(script, input, ''); const enabled = invoke(script, input, dir);
-  assert.equal(enabled.status, 0); assert.equal(enabled.stdout, disabled.stdout); assert.match(enabled.stdout, /Unsupported hook event/);
-  const terminal = loadMeasurementDirectory(dir).records.find(r => r.phase === 'terminal'); assert.equal(terminal.state, 'incomplete'); assert.equal(terminal.sessionId, measurementDigest('known')); assert.equal(terminal.observation.input, undefined);
-  const oversized = 'x'.repeat(max + 1); const control = invoke(script, oversized, '');
-  const brokenCwd = invoke(`import {runPostToolScreenHookCli} from ${module};process.cwd=()=>{throw new Error('cwd unavailable')};runPostToolScreenHookCli();`, oversized, dir);
-  assert.equal(brokenCwd.status, 0); assert.equal(brokenCwd.stdout, control.stdout); assert.match(brokenCwd.stderr, /AGK measurement gap/);
-});
-
 test('synchronous UserPromptSubmit input failure preserves CLI exit and stderr with capture enabled', t => {
   const { root, dir } = fixture(t);
   const script = `import {runHook} from ${JSON.stringify(new URL('../dist/local-gate.mjs', import.meta.url).href)};runHook('{bad',process.cwd());`;
@@ -315,7 +256,6 @@ test('synchronous UserPromptSubmit input failure preserves CLI exit and stderr w
   assert.equal(disabled.status, 2); assert.equal(enabled.status, 2); assert.equal(enabled.stdout, disabled.stdout); assert.equal(enabled.stderr, disabled.stderr);
   const terminal = loadMeasurementDirectory(dir).records.find(r => r.phase === 'terminal'); assert.equal(terminal.route, 'UserPromptSubmit'); assert.equal(terminal.state, 'error'); assert.equal(terminal.decision, null); assert.equal(terminal.observation.failureStage, 'hook-input');
 });
-
 
 test('manual sync and async APIs cannot accept Hook route/session through caller options', async t => {
   const {root, dir, measurement} = fixture(t); let routeReads = 0; let sessionReads = 0;

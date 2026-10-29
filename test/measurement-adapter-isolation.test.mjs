@@ -5,7 +5,7 @@ import { execFileSync, spawnSync, spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runHookAsync, runManualReview, runManualReviewAsync, runPostToolScreenHook } from '../dist/local-gate.mjs';
+import { runHookAsync, runManualReview, runManualReviewAsync } from '../dist/local-gate.mjs';
 import { loadMeasurementDirectory, measurementDigest } from '../dist/measurement.mjs';
 
 function fixture(t) { const value = createMeasurementAdapterFixture(); t.after(value.cleanup); return value; }
@@ -66,23 +66,6 @@ test('UserPromptSubmit and Gemini adapters do not re-read or forward top-level m
   assert.equal(calls, 3);
 });
 
-test('PostToolUse stays informational with malformed measurement settings and valid selection records', async t => {
-  const { root, records } = fixture(t);
-  writeFileSync(join(root, 'candidate.md'), 'changed\n');
-  const input = { hook_event_name: 'PostToolUse', cwd: root, session_id: 'session', tool_name: 'Edit' };
-  const informational = await runPostToolScreenHook(input, { cwd: root, batchDelayMs: 0, measurement: badMeasurement(), reviewer: () => decision('PASS') });
-  assert.equal(informational.result.status, 'PASS');
-  assert.equal(JSON.parse(informational.output).hookSpecificOutput.hookEventName, 'PostToolUse');
-  assert.match(JSON.parse(informational.output).hookSpecificOutput.additionalContext, /informational/);
-
-  writeFileSync(join(root, 'candidate.md'), 'changed again\n');
-  const captured = await runPostToolScreenHook({ ...input, session_id: 'second' }, { cwd: root, batchDelayMs: 0,
-    measurement: { directory: records }, reviewer: () => decision('PASS') });
-  assert.equal(captured.result.status, 'PASS');
-  assert.ok(loadMeasurementDirectory(records).records.some(record => record.route === 'PostToolUse' && record.phase === 'terminal'));
-});
-
-
 for (const kind of ['malformed-json', 'unsupported-event', 'unresolved-repository']) {
   test(`UserPromptSubmit ${kind} retains original error and explicit input gap`, async t => {
     const { root, records } = fixture(t); const outside = join(root, '..', 'not-a-repository'); mkdirSync(outside);
@@ -96,7 +79,6 @@ for (const kind of ['malformed-json', 'unsupported-event', 'unresolved-repositor
     const refused = await runHookAsync(input, root, { measurement: badMeasurement() }).catch(error => error); assert.equal(refused.message, original.message);
   });
 }
-
 
 test('Hook context persistence failure preserves rejection and records an unpublished error', async t => {
   const { root, records } = fixture(t); writeFileSync(join(root, '.git/codex-architecture-context'), 'not a directory');
@@ -137,15 +119,6 @@ for (const asyncCall of [false,true]) test(`manual result-selection failure reta
   const terminal = loadMeasurementDirectory(records).records.find(r => r.phase === 'terminal'); assert.equal(terminal.state, 'error'); assert.equal(terminal.feedback.publication, 'unknown'); assert.equal(terminal.decision.decision, 'PASS'); assert.equal(terminal.observation.validation, 'completed'); assert.equal(terminal.observation.failureStage, 'result-selection');
 });
 
-for (const overflow of [false, true]) test(`PostToolUse CLI output failure records a publication gap (overflow ${overflow})`, t => {
-  const { root, records } = fixture(t); const module = new URL('../dist/local-post-tool-screen.mjs', import.meta.url).href;
-  const script = `import {runPostToolScreenHookCli} from ${JSON.stringify(module)};const write=process.stdout.write.bind(process.stdout);let calls=0;process.stdout.write=(...args)=>{if(++calls===1)throw new Error('output unavailable');return write(...args)};runPostToolScreenHookCli();`;
-  const input = overflow ? 'x'.repeat(256 * 1024 + 1) : JSON.stringify({ hook_event_name: 'unsupported' });
-  const invoke = directory => spawnSync(process.execPath, ['--input-type=module', '-e', script], { cwd: root, input, env: { ...process.env, AGK_MEASUREMENT_DIR: directory }, encoding: 'utf8' });
-  const original = invoke(''); const observed = invoke(records); assert.equal(observed.status, original.status); assert.equal(observed.stdout, original.stdout);
-  const terminal = loadMeasurementDirectory(records).records.find(r => r.phase === 'terminal'); assert.equal(terminal.state, 'error'); assert.equal(terminal.feedback.publication, 'unknown'); assert.equal(terminal.observation.failureStage, 'publication');
-});
-
 for (const verdict of ['PASS', 'BLOCK']) test(`manual options proxy retains lazy transport reads: ${verdict}`, async t => {
   const { root } = fixture(t); let calls = 0;
   const options = new Proxy({ reviewer() { calls++; return decision(verdict); } }, {
@@ -160,7 +133,7 @@ for (const verdict of ['PASS', 'BLOCK']) test(`manual options proxy retains lazy
   assert.equal(calls, 2);
 });
 
-for (const route of ['manual-sync', 'manual-async', 'hook', 'PostToolUse']) test(`unavailable warning sink cannot change required adapter result: ${route}`, t => {
+for (const route of ['manual-sync', 'manual-async', 'hook']) test(`unavailable warning sink cannot change required adapter result: ${route}`, t => {
   const child = new URL('./helpers/measurement-adapter-fault-child.mjs', import.meta.url).pathname;
   const result = spawnSync(process.execPath, [child, route], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
@@ -176,51 +149,6 @@ test('Hook retains required option-getter failures while manual reads remain laz
  const terminal=loadMeasurementDirectory(records).records.find(r=>r.phase==='terminal'&&r.route==='UserPromptSubmit');assert.equal(terminal.state,'error');assert.equal(terminal.feedback.publication,'unknown');
 });
 
-
-for (const enabled of [false, true]) test(`PostToolUse observes required option getters once in original order (measurement ${enabled})`, async t => {
-  const { root, records } = fixture(t); writeFileSync(join(root, 'candidate.md'), 'changed');
-  const event = { hook_event_name: 'PostToolUse', session_id: 'option-getters', tool_name: 'Edit', cwd: root };
-  const reads = []; let calls = 0; const options = {};
-  for (const [field, value] of [['cwd', root], ['reviewer', () => { calls++; return decision('PASS'); }], ['reviewerResultFormat', undefined], ['batchDelayMs', 0]]) {
-    Object.defineProperty(options, field, { get() { reads.push(field); if (reads.filter(key => key === field).length > 1) throw new Error(`repeated ${field}`); return value; } });
-  }
-  if (enabled) options.measurement = { directory: records };
-  const result = await runPostToolScreenHook(event, options);
-  assert.equal(result.result.status, 'PASS'); assert.equal(calls, 1);
-  assert.deepEqual(reads, ['cwd', 'reviewer', 'reviewerResultFormat', 'batchDelayMs']);
-});
-
-for (const enabled of [false, true]) test(`PostToolUse object event preserves original session getter observations (measurement ${enabled})`, async t => {
-  const { root, records } = fixture(t); writeFileSync(join(root, 'candidate.md'), 'changed');
-  let reads = 0; let calls = 0;
-  const event = { hook_event_name: 'PostToolUse', tool_name: 'Edit', cwd: root };
-  Object.defineProperty(event, 'session_id', { get() { if (++reads > 3) throw new Error('diagnostics exhausted session getter'); return 'session'; } });
-  const result = await runPostToolScreenHook(event, { cwd: root, batchDelayMs: 0, reviewer: () => { calls++; return decision('PASS'); }, ...(enabled ? { measurement: { directory: records } } : {}) });
-  assert.equal(result.result.status, 'PASS'); assert.equal(calls, 1); assert.equal(reads, 3);
-  if (enabled) assert.equal(loadMeasurementDirectory(records).records.find(r => r.phase === 'terminal').sessionId, null, 'object-form diagnostic session remains unknown');
-});
-
-
-for (const changed of [false, true]) test(`PostToolUse freshness describes an observed tracked snapshot (changed ${changed})`, async t => {
-  const { root, records } = fixture(t); writeFileSync(join(root, 'candidate.md'), 'before review');
-  const result = await runPostToolScreenHook({ hook_event_name: 'PostToolUse', session_id: 'freshness', tool_name: 'Edit', cwd: root }, {
-    cwd: root, batchDelayMs: 0, measurement: { directory: records }, reviewer: () => { if (changed) writeFileSync(join(root, 'candidate.md'), 'changed while reviewing'); return decision('PASS'); }
-  });
-  assert.equal(result.result.status, 'PASS', 'informational Hook behavior remains unchanged');
-  const terminal = loadMeasurementDirectory(records).records.find(r => r.phase === 'terminal');
-  assert.equal(terminal.observation.snapshotStillCurrent, !changed);
-});
-
-test('PostToolUse retains exact falsy execution observations from supported reviewer envelopes', async t => {
-  for (const execution of [false,0,'',null]) {
-    const {root,records}=fixture(t);writeFileSync(join(root,'candidate.md'),'falsy observation');
-    const result=await runPostToolScreenHook({hook_event_name:'PostToolUse',session_id:'falsy',tool_name:'Edit',cwd:root},{cwd:root,batchDelayMs:0,
-      measurement:{directory:records},reviewerResultFormat:'envelope',reviewer:()=>({decision:decision('PASS'),execution})});
-    assert.equal(result.result.status,'PASS',JSON.stringify(result.result));assert.equal(result.result.reviewerExecution,execution);
-    assert.equal(loadMeasurementDirectory(records).records.find(r=>r.phase==='terminal').execution,execution);
-  }
-});
-
 test('synchronous Hook observes a closed real stdout pipe as unpublished',async t=>{
  const {root,records}=fixture(t);
  const helper=new URL('./helpers/measurement-hook-publication-child.mjs',import.meta.url).pathname;
@@ -234,32 +162,13 @@ test('synchronous Hook observes a closed real stdout pipe as unpublished',async 
  assert.equal(terminal.state,'error');assert.equal(terminal.decision.decision,'PASS');assert.equal(terminal.feedback.publication,'unknown');assert.equal(terminal.observation.failureStage,'hook-publication');
 });
 
-for (const route of ['manual-sync','manual-async','hook','PostToolUse']) test(`validation failure retains observed execution: ${route}`, async t => {
+for (const route of ['manual-sync','manual-async','hook']) test(`validation failure retains observed execution: ${route}`, async t => {
   const {root,records}=fixture(t);writeFileSync(join(root,'candidate.md'),'changed');
   const execution={status:'completed',fixture:'transport-returned'};
   const options={reviewerResultFormat:'envelope',reviewer:()=>({decision:{decision:'invalid'},execution}),measurement:{directory:records}};
-  if(route==='PostToolUse') {
-    const value=await runPostToolScreenHook({hook_event_name:'PostToolUse',cwd:root,session_id:'invalid',tool_name:'Edit'},{...options,cwd:root,batchDelayMs:0});
-    assert.equal(value.result.status,'incomplete');
-  } else {
-    const error=await Promise.resolve().then(()=>route==='manual-sync'?runManualReview('task',root,options):route==='manual-async'?runManualReviewAsync('task',root,options):runHookAsync(JSON.stringify({hook_event_name:'UserPromptSubmit',cwd:root,session_id:'invalid',prompt:'task'}),root,options)).catch(e=>e);
-    assert.ok(error instanceof Error);
-  }
+  const error=await Promise.resolve().then(()=>route==='manual-sync'?runManualReview('task',root,options):route==='manual-async'?runManualReviewAsync('task',root,options):runHookAsync(JSON.stringify({hook_event_name:'UserPromptSubmit',cwd:root,session_id:'invalid',prompt:'task'}),root,options)).catch(e=>e);
+  assert.ok(error instanceof Error);
   const terminal=loadMeasurementDirectory(records).records.find(r=>r.phase==='terminal');
   assert.equal(terminal.decision,null);assert.deepEqual(terminal.execution,execution);
-  assert.equal(terminal.observation.execution,'completed');
-});
-
-for (const fault of ['stale-head','identity-store']) test(`PostToolUse retains execution after ${fault}`, async t=>{
-  const {root,records}=fixture(t);writeFileSync(join(root,'candidate.md'),'changed');
-  const execution={status:'completed',fixture:fault};
-  const value=await runPostToolScreenHook({hook_event_name:'PostToolUse',cwd:root,session_id:fault,tool_name:'Edit'},{cwd:root,batchDelayMs:0,measurement:{directory:records},reviewerResultFormat:'envelope',reviewer:()=>{
-    if(fault==='stale-head')execFileSync('git',['commit','--allow-empty','-m','move'],{cwd:root,stdio:'ignore'});
-    else mkdirSync(join(root,'.git/architecture-gatekeeper-post-tool-screen/last.json'));
-    return {decision:decision('PASS'),execution};
-  }});
-  assert.equal(value.result.status,'incomplete');
-  const terminal=loadMeasurementDirectory(records).records.find(r=>r.phase==='terminal');
-  assert.equal(terminal.decision.decision,'PASS');assert.deepEqual(terminal.execution,execution);
   assert.equal(terminal.observation.execution,'completed');
 });

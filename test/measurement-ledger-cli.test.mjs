@@ -16,6 +16,39 @@ function dataset() {
       evidence: ['audit'], initialViolationCaseIds: ['violation'], finalViolationCaseIds: ['violation'] }] };
 }
 
+test('saved PostToolUse records still load, export and aggregate without the retired adapter', t => {
+  const parent = mkdtempSync(join(realpathSync(tmpdir()), 'agk-historical-post-tool-'));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  const root = join(parent, 'work'); mkdirSync(root);
+  const records = join(parent, 'records'); mkdirSync(records, { mode: 0o700 });
+  // Historical wire-format fixture, not a new Hook invocation or an efficacy observation.
+  const start = { version: 1, kind: 'agk-diagnostic', attemptId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+    phase: 'start', route: 'PostToolUse', startedAt: '2026-10-01T00:00:00Z',
+    runtime: { package: '@flair-agency/architecture-gatekeeper', version: '0.6.0', collectorSha256: 'a'.repeat(64) } };
+  const request = { requestId: 'b'.repeat(64), reviewedRevision: 'c'.repeat(40),
+    scope: { kind: 'tracked-working-tree', snapshotSha256: 'd'.repeat(64) } };
+  const saved = [start, { ...start, phase: 'prepared', request }, { ...start, phase: 'terminal', request,
+    completedAt: '2026-10-01T00:00:01Z', state: 'completed',
+    decision: { decision: 'BLOCK', findings: [{ details: 'private historical finding' }] },
+    feedback: { publication: 'returned-to-caller' } }];
+  for (const record of saved) writeFileSync(join(records, `${record.attemptId}.${record.phase}.json`), JSON.stringify(record), { mode: 0o600 });
+  const cli = new URL('../dist/measurement-cli.mjs', import.meta.url).pathname;
+  const exported = spawnSync(process.execPath, [cli, 'export', records], { cwd: root, encoding: 'utf8' });
+  assert.equal(exported.status, 0, exported.stderr);
+  const data = JSON.parse(exported.stdout); assert.equal(data.gaps, 0); assert.equal(data.records.length, 3);
+  assert.ok(data.records.every(record => record.route === 'PostToolUse'));
+  const terminal = data.records.find(record => record.phase === 'terminal');
+  assert.equal(terminal.decision, 'BLOCK'); assert.equal(terminal.findingCount, 1);
+  assert.equal(terminal.snapshotSha256, request.scope.snapshotSha256);
+  assert.equal(terminal.feedback.delivery, 'unknown');
+  assert.ok(!exported.stdout.includes('private historical finding'));
+  const path = join(parent, 'dataset.json');
+  writeFileSync(path, JSON.stringify({ version: 1, records: data.records, population: [], cases: [], audits: [] }));
+  const aggregate = spawnSync(process.execPath, [cli, 'aggregate', path], { cwd: root, encoding: 'utf8' });
+  assert.equal(aggregate.status, 0, aggregate.stderr); assert.equal(JSON.parse(aggregate.stdout).version, 1);
+  assert.deepEqual(JSON.parse((spawnSync(process.execPath, [cli, 'export', records], { cwd: root, encoding: 'utf8' })).stdout), data);
+});
+
 test('real aggregate and sample CLIs reject inconsistent ledgers without emitting partial output', t => {
   const parent = mkdtempSync(join(realpathSync(tmpdir()), 'agk-ledger-cli-')); t.after(() => rmSync(parent, { recursive: true, force: true }));
   const path = join(parent, 'dataset.json');

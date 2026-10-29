@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,6 +15,8 @@ test('declares separate installed adapters', () => {
   assert.equal(manifest.bin['architecture-owner-addition-finalize'], 'dist/owner-addition-finalize.mjs');
   assert.equal(manifest.bin['architecture-preview-lifecycle'], 'dist/preview-lifecycle-cli.mjs');
   assert.equal(manifest.publishConfig.registry, 'https://npm.pkg.github.com');
+  assert.equal(existsSync(new URL('../dist/local-post-tool-screen.mjs', import.meta.url)), false);
+  assert.equal(existsSync(new URL('../dist/local-review/local-post-tool-screen.mjs', import.meta.url)), false);
 });
 
 test('CI and publish archive guards require the installed preview lifecycle CLI', () => {

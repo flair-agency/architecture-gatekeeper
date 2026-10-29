@@ -443,8 +443,8 @@ read, short-circuit check and original error. The unchanged CodeQL model must
 remove only the flat wrapper flow; a new direct-implementation probe must retain
 its unmodeled finding. Types and the wrapper authenticate no environment.
 
-The local entrypoint slice types the Hook and manual-review adapters and the
-PostToolUse screening path. Sync reviewer callbacks reject known Promise and
+The local entrypoint slice types the UserPromptSubmit and manual-review
+adapters. Sync reviewer callbacks reject known Promise and
 thenable results; async callbacks retain their awaited result and complete
 envelope contracts. External Hook JSON, context readbacks and decisions remain
 unknown until the existing runtime checks. The Hook direct-run guard stays in
