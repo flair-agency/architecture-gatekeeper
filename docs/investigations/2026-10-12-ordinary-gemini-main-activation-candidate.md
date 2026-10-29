@@ -1,7 +1,16 @@
 # Ordinary Gemini bounded default-branch caller candidate
 
-**Status: local enabled deployment candidate; not deployed.** The workflow
-source in this checkout is the enabled caller, SHA-256
+This is a historical pre-deployment record. The bounded session subsequently
+completed in [run 38200371751](https://github.com/flair-agency/architecture-gatekeeper/actions/runs/38200371751);
+the [milestone completion record](2026-10-14-gemini-ci-milestone-completion.md)
+describes production promotion separately. The one-session caller, selector
+diagnostic, admission configuration and their dedicated tests were retired
+under [#50](https://github.com/flair-agency/architecture-gatekeeper/issues/50).
+Candidate status and outstanding work below describe the time of this record,
+not a current deployment instruction or permission to repeat the session.
+
+**Recorded candidate status: local enabled deployment candidate; not deployed.** The workflow
+source was the enabled caller, SHA-256
 `4befbe3144aebceac3309527a8d6cbe67779fb05fb36664ea0ea3a129775c74a`.
 Its seven-key admission configuration is enabled with the exact fixed values
 recorded below. The corrected inert caller artifact hashes to
@@ -107,7 +116,7 @@ bytes do not establish deployed source or live admission.
 
 ## Admission, profile and bounds
 
-The [caller workflow](../../.github/workflows/issue334-ordinary-feature-caller.yml)
+The [archived caller workflow](https://github.com/flair-agency/architecture-gatekeeper/blob/5ba125da32722f229a44fcfeea832555c49c96c2/.github/workflows/issue334-ordinary-feature-caller.yml)
 keeps classification and protected admission in separate jobs. Classification
 jobs have `id-token: none`; classification requires matching event and base
 repository IDs, valid full commit SHAs and the event PR number. The protected
