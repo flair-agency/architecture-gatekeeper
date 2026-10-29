@@ -15,7 +15,6 @@
     "architecture-review-gemini-ci": "dist/gemini-launcher.mjs",
     "architecture-gate-policy": "dist/resolve-ci-policy.mjs",
     "architecture-owner-addition-finalize": "dist/owner-addition-finalize.mjs",
-    "architecture-preview-lifecycle": "dist/preview-lifecycle-cli.mjs",
     "architecture-measurement": "dist/measurement-cli.mjs"
   },
   "exports": {
@@ -26,7 +25,6 @@
     "./policy": "./dist/resolve-ci-policy.mjs",
     "./owner-addition-adoption": "./dist/owner-addition-adoption.mjs",
     "./owner-addition-finalize": "./dist/owner-addition-finalize.mjs",
-    "./preview-lifecycle": "./dist/preview-lifecycle.mjs",
     "./measurement": "./dist/measurement-api.mjs"
   },
   "files": [

@@ -146,53 +146,6 @@ process.stdin.resume(); process.stdin.on('end', () => writeFileSync(output, proc
   writeFileSync(measurementExportTest, "import { aggregateMeasurement } from '@flair-agency/architecture-gatekeeper/measurement';\nconst report = aggregateMeasurement({version:1, records:[], population:[], cases:[], audits:[]});\nif (report.metrics.precision.rate !== null) throw new Error('installed measurement API denominator failed');\n");
   symlinkSync(packageNodeModules, join(root, 'node_modules'), 'dir');
   execFileSync(process.execPath, [measurementExportTest], { cwd: root, timeout: 30000 });
-  mkdirSync(join(apiTests, 'fixtures'));
-  copyFileSync(new URL('./fixtures/preview-lifecycle-runtime.mjs', import.meta.url), join(apiTests, 'fixtures/preview-lifecycle-runtime.mjs'));
-  const previewFixtureModule = await import(pathToFileURL(join(apiTests, 'fixtures', 'preview-lifecycle-runtime.mjs')));
-  let disposePreviewFixture = () => {};
-  try {
-    const previewFixture = previewFixtureModule.fixture({ after: callback => { disposePreviewFixture = callback; } });
-    const previewHead = previewFixtureModule.commitOn(previewFixture, 'installed-cli-change', { 'app.txt': 'Installed CLI smoke change\n' });
-    const previewPrepare = spawnSync(process.execPath, [join(installedBin, 'architecture-preview-lifecycle'), 'prepare'], {
-      cwd: previewFixture.root, env, input: JSON.stringify({ spec: previewFixtureModule.spec(previewFixture, 'review', previewHead) }),
-      encoding: 'utf8', timeout: 30000,
-    });
-    if (previewPrepare.status !== 0) throw new Error(`installed preview lifecycle CLI prepare failed: ${previewPrepare.stderr}`);
-    const previewRequest = JSON.parse(previewPrepare.stdout);
-    if (previewRequest.profile !== 'preview-unverified-procedure-v1' || previewRequest.root !== realpathSync(previewFixture.root) ||
-      previewRequest.spec?.repository !== 'fixture/example' || previewRequest.spec?.headSha !== previewHead) {
-      throw new Error('installed preview lifecycle CLI returned an unexpected checkout-bound request');
-    }
-  } finally {
-    disposePreviewFixture();
-  }
-  copyFileSync(new URL('./preview-lifecycle.test.mjs', import.meta.url), join(apiTests, 'preview-lifecycle.test.mjs'));
-  copyFileSync(new URL('./preview-runtime-identity.test.mjs', import.meta.url), join(apiTests, 'preview-runtime-identity.test.mjs'));
-  copyFileSync(new URL('./preview-amendment-block.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-block.test.mjs'));
-  copyFileSync(new URL('./preview-addition.test.mjs', import.meta.url), join(apiTests, 'preview-addition.test.mjs'));
-  copyFileSync(new URL('./preview-amendment-owner.test.mjs', import.meta.url), join(apiTests, 'preview-amendment-owner.test.mjs'));
-  copyFileSync(new URL('./preview-migration-initial.test.mjs', import.meta.url), join(apiTests, 'preview-migration-initial.test.mjs'));
-  const apiTestGroups = [
-    { name: 'ordinary and B API fixtures', files: ['preview-lifecycle.test.mjs', 'preview-amendment-block.test.mjs',
-      'preview-addition.test.mjs', 'preview-amendment-owner.test.mjs'] },
-    { name: 'migration API fixture', files: ['preview-migration-initial.test.mjs'] },
-    { name: 'runtime identity API fixture', files: ['preview-runtime-identity.test.mjs'] },
-  ];
-  for (const group of apiTestGroups) {
-    try {
-      execFileSync(process.execPath, ['--test', ...group.files.map(file => join(apiTests, file))], {
-        cwd: root, timeout: 120000, stdio: 'pipe', maxBuffer: 1_048_576,
-      });
-    } catch (error) {
-      const output = value => {
-        const text = Buffer.isBuffer(value) ? value.toString('utf8') : String(value ?? '');
-        const limit = 64 * 1024;
-        return text.length <= limit ? text : `${text.slice(0, limit)}\n[output truncated at ${limit} characters]`;
-      };
-      throw new Error(`Installed API test group "${group.name}" failed (${error.code ?? error.status ?? 'unknown'}).\n` +
-        `Child stdout:\n${output(error.stdout)}\nChild stderr:\n${output(error.stderr)}`, { cause: error });
-    }
-  }
 } finally {
   rmSync(parent, { recursive: true, force: true });
 }

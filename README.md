@@ -193,15 +193,12 @@ CI diagnostics run in an independent optional job after required review/report/a
 The pinned public runtime observes published decisions and bounded public job
 metadata; private request, finding-count, execution and freshness facts remain unknown.
 
-### Unverified preview lifecycle API
+### Preview lifecycle retirement
 
-The predecessor-selected `preview-unverified-procedure-v1` lifecycle API and
-its route-specific limits are documented in the [integration reference](docs/integration-reference.md#unverified-preview-lifecycle-api).
-An installed `architecture-preview-lifecycle` command exposes prepare,
-complete, finalize and fresh through bounded JSON on stdin/stdout, using the
-invoking checkout as its fixed root.
-All preview procedures remain `UNVERIFIED` and do not provide protected
-acceptance.
+The Preview lifecycle API and CLI have been removed from this source revision.
+This is a breaking API change; release/version selection is separate. Existing
+published versions and consumer pins are unchanged. See the
+[retirement boundary](docs/integration-reference.md#preview-lifecycle-retirement).
 
 ## Project participation
 
@@ -240,5 +237,5 @@ See the [procedure and limits](docs/owner-intervention.md).
 The retired self App/Queue, tag handoff and attestation producers are not shipped.
 No App or Queue is needed for this procedure. Existing GitHub required checks and
 Owner merge permissions remain the host boundary; code adoption does not change
-host settings. Local/native review, Git-based Preview lifecycle and
-OWNER_ADDITION remain available for a clean installation.
+host settings. Local/native review and OWNER_ADDITION remain available for a
+clean installation.
