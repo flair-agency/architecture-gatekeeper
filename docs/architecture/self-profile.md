@@ -30,10 +30,9 @@ consumer support.
 
 ### Development sequence and v0.6.0 self reference profile (owner decision)
 
-Keep public local/native review and explicitly selected Preview procedures
-usable under their existing semantics. Preview feedback does not become
-protected self-amendment eligibility or adoption. A clean consumer installation
-does not depend on legacy self-amendment formats or evidence. Existing release
+Keep public local/native review usable under their existing semantics. A clean
+consumer installation does not depend on legacy self-amendment formats or
+evidence. Existing release
 scope, release-history cleanup, and other consumer assurance requirements stay
 in their own records and processes.
 
