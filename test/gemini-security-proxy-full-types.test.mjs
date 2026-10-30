@@ -1,13 +1,11 @@
 import assert from 'node:assert/strict';
-import { appendFileSync, copyFileSync, cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { parse } from 'acorn';
 import ts from 'typescript';
-import { ordinary, decision, fixture, spec, commitOn } from './fixtures/preview-lifecycle-runtime.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/gemini-security-proxy-contract');
@@ -74,28 +72,4 @@ test('complete proxy runtime operations retain adopted AST and flat export ident
   assert.deepEqual(['remainingDeadlineMs', 'validateGeminiRoute', 'startGeminiSecurityProxy'].map(name => [flat[name].name, flat[name].length]), [
     ['remainingDeadlineMs', 1], ['validateGeminiRoute', 1], ['startGeminiSecurityProxy', 1],
   ]);
-});
-
-for (const kind of ['source', 'emitted']) test(`${kind} runtime identity invalidates stale proxy-module requests and receipts`, async t => {
-  const layout = mkdtempSync(join(tmpdir(), `gemini-proxy-${kind}-runtime-`));
-  t.after(() => rmSync(layout, { recursive: true, force: true }));
-  const treeDir = kind === 'source' ? 'src' : 'dist';
-  cpSync(join(root, treeDir), join(layout, treeDir), { recursive: true });
-  copyFileSync(join(root, 'package.json'), join(layout, 'package.json'));
-  const runtime = await import(pathToFileURL(join(layout, treeDir, `preview-lifecycle.${treeDir === 'src' ? 'mts' : 'mjs'}`)).href);
-  const f = fixture(t);
-  const head = commitOn(f, `proxy-${kind}-identity`, { 'app.txt': `Synthetic ${kind} identity\n` });
-  const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-  const relative = `${kind === 'source' ? 'gemini-cli/gemini-security-proxy.mts' : 'gemini-cli/gemini-security-proxy.mjs'}`;
-  const identityKey = `gemini-cli/gemini-security-proxy.${kind === 'source' ? 'mts' : 'mjs'}`;
-  assert.equal(request.runtime.files[identityKey], createHash('sha256').update(readFileSync(join(layout, treeDir, relative))).digest('hex'));
-  const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
-  await runtime.validatePreviewReceipt(receipt, f.root);
-  appendFileSync(join(layout, treeDir, relative), '\n// isolated synthetic identity mutation\n');
-  const fresh = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-  assert.notEqual(fresh.runtime.files[identityKey], request.runtime.files[identityKey]);
-  await assert.rejects(runtime.completePreviewLifecycle(request, ordinary(decision()), f.root), /request differs from immutable predecessor inputs/);
-  await assert.rejects(runtime.validatePreviewReceipt(receipt, f.root), /request differs from immutable predecessor inputs/);
-  const freshReceipt = await runtime.completePreviewLifecycle(fresh, ordinary(decision()), f.root);
-  await runtime.validatePreviewReceipt(freshReceipt, f.root);
 });

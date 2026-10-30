@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFileSync, cpSync, copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -8,7 +9,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse } from 'acorn';
 import ts from 'typescript';
 import { compileFixtureDiagnostics } from './helpers/type-fixture-diagnostics.mjs';
-import { fixture, spec, commitOn, ordinary, decision } from './fixtures/preview-lifecycle-runtime.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = join(root, 'test/fixtures/materialize-regular-git-snapshot-migration-contract');
@@ -96,9 +96,18 @@ test('source and emitted operations preserve the original materializer and exact
   assert.deepEqual(emittedOperations.cli, boundedCli, 'exact CLI keeps argument checks and output append, reads workspace once, preserves missing-root failure, and confines only the CLI destination');
 });
 
-test('real source and emitted runtime identities bind the new leaf and reject stale requests and receipts', async t => {
-  const f = fixture(t);
-  const head = commitOn(f, 'materializer-runtime-identity', { 'app.txt': 'Materializer identity fixture\n' });
+test('source and emitted materializers return committed bytes through the flat export', async t => {
+  const checkout = mkdtempSync(join(tmpdir(), 'materializer-flat-export-'));
+  t.after(() => rmSync(checkout, { recursive: true, force: true }));
+  const git = (...args) => execFileSync('git', args, { cwd: checkout, encoding: 'utf8' }).trim();
+  git('init');
+  git('config', 'user.name', 'Synthetic fixture');
+  git('config', 'user.email', 'fixture@example.invalid');
+  mkdirSync(join(checkout, 'docs'));
+  writeFileSync(join(checkout, 'docs/authority.md'), 'Committed Authority bytes\n');
+  git('add', '.');
+  git('commit', '-m', 'Synthetic authority');
+  const f = { root: checkout, base: git('rev-parse', 'HEAD') };
   for (const facadePath of ['src/materialize-regular-git-snapshot.mts', 'dist/materialize-regular-git-snapshot.mjs']) {
     const facade = await import(pathToFileURL(join(root, facadePath)).href);
     assert.deepEqual(Object.keys(facade), ['materializeRegularGitSnapshot'], `${facadePath} preserves the flat export identity`);
@@ -107,30 +116,5 @@ test('real source and emitted runtime identities bind the new leaf and reject st
     const expectedBytes = readFileSync(join(f.root, 'docs/authority.md'));
     assert.deepEqual(result, { path: 'docs/authority.md', sha256: hash(expectedBytes) });
     assert.deepEqual(readFileSync(outputPath), expectedBytes);
-  }
-  const layouts = [
-    { name: 'source', tree: 'src', runtime: 'src/preview-lifecycle.mts', leaf: 'src/review-inputs/materialize-regular-git-snapshot.mts', key: 'review-inputs/materialize-regular-git-snapshot.mts' },
-    { name: 'emitted', tree: 'dist', runtime: 'dist/preview-lifecycle.mjs', leaf: 'dist/review-inputs/materialize-regular-git-snapshot.mjs', key: 'review-inputs/materialize-regular-git-snapshot.mjs' },
-  ];
-  for (const layout of layouts) {
-    const runtimeRoot = mkdtempSync(join(tmpdir(), `materializer-${layout.name}-identity-`));
-    t.after(() => rmSync(runtimeRoot, { recursive: true, force: true }));
-    cpSync(join(root, layout.tree), join(runtimeRoot, layout.tree), { recursive: true });
-    copyFileSync(join(root, 'package.json'), join(runtimeRoot, 'package.json'));
-    const runtime = await import(pathToFileURL(join(runtimeRoot, layout.runtime)).href);
-    const request = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-    const leafPath = join(runtimeRoot, layout.leaf);
-    assert.equal(request.runtime.files[layout.key], hash(readFileSync(leafPath)), `${layout.name} request records actual leaf bytes`);
-    const receipt = await runtime.completePreviewLifecycle(request, ordinary(decision()), f.root);
-    await runtime.validatePreviewReceipt(receipt, f.root);
-
-    appendFileSync(leafPath, '\n// isolated identity mutation\n');
-    const freshRequest = await runtime.preparePreviewLifecycle(spec(f, 'review', head), f.root);
-    assert.notEqual(freshRequest.runtime.files[layout.key], request.runtime.files[layout.key]);
-    assert.equal(freshRequest.runtime.files[layout.key], hash(readFileSync(leafPath)));
-    await assert.rejects(runtime.completePreviewLifecycle(request, ordinary(decision()), f.root), /request differs from immutable predecessor inputs/);
-    await assert.rejects(runtime.validatePreviewReceipt(receipt, f.root), /request differs from immutable predecessor inputs/);
-    const freshReceipt = await runtime.completePreviewLifecycle(freshRequest, ordinary(decision()), f.root);
-    await runtime.validatePreviewReceipt(freshReceipt, f.root);
   }
 });

@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { appendFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { parse } from 'acorn';
 import test from 'node:test';
 import ts from 'typescript';
@@ -182,93 +180,4 @@ test('complete legacy preparer implementation and flat guard retain their pinned
   assert.deepEqual(Object.keys(flat).sort(), ['prepareLegacyAuthority', 'validateLegacyAuthorityDecision']);
   assert.equal(flat.prepareLegacyAuthority, grouped.prepareLegacyAuthority);
   assert.equal(flat.validateLegacyAuthorityDecision, grouped.validateLegacyAuthorityDecision);
-});
-
-const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-const put = (cwd, path, value) => {
-  const target = join(cwd, path);
-  mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(target, typeof value === 'string' ? value : JSON.stringify(value));
-};
-const sha256 = value => createHash('sha256').update(value).digest('hex');
-const selectionPath = '.codex/gatekeeper/preview-lifecycle.json';
-const authorityFiles = ['docs/architecture.md', 'docs/governance.md'];
-const ordinary = semanticDecision => ({ semanticDecision, checks: { predecessorAuthorized: true } });
-const decision = () => ({ decision: 'PASS', summary: 'Synthetic response.', authorityFiles, valid: true });
-
-function identityFixture() {
-  const cwd = mkdtempSync(join(tmpdir(), 'legacy-preparer-identity-fixture-'));
-  git(cwd, 'init', '-b', 'main');
-  git(cwd, 'config', 'user.name', 'Synthetic fixture');
-  git(cwd, 'config', 'user.email', 'fixture@example.invalid');
-  const selection = {
-    version: 1, profile: 'preview-unverified-procedure-v1', repository: 'fixture/example', targetBranch: 'main',
-    governancePath: authorityFiles[1], authorization: 'Synthetic unverified preview procedure.',
-    policyPath: '.codex/gatekeeper/ci-policy.json', promptPath: '.codex/gatekeeper/ci-prompt.md',
-    schemaPath: '.codex/gatekeeper/decision.schema.json', validationPath: '.codex/gatekeeper/rules.json',
-    callerPath: '.github/workflows/architecture-gate.yml', authorityPaths: [authorityFiles[0]],
-    migrationPaths: [selectionPath, '.codex/gatekeeper/ci-policy.json', '.github/workflows/architecture-gate.yml'],
-    maxPromptBytes: 524288,
-  };
-  put(cwd, authorityFiles[0], 'Keep the selected predecessor rules.\n');
-  put(cwd, authorityFiles[1], 'The owner may select an explicit preview procedure.\n');
-  put(cwd, 'app.txt', 'Original application\n');
-  put(cwd, selection.promptPath, 'Review the proposed change under full prior authority.\n');
-  put(cwd, selection.callerPath, 'uses: owner/runtime@1111111111111111111111111111111111111111\n');
-  put(cwd, selection.schemaPath, { type: 'object', additionalProperties: false,
-    required: ['decision', 'summary', 'authorityFiles', 'valid'], properties: {
-      decision: { enum: ['PASS', 'BLOCK', 'OWNER_DECISION'] }, summary: { type: 'string' },
-      authorityFiles: { type: 'array', items: { type: 'string' } }, valid: { type: 'boolean' },
-    } });
-  put(cwd, selection.validationPath, { version: 1, rules: [{ when: { path: '/decision', equals: 'PASS' },
-    require: { path: '/valid', equals: true }, message: 'Synthetic mandatory validator' }] });
-  put(cwd, selection.policyPath, { version: 1, default: { mode: 'local-only' }, branches: { main: {
-    mode: 'enforced', model: 'gpt-6.1-sol', reasoningEffort: 'medium', authorityFiles,
-    promptPath: selection.promptPath, schemaPath: selection.schemaPath, validationPath: selection.validationPath,
-  } } });
-  put(cwd, '.codex/gatekeeper/authorities.json', { version: 1, authorities: authorityFiles.map((path, index) => ({
-    id: index ? 'governance' : 'contract', repository: 'self', revision: 'authority-revision', path,
-  })) });
-  put(cwd, selectionPath, selection);
-  git(cwd, 'add', '.'); git(cwd, 'commit', '-m', 'Synthetic predecessor');
-  const baseSha = git(cwd, 'rev-parse', 'HEAD');
-  git(cwd, 'switch', '-c', 'legacy-preparer-identity');
-  put(cwd, 'app.txt', 'Changed application\n');
-  git(cwd, 'add', '.'); git(cwd, 'commit', '-m', 'Synthetic candidate');
-  return { cwd, baseSha, headSha: git(cwd, 'rev-parse', 'HEAD') };
-}
-
-async function assertIdentityInvalidation(layout, runtimeDirectory, runtimeFile, implementationFile, t) {
-  const packageRoot = mkdtempSync(join(tmpdir(), `legacy-preparer-${layout}-`));
-  t.after(() => rmSync(packageRoot, { recursive: true, force: true }));
-  cpSync(join(root, runtimeDirectory), join(packageRoot, runtimeDirectory), { recursive: true });
-  writeFileSync(join(packageRoot, 'package.json'), readFileSync(join(root, 'package.json')));
-  const implementationPath = join(packageRoot, implementationFile);
-  const runtime = await import(pathToFileURL(join(packageRoot, runtimeFile)).href);
-  const f = identityFixture();
-  t.after(() => rmSync(f.cwd, { recursive: true, force: true }));
-  const spec = { version: 1, repository: 'fixture/example', targetBranch: 'main', mode: 'review',
-    baseSha: f.baseSha, headSha: f.headSha, selectionPath, trigger: null, record: null };
-  const request = await runtime.preparePreviewLifecycle(spec, f.cwd);
-  const identityPath = 'ci-review/legacy-ci-authority-preparer.' + (layout === 'source' ? 'mts' : 'mjs');
-  assert.equal(request.runtime.files[identityPath], sha256(readFileSync(implementationPath)));
-  appendFileSync(implementationPath, '\n// isolated legacy preparer byte mutation\n');
-  const changedRequest = await runtime.preparePreviewLifecycle(spec, f.cwd);
-  assert.notEqual(changedRequest.runtime.files[identityPath], request.runtime.files[identityPath]);
-  await assert.rejects(runtime.completePreviewLifecycle(request, ordinary(decision()), f.cwd),
-    /request differs from immutable predecessor inputs/);
-  const freshReceipt = await runtime.completePreviewLifecycle(changedRequest, ordinary(decision()), f.cwd);
-  await runtime.validatePreviewReceipt(freshReceipt, f.cwd);
-  appendFileSync(implementationPath, '\n// second isolated legacy preparer byte mutation\n');
-  await assert.rejects(runtime.validatePreviewReceipt(freshReceipt, f.cwd), /request differs from immutable predecessor inputs/);
-  const latestRequest = await runtime.preparePreviewLifecycle(spec, f.cwd);
-  const latestReceipt = await runtime.completePreviewLifecycle(latestRequest, ordinary(decision()), f.cwd);
-  await runtime.validatePreviewReceipt(latestReceipt, f.cwd);
-}
-
-test('source and emitted preview identity bind the actual legacy preparer leaf and reject stale requests and receipts', async t => {
-  await assertIdentityInvalidation('source', 'src', 'src/preview-lifecycle.mts',
-    'src/ci-review/legacy-ci-authority-preparer.mts', t);
-  await assertIdentityInvalidation('emitted', 'dist', 'dist/preview-lifecycle.mjs',
-    'dist/ci-review/legacy-ci-authority-preparer.mjs', t);
 });

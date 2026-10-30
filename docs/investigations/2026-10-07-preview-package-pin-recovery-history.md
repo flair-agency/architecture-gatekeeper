@@ -8,9 +8,9 @@ this extraction, not a new test or current recovery recommendation.
 
 The record reports source-matched local archives and a synthetic fixture. It
 does not establish a registry artifact readback, selected consumer pins,
-protected execution, adoption, or safe rollback. Use the current [preview
-support and recovery status](../integration-reference.md#preview-support-and-recovery-status)
-for supported package behavior, and the [legacy v1 upgrade procedure](../owner-intervention.md#legacy-v1-consumer-upgrade)
+protected execution, adoption, or safe rollback. Use the current [Preview retirement
+boundary](../integration-reference.md#preview-lifecycle-retirement)
+for current package behavior, and the [legacy v1 upgrade procedure](../owner-intervention.md#legacy-v1-consumer-upgrade)
 for current operator steps.
 
 #### Package and pin recovery
