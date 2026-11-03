@@ -1,0 +1,233 @@
+{
+  "version": 1,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "cutoffUtc": "2026-11-03T14:11:32Z",
+  "window": {
+    "start": "2026-10-13T22:43:35+09:00",
+    "endExclusive": "2026-11-10T22:43:35+09:00",
+    "durationDays": 28,
+    "timezone": "Asia/Tokyo"
+  },
+  "apiBounds": {
+    "maxPagesPerCollection": 20,
+    "perPage": 100,
+    "createdInWindowPartitionPages": [
+      {
+        "partition": "early",
+        "page": 1,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "middle",
+        "page": 1,
+        "rows": 100,
+        "total": 371
+      },
+      {
+        "partition": "new",
+        "page": 1,
+        "rows": 77,
+        "total": 77
+      },
+      {
+        "partition": "early",
+        "page": 2,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 3,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 4,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 5,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 6,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 7,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 8,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 9,
+        "rows": 8,
+        "total": 808
+      },
+      {
+        "partition": "middle",
+        "page": 2,
+        "rows": 100,
+        "total": 371
+      },
+      {
+        "partition": "middle",
+        "page": 3,
+        "rows": 100,
+        "total": 371
+      },
+      {
+        "partition": "middle",
+        "page": 4,
+        "rows": 71,
+        "total": 371
+      }
+    ],
+    "createdInWindowRows": 1256,
+    "uniqueRunRows": 1256,
+    "selfWorkflowRuns": 285,
+    "selfWorkflowAttempts": 292,
+    "sourceArtifactCollections": 285,
+    "sourceArtifactPages": 285,
+    "artifactGaps": [],
+    "eventPages": 90,
+    "receivedEventRows": 1593,
+    "eventGaps": []
+  },
+  "artifactCounts": {
+    "allListed": 379,
+    "measurementListed": 372,
+    "nonMeasurementExcluded": 7,
+    "previouslyArchived": 348,
+    "priorSourceMetadataConflicts": [],
+    "newSelected": 24,
+    "githubDownloadReferencesObtained": 24,
+    "newZIPsRead": 0,
+    "newExportsProductionValidated": 0,
+    "newRecordsPublished": 0,
+    "sourceNewExpired": 0,
+    "earliestNewExpiry": "2026-11-26T15:10:45Z"
+  },
+  "executionFailure": {
+    "initialEnvironmentStartupReportedFailed": true,
+    "laterManagementAPIReportedRunning": true,
+    "executionToolAvailable": false,
+    "workspaceDownloadAvailable": false,
+    "observedExecutionError": "No usable execution environment is available. Wait for an environment to become available before using this tool.",
+    "observedDownloadError": "download_file requires a ready execution workspace",
+    "productionRuntimeExecuted": false,
+    "noFallbackValidatorUsed": true
+  },
+  "olderCreatedRunQuery": {
+    "pages": [
+      {
+        "page": 1,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 2,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 3,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 4,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 5,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 6,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 7,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 8,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 9,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 10,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 11,
+        "rows": 0,
+        "total": 0
+      }
+    ],
+    "receivedRows": 1000,
+    "reportedTotal": 2500,
+    "terminalPageReportedTotal": 0,
+    "complete": false,
+    "inWindowUpdatedSelfRerunCandidates": [],
+    "reason": "Page 11 returns zero rows and total zero after 1000 rows from a reported total of 2500; unseen originally pre-window reruns remain a coverage gap."
+  },
+  "missingness": {
+    "withoutMeasurementPairs": 106,
+    "withoutListedOrdinaryReviewJob": 103,
+    "successfulMeasurementWithoutExports": [
+      "38473334693/1",
+      "38473334693/2",
+      "38473334693/3"
+    ],
+    "additionalPendingArtifactRecovery": 24
+  },
+  "priorEvidence": {
+    "checkpointRevision": "6b47919bd257370679c6b3e29d8d50fe56de3fb0",
+    "checkpointPath": "pilot-evidence/537/scheduled-harvest-20261027T141923Z/checkpoint.json",
+    "stateSupplementRevision": "d60522a87c229f341fbf73d9efa5423cd8e409a3",
+    "retainedPreviouslyValidatedDistinctRecords": 873,
+    "recomputedThisRun": false,
+    "sourceArtifactReceiptsReconciled": 348
+  },
+  "routeScope": {
+    "postToolUseCutoffDateJst": "2026-10-29",
+    "ownerDecisionReference": "https://github.com/flair-agency/architecture-gatekeeper/issues/50#issuecomment-6473086951",
+    "currentIssueReference": "https://github.com/flair-agency/architecture-gatekeeper/issues/537",
+    "effect": "No new PostToolUse dogfood/collection; preserve already-produced/version-1 historical records, frozen plan and denominators. Remaining routes may be observed only where actually executed. Retired-route non-execution is not success or zero effect.",
+    "frozenWindowAndSeedChanged": false
+  },
+  "limits": [
+    "Metadata-only recovery: no new measurement record is published or counted as captured.",
+    "No production measurement validator ran; no replacement validator is used.",
+    "PR/run bindings and eligibility stay unresolved when ambiguous; metadata and job success are not semantic PASS.",
+    "The observation window remains open and sample/denominator is not frozen.",
+    "No review/model call, CI rerun, PR creation, external-assessor message, or main/runtime/authority/reviewer/Hook/credential/acceptance change.",
+    "Private raw records and temporary download references are not published."
+  ]
+}
