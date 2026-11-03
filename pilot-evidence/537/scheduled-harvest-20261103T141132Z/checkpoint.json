@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "recordKind": "scheduled-weekly-pilot-harvest-incomplete",
+  "issue": 537,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "snapshotCutoffUtc": "2026-11-03T14:11:32Z",
+  "recordedAtUtc": "2026-11-03 14:18:17 UTC",
+  "window": {
+    "start": "2026-10-13T22:43:35+09:00",
+    "endExclusive": "2026-11-10T22:43:35+09:00",
+    "durationDays": 28,
+    "timezone": "Asia/Tokyo"
+  },
+  "windowComplete": false,
+  "auditSeed": "pilot537-103c45b7b73d076caa81e7ab0651e010",
+  "sampleMembershipFrozen": false,
+  "status": "metadata-archived; new artifact recovery/validation blocked",
+  "scheduledInvocationObservedAtUtc": "2026-11-03T14:11:22.097699+00:00",
+  "newArtifactsSelected": 24,
+  "newGithubDownloadReferencesObtained": 24,
+  "newWorkspaceZIPsRead": 0,
+  "newJSONExportsRead": 0,
+  "newExportsProductionValidated": 0,
+  "newMeasurementRecordsPublished": 0,
+  "newRecordCount": null,
+  "previouslyValidatedDistinctRecords": 873,
+  "previousRecordCountRecomputed": false,
+  "previousArtifactsMetadataReconciled": 348,
+  "oldArchivesChanged": false,
+  "sourceEarliestNewExpiryUtc": "2026-11-26T15:10:45Z",
+  "allNewSourcesCurrentlyExpired": false,
+  "executionFailure": {
+    "initialEnvironmentStartupReportedFailed": true,
+    "laterManagementAPIReportedRunning": true,
+    "executionToolAvailable": false,
+    "workspaceDownloadAvailable": false,
+    "observedExecutionError": "No usable execution environment is available. Wait for an environment to become available before using this tool.",
+    "observedDownloadError": "download_file requires a ready execution workspace",
+    "productionRuntimeExecuted": false,
+    "noFallbackValidatorUsed": true
+  },
+  "files": [
+    {
+      "path": "pending-artifacts.json",
+      "bytes": 23109,
+      "contentType": "projected-public-inventory-only"
+    },
+    {
+      "path": "run-inventory.json",
+      "bytes": 129576,
+      "contentType": "projected-public-inventory-only"
+    },
+    {
+      "path": "missing-artifact-attempts.json",
+      "bytes": 83404,
+      "contentType": "projected-public-inventory-only"
+    },
+    {
+      "path": "pr-eligibility-inventory.json",
+      "bytes": 125531,
+      "contentType": "projected-public-inventory-only"
+    },
+    {
+      "path": "collection-summary.json",
+      "bytes": 6248,
+      "contentType": "projected-public-inventory-only"
+    }
+  ],
+  "metadataChecks": {
+    "jsonSerializationAndParse": true,
+    "eachMetadataFileAtMost200KiB": true,
+    "cryptographicFileHashesComputed": false,
+    "productionMeasurementValidatorRan": false
+  },
+  "missingness": {
+    "withoutMeasurementPairs": 106,
+    "withoutListedOrdinaryReviewJob": 103,
+    "successfulMeasurementWithoutExports": [
+      "38473334693/1",
+      "38473334693/2",
+      "38473334693/3"
+    ],
+    "additionalPendingArtifactRecovery": 24
+  },
+  "olderCreatedQueryComplete": false,
+  "priorCheckpoint": {
+    "checkpointRevision": "6b47919bd257370679c6b3e29d8d50fe56de3fb0",
+    "checkpointPath": "pilot-evidence/537/scheduled-harvest-20261027T141923Z/checkpoint.json",
+    "stateSupplementRevision": "d60522a87c229f341fbf73d9efa5423cd8e409a3",
+    "retainedPreviouslyValidatedDistinctRecords": 873,
+    "recomputedThisRun": false,
+    "sourceArtifactReceiptsReconciled": 348
+  },
+  "routeScope": {
+    "postToolUseCutoffDateJst": "2026-10-29",
+    "ownerDecisionReference": "https://github.com/flair-agency/architecture-gatekeeper/issues/50#issuecomment-6473086951",
+    "currentIssueReference": "https://github.com/flair-agency/architecture-gatekeeper/issues/537",
+    "effect": "No new PostToolUse dogfood/collection; preserve already-produced/version-1 historical records, frozen plan and denominators. Remaining routes may be observed only where actually executed. Retired-route non-execution is not success or zero effect.",
+    "frozenWindowAndSeedChanged": false
+  },
+  "recoveryRequired": "Restore a usable execution workspace, re-download these 24 source artifacts, read/validate actual ZIP and JSON bytes with the existing production allowlist/dataset validator, reconcile global phase identities, then publish validated records as a distinct supplement before source expiry. This pending inventory is not a record capture and must not suppress later recovery.",
+  "issueState": "open",
+  "completedCriteriaUnchanged": 3,
+  "limits": [
+    "Metadata-only recovery: no new measurement record is published or counted as captured.",
+    "No production measurement validator ran; no replacement validator is used.",
+    "PR/run bindings and eligibility stay unresolved when ambiguous; metadata and job success are not semantic PASS.",
+    "The observation window remains open and sample/denominator is not frozen.",
+    "No review/model call, CI rerun, PR creation, external-assessor message, or main/runtime/authority/reviewer/Hook/credential/acceptance change.",
+    "Private raw records and temporary download references are not published."
+  ]
+}
