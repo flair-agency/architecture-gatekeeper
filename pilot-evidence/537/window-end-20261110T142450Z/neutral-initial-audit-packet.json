@@ -1,0 +1,178 @@
+{
+  "version": 1,
+  "recordKind": "neutral-initial-audit-candidate-packet",
+  "stage": "initial",
+  "status": "provisional; not audit-ready",
+  "cohort": "natural",
+  "domain": "self",
+  "seed": "pilot537-103c45b7b73d076caa81e7ab0651e010",
+  "method": "Census at <=20 eligible changes, otherwise deterministic SHA-256 seeded sample of 20. Supplemental seeded PASS and incomplete/unreviewed checks only if absent in the primary sample; report supplements separately.",
+  "sampleMembershipFrozen": false,
+  "productionSamplerExecuted": false,
+  "samplingVerification": {
+    "membershipStableIfUncertainIncluded": true,
+    "uncertainIds": [
+      "15758b61e8c0eca73af0aa6f945929bea28710a075446b08606d86eedb5dc6b3"
+    ],
+    "samplerProductionExecuted": false,
+    "algorithmSourceRevision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+    "algorithmSourcePath": "src/measurement-analysis.mts",
+    "identityVerification": "SHA-256 empty/abc vectors plus all 14 frozen production changeId vectors match",
+    "eligibleConfirmed": 80,
+    "uncertain": 1
+  },
+  "candidates": [
+    {
+      "changeId": "7c6bbf2ea3f96ff6787f5ab2a82d577086a6e9ff7f3dfcc982ea9420f285443e",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "0e740d761a9adb300eaf5516cfa2d0f272d097d8ff9c1d2a056c7a87acb12e50",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "fbb064d0217e896768931eefbb10d6565cbe2a9409ac42aeb97f91c5aec13d7b",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "37ea207f0302fa9b056127dc8b0f6c8c0f237067b627855e7b406a9909062a5d",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "a4d40dc1f22cde8fdca3769dc6f4b3cfac235e59da5beba6c66edfc0c289e464",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "0ac70670fb7ce73a045fcd54cb41209c1e9698af8f5ec50c26ff989291297ce0",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "858b9fe8f870e6c468226833327a3561f242fbfcbe54f75e5cf23c511cd237c6",
+      "initialRef": "c4b0057d9dd47f79df2a896143f7ac6db5da2c2e",
+      "authorityRef": null,
+      "initialMaterialConfirmed": true,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "aa48bd36bbb9b6166efd90ae5b74ae5746ab0c0eb2d0b5daa11cb36dca5a8007",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "47793a500f54f87bc4bc2f14c536194efe77cbb73a2001eef1b15ff4a8e0840f",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "8338a4c66501848a9a650c03eb56e5d62c2113f8cc53f86d523977a9da1eccf7",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "072d7fb64c1a4338fb8708cd56b3e1f92c78d8f2a9b61ba6b2fd024b9eccbd3d",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "3795a6299b0fe1514e068bddfe4324b5a9cedc67b1cb15d822aba348b8f40bc6",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "a2acfaf1a332b0c0af6a265dc540e548473c576545a1198cc98d79139b5d622d",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "b38d7756bf88f5aec13f6525b16ee7dcae0910e6be6acd4b77465af1ae052e1f",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "8a72fcaca4b9d2c5a69897fccc25296680878517d354134ce1cd59c9dca16e44",
+      "initialRef": "188341ed13f723a13018f73d103f570cff9dc424",
+      "authorityRef": null,
+      "initialMaterialConfirmed": true,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "1d792229886ae6f0a18683573c34cce3a7c1a5505351b1bdfb1eea89bba16741",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "26d6b4bfce7df0302fe8bd6a91973a684f256511c58f2ffd28bcd8df80ff55c5",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "a1d853d3892bbe6df3cccaec9e1796ee65e91c9a36291b6ece7f757e8d88aae4",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "a3e2ee12b0626cbeaaeade32df19422e06973c2c128318d92c24e51361c66878",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    },
+    {
+      "changeId": "911eef634cf5143c84ad800a5edb4147e2cf3089da7993126e44d72e4d729ec8",
+      "initialRef": null,
+      "authorityRef": null,
+      "initialMaterialConfirmed": false,
+      "authoritySelectionResolved": false
+    }
+  ],
+  "candidateCount": 20,
+  "knownInitialRevisionCount": 2,
+  "missingInitialRevisionCount": 18,
+  "AGKOutcomesIncluded": false,
+  "finalStateMaterialsIncluded": false,
+  "assignmentSent": false,
+  "blockingGaps": [
+    "One population eligibility remains unresolved; primary population/sample is not formally frozen.",
+    "18 selected initial revisions are unavailable; applicable complete authority selection is not resolved.",
+    "The production dataset validator/sampler did not run because no usable execution workspace exists."
+  ],
+  "supplementalStrataSelection": "Pending validated full observations and association reconciliation; no PASS/incomplete outcome labels are included in this packet."
+}
