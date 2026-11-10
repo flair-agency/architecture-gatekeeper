@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "recordKind": "reproducible-aggregation-source-index",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "window": {
+    "start": "2026-10-13T22:43:35+09:00",
+    "endExclusive": "2026-11-10T22:43:35+09:00",
+    "durationDays": 28,
+    "timezone": "Asia/Tokyo"
+  },
+  "status": "sources indexed; final aggregation blocked",
+  "productionVersion": "0.6.0-preview.4",
+  "productionSourceRevision": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+  "sourceDatasetChunks": [
+    {
+      "revision": "fe1c512c4bd56f621096f61a210be566b8a10be8",
+      "path": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/chunks/chunk-001.json",
+      "bytes": 197015,
+      "sha256": "88cd6be8b506c1967bcd164a1fbd0122723a3d3b5247f8ab9d2972d780006ce3",
+      "url": "https://raw.githubusercontent.com/flair-agency/architecture-gatekeeper/fe1c512c4bd56f621096f61a210be566b8a10be8/pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/chunks/chunk-001.json",
+      "sourceManifest": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/checkpoint.json"
+    },
+    {
+      "revision": "fe1c512c4bd56f621096f61a210be566b8a10be8",
+      "path": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/chunks/chunk-002.json",
+      "bytes": 204430,
+      "sha256": "d30896c9325597183641649d1161c03795d4120399592bd0ad7e2c34e7f337ef",
+      "url": "https://raw.githubusercontent.com/flair-agency/architecture-gatekeeper/fe1c512c4bd56f621096f61a210be566b8a10be8/pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/chunks/chunk-002.json",
+      "sourceManifest": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/checkpoint.json"
+    },
+    {
+      "revision": "fe1c512c4bd56f621096f61a210be566b8a10be8",
+      "path": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/chunks/chunk-003.json",
+      "bytes": 203192,
+      "sha256": "4f4b9923225f4fd1e5c8f3592b06d61ebfcdb9c79eda71e3464a9b1366c20a5c",
+      "url": "https://raw.githubusercontent.com/flair-agency/architecture-gatekeeper/fe1c512c4bd56f621096f61a210be566b8a10be8/pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/chunks/chunk-003.json",
+      "sourceManifest": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/checkpoint.json"
+    },
+    {
+      "revision": "fe1c512c4bd56f621096f61a210be566b8a10be8",
+      "path": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/chunks/chunk-004.json",
+      "bytes": 201954,
+      "sha256": "be9074462ad06ea979add3e2af2701c6e9f1624d5ac110dd412aa5c504328c0f",
+      "url": "https://raw.githubusercontent.com/flair-agency/architecture-gatekeeper/fe1c512c4bd56f621096f61a210be566b8a10be8/pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/chunks/chunk-004.json",
+      "sourceManifest": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/checkpoint.json"
+    },
+    {
+      "revision": "fe1c512c4bd56f621096f61a210be566b8a10be8",
+      "path": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/chunks/chunk-005.json",
+      "bytes": 100795,
+      "sha256": "fe91e4673f1a73d202cf540794da3cd9b699130f144e21011a1482d3db72bf55",
+      "url": "https://raw.githubusercontent.com/flair-agency/architecture-gatekeeper/fe1c512c4bd56f621096f61a210be566b8a10be8/pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/chunks/chunk-005.json",
+      "sourceManifest": "pilot-evidence/537/full-harvest-checkpoint-20261018T131847Z/checkpoint.json"
+    },
+    {
+      "revision": "3f6632ef24f952950583b380de6a030e3c799860",
+      "path": "pilot-evidence/537/late-pair-checkpoint-20261019/measurement-dataset.json",
+      "bytes": 8721,
+      "sha256": "447769ce2e0bbb0c20be2e56dbef33d10b893c54ede77b1d87987e7890990b9b",
+      "url": "https://raw.githubusercontent.com/flair-agency/architecture-gatekeeper/3f6632ef24f952950583b380de6a030e3c799860/pilot-evidence/537/late-pair-checkpoint-20261019/measurement-dataset.json",
+      "sourceManifest": "pilot-evidence/537/late-pair-checkpoint-20261019/checkpoint.json"
+    },
+    {
+      "revision": "57561f846b25a1bbd3838ef38e5f04dc49832ba9",
+      "path": "pilot-evidence/537/native-development-checkpoint-20261019/measurement-dataset.json",
+      "bytes": 3888,
+      "sha256": "be1d2f830a43fce7239062552c3730d1b9e5d31bf61bd14f2c7efb115ea10cb4",
+      "url": "https://raw.githubusercontent.com/flair-agency/architecture-gatekeeper/57561f846b25a1bbd3838ef38e5f04dc49832ba9/pilot-evidence/537/native-development-checkpoint-20261019/measurement-dataset.json",
+      "sourceManifest": "pilot-evidence/537/native-development-checkpoint-20261019/manifest.json"
+    },
+    {
+      "revision": "ca14a4795f11071e4f0f71026e04beb153699d56",
+      "path": "pilot-evidence/537/scheduled-harvest-20261020T144339Z/measurement-dataset.json",
+      "bytes": 34550,
+      "sha256": "2acb9f50ed20acd3f5fdce39455b8ac9eb76d3469eaff3fe7455623e5f7a3df9",
+      "url": "https://raw.githubusercontent.com/flair-agency/architecture-gatekeeper/ca14a4795f11071e4f0f71026e04beb153699d56/pilot-evidence/537/scheduled-harvest-20261020T144339Z/measurement-dataset.json",
+      "sourceManifest": "pilot-evidence/537/scheduled-harvest-20261020T144339Z/checkpoint.json"
+    },
+    {
+      "revision": "6b47919bd257370679c6b3e29d8d50fe56de3fb0",
+      "path": "pilot-evidence/537/scheduled-harvest-20261027T141923Z/records-001.json",
+      "bytes": 203257,
+      "sha256": "f7154f51417741f3d935189aefb5ccbaf1506d2f379bbb57490deeeebab13cd1",
+      "url": "https://raw.githubusercontent.com/flair-agency/architecture-gatekeeper/6b47919bd257370679c6b3e29d8d50fe56de3fb0/pilot-evidence/537/scheduled-harvest-20261027T141923Z/records-001.json",
+      "sourceManifest": "pilot-evidence/537/scheduled-harvest-20261027T141923Z/checkpoint.json"
+    },
+    {
+      "revision": "6b47919bd257370679c6b3e29d8d50fe56de3fb0",
+      "path": "pilot-evidence/537/scheduled-harvest-20261027T141923Z/records-002.json",
+      "bytes": 203149,
+      "sha256": "7c36741fab0b235a286d54bbd3bbeceb3fb2aa6d2ad99ee12819adfd6da61e87",
+      "url": "https://raw.githubusercontent.com/flair-agency/architecture-gatekeeper/6b47919bd257370679c6b3e29d8d50fe56de3fb0/pilot-evidence/537/scheduled-harvest-20261027T141923Z/records-002.json",
+      "sourceManifest": "pilot-evidence/537/scheduled-harvest-20261027T141923Z/checkpoint.json"
+    },
+    {
+      "revision": "6b47919bd257370679c6b3e29d8d50fe56de3fb0",
+      "path": "pilot-evidence/537/scheduled-harvest-20261027T141923Z/records-003.json",
+      "bytes": 117401,
+      "sha256": "b8d7d60b8bf6c493734917f62731483851854349865a8516065558fb02b13145",
+      "url": "https://raw.githubusercontent.com/flair-agency/architecture-gatekeeper/6b47919bd257370679c6b3e29d8d50fe56de3fb0/pilot-evidence/537/scheduled-harvest-20261027T141923Z/records-003.json",
+      "sourceManifest": "pilot-evidence/537/scheduled-harvest-20261027T141923Z/checkpoint.json"
+    }
+  ],
+  "declaredPreviouslyValidatedDistinctRecords": 873,
+  "recordsRevalidatedThisRun": 0,
+  "recordCountsRecomputedThisRun": false,
+  "additionalPendingArtifacts": 24,
+  "newValidatedRecords": 0,
+  "finalMetrics": null,
+  "auditsAdjudicatedInThisRun": 0,
+  "dependencies": [
+    "Recover and production-validate the 24 pending actual ZIP/JSON exports.",
+    "Revalidate immutable input bytes/datasets and all phase identities with the pinned production runtime.",
+    "Resolve eligibility, initial-source and authority gaps; freeze population before formal audit.",
+    "Obtain independent assessments and human disposition/adjudication; record blinding limitations."
+  ],
+  "reproductionConstraints": {
+    "jsonByteLimit": 262144,
+    "safeArchiveChunkTargetBytes": 204800,
+    "retainWholeRunAttemptGroups": true,
+    "noCombinedOversizedDataset": true,
+    "doNotSumOverlappingArchives": true,
+    "doNotSumPerChunkDenominatorsOrRates": true,
+    "fixturesExcludedFromNaturalRates": true,
+    "emptyDenominatorRate": null
+  },
+  "scope": "Immutable existing production dataset chunks plus explicit pending inputs form the retained input index. This is not a newly validated dataset, executed final aggregate, causal estimate, or completed independent audit."
+}
