@@ -1,0 +1,227 @@
+{
+  "version": 1,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "window": {
+    "start": "2026-10-13T22:43:35+09:00",
+    "endExclusive": "2026-11-10T22:43:35+09:00",
+    "durationDays": 28,
+    "timezone": "Asia/Tokyo"
+  },
+  "windowEnded": true,
+  "apiBounds": {
+    "maxPagesPerCollection": 20,
+    "perPage": 100,
+    "createdInWindowPartitionPages": [
+      {
+        "partition": "early",
+        "page": 1,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "middle",
+        "page": 1,
+        "rows": 100,
+        "total": 371
+      },
+      {
+        "partition": "late",
+        "page": 1,
+        "rows": 77,
+        "total": 77
+      },
+      {
+        "partition": "end",
+        "page": 1,
+        "rows": 1,
+        "total": 1
+      },
+      {
+        "partition": "early",
+        "page": 2,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 3,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 4,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 5,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 6,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 7,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 8,
+        "rows": 100,
+        "total": 808
+      },
+      {
+        "partition": "early",
+        "page": 9,
+        "rows": 8,
+        "total": 808
+      },
+      {
+        "partition": "middle",
+        "page": 2,
+        "rows": 100,
+        "total": 371
+      },
+      {
+        "partition": "middle",
+        "page": 3,
+        "rows": 100,
+        "total": 371
+      },
+      {
+        "partition": "middle",
+        "page": 4,
+        "rows": 71,
+        "total": 371
+      }
+    ],
+    "repositoryRuns": 1257,
+    "uniqueRepositoryRuns": 1257,
+    "selfWorkflowRuns": 285,
+    "selfWorkflowAttempts": 292,
+    "runReadGaps": [],
+    "sourceArtifactCollections": 285,
+    "sourceArtifactPages": 285,
+    "artifactGaps": [],
+    "eventCollections": 89,
+    "eventPages": 90,
+    "receivedEvents": 1593,
+    "eventGaps": []
+  },
+  "artifactCounts": {
+    "allListed": 379,
+    "measurementListed": 372,
+    "nonMeasurementExcluded": 7,
+    "previouslyArchived": 348,
+    "previousMetadataConflicts": [],
+    "pendingUnvalidated": 24,
+    "downloadReferencesObtained": 24,
+    "newWorkspaceZIPsRead": 0,
+    "newExportsValidated": 0,
+    "newRecordsPublished": 0
+  },
+  "missingness": {
+    "attemptsWithoutPairs": 106,
+    "withoutListedOrdinaryReviewJob": 103,
+    "successfulMeasurementWithoutExports": [
+      "38473334693/1",
+      "38473334693/2",
+      "38473334693/3"
+    ],
+    "additionalPendingArtifacts": 24
+  },
+  "olderCreatedRunQuery": {
+    "pages": [
+      {
+        "page": 1,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 2,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 3,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 4,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 5,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 6,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 7,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 8,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 9,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 10,
+        "rows": 100,
+        "total": 2500
+      },
+      {
+        "page": 11,
+        "rows": 0,
+        "total": 0
+      }
+    ],
+    "receivedRows": 1000,
+    "reportedTotal": 2500,
+    "terminalReportedTotal": 0,
+    "complete": false,
+    "inWindowUpdatedSelfCandidates": [],
+    "reason": "Received 1000 then an empty page with total zero contradicts reported total 2500. Unobserved originally pre-window in-window reruns remain a coverage gap."
+  },
+  "routeCutoff": {
+    "route": "PostToolUse",
+    "cutoffDateJst": "2026-10-29",
+    "ownerReference": "https://github.com/flair-agency/architecture-gatekeeper/issues/50#issuecomment-6473086951",
+    "historicalRecordsRetained": true,
+    "postCutoffNonExecutionIsNotSuccessOrZeroEffect": true,
+    "frozenOriginalWindowAndSeedUnchanged": true
+  },
+  "environmentFailure": {
+    "managementReportedStarting": true,
+    "waitForEnvironmentFailed": true,
+    "failureReason": "Failed to query executor configuration capabilities; no usable execution workspace",
+    "workspaceZIPDownloadFailed": true,
+    "productionRuntimeExecuted": false
+  },
+  "priorRecords": {
+    "retainedHistoricalCount": 873,
+    "recomputed": false,
+    "oldRecordsOrCutoffsChanged": false
+  },
+  "scope": "Metadata-only final-window reconciliation; incomplete collection/audit/aggregation. No protected configuration, new review/model call, CI rerun, PR or external-role message."
+}
