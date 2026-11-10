@@ -1,0 +1,4614 @@
+{
+  "version": 1,
+  "recordKind": "end-window-population-reconciliation",
+  "repository": "flair-agency/architecture-gatekeeper",
+  "window": {
+    "start": "2026-10-13T22:43:35+09:00",
+    "endExclusive": "2026-11-10T22:43:35+09:00",
+    "durationDays": 28,
+    "timezone": "Asia/Tokyo"
+  },
+  "sourceSelection": {
+    "updatedPRRows": 100,
+    "lastReturnedUpdatedAt": "2026-10-12T06:42:43Z",
+    "olderThanWindowBoundaryReached": true,
+    "selectedPRs": 89,
+    "eventPages": [
+      {
+        "pr": 658,
+        "page": 1,
+        "rows": 7
+      },
+      {
+        "pr": 657,
+        "page": 1,
+        "rows": 6
+      },
+      {
+        "pr": 656,
+        "page": 1,
+        "rows": 8
+      },
+      {
+        "pr": 655,
+        "page": 1,
+        "rows": 7
+      },
+      {
+        "pr": 654,
+        "page": 1,
+        "rows": 11
+      },
+      {
+        "pr": 653,
+        "page": 1,
+        "rows": 11
+      },
+      {
+        "pr": 353,
+        "page": 1,
+        "rows": 4
+      },
+      {
+        "pr": 651,
+        "page": 1,
+        "rows": 17
+      },
+      {
+        "pr": 650,
+        "page": 1,
+        "rows": 12
+      },
+      {
+        "pr": 647,
+        "page": 1,
+        "rows": 23
+      },
+      {
+        "pr": 646,
+        "page": 1,
+        "rows": 20
+      },
+      {
+        "pr": 632,
+        "page": 1,
+        "rows": 8
+      },
+      {
+        "pr": 642,
+        "page": 1,
+        "rows": 22
+      },
+      {
+        "pr": 645,
+        "page": 1,
+        "rows": 11
+      },
+      {
+        "pr": 644,
+        "page": 1,
+        "rows": 17
+      },
+      {
+        "pr": 643,
+        "page": 1,
+        "rows": 19
+      },
+      {
+        "pr": 640,
+        "page": 1,
+        "rows": 21
+      },
+      {
+        "pr": 641,
+        "page": 1,
+        "rows": 6
+      },
+      {
+        "pr": 637,
+        "page": 1,
+        "rows": 20
+      },
+      {
+        "pr": 634,
+        "page": 1,
+        "rows": 16
+      },
+      {
+        "pr": 636,
+        "page": 1,
+        "rows": 19
+      },
+      {
+        "pr": 633,
+        "page": 1,
+        "rows": 19
+      },
+      {
+        "pr": 630,
+        "page": 1,
+        "rows": 14
+      },
+      {
+        "pr": 628,
+        "page": 1,
+        "rows": 18
+      },
+      {
+        "pr": 627,
+        "page": 1,
+        "rows": 24
+      },
+      {
+        "pr": 626,
+        "page": 1,
+        "rows": 15
+      },
+      {
+        "pr": 625,
+        "page": 1,
+        "rows": 34
+      },
+      {
+        "pr": 624,
+        "page": 1,
+        "rows": 7
+      },
+      {
+        "pr": 623,
+        "page": 1,
+        "rows": 6
+      },
+      {
+        "pr": 622,
+        "page": 1,
+        "rows": 19
+      },
+      {
+        "pr": 107,
+        "page": 1,
+        "rows": 11
+      },
+      {
+        "pr": 153,
+        "page": 1,
+        "rows": 7
+      },
+      {
+        "pr": 297,
+        "page": 1,
+        "rows": 7
+      },
+      {
+        "pr": 322,
+        "page": 1,
+        "rows": 10
+      },
+      {
+        "pr": 456,
+        "page": 1,
+        "rows": 5
+      },
+      {
+        "pr": 423,
+        "page": 1,
+        "rows": 17
+      },
+      {
+        "pr": 237,
+        "page": 1,
+        "rows": 28
+      },
+      {
+        "pr": 238,
+        "page": 1,
+        "rows": 7
+      },
+      {
+        "pr": 239,
+        "page": 1,
+        "rows": 6
+      },
+      {
+        "pr": 510,
+        "page": 1,
+        "rows": 13
+      },
+      {
+        "pr": 514,
+        "page": 1,
+        "rows": 11
+      },
+      {
+        "pr": 621,
+        "page": 1,
+        "rows": 11
+      },
+      {
+        "pr": 577,
+        "page": 1,
+        "rows": 30
+      },
+      {
+        "pr": 620,
+        "page": 1,
+        "rows": 10
+      },
+      {
+        "pr": 619,
+        "page": 1,
+        "rows": 23
+      },
+      {
+        "pr": 618,
+        "page": 1,
+        "rows": 15
+      },
+      {
+        "pr": 617,
+        "page": 1,
+        "rows": 20
+      },
+      {
+        "pr": 616,
+        "page": 1,
+        "rows": 17
+      },
+      {
+        "pr": 615,
+        "page": 1,
+        "rows": 15
+      },
+      {
+        "pr": 614,
+        "page": 1,
+        "rows": 15
+      },
+      {
+        "pr": 613,
+        "page": 1,
+        "rows": 15
+      },
+      {
+        "pr": 612,
+        "page": 1,
+        "rows": 15
+      },
+      {
+        "pr": 611,
+        "page": 1,
+        "rows": 20
+      },
+      {
+        "pr": 610,
+        "page": 1,
+        "rows": 29
+      },
+      {
+        "pr": 609,
+        "page": 1,
+        "rows": 18
+      },
+      {
+        "pr": 608,
+        "page": 1,
+        "rows": 19
+      },
+      {
+        "pr": 607,
+        "page": 1,
+        "rows": 36
+      },
+      {
+        "pr": 606,
+        "page": 1,
+        "rows": 27
+      },
+      {
+        "pr": 605,
+        "page": 1,
+        "rows": 19
+      },
+      {
+        "pr": 604,
+        "page": 1,
+        "rows": 26
+      },
+      {
+        "pr": 603,
+        "page": 1,
+        "rows": 26
+      },
+      {
+        "pr": 602,
+        "page": 1,
+        "rows": 18
+      },
+      {
+        "pr": 601,
+        "page": 1,
+        "rows": 19
+      },
+      {
+        "pr": 600,
+        "page": 1,
+        "rows": 18
+      },
+      {
+        "pr": 599,
+        "page": 1,
+        "rows": 28
+      },
+      {
+        "pr": 598,
+        "page": 1,
+        "rows": 19
+      },
+      {
+        "pr": 597,
+        "page": 1,
+        "rows": 26
+      },
+      {
+        "pr": 596,
+        "page": 1,
+        "rows": 27
+      },
+      {
+        "pr": 595,
+        "page": 1,
+        "rows": 18
+      },
+      {
+        "pr": 594,
+        "page": 1,
+        "rows": 19
+      },
+      {
+        "pr": 593,
+        "page": 1,
+        "rows": 20
+      },
+      {
+        "pr": 592,
+        "page": 1,
+        "rows": 18
+      },
+      {
+        "pr": 591,
+        "page": 1,
+        "rows": 27
+      },
+      {
+        "pr": 590,
+        "page": 1,
+        "rows": 14
+      },
+      {
+        "pr": 589,
+        "page": 1,
+        "rows": 34
+      },
+      {
+        "pr": 588,
+        "page": 1,
+        "rows": 9
+      },
+      {
+        "pr": 587,
+        "page": 1,
+        "rows": 37
+      },
+      {
+        "pr": 586,
+        "page": 1,
+        "rows": 15
+      },
+      {
+        "pr": 585,
+        "page": 1,
+        "rows": 14
+      },
+      {
+        "pr": 520,
+        "page": 1,
+        "rows": 9
+      },
+      {
+        "pr": 584,
+        "page": 1,
+        "rows": 100
+      },
+      {
+        "pr": 581,
+        "page": 1,
+        "rows": 12
+      },
+      {
+        "pr": 583,
+        "page": 1,
+        "rows": 40
+      },
+      {
+        "pr": 582,
+        "page": 1,
+        "rows": 12
+      },
+      {
+        "pr": 580,
+        "page": 1,
+        "rows": 16
+      },
+      {
+        "pr": 579,
+        "page": 1,
+        "rows": 12
+      },
+      {
+        "pr": 517,
+        "page": 1,
+        "rows": 21
+      },
+      {
+        "pr": 563,
+        "page": 1,
+        "rows": 12
+      },
+      {
+        "pr": 578,
+        "page": 1,
+        "rows": 7
+      },
+      {
+        "pr": 584,
+        "page": 2,
+        "rows": 3
+      }
+    ],
+    "receivedEventRows": 1593,
+    "eventGaps": []
+  },
+  "entries": [
+    {
+      "pr": 658,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-29T16:48:26Z",
+      "updatedAt": "2026-10-30T11:05:45Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "7f0ea540b887598147b60885ddcb275d04f717e4",
+      "baseSha": "2b6b2460833ca37d667c099983ee023cc13cc7df",
+      "events": [
+        {
+          "id": 34683016145,
+          "event": "merged",
+          "createdAt": "2026-10-30T11:03:16Z",
+          "commitId": "115df7d8dde78b3ac7e4fb158fedc278bd6dc6ef"
+        },
+        {
+          "id": 34683016323,
+          "event": "closed",
+          "createdAt": "2026-10-30T11:03:16Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Created and explicitly merged within the window: non-Draft status necessarily occurred between creation and merge. This uses a bounded historical merge event, not current Draft alone.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "ffc677f323cf0e6fc9bf58f1ef7900c94d0ab62100905c92fbe751852ac78f80",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-30T11:03:16Z",
+      "closedAt": "2026-10-30T11:03:16Z",
+      "mergeCommitSha": "115df7d8dde78b3ac7e4fb158fedc278bd6dc6ef",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 657,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-29T11:55:28Z",
+      "updatedAt": "2026-10-29T16:42:16Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "49466aac79787b072d111394b498a96deadd8d5c",
+      "baseSha": "e390000c759fb5d7c99ee380e0879c59dcd72355",
+      "events": [
+        {
+          "id": 34604797215,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-29T15:49:42Z",
+          "commitId": null
+        },
+        {
+          "id": 34609933191,
+          "event": "merged",
+          "createdAt": "2026-10-29T16:41:27Z",
+          "commitId": "2b6b2460833ca37d667c099983ee023cc13cc7df"
+        },
+        {
+          "id": 34609933436,
+          "event": "closed",
+          "createdAt": "2026-10-29T16:41:27Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "47793a500f54f87bc4bc2f14c536194efe77cbb73a2001eef1b15ff4a8e0840f",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-29T16:41:27Z",
+      "closedAt": "2026-10-29T16:41:27Z",
+      "mergeCommitSha": "2b6b2460833ca37d667c099983ee023cc13cc7df",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 656,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-29T11:06:22Z",
+      "updatedAt": "2026-10-29T11:21:04Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "e82afda7ce003137c00cfe81006ee628352e1b2a",
+      "baseSha": "5ba125da32722f229a44fcfeea832555c49c96c2",
+      "events": [
+        {
+          "id": 34576636544,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-29T11:09:48Z",
+          "commitId": null
+        },
+        {
+          "id": 34577601880,
+          "event": "merged",
+          "createdAt": "2026-10-29T11:21:04Z",
+          "commitId": "e390000c759fb5d7c99ee380e0879c59dcd72355"
+        },
+        {
+          "id": 34577602128,
+          "event": "closed",
+          "createdAt": "2026-10-29T11:21:04Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "1e7fd61c56a70ef4e0f4cf67059229414b8b2630aa96749dfd97d9aaa7214a9f",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-29T11:21:04Z",
+      "closedAt": "2026-10-29T11:21:04Z",
+      "mergeCommitSha": "e390000c759fb5d7c99ee380e0879c59dcd72355",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 655,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-28T15:38:57Z",
+      "updatedAt": "2026-10-29T05:29:54Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "d8ecc0798a2c64f7482262fbaa45c7d08170e051",
+      "baseSha": "308bd319337f6d72596b8ab0af162b5371149129",
+      "events": [
+        {
+          "id": 34492495063,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-28T15:47:07Z",
+          "commitId": null
+        },
+        {
+          "id": 34551285805,
+          "event": "merged",
+          "createdAt": "2026-10-29T05:29:54Z",
+          "commitId": "5ba125da32722f229a44fcfeea832555c49c96c2"
+        },
+        {
+          "id": 34551285950,
+          "event": "closed",
+          "createdAt": "2026-10-29T05:29:54Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "8338a4c66501848a9a650c03eb56e5d62c2113f8cc53f86d523977a9da1eccf7",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-29T05:29:54Z",
+      "closedAt": "2026-10-29T05:29:54Z",
+      "mergeCommitSha": "5ba125da32722f229a44fcfeea832555c49c96c2",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 654,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-27T15:52:54Z",
+      "updatedAt": "2026-10-27T18:54:43Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "e0e1fb0c335e1a41cea8185bcf2573754ea20219",
+      "baseSha": "e4a971bac4c7d35897ba28309940be41996483b3",
+      "events": [
+        {
+          "id": 34401159081,
+          "event": "merged",
+          "createdAt": "2026-10-27T18:49:53Z",
+          "commitId": "308bd319337f6d72596b8ab0af162b5371149129"
+        },
+        {
+          "id": 34401159238,
+          "event": "closed",
+          "createdAt": "2026-10-27T18:49:53Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Created and explicitly merged within the window: non-Draft status necessarily occurred between creation and merge. This uses a bounded historical merge event, not current Draft alone.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "4a34da4c5deda722b32e5eb7dd0633dd883bdfa2b7386d50abd5a02f558669e9",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-27T18:49:53Z",
+      "closedAt": "2026-10-27T18:49:53Z",
+      "mergeCommitSha": "308bd319337f6d72596b8ab0af162b5371149129",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 653,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-27T15:00:40Z",
+      "updatedAt": "2026-10-27T15:32:56Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "0602e51fc69be3ea0d1da925e818c122a1856316",
+      "baseSha": "e7a0c6958426394196da46882ea2ccf331832fce",
+      "events": [
+        {
+          "id": 34380241168,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-27T15:07:30Z",
+          "commitId": null
+        },
+        {
+          "id": 34382989874,
+          "event": "merged",
+          "createdAt": "2026-10-27T15:32:55Z",
+          "commitId": "e4a971bac4c7d35897ba28309940be41996483b3"
+        },
+        {
+          "id": 34382990144,
+          "event": "closed",
+          "createdAt": "2026-10-27T15:32:56Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "b67bba303e7e6f5e9f163d94751dc86a0a95580a9c12c27f004d4dae3dbf77ab",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-27T15:32:55Z",
+      "closedAt": "2026-10-27T15:32:56Z",
+      "mergeCommitSha": "e4a971bac4c7d35897ba28309940be41996483b3",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 353,
+      "classification": "uncertain",
+      "createdAt": "2026-10-05T07:37:03Z",
+      "updatedAt": "2026-10-27T15:01:25Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "ad6929026028f8b9c5dbde8d07b884ad12e91223",
+      "baseSha": "e7a0c6958426394196da46882ea2ccf331832fce",
+      "events": [
+        {
+          "id": 32486974098,
+          "event": "closed",
+          "createdAt": "2026-10-05T07:44:21Z",
+          "commitId": null
+        },
+        {
+          "id": 34378606031,
+          "event": "reopened",
+          "createdAt": "2026-10-27T14:52:54Z",
+          "commitId": null
+        },
+        {
+          "id": 34378867598,
+          "event": "closed",
+          "createdAt": "2026-10-27T14:55:14Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Earlier conservative projection",
+      "endWindowReconciliationChanged": false,
+      "changeId": "15758b61e8c0eca73af0aa6f945929bea28710a075446b08606d86eedb5dc6b3",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": null,
+      "closedAt": "2026-10-27T14:55:13Z",
+      "mergeCommitSha": "7a250ad6281bf9f21ef0fcc910865352c3395998",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 651,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-27T11:15:13Z",
+      "updatedAt": "2026-10-27T13:14:17Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "e9e0854204f5cc7e4fed3e4d5ee282a46b7a4681",
+      "baseSha": "df88d84579fe461dbb170e6759c1c69a3808b7fe",
+      "events": [
+        {
+          "id": 34361384873,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-27T11:46:22Z",
+          "commitId": null
+        },
+        {
+          "id": 34367668842,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-27T13:01:58Z",
+          "commitId": null
+        },
+        {
+          "id": 34367703776,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-27T13:02:22Z",
+          "commitId": null
+        },
+        {
+          "id": 34368410773,
+          "event": "merged",
+          "createdAt": "2026-10-27T13:10:09Z",
+          "commitId": "e7a0c6958426394196da46882ea2ccf331832fce"
+        },
+        {
+          "id": 34368411154,
+          "event": "closed",
+          "createdAt": "2026-10-27T13:10:09Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "a3e2ee12b0626cbeaaeade32df19422e06973c2c128318d92c24e51361c66878",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-27T13:10:09Z",
+      "closedAt": "2026-10-27T13:10:09Z",
+      "mergeCommitSha": "e7a0c6958426394196da46882ea2ccf331832fce",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 650,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-27T11:14:50Z",
+      "updatedAt": "2026-10-27T12:54:17Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "fef6b7523c22081c6becb2761a23ab510844a366",
+      "baseSha": "bd34451f10d9b6dd113fe30d78c62e0c6756a8e4",
+      "events": [
+        {
+          "id": 34360053496,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-27T11:29:31Z",
+          "commitId": null
+        },
+        {
+          "id": 34367005384,
+          "event": "merged",
+          "createdAt": "2026-10-27T12:54:17Z",
+          "commitId": "df88d84579fe461dbb170e6759c1c69a3808b7fe"
+        },
+        {
+          "id": 34367005564,
+          "event": "closed",
+          "createdAt": "2026-10-27T12:54:17Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "3795a6299b0fe1514e068bddfe4324b5a9cedc67b1cb15d822aba348b8f40bc6",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-27T12:54:17Z",
+      "closedAt": "2026-10-27T12:54:17Z",
+      "mergeCommitSha": "df88d84579fe461dbb170e6759c1c69a3808b7fe",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 647,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-26T08:23:44Z",
+      "updatedAt": "2026-10-26T09:01:11Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "c9bd6f6adc2cde14c6966849ee32ffd8db7c21f3",
+      "baseSha": "8c6d6a224b9b01b83c8b46cb7de70bb2f181ebd2",
+      "events": [
+        {
+          "id": 34238014982,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-26T08:24:07Z",
+          "commitId": null
+        },
+        {
+          "id": 34240765385,
+          "event": "merged",
+          "createdAt": "2026-10-26T08:58:57Z",
+          "commitId": "bd34451f10d9b6dd113fe30d78c62e0c6756a8e4"
+        },
+        {
+          "id": 34240765514,
+          "event": "closed",
+          "createdAt": "2026-10-26T08:58:57Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "14cbc3a720cf2b5f262558e9fe8c08057674eeb46df761bb7d4bd59735b3de4f",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-26T08:58:57Z",
+      "closedAt": "2026-10-26T08:58:57Z",
+      "mergeCommitSha": "bd34451f10d9b6dd113fe30d78c62e0c6756a8e4",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 646,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-25T18:03:53Z",
+      "updatedAt": "2026-10-26T03:05:11Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "f0cb95b62f593d4fe1b6058771031de3f1454b77",
+      "baseSha": "50e74b7a9bd2136737a7ea18991125556da6a7b9",
+      "events": [
+        {
+          "id": 34220155864,
+          "event": "merged",
+          "createdAt": "2026-10-26T03:03:26Z",
+          "commitId": "8c6d6a224b9b01b83c8b46cb7de70bb2f181ebd2"
+        },
+        {
+          "id": 34220155966,
+          "event": "closed",
+          "createdAt": "2026-10-26T03:03:27Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Created and explicitly merged within the window: non-Draft status necessarily occurred between creation and merge. This uses a bounded historical merge event, not current Draft alone.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "1ece5dedd057262617923a3aa0954fa77d563e2c551406fdab38f56792252ab4",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-26T03:03:26Z",
+      "closedAt": "2026-10-26T03:03:27Z",
+      "mergeCommitSha": "8c6d6a224b9b01b83c8b46cb7de70bb2f181ebd2",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 632,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-24T07:29:13Z",
+      "updatedAt": "2026-10-25T17:57:14Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "8c3bf0f2a7107c546aa7a101a4db4a84dee67cd5",
+      "baseSha": "67e831adf4223e21956032366c89908fb7632f05",
+      "events": [
+        {
+          "id": 34116837478,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-24T07:29:42Z",
+          "commitId": null
+        },
+        {
+          "id": 34187424343,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-25T14:51:45Z",
+          "commitId": null
+        },
+        {
+          "id": 34187479799,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-25T14:53:05Z",
+          "commitId": null
+        },
+        {
+          "id": 34195455868,
+          "event": "merged",
+          "createdAt": "2026-10-25T17:54:30Z",
+          "commitId": "50e74b7a9bd2136737a7ea18991125556da6a7b9"
+        },
+        {
+          "id": 34195455988,
+          "event": "closed",
+          "createdAt": "2026-10-25T17:54:30Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "b313bf1a90955e8069ede9fdf208dc4e96ea63691e493909d3743d969ccb5e6d",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-25T17:54:30Z",
+      "closedAt": "2026-10-25T17:54:30Z",
+      "mergeCommitSha": "50e74b7a9bd2136737a7ea18991125556da6a7b9",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 642,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-25T06:47:16Z",
+      "updatedAt": "2026-10-25T14:58:06Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "8f662d42ce95369750c2ca41048ce0764ff70812",
+      "baseSha": "fa52a859089378b7440cadc17e3f71c5f2b6ebc7",
+      "events": [
+        {
+          "id": 34168927171,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-25T06:47:50Z",
+          "commitId": null
+        },
+        {
+          "id": 34169759840,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-25T07:13:24Z",
+          "commitId": null
+        },
+        {
+          "id": 34169813786,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-25T07:15:00Z",
+          "commitId": null
+        },
+        {
+          "id": 34176212386,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-25T10:12:34Z",
+          "commitId": null
+        },
+        {
+          "id": 34176384821,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-25T10:16:45Z",
+          "commitId": null
+        },
+        {
+          "id": 34177909654,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-25T10:57:34Z",
+          "commitId": null
+        },
+        {
+          "id": 34177951405,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-25T10:58:46Z",
+          "commitId": null
+        },
+        {
+          "id": 34186433880,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-25T14:27:48Z",
+          "commitId": null
+        },
+        {
+          "id": 34186474670,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-25T14:28:46Z",
+          "commitId": null
+        },
+        {
+          "id": 34187230301,
+          "event": "merged",
+          "createdAt": "2026-10-25T14:47:05Z",
+          "commitId": "67e831adf4223e21956032366c89908fb7632f05"
+        },
+        {
+          "id": 34187230425,
+          "event": "closed",
+          "createdAt": "2026-10-25T14:47:05Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "59791febdff9b023a560037bb4132d5da26f77229fed4244d89223f3682b1733",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-25T14:47:05Z",
+      "closedAt": "2026-10-25T14:47:05Z",
+      "mergeCommitSha": "67e831adf4223e21956032366c89908fb7632f05",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 645,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-25T13:59:29Z",
+      "updatedAt": "2026-10-25T14:27:39Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "6cc1c6fe15f89acf0ed8278423855a7ec386de54",
+      "baseSha": "1bcf4820c7b39208841a698722962a57165cc632",
+      "events": [
+        {
+          "id": 34185258940,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-25T14:01:10Z",
+          "commitId": null
+        },
+        {
+          "id": 34186366172,
+          "event": "merged",
+          "createdAt": "2026-10-25T14:26:12Z",
+          "commitId": "fa52a859089378b7440cadc17e3f71c5f2b6ebc7"
+        },
+        {
+          "id": 34186366256,
+          "event": "closed",
+          "createdAt": "2026-10-25T14:26:12Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "2e7569139b81b1cdaf2629c3efdcc650773abd560b1d295f93920e0807d16a64",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-25T14:26:12Z",
+      "closedAt": "2026-10-25T14:26:12Z",
+      "mergeCommitSha": "fa52a859089378b7440cadc17e3f71c5f2b6ebc7",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 644,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-25T10:30:22Z",
+      "updatedAt": "2026-10-25T11:00:04Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "dcf4f11547bed3170567a5f76e855c639250fec0",
+      "baseSha": "cfdf0daee86f7829551b0f3d5435feee683203ed",
+      "events": [
+        {
+          "id": 34177865967,
+          "event": "merged",
+          "createdAt": "2026-10-25T10:56:22Z",
+          "commitId": "1bcf4820c7b39208841a698722962a57165cc632"
+        },
+        {
+          "id": 34177866043,
+          "event": "closed",
+          "createdAt": "2026-10-25T10:56:23Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Created and explicitly merged within the window: non-Draft status necessarily occurred between creation and merge. This uses a bounded historical merge event, not current Draft alone.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "0b944179ad6e682297100d9cd2775b0de56dd4ad77f4fefc1f26a90763d4eb71",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-25T10:56:22Z",
+      "closedAt": "2026-10-25T10:56:22Z",
+      "mergeCommitSha": "1bcf4820c7b39208841a698722962a57165cc632",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 643,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-25T09:21:42Z",
+      "updatedAt": "2026-10-25T10:11:57Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "7ffce60c40f7bc6500887dc4cbfd4871837c91bc",
+      "baseSha": "44ed66508211d7cd72a1b87384787bdc0a899866",
+      "events": [
+        {
+          "id": 34176110995,
+          "event": "merged",
+          "createdAt": "2026-10-25T10:10:06Z",
+          "commitId": "cfdf0daee86f7829551b0f3d5435feee683203ed"
+        },
+        {
+          "id": 34176111061,
+          "event": "closed",
+          "createdAt": "2026-10-25T10:10:06Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Created and explicitly merged within the window: non-Draft status necessarily occurred between creation and merge. This uses a bounded historical merge event, not current Draft alone.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "b73d575c79122bb5d7796f15f851f353c8d4ff642e50e77431d54edf0b3ba37b",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-25T10:10:06Z",
+      "closedAt": "2026-10-25T10:10:06Z",
+      "mergeCommitSha": "cfdf0daee86f7829551b0f3d5435feee683203ed",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 640,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-25T04:36:40Z",
+      "updatedAt": "2026-10-25T07:15:32Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "b95278f5aa05b56bdf69593b9ab5f3627e7d6869",
+      "baseSha": "d1c8d21389c43f3beb20fe7978006703e9405b24",
+      "events": [
+        {
+          "id": 34165110743,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-25T04:39:21Z",
+          "commitId": null
+        },
+        {
+          "id": 34165121157,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-25T04:39:43Z",
+          "commitId": null
+        },
+        {
+          "id": 34169724965,
+          "event": "merged",
+          "createdAt": "2026-10-25T07:12:17Z",
+          "commitId": "44ed66508211d7cd72a1b87384787bdc0a899866"
+        },
+        {
+          "id": 34169725012,
+          "event": "closed",
+          "createdAt": "2026-10-25T07:12:17Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "26d6b4bfce7df0302fe8bd6a91973a684f256511c58f2ffd28bcd8df80ff55c5",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-25T07:12:17Z",
+      "closedAt": "2026-10-25T07:12:17Z",
+      "mergeCommitSha": "44ed66508211d7cd72a1b87384787bdc0a899866",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 641,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-25T06:27:58Z",
+      "updatedAt": "2026-10-25T06:38:18Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "30998f4900b83655a13c2024a4556250b918b118",
+      "baseSha": "2ae505c8fdd6250b48925b0b53de35a409c7c608",
+      "events": [
+        {
+          "id": 34168358086,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-25T06:28:46Z",
+          "commitId": null
+        },
+        {
+          "id": 34168632330,
+          "event": "merged",
+          "createdAt": "2026-10-25T06:38:18Z",
+          "commitId": "d1c8d21389c43f3beb20fe7978006703e9405b24"
+        },
+        {
+          "id": 34168632375,
+          "event": "closed",
+          "createdAt": "2026-10-25T06:38:18Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "a9f522b5d49770857d133cf520ef77f4d18103544fd57915e7ca9b82cd110063",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-25T06:38:18Z",
+      "closedAt": "2026-10-25T06:38:18Z",
+      "mergeCommitSha": "d1c8d21389c43f3beb20fe7978006703e9405b24",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 637,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-24T20:52:20Z",
+      "updatedAt": "2026-10-25T00:24:10Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "3a79b5367c4f6014f1b83a01aeb4e5a7fab1ca90",
+      "baseSha": "14d026840fdddadda83336a2a90096cafb081401",
+      "events": [
+        {
+          "id": 34156940399,
+          "event": "merged",
+          "createdAt": "2026-10-25T00:23:16Z",
+          "commitId": "2ae505c8fdd6250b48925b0b53de35a409c7c608"
+        },
+        {
+          "id": 34156940467,
+          "event": "closed",
+          "createdAt": "2026-10-25T00:23:16Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Created and explicitly merged within the window: non-Draft status necessarily occurred between creation and merge. This uses a bounded historical merge event, not current Draft alone.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "1d792229886ae6f0a18683573c34cce3a7c1a5505351b1bdfb1eea89bba16741",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-25T00:23:16Z",
+      "closedAt": "2026-10-25T00:23:16Z",
+      "mergeCommitSha": "2ae505c8fdd6250b48925b0b53de35a409c7c608",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 634,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-24T16:29:47Z",
+      "updatedAt": "2026-10-24T20:00:41Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "7daad55be8370570dc9963806e0282ce5219f90d",
+      "baseSha": "553d66b46660d83bdd83069cebf1d7115abec797",
+      "events": [
+        {
+          "id": 34146750528,
+          "event": "merged",
+          "createdAt": "2026-10-24T19:57:38Z",
+          "commitId": "14d026840fdddadda83336a2a90096cafb081401"
+        },
+        {
+          "id": 34146750678,
+          "event": "closed",
+          "createdAt": "2026-10-24T19:57:38Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Created and explicitly merged within the window: non-Draft status necessarily occurred between creation and merge. This uses a bounded historical merge event, not current Draft alone.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "ec82ba7b4d32858d48cb8f3db228820bf7a6c6693f87d8b09a1d6c4aaa152b74",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-24T19:57:38Z",
+      "closedAt": "2026-10-24T19:57:38Z",
+      "mergeCommitSha": "14d026840fdddadda83336a2a90096cafb081401",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 636,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-24T19:01:46Z",
+      "updatedAt": "2026-10-24T19:43:13Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "c47bc0a29d0e47d5e4fc4d7fe9e692c77d5c4568",
+      "baseSha": "1b3e67858ae1e9b4ba8602622e5baecb95321eef",
+      "events": [
+        {
+          "id": 34145780901,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-24T19:34:11Z",
+          "commitId": null
+        },
+        {
+          "id": 34145791467,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-24T19:34:26Z",
+          "commitId": null
+        },
+        {
+          "id": 34146169514,
+          "event": "merged",
+          "createdAt": "2026-10-24T19:43:13Z",
+          "commitId": "553d66b46660d83bdd83069cebf1d7115abec797"
+        },
+        {
+          "id": 34146169571,
+          "event": "closed",
+          "createdAt": "2026-10-24T19:43:13Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "072d7fb64c1a4338fb8708cd56b3e1f92c78d8f2a9b61ba6b2fd024b9eccbd3d",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-24T19:43:13Z",
+      "closedAt": "2026-10-24T19:43:13Z",
+      "mergeCommitSha": "553d66b46660d83bdd83069cebf1d7115abec797",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 633,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-24T08:19:21Z",
+      "updatedAt": "2026-10-24T16:08:18Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "2e609ca17766412c3c078ac6e7b40702b65286dd",
+      "baseSha": "b8e2ce1533a46c9d9e2255cd98591b47ef7114fd",
+      "events": [
+        {
+          "id": 34118675169,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-24T08:21:29Z",
+          "commitId": null
+        },
+        {
+          "id": 34118687214,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-24T08:21:50Z",
+          "commitId": null
+        },
+        {
+          "id": 34137024317,
+          "event": "merged",
+          "createdAt": "2026-10-24T16:08:18Z",
+          "commitId": "1b3e67858ae1e9b4ba8602622e5baecb95321eef"
+        },
+        {
+          "id": 34137024391,
+          "event": "closed",
+          "createdAt": "2026-10-24T16:08:18Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "7c6bbf2ea3f96ff6787f5ab2a82d577086a6e9ff7f3dfcc982ea9420f285443e",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-24T16:08:18Z",
+      "closedAt": "2026-10-24T16:08:18Z",
+      "mergeCommitSha": "1b3e67858ae1e9b4ba8602622e5baecb95321eef",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 630,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-23T15:54:58Z",
+      "updatedAt": "2026-10-23T17:12:07Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "9dbf63814124c96a11d2b1c2ab5df87f1a00a74c",
+      "baseSha": "d6f0b6dccaab967a1c885615d2253b902e47f684",
+      "events": [
+        {
+          "id": 34068412762,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-23T15:58:43Z",
+          "commitId": null
+        },
+        {
+          "id": 34068454781,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-23T15:59:13Z",
+          "commitId": null
+        },
+        {
+          "id": 34074523623,
+          "event": "merged",
+          "createdAt": "2026-10-23T17:12:06Z",
+          "commitId": "b8e2ce1533a46c9d9e2255cd98591b47ef7114fd"
+        },
+        {
+          "id": 34074523758,
+          "event": "closed",
+          "createdAt": "2026-10-23T17:12:06Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "5f88bd183a84b531374f59d7aa87770e87aee48e4eaf1f4efb1b0b8606f8bc67",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-23T17:12:06Z",
+      "closedAt": "2026-10-23T17:12:06Z",
+      "mergeCommitSha": "b8e2ce1533a46c9d9e2255cd98591b47ef7114fd",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 628,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-23T13:41:49Z",
+      "updatedAt": "2026-10-23T14:06:08Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "94d01f2e8184955bd378780aeab99cd92dfc5207",
+      "baseSha": "55835688bb44aab4137a3e1f0a665b519b895200",
+      "events": [
+        {
+          "id": 34056794972,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-23T13:48:48Z",
+          "commitId": null
+        },
+        {
+          "id": 34056797519,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-23T13:48:50Z",
+          "commitId": null
+        },
+        {
+          "id": 34057818542,
+          "event": "merged",
+          "createdAt": "2026-10-23T14:00:09Z",
+          "commitId": "d6f0b6dccaab967a1c885615d2253b902e47f684"
+        },
+        {
+          "id": 34057818686,
+          "event": "closed",
+          "createdAt": "2026-10-23T14:00:09Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "df59c30a336732eacb5712b9db341a47f89375ddadd9b219af47a68c773aeb95",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-23T14:00:09Z",
+      "closedAt": "2026-10-23T14:00:09Z",
+      "mergeCommitSha": "d6f0b6dccaab967a1c885615d2253b902e47f684",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 627,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-23T11:11:54Z",
+      "updatedAt": "2026-10-23T11:45:27Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "76e27b4f8b62fe2c75fdd1818f0262fa686742b2",
+      "baseSha": "bfa453909881ac7315105e31c3b72604e055a56d",
+      "events": [
+        {
+          "id": 34044708533,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-23T11:15:21Z",
+          "commitId": null
+        },
+        {
+          "id": 34044709967,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-23T11:15:23Z",
+          "commitId": null
+        },
+        {
+          "id": 34046849745,
+          "event": "merged",
+          "createdAt": "2026-10-23T11:45:26Z",
+          "commitId": "55835688bb44aab4137a3e1f0a665b519b895200"
+        },
+        {
+          "id": 34046849909,
+          "event": "closed",
+          "createdAt": "2026-10-23T11:45:26Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "911eef634cf5143c84ad800a5edb4147e2cf3089da7993126e44d72e4d729ec8",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-23T11:45:26Z",
+      "closedAt": "2026-10-23T11:45:26Z",
+      "mergeCommitSha": "55835688bb44aab4137a3e1f0a665b519b895200",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 626,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-23T09:42:23Z",
+      "updatedAt": "2026-10-23T10:24:29Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "31230978b950fc659020a59eed3e84907fb6268a",
+      "baseSha": "b56f901249c8b7a1274d0292afbe2f569fbdaa39",
+      "events": [
+        {
+          "id": 34038341762,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-23T09:46:15Z",
+          "commitId": null
+        },
+        {
+          "id": 34038346183,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-23T09:46:18Z",
+          "commitId": null
+        },
+        {
+          "id": 34041138723,
+          "event": "merged",
+          "createdAt": "2026-10-23T10:24:28Z",
+          "commitId": "bfa453909881ac7315105e31c3b72604e055a56d"
+        },
+        {
+          "id": 34041138814,
+          "event": "closed",
+          "createdAt": "2026-10-23T10:24:28Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "30310ec42da6b0aae0e23bbf50312c9cd4efb18efa4c00bf925ec954ffcd1c57",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-23T10:24:28Z",
+      "closedAt": "2026-10-23T10:24:28Z",
+      "mergeCommitSha": "bfa453909881ac7315105e31c3b72604e055a56d",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 625,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-22T13:45:59Z",
+      "updatedAt": "2026-10-23T09:35:05Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "b384637513ebd7e55ae3f2215154b6553d6d9ab6",
+      "baseSha": "5a0469de641e5c55168739237cb90311f5bebd28",
+      "events": [
+        {
+          "id": 34037510760,
+          "event": "merged",
+          "createdAt": "2026-10-23T09:35:05Z",
+          "commitId": "b56f901249c8b7a1274d0292afbe2f569fbdaa39"
+        },
+        {
+          "id": 34037510899,
+          "event": "closed",
+          "createdAt": "2026-10-23T09:35:05Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Created and explicitly merged within the window: non-Draft status necessarily occurred between creation and merge. This uses a bounded historical merge event, not current Draft alone.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "0f1a1b9a40f63edb6f76040ab3285a0ff5e198d789227db1bd6f6794fe8ae406",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-23T09:35:05Z",
+      "closedAt": "2026-10-23T09:35:05Z",
+      "mergeCommitSha": "b56f901249c8b7a1274d0292afbe2f569fbdaa39",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 624,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-22T11:55:48Z",
+      "updatedAt": "2026-10-22T13:10:14Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "321605b357852a99d0159661b44cdb46861a483f",
+      "baseSha": "0029302e626553fefcc181d0e8273922b55dda7d",
+      "events": [
+        {
+          "id": 33946078984,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-22T11:56:48Z",
+          "commitId": null
+        },
+        {
+          "id": 33952470967,
+          "event": "merged",
+          "createdAt": "2026-10-22T13:10:13Z",
+          "commitId": "5a0469de641e5c55168739237cb90311f5bebd28"
+        },
+        {
+          "id": 33952471136,
+          "event": "closed",
+          "createdAt": "2026-10-22T13:10:13Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "b38d7756bf88f5aec13f6525b16ee7dcae0910e6be6acd4b77465af1ae052e1f",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-22T13:10:13Z",
+      "closedAt": "2026-10-22T13:10:13Z",
+      "mergeCommitSha": "5a0469de641e5c55168739237cb90311f5bebd28",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 623,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-22T10:27:40Z",
+      "updatedAt": "2026-10-22T11:35:01Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "89620529d5299e18488f3656f320a10fa595e1de",
+      "baseSha": "53bc32c4e1c06c312a7d899a4d7ac2995cd3dd2e",
+      "events": [
+        {
+          "id": 33939185414,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-22T10:27:58Z",
+          "commitId": null
+        },
+        {
+          "id": 33944384976,
+          "event": "merged",
+          "createdAt": "2026-10-22T11:35:01Z",
+          "commitId": "0029302e626553fefcc181d0e8273922b55dda7d"
+        },
+        {
+          "id": 33944385169,
+          "event": "closed",
+          "createdAt": "2026-10-22T11:35:01Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "adc8b0efa9d3ee6cf001e100653177269ceab5a29fef1a3ec8076af2f49e165f",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-22T11:35:01Z",
+      "closedAt": "2026-10-22T11:35:01Z",
+      "mergeCommitSha": "0029302e626553fefcc181d0e8273922b55dda7d",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 622,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-22T06:19:22Z",
+      "updatedAt": "2026-10-22T10:14:30Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "780fd6b9a25d5a28de42e87b8cbc691f219bb851",
+      "baseSha": "a7ca8afa1486dccd3c756411cbe50a7625aad589",
+      "events": [
+        {
+          "id": 33920407265,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-22T06:22:02Z",
+          "commitId": null
+        },
+        {
+          "id": 33920408792,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-22T06:22:04Z",
+          "commitId": null
+        },
+        {
+          "id": 33938134852,
+          "event": "merged",
+          "createdAt": "2026-10-22T10:14:30Z",
+          "commitId": "53bc32c4e1c06c312a7d899a4d7ac2995cd3dd2e"
+        },
+        {
+          "id": 33938135022,
+          "event": "closed",
+          "createdAt": "2026-10-22T10:14:30Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "0e740d761a9adb300eaf5516cfa2d0f272d097d8ff9c1d2a056c7a87acb12e50",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-22T10:14:30Z",
+      "closedAt": "2026-10-22T10:14:30Z",
+      "mergeCommitSha": "53bc32c4e1c06c312a7d899a4d7ac2995cd3dd2e",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 107,
+      "classification": "not-eligible-remained-draft",
+      "baselineDraft": true,
+      "createdAt": "2026-09-25T12:57:40Z",
+      "updatedAt": "2026-10-19T15:02:45Z",
+      "draft": true,
+      "state": "closed",
+      "headSha": "f69bbc9693299b215dd1bc7ec2d17e4e34dfc12d",
+      "baseSha": "64f4e693b5eb40030ecbf669783b61f8e1b27886",
+      "events": [
+        {
+          "id": 33656902848,
+          "event": "closed",
+          "createdAt": "2026-10-19T15:02:45Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Frozen initial Draft, terminal Draft closure inside window, and complete returned state history with no in-window ready transition. Bound to API observations; no authenticated completeness guarantee.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "ad8ad99a6cab1a05c405b204f944706688298c34ef4a6eb3eecdcb7c9bb84897",
+      "initialRef": "f69bbc9693299b215dd1bc7ec2d17e4e34dfc12d",
+      "currentObservedState": "closed",
+      "currentObservedDraft": true,
+      "mergedAt": null,
+      "closedAt": "2026-10-19T15:02:45Z",
+      "mergeCommitSha": "3c41a52dbf0428078b2c86823bc844e546b1f165",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 153,
+      "classification": "not-eligible-remained-draft",
+      "baselineDraft": true,
+      "createdAt": "2026-09-27T06:52:13Z",
+      "updatedAt": "2026-10-19T15:02:36Z",
+      "draft": true,
+      "state": "closed",
+      "headSha": "03ab36a6d5e988cd84eac9cf401e37f2238654c4",
+      "baseSha": "0c3bde73a96d8c5a0e2ac05493e8ad6dccc8a813",
+      "events": [
+        {
+          "id": 33656889843,
+          "event": "closed",
+          "createdAt": "2026-10-19T15:02:37Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Frozen initial Draft, terminal Draft closure inside window, and complete returned state history with no in-window ready transition. Bound to API observations; no authenticated completeness guarantee.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "79cffd61b82f90ebac73ef1b1eb7ee4c61ed8af999bc96d28eed951edb857cc7",
+      "initialRef": "03ab36a6d5e988cd84eac9cf401e37f2238654c4",
+      "currentObservedState": "closed",
+      "currentObservedDraft": true,
+      "mergedAt": null,
+      "closedAt": "2026-10-19T15:02:36Z",
+      "mergeCommitSha": "433097587d87725951eff4b52614dd8a2d092e65",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 297,
+      "classification": "eligible-initial",
+      "baselineDraft": false,
+      "createdAt": "2026-10-03T13:11:50Z",
+      "updatedAt": "2026-10-19T15:02:28Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "9355753dd1d6b7d0df3b5ad93693073161cdd5e0",
+      "baseSha": "78c19edd646b17dbd8ee224cf4510a54b227b2b7",
+      "events": [
+        {
+          "id": 33656876989,
+          "event": "closed",
+          "createdAt": "2026-10-19T15:02:28Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-initial",
+      "evidenceBasis": "Frozen initial non-Draft/open population",
+      "changeId": "124db85c06874ae60938edf18f676837c04e56d96fd3091ed97530b30c5c49d0",
+      "initialRef": "9355753dd1d6b7d0df3b5ad93693073161cdd5e0",
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": null,
+      "closedAt": "2026-10-19T15:02:28Z",
+      "mergeCommitSha": "11a4f7d2ea6fc04c6c9d6d3da78160330a941147",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 322,
+      "classification": "not-eligible-remained-draft",
+      "baselineDraft": true,
+      "createdAt": "2026-10-04T00:49:24Z",
+      "updatedAt": "2026-10-19T15:02:19Z",
+      "draft": true,
+      "state": "closed",
+      "headSha": "1147f8ce3ba86c40183ba160cda8b11a5af92dad",
+      "baseSha": "d88f254acc11f2a2c3023522fa5d99074f9e4e0c",
+      "events": [
+        {
+          "id": 32492513958,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-05T09:05:15Z",
+          "commitId": null
+        },
+        {
+          "id": 33656864515,
+          "event": "closed",
+          "createdAt": "2026-10-19T15:02:20Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Frozen initial Draft, terminal Draft closure inside window, and complete returned state history with no in-window ready transition. Bound to API observations; no authenticated completeness guarantee.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "c9c7ffa863f3afbe9aa9b96b14e9e3a1fd0b9e36669b576b5de93db751a7e7fa",
+      "initialRef": "1147f8ce3ba86c40183ba160cda8b11a5af92dad",
+      "currentObservedState": "closed",
+      "currentObservedDraft": true,
+      "mergedAt": null,
+      "closedAt": "2026-10-19T15:02:19Z",
+      "mergeCommitSha": null,
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 456,
+      "classification": "not-eligible-remained-draft",
+      "baselineDraft": true,
+      "createdAt": "2026-10-09T17:54:31Z",
+      "updatedAt": "2026-10-19T15:02:12Z",
+      "draft": true,
+      "state": "closed",
+      "headSha": "4a7651f4e5d8288faa6b730a885689c441265cec",
+      "baseSha": "c9f7b7541379ea79b23384b81772dbc40b47dce9",
+      "events": [
+        {
+          "id": 33656853270,
+          "event": "closed",
+          "createdAt": "2026-10-19T15:02:12Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Frozen initial Draft, terminal Draft closure inside window, and complete returned state history with no in-window ready transition. Bound to API observations; no authenticated completeness guarantee.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "f2996c4abfdfb20841c39d979f41a9c2bc80c11874511f428742d5d2431f1565",
+      "initialRef": "4a7651f4e5d8288faa6b730a885689c441265cec",
+      "currentObservedState": "closed",
+      "currentObservedDraft": true,
+      "mergedAt": null,
+      "closedAt": "2026-10-19T15:02:12Z",
+      "mergeCommitSha": "98bba99b65655e741eb3f670c2a06e5c38c2c352",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 423,
+      "classification": "eligible-initial",
+      "baselineDraft": false,
+      "createdAt": "2026-10-08T01:16:53Z",
+      "updatedAt": "2026-10-19T15:02:06Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "9c7f29557e374ede784cf276191ea65d0733d0f2",
+      "baseSha": "d288bb64ee4916c207d378b1695cca0491f49223",
+      "events": [
+        {
+          "id": 32740463537,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-08T01:47:25Z",
+          "commitId": null
+        },
+        {
+          "id": 33656843478,
+          "event": "closed",
+          "createdAt": "2026-10-19T15:02:06Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-initial",
+      "evidenceBasis": "Frozen initial non-Draft/open population",
+      "changeId": "2111f952733dbe58a10d405cb2ec53c67d6a1f92632af552a9787eff7e853202",
+      "initialRef": "9c7f29557e374ede784cf276191ea65d0733d0f2",
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": null,
+      "closedAt": "2026-10-19T15:02:06Z",
+      "mergeCommitSha": null,
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 237,
+      "classification": "eligible-initial",
+      "baselineDraft": false,
+      "createdAt": "2026-09-30T19:20:07Z",
+      "updatedAt": "2026-10-19T15:01:54Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "188341ed13f723a13018f73d103f570cff9dc424",
+      "baseSha": "fd5191cb91be04343970f346b2089d6c9eae1db4",
+      "events": [
+        {
+          "id": 32271124568,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-01T16:50:36Z",
+          "commitId": null
+        },
+        {
+          "id": 33656830301,
+          "event": "closed",
+          "createdAt": "2026-10-19T15:01:57Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-initial",
+      "evidenceBasis": "Frozen initial non-Draft/open population",
+      "changeId": "8a72fcaca4b9d2c5a69897fccc25296680878517d354134ce1cd59c9dca16e44",
+      "initialRef": "188341ed13f723a13018f73d103f570cff9dc424",
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": null,
+      "closedAt": "2026-10-19T15:01:57Z",
+      "mergeCommitSha": null,
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 238,
+      "classification": "not-eligible-remained-draft",
+      "baselineDraft": true,
+      "createdAt": "2026-09-30T19:52:07Z",
+      "updatedAt": "2026-10-19T15:01:50Z",
+      "draft": true,
+      "state": "closed",
+      "headSha": "d1f4d60425da6ba0ad0c36eefd2c8616138098fb",
+      "baseSha": "950fbf717125bb3f1080647b803a18e9d20ca9db",
+      "events": [
+        {
+          "id": 33656819555,
+          "event": "closed",
+          "createdAt": "2026-10-19T15:01:50Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Frozen initial Draft, terminal Draft closure inside window, and complete returned state history with no in-window ready transition. Bound to API observations; no authenticated completeness guarantee.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "aad529379f79a3017069fba0852bee845317aaa2c36400f024013bd84f539a7f",
+      "initialRef": "d1f4d60425da6ba0ad0c36eefd2c8616138098fb",
+      "currentObservedState": "closed",
+      "currentObservedDraft": true,
+      "mergedAt": null,
+      "closedAt": "2026-10-19T15:01:50Z",
+      "mergeCommitSha": "d6ff21f61fccc9e5ee773e0cd87e600d7e0eb381",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 239,
+      "classification": "not-eligible-remained-draft",
+      "baselineDraft": true,
+      "createdAt": "2026-09-30T20:19:00Z",
+      "updatedAt": "2026-10-19T15:01:42Z",
+      "draft": true,
+      "state": "closed",
+      "headSha": "d2b44befeee0e04fb6f0454d53eab50683e4c747",
+      "baseSha": "d1f4d60425da6ba0ad0c36eefd2c8616138098fb",
+      "events": [
+        {
+          "id": 33656808170,
+          "event": "closed",
+          "createdAt": "2026-10-19T15:01:43Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Frozen initial Draft, terminal Draft closure inside window, and complete returned state history with no in-window ready transition. Bound to API observations; no authenticated completeness guarantee.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "ebb059d35b1916e12fe93344c21e7bd99f40646502b2d917ae9f541c896751b2",
+      "initialRef": "d2b44befeee0e04fb6f0454d53eab50683e4c747",
+      "currentObservedState": "closed",
+      "currentObservedDraft": true,
+      "mergedAt": null,
+      "closedAt": "2026-10-19T15:01:42Z",
+      "mergeCommitSha": null,
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 510,
+      "classification": "eligible-initial",
+      "baselineDraft": false,
+      "createdAt": "2026-10-11T11:30:04Z",
+      "updatedAt": "2026-10-19T15:01:34Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "44cccedf2ce0d2b3ed4403c110b4a8d34ef3648e",
+      "baseSha": "4ddf39e5ca7265b0921733e6bc27b3d77a6205e5",
+      "events": [
+        {
+          "id": 32983223081,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-11T11:30:36Z",
+          "commitId": null
+        },
+        {
+          "id": 33656795696,
+          "event": "closed",
+          "createdAt": "2026-10-19T15:01:34Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-initial",
+      "evidenceBasis": "Frozen initial non-Draft/open population",
+      "changeId": "e8e3490939e57f27280e1dd68a1c6b257073415e4f4e13c271e3a448e2034246",
+      "initialRef": "44cccedf2ce0d2b3ed4403c110b4a8d34ef3648e",
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": null,
+      "closedAt": "2026-10-19T15:01:34Z",
+      "mergeCommitSha": "934e4652f3e92f86ab929928d07b03d9a7d5f9bf",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 514,
+      "classification": "eligible-initial",
+      "baselineDraft": false,
+      "createdAt": "2026-10-11T12:25:03Z",
+      "updatedAt": "2026-10-19T15:01:27Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "ddea69091e11cbc631c4d6b232f3746cf5118a03",
+      "baseSha": "44cccedf2ce0d2b3ed4403c110b4a8d34ef3648e",
+      "events": [
+        {
+          "id": 32987227274,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-11T13:32:24Z",
+          "commitId": null
+        },
+        {
+          "id": 33656784319,
+          "event": "closed",
+          "createdAt": "2026-10-19T15:01:27Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-initial",
+      "evidenceBasis": "Frozen initial non-Draft/open population",
+      "changeId": "61f093cb69c388fdd21b5928ae2bb1c61c3bf2c77dd01eec6501e6c15c92df03",
+      "initialRef": "ddea69091e11cbc631c4d6b232f3746cf5118a03",
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": null,
+      "closedAt": "2026-10-19T15:01:27Z",
+      "mergeCommitSha": null,
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 621,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-19T12:09:22Z",
+      "updatedAt": "2026-10-19T12:21:32Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "1d3ceae120f5c6b32ed57caa7e9113010b8f6daa",
+      "baseSha": "037cc6ff38dd77aa994ad73f242d33b2266c8589",
+      "events": [
+        {
+          "id": 33641737605,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-19T12:12:13Z",
+          "commitId": null
+        },
+        {
+          "id": 33642499396,
+          "event": "merged",
+          "createdAt": "2026-10-19T12:21:32Z",
+          "commitId": "a7ca8afa1486dccd3c756411cbe50a7625aad589"
+        },
+        {
+          "id": 33642499574,
+          "event": "closed",
+          "createdAt": "2026-10-19T12:21:32Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "1e28adf2c4d3a8787558326a7de7fef96d9e23179ada686fe680de6a236133ab",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-19T12:21:32Z",
+      "closedAt": "2026-10-19T12:21:32Z",
+      "mergeCommitSha": "a7ca8afa1486dccd3c756411cbe50a7625aad589",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 577,
+      "classification": "fixture-excluded",
+      "createdAt": "2026-10-13T14:28:55Z",
+      "updatedAt": "2026-10-19T09:10:49Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "9a5710afdca779e7ca9c994daa017a040caa3c39",
+      "baseSha": "268d2413fecc87b3fff65ce91d6c2a92e17c5569",
+      "events": [
+        {
+          "id": 33144300178,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-13T14:53:24Z",
+          "commitId": null
+        },
+        {
+          "id": 33627850199,
+          "event": "merged",
+          "createdAt": "2026-10-19T09:10:48Z",
+          "commitId": "037cc6ff38dd77aa994ad73f242d33b2266c8589"
+        },
+        {
+          "id": 33627850360,
+          "event": "closed",
+          "createdAt": "2026-10-19T09:10:49Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "fixture-excluded",
+      "evidenceBasis": "Predeclared fixture",
+      "changeId": "b107e058c864b44819f8f85e3156c80a30193bfa38acff56cf0f8d34fb7143d2",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-19T09:10:48Z",
+      "closedAt": "2026-10-19T09:10:48Z",
+      "mergeCommitSha": "037cc6ff38dd77aa994ad73f242d33b2266c8589",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 620,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-19T05:30:47Z",
+      "updatedAt": "2026-10-19T05:44:33Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "dd8bc098ae7508459c2fa932d34f19358a2fd37b",
+      "baseSha": "19079e8f777911e9383718c2c6745b0ef5ff1b35",
+      "events": [
+        {
+          "id": 33613494556,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-19T05:32:20Z",
+          "commitId": null
+        },
+        {
+          "id": 33614101061,
+          "event": "merged",
+          "createdAt": "2026-10-19T05:44:33Z",
+          "commitId": "268d2413fecc87b3fff65ce91d6c2a92e17c5569"
+        },
+        {
+          "id": 33614101134,
+          "event": "closed",
+          "createdAt": "2026-10-19T05:44:33Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "bce1106d6e6534e34958191dc3c09e80277eaa2440cd1c8b72accb2cb05f8b0e",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-19T05:44:33Z",
+      "closedAt": "2026-10-19T05:44:33Z",
+      "mergeCommitSha": "268d2413fecc87b3fff65ce91d6c2a92e17c5569",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 619,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T13:14:50Z",
+      "updatedAt": "2026-10-18T13:34:55Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "dff9347f4908585730de023060ada7d49924f318",
+      "baseSha": "0bba81a4fbfd06683ab65de4685c9be305d73017",
+      "events": [
+        {
+          "id": 33572906124,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T13:17:57Z",
+          "commitId": null
+        },
+        {
+          "id": 33572911272,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T13:18:05Z",
+          "commitId": null
+        },
+        {
+          "id": 33573556946,
+          "event": "merged",
+          "createdAt": "2026-10-18T13:34:55Z",
+          "commitId": "19079e8f777911e9383718c2c6745b0ef5ff1b35"
+        },
+        {
+          "id": 33573557035,
+          "event": "closed",
+          "createdAt": "2026-10-18T13:34:55Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "9b667fedfd3548586bae51a3c30e4a0a75a9cf977f43ad2f89a6ec70629ee49e",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T13:34:55Z",
+      "closedAt": "2026-10-18T13:34:55Z",
+      "mergeCommitSha": "19079e8f777911e9383718c2c6745b0ef5ff1b35",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 618,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T11:59:25Z",
+      "updatedAt": "2026-10-18T12:09:56Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "7266dfd5ecf2ef6430449c67bd98c793a4874dfc",
+      "baseSha": "8743549e309b6516328bedd30975ae0f44f89b08",
+      "events": [
+        {
+          "id": 33569941665,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T11:59:55Z",
+          "commitId": null
+        },
+        {
+          "id": 33570319601,
+          "event": "merged",
+          "createdAt": "2026-10-18T12:09:56Z",
+          "commitId": "0bba81a4fbfd06683ab65de4685c9be305d73017"
+        },
+        {
+          "id": 33570319666,
+          "event": "closed",
+          "createdAt": "2026-10-18T12:09:56Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "5268ec61b7c438f02ff3c339ca0b101ad8b3eae89708debdc0fa539405be2faf",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T12:09:56Z",
+      "closedAt": "2026-10-18T12:09:56Z",
+      "mergeCommitSha": "0bba81a4fbfd06683ab65de4685c9be305d73017",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 617,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T11:32:02Z",
+      "updatedAt": "2026-10-18T11:54:35Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "98156e8a977c16e5fc27b1bb191af9ffa1892ba6",
+      "baseSha": "03da5c0f0da2c3f84427d084572aa14151ac6d09",
+      "events": [
+        {
+          "id": 33568960828,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T11:33:09Z",
+          "commitId": null
+        },
+        {
+          "id": 33569748080,
+          "event": "merged",
+          "createdAt": "2026-10-18T11:54:34Z",
+          "commitId": "8743549e309b6516328bedd30975ae0f44f89b08"
+        },
+        {
+          "id": 33569748145,
+          "event": "closed",
+          "createdAt": "2026-10-18T11:54:35Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "0ac70670fb7ce73a045fcd54cb41209c1e9698af8f5ec50c26ff989291297ce0",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T11:54:34Z",
+      "closedAt": "2026-10-18T11:54:34Z",
+      "mergeCommitSha": "8743549e309b6516328bedd30975ae0f44f89b08",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 616,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T10:57:18Z",
+      "updatedAt": "2026-10-18T11:11:03Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "2aed63cfffa4802b7397abdff12df035fb74a505",
+      "baseSha": "57fbce0e9945f3057b96e6210870b7761659790a",
+      "events": [
+        {
+          "id": 33567740089,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T10:58:21Z",
+          "commitId": null
+        },
+        {
+          "id": 33568187033,
+          "event": "merged",
+          "createdAt": "2026-10-18T11:11:03Z",
+          "commitId": "03da5c0f0da2c3f84427d084572aa14151ac6d09"
+        },
+        {
+          "id": 33568187104,
+          "event": "closed",
+          "createdAt": "2026-10-18T11:11:03Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "83f37106c99e357f7da4bd48ad0a4fd9e2f802d01557a34119c99033d5f65ab7",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T11:11:03Z",
+      "closedAt": "2026-10-18T11:11:03Z",
+      "mergeCommitSha": "03da5c0f0da2c3f84427d084572aa14151ac6d09",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 615,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T10:20:49Z",
+      "updatedAt": "2026-10-18T10:43:26Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "dd1f5d04f6f56439bdb5e8547787acf9cf2cc4a7",
+      "baseSha": "440b4da5ac1909346721d9031192c5be53a1dc84",
+      "events": [
+        {
+          "id": 33566512695,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T10:21:40Z",
+          "commitId": null
+        },
+        {
+          "id": 33567230372,
+          "event": "merged",
+          "createdAt": "2026-10-18T10:43:26Z",
+          "commitId": "57fbce0e9945f3057b96e6210870b7761659790a"
+        },
+        {
+          "id": 33567230419,
+          "event": "closed",
+          "createdAt": "2026-10-18T10:43:26Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "6586074bb3cc8f2d3eb4119df71139ea38818825a456e24817a7a96c74ec92c1",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T10:43:26Z",
+      "closedAt": "2026-10-18T10:43:26Z",
+      "mergeCommitSha": "57fbce0e9945f3057b96e6210870b7761659790a",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 614,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T07:16:33Z",
+      "updatedAt": "2026-10-18T07:39:24Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "6a89584cc8c0853fbef85bd3078b01c9ded617f7",
+      "baseSha": "0e839b5bd1959c682314fe57753ccd094d1ba4ba",
+      "events": [
+        {
+          "id": 33560318121,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T07:21:18Z",
+          "commitId": null
+        },
+        {
+          "id": 33560870890,
+          "event": "merged",
+          "createdAt": "2026-10-18T07:39:24Z",
+          "commitId": "440b4da5ac1909346721d9031192c5be53a1dc84"
+        },
+        {
+          "id": 33560870943,
+          "event": "closed",
+          "createdAt": "2026-10-18T07:39:24Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "66296a7702a528e4c03dc151670d3eeecb0a8802f619a4ed987edc655d2af8cc",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T07:39:24Z",
+      "closedAt": "2026-10-18T07:39:24Z",
+      "mergeCommitSha": "440b4da5ac1909346721d9031192c5be53a1dc84",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 613,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T06:59:27Z",
+      "updatedAt": "2026-10-18T07:11:50Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "31f762435a30cf36d6386595bf4ef13f6f09d9c5",
+      "baseSha": "dd8f8d9e9655c2303b234dd6e7e1093a32362349",
+      "events": [
+        {
+          "id": 33559697733,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T07:01:41Z",
+          "commitId": null
+        },
+        {
+          "id": 33560021227,
+          "event": "merged",
+          "createdAt": "2026-10-18T07:11:50Z",
+          "commitId": "0e839b5bd1959c682314fe57753ccd094d1ba4ba"
+        },
+        {
+          "id": 33560021301,
+          "event": "closed",
+          "createdAt": "2026-10-18T07:11:50Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "ea275e1657e564d9c41ced6985a9a506f6452d3671f68ef3a9513601a15637a0",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T07:11:50Z",
+      "closedAt": "2026-10-18T07:11:50Z",
+      "mergeCommitSha": "0e839b5bd1959c682314fe57753ccd094d1ba4ba",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 612,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T06:29:57Z",
+      "updatedAt": "2026-10-18T06:38:58Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "61699faef606ace81d53385816cb07827880f4e6",
+      "baseSha": "6e328f6cba3f5d2808beef4b217f8739676dca30",
+      "events": [
+        {
+          "id": 33558700901,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T06:30:23Z",
+          "commitId": null
+        },
+        {
+          "id": 33558947399,
+          "event": "merged",
+          "createdAt": "2026-10-18T06:38:58Z",
+          "commitId": "dd8f8d9e9655c2303b234dd6e7e1093a32362349"
+        },
+        {
+          "id": 33558947439,
+          "event": "closed",
+          "createdAt": "2026-10-18T06:38:58Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "34fe16e6bf15bcb8f166d197d718e9f7a41e6850abf5f629b098055f19c3e2f2",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T06:38:58Z",
+      "closedAt": "2026-10-18T06:38:58Z",
+      "mergeCommitSha": "dd8f8d9e9655c2303b234dd6e7e1093a32362349",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 611,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T06:18:22Z",
+      "updatedAt": "2026-10-18T06:27:52Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "43db482315708bf92abb09d11ae6a81df91ccb15",
+      "baseSha": "fc9014c28af9498e1191f75fe7d8008bafea9dc4",
+      "events": [
+        {
+          "id": 33558413459,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T06:20:37Z",
+          "commitId": null
+        },
+        {
+          "id": 33558419503,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T06:20:47Z",
+          "commitId": null
+        },
+        {
+          "id": 33558629046,
+          "event": "merged",
+          "createdAt": "2026-10-18T06:27:52Z",
+          "commitId": "6e328f6cba3f5d2808beef4b217f8739676dca30"
+        },
+        {
+          "id": 33558629105,
+          "event": "closed",
+          "createdAt": "2026-10-18T06:27:52Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "dd6ac9f2a9dce8c03ac7e7d0286d802ca7d4258c5bc9606e4c613577ab62e018",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T06:27:52Z",
+      "closedAt": "2026-10-18T06:27:52Z",
+      "mergeCommitSha": "6e328f6cba3f5d2808beef4b217f8739676dca30",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 610,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T04:57:22Z",
+      "updatedAt": "2026-10-18T06:23:23Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "a3703be8f6661164d2335ebbf2e5f95c8c9da6d3",
+      "baseSha": "83549de931e735105a4e575d283dd95a2ce49b62",
+      "events": [
+        {
+          "id": 33555984731,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T04:57:49Z",
+          "commitId": null
+        },
+        {
+          "id": 33556226113,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T05:06:20Z",
+          "commitId": null
+        },
+        {
+          "id": 33556431909,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T05:13:27Z",
+          "commitId": null
+        },
+        {
+          "id": 33556750648,
+          "event": "merged",
+          "createdAt": "2026-10-18T05:23:35Z",
+          "commitId": "9568d25a4207468f80db47c12264db1e7b3bb0ec"
+        },
+        {
+          "id": 33556750681,
+          "event": "closed",
+          "createdAt": "2026-10-18T05:23:35Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "a2acfaf1a332b0c0af6a265dc540e548473c576545a1198cc98d79139b5d622d",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T05:23:35Z",
+      "closedAt": "2026-10-18T05:23:35Z",
+      "mergeCommitSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 609,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T04:44:25Z",
+      "updatedAt": "2026-10-18T06:23:22Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "e56a551a7d98184c8fd81d0ee4d30fc501552edc",
+      "baseSha": "0bc0430700a85fbd37799e72e77cb81d68b0ea1e",
+      "events": [
+        {
+          "id": 33555625005,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T04:45:14Z",
+          "commitId": null
+        },
+        {
+          "id": 33555883917,
+          "event": "merged",
+          "createdAt": "2026-10-18T04:54:28Z",
+          "commitId": "83549de931e735105a4e575d283dd95a2ce49b62"
+        },
+        {
+          "id": 33555883968,
+          "event": "closed",
+          "createdAt": "2026-10-18T04:54:28Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "9683688d2c04e67fa71b701f268bc15d45e67c3b3080bd91b63696b63f9d8451",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T04:54:28Z",
+      "closedAt": "2026-10-18T04:54:28Z",
+      "mergeCommitSha": "83549de931e735105a4e575d283dd95a2ce49b62",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 608,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T04:30:03Z",
+      "updatedAt": "2026-10-18T06:23:21Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "1d07bb257c4534e602ef75ac65b40487d903d8d4",
+      "baseSha": "92b95f37a6ab2fe3541b227f76c2bc45bffd67b6",
+      "events": [
+        {
+          "id": 33555273756,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T04:32:20Z",
+          "commitId": null
+        },
+        {
+          "id": 33555509537,
+          "event": "merged",
+          "createdAt": "2026-10-18T04:41:05Z",
+          "commitId": "0bc0430700a85fbd37799e72e77cb81d68b0ea1e"
+        },
+        {
+          "id": 33555509574,
+          "event": "closed",
+          "createdAt": "2026-10-18T04:41:05Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "a1d853d3892bbe6df3cccaec9e1796ee65e91c9a36291b6ece7f757e8d88aae4",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T04:41:05Z",
+      "closedAt": "2026-10-18T04:41:05Z",
+      "mergeCommitSha": "0bc0430700a85fbd37799e72e77cb81d68b0ea1e",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 607,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T03:55:43Z",
+      "updatedAt": "2026-10-18T06:23:20Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "452450df73007f24488500df73b569749f707831",
+      "baseSha": "917ce8b5bcb159afd769976e10a2e84e45b92fad",
+      "events": [
+        {
+          "id": 33554233025,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T03:56:07Z",
+          "commitId": null
+        },
+        {
+          "id": 33554504559,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T04:05:18Z",
+          "commitId": null
+        },
+        {
+          "id": 33554563892,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T04:07:10Z",
+          "commitId": null
+        },
+        {
+          "id": 33554647054,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T04:09:46Z",
+          "commitId": null
+        },
+        {
+          "id": 33554666573,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T04:10:29Z",
+          "commitId": null
+        },
+        {
+          "id": 33555063097,
+          "event": "merged",
+          "createdAt": "2026-10-18T04:24:31Z",
+          "commitId": "92b95f37a6ab2fe3541b227f76c2bc45bffd67b6"
+        },
+        {
+          "id": 33555063263,
+          "event": "closed",
+          "createdAt": "2026-10-18T04:24:31Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "dd73d25833d585bf6dbbe6b8c885a67aed3dcd399c8748f32cd34925f9e78775",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T04:24:31Z",
+      "closedAt": "2026-10-18T04:24:31Z",
+      "mergeCommitSha": "92b95f37a6ab2fe3541b227f76c2bc45bffd67b6",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 606,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T03:33:44Z",
+      "updatedAt": "2026-10-18T06:23:18Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "976566dcdb05f3de6400f1908a22aca2f29688aa",
+      "baseSha": "fc79d018cedccb29e147935d79ce84dace5c0f7a",
+      "events": [
+        {
+          "id": 33553629553,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T03:34:47Z",
+          "commitId": null
+        },
+        {
+          "id": 33554017416,
+          "event": "merged",
+          "createdAt": "2026-10-18T03:48:35Z",
+          "commitId": "917ce8b5bcb159afd769976e10a2e84e45b92fad"
+        },
+        {
+          "id": 33554017499,
+          "event": "closed",
+          "createdAt": "2026-10-18T03:48:35Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "9b18660fd9a82524845bdfa624ef77512acba774c1bb49ebfb4961b7fdf3dc0c",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T03:48:35Z",
+      "closedAt": "2026-10-18T03:48:35Z",
+      "mergeCommitSha": "917ce8b5bcb159afd769976e10a2e84e45b92fad",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 605,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T03:16:23Z",
+      "updatedAt": "2026-10-18T06:23:17Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "91e01b330007a01ee82d0f73631923a746f02cd3",
+      "baseSha": "b2633798c208548c7112398cbf2c54493b6982ea",
+      "events": [
+        {
+          "id": 33553164954,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T03:18:05Z",
+          "commitId": null
+        },
+        {
+          "id": 33553509242,
+          "event": "merged",
+          "createdAt": "2026-10-18T03:30:31Z",
+          "commitId": "fc79d018cedccb29e147935d79ce84dace5c0f7a"
+        },
+        {
+          "id": 33553509424,
+          "event": "closed",
+          "createdAt": "2026-10-18T03:30:31Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "d6c553cfdd5b85b1ba0b1377e5da0e7f2fcc6b49a11b848a389b97bf351ef453",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T03:30:31Z",
+      "closedAt": "2026-10-18T03:30:31Z",
+      "mergeCommitSha": "fc79d018cedccb29e147935d79ce84dace5c0f7a",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 604,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T01:57:08Z",
+      "updatedAt": "2026-10-18T06:23:15Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "5de800d0edcf1b4d171d25e190208a81f275388b",
+      "baseSha": "52cdf7d2c527bd0f1c065b5a85f770c8f8a46a07",
+      "events": [
+        {
+          "id": 33550787964,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T01:58:13Z",
+          "commitId": null
+        },
+        {
+          "id": 33551048590,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T02:07:00Z",
+          "commitId": null
+        },
+        {
+          "id": 33551052226,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T02:07:06Z",
+          "commitId": null
+        },
+        {
+          "id": 33551430628,
+          "event": "merged",
+          "createdAt": "2026-10-18T02:19:13Z",
+          "commitId": "b2633798c208548c7112398cbf2c54493b6982ea"
+        },
+        {
+          "id": 33551430674,
+          "event": "closed",
+          "createdAt": "2026-10-18T02:19:14Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "a4d40dc1f22cde8fdca3769dc6f4b3cfac235e59da5beba6c66edfc0c289e464",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T02:19:13Z",
+      "closedAt": "2026-10-18T02:19:14Z",
+      "mergeCommitSha": "b2633798c208548c7112398cbf2c54493b6982ea",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 603,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T01:43:22Z",
+      "updatedAt": "2026-10-18T06:23:14Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "d90908f609537d82f4867bd628a9a177e57b941d",
+      "baseSha": "9568d25a4207468f80db47c12264db1e7b3bb0ec",
+      "events": [
+        {
+          "id": 33551690112,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T02:27:56Z",
+          "commitId": null
+        },
+        {
+          "id": 33551695776,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T02:28:08Z",
+          "commitId": null
+        },
+        {
+          "id": 33553211212,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T03:19:45Z",
+          "commitId": null
+        },
+        {
+          "id": 33553266582,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T03:21:41Z",
+          "commitId": null
+        },
+        {
+          "id": 33553566011,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T03:32:33Z",
+          "commitId": null
+        },
+        {
+          "id": 33553672389,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T03:36:20Z",
+          "commitId": null
+        },
+        {
+          "id": 33555351180,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T04:35:09Z",
+          "commitId": null
+        },
+        {
+          "id": 33555382236,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T04:36:18Z",
+          "commitId": null
+        },
+        {
+          "id": 33555489026,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T04:40:19Z",
+          "commitId": null
+        },
+        {
+          "id": 33555765295,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T04:50:28Z",
+          "commitId": null
+        },
+        {
+          "id": 33555903029,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T04:55:09Z",
+          "commitId": null
+        },
+        {
+          "id": 33556207577,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T05:05:43Z",
+          "commitId": null
+        },
+        {
+          "id": 33556441404,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T05:13:47Z",
+          "commitId": null
+        },
+        {
+          "id": 33556519290,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T05:16:30Z",
+          "commitId": null
+        },
+        {
+          "id": 33556690453,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-18T05:21:33Z",
+          "commitId": null
+        },
+        {
+          "id": 33556897458,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T05:28:46Z",
+          "commitId": null
+        },
+        {
+          "id": 33557172764,
+          "event": "merged",
+          "createdAt": "2026-10-18T05:38:52Z",
+          "commitId": "fc9014c28af9498e1191f75fe7d8008bafea9dc4"
+        },
+        {
+          "id": 33557172791,
+          "event": "closed",
+          "createdAt": "2026-10-18T05:38:52Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "9ba219287c3778997f64a6c04938d944a9c39540f5b70b0d0f2324b23e9d2256",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T05:38:51Z",
+      "closedAt": "2026-10-18T05:38:52Z",
+      "mergeCommitSha": "fc9014c28af9498e1191f75fe7d8008bafea9dc4",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 602,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-18T01:06:55Z",
+      "updatedAt": "2026-10-18T06:23:13Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "20b46ece0789efed7b132f16b308bc31718482b8",
+      "baseSha": "89046bd30a501f7a3c1a643ab75d3bd54d0a165d",
+      "events": [
+        {
+          "id": 33549135336,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-18T01:07:44Z",
+          "commitId": null
+        },
+        {
+          "id": 33549646214,
+          "event": "merged",
+          "createdAt": "2026-10-18T01:24:33Z",
+          "commitId": "52cdf7d2c527bd0f1c065b5a85f770c8f8a46a07"
+        },
+        {
+          "id": 33549646265,
+          "event": "closed",
+          "createdAt": "2026-10-18T01:24:33Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "ffaeb80ae2ab05e7f9ef5fab6e97ec267a6b75b448c2cd381d94a448a688fa13",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-18T01:24:33Z",
+      "closedAt": "2026-10-18T01:24:33Z",
+      "mergeCommitSha": "52cdf7d2c527bd0f1c065b5a85f770c8f8a46a07",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 601,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-17T23:15:49Z",
+      "updatedAt": "2026-10-18T06:23:12Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "be983ba73f7ef6898650bf27e03d831bf2235f65",
+      "baseSha": "aa7366d7f7e7db3f82329a5dee2c7eab19517be6",
+      "events": [
+        {
+          "id": 33545618350,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T23:17:03Z",
+          "commitId": null
+        },
+        {
+          "id": 33546024686,
+          "event": "merged",
+          "createdAt": "2026-10-17T23:28:53Z",
+          "commitId": "89046bd30a501f7a3c1a643ab75d3bd54d0a165d"
+        },
+        {
+          "id": 33546024730,
+          "event": "closed",
+          "createdAt": "2026-10-17T23:28:54Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "0e95ee90a0d7335aa01e3c876211e84a28c91c027ff8de75042fda9fef2abe80",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T23:28:53Z",
+      "closedAt": "2026-10-17T23:28:53Z",
+      "mergeCommitSha": "89046bd30a501f7a3c1a643ab75d3bd54d0a165d",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 600,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-17T23:01:46Z",
+      "updatedAt": "2026-10-18T06:23:10Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "1c46540c16b924d2a74a1d2c90c6ff3fac24d3fc",
+      "baseSha": "8c23c4d041dcfd4a84c7a57ec8b2c1a8e211bd13",
+      "events": [
+        {
+          "id": 33545111846,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T23:02:21Z",
+          "commitId": null
+        },
+        {
+          "id": 33545520452,
+          "event": "merged",
+          "createdAt": "2026-10-17T23:14:15Z",
+          "commitId": "aa7366d7f7e7db3f82329a5dee2c7eab19517be6"
+        },
+        {
+          "id": 33545520513,
+          "event": "closed",
+          "createdAt": "2026-10-17T23:14:15Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "38b64f38daf4468dd9c181cc5d6c5a8e45ae992dd5951d0aef82830a1beab795",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T23:14:15Z",
+      "closedAt": "2026-10-17T23:14:15Z",
+      "mergeCommitSha": "aa7366d7f7e7db3f82329a5dee2c7eab19517be6",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 599,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-17T22:27:26Z",
+      "updatedAt": "2026-10-18T06:23:09Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "1388d6e68c092e29906abff134aec1289c8489c8",
+      "baseSha": "f8ddec6b42bb93b4083ac46504dcc4a13c9dcc3f",
+      "events": [
+        {
+          "id": 33543931439,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T22:28:12Z",
+          "commitId": null
+        },
+        {
+          "id": 33544293490,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-17T22:38:26Z",
+          "commitId": null
+        },
+        {
+          "id": 33544326522,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T22:39:21Z",
+          "commitId": null
+        },
+        {
+          "id": 33545027512,
+          "event": "merged",
+          "createdAt": "2026-10-17T22:59:50Z",
+          "commitId": "8c23c4d041dcfd4a84c7a57ec8b2c1a8e211bd13"
+        },
+        {
+          "id": 33545027588,
+          "event": "closed",
+          "createdAt": "2026-10-17T22:59:50Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "1343486166867f78054b7c5ff377dc284a6f080a16ba1a6604851bcad3dfbd53",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T22:59:50Z",
+      "closedAt": "2026-10-17T22:59:50Z",
+      "mergeCommitSha": "8c23c4d041dcfd4a84c7a57ec8b2c1a8e211bd13",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 598,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-17T22:11:03Z",
+      "updatedAt": "2026-10-18T06:23:08Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "78cef811c9cf7b558dd259c0bdb5fcc8341e1c7a",
+      "baseSha": "4571c046218c662c03b1467a80b83c5b30a806e1",
+      "events": [
+        {
+          "id": 33543306200,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T22:11:33Z",
+          "commitId": null
+        },
+        {
+          "id": 33543820116,
+          "event": "merged",
+          "createdAt": "2026-10-17T22:25:05Z",
+          "commitId": "f8ddec6b42bb93b4083ac46504dcc4a13c9dcc3f"
+        },
+        {
+          "id": 33543820187,
+          "event": "closed",
+          "createdAt": "2026-10-17T22:25:05Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "0b8312bfab595ddd88beee8c9062d8f57f7b1f5550af946cf7fbace1887e5365",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T22:25:05Z",
+      "closedAt": "2026-10-17T22:25:05Z",
+      "mergeCommitSha": "f8ddec6b42bb93b4083ac46504dcc4a13c9dcc3f",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 597,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-17T21:27:16Z",
+      "updatedAt": "2026-10-18T06:23:06Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "cdd76ec174cdcd09bf73da84f81e2e2fe017824c",
+      "baseSha": "c6df9b6c69909c953e6641883c5dea2d289cbcf0",
+      "events": [
+        {
+          "id": 33541691038,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T21:27:58Z",
+          "commitId": null
+        },
+        {
+          "id": 33541743406,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-17T21:29:20Z",
+          "commitId": null
+        },
+        {
+          "id": 33541985924,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T21:35:36Z",
+          "commitId": null
+        },
+        {
+          "id": 33542192743,
+          "event": "merged",
+          "createdAt": "2026-10-17T21:40:58Z",
+          "commitId": "4571c046218c662c03b1467a80b83c5b30a806e1"
+        },
+        {
+          "id": 33542192805,
+          "event": "closed",
+          "createdAt": "2026-10-17T21:40:58Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "723cb993b65a961032cb7cb92e7e113d3cce71e921bb8e2a0ae6e10afb73243f",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T21:40:58Z",
+      "closedAt": "2026-10-17T21:40:58Z",
+      "mergeCommitSha": "4571c046218c662c03b1467a80b83c5b30a806e1",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 596,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-17T21:01:32Z",
+      "updatedAt": "2026-10-18T06:23:05Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "037f7abe12e67bd3e8a8d41b7f2a2a8fd90f4b93",
+      "baseSha": "f2698baff3e6d43ba696ca1fe6783ab6d25b3c49",
+      "events": [
+        {
+          "id": 33540767098,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T21:04:19Z",
+          "commitId": null
+        },
+        {
+          "id": 33541136380,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-17T21:13:37Z",
+          "commitId": null
+        },
+        {
+          "id": 33541141019,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T21:13:44Z",
+          "commitId": null
+        },
+        {
+          "id": 33541426129,
+          "event": "merged",
+          "createdAt": "2026-10-17T21:21:08Z",
+          "commitId": "c6df9b6c69909c953e6641883c5dea2d289cbcf0"
+        },
+        {
+          "id": 33541426189,
+          "event": "closed",
+          "createdAt": "2026-10-17T21:21:08Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "d5a312eb16c220c8b41d3ba977e07a25fc813928b9d7dbfec819641aad7b145a",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T21:21:08Z",
+      "closedAt": "2026-10-17T21:21:08Z",
+      "mergeCommitSha": "c6df9b6c69909c953e6641883c5dea2d289cbcf0",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 595,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-17T20:46:09Z",
+      "updatedAt": "2026-10-18T06:23:04Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "217d437768645816f54ef80c8e5de05c23209239",
+      "baseSha": "7f41f880342298d3b8e41b5034b18383dd32cbe1",
+      "events": [
+        {
+          "id": 33540088093,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T20:46:59Z",
+          "commitId": null
+        },
+        {
+          "id": 33540504819,
+          "event": "merged",
+          "createdAt": "2026-10-17T20:57:32Z",
+          "commitId": "f2698baff3e6d43ba696ca1fe6783ab6d25b3c49"
+        },
+        {
+          "id": 33540504872,
+          "event": "closed",
+          "createdAt": "2026-10-17T20:57:33Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "88da2a3c07e0929122a652153630d12dbd8c3f8e1ef2a32a9b6a0513518551bc",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T20:57:32Z",
+      "closedAt": "2026-10-17T20:57:32Z",
+      "mergeCommitSha": "f2698baff3e6d43ba696ca1fe6783ab6d25b3c49",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 594,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-17T19:27:39Z",
+      "updatedAt": "2026-10-18T06:23:02Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "21ec6a9ce61dc92ab2ec0a2bb62f8dd85f54eacb",
+      "baseSha": "ed723fc0fe383ad860d9b5b2f9237db413d4d445",
+      "events": [
+        {
+          "id": 33536953287,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T19:28:17Z",
+          "commitId": null
+        },
+        {
+          "id": 33537395689,
+          "event": "merged",
+          "createdAt": "2026-10-17T19:39:31Z",
+          "commitId": "7f41f880342298d3b8e41b5034b18383dd32cbe1"
+        },
+        {
+          "id": 33537395735,
+          "event": "closed",
+          "createdAt": "2026-10-17T19:39:31Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "0b93f3f32f6360b4bcf070b4117bb37e5f0968472f71ad13b0f15093509b3b24",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T19:39:31Z",
+      "closedAt": "2026-10-17T19:39:31Z",
+      "mergeCommitSha": "7f41f880342298d3b8e41b5034b18383dd32cbe1",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 593,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-17T19:15:19Z",
+      "updatedAt": "2026-10-18T06:23:01Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "7d7ab2a9d076ca0487ac6ec8aeabb0934615b755",
+      "baseSha": "8044b4f3fd4ed619d10e45be76811b84307aa42b",
+      "events": [
+        {
+          "id": 33536520869,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T19:18:03Z",
+          "commitId": null
+        },
+        {
+          "id": 33536837489,
+          "event": "merged",
+          "createdAt": "2026-10-17T19:25:23Z",
+          "commitId": "ed723fc0fe383ad860d9b5b2f9237db413d4d445"
+        },
+        {
+          "id": 33536837554,
+          "event": "closed",
+          "createdAt": "2026-10-17T19:25:23Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "4396070eeeda7056c6e9274b683f6e3ddf674a0a6b3c3b6def88bc16a6ed3289",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T19:25:22Z",
+      "closedAt": "2026-10-17T19:25:23Z",
+      "mergeCommitSha": "ed723fc0fe383ad860d9b5b2f9237db413d4d445",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 592,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-17T18:35:00Z",
+      "updatedAt": "2026-10-18T06:23:00Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "73e76a79e4eaabfdecef2c3506469d925521629e",
+      "baseSha": "512d8329de077c81e87a44a856e9e76448106181",
+      "events": [
+        {
+          "id": 33534752438,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T18:36:07Z",
+          "commitId": null
+        },
+        {
+          "id": 33535508064,
+          "event": "merged",
+          "createdAt": "2026-10-17T18:53:09Z",
+          "commitId": "8044b4f3fd4ed619d10e45be76811b84307aa42b"
+        },
+        {
+          "id": 33535508176,
+          "event": "closed",
+          "createdAt": "2026-10-17T18:53:09Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "05219330e39643f2325975ae056f45aa9f920093c36c13483c0073e6f461ff58",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T18:53:09Z",
+      "closedAt": "2026-10-17T18:53:09Z",
+      "mergeCommitSha": "8044b4f3fd4ed619d10e45be76811b84307aa42b",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 591,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-15T18:32:59Z",
+      "updatedAt": "2026-10-18T06:22:59Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "91c4e24e36d2fceb83e033fc8968c8e387db4653",
+      "baseSha": "2769e3f10833d17197049750958db1b24e6b4539",
+      "events": [
+        {
+          "id": 33365807173,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-15T18:38:07Z",
+          "commitId": null
+        },
+        {
+          "id": 33532008170,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-17T17:29:45Z",
+          "commitId": null
+        },
+        {
+          "id": 33532511670,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T17:42:14Z",
+          "commitId": null
+        },
+        {
+          "id": 33534072041,
+          "event": "merged",
+          "createdAt": "2026-10-17T18:20:30Z",
+          "commitId": "525eed1344b8ec994cd7def53e92927d0a14697c"
+        },
+        {
+          "id": 33534072119,
+          "event": "closed",
+          "createdAt": "2026-10-17T18:20:30Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "fbb064d0217e896768931eefbb10d6565cbe2a9409ac42aeb97f91c5aec13d7b",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T18:20:30Z",
+      "closedAt": "2026-10-17T18:20:30Z",
+      "mergeCommitSha": "525eed1344b8ec994cd7def53e92927d0a14697c",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 590,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-14T12:16:44Z",
+      "updatedAt": "2026-10-18T06:22:57Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "d9274494d8f9d834765186faaf63c91644ac8896",
+      "baseSha": "db2d46e60a3770385ebebab6d91a4e003a543c70",
+      "events": [
+        {
+          "id": 33225020518,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T12:27:06Z",
+          "commitId": null
+        },
+        {
+          "id": 33225854648,
+          "event": "merged",
+          "createdAt": "2026-10-14T12:37:35Z",
+          "commitId": "35b2405cc1818f66e2842d068a509f74e1a8f83c"
+        },
+        {
+          "id": 33225854822,
+          "event": "closed",
+          "createdAt": "2026-10-14T12:37:35Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "3ab43e789ceb82414b733c5848b5859a1b1cdef845e6d35ade1b2d1b36820bfb",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-14T12:37:35Z",
+      "closedAt": "2026-10-14T12:37:35Z",
+      "mergeCommitSha": "35b2405cc1818f66e2842d068a509f74e1a8f83c",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 589,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-14T12:00:20Z",
+      "updatedAt": "2026-10-18T06:22:56Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "cfcf17ca0a75012700e77755e0c2e6627a3ef078",
+      "baseSha": "35b2405cc1818f66e2842d068a509f74e1a8f83c",
+      "events": [
+        {
+          "id": 33223734922,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T12:10:35Z",
+          "commitId": null
+        },
+        {
+          "id": 33224411241,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T12:19:23Z",
+          "commitId": null
+        },
+        {
+          "id": 33226505546,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T12:45:57Z",
+          "commitId": null
+        },
+        {
+          "id": 33228402353,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T13:08:34Z",
+          "commitId": null
+        },
+        {
+          "id": 33230737688,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T13:36:16Z",
+          "commitId": null
+        },
+        {
+          "id": 33231407214,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T13:43:32Z",
+          "commitId": null
+        },
+        {
+          "id": 33234836804,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T14:21:48Z",
+          "commitId": null
+        },
+        {
+          "id": 33235698545,
+          "event": "merged",
+          "createdAt": "2026-10-14T14:31:01Z",
+          "commitId": "2769e3f10833d17197049750958db1b24e6b4539"
+        },
+        {
+          "id": 33235698738,
+          "event": "closed",
+          "createdAt": "2026-10-14T14:31:01Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "c821ac5645785c7135815a1a05fd9d8640181152ec8c40e74a85175d1c98894e",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-14T14:31:01Z",
+      "closedAt": "2026-10-14T14:31:01Z",
+      "mergeCommitSha": "2769e3f10833d17197049750958db1b24e6b4539",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 588,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-14T11:31:28Z",
+      "updatedAt": "2026-10-18T06:22:54Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "0de41da6748e042e8a535e7a8b3f45e897476083",
+      "baseSha": "e9dd38b070e2d7378435da79fbb8a75ea260a6c6",
+      "events": [
+        {
+          "id": 33221555119,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T11:40:09Z",
+          "commitId": null
+        },
+        {
+          "id": 33221559303,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T11:40:12Z",
+          "commitId": null
+        },
+        {
+          "id": 33221802585,
+          "event": "merged",
+          "createdAt": "2026-10-14T11:43:42Z",
+          "commitId": "db2d46e60a3770385ebebab6d91a4e003a543c70"
+        },
+        {
+          "id": 33221802808,
+          "event": "closed",
+          "createdAt": "2026-10-14T11:43:42Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "cf37d4f6dea2d807de825a11e995fa85d967c6e9ea704a827c21d6f6f443e773",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-14T11:43:42Z",
+      "closedAt": "2026-10-14T11:43:42Z",
+      "mergeCommitSha": "db2d46e60a3770385ebebab6d91a4e003a543c70",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 587,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-14T10:39:44Z",
+      "updatedAt": "2026-10-18T06:22:53Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "53bd4c96b6ab62367de47f607e59eb000530443a",
+      "baseSha": "525eed1344b8ec994cd7def53e92927d0a14697c",
+      "events": [
+        {
+          "id": 33237210636,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T14:48:11Z",
+          "commitId": null
+        },
+        {
+          "id": 33238804753,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T15:06:38Z",
+          "commitId": null
+        },
+        {
+          "id": 33238817980,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T15:06:46Z",
+          "commitId": null
+        },
+        {
+          "id": 33532012762,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-17T17:29:52Z",
+          "commitId": null
+        },
+        {
+          "id": 33532516448,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T17:42:20Z",
+          "commitId": null
+        },
+        {
+          "id": 33534092417,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-17T18:21:00Z",
+          "commitId": null
+        },
+        {
+          "id": 33534173596,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-17T18:23:03Z",
+          "commitId": null
+        },
+        {
+          "id": 33534519581,
+          "event": "merged",
+          "createdAt": "2026-10-17T18:31:16Z",
+          "commitId": "512d8329de077c81e87a44a856e9e76448106181"
+        },
+        {
+          "id": 33534519672,
+          "event": "closed",
+          "createdAt": "2026-10-17T18:31:16Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "37ea207f0302fa9b056127dc8b0f6c8c0f237067b627855e7b406a9909062a5d",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-17T18:31:16Z",
+      "closedAt": "2026-10-17T18:31:16Z",
+      "mergeCommitSha": "512d8329de077c81e87a44a856e9e76448106181",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 586,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-14T09:51:59Z",
+      "updatedAt": "2026-10-18T06:22:52Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "b5e5c2a84b428864c2250f12c248241f196c8b37",
+      "baseSha": "f451c0cbeff799d24572d20a0d30b130375910e5",
+      "events": [
+        {
+          "id": 33216315734,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T10:23:35Z",
+          "commitId": null
+        },
+        {
+          "id": 33216898785,
+          "event": "merged",
+          "createdAt": "2026-10-14T10:32:10Z",
+          "commitId": "f893fcbc393b11ec43ceb96220d508c050736fd7"
+        },
+        {
+          "id": 33216898881,
+          "event": "closed",
+          "createdAt": "2026-10-14T10:32:10Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "6272e20f5258cc0aa1624cd4fd392f3b55db3097370470894d486d870bce7623",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-14T10:32:10Z",
+      "closedAt": "2026-10-14T10:32:10Z",
+      "mergeCommitSha": "f893fcbc393b11ec43ceb96220d508c050736fd7",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 585,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-14T07:35:15Z",
+      "updatedAt": "2026-10-18T06:22:51Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "3ac9878c538bc11e4fe88529d252534c306489ff",
+      "baseSha": "53fba7b09714e1b89ae1a19788487fd7e02d44b8",
+      "events": [
+        {
+          "id": 33211666403,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T09:19:53Z",
+          "commitId": null
+        },
+        {
+          "id": 33213092801,
+          "event": "merged",
+          "createdAt": "2026-10-14T09:39:12Z",
+          "commitId": "f451c0cbeff799d24572d20a0d30b130375910e5"
+        },
+        {
+          "id": 33213092923,
+          "event": "closed",
+          "createdAt": "2026-10-14T09:39:12Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "a6c6475b7a62c3374741e2898edba9a3c46f6bdbcd2a941d676d39821af0d88d",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-14T09:39:12Z",
+      "closedAt": "2026-10-14T09:39:12Z",
+      "mergeCommitSha": "f451c0cbeff799d24572d20a0d30b130375910e5",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 520,
+      "classification": "not-newly-eligible",
+      "baselineDraft": true,
+      "createdAt": "2026-10-11T13:56:31Z",
+      "updatedAt": "2026-10-17T20:42:21Z",
+      "draft": true,
+      "state": "closed",
+      "headSha": "2bdb0f56c61243ba19be12f8c16524f7b9c5248d",
+      "baseSha": "bee0020a9cfb1c006d9df8000e8d271e8e8047bd",
+      "events": [
+        {
+          "id": 32988077767,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-11T13:56:38Z",
+          "commitId": null
+        },
+        {
+          "id": 32988153043,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-11T13:58:41Z",
+          "commitId": null
+        },
+        {
+          "id": 33539909585,
+          "event": "closed",
+          "createdAt": "2026-10-17T20:42:21Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "not-newly-eligible",
+      "evidenceBasis": "Earlier conservative projection",
+      "changeId": "4c4f1f99138754074bcb8c26acb953c14eb735329e1c72db7bd037afbc39c73a",
+      "initialRef": "2bdb0f56c61243ba19be12f8c16524f7b9c5248d",
+      "currentObservedState": "closed",
+      "currentObservedDraft": true,
+      "mergedAt": null,
+      "closedAt": "2026-10-17T20:42:21Z",
+      "mergeCommitSha": null,
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 584,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-14T07:06:29Z",
+      "updatedAt": "2026-10-14T11:13:21Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "2f860a8ec5c62061aa0ff1b67c5275d01243b3d7",
+      "baseSha": "f893fcbc393b11ec43ceb96220d508c050736fd7",
+      "events": [
+        {
+          "id": 33207541370,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T08:22:48Z",
+          "commitId": null
+        },
+        {
+          "id": 33207549393,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T08:22:55Z",
+          "commitId": null
+        },
+        {
+          "id": 33208321644,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T08:34:05Z",
+          "commitId": null
+        },
+        {
+          "id": 33208411401,
+          "event": "closed",
+          "createdAt": "2026-10-14T08:35:22Z",
+          "commitId": null
+        },
+        {
+          "id": 33208423477,
+          "event": "reopened",
+          "createdAt": "2026-10-14T08:35:32Z",
+          "commitId": null
+        },
+        {
+          "id": 33208723759,
+          "event": "closed",
+          "createdAt": "2026-10-14T08:39:46Z",
+          "commitId": null
+        },
+        {
+          "id": 33208728722,
+          "event": "reopened",
+          "createdAt": "2026-10-14T08:39:50Z",
+          "commitId": null
+        },
+        {
+          "id": 33209180440,
+          "event": "closed",
+          "createdAt": "2026-10-14T08:45:56Z",
+          "commitId": null
+        },
+        {
+          "id": 33209185398,
+          "event": "reopened",
+          "createdAt": "2026-10-14T08:46:00Z",
+          "commitId": null
+        },
+        {
+          "id": 33209540555,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T08:50:45Z",
+          "commitId": null
+        },
+        {
+          "id": 33212200446,
+          "event": "closed",
+          "createdAt": "2026-10-14T09:26:58Z",
+          "commitId": null
+        },
+        {
+          "id": 33212206520,
+          "event": "reopened",
+          "createdAt": "2026-10-14T09:27:03Z",
+          "commitId": null
+        },
+        {
+          "id": 33218750090,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T10:59:00Z",
+          "commitId": null
+        },
+        {
+          "id": 33218752313,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T10:59:02Z",
+          "commitId": null
+        },
+        {
+          "id": 33219206726,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T11:05:38Z",
+          "commitId": null
+        },
+        {
+          "id": 33219210726,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T11:05:41Z",
+          "commitId": null
+        },
+        {
+          "id": 33219734690,
+          "event": "merged",
+          "createdAt": "2026-10-14T11:13:21Z",
+          "commitId": "e9dd38b070e2d7378435da79fbb8a75ea260a6c6"
+        },
+        {
+          "id": 33219734839,
+          "event": "closed",
+          "createdAt": "2026-10-14T11:13:21Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "1d8b01f85dbaf159b4da5e483dc0551e2ad474bfb484b11d094c6a3b858c690b",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-14T11:13:21Z",
+      "closedAt": "2026-10-14T11:13:21Z",
+      "mergeCommitSha": "e9dd38b070e2d7378435da79fbb8a75ea260a6c6",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 581,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-13T20:56:15Z",
+      "updatedAt": "2026-10-14T07:24:32Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "51f1748d5849f84e3a6d06422e1d1d333e07859d",
+      "baseSha": "51215db9cb168295ba246d7eed255a78714b8a27",
+      "events": [
+        {
+          "id": 33172909564,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-13T21:17:22Z",
+          "commitId": null
+        },
+        {
+          "id": 33199944922,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T06:24:15Z",
+          "commitId": null
+        },
+        {
+          "id": 33202898936,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T07:13:45Z",
+          "commitId": null
+        },
+        {
+          "id": 33203293471,
+          "event": "merged",
+          "createdAt": "2026-10-14T07:19:58Z",
+          "commitId": "53fba7b09714e1b89ae1a19788487fd7e02d44b8"
+        },
+        {
+          "id": 33203293573,
+          "event": "closed",
+          "createdAt": "2026-10-14T07:19:58Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "8a4a34674f1eea02d5d9999096daebbefb9f5a21625c61afeb489bfc7cd80dde",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-14T07:19:58Z",
+      "closedAt": "2026-10-14T07:19:58Z",
+      "mergeCommitSha": "53fba7b09714e1b89ae1a19788487fd7e02d44b8",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 583,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-13T23:43:29Z",
+      "updatedAt": "2026-10-14T01:15:11Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "7481f71c8c65644750585aef271dc00aa75003e8",
+      "baseSha": "17ae9549734708b86ca81539848b67123a2e15d8",
+      "events": [
+        {
+          "id": 33181106240,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-13T23:43:44Z",
+          "commitId": null
+        },
+        {
+          "id": 33181780999,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-13T23:57:24Z",
+          "commitId": null
+        },
+        {
+          "id": 33181787312,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-13T23:57:32Z",
+          "commitId": null
+        },
+        {
+          "id": 33182190829,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T00:06:05Z",
+          "commitId": null
+        },
+        {
+          "id": 33182197059,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T00:06:13Z",
+          "commitId": null
+        },
+        {
+          "id": 33183132153,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T00:25:59Z",
+          "commitId": null
+        },
+        {
+          "id": 33183138144,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T00:26:06Z",
+          "commitId": null
+        },
+        {
+          "id": 33183819417,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T00:40:34Z",
+          "commitId": null
+        },
+        {
+          "id": 33183825549,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T00:40:42Z",
+          "commitId": null
+        },
+        {
+          "id": 33184927543,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-14T01:04:55Z",
+          "commitId": null
+        },
+        {
+          "id": 33184933599,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-14T01:05:03Z",
+          "commitId": null
+        },
+        {
+          "id": 33185285993,
+          "event": "merged",
+          "createdAt": "2026-10-14T01:12:40Z",
+          "commitId": "51215db9cb168295ba246d7eed255a78714b8a27"
+        },
+        {
+          "id": 33185286067,
+          "event": "closed",
+          "createdAt": "2026-10-14T01:12:40Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "63d055263bb35076f4639a95005b0cd61c7e8ab53756badc5e1e40af56744bbd",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-14T01:12:40Z",
+      "closedAt": "2026-10-14T01:12:40Z",
+      "mergeCommitSha": "51215db9cb168295ba246d7eed255a78714b8a27",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 582,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-13T22:59:46Z",
+      "updatedAt": "2026-10-13T23:41:06Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "706973a7d740705acbcc59d2363dc5f826b43281",
+      "baseSha": "bbbf86a8d4c5d9f6b1dcd74e631e04f72f98008e",
+      "events": [
+        {
+          "id": 33178994736,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-13T23:02:07Z",
+          "commitId": null
+        },
+        {
+          "id": 33178996800,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-13T23:02:09Z",
+          "commitId": null
+        },
+        {
+          "id": 33180148620,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-13T23:24:00Z",
+          "commitId": null
+        },
+        {
+          "id": 33180149668,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-13T23:24:01Z",
+          "commitId": null
+        },
+        {
+          "id": 33180640435,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-13T23:34:03Z",
+          "commitId": null
+        },
+        {
+          "id": 33180641465,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-13T23:34:04Z",
+          "commitId": null
+        },
+        {
+          "id": 33180963739,
+          "event": "merged",
+          "createdAt": "2026-10-13T23:40:41Z",
+          "commitId": "17ae9549734708b86ca81539848b67123a2e15d8"
+        },
+        {
+          "id": 33180963829,
+          "event": "closed",
+          "createdAt": "2026-10-13T23:40:41Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "3a228394cc0acb28a585a6247d78ff4d0a05e87b70050771c65949db301305a7",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-13T23:40:41Z",
+      "closedAt": "2026-10-13T23:40:41Z",
+      "mergeCommitSha": "17ae9549734708b86ca81539848b67123a2e15d8",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 580,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-13T20:42:44Z",
+      "updatedAt": "2026-10-13T23:06:07Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "edddc42997c10c7ba2a2980a2fbc9bc217225a96",
+      "baseSha": "b5f6f99309c4ad909c706f80d8175fcedda67487",
+      "events": [
+        {
+          "id": 33172117250,
+          "event": "closed",
+          "createdAt": "2026-10-13T21:05:05Z",
+          "commitId": null
+        },
+        {
+          "id": 33172120131,
+          "event": "reopened",
+          "createdAt": "2026-10-13T21:05:08Z",
+          "commitId": null
+        },
+        {
+          "id": 33174475568,
+          "event": "closed",
+          "createdAt": "2026-10-13T21:42:00Z",
+          "commitId": null
+        },
+        {
+          "id": 33174477653,
+          "event": "reopened",
+          "createdAt": "2026-10-13T21:42:02Z",
+          "commitId": null
+        },
+        {
+          "id": 33174866301,
+          "event": "closed",
+          "createdAt": "2026-10-13T21:48:27Z",
+          "commitId": null
+        },
+        {
+          "id": 33174868551,
+          "event": "reopened",
+          "createdAt": "2026-10-13T21:48:29Z",
+          "commitId": null
+        },
+        {
+          "id": 33178803938,
+          "event": "merged",
+          "createdAt": "2026-10-13T22:58:34Z",
+          "commitId": "bbbf86a8d4c5d9f6b1dcd74e631e04f72f98008e"
+        },
+        {
+          "id": 33178804056,
+          "event": "closed",
+          "createdAt": "2026-10-13T22:58:34Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Created and explicitly merged within the window: non-Draft status necessarily occurred between creation and merge. This uses a bounded historical merge event, not current Draft alone.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "db0164fa90fcbb2a1ff50f2e9fec23170db6065af60c909b586eae60ae09aae4",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-13T22:58:34Z",
+      "closedAt": "2026-10-13T22:58:34Z",
+      "mergeCommitSha": "bbbf86a8d4c5d9f6b1dcd74e631e04f72f98008e",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 579,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-13T19:12:09Z",
+      "updatedAt": "2026-10-13T20:45:22Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "cbf26d20a694b98696f11e38a9ad702039edc344",
+      "baseSha": "18dddeefb97e505a58fd3c84d08cc15e94cac6fe",
+      "events": [
+        {
+          "id": 33166258379,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-13T19:41:58Z",
+          "commitId": null
+        },
+        {
+          "id": 33166898046,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-13T19:50:58Z",
+          "commitId": null
+        },
+        {
+          "id": 33170161575,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-13T20:36:10Z",
+          "commitId": null
+        },
+        {
+          "id": 33170779066,
+          "event": "merged",
+          "createdAt": "2026-10-13T20:45:21Z",
+          "commitId": "b5f6f99309c4ad909c706f80d8175fcedda67487"
+        },
+        {
+          "id": 33170779239,
+          "event": "closed",
+          "createdAt": "2026-10-13T20:45:21Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "aa48bd36bbb9b6166efd90ae5b74ae5746ab0c0eb2d0b5daa11cb36dca5a8007",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-13T20:45:21Z",
+      "closedAt": "2026-10-13T20:45:21Z",
+      "mergeCommitSha": "b5f6f99309c4ad909c706f80d8175fcedda67487",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 517,
+      "classification": "eligible-initial",
+      "baselineDraft": false,
+      "createdAt": "2026-10-11T13:36:06Z",
+      "updatedAt": "2026-10-13T19:38:34Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "c4b0057d9dd47f79df2a896143f7ac6db5da2c2e",
+      "baseSha": "c5686f63909af2e83b749ffa0b91d33cb9ea96ad",
+      "events": [
+        {
+          "id": 32989623085,
+          "event": "closed",
+          "createdAt": "2026-10-11T14:40:15Z",
+          "commitId": null
+        },
+        {
+          "id": 32989625899,
+          "event": "reopened",
+          "createdAt": "2026-10-11T14:40:20Z",
+          "commitId": null
+        },
+        {
+          "id": 32989678418,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-11T14:41:45Z",
+          "commitId": null
+        },
+        {
+          "id": 33006547360,
+          "event": "convert_to_draft",
+          "createdAt": "2026-10-11T22:27:47Z",
+          "commitId": null
+        },
+        {
+          "id": 33007182837,
+          "event": "closed",
+          "createdAt": "2026-10-11T22:47:04Z",
+          "commitId": null
+        },
+        {
+          "id": 33007186010,
+          "event": "reopened",
+          "createdAt": "2026-10-11T22:47:10Z",
+          "commitId": null
+        },
+        {
+          "id": 33016878688,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-12T03:35:43Z",
+          "commitId": null
+        },
+        {
+          "id": 33166017005,
+          "event": "closed",
+          "createdAt": "2026-10-13T19:38:35Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-initial",
+      "evidenceBasis": "Frozen initial non-Draft/open population",
+      "changeId": "858b9fe8f870e6c468226833327a3561f242fbfcbe54f75e5cf23c511cd237c6",
+      "initialRef": "c4b0057d9dd47f79df2a896143f7ac6db5da2c2e",
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": null,
+      "closedAt": "2026-10-13T19:38:34Z",
+      "mergeCommitSha": "dc8352286312a11f8be9112368939a6eed6acfa1",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 563,
+      "classification": "eligible-observed",
+      "baselineDraft": true,
+      "createdAt": "2026-10-12T07:01:44Z",
+      "updatedAt": "2026-10-13T19:00:35Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "193e52194ceec8163a17b9db202e740ed2b7015d",
+      "baseSha": "6262d56351e5db556a23658e0f4e4069efd15717",
+      "events": [
+        {
+          "id": 33162666557,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-13T18:52:27Z",
+          "commitId": null
+        },
+        {
+          "id": 33163158257,
+          "event": "merged",
+          "createdAt": "2026-10-13T18:58:42Z",
+          "commitId": "18dddeefb97e505a58fd3c84d08cc15e94cac6fe"
+        },
+        {
+          "id": 33163158394,
+          "event": "closed",
+          "createdAt": "2026-10-13T18:58:43Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "uncertain",
+      "evidenceBasis": "Frozen baseline Draft plus an explicit in-window ready transition.",
+      "endWindowReconciliationChanged": true,
+      "changeId": "92bfc661881d47474e3da8404a7e5fd690e4601b70ca287dc042f777d089a86c",
+      "initialRef": "e70ddf7d6bbe2bc3cd91ad52ea7af5c1c2b3d61e",
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-13T18:58:42Z",
+      "closedAt": "2026-10-13T18:58:42Z",
+      "mergeCommitSha": "18dddeefb97e505a58fd3c84d08cc15e94cac6fe",
+      "observationAfterWindowEnd": true
+    },
+    {
+      "pr": 578,
+      "classification": "eligible-observed",
+      "createdAt": "2026-10-13T17:42:13Z",
+      "updatedAt": "2026-10-13T18:46:31Z",
+      "draft": false,
+      "state": "closed",
+      "headSha": "0ba5aeef533dac2c49fb118dd216ae9767beed88",
+      "baseSha": "1efb48d92fe350c9e0a7d50f2b8b74a42f125b3a",
+      "events": [
+        {
+          "id": 33158341102,
+          "event": "ready_for_review",
+          "createdAt": "2026-10-13T17:53:48Z",
+          "commitId": null
+        },
+        {
+          "id": 33159462340,
+          "event": "merged",
+          "createdAt": "2026-10-13T18:08:45Z",
+          "commitId": "6262d56351e5db556a23658e0f4e4069efd15717"
+        },
+        {
+          "id": 33159462516,
+          "event": "closed",
+          "createdAt": "2026-10-13T18:08:45Z",
+          "commitId": null
+        }
+      ],
+      "originalConservativeProjection": "eligible-observed",
+      "evidenceBasis": "Creation and explicit first retained ready event both inside window",
+      "changeId": "2d79c186b10d84077707d75acede9ba9cc3917459a0c39fd7cd82c8fa6548110",
+      "initialRef": null,
+      "currentObservedState": "closed",
+      "currentObservedDraft": false,
+      "mergedAt": "2026-10-13T18:08:45Z",
+      "closedAt": "2026-10-13T18:08:45Z",
+      "mergeCommitSha": "6262d56351e5db556a23658e0f4e4069efd15717",
+      "observationAfterWindowEnd": true
+    }
+  ],
+  "counts": {
+    "eligible-observed": 74,
+    "uncertain": 1,
+    "not-eligible-remained-draft": 6,
+    "eligible-initial": 6,
+    "fixture-excluded": 1,
+    "not-newly-eligible": 1
+  },
+  "comparisonToPriorConservativeProjection": {
+    "newPositiveEvidencePRs": [
+      658,
+      654,
+      646,
+      644,
+      643,
+      637,
+      634,
+      625,
+      580,
+      563
+    ],
+    "draftOnlyExcludedPRs": [
+      107,
+      153,
+      322,
+      456,
+      238,
+      239
+    ],
+    "oldArchivesChanged": false,
+    "ruleChanged": false,
+    "reason": "Apply the same frozen eligibility rule using initial-Draft plus ready transitions and created/merged-within-window bounds, rather than requiring a ready event for every in-window-created merged PR."
+  },
+  "confirmedEligible": 80,
+  "uncertainPRs": [
+    353
+  ],
+  "populationComplete": false,
+  "primaryDenominatorFrozen": false,
+  "scope": "80 positive observations, one unresolved pre-window closed/reopened PR, seven excluded observations and one fixture. Bounds are diagnostic, not authenticated event history. No case/violation adjudication."
+}
