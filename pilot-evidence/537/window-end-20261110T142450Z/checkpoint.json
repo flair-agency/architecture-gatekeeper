@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "recordKind": "end-of-window-incomplete-checkpoint",
+  "issue": 537,
+  "repository": "flair-agency/architecture-gatekeeper",
+  "window": {
+    "start": "2026-10-13T22:43:35+09:00",
+    "endExclusive": "2026-11-10T22:43:35+09:00",
+    "durationDays": 28,
+    "timezone": "Asia/Tokyo"
+  },
+  "windowEnded": true,
+  "recordedAtUtc": "2026-11-10 14:38:17 UTC",
+  "status": "observation-window-ended; collection/audit/aggregation-incomplete",
+  "scheduledInvocationObservedAtUtc": "2026-11-10T14:24:36.415978+00:00",
+  "scheduledAutomationEnabled": false,
+  "scheduledOccurrenceCount": 4,
+  "auditSeed": "pilot537-103c45b7b73d076caa81e7ab0651e010",
+  "primaryPopulationComplete": false,
+  "primarySampleMembershipFrozen": false,
+  "confirmedEligibleChanges": 80,
+  "uncertainEligibilityPRs": [
+    353
+  ],
+  "provisionalAuditCandidateCount": 20,
+  "provisionalMembershipStableUnderUncertainInclusion": true,
+  "productionSamplerExecuted": false,
+  "auditPacketReady": false,
+  "missingSelectedInitialRevisions": 18,
+  "selectedAuthorityResolutionComplete": false,
+  "independentAuditExecuted": false,
+  "assignmentSent": false,
+  "sourceArtifactsListed": 372,
+  "previouslyArchivedArtifactReceiptsMatched": 348,
+  "pendingUnvalidatedArtifacts": 24,
+  "newRecordsProductionValidated": 0,
+  "newMeasurementRecordsPublished": 0,
+  "previouslyValidatedDistinctRecordsReference": 873,
+  "previousRecordsRecomputed": false,
+  "earliestPendingExpiryUtc": "2026-11-26T15:10:45Z",
+  "sourceNewExpired": false,
+  "missingAttemptPairs": 106,
+  "olderCreatedRerunCoverageComplete": false,
+  "executionFailure": {
+    "managementReportedStarting": true,
+    "waitForEnvironmentFailed": true,
+    "failureReason": "Failed to query executor configuration capabilities; no usable execution workspace",
+    "workspaceZIPDownloadFailed": true,
+    "productionRuntimeExecuted": false
+  },
+  "files": [
+    {
+      "path": "pending-artifacts.json",
+      "bytes": 19172,
+      "contentType": "projected-public-inventory/index-only"
+    },
+    {
+      "path": "run-inventory.json",
+      "bytes": 132309,
+      "contentType": "projected-public-inventory/index-only"
+    },
+    {
+      "path": "missing-artifact-attempts.json",
+      "bytes": 83435,
+      "contentType": "projected-public-inventory/index-only"
+    },
+    {
+      "path": "population-reconciliation.json",
+      "bytes": 148801,
+      "contentType": "projected-public-inventory/index-only"
+    },
+    {
+      "path": "neutral-initial-audit-packet.json",
+      "bytes": 6580,
+      "contentType": "outcome-neutral-initial-candidate-metadata; not audit-ready"
+    },
+    {
+      "path": "audit-coordinator-index.json",
+      "bytes": 3941,
+      "contentType": "projected-public-inventory/index-only"
+    },
+    {
+      "path": "aggregation-input-index.json",
+      "bytes": 8154,
+      "contentType": "projected-public-inventory/index-only"
+    },
+    {
+      "path": "collection-summary.json",
+      "bytes": 5126,
+      "contentType": "projected-public-inventory/index-only"
+    }
+  ],
+  "metadataChecks": {
+    "jsonSerializationAndParse": true,
+    "allFilesAtMost200KiB": true,
+    "measurementParserOrValidatorExecuted": false,
+    "portableSHA256MetadataChecks": "Standard empty/abc vectors and all 14 frozen production changeId vectors matched; ranking follows committed source seed/newline/changeId formula. No substitute measurement validator used."
+  },
+  "remainingWork": [
+    "Restore a usable execution workspace and recover/production-validate the 24 actual ZIP/JSON exports before expiry.",
+    "Resolve #353 eligibility and full population; run pinned production schema/sampler before final freeze.",
+    "Obtain the 18 missing selected initial revisions and exact applicable complete authority sets without exposing final state or AGK outcomes.",
+    "Obtain independent initial/final assessments, case adjudication and bounded reproducible final reporting."
+  ],
+  "postToolUseCutoff": {
+    "route": "PostToolUse",
+    "cutoffDateJst": "2026-10-29",
+    "ownerReference": "https://github.com/flair-agency/architecture-gatekeeper/issues/50#issuecomment-6473086951",
+    "historicalRecordsRetained": true,
+    "postCutoffNonExecutionIsNotSuccessOrZeroEffect": true,
+    "frozenOriginalWindowAndSeedUnchanged": true
+  },
+  "scope": "Observation period closure only. No new acceptance criterion completed, no effect/correction/acceptance claimed, and Issue #537 remains open.",
+  "issueOpen": true,
+  "completedCriteriaUnchanged": 3
+}
